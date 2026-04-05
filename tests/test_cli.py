@@ -68,14 +68,14 @@ def test_fail_on_critical_exits_zero_when_only_medium(tmp_path: Path) -> None:
     """--fail-on critical should not trip when the worst finding is MEDIUM."""
     _write_medium_only_mcp(tmp_path)
     result = runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "critical"])
-    assert result.exit_code == 0, result.stderr
+    assert result.exit_code == 0, result.output
 
 
 def test_fail_on_medium_exits_one_when_medium_exists(tmp_path: Path) -> None:
     """--fail-on medium should exit 1 when a MEDIUM finding is present."""
     _write_medium_only_mcp(tmp_path)
     result = runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "medium"])
-    assert result.exit_code == 1, result.stderr
+    assert result.exit_code == 1, result.output
 
 
 def test_fail_on_none_always_exits_zero(tmp_path: Path) -> None:
@@ -95,7 +95,7 @@ def test_ci_flag_produces_sarif_file(tmp_path: Path) -> None:
         sarif_path = Path(td) / "agent-audit-results.sarif"
         assert sarif_path.is_file(), (
             f"Expected SARIF file at {sarif_path}; "
-            f"exit_code={result.exit_code}, stderr={result.stderr}"
+            f"exit_code={result.exit_code}, output={result.output}"
         )
         content = json.loads(sarif_path.read_text(encoding="utf-8"))
         assert content["version"] == "2.1.0"
@@ -107,7 +107,7 @@ def test_ci_flag_sets_fail_on_high(tmp_path: Path) -> None:
     with runner.isolated_filesystem(temp_dir=tmp_path):
         result = runner.invoke(cli, ["scan", str(tmp_path), "--ci"])
     assert result.exit_code == 1, (
-        f"Expected exit 1 due to CRITICAL findings; stderr={result.stderr}"
+        f"Expected exit 1 due to CRITICAL findings; output={result.output}"
     )
 
 
@@ -191,8 +191,13 @@ def test_fail_on_prints_failing_findings(tmp_path: Path) -> None:
     _write_vulnerable_mcp(tmp_path)
     result = runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "high"])
     assert result.exit_code == 1
-    assert "FAILED" in result.stderr
-    assert "AAK-MCP-001" in result.stderr
+    # stderr may not be separately captured in all Click versions
+    try:
+        out = result.output + (result.stderr or "")
+    except (ValueError, AttributeError):
+        out = result.output
+    assert "FAILED" in out
+    assert "AAK-MCP-001" in out
 
 
 # ---------------------------------------------------------------------------
