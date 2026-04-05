@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from agent_audit_kit.scanners.agent_config import scan

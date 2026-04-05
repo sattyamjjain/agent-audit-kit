@@ -217,7 +217,7 @@ def _check_private_key_files(project_root: Path) -> list[Finding]:
                 if PRIVATE_KEY_HEADER.search(header):
                     findings.append(_make_finding(
                         "AAK-SECRET-005", rel_path,
-                        f"File contains PEM private key header",
+                        "File contains PEM private key header",
                     ))
             except OSError:
                 pass

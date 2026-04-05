@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS

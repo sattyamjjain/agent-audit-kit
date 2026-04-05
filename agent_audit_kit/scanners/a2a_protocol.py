@@ -96,14 +96,14 @@ def _check_authentication(
             findings.append(make_finding(
                 "AAK-A2A-002",
                 rel_path,
-                f"Authentication type is 'none'",
+                "Authentication type is 'none'",
                 find_line_number(raw_text, "none"),
             ))
     elif isinstance(auth, str) and auth.lower() == "none":
         findings.append(make_finding(
             "AAK-A2A-002",
             rel_path,
-            f"Authentication is 'none'",
+            "Authentication is 'none'",
             find_line_number(raw_text, auth),
         ))
 

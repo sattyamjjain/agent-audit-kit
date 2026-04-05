@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding
 
 # ---- Target files to scan (relative to project root) ----
 _AGENT_CONFIG_FILES: list[str] = [

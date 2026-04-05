@@ -122,7 +122,7 @@ class TestVerifyFindings:
         )
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "CONFIRMED ACTIVE"
+        def mock_verifier(key: str) -> str: return "CONFIRMED ACTIVE"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-001": mock_verifier}):
             verified = verify_findings(result)
 
@@ -135,7 +135,7 @@ class TestVerifyFindings:
         )
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "INACTIVE/ROTATED"
+        def mock_verifier(key: str) -> str: return "INACTIVE/ROTATED"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-001": mock_verifier}):
             verified = verify_findings(result)
 
@@ -148,7 +148,7 @@ class TestVerifyFindings:
         )
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "CONFIRMED ACTIVE"
+        def mock_verifier(key: str) -> str: return "CONFIRMED ACTIVE"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-002": mock_verifier}):
             verified = verify_findings(result)
 
@@ -185,7 +185,7 @@ class TestVerifyFindings:
         )
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "CONFIRMED ACTIVE"
+        def mock_verifier(key: str) -> str: return "CONFIRMED ACTIVE"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-001": mock_verifier}):
             verified = verify_findings(result)
 
@@ -208,7 +208,7 @@ class TestVerifyFindings:
         finding.severity = Severity.HIGH
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "CONFIRMED ACTIVE"
+        def mock_verifier(key: str) -> str: return "CONFIRMED ACTIVE"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-001": mock_verifier}):
             verified = verify_findings(result)
 
@@ -222,7 +222,7 @@ class TestVerifyFindings:
         finding.severity = Severity.HIGH
         result = ScanResult(findings=[finding])
 
-        mock_verifier = lambda key: "INACTIVE/ROTATED"
+        def mock_verifier(key: str) -> str: return "INACTIVE/ROTATED"
         with patch.dict("agent_audit_kit.verification._VERIFIERS", {"AAK-SECRET-001": mock_verifier}):
             verified = verify_findings(result)
 
