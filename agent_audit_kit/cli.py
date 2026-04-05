@@ -95,7 +95,7 @@ def _apply_config_defaults(
     return {
         "output_format": output_format if output_format != "console" else config.get("format", output_format),
         "min_severity": min_severity if min_severity != "low" else config.get("severity", min_severity),
-        "fail_on": fail_on if fail_on != "none" else config.get("fail-on", fail_on),
+        "fail_on": fail_on if fail_on is not None else config.get("fail-on", "none"),
         "output_file": output_file or config.get("output", None),
         "include_user_config": include_user_config or config.get("include-user-config", False),
         "ignore_paths": ignore_paths or config.get("ignore-paths", None),
@@ -132,8 +132,8 @@ def cli(ctx: click.Context) -> None:
 @click.option(
     "--fail-on",
     type=click.Choice(FAIL_ON_CHOICES),
-    default="none",
-    help="Exit code 1 if any finding meets or exceeds this severity.",
+    default=None,
+    help="Exit code 1 if any finding meets or exceeds this severity. Default: none.",
 )
 @click.option(
     "--config",
