@@ -38,7 +38,21 @@ MCP_CONFIG_FILES = [
     ".cursor/mcp.json",
     ".vscode/mcp.json",
     ".amazonq/mcp.json",
+    ".windsurf/mcp.json",
+    ".continue/config.json",
+    ".roo/mcp.json",
+    ".kiro/mcp.json",
     "mcp.json",
+]
+
+# Config files that use a different key structure or format
+_YAML_CONFIG_FILES = [
+    ".config/goose/config.yaml",
+]
+
+# Gemini uses a settings.json that may contain MCP config
+_SETTINGS_CONFIG_FILES = [
+    ".gemini/settings.json",
 ]
 
 
@@ -47,6 +61,16 @@ def _find_mcp_configs(project_root: Path, include_user_config: bool = False) -> 
     for name in MCP_CONFIG_FILES:
         p = project_root / name
         if p.is_file():
+            found.append(p)
+    # Check settings-style configs (Gemini)
+    for name in _SETTINGS_CONFIG_FILES:
+        p = project_root / name
+        if p.is_file() and p not in found:
+            found.append(p)
+    # Check YAML configs (Goose)
+    for name in _YAML_CONFIG_FILES:
+        p = project_root / name
+        if p.is_file() and p not in found:
             found.append(p)
     # Recursively search for any *mcp*.json from project root
     for p in project_root.rglob("*mcp*.json"):

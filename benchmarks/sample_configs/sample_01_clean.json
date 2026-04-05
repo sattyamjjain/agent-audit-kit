@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "/usr/local/bin/mcp-server-filesystem",
+      "args": ["/home/user/projects"],
+      "env": {}
+    },
+    "database": {
+      "command": "/usr/local/bin/mcp-server-postgres",
+      "args": ["--read-only"],
+      "env": {
+        "DATABASE_URL": "${DATABASE_URL}"
+      }
+    },
+    "remote-api": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MCP_API_TOKEN}"
+      }
+    }
+  }
+}

@@ -38,6 +38,7 @@ _VULNERABLE_AGENT_CARD: dict = {
 }
 
 _CLEAN_AGENT_CARD: dict = {
+    "id": "clean-agent-001",
     "name": "Clean Agent",
     "description": "A properly configured agent",
     "url": "https://agent.example.com/api",

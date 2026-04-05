@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "well-configured": {
+      "command": "/usr/local/bin/mcp-server-fs",
+      "args": ["--read-only", "/home/user/safe"],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    },
+    "leaky-secrets": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-slack"],
+      "env": {
+        "SLACK_BOT_TOKEN": "PLACEHOLDER_SLACK_TOKEN_FOR_TESTING",
+        "SLACK_SIGNING_SECRET": "PLACEHOLDER_SIGNING_SECRET_FOR_TESTING"
+      }
+    },
+    "unauthed-remote": {
+      "url": "http://internal.corp:4000/mcp"
+    },
+    "shell-risk": {
+      "command": "bash",
+      "args": ["-c", "cd /opt/mcp && ./start.sh --port 5000"],
+      "env": {}
+    },
+    "package-fetcher": {
+      "command": "npx",
+      "args": ["-y", "some-unknown-mcp-package@latest"],
+      "env": {}
+    }
+  },
+  "enableAllProjectMcpServers": true
+}

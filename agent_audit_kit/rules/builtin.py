@@ -124,7 +124,7 @@ _r(
     Category.MCP_CONFIG,
     "Pin exact package versions or use locally installed packages.",
     sarif_name="McpRuntimePackageFetch",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
 )
@@ -297,7 +297,7 @@ _r(
     Category.HOOK_INJECTION,
     "Minimize hooks to essential operations only.",
     sarif_name="ExcessiveHookCount",
-    owasp_mcp_references=["MCP02:2025"],
+    owasp_mcp_references=["MCP02:2025", "MCP08:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-03"],
 )
@@ -388,7 +388,7 @@ _r(
     Category.TRUST_BOUNDARY,
     "Add deny rules for: file system operations outside project, network tools, credential-accessing tools.",
     sarif_name="MissingDenyRules",
-    owasp_mcp_references=["MCP05:2025"],
+    owasp_mcp_references=["MCP05:2025", "MCP08:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TRUST-02"],
     auto_fixable=True,
@@ -588,7 +588,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Update to patched version or remove dependency.",
     sarif_name="KnownVulnerablePackage",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
 )
@@ -985,7 +985,7 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
-# A2A Protocol (4 rules)
+# A2A Protocol (7 rules)
 # ---------------------------------------------------------------------------
 
 _r(
@@ -1042,6 +1042,48 @@ _r(
     adversa_references=["ADV-A2A-04"],
 )
 
+_r(
+    "AAK-A2A-005",
+    "JWT token lifetime exceeds 1 hour",
+    "An A2A Agent Card configures a JWT token lifetime greater than 1 hour (3600 seconds). "
+    "Long-lived tokens increase the window for token theft and replay attacks.",
+    Severity.HIGH,
+    Category.A2A_PROTOCOL,
+    "Set JWT token lifetime to 1 hour (3600 seconds) or less. Use refresh tokens for longer sessions.",
+    sarif_name="JwtTokenLifetimeTooLong",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-A2A-006",
+    "Weak JWT validation configuration",
+    "An A2A Agent Card disables JWT signature verification or allows the 'none' algorithm, "
+    "permitting token forgery.",
+    Severity.HIGH,
+    Category.A2A_PROTOCOL,
+    "Enable signature verification and restrict algorithms to RS256 or ES256. Never allow 'none'.",
+    sarif_name="WeakJwtValidation",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-A2A-007",
+    "Agent impersonation risk",
+    "An A2A Agent Card lacks an 'id' or 'identity' field, or uses an HTTP endpoint, "
+    "making it susceptible to agent impersonation attacks.",
+    Severity.MEDIUM,
+    Category.A2A_PROTOCOL,
+    "Add a unique 'id' or 'identity' field to the Agent Card and use HTTPS endpoints.",
+    sarif_name="AgentImpersonationRisk",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI10"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
 # ---------------------------------------------------------------------------
 # Legal Compliance (3 rules)
 # ---------------------------------------------------------------------------
@@ -1096,6 +1138,7 @@ _r(
     Category.TOOL_POISONING,
     "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If suspicious, remove the server.",
     sarif_name="ToolDefinitionChanged",
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-01"],
 )
@@ -1109,6 +1152,7 @@ _r(
     Category.TOOL_POISONING,
     "Review the new tool's definition and permissions. Pin if approved.",
     sarif_name="NewToolSincePin",
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-02"],
 )
@@ -1122,6 +1166,7 @@ _r(
     Category.TOOL_POISONING,
     "Investigate why the tool was removed. Update pins if removal was intentional.",
     sarif_name="ToolRemovedSincePin",
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-03"],
 )

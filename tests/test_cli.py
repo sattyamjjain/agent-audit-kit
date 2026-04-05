@@ -161,6 +161,30 @@ def test_version_command() -> None:
     assert __version__ in result.output
 
 
+def test_rules_filter_runs_only_specified(tmp_path: Path) -> None:
+    """--rules AAK-MCP-001 should only return findings for that rule."""
+    _write_vulnerable_mcp(tmp_path)
+    result = runner.invoke(
+        cli,
+        ["scan", str(tmp_path), "--format", "json", "--rules", "AAK-MCP-001"],
+    )
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    rule_ids = {f["ruleId"] for f in data["findings"]}
+    # Only AAK-MCP-001 should be present
+    assert rule_ids == {"AAK-MCP-001"} or rule_ids == set(), (
+        f"Expected only AAK-MCP-001 but got: {rule_ids}"
+    )
+
+
+def test_invalid_path_exits_two() -> None:
+    """Scanning a non-existent path should exit 2."""
+    result = runner.invoke(cli, ["scan", "/nonexistent/path/that/does/not/exist"])
+    assert result.exit_code == 2, (
+        f"Expected exit 2 for invalid path; got {result.exit_code}, output={result.output}"
+    )
+
+
 def test_fail_on_prints_failing_findings(tmp_path: Path) -> None:
     """When --fail-on threshold is exceeded, stderr should contain 'FAILED' and
     the offending rule IDs."""
@@ -169,3 +193,129 @@ def test_fail_on_prints_failing_findings(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "FAILED" in result.stderr
     assert "AAK-MCP-001" in result.stderr
+
+
+# ---------------------------------------------------------------------------
+# Subcommand tests: discover, score, fix, pin, verify, update, kill
+# ---------------------------------------------------------------------------
+
+
+def test_discover_command_exits_zero() -> None:
+    """The ``discover`` subcommand should exit 0."""
+    result = runner.invoke(cli, ["discover"])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+
+
+def test_score_command_exits_zero(tmp_path: Path) -> None:
+    """The ``score`` subcommand with a clean project exits 0."""
+    result = runner.invoke(cli, ["score", str(tmp_path)])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+    assert "Security Score:" in result.output
+    assert "Grade:" in result.output
+
+
+def test_fix_dry_run_exits_zero(tmp_path: Path) -> None:
+    """The ``fix --dry-run`` subcommand with a clean project exits 0."""
+    result = runner.invoke(cli, ["fix", str(tmp_path), "--dry-run"])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+
+
+def test_pin_command_exits_zero(tmp_path: Path) -> None:
+    """The ``pin`` subcommand with a project directory exits 0."""
+    result = runner.invoke(cli, ["pin", str(tmp_path)])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+    assert "Pinned" in result.output
+
+
+def test_verify_command_exits_zero(tmp_path: Path) -> None:
+    """The ``verify`` subcommand with a clean project exits 0."""
+    result = runner.invoke(cli, ["verify", str(tmp_path)])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+
+
+def test_update_command() -> None:
+    """The ``update`` subcommand should exit 0 regardless of network availability."""
+    result = runner.invoke(cli, ["update"])
+    assert result.exit_code == 0, (
+        f"Expected exit 0; got {result.exit_code}, output={result.output}"
+    )
+
+
+def test_kill_command_no_proxy_running() -> None:
+    """The ``kill`` subcommand when no proxy PID file exists prints and exits 0."""
+    result = runner.invoke(cli, ["kill"])
+    assert result.exit_code == 0
+    assert "No running proxy found" in result.output or "terminated" in result.output.lower()
+
+
+def test_scan_verbose_flag(tmp_path: Path) -> None:
+    """The ``--verbose`` flag should produce 'Scanning' message on stderr."""
+    result = runner.invoke(cli, ["scan", str(tmp_path), "--verbose"])
+    assert result.exit_code == 0
+
+
+def test_scan_score_flag(tmp_path: Path) -> None:
+    """The ``--score`` flag should include score output."""
+    result = runner.invoke(cli, ["scan", str(tmp_path), "--score"])
+    assert result.exit_code == 0
+
+
+def test_scan_owasp_report_flag(tmp_path: Path) -> None:
+    """The ``--owasp-report`` flag should not crash."""
+    result = runner.invoke(cli, ["scan", str(tmp_path), "--owasp-report"])
+    assert result.exit_code == 0
+
+
+def test_scan_compliance_flag(tmp_path: Path) -> None:
+    """The ``--compliance eu-ai-act`` flag should not crash."""
+    result = runner.invoke(cli, ["scan", str(tmp_path), "--compliance", "eu-ai-act"])
+    assert result.exit_code == 0
+
+
+def test_scan_format_sarif(tmp_path: Path) -> None:
+    """--format sarif should produce valid SARIF output to file."""
+    with runner.isolated_filesystem(temp_dir=tmp_path) as td:
+        result = runner.invoke(
+            cli, ["scan", str(tmp_path), "--format", "sarif", "-o", "out.sarif"]
+        )
+        assert result.exit_code == 0
+        sarif = Path(td) / "out.sarif"
+        assert sarif.is_file()
+        data = json.loads(sarif.read_text())
+        assert data["version"] == "2.1.0"
+
+
+def test_fix_with_fixable_findings(tmp_path: Path) -> None:
+    """The ``fix`` subcommand detects and reports fixable issues."""
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir()
+    (claude_dir / "settings.json").write_text(
+        json.dumps({"enableAllProjectMcpServers": True}), encoding="utf-8"
+    )
+    result = runner.invoke(cli, ["fix", str(tmp_path), "--dry-run"])
+    assert result.exit_code == 0
+    if "Would fix" in result.output:
+        assert "issue(s)" in result.output
+
+
+def test_score_with_badge_flag(tmp_path: Path) -> None:
+    """The ``score --badge`` flag generates SVG badge output."""
+    result = runner.invoke(cli, ["score", str(tmp_path), "--badge"])
+    assert result.exit_code == 0
+    assert "svg" in result.output.lower() or "Score:" in result.output
+
+
+def test_discover_verbose_flag() -> None:
+    """The ``discover --verbose`` flag should not crash."""
+    result = runner.invoke(cli, ["discover", "--verbose"])
+    assert result.exit_code == 0

@@ -1,0 +1,64 @@
+{
+  "name": "agent-audit-kit",
+  "displayName": "AgentAuditKit",
+  "description": "Security scanner for MCP-connected AI agent pipelines",
+  "version": "0.2.0",
+  "publisher": "sattyamjjain",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sattyamjjain/agent-audit-kit"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "activationEvents": [
+    "onLanguage:json",
+    "onLanguage:yaml",
+    "onLanguage:jsonc"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "AgentAuditKit",
+      "properties": {
+        "agent-audit-kit.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the AgentAuditKit scanner."
+        },
+        "agent-audit-kit.severity": {
+          "type": "string",
+          "default": "low",
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "description": "Minimum severity level to report."
+        },
+        "agent-audit-kit.autoScanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run a scan when a file is saved."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

@@ -68,6 +68,16 @@ def _build_registry() -> list[ScannerRegistration]:
         regs.append(ScannerRegistration("Legal compliance", legal_compliance.scan, []))
     except ImportError:
         pass
+    try:
+        from agent_audit_kit.scanners import typescript_scan
+        regs.append(ScannerRegistration("TypeScript taint analysis", typescript_scan.scan, []))
+    except ImportError:
+        pass
+    try:
+        from agent_audit_kit.scanners import rust_scan
+        regs.append(ScannerRegistration("Rust taint analysis", rust_scan.scan, []))
+    except ImportError:
+        pass
     return regs
 
 

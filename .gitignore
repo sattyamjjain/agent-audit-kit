@@ -37,3 +37,7 @@ Thumbs.db
 
 # Agent Audit Kit cache
 .agent-audit-kit/
+
+# Benchmark data (downloaded configs)
+benchmarks/data/
+benchmarks/results.json

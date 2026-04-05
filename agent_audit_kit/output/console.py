@@ -1,16 +1,31 @@
 from __future__ import annotations
 
+import os
+import sys
+
 from agent_audit_kit.models import Finding, ScanResult, Severity
 
-BOLD = "\033[1m"
-RED = "\033[31m"
-BOLD_RED = "\033[1;31m"
-YELLOW = "\033[33m"
-BLUE = "\033[34m"
-GRAY = "\033[90m"
-GREEN = "\033[32m"
-RESET = "\033[0m"
-DIM = "\033[2m"
+
+def _use_color() -> bool:
+    """Return True if ANSI color codes should be used."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    return hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+
+
+_COLOR = _use_color()
+
+BOLD = "\033[1m" if _COLOR else ""
+RED = "\033[31m" if _COLOR else ""
+BOLD_RED = "\033[1;31m" if _COLOR else ""
+YELLOW = "\033[33m" if _COLOR else ""
+BLUE = "\033[34m" if _COLOR else ""
+GRAY = "\033[90m" if _COLOR else ""
+GREEN = "\033[32m" if _COLOR else ""
+RESET = "\033[0m" if _COLOR else ""
+DIM = "\033[2m" if _COLOR else ""
 
 SEVERITY_DISPLAY = {
     Severity.CRITICAL: (f"{BOLD_RED}\u26d4 CRITICAL{RESET}", BOLD_RED),

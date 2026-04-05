@@ -61,7 +61,7 @@ def filter_by_diff(
     filtered = ScanResult(
         files_scanned=scan_result.files_scanned,
         rules_evaluated=scan_result.rules_evaluated,
-        scan_duration_seconds=scan_result.scan_duration_seconds,
+        scan_duration_ms=scan_result.scan_duration_ms,
         score=scan_result.score,
         grade=scan_result.grade,
     )

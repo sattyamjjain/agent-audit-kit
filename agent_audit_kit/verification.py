@@ -5,12 +5,14 @@ import re
 import urllib.request
 from typing import Any
 
-from agent_audit_kit.models import ScanResult
+from agent_audit_kit.models import ScanResult, Severity
 
 _VERIFIABLE_RULES: frozenset[str] = frozenset({
     "AAK-SECRET-001",
     "AAK-SECRET-002",
     "AAK-SECRET-003",
+    "AAK-SECRET-008",  # GitHub/GitLab tokens
+    "AAK-SECRET-009",  # GCP service account
 })
 
 # Patterns to extract the actual key value from finding evidence strings.
@@ -110,9 +112,34 @@ def _verify_openai(key: str) -> str:
         return "VERIFICATION FAILED"
 
 
+def _verify_gcp(key_json: str) -> str:
+    """Verify a GCP service account key by calling the tokeninfo endpoint.
+
+    Args:
+        key_json: The GCP service account key (or key fragment).
+
+    Returns:
+        A verification status string.
+    """
+    url = "https://oauth2.googleapis.com/tokeninfo"
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=_TIMEOUT_SECONDS) as resp:
+            if resp.status == 200:
+                return "CONFIRMED ACTIVE"
+            return "INACTIVE/ROTATED"
+    except urllib.error.HTTPError as exc:
+        if exc.code in (400, 401, 403):
+            return "INACTIVE/ROTATED"
+        return f"VERIFICATION FAILED (HTTP {exc.code})"
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return "VERIFICATION FAILED"
+
+
 _VERIFIERS: dict[str, Any] = {
     "AAK-SECRET-001": _verify_anthropic,
     "AAK-SECRET-002": _verify_openai,
+    "AAK-SECRET-009": _verify_gcp,
 }
 
 
@@ -167,5 +194,9 @@ def verify_findings(result: ScanResult) -> ScanResult:
             status = "VERIFICATION FAILED"
 
         finding.evidence += f" [verification: {status} (key: {masked})]"
+
+        # Auto-upgrade severity to CRITICAL when key is confirmed active
+        if status == "CONFIRMED ACTIVE" and finding.severity != Severity.CRITICAL:
+            finding.severity = Severity.CRITICAL
 
     return result

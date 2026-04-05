@@ -183,6 +183,145 @@ def _check_endpoints(
     return findings
 
 
+_LIFETIME_KEYS: list[str] = [
+    "tokenLifetime", "token_lifetime", "expiresIn", "expires_in",
+]
+
+_DURATION_RE = re.compile(r"^(\d+)\s*h$", re.IGNORECASE)
+
+
+def _parse_lifetime_seconds(value: Any) -> int | None:
+    """Attempt to interpret a lifetime value as seconds.
+
+    Handles:
+      - int / float (treated as seconds)
+      - str digits (treated as seconds)
+      - str like "2h" (treated as hours -> seconds)
+    """
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        value_stripped = value.strip()
+        if value_stripped.isdigit():
+            return int(value_stripped)
+        m = _DURATION_RE.match(value_stripped)
+        if m:
+            return int(m.group(1)) * 3600
+    return None
+
+
+def _check_jwt_lifetime(
+    data: dict[str, Any],
+    rel_path: str,
+    raw_text: str,
+) -> list[Finding]:
+    """AAK-A2A-005: Check for JWT token lifetime > 1 hour."""
+    findings: list[Finding] = []
+
+    def _inspect(obj: Any) -> None:
+        if not isinstance(obj, dict):
+            return
+        for key in _LIFETIME_KEYS:
+            if key in obj:
+                seconds = _parse_lifetime_seconds(obj[key])
+                if seconds is not None and seconds > 3600:
+                    findings.append(make_finding(
+                        "AAK-A2A-005",
+                        rel_path,
+                        f"JWT lifetime '{key}' is {seconds}s (>{3600}s)",
+                        find_line_number(raw_text, key),
+                    ))
+        # Recurse into nested dicts
+        for v in obj.values():
+            if isinstance(v, dict):
+                _inspect(v)
+            elif isinstance(v, list):
+                for item in v:
+                    _inspect(item)
+
+    _inspect(data)
+    return findings
+
+
+def _check_jwt_validation(
+    data: dict[str, Any],
+    rel_path: str,
+    raw_text: str,
+) -> list[Finding]:
+    """AAK-A2A-006: Check for weak JWT validation settings."""
+    findings: list[Finding] = []
+
+    def _inspect(obj: Any) -> None:
+        if not isinstance(obj, dict):
+            return
+        # Check verifySignature / verify_signature == false
+        for key in ("verifySignature", "verify_signature"):
+            val = obj.get(key)
+            if val is False or (isinstance(val, str) and val.lower() == "false"):
+                findings.append(make_finding(
+                    "AAK-A2A-006",
+                    rel_path,
+                    f"'{key}' is disabled",
+                    find_line_number(raw_text, key),
+                ))
+        # Check algorithms list for "none"
+        algorithms = obj.get("algorithms", [])
+        if isinstance(algorithms, list):
+            for alg in algorithms:
+                if isinstance(alg, str) and alg.lower() == "none":
+                    findings.append(make_finding(
+                        "AAK-A2A-006",
+                        rel_path,
+                        "JWT algorithms include 'none'",
+                        find_line_number(raw_text, alg),
+                    ))
+        # Recurse into nested dicts
+        for v in obj.values():
+            if isinstance(v, dict):
+                _inspect(v)
+            elif isinstance(v, list):
+                for item in v:
+                    _inspect(item)
+
+    _inspect(data)
+    return findings
+
+
+def _check_impersonation(
+    data: dict[str, Any],
+    rel_path: str,
+    raw_text: str,
+) -> list[Finding]:
+    """AAK-A2A-007: Check for agent impersonation risk.
+
+    Flags when:
+    - Agent card has neither 'id' nor 'identity' field, OR
+    - Any top-level URL/endpoint field uses HTTP.
+    """
+    findings: list[Finding] = []
+
+    has_id = "id" in data or "identity" in data
+    if not has_id:
+        findings.append(make_finding(
+            "AAK-A2A-007",
+            rel_path,
+            "Agent Card has no 'id' or 'identity' field",
+            1,
+        ))
+
+    for key in ("url", "endpoint", "baseUrl", "base_url"):
+        val = data.get(key, "")
+        if isinstance(val, str) and _HTTP_URL_RE.match(val):
+            findings.append(make_finding(
+                "AAK-A2A-007",
+                rel_path,
+                f"Agent uses HTTP endpoint '{key}': {val}",
+                find_line_number(raw_text, val),
+            ))
+
+    return findings
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Scan A2A Agent Card files for protocol security issues.
 
@@ -218,5 +357,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         findings.extend(_check_authentication(data, rel_path, raw_text))
         findings.extend(_check_skills(data, rel_path, raw_text))
         findings.extend(_check_endpoints(data, rel_path, raw_text))
+        findings.extend(_check_jwt_lifetime(data, rel_path, raw_text))
+        findings.extend(_check_jwt_validation(data, rel_path, raw_text))
+        findings.extend(_check_impersonation(data, rel_path, raw_text))
 
     return findings, scanned_files

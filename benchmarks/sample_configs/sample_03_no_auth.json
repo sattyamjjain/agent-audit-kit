@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "remote-unprotected": {
+      "url": "http://mcp.internal-corp.example.com:8080/v1"
+    },
+    "remote-no-headers": {
+      "url": "https://mcp-api.example.com/endpoint"
+    },
+    "sse-no-auth": {
+      "url": "http://192.168.1.100:3000/sse",
+      "transport": "sse"
+    },
+    "local-server": {
+      "command": "/usr/local/bin/mcp-server-local",
+      "args": ["--port", "9090"],
+      "env": {}
+    }
+  }
+}
