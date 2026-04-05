@@ -80,7 +80,9 @@ def format_results(result: ScanResult, framework_key: str) -> str:
     controls_met = 0
     controls_total = len(framework["controls"])
 
-    for control, asi_codes in framework["controls"].items():
+    controls = framework["controls"]
+    assert isinstance(controls, dict)
+    for control, asi_codes in controls.items():
         mapped_rules: list[str] = []
         for asi in asi_codes:
             mapped_rules.extend(_get_rules_for_asi(asi))
