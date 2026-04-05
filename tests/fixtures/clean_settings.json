@@ -1,0 +1,30 @@
+{
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": ["filesystem", "sqlite"],
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm run lint)",
+      "Edit(src/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Edit(/etc/**)",
+      "Edit(~/**)"
+    ]
+  },
+  "hooks": {
+    "AfterEdit": [
+      {
+        "command": "prettier --write"
+      }
+    ],
+    "PreCommit": [
+      {
+        "command": "eslint --fix"
+      }
+    ]
+  }
+}

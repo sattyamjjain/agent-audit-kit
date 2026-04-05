@@ -1,0 +1,29 @@
+site_name: AgentAuditKit Documentation
+site_description: Security scanner for MCP-connected AI agent pipelines
+site_url: https://user.github.io/agent-audit-kit
+repo_url: https://github.com/sattyamjjain/agent-audit-kit
+repo_name: agent-audit-kit
+
+theme:
+  name: material
+  palette:
+    primary: red
+    accent: orange
+  features:
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Rule Reference: rules.md
+  - OWASP Mapping: owasp-mapping.md
+  - CI/CD Integration: ci-cd.md
+  - Comparison: comparison.md
+
+markdown_extensions:
+  - tables
+  - admonitions
+  - pymdownx.highlight
+  - pymdownx.superfences

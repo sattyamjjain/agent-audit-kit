@@ -1,0 +1,78 @@
+name: 'AgentAuditKit MCP Security Scan'
+description: 'Scan MCP agent configurations for security vulnerabilities'
+author: 'AgentAuditKit Contributors'
+
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  path:
+    description: 'Project directory to scan'
+    required: false
+    default: '.'
+  severity:
+    description: 'Minimum severity to report (critical, high, medium, low, info)'
+    required: false
+    default: 'low'
+  fail-on:
+    description: 'Fail the action if findings at or above this severity (critical, high, medium, low)'
+    required: false
+    default: 'high'
+  format:
+    description: 'Output format (console, json, sarif)'
+    required: false
+    default: 'sarif'
+  sarif-file:
+    description: 'Path to write SARIF output'
+    required: false
+    default: 'agent-audit-kit.sarif'
+
+outputs:
+  findings-count:
+    description: 'Total number of findings'
+  critical-count:
+    description: 'Number of critical findings'
+  score:
+    description: 'Security score (0-100)'
+  grade:
+    description: 'Security grade (A-F)'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install AgentAuditKit
+      shell: bash
+      run: pip install agent-audit-kit
+
+    - name: Run Scan
+      id: scan
+      shell: bash
+      run: |
+        agent-audit-kit scan ${{ inputs.path }} \
+          --format ${{ inputs.format }} \
+          --severity ${{ inputs.severity }} \
+          --score \
+          -o ${{ inputs.sarif-file }} \
+          --ci --severity ${{ inputs.fail-on }} || true
+
+        # Extract metrics from JSON scan
+        RESULT=$(agent-audit-kit scan ${{ inputs.path }} --format json --severity ${{ inputs.severity }} --score)
+        echo "findings-count=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['total'])")" >> $GITHUB_OUTPUT
+        echo "critical-count=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['critical'])")" >> $GITHUB_OUTPUT
+        echo "score=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('score','N/A'))")" >> $GITHUB_OUTPUT
+        echo "grade=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','N/A'))")" >> $GITHUB_OUTPUT
+
+    - name: Upload SARIF
+      if: always() && inputs.format == 'sarif'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+      continue-on-error: true
+
+    - name: Enforce severity threshold
+      shell: bash
+      run: |
+        agent-audit-kit scan ${{ inputs.path }} \
+          --ci --severity ${{ inputs.fail-on }} \
+          --format console

@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "node",
+      "args": ["@modelcontextprotocol/server-filesystem@2025.1.1", "/home/user/allowed-dir"],
+      "env": {}
+    },
+    "sqlite": {
+      "command": "python3",
+      "args": ["-m", "mcp_server_sqlite@1.0.0", "--db", "./data.db"]
+    },
+    "custom-local": {
+      "command": "/usr/local/bin/my-mcp-server",
+      "args": ["--config", "./config.yml"]
+    }
+  }
+}
