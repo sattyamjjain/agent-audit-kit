@@ -12,6 +12,29 @@ class Severity(Enum):
     LOW = "low"
     INFO = "info"
 
+    def numeric(self) -> int:
+        return {"critical": 5, "high": 4, "medium": 3, "low": 2, "info": 1}[self.value]
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+        return self.numeric() >= other.numeric()
+
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+        return self.numeric() > other.numeric()
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+        return self.numeric() <= other.numeric()
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Severity):
+            return NotImplemented
+        return self.numeric() < other.numeric()
+
 
 class Category(Enum):
     MCP_CONFIG = "mcp-config"
@@ -49,7 +72,7 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     files_scanned: int = 0
     rules_evaluated: int = 0
-    scan_duration_seconds: float = 0.0
+    scan_duration_ms: float = 0.0
     score: Optional[int] = None
     grade: Optional[str] = None
 
@@ -73,8 +96,14 @@ class ScanResult:
     def info_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == Severity.INFO)
 
+    @property
+    def max_severity(self) -> Optional[Severity]:
+        if not self.findings:
+            return None
+        return max(self.findings, key=lambda f: f.severity.numeric()).severity
+
+    def exceeds_threshold(self, threshold: Severity) -> bool:
+        return any(f.severity >= threshold for f in self.findings)
+
     def findings_at_or_above(self, min_severity: Severity) -> list[Finding]:
-        severity_order = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
-        threshold_idx = severity_order.index(min_severity)
-        allowed = set(severity_order[: threshold_idx + 1])
-        return [f for f in self.findings if f.severity in allowed]
+        return [f for f in self.findings if f.severity >= min_severity]

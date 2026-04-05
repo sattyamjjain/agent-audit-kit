@@ -122,7 +122,7 @@ def run_scan(
             result.findings.append(finding)
 
     result.files_scanned = len(all_scanned_files)
-    result.scan_duration_seconds = time.monotonic() - start
-    _log(f"Scan complete: {result.files_scanned} files, {len(result.findings)} findings in {result.scan_duration_seconds:.2f}s")
+    result.scan_duration_ms = (time.monotonic() - start) * 1000
+    _log(f"Scan complete: {result.files_scanned} files, {len(result.findings)} findings in {result.scan_duration_ms:.0f}ms")
 
     return result

@@ -1,0 +1,22 @@
+# AgentAuditKit Configuration
+# Place this file at your project root to customize scanning behavior.
+# CLI flags override these values.
+
+# Minimum severity to report
+severity: low
+
+# Fail CI if any finding at this severity or above (critical, high, medium, low, none)
+fail-on: high
+
+# Paths to exclude from scanning
+ignore-paths:
+  - vendor/
+  - third_party/
+
+# Rules to skip (uncomment as needed)
+# exclude-rules:
+#   - AAK-MCP-007    # We intentionally don't pin npx versions
+#   - AAK-SUPPLY-005  # Large dependency tree is expected
+
+# Scan user-level agent configs (~/.claude/, etc.)
+include-user-config: false

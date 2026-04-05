@@ -10,7 +10,7 @@ def _make_test_result() -> ScanResult:
     result = ScanResult(
         files_scanned=5,
         rules_evaluated=35,
-        scan_duration_seconds=0.42,
+        scan_duration_ms=0.42,
     )
     result.findings = [
         Finding(

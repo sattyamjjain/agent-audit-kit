@@ -1,6 +1,6 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'Scan MCP agent configurations for security vulnerabilities'
-author: 'AgentAuditKit Contributors'
+description: 'Security scanner for MCP-connected AI agent pipelines. Detects misconfigurations, secret exposure, tool poisoning, rug pulls, and trust boundary violations.'
+author: 'sattyamjjain'
 
 branding:
   icon: 'shield'
@@ -16,63 +16,61 @@ inputs:
     required: false
     default: 'low'
   fail-on:
-    description: 'Fail the action if findings at or above this severity (critical, high, medium, low)'
+    description: 'Fail the action if findings at or above this severity (critical, high, medium, low, none)'
     required: false
     default: 'high'
   format:
     description: 'Output format (console, json, sarif)'
     required: false
     default: 'sarif'
-  sarif-file:
-    description: 'Path to write SARIF output'
+  upload-sarif:
+    description: 'Upload SARIF results to GitHub Code Scanning'
     required: false
-    default: 'agent-audit-kit.sarif'
+    default: 'true'
+  include-user-config:
+    description: 'Also scan user-level agent configs (~/.claude/)'
+    required: false
+    default: 'false'
+  rules:
+    description: 'Comma-separated rule IDs to run (default: all)'
+    required: false
+    default: ''
+  exclude-rules:
+    description: 'Comma-separated rule IDs to skip'
+    required: false
+    default: ''
+  ignore-paths:
+    description: 'Comma-separated paths to skip during scan'
+    required: false
+    default: ''
+  config:
+    description: 'Path to .agent-audit-kit.yml configuration file'
+    required: false
+    default: ''
 
 outputs:
   findings-count:
     description: 'Total number of findings'
   critical-count:
     description: 'Number of critical findings'
-  score:
-    description: 'Security score (0-100)'
-  grade:
-    description: 'Security grade (A-F)'
+  high-count:
+    description: 'Number of high severity findings'
+  sarif-file:
+    description: 'Path to the SARIF output file'
+  exit-code:
+    description: 'Exit code from the scan (0=pass, 1=findings exceed threshold, 2=error)'
 
 runs:
-  using: 'composite'
-  steps:
-    - name: Install AgentAuditKit
-      shell: bash
-      run: pip install agent-audit-kit
-
-    - name: Run Scan
-      id: scan
-      shell: bash
-      run: |
-        agent-audit-kit scan ${{ inputs.path }} \
-          --format ${{ inputs.format }} \
-          --severity ${{ inputs.severity }} \
-          --score \
-          -o ${{ inputs.sarif-file }} \
-          --ci --severity ${{ inputs.fail-on }} || true
-
-        # Extract metrics from JSON scan
-        RESULT=$(agent-audit-kit scan ${{ inputs.path }} --format json --severity ${{ inputs.severity }} --score)
-        echo "findings-count=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['total'])")" >> $GITHUB_OUTPUT
-        echo "critical-count=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['summary']['critical'])")" >> $GITHUB_OUTPUT
-        echo "score=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('score','N/A'))")" >> $GITHUB_OUTPUT
-        echo "grade=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('grade','N/A'))")" >> $GITHUB_OUTPUT
-
-    - name: Upload SARIF
-      if: always() && inputs.format == 'sarif'
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: ${{ inputs.sarif-file }}
-      continue-on-error: true
-
-    - name: Enforce severity threshold
-      shell: bash
-      run: |
-        agent-audit-kit scan ${{ inputs.path }} \
-          --ci --severity ${{ inputs.fail-on }} \
-          --format console
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.path }}
+    - ${{ inputs.severity }}
+    - ${{ inputs.fail-on }}
+    - ${{ inputs.format }}
+    - ${{ inputs.upload-sarif }}
+    - ${{ inputs.include-user-config }}
+    - ${{ inputs.rules }}
+    - ${{ inputs.exclude-rules }}
+    - ${{ inputs.ignore-paths }}
+    - ${{ inputs.config }}

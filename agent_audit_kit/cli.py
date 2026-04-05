@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
+import yaml
 
 from agent_audit_kit import __version__
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.models import Severity
 
-SEVERITY_MAP = {
+SEVERITY_MAP: dict[str, Severity] = {
     "critical": Severity.CRITICAL,
     "high": Severity.HIGH,
     "medium": Severity.MEDIUM,
@@ -17,12 +19,103 @@ SEVERITY_MAP = {
     "info": Severity.INFO,
 }
 
+FAIL_ON_CHOICES = ["critical", "high", "medium", "low", "none"]
+
+# Exit codes
+EXIT_PASS = 0
+EXIT_FINDINGS = 1
+EXIT_ERROR = 2
+
+
+def _to_list(value: str | list[str] | None) -> list[str] | None:
+    """Normalise a CLI string or YAML list into a Python list.
+
+    Args:
+        value: A comma-separated string, a list of strings, or None.
+
+    Returns:
+        A list of stripped strings, or None if the input is falsy.
+    """
+    if not value:
+        return None
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if v]
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
+def _load_config(config_path: str | None, project_root: Path) -> dict[str, Any]:
+    """Load configuration from YAML file.
+
+    Args:
+        config_path: Explicit path to config file, or None for auto-detect.
+        project_root: Project root directory for auto-detection.
+
+    Returns:
+        Dictionary of configuration values, empty if no config found.
+    """
+    if config_path:
+        p = Path(config_path)
+    else:
+        p = project_root / ".agent-audit-kit.yml"
+
+    if not p.is_file():
+        return {}
+
+    with p.open("r", encoding="utf-8") as fh:
+        data = yaml.safe_load(fh)
+
+    return data if isinstance(data, dict) else {}
+
+
+def _apply_config_defaults(
+    config: dict[str, Any],
+    output_format: str,
+    min_severity: str,
+    fail_on: str,
+    output_file: str | None,
+    include_user_config: bool,
+    ignore_paths: str | None,
+    rules: str | None,
+    exclude_rules: str | None,
+    verbose: bool,
+    show_score: bool,
+    owasp_report: bool,
+    compliance: str | None,
+    verify_secrets: bool,
+    diff_base: str | None,
+    llm_scan: bool,
+) -> dict[str, Any]:
+    """Merge config file defaults with CLI flags. CLI flags take priority.
+
+    Returns:
+        Merged settings dictionary.
+    """
+    # Config file values serve as defaults; CLI-provided values override them.
+    # We detect "CLI-provided" by checking against Click's own defaults.
+    return {
+        "output_format": output_format if output_format != "console" else config.get("format", output_format),
+        "min_severity": min_severity if min_severity != "low" else config.get("severity", min_severity),
+        "fail_on": fail_on if fail_on != "none" else config.get("fail-on", fail_on),
+        "output_file": output_file or config.get("output", None),
+        "include_user_config": include_user_config or config.get("include-user-config", False),
+        "ignore_paths": ignore_paths or config.get("ignore-paths", None),
+        "rules": rules or config.get("rules", None),
+        "exclude_rules": exclude_rules or config.get("exclude-rules", None),
+        "verbose": verbose or config.get("verbose", False),
+        "show_score": show_score or config.get("score", False),
+        "owasp_report": owasp_report or config.get("owasp-report", False),
+        "compliance": compliance or config.get("compliance", None),
+        "verify_secrets": verify_secrets or config.get("verify-secrets", False),
+        "diff_base": diff_base or config.get("diff", None),
+        "llm_scan": llm_scan or config.get("llm-scan", False),
+    }
+
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.version_option(version=__version__)
 def cli(ctx: click.Context) -> None:
-    """AgentAuditKit — Security scanner for MCP-connected AI agent pipelines."""
+    """AgentAuditKit -- Security scanner for MCP-connected AI agent pipelines."""
     if ctx.invoked_subcommand is None:
         ctx.invoke(scan_cmd)
 
@@ -36,7 +129,25 @@ def cli(ctx: click.Context) -> None:
 @click.option("--ignore-paths", default=None, help="Comma-separated paths to skip.")
 @click.option("--rules", default=None, help="Comma-separated rule IDs to run (default: all).")
 @click.option("--exclude-rules", default=None, help="Comma-separated rule IDs to skip.")
-@click.option("--ci", is_flag=True, default=False, help="Exit with code 1 if any finding >= severity threshold.")
+@click.option(
+    "--fail-on",
+    type=click.Choice(FAIL_ON_CHOICES),
+    default="none",
+    help="Exit code 1 if any finding meets or exceeds this severity.",
+)
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(),
+    default=None,
+    help="Path to .agent-audit-kit.yml config file.",
+)
+@click.option(
+    "--ci",
+    is_flag=True,
+    default=False,
+    help="CI mode shorthand: sets format=sarif, fail-on=high, output=agent-audit-results.sarif.",
+)
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Show detailed scan progress.")
 @click.option("--score", "show_score", is_flag=True, default=False, help="Show security score and grade.")
 @click.option("--owasp-report", is_flag=True, default=False, help="Show OWASP coverage matrix.")
@@ -53,6 +164,8 @@ def scan_cmd(
     ignore_paths: str | None,
     rules: str | None,
     exclude_rules: str | None,
+    fail_on: str,
+    config_path: str | None,
     ci: bool,
     verbose: bool,
     show_score: bool,
@@ -63,15 +176,108 @@ def scan_cmd(
     llm_scan: bool,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
+    try:
+        _run_scan(
+            path=path,
+            output_format=output_format,
+            min_severity=min_severity,
+            output_file=output_file,
+            include_user_config=include_user_config,
+            ignore_paths=ignore_paths,
+            rules=rules,
+            exclude_rules=exclude_rules,
+            fail_on=fail_on,
+            config_path=config_path,
+            ci=ci,
+            verbose=verbose,
+            show_score=show_score,
+            owasp_report=owasp_report,
+            compliance=compliance,
+            verify_secrets=verify_secrets,
+            diff_base=diff_base,
+            llm_scan=llm_scan,
+        )
+    except Exception as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(EXIT_ERROR)
+
+
+def _run_scan(
+    *,
+    path: str,
+    output_format: str,
+    min_severity: str,
+    output_file: str | None,
+    include_user_config: bool,
+    ignore_paths: str | None,
+    rules: str | None,
+    exclude_rules: str | None,
+    fail_on: str,
+    config_path: str | None,
+    ci: bool,
+    verbose: bool,
+    show_score: bool,
+    owasp_report: bool,
+    compliance: str | None,
+    verify_secrets: bool,
+    diff_base: str | None,
+    llm_scan: bool,
+) -> None:
+    """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
 
     project_root = Path(path)
+
+    # --- CI shorthand overrides ---
+    if ci:
+        output_format = "sarif"
+        fail_on = "high"
+        output_file = output_file or "agent-audit-results.sarif"
+
+    # --- Config file loading ---
+    config = _load_config(config_path, project_root)
+    merged = _apply_config_defaults(
+        config,
+        output_format=output_format,
+        min_severity=min_severity,
+        fail_on=fail_on,
+        output_file=output_file,
+        include_user_config=include_user_config,
+        ignore_paths=ignore_paths,
+        rules=rules,
+        exclude_rules=exclude_rules,
+        verbose=verbose,
+        show_score=show_score,
+        owasp_report=owasp_report,
+        compliance=compliance,
+        verify_secrets=verify_secrets,
+        diff_base=diff_base,
+        llm_scan=llm_scan,
+    )
+
+    # Unpack merged settings
+    output_format = merged["output_format"]
+    min_severity = merged["min_severity"]
+    fail_on = merged["fail_on"]
+    output_file = merged["output_file"]
+    include_user_config = merged["include_user_config"]
+    ignore_paths = merged["ignore_paths"]
+    rules = merged["rules"]
+    exclude_rules = merged["exclude_rules"]
+    verbose = merged["verbose"]
+    show_score = merged["show_score"]
+    owasp_report = merged["owasp_report"]
+    compliance = merged["compliance"]
+    verify_secrets = merged["verify_secrets"]
+    diff_base = merged["diff_base"]
+    llm_scan = merged["llm_scan"]
+
     if verbose:
         click.echo(f"Scanning {project_root.resolve()}...", err=True)
 
-    parsed_ignore = [p.strip() for p in ignore_paths.split(",")] if ignore_paths else None
-    parsed_rules = [r.strip() for r in rules.split(",")] if rules else None
-    parsed_excludes = [r.strip() for r in exclude_rules.split(",")] if exclude_rules else None
+    parsed_ignore = _to_list(ignore_paths)
+    parsed_rules = _to_list(rules)
+    parsed_excludes = _to_list(exclude_rules)
     severity = SEVERITY_MAP[min_severity]
     verbose_cb = (lambda msg: click.echo(msg, err=True)) if verbose else None
 
@@ -87,17 +293,20 @@ def scan_cmd(
     # Diff-aware filtering
     if diff_base:
         from agent_audit_kit.diff import filter_by_diff
+
         result = filter_by_diff(result, project_root, diff_base)
 
     # Active secret verification
     if verify_secrets:
         from agent_audit_kit.verification import verify_findings
+
         result = verify_findings(result)
 
     # LLM semantic analysis (optional, requires Ollama)
     if llm_scan:
         try:
             from agent_audit_kit.llm_scan import run_llm_analysis
+
             llm_findings = run_llm_analysis(project_root)
             result.findings.extend(llm_findings)
         except ImportError:
@@ -108,6 +317,7 @@ def scan_cmd(
     # Check tool pins (RUGPULL detection as part of scan)
     try:
         from agent_audit_kit.pinning import verify_pins
+
         pin_findings = verify_pins(project_root)
         result.findings.extend(pin_findings)
     except Exception:
@@ -116,14 +326,17 @@ def scan_cmd(
     # Compute score
     if show_score or compliance or owasp_report:
         from agent_audit_kit.scoring import compute_score
+
         compute_score(result)
 
-    # Output
+    # --- Output ---
     if owasp_report:
         from agent_audit_kit.output.owasp_report import format_results as fmt_owasp
+
         output = fmt_owasp(result)
     elif compliance:
         from agent_audit_kit.output.compliance import format_results as fmt_compliance
+
         output = fmt_compliance(result, compliance)
     elif output_format == "json":
         output = json_report.format_results(result, severity)
@@ -139,10 +352,25 @@ def scan_cmd(
     else:
         click.echo(output)
 
-    if ci:
-        filtered = result.findings_at_or_above(severity)
-        if filtered:
-            sys.exit(1)
+    # --- Fail-on threshold check ---
+    if fail_on != "none":
+        threshold_severity = SEVERITY_MAP[fail_on]
+        exceeding = [f for f in result.findings if f.severity >= threshold_severity]
+        if exceeding:
+            click.echo("", err=True)
+            click.echo(
+                f"FAILED: {len(exceeding)} finding(s) exceed --fail-on {fail_on} threshold:",
+                err=True,
+            )
+            for f in exceeding:
+                location = f.file_path
+                if f.line_number:
+                    location = f"{f.file_path}:{f.line_number}"
+                click.echo(
+                    f"  {f.rule_id} [{f.severity.value.upper()}] {f.title} -> {location}",
+                    err=True,
+                )
+            sys.exit(EXIT_FINDINGS)
 
 
 @cli.command("discover")
@@ -150,6 +378,7 @@ def scan_cmd(
 def discover_cmd(verbose: bool) -> None:
     """Discover all AI agent configurations on this machine."""
     from agent_audit_kit.discovery import discover_agents
+
     agents = discover_agents(verbose=verbose)
     if not agents:
         click.echo("No AI agent configurations found.")
@@ -169,6 +398,7 @@ def discover_cmd(verbose: bool) -> None:
 def pin_cmd(path: str) -> None:
     """Pin current MCP tool definitions for rug pull detection."""
     from agent_audit_kit.pinning import create_pins
+
     project_root = Path(path)
     count = create_pins(project_root)
     click.echo(f"Pinned {count} tool definition(s) to .agent-audit-kit/tool-pins.json")
@@ -179,6 +409,7 @@ def pin_cmd(path: str) -> None:
 def verify_cmd(path: str) -> None:
     """Verify MCP tool definitions against pinned hashes."""
     from agent_audit_kit.pinning import verify_pins
+
     project_root = Path(path)
     findings = verify_pins(project_root)
     if not findings:
@@ -186,7 +417,7 @@ def verify_cmd(path: str) -> None:
     else:
         click.echo(f"{len(findings)} tool definition change(s) detected:")
         for f in findings:
-            click.echo(f"  {f.severity.value.upper()}: {f.title} — {f.evidence}")
+            click.echo(f"  {f.severity.value.upper()}: {f.title} -- {f.evidence}")
 
 
 @cli.command("fix")
@@ -195,6 +426,7 @@ def verify_cmd(path: str) -> None:
 def fix_cmd(path: str, dry_run: bool) -> None:
     """Auto-fix known security issues."""
     from agent_audit_kit.fix import run_fixes
+
     project_root = Path(path)
     fixes = run_fixes(project_root, dry_run=dry_run)
     if not fixes:
@@ -213,6 +445,7 @@ def fix_cmd(path: str, dry_run: bool) -> None:
 def score_cmd(path: str, badge: bool, output_file: str | None) -> None:
     """Show security score and grade for a project."""
     from agent_audit_kit.scoring import compute_score, generate_badge
+
     project_root = Path(path)
     result = run_scan(project_root=project_root)
     compute_score(result)
@@ -230,6 +463,7 @@ def score_cmd(path: str, badge: bool, output_file: str | None) -> None:
 def update_cmd() -> None:
     """Update the vulnerability database."""
     from agent_audit_kit.vuln_db import update_database
+
     count = update_database()
     if count >= 0:
         click.echo(f"Vulnerability database updated: {count} entries.")
@@ -243,6 +477,7 @@ def update_cmd() -> None:
 def proxy_cmd(port: int, target: str) -> None:
     """Start a local MCP proxy for runtime monitoring."""
     from agent_audit_kit.proxy.interceptor import start_proxy
+
     click.echo(f"Starting MCP proxy on port {port} -> {target}")
     click.echo("Press Ctrl+C to stop.")
     start_proxy(port=port, target=target)
@@ -251,8 +486,9 @@ def proxy_cmd(port: int, target: str) -> None:
 @cli.command("kill")
 def kill_cmd() -> None:
     """Terminate any running MCP proxy connections."""
-    import signal
     import os
+    import signal
+
     pid_file = Path.home() / ".agent-audit-kit" / "proxy.pid"
     if pid_file.is_file():
         try:

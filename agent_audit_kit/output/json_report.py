@@ -38,7 +38,7 @@ def format_results(result: ScanResult, min_severity: Severity = Severity.LOW) ->
             "total": len(result.findings),
             "filesScanned": result.files_scanned,
             "rulesEvaluated": result.rules_evaluated,
-            "scanDurationSeconds": round(result.scan_duration_seconds, 3),
+            "scanDurationMs": round(result.scan_duration_ms, 1),
         },
         "findings": [_finding_to_dict(f) for f in filtered],
     }

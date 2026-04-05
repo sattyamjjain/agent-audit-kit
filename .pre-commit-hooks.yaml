@@ -1,21 +1,10 @@
 - id: agent-audit-kit
-  name: AgentAuditKit MCP Security Scan
-  description: Scan for MCP agent security vulnerabilities
+  name: AgentAuditKit Security Scan
+  description: Scan MCP agent configs, hooks, and dependencies for security issues
   entry: agent-audit-kit scan
   language: python
-  types: [file]
+  types: [json, yaml]
+  files: '(\.mcp\.json|mcp.*\.json|settings\.json|\.env|package\.json|pyproject\.toml)'
+  args: ['--ci']
   pass_filenames: false
-  always_run: true
-  stages: [pre-commit]
-  additional_dependencies: ['agent-audit-kit']
-
-- id: agent-audit-kit-strict
-  name: AgentAuditKit Strict (fail on HIGH+)
-  description: Scan for MCP agent security vulnerabilities, fail on HIGH or above
-  entry: agent-audit-kit scan --ci --severity high
-  language: python
-  types: [file]
-  pass_filenames: false
-  always_run: true
-  stages: [pre-commit]
-  additional_dependencies: ['agent-audit-kit']
+  always_run: false
