@@ -1,12 +1,12 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/agent_audit_kit"
+    directory: "/"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "github-actions"
-    directory: "/.github/workflows"
+    directory: "/"
     schedule:
       interval: "weekly"
 
@@ -14,3 +14,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
