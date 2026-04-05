@@ -1,5 +1,5 @@
 # Pin to specific digest for supply chain security
-FROM python:3.11-slim@sha256:6ed5bff4d7ee712b6e8d1c0a93ece041e38c6e8bb83fb80c713089cc8e5b98dd AS base
+FROM python:3.11-slim@sha256:9358444059ed78e2975ada2c189f1c1a3144a5dab6f35bff8c981afb38946634 AS base
 
 LABEL maintainer="AgentAuditKit"
 LABEL org.opencontainers.image.source="https://github.com/sattyamjjain/agent-audit-kit"
