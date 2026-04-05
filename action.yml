@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'Security scanner for MCP-connected AI agent pipelines. Detects misconfigurations, secret exposure, tool poisoning, rug pulls, and trust boundary violations.'
+description: 'Security scanner for MCP agent pipelines — 77 rules, OWASP 10/10, SARIF output'
 author: 'sattyamjjain'
 
 branding:
