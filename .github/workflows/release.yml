@@ -38,7 +38,7 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@81e9d935c883d0b210363ab89cf05f3894778450 # release/v1
+        uses: pypa/gh-action-pypi-publish@106e0b0b7c337fa67ed433972f777c6357f78598 # v1.13.0
 
   # --------------------------------------------------------------------------
   # 2. Build, scan, and push Docker image to GHCR
@@ -76,7 +76,7 @@ jobs:
           tags: agent-audit-kit:scan
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947e7b218b2e27cdc98 # v0.28.0
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: agent-audit-kit:scan
           format: sarif
