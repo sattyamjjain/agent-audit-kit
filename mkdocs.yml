@@ -20,6 +20,7 @@ nav:
   - Rule Reference: rules.md
   - OWASP Mapping: owasp-mapping.md
   - CI/CD Integration: ci-cd.md
+  - GitLab CI: gitlab-ci.md
   - Comparison: comparison.md
 
 markdown_extensions:
