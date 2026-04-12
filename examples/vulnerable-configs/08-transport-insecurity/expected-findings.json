@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: HTTP instead of HTTPS, TLS validation disabled, deprecated SSE transport, session tokens in URL query parameters",
+  "expectedRules": ["AAK-MCP-001", "AAK-SECRET-004", "AAK-TRANSPORT-001", "AAK-TRANSPORT-002", "AAK-TRANSPORT-003", "AAK-TRANSPORT-004"],
+  "expectedMinFindings": 8,
+  "description": "Demonstrates transport-layer security issues including plaintext HTTP, disabled TLS validation, deprecated SSE transport, and credentials exposed in URL query strings"
+}

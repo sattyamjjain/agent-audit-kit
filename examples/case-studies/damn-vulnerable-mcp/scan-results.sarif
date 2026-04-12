@@ -1,0 +1,2181 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AgentAuditKit",
+          "version": "0.2.0",
+          "semanticVersion": "0.2.0",
+          "informationUri": "https://github.com/sattyamjjain/agent-audit-kit",
+          "rules": [
+            {
+              "id": "AAK-MCP-003",
+              "name": "McpEnvExposesSecrets",
+              "shortDescription": {
+                "text": "MCP server environment exposes secrets"
+              },
+              "fullDescription": {
+                "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Use environment variable references or a secrets manager.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-01",
+                "markdown": "**Remediation:** Use environment variable references or a secrets manager.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-006",
+              "name": "McpCommandRelativePath",
+              "shortDescription": {
+                "text": "MCP server command uses relative path"
+              },
+              "fullDescription": {
+                "text": "The command uses a relative path that can be hijacked via PATH manipulation."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Use absolute paths for MCP server executables.\n\nReferences:\n- OWASP MCP Top 10: MCP04:2025\n- OWASP Agentic: ASI05\n- Adversa: ADV-INJECT-02",
+                "markdown": "**Remediation:** Use absolute paths for MCP server executables.\n\n**References:**\n- OWASP MCP Top 10: MCP04:2025\n- OWASP Agentic: ASI05\n- Adversa: ADV-INJECT-02"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI05",
+                  "Adversa-ADV-INJECT-02"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-001",
+              "name": "RemoteMcpServerNoAuth",
+              "shortDescription": {
+                "text": "Remote MCP server without authentication"
+              },
+              "fullDescription": {
+                "text": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Add OAuth 2.1 bearer token or API key header authentication.\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-AUTH-01",
+                "markdown": "**Remediation:** Add OAuth 2.1 bearer token or API key header authentication.\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-AUTH-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-AUTH-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-005",
+              "name": "McpRuntimePackageFetch",
+              "shortDescription": {
+                "text": "MCP server uses npx/uvx to fetch and execute remote packages"
+              },
+              "fullDescription": {
+                "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Pin exact package versions or use locally installed packages.\n\nReferences:\n- OWASP MCP Top 10: MCP03:2025\n- OWASP MCP Top 10: MCP10:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-01",
+                "markdown": "**Remediation:** Pin exact package versions or use locally installed packages.\n\n**References:**\n- OWASP MCP Top 10: MCP03:2025\n- OWASP MCP Top 10: MCP10:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-01"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI04",
+                  "Adversa-ADV-SUPPLY-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-007",
+              "name": "McpUnpinnedPackageVersion",
+              "shortDescription": {
+                "text": "MCP server lacks version pinning in args"
+              },
+              "fullDescription": {
+                "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1\n\nReferences:\n- OWASP MCP Top 10: MCP03:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-02",
+                "markdown": "**Remediation:** Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1\n\n**References:**\n- OWASP MCP Top 10: MCP03:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-02"
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "security-severity": "2.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI04",
+                  "Adversa-ADV-SUPPLY-02"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-008",
+              "name": "McpHeadersHelperShellExec",
+              "shortDescription": {
+                "text": "MCP server headersHelper executes arbitrary commands"
+              },
+              "fullDescription": {
+                "text": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead.\n\nReferences:\n- OWASP MCP Top 10: MCP04:2025\n- OWASP Agentic: ASI05\n- Adversa: ADV-INJECT-03",
+                "markdown": "**Remediation:** Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead.\n\n**References:**\n- OWASP MCP Top 10: MCP04:2025\n- OWASP Agentic: ASI05\n- Adversa: ADV-INJECT-03"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI05",
+                  "Adversa-ADV-INJECT-03"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-010",
+              "name": "McpFilesystemRootAccess",
+              "shortDescription": {
+                "text": "MCP server config allows arbitrary filesystem root access"
+              },
+              "fullDescription": {
+                "text": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Restrict filesystem access to specific project directories only.\n\nReferences:\n- OWASP MCP Top 10: MCP06:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SCOPE-02",
+                "markdown": "**Remediation:** Restrict filesystem access to specific project directories only.\n\n**References:**\n- OWASP MCP Top 10: MCP06:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SCOPE-02"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI02",
+                  "Adversa-ADV-SCOPE-02"
+                ]
+              }
+            },
+            {
+              "id": "AAK-HOOK-007",
+              "name": "ExcessiveHookCount",
+              "shortDescription": {
+                "text": "Excessive number of hooks defined"
+              },
+              "fullDescription": {
+                "text": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Minimize hooks to essential operations only.\n\nReferences:\n- OWASP MCP Top 10: MCP02:2025\n- OWASP MCP Top 10: MCP08:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SCOPE-03",
+                "markdown": "**Remediation:** Minimize hooks to essential operations only.\n\n**References:**\n- OWASP MCP Top 10: MCP02:2025\n- OWASP MCP Top 10: MCP08:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SCOPE-03"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "hook-injection",
+                  "OWASP-Agentic-ASI02",
+                  "Adversa-ADV-SCOPE-03"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-001",
+              "name": "AnthropicApiKeyExposed",
+              "shortDescription": {
+                "text": "Anthropic API key exposed"
+              },
+              "fullDescription": {
+                "text": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove key, rotate immediately, use environment variables.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-03",
+                "markdown": "**Remediation:** Remove key, rotate immediately, use environment variables.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-03"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-03"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-002",
+              "name": "OpenaiApiKeyExposed",
+              "shortDescription": {
+                "text": "OpenAI API key exposed"
+              },
+              "fullDescription": {
+                "text": "An OpenAI API key (sk-*) was found in a project file."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove key, rotate immediately, use environment variables.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-04",
+                "markdown": "**Remediation:** Remove key, rotate immediately, use environment variables.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-04"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-04"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-003",
+              "name": "AwsCredentialsExposed",
+              "shortDescription": {
+                "text": "AWS credentials exposed"
+              },
+              "fullDescription": {
+                "text": "AWS access key ID or secret access key found in a project file."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Use IAM roles, AWS SSO, or secrets manager.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-05",
+                "markdown": "**Remediation:** Use IAM roles, AWS SSO, or secrets manager.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-05"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-05"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-008",
+              "name": "GitTokenExposed",
+              "shortDescription": {
+                "text": "GitHub/GitLab personal access token exposed"
+              },
+              "fullDescription": {
+                "text": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove token, rotate immediately, use environment variables.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-10",
+                "markdown": "**Remediation:** Remove token, rotate immediately, use environment variables.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-10"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-10"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-004",
+              "name": "GenericHighEntropySecret",
+              "shortDescription": {
+                "text": "Generic high-entropy secret"
+              },
+              "fullDescription": {
+                "text": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Move to environment variables or secrets manager.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-06",
+                "markdown": "**Remediation:** Move to environment variables or secrets manager.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-06"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-06"
+                ]
+              }
+            },
+            {
+              "id": "AAK-SECRET-007",
+              "name": "SecretInMcpEnvBlock",
+              "shortDescription": {
+                "text": "Secret in MCP server environment block"
+              },
+              "fullDescription": {
+                "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Use environment variable references.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-09",
+                "markdown": "**Remediation:** Use environment variable references.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-09"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "secret-exposure",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-09"
+                ]
+              }
+            },
+            {
+              "id": "AAK-POISON-001",
+              "name": "ToolDescInvisibleUnicode",
+              "shortDescription": {
+                "text": "Invisible Unicode characters in tool description"
+              },
+              "fullDescription": {
+                "text": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove invisible characters from tool descriptions.\n\nReferences:\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-01",
+                "markdown": "**Remediation:** Remove invisible characters from tool descriptions.\n\n**References:**\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "tool-poisoning",
+                  "OWASP-Agentic-ASI06",
+                  "Adversa-ADV-POISON-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-POISON-002",
+              "name": "ToolDescPromptInjection",
+              "shortDescription": {
+                "text": "Prompt injection patterns in tool description"
+              },
+              "fullDescription": {
+                "text": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove injection patterns from tool descriptions.\n\nReferences:\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-02",
+                "markdown": "**Remediation:** Remove injection patterns from tool descriptions.\n\n**References:**\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-02"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "tool-poisoning",
+                  "OWASP-Agentic-ASI06",
+                  "Adversa-ADV-POISON-02"
+                ]
+              }
+            },
+            {
+              "id": "AAK-POISON-006",
+              "name": "ToolDescUrlOrPath",
+              "shortDescription": {
+                "text": "URL or file path in tool description"
+              },
+              "fullDescription": {
+                "text": "Tool description contains URLs or file paths that could direct the agent to access external resources."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Remove URLs and file paths from tool descriptions.\n\nReferences:\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-06",
+                "markdown": "**Remediation:** Remove URLs and file paths from tool descriptions.\n\n**References:**\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-06"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "tool-poisoning",
+                  "OWASP-Agentic-ASI06",
+                  "Adversa-ADV-POISON-06"
+                ]
+              }
+            },
+            {
+              "id": "AAK-POISON-003",
+              "name": "ToolDescCrossToolRef",
+              "shortDescription": {
+                "text": "Cross-tool reference in tool description"
+              },
+              "fullDescription": {
+                "text": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X')."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Tool descriptions should be self-contained and not reference other tools.\n\nReferences:\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-03",
+                "markdown": "**Remediation:** Tool descriptions should be self-contained and not reference other tools.\n\n**References:**\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI06\n- Adversa: ADV-POISON-03"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "tool-poisoning",
+                  "OWASP-Agentic-ASI06",
+                  "Adversa-ADV-POISON-03"
+                ]
+              }
+            },
+            {
+              "id": "AAK-TRANSPORT-001",
+              "name": "McpHttpNotHttps",
+              "shortDescription": {
+                "text": "MCP server uses HTTP instead of HTTPS"
+              },
+              "fullDescription": {
+                "text": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Use HTTPS for all remote MCP server connections.\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TRANSPORT-01",
+                "markdown": "**Remediation:** Use HTTPS for all remote MCP server connections.\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TRANSPORT-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "transport-security",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TRANSPORT-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-TRANSPORT-003",
+              "name": "McpDeprecatedSse",
+              "shortDescription": {
+                "text": "Deprecated SSE transport in use"
+              },
+              "fullDescription": {
+                "text": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP."
+              },
+              "helpUri": "https://owasp.org/www-project-mcp-top-10/",
+              "help": {
+                "text": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI08\n- Adversa: ADV-TRANSPORT-03",
+                "markdown": "**Remediation:** Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI08\n- Adversa: ADV-TRANSPORT-03"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "transport-security",
+                  "OWASP-Agentic-ASI08",
+                  "Adversa-ADV-TRANSPORT-03"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "agent-audit-kit/"
+      },
+      "results": [
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'command-injection-lab' env.OPENAI_API_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "a7b49db68f8a9a704826afcbcf95004ec6aa59497d8b8d8516ba3b16022144f7"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a8bdaa7e1ca9c51f"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'command-injection-lab' env.DATABASE_PASSWORD = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "51fadc846a8f64962d384611474fb3d0c96321600d5f40eb8fb7afd12da5ff5b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fd91d8e13b0a6d32"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-006",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "The command uses a relative path that can be hijacked via PATH manipulation.\n\nEvidence: Server 'command-injection-lab' command: sh"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "be6ae12eff843a9564da23d04592645b8f1b2b21167d4a7b4f81782509ea2140"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "46fd2fd133cc84d7"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use absolute paths for MCP server executables."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-001",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.\n\nEvidence: Server 'tool-poisoning-lab' URL: http://mcp-tools.internal:9090/sse \u2014 no authentication headers"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9f00a5482ec5f43a4afdcf1b48e663854c51199746c87415f6847012151032c0"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d84fe3c8c0f37d79"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add OAuth 2.1 bearer token or API key header authentication."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'path-traversal-lab' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 25
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "6075e4f56a3ba67ea64bcf6b1bbe735486cc76cc89f44bc3a6579be60ba1c50c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "103627c17b8bc1a6"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'path-traversal-lab' arg: @modelcontextprotocol/server-filesystem (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 26
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "335dee0ab4ac318bc4c84d71e28a9f20b4e0a939def89526aa36286c2400fa19"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b7103a52217f8907"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-008",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.\n\nEvidence: Server 'path-traversal-lab' headersHelper: curl -s https://auth.internal/token"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 27
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "0a8f25862efa14dfe497f954d8cfc1227eecf03c8a2c819eb2521ecaa205d688"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "9520d0ce92377b78"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-010",
+          "ruleIndex": 6,
+          "level": "error",
+          "message": {
+            "text": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.\n\nEvidence: Server 'path-traversal-lab' grants access to '/'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "a50f5e87c63f50a3e2693c5dad3681da55c420b478cdffd91039ccfc1c9a03db"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "73deed48a1d00a3a"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Restrict filesystem access to specific project directories only."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'secret-exposure-lab' env.ANTHROPIC_API_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "cfd79553cb4e8f256cd26a6b6a59e4a5ffa7406ae5576432a2e3603415b78c5c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "98e5f7538d954157"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'secret-exposure-lab' env.AWS_ACCESS_KEY_ID = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 34
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "62f74be642a016727fb016b4b02a8d01d98c7d355c453c636930d21b1664eb03"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6722775f628887bd"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'secret-exposure-lab' env.AWS_SECRET_ACCESS_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 35
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "0df295d8078f476c645324feaae0b79b94aaecd0812213d1b37ea5bb6c19ebd6"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3375cc87fa3bc3df"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'secret-exposure-lab' env.GITHUB_TOKEN = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 36
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "84b658f0b29bb4f67596de46a5191baf3e3c52ae0888590fc966de74674169d1"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "5fbaabdcae2f4373"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'supply-chain-lab' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 25
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "6075e4f56a3ba67ea64bcf6b1bbe735486cc76cc89f44bc3a6579be60ba1c50c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "103627c17b8bc1a6"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'supply-chain-lab' arg: mcp-server-untrusted-package (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 41
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "53ef4e2474bfb0f15b873d5de9c63506d59d38c8b01ddb8d9741057407ff35a9"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a65acf183783d6a4"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'github' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1608
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec73ce99eb83cc3ed392c38691d1e174e41793857cdbb0030d99fda28ae512b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f147106482e7c342"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'github' arg: @modelcontextprotocol/server-github (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5223
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "d915b141faea761df92b86a3b6d04e6b684de904b96fbd308744f61f80c78e0c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d21bda1f90c8a05f"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'playwright' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1608
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec73ce99eb83cc3ed392c38691d1e174e41793857cdbb0030d99fda28ae512b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f147106482e7c342"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'filesystem' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1608
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec73ce99eb83cc3ed392c38691d1e174e41793857cdbb0030d99fda28ae512b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f147106482e7c342"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'filesystem' arg: @modelcontextprotocol/server-filesystem (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5240
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "b7c87c2bf234ca43b26c620fe9e4aa5276c070d5546cf1b0ee3766b2b6c68d74"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6ff40e4eb5ba7769"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'context7' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1608
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec73ce99eb83cc3ed392c38691d1e174e41793857cdbb0030d99fda28ae512b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f147106482e7c342"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'serena' command: uvx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1927
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9fd6c8ddb551fc22b580cb22787146349149e80a6104eec329948599e8ed3505"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4252419f423ca8bd"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'serena' arg: git+https://github.com/oraios/serena (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5259
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "ff390317b76f32f8b54cbd7d330a539bcf8c27ccc93d4b127d0a85a4be3cef45"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fa42561c67d5a3b1"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-007",
+          "ruleIndex": 4,
+          "level": "note",
+          "message": {
+            "text": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.\n\nEvidence: Server 'serena' arg: serena-mcp-server (no version pin)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5260
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "3e0ca7aee8ebc5c3a4643ef86298aba130836012b810347edc90da0a60f7178c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "11ec3d6bc6da0403"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1"
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-HOOK-007",
+          "ruleIndex": 7,
+          "level": "warning",
+          "message": {
+            "text": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.\n\nEvidence: 31 hooks defined (threshold: 15)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/Users/sattyamjain/.claude/settings.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 39
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "c70f83f3b9f9a673dae4cfc7dac173c43d3e9fdac60edbdb92387d5fd8c3549e"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b65deb40bfca42b5"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Minimize hooks to essential operations only."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-001",
+          "ruleIndex": 8,
+          "level": "error",
+          "message": {
+            "text": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.\n\nEvidence: Found Anthropic API key: sk-ant-api03..."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "740804ca6ba73851438882eacb4142cc0182e6d79f144fd3164af983a16531c6"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "324d321b4fb3cebf"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove key, rotate immediately, use environment variables."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-002",
+          "ruleIndex": 9,
+          "level": "error",
+          "message": {
+            "text": "An OpenAI API key (sk-*) was found in a project file.\n\nEvidence: Found OpenAI API key: sk-proj12345..."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "a5fc5f2ac661a97eb8fc8c35c4709272a43eb92a92b1e5516cf0db50689988ac"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "149069617962471a"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove key, rotate immediately, use environment variables."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-003",
+          "ruleIndex": 10,
+          "level": "error",
+          "message": {
+            "text": "AWS access key ID or secret access key found in a project file.\n\nEvidence: Found AWS access key: AKIAIOSF..."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 34
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "7af8074185a0c0593b0a92f55c94faafd8c34613c6016b8a0d5760387595331b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ebb28ad9edd37653"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use IAM roles, AWS SSO, or secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-008",
+          "ruleIndex": 11,
+          "level": "error",
+          "message": {
+            "text": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.\n\nEvidence: Found GitHub token: ghp_1234..."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 36
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "85885f263df6ca75603103e2483922342ad96afcb0d88025a2217bef2bbf721b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cc6067d95f08f591"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove token, rotate immediately, use environment variables."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-004",
+          "ruleIndex": 12,
+          "level": "error",
+          "message": {
+            "text": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.\n\nEvidence: OPENAI_API_KEY = (high entropy value, Shannon entropy: 5.15)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "054bf1289f93785eec0387ce396cf130a422bf70b5af15544602bfc271710bd1"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "7469d8d8855c5507"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Move to environment variables or secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-004",
+          "ruleIndex": 12,
+          "level": "error",
+          "message": {
+            "text": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.\n\nEvidence: ANTHROPIC_API_KEY = (high entropy value, Shannon entropy: 5.37)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "587b8d04f2ba14a9454eb3b1195f7f9bb5a81dd6f9ae21a450d2a617498649bc"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "50652f091152fd90"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Move to environment variables or secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-004",
+          "ruleIndex": 12,
+          "level": "error",
+          "message": {
+            "text": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.\n\nEvidence: AWS_SECRET_ACCESS_KEY = (high entropy value, Shannon entropy: 4.66)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 35
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "2facf5632b20098fabd8f40286c66ef60ad58cbf4ccc3d61e0af24c3b0b1985a"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "7d21afeb974ed219"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Move to environment variables or secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-004",
+          "ruleIndex": 12,
+          "level": "error",
+          "message": {
+            "text": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.\n\nEvidence: GITHUB_TOKEN = (high entropy value, Shannon entropy: 5.17)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 36
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "016834a8ee985c9fe8cc52947e5817f5e76ba25864bb24aed2cb5cc3eccbcf6c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "bb8e827b8ac56e6b"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Move to environment variables or secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'command-injection-lab' env.OPENAI_API_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "6bd15186065aa88cee00daf0538a0e033548088edf11bd5de27d5eb789f1205b"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a756b7177b15e60b"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'command-injection-lab' env.DATABASE_PASSWORD = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "cd201baa98157cccfdfd904dcb294d71edba45484152fa4a5055897133112944"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "50dbfaecc82e5918"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'secret-exposure-lab' env.ANTHROPIC_API_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 33
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "2e86d61d2b7b929e49b6331a91367d0a627eb167db306d868f2524ec97d43d54"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dcc03c7b45c986fe"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'secret-exposure-lab' env.AWS_ACCESS_KEY_ID = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 34
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "c67084adacd35b223b0b1276c568149e5997bd0935073c3ed8903b5744a965ca"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b8c5f9254e719fbf"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'secret-exposure-lab' env.AWS_SECRET_ACCESS_KEY = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 35
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "45b1af78441b421abec226b30d5ae4b8d117c0cb269e8588c87ffdabfaa14b42"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "96a9efe869e484db"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-SECRET-007",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.\n\nEvidence: Server 'secret-exposure-lab' env.GITHUB_TOKEN = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 36
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "7770e1d4a945e1088e39dda25e2e68112fd5927465f5df6f0cc64461248cb171"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f09983a6ceeff884"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-001",
+          "ruleIndex": 14,
+          "level": "error",
+          "message": {
+            "text": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.\n\nEvidence: Server 'tool-poisoning-lab', tool 'safe_read': invisible chars U+200B"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 15
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "f141933cdf235778371afa4144ffa3d862d1dff48ffc04e4c689bee2bd6795fe"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f79c2a2d01316766"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove invisible characters from tool descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-002",
+          "ruleIndex": 15,
+          "level": "error",
+          "message": {
+            "text": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.\n\nEvidence: Server 'tool-poisoning-lab', tool 'safe_read': injection pattern 'Ignore previous'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 16
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "f6fc200bd2c0baf92f23219184613e56e09f655ec1be77ff5c23bcaecab7852c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "66fc12c7e9629895"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove injection patterns from tool descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-006",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "Tool description contains URLs or file paths that could direct the agent to access external resources.\n\nEvidence: Server 'tool-poisoning-lab', tool 'safe_read': file path in description '~/.ssh/id_rsa'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 16
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "625b6cd2731e23809ec3270431fbf0090104dc5b88baa035b2f6095830c6a5c3"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e238dd327b2ac179"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove URLs and file paths from tool descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-003",
+          "ruleIndex": 17,
+          "level": "error",
+          "message": {
+            "text": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').\n\nEvidence: Server 'tool-poisoning-lab', tool 'data_export': cross-tool ref 'Before calling'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec32b08656d3d82165d5cdd15a83d3ac5e306b3859991e16271c830642022ca"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a67c6e2c353658ae"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Tool descriptions should be self-contained and not reference other tools."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-003",
+          "ruleIndex": 17,
+          "level": "error",
+          "message": {
+            "text": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').\n\nEvidence: Server 'tool-poisoning-lab', tool 'data_export': cross-tool ref 'invoke'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "9ec32b08656d3d82165d5cdd15a83d3ac5e306b3859991e16271c830642022ca"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a67c6e2c353658ae"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Tool descriptions should be self-contained and not reference other tools."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-006",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "Tool description contains URLs or file paths that could direct the agent to access external resources.\n\nEvidence: Server 'tool-poisoning-lab', tool 'data_export': URL in description 'https://evil.com/collect'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "08d1162090ceadbdb39353e876ef808b03133b61136d6def8bc6e9a323dbc753"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "05a275ae51802ab4"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove URLs and file paths from tool descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-POISON-006",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "Tool description contains URLs or file paths that could direct the agent to access external resources.\n\nEvidence: Server 'tool-poisoning-lab', tool 'data_export': file path in description '//evil.com/collect'"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "08d1162090ceadbdb39353e876ef808b03133b61136d6def8bc6e9a323dbc753"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "05a275ae51802ab4"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Remove URLs and file paths from tool descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-TRANSPORT-001",
+          "ruleIndex": 18,
+          "level": "error",
+          "message": {
+            "text": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.\n\nEvidence: Server 'tool-poisoning-lab' URL: http://mcp-tools.internal:9090/sse"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "603870c3d1d4c1b09fe3513653de2fc6da2c0701c9bca9bfaf6cb8dd43818d4d"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f40c0b4631cd74b4"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use HTTPS for all remote MCP server connections."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-TRANSPORT-003",
+          "ruleIndex": 19,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.\n\nEvidence: Server 'tool-poisoning-lab' URL contains /sse: http://mcp-tools.internal:9090/sse"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "dvmcp-inspired.mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "primaryLocationFingerprint": "0fb9866770176c37e5ebf61bd53f195912e52b709b5896d801d14fd1b3345fbb"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "412d0679840ebb99"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+)."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

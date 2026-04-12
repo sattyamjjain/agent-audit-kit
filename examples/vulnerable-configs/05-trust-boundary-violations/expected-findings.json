@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: enableAllProjectMcpServers, API URL redirect, wildcard permissions, no deny rules, custom API base URL, no MCP server allowlist",
+  "expectedRules": ["AAK-TRUST-001", "AAK-TRUST-002", "AAK-TRUST-003", "AAK-TRUST-004", "AAK-TRUST-005", "AAK-TRUST-006"],
+  "expectedMinFindings": 10,
+  "description": "Demonstrates trust boundary violations including auto-enabling all MCP servers, API URL hijacking, wildcard permissions, and missing deny rules"
+}

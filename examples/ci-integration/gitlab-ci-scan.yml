@@ -1,0 +1,25 @@
+# AgentAuditKit — GitLab CI Integration
+# Add this stage to your .gitlab-ci.yml
+#
+# Findings are printed to the job log and optionally saved as artifacts.
+
+stages:
+  - security
+
+agent-audit-kit:
+  stage: security
+  image: python:3.11-slim
+  before_script:
+    - pip install agent-audit-kit
+  script:
+    - agent-audit-kit scan . --format json --output agent-audit-results.json --fail-on high
+    - agent-audit-kit score .
+  artifacts:
+    paths:
+      - agent-audit-results.json
+    when: always
+    expire_in: 30 days
+  allow_failure: false
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

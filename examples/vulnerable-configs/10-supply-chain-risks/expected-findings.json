@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: unpinned MCP packages, dangerous install scripts, no lockfile",
+  "expectedRules": ["AAK-LEGAL-002", "AAK-MCP-005", "AAK-MCP-007", "AAK-SUPPLY-001", "AAK-SUPPLY-003", "AAK-SUPPLY-004"],
+  "expectedMinFindings": 10,
+  "description": "Demonstrates supply chain risks including MCP server packages without version pinning, dangerous postinstall/prepare scripts with network access, and missing lockfile"
+}

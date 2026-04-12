@@ -1,0 +1,1012 @@
+{
+  "tool": "AgentAuditKit",
+  "version": "0.2.0",
+  "summary": {
+    "critical": 9,
+    "high": 13,
+    "medium": 19,
+    "low": 6,
+    "info": 0,
+    "total": 47,
+    "filesScanned": 4,
+    "rulesEvaluated": 77,
+    "scanDurationMs": 41.1
+  },
+  "findings": [
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 7,
+      "evidence": "Server 'command-injection-lab' env.OPENAI_API_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 8,
+      "evidence": "Server 'command-injection-lab' env.DATABASE_PASSWORD = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-006",
+      "title": "MCP server command uses relative path",
+      "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 4,
+      "evidence": "Server 'command-injection-lab' command: sh",
+      "remediation": "Use absolute paths for MCP server executables.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP04:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI05"
+      ],
+      "adversaReferences": [
+        "ADV-INJECT-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-001",
+      "title": "Remote MCP server without authentication",
+      "description": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.",
+      "severity": "critical",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 12,
+      "evidence": "Server 'tool-poisoning-lab' URL: http://mcp-tools.internal:9090/sse \u2014 no authentication headers",
+      "remediation": "Add OAuth 2.1 bearer token or API key header authentication.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP07:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-AUTH-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 25,
+      "evidence": "Server 'path-traversal-lab' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 26,
+      "evidence": "Server 'path-traversal-lab' arg: @modelcontextprotocol/server-filesystem (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-008",
+      "title": "MCP server headersHelper executes arbitrary commands",
+      "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
+      "severity": "critical",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 27,
+      "evidence": "Server 'path-traversal-lab' headersHelper: curl -s https://auth.internal/token",
+      "remediation": "Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP04:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI05"
+      ],
+      "adversaReferences": [
+        "ADV-INJECT-03"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-010",
+      "title": "MCP server config allows arbitrary filesystem root access",
+      "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 5,
+      "evidence": "Server 'path-traversal-lab' grants access to '/'",
+      "remediation": "Restrict filesystem access to specific project directories only.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP06:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI02"
+      ],
+      "adversaReferences": [
+        "ADV-SCOPE-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 33,
+      "evidence": "Server 'secret-exposure-lab' env.ANTHROPIC_API_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 34,
+      "evidence": "Server 'secret-exposure-lab' env.AWS_ACCESS_KEY_ID = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 35,
+      "evidence": "Server 'secret-exposure-lab' env.AWS_SECRET_ACCESS_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "severity": "high",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 36,
+      "evidence": "Server 'secret-exposure-lab' env.GITHUB_TOKEN = (hardcoded value)",
+      "remediation": "Use environment variable references or a secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 25,
+      "evidence": "Server 'supply-chain-lab' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 41,
+      "evidence": "Server 'supply-chain-lab' arg: mcp-server-untrusted-package (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 1608,
+      "evidence": "Server 'github' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 5223,
+      "evidence": "Server 'github' arg: @modelcontextprotocol/server-github (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 1608,
+      "evidence": "Server 'playwright' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 1608,
+      "evidence": "Server 'filesystem' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 5240,
+      "evidence": "Server 'filesystem' arg: @modelcontextprotocol/server-filesystem (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 1608,
+      "evidence": "Server 'context7' command: npx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "severity": "medium",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 1927,
+      "evidence": "Server 'serena' command: uvx",
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 5259,
+      "evidence": "Server 'serena' arg: git+https://github.com/oraios/serena (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-MCP-007",
+      "title": "MCP server lacks version pinning in args",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "severity": "low",
+      "category": "mcp-config",
+      "filePath": "/Users/sattyamjain/.claude.json",
+      "lineNumber": 5260,
+      "evidence": "Server 'serena' arg: serena-mcp-server (no version pin)",
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP03:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI04"
+      ],
+      "adversaReferences": [
+        "ADV-SUPPLY-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-HOOK-007",
+      "title": "Excessive number of hooks defined",
+      "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
+      "severity": "medium",
+      "category": "hook-injection",
+      "filePath": "/Users/sattyamjain/.claude/settings.json",
+      "lineNumber": 39,
+      "evidence": "31 hooks defined (threshold: 15)",
+      "remediation": "Minimize hooks to essential operations only.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP02:2025",
+        "MCP08:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI02"
+      ],
+      "adversaReferences": [
+        "ADV-SCOPE-03"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-001",
+      "title": "Anthropic API key exposed",
+      "description": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.",
+      "severity": "critical",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 33,
+      "evidence": "Found Anthropic API key: sk-ant-api03...",
+      "remediation": "Remove key, rotate immediately, use environment variables.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-03"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-002",
+      "title": "OpenAI API key exposed",
+      "description": "An OpenAI API key (sk-*) was found in a project file.",
+      "severity": "critical",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 7,
+      "evidence": "Found OpenAI API key: sk-proj12345...",
+      "remediation": "Remove key, rotate immediately, use environment variables.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-04"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-003",
+      "title": "AWS credentials exposed",
+      "description": "AWS access key ID or secret access key found in a project file.",
+      "severity": "critical",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 34,
+      "evidence": "Found AWS access key: AKIAIOSF...",
+      "remediation": "Use IAM roles, AWS SSO, or secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-05"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-008",
+      "title": "GitHub/GitLab personal access token exposed",
+      "description": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
+      "severity": "critical",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 36,
+      "evidence": "Found GitHub token: ghp_1234...",
+      "remediation": "Remove token, rotate immediately, use environment variables.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-10"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-004",
+      "title": "Generic high-entropy secret",
+      "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "severity": "high",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 7,
+      "evidence": "OPENAI_API_KEY = (high entropy value, Shannon entropy: 5.15)",
+      "remediation": "Move to environment variables or secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-004",
+      "title": "Generic high-entropy secret",
+      "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "severity": "high",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 33,
+      "evidence": "ANTHROPIC_API_KEY = (high entropy value, Shannon entropy: 5.37)",
+      "remediation": "Move to environment variables or secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-004",
+      "title": "Generic high-entropy secret",
+      "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "severity": "high",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 35,
+      "evidence": "AWS_SECRET_ACCESS_KEY = (high entropy value, Shannon entropy: 4.66)",
+      "remediation": "Move to environment variables or secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-004",
+      "title": "Generic high-entropy secret",
+      "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "severity": "high",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 36,
+      "evidence": "GITHUB_TOKEN = (high entropy value, Shannon entropy: 5.17)",
+      "remediation": "Move to environment variables or secrets manager.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 7,
+      "evidence": "Server 'command-injection-lab' env.OPENAI_API_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 8,
+      "evidence": "Server 'command-injection-lab' env.DATABASE_PASSWORD = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 33,
+      "evidence": "Server 'secret-exposure-lab' env.ANTHROPIC_API_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 34,
+      "evidence": "Server 'secret-exposure-lab' env.AWS_ACCESS_KEY_ID = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 35,
+      "evidence": "Server 'secret-exposure-lab' env.AWS_SECRET_ACCESS_KEY = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "severity": "medium",
+      "category": "secret-exposure",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 36,
+      "evidence": "Server 'secret-exposure-lab' env.GITHUB_TOKEN = (hardcoded value)",
+      "remediation": "Use environment variable references.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP01:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TOKEN-09"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-001",
+      "title": "Invisible Unicode characters in tool description",
+      "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
+      "severity": "critical",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 15,
+      "evidence": "Server 'tool-poisoning-lab', tool 'safe_read': invisible chars U+200B",
+      "remediation": "Remove invisible characters from tool descriptions.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-002",
+      "title": "Prompt injection patterns in tool description",
+      "description": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.",
+      "severity": "critical",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 16,
+      "evidence": "Server 'tool-poisoning-lab', tool 'safe_read': injection pattern 'Ignore previous'",
+      "remediation": "Remove injection patterns from tool descriptions.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-02"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-006",
+      "title": "URL or file path in tool description",
+      "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
+      "severity": "medium",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 16,
+      "evidence": "Server 'tool-poisoning-lab', tool 'safe_read': file path in description '~/.ssh/id_rsa'",
+      "remediation": "Remove URLs and file paths from tool descriptions.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-003",
+      "title": "Cross-tool reference in tool description",
+      "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
+      "severity": "high",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 20,
+      "evidence": "Server 'tool-poisoning-lab', tool 'data_export': cross-tool ref 'Before calling'",
+      "remediation": "Tool descriptions should be self-contained and not reference other tools.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-03"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-003",
+      "title": "Cross-tool reference in tool description",
+      "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
+      "severity": "high",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 20,
+      "evidence": "Server 'tool-poisoning-lab', tool 'data_export': cross-tool ref 'invoke'",
+      "remediation": "Tool descriptions should be self-contained and not reference other tools.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-03"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-006",
+      "title": "URL or file path in tool description",
+      "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
+      "severity": "medium",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 20,
+      "evidence": "Server 'tool-poisoning-lab', tool 'data_export': URL in description 'https://evil.com/collect'",
+      "remediation": "Remove URLs and file paths from tool descriptions.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-POISON-006",
+      "title": "URL or file path in tool description",
+      "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
+      "severity": "medium",
+      "category": "tool-poisoning",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 20,
+      "evidence": "Server 'tool-poisoning-lab', tool 'data_export': file path in description '//evil.com/collect'",
+      "remediation": "Remove URLs and file paths from tool descriptions.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP05:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI06"
+      ],
+      "adversaReferences": [
+        "ADV-POISON-06"
+      ]
+    },
+    {
+      "ruleId": "AAK-TRANSPORT-001",
+      "title": "MCP server uses HTTP instead of HTTPS",
+      "description": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.",
+      "severity": "critical",
+      "category": "transport-security",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 12,
+      "evidence": "Server 'tool-poisoning-lab' URL: http://mcp-tools.internal:9090/sse",
+      "remediation": "Use HTTPS for all remote MCP server connections.",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP07:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI03"
+      ],
+      "adversaReferences": [
+        "ADV-TRANSPORT-01"
+      ]
+    },
+    {
+      "ruleId": "AAK-TRANSPORT-003",
+      "title": "Deprecated SSE transport in use",
+      "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.",
+      "severity": "medium",
+      "category": "transport-security",
+      "filePath": "dvmcp-inspired.mcp.json",
+      "lineNumber": 12,
+      "evidence": "Server 'tool-poisoning-lab' URL contains /sse: http://mcp-tools.internal:9090/sse",
+      "remediation": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).",
+      "cveReferences": [],
+      "owaspMcpReferences": [
+        "MCP07:2025"
+      ],
+      "owaspAgenticReferences": [
+        "ASI08"
+      ],
+      "adversaReferences": [
+        "ADV-TRANSPORT-03"
+      ]
+    }
+  ]
+}

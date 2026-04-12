@@ -1,0 +1,13 @@
+# AgentAuditKit — Pre-commit Hook
+# Copy this to .pre-commit-config.yaml in your project root
+#
+# Scans MCP configs, settings, .env files, and package.json on every commit.
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  - repo: https://github.com/sattyamjjain/agent-audit-kit
+    rev: v0.2.0
+    hooks:
+      - id: agent-audit-kit
+        # Optional: customize severity threshold
+        # args: ['--severity', 'medium', '--fail-on', 'high']

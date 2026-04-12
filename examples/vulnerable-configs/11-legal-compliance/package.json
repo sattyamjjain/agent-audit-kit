@@ -1,0 +1,9 @@
+{
+  "name": "copyleft-project",
+  "version": "1.0.0",
+  "description": "Project using AGPL-licensed dependencies",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "some-agpl-lib": "^1.0.0"
+  }
+}

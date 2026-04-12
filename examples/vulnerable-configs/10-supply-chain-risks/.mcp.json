@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "unpinned-server": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem"]
+    },
+    "another-unpinned": {
+      "command": "uvx",
+      "args": ["mcp-server-git"]
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: internal capabilities exposed, no authentication, missing input schema, HTTP endpoint, excessive token lifetime, weak JWT validation, agent impersonation risk",
+  "expectedRules": ["AAK-A2A-001", "AAK-A2A-002", "AAK-A2A-003", "AAK-A2A-004", "AAK-A2A-005", "AAK-A2A-006", "AAK-A2A-007"],
+  "expectedMinFindings": 7,
+  "description": "Demonstrates A2A protocol vulnerabilities including exposed internal capabilities, missing authentication, absent input schemas, insecure transport, excessive token lifetime, and disabled signature verification"
+}

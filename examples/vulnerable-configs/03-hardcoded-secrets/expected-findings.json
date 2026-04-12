@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: hardcoded API keys (Anthropic, OpenAI, AWS), secrets in MCP env, .env not gitignored",
+  "expectedRules": ["AAK-MCP-003", "AAK-SECRET-001", "AAK-SECRET-002", "AAK-SECRET-003", "AAK-SECRET-004", "AAK-SECRET-006"],
+  "expectedMinFindings": 16,
+  "description": "Demonstrates hardcoded API keys in MCP server environment blocks and .env files not excluded from version control"
+}

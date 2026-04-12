@@ -35,6 +35,9 @@ Thumbs.db
 .env
 .env.*
 
+# Claude Code auto-memory
+.claude/auto-memory/dirty-files
+
 # Agent Audit Kit cache
 .agent-audit-kit/
 

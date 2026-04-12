@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: tainted flows to shell, eval, file, HTTP, SQL, deserialization sinks; missing type hints; excessive sink categories",
+  "expectedRules": ["AAK-TAINT-001", "AAK-TAINT-002", "AAK-TAINT-003", "AAK-TAINT-004", "AAK-TAINT-005", "AAK-TAINT-006", "AAK-TAINT-007", "AAK-TAINT-008"],
+  "expectedMinFindings": 8,
+  "description": "Demonstrates Python @tool functions with unsanitized parameter flows to dangerous sinks including shell commands, eval, file I/O, HTTP requests, SQL queries, and deserialization"
+}

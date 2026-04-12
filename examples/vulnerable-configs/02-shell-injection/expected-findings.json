@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: shell injection, npx without pinning, relative path binary, headersHelper, filesystem root access",
+  "expectedRules": ["AAK-MCP-005", "AAK-MCP-006", "AAK-MCP-007", "AAK-MCP-008", "AAK-MCP-010", "AAK-SUPPLY-001"],
+  "expectedMinFindings": 8,
+  "description": "Demonstrates shell injection via command metacharacters, unpinned package execution, relative path binaries, headersHelper abuse, and filesystem root access"
+}

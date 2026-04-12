@@ -77,6 +77,19 @@ repos:
       - id: agent-audit-kit
 ```
 
+### Try It Now
+
+Scan a deliberately vulnerable config to see AgentAuditKit in action:
+
+```bash
+git clone https://github.com/sattyamjjain/agent-audit-kit
+cd agent-audit-kit
+pip install -e .
+agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
+```
+
+11 vulnerability examples covering all security categories in the [examples/](examples/) directory. See also the [damn-vulnerable-MCP-server case study](examples/case-studies/damn-vulnerable-mcp/).
+
 ---
 
 ## What It Scans

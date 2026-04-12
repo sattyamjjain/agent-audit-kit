@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "plaintext-api": {
+      "url": "http://mcp.example.com/api"
+    },
+    "tls-disabled": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+      }
+    },
+    "legacy-sse": {
+      "url": "https://mcp.example.com/sse"
+    },
+    "token-in-url": {
+      "url": "https://mcp.example.com/api?token=abc123secret&api_key=sk-1234567890"
+    }
+  }
+}

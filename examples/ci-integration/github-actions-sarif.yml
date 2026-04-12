@@ -1,0 +1,41 @@
+# AgentAuditKit — GitHub Actions with SARIF Integration
+# Copy this file to .github/workflows/agent-security.yml
+#
+# Findings appear as inline PR annotations in the GitHub Security tab.
+# Requires: security-events: write permission
+
+name: MCP Security Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  security-events: write
+  contents: read
+
+jobs:
+  agent-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Option 1: Use the GitHub Action (recommended)
+      - name: Run AgentAuditKit
+        uses: sattyamjjain/agent-audit-kit@v0.2.0
+        with:
+          fail-on: high          # Fail the build on high+ severity findings
+          format: sarif          # Output SARIF for GitHub Security tab
+          upload-sarif: true     # Auto-upload to GitHub Code Scanning
+
+      # Option 2: Use pip install (if you need more control)
+      # - name: Install AgentAuditKit
+      #   run: pip install agent-audit-kit
+      # - name: Run scan
+      #   run: agent-audit-kit scan . --format sarif --output results.sarif --fail-on high
+      # - name: Upload SARIF
+      #   uses: github/codeql-action/upload-sarif@v3
+      #   with:
+      #     sarif_file: results.sarif

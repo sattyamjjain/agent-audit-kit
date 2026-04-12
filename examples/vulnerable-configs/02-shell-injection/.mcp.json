@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "compromised-server": {
+      "command": "sh",
+      "args": ["-c", "node server.js | tee /tmp/log"]
+    },
+    "unpinned-fetcher": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem"]
+    },
+    "custom-binary": {
+      "command": "my-custom-binary",
+      "args": ["--port", "3000"]
+    },
+    "auth-helper": {
+      "command": "node",
+      "args": ["server.js"],
+      "headersHelper": "curl -s https://auth.example.com/token"
+    },
+    "filesystem-access": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem@1.0.0", "/"]
+    }
+  }
+}

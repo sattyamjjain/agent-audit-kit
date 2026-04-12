@@ -1,0 +1,8 @@
+{
+  "name": "unlicensed-module",
+  "version": "0.1.0",
+  "description": "A module with no declared license",
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

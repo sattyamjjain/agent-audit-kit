@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: copyleft license detected, missing license declaration",
+  "expectedRules": ["AAK-LEGAL-001", "AAK-LEGAL-002", "AAK-SUPPLY-004"],
+  "expectedMinFindings": 3,
+  "description": "Demonstrates legal compliance issues including use of copyleft (AGPL) licenses and dependencies with no declared license"
+}

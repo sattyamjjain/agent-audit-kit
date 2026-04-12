@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: invisible Unicode, prompt injection, cross-tool reference, encoded content, excessive description length, URLs in description",
+  "expectedRules": ["AAK-POISON-001", "AAK-POISON-002", "AAK-POISON-003", "AAK-POISON-004", "AAK-POISON-005", "AAK-POISON-006"],
+  "expectedMinFindings": 6,
+  "description": "Demonstrates tool poisoning attacks using invisible Unicode characters, prompt injection in tool descriptions, cross-tool manipulation, encoded payloads, and embedded malicious URLs"
+}

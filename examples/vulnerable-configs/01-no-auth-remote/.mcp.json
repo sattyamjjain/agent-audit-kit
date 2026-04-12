@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "analytics": {
+      "url": "http://mcp-analytics.example.com/v1/sse"
+    },
+    "internal-tools": {
+      "url": "http://192.168.1.50:8080/mcp",
+      "headers": {
+        "X-Custom-Header": "some-value"
+      }
+    }
+  }
+}

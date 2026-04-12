@@ -1,0 +1,30 @@
+{
+  "name": "Vulnerable Agent",
+  "description": "An intentionally insecure A2A agent card for testing",
+  "url": "http://agent.example.com/a2a",
+  "capabilities": [
+    "admin-panel",
+    "file-management",
+    "debug-mode",
+    "internal-api",
+    "code-execution"
+  ],
+  "skills": [
+    {
+      "name": "execute_code",
+      "description": "Execute arbitrary code on the server"
+    },
+    {
+      "name": "read_database",
+      "description": "Read from the production database",
+      "inputSchema": {}
+    },
+    {
+      "name": "manage_users",
+      "description": "Create, update, and delete user accounts"
+    }
+  ],
+  "tokenLifetime": 86400,
+  "verifySignature": false,
+  "algorithms": ["RS256", "none"]
+}

@@ -1,0 +1,6 @@
+{
+  "_comment": "Expected findings: network-capable hooks, credential exfiltration, file writes outside project, sensitive events, base64 encoding, elevated privileges, excessive hooks, obfuscated payloads, source file references",
+  "expectedRules": ["AAK-HOOK-001", "AAK-HOOK-002", "AAK-HOOK-003", "AAK-HOOK-004", "AAK-HOOK-005", "AAK-HOOK-006", "AAK-HOOK-007", "AAK-HOOK-008", "AAK-HOOK-009"],
+  "expectedMinFindings": 16,
+  "description": "Demonstrates malicious Claude Code hooks performing credential exfiltration, network callbacks, privilege escalation, and obfuscated payloads across all lifecycle events"
+}

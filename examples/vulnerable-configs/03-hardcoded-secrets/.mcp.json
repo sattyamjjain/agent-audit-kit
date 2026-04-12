@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "ai-assistant": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "ANTHROPIC_API_KEY": "sk-ant-api03-aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdefghijklmnop",
+        "OPENAI_API_KEY": "sk-proj1234567890abcdefghijklmnopqrstuvwxyz",
+        "DATABASE_URL": "postgresql://admin:supersecretpassword@db.example.com:5432/prod"
+      }
+    },
+    "cloud-tools": {
+      "command": "node",
+      "args": ["cloud-server.js"],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "AKIAIOSFODNN7EXAMPLE",
+        "AWS_SECRET_ACCESS_KEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      }
+    }
+  }
+}
