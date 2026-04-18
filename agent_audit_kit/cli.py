@@ -154,7 +154,17 @@ def cli(ctx: click.Context) -> None:
 @click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf.")
 @click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify if detected secrets are live (makes network calls).")
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
-@click.option("--llm-scan", is_flag=True, default=False, help="Use local LLM (Ollama) for semantic tool description analysis.")
+@click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
+@click.option(
+    "--llm",
+    "llm_model",
+    default="ollama/gemma2:2b",
+    help=(
+        "LLM model slug when --llm-scan is set. Prefix selects provider: "
+        "claude* (Anthropic, ANTHROPIC_API_KEY), gpt* (OpenAI, OPENAI_API_KEY), "
+        "gemini* (Google, GEMINI_API_KEY), or ollama/<model> (local Ollama daemon)."
+    ),
+)
 @click.option(
     "--strict-loading",
     is_flag=True,
@@ -180,6 +190,7 @@ def scan_cmd(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    llm_model: str,
     strict_loading: bool,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
@@ -203,6 +214,7 @@ def scan_cmd(
             verify_secrets=verify_secrets,
             diff_base=diff_base,
             llm_scan=llm_scan,
+            llm_model=llm_model,
             strict_loading=strict_loading,
         )
     except Exception as exc:
@@ -230,6 +242,7 @@ def _run_scan(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    llm_model: str,
     strict_loading: bool,
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
@@ -312,15 +325,17 @@ def _run_scan(
 
         result = verify_findings(result)
 
-    # LLM semantic analysis (optional, requires Ollama)
+    # LLM semantic analysis (opt-in, provider chosen by --llm)
     if llm_scan:
         try:
             from agent_audit_kit.llm_scan import run_llm_analysis
 
-            llm_findings = run_llm_analysis(project_root)
+            if verbose:
+                click.echo(f"LLM scan using model: {llm_model}", err=True)
+            llm_findings = run_llm_analysis(project_root, model=llm_model)
             result.findings.extend(llm_findings)
-        except ImportError:
-            click.echo("LLM scan requires Ollama. Install with: brew install ollama", err=True)
+        except ValueError as e:
+            click.echo(f"LLM scan config error: {e}", err=True)
         except Exception as e:
             click.echo(f"LLM scan failed: {e}", err=True)
 
