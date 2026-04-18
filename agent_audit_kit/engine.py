@@ -34,6 +34,15 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("typescript_pattern_scan", "TypeScript pattern scan", []),
     ("rust_pattern_scan", "Rust pattern scan", []),
     ("pin_drift", "Pin drift", []),
+    ("marketplace_manifest", "Marketplace manifest", []),
+    ("skill_poisoning", "Skill poisoning", []),
+    ("mcp_auth_patterns", "MCP auth patterns", []),
+    ("ssrf_patterns", "SSRF patterns", []),
+    ("oauth_misconfig", "OAuth 2.1 misconfig", []),
+    ("hook_rce", "Hook RCE", []),
+    ("langchain_vuln", "LangChain vulnerabilities", []),
+    ("routines", "Claude Code routines", []),
+    ("mcp_tasks", "MCP Tasks leakage", []),
 ]
 
 

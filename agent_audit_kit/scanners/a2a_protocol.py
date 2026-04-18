@@ -360,5 +360,90 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         findings.extend(_check_jwt_lifetime(data, rel_path, raw_text))
         findings.extend(_check_jwt_validation(data, rel_path, raw_text))
         findings.extend(_check_impersonation(data, rel_path, raw_text))
+        findings.extend(_check_2026_gaps(data, rel_path, raw_text))
 
     return findings, scanned_files
+
+
+# ---------------------------------------------------------------------------
+# 2026 gaps — AAK-A2A-008..012
+# ---------------------------------------------------------------------------
+
+
+def _check_2026_gaps(
+    data: dict[str, Any],
+    rel_path: str,
+    raw_text: str,
+) -> list[Finding]:
+    """Fire AAK-A2A-008..012 (mutual auth, delegation, transitive, replay, schema)."""
+    findings: list[Finding] = []
+
+    auth_section = data.get("authentication") or {}
+    if isinstance(auth_section, dict):
+        scheme = str(auth_section.get("scheme", "")).lower()
+        mutual = bool(
+            auth_section.get("mutual") or auth_section.get("mutual_tls")
+            or "mtls" in scheme or "mutual" in scheme
+        )
+        if not mutual and ("bearer" in scheme or "oauth" in scheme):
+            findings.append(
+                make_finding(
+                    "AAK-A2A-008",
+                    rel_path,
+                    f"Auth scheme {scheme!r} does not declare mutual authentication",
+                    line_number=find_line_number(raw_text, "authentication"),
+                )
+            )
+
+    delegation = data.get("delegation")
+    if isinstance(delegation, dict) and delegation:
+        max_hops = delegation.get("max_depth") or delegation.get("max_hops")
+        if max_hops is None:
+            findings.append(
+                make_finding(
+                    "AAK-A2A-009",
+                    rel_path,
+                    "Delegation block present but max_depth/max_hops is not set",
+                    line_number=find_line_number(raw_text, "delegation"),
+                )
+            )
+
+    trust = data.get("trust") or {}
+    if isinstance(trust, dict) and trust.get("accepts_relayed_claims") is True:
+        findings.append(
+            make_finding(
+                "AAK-A2A-010",
+                rel_path,
+                "Agent Card advertises accepts_relayed_claims=true (transitive trust)",
+                line_number=find_line_number(raw_text, "accepts_relayed_claims"),
+            )
+        )
+
+    tokens = data.get("tokens")
+    if isinstance(tokens, dict) and tokens:
+        has_antireplay = any(k in tokens for k in ("jti", "nonce", "require_jti", "replay_window"))
+        if not has_antireplay:
+            findings.append(
+                make_finding(
+                    "AAK-A2A-011",
+                    rel_path,
+                    "Agent Card token config has no jti/nonce/replay_window",
+                    line_number=find_line_number(raw_text, "tokens"),
+                )
+            )
+
+    # Only demand schema_version on Agent Cards that actually look 2026-era
+    # (i.e. have the newer tokens/delegation sections). Legacy skill-only
+    # cards from 2024/2025 should not be flagged.
+    has_new_sections = any(k in data for k in ("tokens", "delegation", "trust"))
+    if has_new_sections and "schema_version" not in data and "a2a_version" not in data and "apiVersion" not in data:
+        findings.append(
+            make_finding(
+                "AAK-A2A-012",
+                rel_path,
+                "Agent Card has no schema_version/a2a_version discriminator",
+                line_number=1,
+            )
+        )
+
+    return findings

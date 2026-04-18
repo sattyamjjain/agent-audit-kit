@@ -1173,6 +1173,860 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# 2026 MCP Authentication Bypass Wave (AAK-MCP-011..020)
+#
+# References:
+#   - NVD: CVE-2026-33032 (Nginx-UI MCP endpoint auth bypass, CVSS 9.8) —
+#     https://nvd.nist.gov/vuln/detail/CVE-2026-33032
+#   - GHSA: https://github.com/0xJacky/nginx-ui/security/advisories/GHSA-h6c2-x2m2-mwhf
+#   - MCP spec 2025-11-25: OAuth 2.1 mandatory for remote servers.
+#   - OWASP MCP Top 10 MCP01:2025 (Broken Authentication), MCP07:2025
+#     (Insecure Transport), MCP08:2025 (Insecure CORS).
+#   - CWE-287 (Improper Authentication), CWE-306 (Missing Authentication),
+#     CWE-346 (Origin Validation Error), CWE-307 (Improper Restriction
+#     of Excessive Authentication Attempts).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-011",
+    "Remote MCP server handler lacks authentication middleware",
+    "A remote MCP server exposes an HTTP handler with no authentication check. "
+    "Per MCP spec 2025-11-25 all remote servers must require OAuth 2.1 or an "
+    "equivalent bearer credential. Matches the CVE-2026-33032 pattern where "
+    "/mcp_message was exposed without the auth middleware that /mcp used.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Apply the same auth middleware to every MCP HTTP route. Do not branch on "
+    "method or path before enforcing auth.",
+    sarif_name="McpHandlerNoAuth",
+    cve_references=["CVE-2026-33032"],
+    owasp_mcp_references=["MCP01:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-012",
+    "MCP server default IP allowlist is empty (allow-all)",
+    "An MCP server's IP allowlist configuration defaults to an empty list, "
+    "which its middleware interprets as 'allow all'. This is the exact "
+    "CVE-2026-33032 root cause. Tight-by-default is required.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Default to deny-all; require explicit allowlist entries. Reject empty "
+    "allowlists at startup.",
+    sarif_name="McpAllowlistEmpty",
+    cve_references=["CVE-2026-33032"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-02"],
+)
+
+_r(
+    "AAK-MCP-013",
+    "Wildcard CORS on MCP endpoint",
+    "An MCP HTTP endpoint sets Access-Control-Allow-Origin to '*' while also "
+    "returning credentials/tokens. This allows hostile origins to read MCP "
+    "responses from a victim browser session.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Restrict CORS to an explicit origin allowlist. Never combine '*' with "
+    "Access-Control-Allow-Credentials: true.",
+    sarif_name="McpCorsWildcard",
+    owasp_mcp_references=["MCP08:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-03"],
+)
+
+_r(
+    "AAK-MCP-014",
+    "Auth token transmitted via URL query parameter",
+    "An MCP client or server expects authentication tokens in URL query "
+    "parameters. Query parameters land in server access logs, browser "
+    "history, and referer headers, making this a token-leak vector.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Pass tokens in the Authorization header, never in query params.",
+    sarif_name="McpAuthInQueryParam",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-04"],
+)
+
+_r(
+    "AAK-MCP-015",
+    "Path traversal in MCP resource handler",
+    "An MCP server exposes a resource/file handler that passes user-supplied "
+    "paths to open()/fs.readFile without normalization or allowlist checks. "
+    "2,614 MCP implementations surveyed; 82% had this class of issue.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Resolve the requested path, reject '..' components, and verify the "
+    "final path is under an explicit root directory.",
+    sarif_name="McpPathTraversal",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-RES-01"],
+)
+
+_r(
+    "AAK-MCP-016",
+    "Unbounded prompt/argument size on MCP endpoint",
+    "An MCP server endpoint accepts request bodies without a maximum-size "
+    "limit. This enables token-cost denial-of-service and memory exhaustion.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Set a per-endpoint max body size (e.g. 1 MiB by default) and reject "
+    "requests that exceed it.",
+    sarif_name="McpUnboundedPayload",
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-DOS-01"],
+)
+
+_r(
+    "AAK-MCP-017",
+    "MCP server accepts HTTP (non-TLS) in production config",
+    "An MCP server configuration binds to plain HTTP without TLS. MCP spec "
+    "2025-11-25 requires Streamable HTTP over TLS for remote servers.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Bind only to HTTPS. Terminate TLS at a trusted proxy or use the server's "
+    "native TLS support. Reject plain-HTTP binds in production mode.",
+    sarif_name="McpPlainHttp",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TRANSPORT-01"],
+)
+
+_r(
+    "AAK-MCP-018",
+    "Missing rate limiting on MCP endpoint",
+    "An MCP server endpoint does not declare rate limiting. Unrestricted "
+    "access allows credential stuffing and enumeration attacks.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Add per-IP and per-token rate limits. Reject bursts above the limit with 429.",
+    sarif_name="McpNoRateLimit",
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-DOS-02"],
+)
+
+_r(
+    "AAK-MCP-019",
+    "MCP auth check runs after side-effect",
+    "An MCP handler performs work (e.g. db lookups, external calls) before "
+    "verifying authentication. This reveals existence/shape of protected "
+    "resources via timing and error channels.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Enforce authentication as the first step of every handler. Do not branch "
+    "on caller input before the auth check.",
+    sarif_name="McpAuthAfterSideEffect",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-05"],
+)
+
+_r(
+    "AAK-MCP-020",
+    "MCP handler shares routing with an unauthenticated path",
+    "Two MCP HTTP routes share a single handler but only one is wrapped in "
+    "auth middleware. The second route inherits the tool surface without the "
+    "auth check. This is the CVE-2026-33032 bypass pattern.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Apply auth middleware at the router level, not per-route. Or, wrap the "
+    "shared handler in the auth check.",
+    sarif_name="McpSharedHandlerAuthGap",
+    cve_references=["CVE-2026-33032"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+# ---------------------------------------------------------------------------
+# MCP SSRF Patterns (AAK-SSRF-001..005)
+#
+# References:
+#   - 36.7% of 7,000 surveyed MCP servers had SSRF-exposed tool handlers.
+#   - OWASP MCP Top 10 MCP09:2025 (Server-Side Request Forgery).
+#   - OWASP Top 10 A10:2021 (SSRF).
+#   - CWE-918 (Server-Side Request Forgery).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SSRF-001",
+    "Unvalidated outbound HTTP in MCP tool handler",
+    "An MCP tool handler fetches a URL provided by the caller with no "
+    "host/scheme validation. This is the classic SSRF shape (CWE-918).",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Validate the scheme (https only), resolve the host, and reject "
+    "private-range IPs (RFC 1918, 169.254.*, 127.*, ::1/128, fc00::/7).",
+    sarif_name="SsrfUnvalidatedUrl",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+_r(
+    "AAK-SSRF-002",
+    "Localhost/loopback reachable from MCP tool",
+    "An MCP tool handler forwards user-supplied URLs that could target "
+    "127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Block loopback and link-local addresses after DNS resolution.",
+    sarif_name="SsrfLoopbackReachable",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-02"],
+)
+
+_r(
+    "AAK-SSRF-003",
+    "Cloud metadata endpoint reachable via MCP tool",
+    "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP "
+    "metadata) or metadata.google.internal, allowing exfiltration of "
+    "instance credentials.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Block 169.254.0.0/16 and metadata.google.internal at the HTTP client "
+    "layer. Use a deny-by-default IP allowlist.",
+    sarif_name="SsrfCloudMetadata",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-03"],
+)
+
+_r(
+    "AAK-SSRF-004",
+    "Redirect chains followed without re-validation",
+    "An MCP tool follows HTTP redirects using the default client settings. "
+    "An attacker can bypass initial host checks by returning a 3xx to an "
+    "internal address. DNS rebinding works the same way.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Disable automatic redirects, or re-run host validation on every hop. "
+    "Cap total redirects at 3.",
+    sarif_name="SsrfRedirectRevalidation",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-04"],
+)
+
+_r(
+    "AAK-SSRF-005",
+    "Missing SSRF allowlist on outbound fetch",
+    "An MCP tool performs outbound HTTP but has no allowlist of permitted "
+    "destinations. Deny-by-default with an explicit allowlist is the only "
+    "reliable defense against SSRF chains.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Maintain an explicit allowlist of hostnames; reject anything else.",
+    sarif_name="SsrfNoAllowlist",
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-05"],
+)
+
+# ---------------------------------------------------------------------------
+# OAuth 2.1 Misconfiguration (AAK-OAUTH-001..005)
+#
+# References:
+#   - MCP spec 2025-11-25: OAuth 2.1 mandatory, PKCE+S256 required,
+#     DPoP under SEP review.
+#   - RFC 9700 (OAuth 2.1 Security BCPs).
+#   - RFC 9449 (DPoP).
+#   - OWASP MCP01:2025 (Broken Authentication).
+#   - CWE-287 (Improper Authentication), CWE-522 (Credentials Transmitted
+#     in Cleartext), CWE-348 (Use of Less Trusted Source).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-OAUTH-001",
+    "OAuth flow without PKCE",
+    "An OAuth 2.1 client flow does not use PKCE. PKCE is mandatory for all "
+    "MCP remote server clients per spec 2025-11-25, including confidential "
+    "clients.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Add a code_verifier/code_challenge pair to every authorization request. "
+    "Use code_challenge_method=S256.",
+    sarif_name="OAuthMissingPkce",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-06"],
+)
+
+_r(
+    "AAK-OAUTH-002",
+    "PKCE using the plain challenge method",
+    "An OAuth client sets code_challenge_method=plain (or omits it). S256 "
+    "is mandatory; 'plain' leaks the verifier to anyone with access to the "
+    "authorization request.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Set code_challenge_method=S256 and derive code_challenge as "
+    "BASE64URL(SHA256(code_verifier)).",
+    sarif_name="OAuthPkcePlain",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-07"],
+)
+
+_r(
+    "AAK-OAUTH-003",
+    "OAuth token passthrough between tenants",
+    "An MCP server receives a bearer token from one identity and forwards "
+    "it to a downstream service without re-minting. This is the 'confused "
+    "deputy' shape banned by OAuth 2.1 BCPs.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Use token-exchange (RFC 8693) or a service account to call downstream "
+    "services. Never forward a user token across trust boundaries.",
+    sarif_name="OAuthTokenPassthrough",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-08"],
+)
+
+_r(
+    "AAK-OAUTH-004",
+    "Wildcard or overly-broad redirect_uri",
+    "An OAuth client registers a wildcard, localhost-with-any-port, or "
+    "overly-broad redirect_uri. Attackers can hijack authorization codes "
+    "via dangling subdomains or open redirectors.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Register exact-match redirect URIs only. No wildcards.",
+    sarif_name="OAuthWildcardRedirect",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-09"],
+)
+
+_r(
+    "AAK-OAUTH-005",
+    "Bearer token used where DPoP or mTLS is required",
+    "An MCP remote server accepts plain Bearer tokens on a flow that MCP "
+    "spec 2025-11-25 flags for DPoP (Demonstrating Proof of Possession) "
+    "or mTLS-bound tokens. A stolen Bearer token is fully replayable.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Require DPoP proofs or mTLS-bound tokens for high-privilege flows. "
+    "Validate the token's cnf claim.",
+    sarif_name="OAuthBearerWhereDpopRequired",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-10"],
+)
+
+# ---------------------------------------------------------------------------
+# Claude Code Hook RCE (AAK-HOOK-RCE-001..003)
+#
+# References:
+#   - NVD: CVE-2025-59536 (Claude Code hooks RCE) —
+#     https://nvd.nist.gov/vuln/detail/CVE-2025-59536
+#   - OWASP Top 10 A03:2021 (Injection).
+#   - CWE-78 (OS Command Injection), CWE-94 (Code Injection).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-HOOK-RCE-001",
+    "Hook command interpolates user-controlled input",
+    "A Claude Code hook script command-string interpolates a variable or "
+    "captured group directly into a shell command. This is the CVE-2025-59536 "
+    "shape: a poisoned config file triggers arbitrary code execution.",
+    Severity.CRITICAL,
+    Category.HOOK_INJECTION,
+    "Never interpolate hook input into a shell string. Use an argv list and a "
+    "no-shell exec. Quote with shlex.quote if a shell is absolutely required.",
+    sarif_name="HookRceInterpolation",
+    cve_references=["CVE-2025-59536"],
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-RCE-01"],
+)
+
+_r(
+    "AAK-HOOK-RCE-002",
+    "Hook runs with shell=True and variable interpolation",
+    "A hook script invokes subprocess.run / spawn with shell=True (or the "
+    "equivalent in Node/Bash) while passing a composed string that includes "
+    "caller-provided fields.",
+    Severity.CRITICAL,
+    Category.HOOK_INJECTION,
+    "Use shell=False and pass argv as a list. If a shell is needed, build "
+    "commands from quoted constants only.",
+    sarif_name="HookShellTrue",
+    cve_references=["CVE-2025-59536"],
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-RCE-02"],
+)
+
+_r(
+    "AAK-HOOK-RCE-003",
+    "Hook trust check is bypassable by project-local config",
+    "A settings.local.json or project-relative hook file executes before "
+    "the Claude Code trust prompt. This is the core CVE-2025-59536 regression "
+    "pattern; any project-contained hook must not run until trust is "
+    "confirmed.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Require explicit trust confirmation before loading project-local hook "
+    "configuration. Upgrade to Claude Code 1.0.111 or later.",
+    sarif_name="HookTrustBypass",
+    cve_references=["CVE-2025-59536"],
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-RCE-03"],
+)
+
+# ---------------------------------------------------------------------------
+# LangChain Path Traversal (AAK-LANGCHAIN-001..003)
+#
+# References:
+#   - NVD: CVE-2026-34070 (LangChain load_prompt absolute path /
+#     .. traversal) — https://nvd.nist.gov/vuln/detail/CVE-2026-34070
+#   - NVD: CVE-2025-68664 — https://nvd.nist.gov/vuln/detail/CVE-2025-68664
+#   - GHSA-r399-636x-v7f6 (LangChain serialization injection).
+#   - CWE-22 (Path Traversal), CWE-502 (Deserialization of Untrusted Data).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-LANGCHAIN-001",
+    "Project depends on LangChain < 1.2.22 (load_prompt path traversal)",
+    "A dependency file pins langchain or langchain-core to a version earlier "
+    "than 1.2.22. CVE-2026-34070 allows absolute paths and '..' traversal "
+    "via load_prompt() / load_prompt_from_config().",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to langchain-core >= 1.2.22. If you must keep the legacy "
+    "behavior, pass allow_dangerous_paths=True explicitly.",
+    sarif_name="LangchainPathTraversalVuln",
+    cve_references=["CVE-2026-34070"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SUPPLY-01"],
+)
+
+_r(
+    "AAK-LANGCHAIN-002",
+    "Call to load_prompt without allow_dangerous_paths review",
+    "Source code calls langchain.load_prompt() or load_prompt_from_config() "
+    "with a user-controlled path argument. Even on patched versions, the "
+    "allow_dangerous_paths escape hatch is a sharp edge.",
+    Severity.MEDIUM,
+    Category.TAINT_ANALYSIS,
+    "Treat load_prompt() as a file read against a trusted root. Resolve, "
+    "normalize, and verify the path is inside the intended directory.",
+    sarif_name="LangchainLoadPromptUserPath",
+    cve_references=["CVE-2026-34070"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SUPPLY-02"],
+)
+
+_r(
+    "AAK-LANGCHAIN-003",
+    "LangChain deserialization of untrusted data",
+    "A dependency file pins langchain / langchainjs to a version vulnerable "
+    "to GHSA-r399-636x-v7f6 / CVE-2025-68664, a serialization-injection "
+    "chain that extracts secrets through crafted saved chains.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade to the patched LangChain / langchainjs release; avoid loading "
+    "serialized chains from sources you do not fully control.",
+    sarif_name="LangchainDeserializeUntrusted",
+    cve_references=["CVE-2025-68664"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-03"],
+)
+
+# ---------------------------------------------------------------------------
+# .claude-plugin/marketplace.json Security (AAK-MARKETPLACE-001..004)
+#
+# References:
+#   - Anthropic Claude Code plugins/marketplaces (GA Apr 2026).
+#   - OWASP MCP03:2025 (Supply Chain).
+#   - CWE-494 (Download of Code Without Integrity Check), CWE-918 (SSRF
+#     in postinstall), CWE-1357 (Reliance on Insufficiently Trustworthy
+#     Component).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MARKETPLACE-001",
+    "Unsigned marketplace.json manifest",
+    ".claude-plugin/marketplace.json lacks a signature or integrity hash "
+    "field. An attacker with write access to the marketplace can replace "
+    "the plugin bundle with no detection.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Add a Sigstore signature or subresource-integrity hash to each plugin "
+    "entry. Verify on install.",
+    sarif_name="MarketplaceUnsigned",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+)
+
+_r(
+    "AAK-MARKETPLACE-002",
+    "Plugin permission set grants broad access",
+    "A plugin's manifest grants access to filesystem, network, shell exec, "
+    "or user-credential surfaces. Broad permissions should be opt-in after "
+    "a clear user prompt.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Trim permissions to the minimum the plugin needs. Review any 'fs:*' "
+    "or 'shell:exec' entries.",
+    sarif_name="MarketplaceBroadPermissions",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-05"],
+)
+
+_r(
+    "AAK-MARKETPLACE-003",
+    "Plugin name typosquats a well-known package",
+    "A plugin entry uses a name that is one edit distance from a popular "
+    "upstream (e.g. 'anthropic', 'langchain', 'mcp'). Typosquatting is the "
+    "single highest-volume supply-chain attack vector in 2026.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Rename the plugin or flag it for manual review. Cross-reference against "
+    "a known-upstream list.",
+    sarif_name="MarketplaceTyposquat",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-06"],
+)
+
+_r(
+    "AAK-MARKETPLACE-004",
+    "Plugin source pins to a mutable git ref",
+    "A plugin entry pins to a branch (main/master) or tag without commit "
+    "SHA. The maintainer (or an attacker with write access) can silently "
+    "change plugin behavior post-install — the 'maintainer takeover' "
+    "pattern from the June 2024 xz incident and its 2026 re-runs.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin to an immutable commit SHA. Re-pin during a reviewed dependency "
+    "bump.",
+    sarif_name="MarketplaceMutableRef",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-07"],
+)
+
+# ---------------------------------------------------------------------------
+# Claude Code Routines (AAK-ROUTINE-001..003)
+#
+# Routines (research preview, Apr 14 2026) run scheduled prompts non-
+# interactively. Permission escalation via routine is the core new risk.
+#
+# References:
+#   - Claude Code routines research preview.
+#   - OWASP ASI05 (Excessive Agency), ASI09 (Improper Isolation).
+#   - CWE-269 (Improper Privilege Management).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-ROUTINE-001",
+    "Routine grants broader permissions than interactive path",
+    "A routine configuration declares tool permissions wider than what the "
+    "same user has in interactive Claude Code. A routine running "
+    "non-interactively at 3am with admin-level tools is an excessive-agency "
+    "risk (OWASP ASI05).",
+    Severity.HIGH,
+    Category.AGENT_CONFIG,
+    "Mirror routine permissions from the interactive grant. Require re-prompt "
+    "for elevation.",
+    sarif_name="RoutineWiderPerms",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-AGENCY-01"],
+)
+
+_r(
+    "AAK-ROUTINE-002",
+    "Routine schedule interpolates unsanitized input",
+    "A routine's cron expression, HTTP webhook URL, or GitHub event filter "
+    "is built from a user-controlled value. Schedule injection can repurpose "
+    "the routine at off-hours without review.",
+    Severity.MEDIUM,
+    Category.AGENT_CONFIG,
+    "Treat schedule expressions as static constants; never build them from "
+    "runtime state.",
+    sarif_name="RoutineScheduleInjection",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-AGENCY-02"],
+)
+
+_r(
+    "AAK-ROUTINE-003",
+    "Routine executes without audit trail",
+    "A routine runs tool calls but writes no run-log, making post-hoc audit "
+    "impossible. An attacker with edit access to the routine file can run "
+    "anything and delete the evidence.",
+    Severity.MEDIUM,
+    Category.AGENT_CONFIG,
+    "Route every routine's output (and tool-call trace) to an append-only "
+    "log the routine cannot modify.",
+    sarif_name="RoutineNoAudit",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-AGENCY-03"],
+)
+
+# ---------------------------------------------------------------------------
+# A2A Protocol 2026 Gaps (AAK-A2A-008..012)
+#
+# Extends the existing AAK-A2A-001..007 family with the five gaps named in
+# ROADMAP §2.2.
+#
+# References:
+#   - A2A protocol (150+ orgs at one-year mark, Apr 9 2026).
+#   - OWASP MCP Top 10 MCP01, MCP02, MCP07.
+#   - CWE-287 (Improper Authentication), CWE-829 (Inclusion of Functionality
+#     from Untrusted Control Sphere), CWE-294 (Auth Bypass by Capture-Replay),
+#     CWE-502 (Deserialization).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-A2A-008",
+    "A2A connection lacks mutual authentication",
+    "Two agents establish an A2A connection where only the caller "
+    "authenticates. The callee is trusted by URL alone — easy to spoof.",
+    Severity.HIGH,
+    Category.A2A_PROTOCOL,
+    "Require mutual TLS or dual-bearer auth for all A2A flows.",
+    sarif_name="A2aNoMutualAuth",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-A2A-05"],
+)
+
+_r(
+    "AAK-A2A-009",
+    "Unbounded delegation in A2A call chain",
+    "An A2A agent forwards incoming delegation tokens without reducing scope, "
+    "allowing an N-deep chain to accumulate the caller's full rights.",
+    Severity.HIGH,
+    Category.A2A_PROTOCOL,
+    "Reduce delegation scope at each hop; refuse to forward tokens that are "
+    "already delegated beyond a small bound.",
+    sarif_name="A2aUnboundedDelegation",
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-A2A-06"],
+)
+
+_r(
+    "AAK-A2A-010",
+    "Transitive trust accepted in A2A",
+    "An A2A agent trusts claims relayed by a peer without verifying the "
+    "original issuer. 'Agent B says A says X' must not be treated as X.",
+    Severity.HIGH,
+    Category.A2A_PROTOCOL,
+    "Require signed attestations from the original issuer; do not trust "
+    "relayed claims.",
+    sarif_name="A2aTransitiveTrust",
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-A2A-07"],
+)
+
+_r(
+    "AAK-A2A-011",
+    "A2A tokens not anti-replay protected",
+    "An A2A flow accepts tokens without nonce, timestamp, or jti checks, "
+    "allowing captured messages to be replayed.",
+    Severity.MEDIUM,
+    Category.A2A_PROTOCOL,
+    "Include jti/nonce and iat/exp claims; reject duplicates inside a "
+    "replay window.",
+    sarif_name="A2aReplayable",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-A2A-08"],
+)
+
+_r(
+    "AAK-A2A-012",
+    "A2A schema confusion between major versions",
+    "An A2A endpoint accepts messages without version discriminator, "
+    "allowing a v1 payload to be interpreted by a v2 handler (or vice "
+    "versa) with changed field semantics.",
+    Severity.MEDIUM,
+    Category.A2A_PROTOCOL,
+    "Require an explicit schema version in every message; reject mismatches.",
+    sarif_name="A2aSchemaConfusion",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-A2A-09"],
+)
+
+# ---------------------------------------------------------------------------
+# MCP Tasks Primitive Leakage (AAK-TASKS-001..003)
+#
+# Tasks (SEP-1686) introduced an async working/input_required/completed/
+# failed/cancelled state machine. Long-lived async state = long-lived
+# credential exposure.
+#
+# References:
+#   - MCP spec 2025-11-25 SEP-1686 (Tasks primitive).
+#   - OWASP MCP05:2025 (Insecure Resource Handling).
+#   - CWE-200 (Information Exposure), CWE-639 (Authorization Bypass Through
+#     User-Controlled Key), CWE-613 (Insufficient Session Expiration).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-TASKS-001",
+    "MCP task read endpoint lacks per-task authorization",
+    "A task read endpoint returns task state based on the task ID alone. "
+    "Any caller that guesses or enumerates a task ID gets another user's "
+    "data (CWE-639).",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Verify the caller is the task owner (or has an explicit grant) before "
+    "returning task state.",
+    sarif_name="TasksNoOwnerCheck",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TASKS-01"],
+)
+
+_r(
+    "AAK-TASKS-002",
+    "MCP tasks persist credentials past completion",
+    "A task record retains API keys / OAuth tokens after the task reaches "
+    "a terminal state (completed/failed/cancelled). Long-lived credentials "
+    "in persistent state are an obvious exfil target.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Zeroize credential fields when the task transitions to a terminal "
+    "state. Keep only what a post-mortem actually needs.",
+    sarif_name="TasksCredentialPersistence",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TASKS-02"],
+)
+
+_r(
+    "AAK-TASKS-003",
+    "MCP task has no TTL or cancellation path",
+    "A task record has no expiration and no cancellation endpoint. Orphaned "
+    "tasks accumulate forever, including their inputs.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Set a TTL on every task; expose a cancellation endpoint that zeroizes "
+    "inputs and credentials.",
+    sarif_name="TasksNoTtl",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TASKS-03"],
+)
+
+# ---------------------------------------------------------------------------
+# Skill Poisoning (AAK-SKILL-001..005)
+#
+# References:
+#   - Anthropic Skills 2.0 (renderer/discovery overhaul April 2026).
+#   - ToxicSkills dataset (Snyk, 2026): 1,467 malicious payloads.
+#   - OWASP MCP05:2025 (Tool Poisoning), MCP10:2025 (Prompt Injection).
+#   - CWE-77 (Command Injection), CWE-94 (Code Injection), CWE-829
+#     (Inclusion of Functionality from Untrusted Control Sphere).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SKILL-001",
+    "SKILL.md contains a post-install / side-effect command",
+    "A SKILL.md frontmatter or body declares a post-install or auto-run "
+    "command (bash, curl, pipe-to-sh, wget). Skills should be declarative; "
+    "arbitrary installation commands are a rug-pull risk.",
+    Severity.CRITICAL,
+    Category.TOOL_POISONING,
+    "Remove the post-install command. If setup is genuinely required, "
+    "document it for the user rather than auto-running it.",
+    sarif_name="SkillPostInstallCommand",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SKILL-01"],
+)
+
+_r(
+    "AAK-SKILL-002",
+    "SKILL.md uses unicode steganography in tool descriptions",
+    "A SKILL.md body contains hidden characters (bidi override, zero-width, "
+    "tag-unicode) that render differently than they parse. This hides "
+    "malicious tool-use instructions from human review.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Remove U+200B-U+200F, U+202A-U+202E, U+E0000-U+E007F and similar "
+    "invisible / bidi characters from skill text.",
+    sarif_name="SkillUnicodeSteg",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SKILL-02"],
+)
+
+_r(
+    "AAK-SKILL-003",
+    "SKILL.md embeds data-exfiltration primitives",
+    "A SKILL.md references outbound HTTP tools (fetch/curl/request) combined "
+    "with instructions to send local data (files, environment, credentials).",
+    Severity.CRITICAL,
+    Category.TOOL_POISONING,
+    "Remove the exfil instruction. Skills that genuinely need outbound HTTP "
+    "should declare it explicitly with a documented purpose.",
+    sarif_name="SkillExfilPrimitive",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SKILL-03"],
+)
+
+_r(
+    "AAK-SKILL-004",
+    "SKILL.md description hijacks a trusted skill name",
+    "A skill's frontmatter name or description mimics a well-known skill "
+    "('pdf', 'docx', 'frontend-design') but the body declares unrelated / "
+    "hostile instructions. Description hijacking is the ToxicSkills 2026 "
+    "signature pattern.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Rename the skill to match its actual behavior. Cross-reference the name "
+    "against the first-party skill directory.",
+    sarif_name="SkillNameHijack",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SKILL-04"],
+)
+
+_r(
+    "AAK-SKILL-005",
+    "SKILL.md frontmatter contains prompt-injection triggers",
+    "A SKILL.md frontmatter or YAML header embeds phrases targeted at the "
+    "loading model ('ignore previous', 'you are now', 'system:'). These are "
+    "prompt-injection probes rather than legitimate skill metadata.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Remove the injection trigger. Skill frontmatter should only contain "
+    "name, description, tags, and similar metadata.",
+    sarif_name="SkillFrontmatterInjection",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-SKILL-05"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

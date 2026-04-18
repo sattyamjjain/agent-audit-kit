@@ -1,0 +1,2 @@
+langchain>=1.2.22
+langchain-core>=1.2.22

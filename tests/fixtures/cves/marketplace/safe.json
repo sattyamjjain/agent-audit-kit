@@ -1,0 +1,16 @@
+{
+  "name": "clean-marketplace",
+  "plugins": [
+    {
+      "name": "company-internal-helpers",
+      "description": "internal plugin with signed source",
+      "source": {
+        "repo": "https://github.com/mycompany/helpers",
+        "ref": "a1b2c3d4e5f67890a1b2c3d4e5f67890a1b2c3d4"
+      },
+      "permissions": ["logs:read"],
+      "sigstore": "sigstore-bundle-here",
+      "sha256": "f00ba4f00ba4f00ba4f00ba4f00ba4f00ba4f00ba4f00ba4f00ba4f00ba4f00b"
+    }
+  ]
+}

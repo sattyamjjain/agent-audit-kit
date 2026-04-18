@@ -53,3 +53,8 @@ packages = ["agent_audit_kit"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+# CVE fixtures contain intentionally broken / vulnerable code; they are
+# scanner INPUT, not library code, so lint them loosely.
+extend-exclude = ["tests/fixtures/cves"]

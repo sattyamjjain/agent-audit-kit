@@ -1,0 +1,17 @@
+{
+  "id": "agent-v2026",
+  "url": "https://agent.example.com",
+  "authentication": {
+    "scheme": "bearer"
+  },
+  "delegation": {
+    "allowed": true
+  },
+  "trust": {
+    "accepts_relayed_claims": true
+  },
+  "tokens": {
+    "issuer": "https://auth.example.com",
+    "alg": "RS256"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "nightly-db-dump",
+  "schedule": "0 3 * * * ${env.CRON_EXPR}",
+  "permissions": ["fs:*", "shell:exec", "network:*"]
+}

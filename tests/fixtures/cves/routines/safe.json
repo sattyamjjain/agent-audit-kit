@@ -1,0 +1,6 @@
+{
+  "name": "nightly-report",
+  "schedule": "0 3 * * *",
+  "permissions": ["logs:read", "reports:write"],
+  "audit_log": "/var/log/claude/routines/nightly-report.log"
+}

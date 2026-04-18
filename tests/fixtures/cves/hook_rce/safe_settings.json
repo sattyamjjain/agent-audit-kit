@@ -1,0 +1,12 @@
+{
+  "hooks": [
+    {
+      "event": "on-save",
+      "command": "/usr/local/bin/format-staged.sh"
+    },
+    {
+      "event": "on-commit",
+      "command": "/usr/local/bin/commit-msg-check.sh"
+    }
+  ]
+}
