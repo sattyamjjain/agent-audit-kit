@@ -8,9 +8,11 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-77-red.svg" alt="Rules: 77"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-124-red.svg" alt="Rules: 124"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
+  <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
+  <a href="CHANGELOG.cves.md"><img src="https://img.shields.io/badge/CVE%E2%86%92rule_SLA-48h-orange.svg" alt="48h CVE-to-rule SLA"></a>
 </p>
 
 ---
@@ -21,16 +23,21 @@
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
-- **77 rules** across 11 security categories
-- **13 scanner modules** including Python/TypeScript/Rust taint analysis
-- **9 CLI commands**: scan, discover, pin, verify, fix, score, update, proxy, kill
+- **124 rules** across 11 security categories, covering the 2026 CVE wave
+- **25 scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **14 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
-- **Compliance mapping**: EU AI Act, SOC 2, ISO 27001, HIPAA, NIST AI RMF
-- **Zero cloud dependencies** — runs fully offline, zero network calls in the scan path
+- **Compliance mapping**: EU AI Act Art. 15 + 55, SOC 2, ISO 27001 + 42001, HIPAA, NIST AI RMF — PDF reports via `agent-audit-kit report --format pdf`
+- **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`)
+- **MCP Security Index**: weekly public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
+- **AAK Response SLA**: rule coverage within **48 hours** of any disclosed MCP CVE — ledger in [CHANGELOG.cves.md](CHANGELOG.cves.md)
+- **Zero cloud dependencies** — runs fully offline, zero network calls in the default scan path
 
 ### Why This Exists
 
-In early 2026, [30 MCP CVEs dropped in 60 days](https://www.heyuan110.com/posts/ai/2026-03-10-mcp-security-2026/). [CVE-2026-21852](https://nvd.nist.gov/vuln/detail/CVE-2026-21852) demonstrated source code exfiltration via a single Claude Code config flag. [CVE-2026-32211](https://dev.to/michael_onyekwere/cve-2026-32211-what-the-azure-mcp-server-flaw-means-for-your-agent-security-14db) (CVSS 9.1) hit Azure MCP servers. Meanwhile, every AI coding assistant adopted MCP with zero security tooling.
+In early 2026, [30 MCP CVEs dropped in 60 days](https://www.heyuan110.com/posts/ai/2026-03-10-mcp-security-2026/). [CVE-2026-33032](https://nvd.nist.gov/vuln/detail/CVE-2026-33032) (Nginx-UI MCP auth bypass, CVSS 9.8) exposed a shared-handler pattern that several other servers have. [CVE-2025-59536](https://nvd.nist.gov/vuln/detail/CVE-2025-59536) turned a project-local Claude Code hook into RCE. [CVE-2026-34070](https://nvd.nist.gov/vuln/detail/CVE-2026-34070) hit LangChain's `load_prompt()` with absolute-path and `..` traversal. [CVE-2026-21852](https://nvd.nist.gov/vuln/detail/CVE-2026-21852) demonstrated source-code exfiltration via a single Claude Code config flag. A 2,614-server survey found **82% of public MCP servers** had path-traversal issues. Meanwhile, every AI coding assistant adopted MCP with sparse security tooling.
+
+AgentAuditKit is the deterministic, auditor-ready OSS scanner that closes the gap.
 
 ---
 
@@ -52,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.2.0
+      - uses: sattyamjjain/agent-audit-kit@v0.3.0
         with:
           fail-on: high
 ```
@@ -72,7 +79,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.2.0
+    rev: v0.3.0
     hooks:
       - id: agent-audit-kit
 ```
@@ -96,19 +103,19 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 
 | Category | Rules | What It Detects |
 |----------|:-----:|-----------------|
-| **MCP Configuration** | 10 | Remote servers without auth, shell injection, hardcoded secrets, headersHelper abuse, SSRF, filesystem root access |
-| **Hook Injection** | 9 | Network-capable hooks, credential exfiltration, privilege escalation, obfuscated payloads, source file references |
+| **MCP Configuration** | 33 | Missing auth middleware (CVE-2026-33032 class), empty IP allowlists, wildcard CORS, path traversal in resource handlers, SSRF (CWE-918), OAuth 2.1 misconfig (PKCE/S256/DPoP), Tasks primitive leakage (SEP-1686), shell injection |
+| **Tool Poisoning** | 14 | Invisible Unicode / bidi, skill frontmatter injection, SKILL.md post-install commands, data-exfil primitives, skill name hijacking, cross-tool references, rug-pull (SHA-256 pinning) |
+| **Hook Injection** | 12 | Hook RCE (CVE-2025-59536 class), `shell=True` + interpolation, pre-trust execution, network-capable hooks, credential exfiltration |
+| **Supply Chain** | 12 | Vulnerable LangChain versions (CVE-2026-34070, CVE-2025-68664), marketplace.json signatures / permissions / typosquat / mutable refs, unpinned packages, dangerous install scripts |
+| **A2A Protocol** | 12 | Missing mutual auth, unbounded delegation, transitive trust, replay protection, schema confusion, HTTP endpoints, JWT lifetime/validation, impersonation |
+| **Secret Exposure** | 9 | Anthropic/OpenAI/AWS/GitHub/GitLab/GCP keys, Shannon-entropy detection, `.env` leaks, private-key files |
+| **Agent Config** | 9 | Routines permission escalation + schedule injection + audit-log gaps, AGENTS.md/CLAUDE.md/.cursorrules hijacking, hidden Unicode, encoded payloads, internal scanner-fail signal |
+| **Taint Analysis** | 9 | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST), `load_prompt()` user-path reachability |
 | **Trust Boundaries** | 7 | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists |
-| **Secret Exposure** | 9 | Anthropic/OpenAI/AWS/GitHub/GitLab/GCP keys, Shannon entropy detection, .env leaks, private key files |
-| **Supply Chain** | 6 | Unpinned packages, known vulnerable deps, dangerous install scripts, missing lockfiles, MCP-specific CVEs |
-| **Agent Config** | 5 | AGENTS.md/CLAUDE.md/.cursorrules hijacking, hidden Unicode, credential references, encoded payloads |
-| **Tool Poisoning** | 9 | Invisible Unicode, prompt injection, cross-tool references, rug pull detection (SHA-256 pinning) |
-| **Taint Analysis** | 8 | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST) |
 | **Transport Security** | 4 | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings |
-| **A2A Protocol** | 7 | Agent Card auth, internal capabilities, missing schemas, HTTP endpoints, JWT lifetime/validation, impersonation |
 | **Legal Compliance** | 3 | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages |
 
-**77 rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**124 rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### Agent Platforms Scanned
 
@@ -118,9 +125,11 @@ Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Con
 
 | Language | Scanning Method | What It Finds |
 |----------|----------------|---------------|
-| **Python** | AST analysis | `@tool` param flows to dangerous sinks (eval, subprocess, SQL, file I/O, HTTP) |
-| **TypeScript** | Regex-based | `eval()`, `child_process.exec`, `fs.writeFileSync` in MCP server files |
-| **Rust** | Regex-based | `Command::new(format!())`, `unsafe` blocks, SQL macros without parameterization |
+| **Python** | AST analysis (stdlib `ast`) | `@tool` param flows to dangerous sinks (eval, subprocess, SQL, file I/O, HTTP); LangChain `load_prompt()` user-path reachability |
+| **TypeScript / JS** | Regex pattern scan | `eval()`, `child_process.exec`, `fs.writeFileSync`, SSRF patterns, OAuth token passthrough in MCP server files |
+| **Rust** | Regex pattern scan | `Command::new(format!())`, `unsafe` blocks, SQL macros without parameterization |
+
+_Note: Phase 2 scanners (`ssrf_patterns`, `oauth_misconfig`, `mcp_auth_patterns`, `hook_rce`, `skill_poisoning`, `mcp_tasks`) are regex-based; a tree-sitter AST migration is tracked in [issue #22](https://github.com/sattyamjjain/agent-audit-kit/issues/22)._
 
 ---
 
@@ -140,6 +149,11 @@ Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Con
 | `agent-audit-kit update` | Update vulnerability database |
 | `agent-audit-kit proxy --port 8765 --target URL` | Start MCP interception proxy |
 | `agent-audit-kit kill` | Terminate running proxy |
+| `agent-audit-kit export-rules --out rules.json` | Write deterministic rule bundle + SHA-256 (Sigstore-signable) |
+| `agent-audit-kit verify-bundle rules.json [--signature sig]` | Verify bundle digest or Sigstore signature |
+| `agent-audit-kit sbom . --format {cyclonedx,spdx}` | Emit CycloneDX 1.5 / SPDX 2.3 SBOM for MCP deps |
+| `agent-audit-kit report . --framework FRAMEWORK --format pdf` | Auditor-ready compliance report (EU AI Act / SOC 2 / ISO 27001 / HIPAA / NIST AI RMF) |
+| `agent-audit-kit install-precommit` | Add the hook to `.pre-commit-config.yaml` |
 
 ### Scan Flags
 
@@ -161,6 +175,7 @@ Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Con
 | `--verify-secrets` | | Probe APIs to check if leaked keys are live (opt-in) |
 | `--diff BASE_REF` | | Only report findings in files changed since BASE_REF |
 | `--llm-scan` | | Local LLM semantic analysis via Ollama (opt-in) |
+| `--strict-loading` | | Fail loudly if any optional scanner module can't be imported (default: silently skip) |
 | `--verbose` / `-v` | | Detailed scan progress |
 
 ### Exit Codes
@@ -284,19 +299,25 @@ Detects: tool definitions changed (AAK-RUGPULL-001), new tools added (AAK-RUGPUL
 
 ## Comparison
 
+See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Verifiable claims only.
+
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent Scan | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|
-| Detection rules | **77** | ~10 | ~30 | ~20 |
+| Detection rules | **124** | ~10 | ~30 | ~20 |
 | Agent platforms | **13** | 1 | 3 | 1 |
 | GitHub Action | **Yes** | No | Yes | No |
 | Tool poisoning + pinning | **Yes** | Yes | Yes | No |
-| Taint analysis (Python/TS/Rust) | **Yes** | No | Partial | No |
+| Python AST taint + TS/Rust pattern | **Yes** | No | Partial | No |
 | OWASP Agentic 10/10 | **Yes** | No | Partial | Yes |
 | OWASP MCP 10/10 | **Yes** | No | No | No |
-| Compliance frameworks | **5** | 0 | 0 | 0 |
+| Auditor-ready PDF compliance | **5 frameworks** | 0 | 0 | 0 |
+| Sigstore-signed rule bundle | **Yes** | No | No | No |
+| CycloneDX + SPDX SBOM output | **Yes** | No | No | No |
+| Public 48h CVE-to-rule SLA | **Yes** | No | No | No |
+| Public grade leaderboard | **Yes** (MCP Security Index) | No | No | No |
 | Auto-fix | **Yes** | No | No | No |
 | Secret verification | **Yes** | No | No | No |
-| A2A protocol scanning | **Yes** | No | No | No |
+| A2A protocol scanning | **12 rules** | No | No | No |
 | Offline / zero cloud | **Yes** | No | No | Yes |
 | Runtime proxy | **Yes** | No | No | Yes |
 | Open source | **MIT** | Partial | No | MIT |
@@ -315,15 +336,46 @@ Provides inline diagnostics on file save with quick-fix suggestions.
 
 ---
 
+## MCP Security Index
+
+Public leaderboard of MCP servers we scan weekly:
+**[sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/)**
+
+- Per-server grade cards (A–F)
+- Weekly snapshots in `data/history.json`
+- **90-day coordinated disclosure** before anything lands on a public card — see [`docs/disclosure-policy.md`](docs/disclosure-policy.md)
+- Maintainer-fix earlier gets published the day the fix lands, with credit
+
+## AAK Response SLA
+
+We publicly commit to shipping rule coverage within **48 hours** of any disclosed MCP CVE. The ledger is [`CHANGELOG.cves.md`](CHANGELOG.cves.md) and a [GitHub Action](.github/workflows/cve-watcher.yml) watches NVD's MCP keyword feed every 6 hours.
+
+## Supply chain
+
+Every `v*` release publishes:
+
+- **Wheel + sdist** on PyPI via OIDC Trusted Publisher
+- **Docker image** on GHCR (`ghcr.io/sattyamjjain/agent-audit-kit:<tag>`) with SLSA provenance attestation
+- **Sigstore keyless-signed rule bundle** (`rules.json` + `rules.json.sha256`)
+- **CycloneDX + SPDX SBOM** (`sbom.cdx.json`, `sbom.spdx.json`)
+
+Verify a bundle:
+
+```bash
+agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
+```
+
+---
+
 ## Contributing
 
 ```bash
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # 441 tests, 90% coverage
-ruff check agent_audit_kit/        # Lint
-mypy agent_audit_kit/ --ignore-missing-imports  # Type check
+pytest -v                          # 504 tests
+ruff check .                       # Lint
+mypy agent_audit_kit/              # Type check (52 source files, 0 errors)
 agent-audit-kit scan .             # Self-scan
 ```
 
