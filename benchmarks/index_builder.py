@@ -134,43 +134,103 @@ def score_to_grade(score: int) -> str:
     return "F"
 
 
+_SEVERITY_PENALTY = {"critical": 20, "high": 10, "medium": 5, "low": 2, "info": 0}
+
+
+def _score_from_severity_counts(counts: dict[str, int]) -> int:
+    total = sum(counts.get(sev, 0) * pen for sev, pen in _SEVERITY_PENALTY.items())
+    return max(0, 100 - total)
+
+
 def cards_from_results(results_path: Path) -> list[ServerCard]:
+    """Load crawler output and produce ServerCard entries.
+
+    Accepts either:
+    (a) the v0.2.x `benchmarks/crawler.py` schema (configs list with
+        findings_by_severity per config), OR
+    (b) a flat list of per-server dicts (tests, third-party tools).
+
+    Disclosure state:
+    - no-findings if the scan had zero findings,
+    - embargoed if the entry has embargoed=true (still inside the
+      90-day window from docs/disclosure-policy.md),
+    - public otherwise.
+    """
     raw = json.loads(results_path.read_text(encoding="utf-8"))
     cards: list[ServerCard] = []
-    entries = raw if isinstance(raw, list) else raw.get("results") or []
     now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-    for entry in entries:
-        repo = entry.get("repo") or entry.get("repository") or ""
-        slug = (entry.get("slug") or repo or "unknown").replace("/", "__").lower()
-        name = entry.get("name") or repo or slug
-        score = int(entry.get("score") or 0)
-        critical = int(entry.get("critical") or 0)
-        high = int(entry.get("high") or 0)
-        medium = int(entry.get("medium") or 0)
-        low = int(entry.get("low") or 0)
-        has_findings = critical + high + medium + low > 0
-        disclosure_state = (
-            "no-findings"
-            if not has_findings
-            else ("embargoed" if entry.get("embargoed") else "public")
-        )
-        cards.append(
-            ServerCard(
-                slug=slug,
-                name=name,
-                repo_url=f"https://github.com/{repo}" if repo else "",
-                grade=score_to_grade(score),
-                score=score,
-                critical=critical,
-                high=high,
-                medium=medium,
-                low=low,
-                last_scanned=entry.get("last_scanned") or now,
-                disclosure_state=disclosure_state,
-            )
-        )
+
+    if isinstance(raw, dict) and "configs" in raw:
+        crawl_ts = raw.get("crawl_timestamp") or now
+        entries = raw["configs"]
+        for entry in entries:
+            if entry.get("scan_error"):
+                continue
+            repo = entry.get("source_repo") or ""
+            counts = entry.get("findings_by_severity") or {}
+            cards.append(_card_from_crawler_entry(entry, repo, counts, crawl_ts))
+    else:
+        entries = raw if isinstance(raw, list) else raw.get("results") or []
+        for entry in entries:
+            repo = entry.get("repo") or entry.get("repository") or ""
+            counts = {
+                "critical": entry.get("critical") or 0,
+                "high": entry.get("high") or 0,
+                "medium": entry.get("medium") or 0,
+                "low": entry.get("low") or 0,
+            }
+            score = int(entry.get("score")) if entry.get("score") is not None else _score_from_severity_counts(counts)
+            last_scanned = entry.get("last_scanned") or now
+            cards.append(_build_card(repo, entry.get("name") or repo, score, counts, last_scanned, bool(entry.get("embargoed"))))
+
     cards.sort(key=lambda c: (-c.score, c.name))
     return cards
+
+
+def _card_from_crawler_entry(
+    entry: dict,
+    repo: str,
+    counts: dict[str, int],
+    last_scanned: str,
+) -> ServerCard:
+    # Default: embargo brand-new findings per the 90-day disclosure policy.
+    has_findings = sum(counts.values()) > 0
+    embargoed = entry.get("embargoed", has_findings)
+    score = _score_from_severity_counts(counts)
+    # Use source_path to disambiguate multiple configs from the same repo.
+    path_hint = entry.get("source_path", "")
+    name = f"{repo}/{path_hint}" if path_hint and path_hint != ".mcp.json" else repo
+    return _build_card(repo, name, score, counts, last_scanned, embargoed)
+
+
+def _build_card(
+    repo: str,
+    name: str,
+    score: int,
+    counts: dict[str, int],
+    last_scanned: str,
+    embargoed: bool,
+) -> ServerCard:
+    slug = (repo or name or "unknown").replace("/", "__").replace(".", "_").lower()
+    has_findings = sum(counts.values()) > 0
+    disclosure_state = (
+        "no-findings"
+        if not has_findings
+        else ("embargoed" if embargoed else "public")
+    )
+    return ServerCard(
+        slug=slug,
+        name=name or slug,
+        repo_url=f"https://github.com/{repo}" if repo else "",
+        grade=score_to_grade(score),
+        score=score,
+        critical=int(counts.get("critical", 0)),
+        high=int(counts.get("high", 0)),
+        medium=int(counts.get("medium", 0)),
+        low=int(counts.get("low", 0)),
+        last_scanned=last_scanned,
+        disclosure_state=disclosure_state,
+    )
 
 
 def write_site(cards: list[ServerCard], site_dir: Path) -> None:

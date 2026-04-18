@@ -44,3 +44,4 @@ Thumbs.db
 # Benchmark data (downloaded configs)
 benchmarks/data/
 benchmarks/results.json
+benchmarks/site/
