@@ -507,6 +507,33 @@ def kill_cmd() -> None:
         click.echo("No running proxy found.")
 
 
+@cli.command("install-precommit")
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+def install_precommit_cmd(path: str) -> None:
+    """Add an agent-audit-kit entry to the project's .pre-commit-config.yaml."""
+    project = Path(path)
+    cfg_path = project / ".pre-commit-config.yaml"
+    snippet = (
+        "  - repo: https://github.com/sattyamjjain/agent-audit-kit\n"
+        "    rev: v0.3.0\n"
+        "    hooks:\n"
+        "      - id: agent-audit-kit\n"
+    )
+    if cfg_path.is_file():
+        existing = cfg_path.read_text(encoding="utf-8")
+        if "agent-audit-kit" in existing:
+            click.echo("agent-audit-kit hook already configured in .pre-commit-config.yaml")
+            return
+        if "repos:" in existing:
+            cfg_path.write_text(existing.rstrip() + "\n" + snippet, encoding="utf-8")
+        else:
+            cfg_path.write_text("repos:\n" + snippet, encoding="utf-8")
+    else:
+        cfg_path.write_text("repos:\n" + snippet, encoding="utf-8")
+    click.echo(f"added agent-audit-kit pre-commit hook to {cfg_path.relative_to(project)}")
+    click.echo("next: run `pre-commit install`")
+
+
 @cli.command("export-rules")
 @click.option("--out", "-o", "output_file", type=click.Path(), required=True,
               help="Path to write the signable rule bundle JSON.")

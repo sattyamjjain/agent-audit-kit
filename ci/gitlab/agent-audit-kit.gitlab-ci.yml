@@ -1,0 +1,46 @@
+# agent-audit-kit for GitLab CI
+# One-line include:
+#
+#   include:
+#     - remote: 'https://raw.githubusercontent.com/sattyamjjain/agent-audit-kit/main/ci/gitlab/agent-audit-kit.gitlab-ci.yml'
+#
+# This defines an `agent-audit-kit` job you can extend or override.
+#
+#   my-scan:
+#     extends: .agent-audit-kit
+#     variables:
+#       AAK_FAIL_ON: "critical"
+
+stages:
+  - test
+
+.agent-audit-kit:
+  stage: test
+  image: python:3.11-slim
+  variables:
+    AAK_VERSION: "0.3.0"
+    AAK_FAIL_ON: "high"
+    AAK_SEVERITY: "low"
+  script:
+    - pip install --no-cache-dir "agent-audit-kit==${AAK_VERSION}"
+    - agent-audit-kit scan . --format sarif --severity "${AAK_SEVERITY}" --fail-on "${AAK_FAIL_ON}" --output agent-audit-results.sarif
+  artifacts:
+    when: always
+    reports:
+      sast: agent-audit-results.sarif
+    paths:
+      - agent-audit-results.sarif
+    expire_in: 30 days
+  rules:
+    - changes:
+        - "**/*.mcp.json"
+        - "**/mcp*.json"
+        - ".claude/**/*"
+        - ".claude-plugin/**/*"
+        - "package.json"
+        - "pyproject.toml"
+        - "requirements*.txt"
+        - "**/SKILL.md"
+
+agent-audit-kit:
+  extends: .agent-audit-kit

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from agent_audit_kit import __version__
 from agent_audit_kit.models import Finding, ScanResult, Severity
 
 
@@ -28,7 +29,7 @@ def format_results(result: ScanResult, min_severity: Severity = Severity.LOW) ->
     filtered = result.findings_at_or_above(min_severity)
     report: dict = {
         "tool": "AgentAuditKit",
-        "version": "0.2.0",
+        "version": __version__,
         "summary": {
             "critical": result.critical_count,
             "high": result.high_count,
