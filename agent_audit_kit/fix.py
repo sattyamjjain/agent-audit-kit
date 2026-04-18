@@ -115,7 +115,117 @@ def _apply_fix(
         return _fix_missing_allowlist(full_path, dry_run)
     elif rule_id == "AAK-SECRET-006":
         return _fix_env_gitignore(project_root, dry_run)
+    elif rule_id in ("AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"):
+        return _fix_langchain_version(full_path, rule_id, dry_run)
     return None
+
+
+# ---------------------------------------------------------------------------
+# CVE auto-remediations (--cve flag)
+# ---------------------------------------------------------------------------
+
+_CVE_FIXABLE_RULES: frozenset[str] = frozenset({
+    "AAK-LANGCHAIN-001",  # CVE-2026-34070 — bump langchain-core >=1.2.22
+    "AAK-LANGCHAIN-003",  # CVE-2025-68664 — bump langchain >=0.3.14
+})
+
+_LANGCHAIN_MIN_VERSIONS = {
+    "AAK-LANGCHAIN-001": ("1.2.22", r"langchain(?:-core|-community)?"),
+    "AAK-LANGCHAIN-003": ("0.3.14", r"langchain(?:js)?"),
+}
+
+
+def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
+    """Apply the `--cve` subset of auto-fixes.
+
+    Scope is deliberately narrow: only rules where the remediation is
+    mechanical (version bump in a lockfile or manifest). Any rule that
+    needs a code change — auth-bypass handlers, SSRF hardening, OAuth
+    scope reshuffles — is refused here, because false confidence kills
+    scanners (ROADMAP §5).
+
+    Args:
+        project_root: project to fix.
+        dry_run: if True, report proposed fixes without modifying files.
+    """
+    result = run_scan(project_root=project_root)
+    fixes: list[FixAction] = []
+    for finding in result.findings:
+        if finding.rule_id not in _CVE_FIXABLE_RULES:
+            continue
+        fix = _apply_fix(project_root, finding.rule_id, finding.file_path, dry_run)
+        if fix:
+            fixes.append(fix)
+    if not dry_run and fixes:
+        _write_fix_log(project_root, fixes)
+    return fixes
+
+
+def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction:
+    """Bump a vulnerable langchain dependency to the patched version.
+
+    Handles both requirements.txt / requirements-*.txt (line-based) and
+    package.json (JSON dependencies map). No other manifest formats are
+    auto-edited; poetry's pyproject.toml, uv.lock, and npm lockfiles
+    are intentionally out of scope because their locking semantics make
+    a naive text bump unsafe.
+    """
+    import re as _re
+
+    min_version, name_pattern = _LANGCHAIN_MIN_VERSIONS[rule_id]
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return FixAction(rule_id, str(path), "Unable to read file", False)
+
+    if path.name == "package.json":
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            return FixAction(rule_id, str(path), "package.json is not valid JSON", False)
+        bumped = 0
+        for section in ("dependencies", "devDependencies", "peerDependencies"):
+            deps = data.get(section)
+            if not isinstance(deps, dict):
+                continue
+            for dep_name in list(deps):
+                if _re.fullmatch(name_pattern, dep_name):
+                    deps[dep_name] = f">={min_version}"
+                    bumped += 1
+        if bumped == 0:
+            return FixAction(rule_id, str(path), "No matching langchain dep found", False)
+        if not dry_run:
+            path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        return FixAction(
+            rule_id,
+            str(path),
+            f"Bumped {bumped} langchain dep(s) to >={min_version} (package.json)",
+            not dry_run,
+        )
+
+    if path.name.endswith(".txt"):
+        pin_re = _re.compile(
+            rf"^(\s*)({name_pattern})\s*(?:==|>=|<=|<|>|~=|!=)?\s*[0-9][0-9a-zA-Z.\-_]*",
+            _re.MULTILINE,
+        )
+        new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
+        if count == 0:
+            return FixAction(rule_id, str(path), "No matching langchain pin", False)
+        if not dry_run:
+            path.write_text(new_text, encoding="utf-8")
+        return FixAction(
+            rule_id,
+            str(path),
+            f"Bumped {count} langchain pin(s) to >={min_version}",
+            not dry_run,
+        )
+
+    return FixAction(
+        rule_id,
+        str(path),
+        f"{path.name} is not a supported manifest for auto-bump",
+        False,
+    )
 
 
 def _fix_enable_all_mcp(path: Path, dry_run: bool) -> FixAction:

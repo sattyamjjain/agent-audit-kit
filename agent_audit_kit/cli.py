@@ -171,6 +171,19 @@ def cli(ctx: click.Context) -> None:
     default=False,
     help="Fail loudly if any optional scanner module cannot be imported. Default: silently skip.",
 )
+@click.option(
+    "--advisories",
+    "advisories_repo",
+    default=None,
+    help="Open private GitHub Security Advisories for each CRITICAL finding "
+         "against the given repo (owner/name). Requires 'gh' CLI auth.",
+)
+@click.option(
+    "--advisories-dry-run",
+    is_flag=True,
+    default=False,
+    help="With --advisories, preview the advisory payloads without creating them.",
+)
 def scan_cmd(
     path: str,
     output_format: str,
@@ -192,6 +205,8 @@ def scan_cmd(
     llm_scan: bool,
     llm_model: str,
     strict_loading: bool,
+    advisories_repo: str | None,
+    advisories_dry_run: bool,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
@@ -216,6 +231,8 @@ def scan_cmd(
             llm_scan=llm_scan,
             llm_model=llm_model,
             strict_loading=strict_loading,
+            advisories_repo=advisories_repo,
+            advisories_dry_run=advisories_dry_run,
         )
     except Exception as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -244,6 +261,8 @@ def _run_scan(
     llm_scan: bool,
     llm_model: str,
     strict_loading: bool,
+    advisories_repo: str | None = None,
+    advisories_dry_run: bool = False,
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
@@ -371,6 +390,24 @@ def _run_scan(
     else:
         click.echo(output)
 
+    # --- Optional: open GitHub Security Advisories for CRITICAL findings ---
+    if advisories_repo:
+        from agent_audit_kit.advisories import open_advisories
+
+        adv_results = open_advisories(
+            result.findings,
+            advisories_repo,
+            dry_run=advisories_dry_run,
+        )
+        if adv_results:
+            prefix = "Would open" if advisories_dry_run else "Opened"
+            click.echo(f"{prefix} {len(adv_results)} security advisory/ies:", err=True)
+            for r in adv_results:
+                if r.created or advisories_dry_run:
+                    click.echo(f"  {r.rule_id} -> {r.url}", err=True)
+                else:
+                    click.echo(f"  {r.rule_id} FAILED: {r.error}", err=True)
+
     # --- Fail-on threshold check ---
     if fail_on != "none":
         threshold_severity = SEVERITY_MAP[fail_on]
@@ -442,17 +479,30 @@ def verify_cmd(path: str) -> None:
 @cli.command("fix")
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option("--dry-run", is_flag=True, default=False, help="Preview fixes without applying.")
-def fix_cmd(path: str, dry_run: bool) -> None:
+@click.option(
+    "--cve",
+    "cve_only",
+    is_flag=True,
+    default=False,
+    help="Only run CVE-targeted fixes (safe subset: dependency version bumps for known CVEs).",
+)
+def fix_cmd(path: str, dry_run: bool, cve_only: bool) -> None:
     """Auto-fix known security issues."""
-    from agent_audit_kit.fix import run_fixes
+    from agent_audit_kit.fix import run_cve_fixes, run_fixes
 
     project_root = Path(path)
-    fixes = run_fixes(project_root, dry_run=dry_run)
+    fixes = (
+        run_cve_fixes(project_root, dry_run=dry_run)
+        if cve_only
+        else run_fixes(project_root, dry_run=dry_run)
+    )
     if not fixes:
-        click.echo("No auto-fixable issues found.")
+        scope = "CVE-targeted " if cve_only else ""
+        click.echo(f"No {scope}auto-fixable issues found.")
         return
     label = "Would fix" if dry_run else "Fixed"
-    click.echo(f"{label} {len(fixes)} issue(s):")
+    scope_label = " (CVE mode)" if cve_only else ""
+    click.echo(f"{label}{scope_label} {len(fixes)} issue(s):")
     for fix in fixes:
         click.echo(f"  {fix.rule_id}: {fix.description}")
 
@@ -520,6 +570,31 @@ def kill_cmd() -> None:
             click.echo("No running proxy found.")
     else:
         click.echo("No running proxy found.")
+
+
+@cli.command("watch")
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+@click.option("--interval", "interval_seconds", type=int, default=300,
+              help="Seconds between checks (default 300 = 5 minutes).")
+@click.option("--webhook", "webhook_url", default=None,
+              help="HTTP endpoint to POST a Slack-shaped JSON when drift is detected. "
+                   "Falls back to $AAK_WEBHOOK_URL.")
+@click.option("--once", is_flag=True, default=False,
+              help="Run a single check and exit (useful for cron/CI).")
+def watch_cmd(path: str, interval_seconds: int, webhook_url: str | None, once: bool) -> None:
+    """Continuously monitor pinned tool surface for drift (Ctrl-C to stop)."""
+    from agent_audit_kit.watch import run_watch
+
+    result = run_watch(
+        Path(path),
+        interval_seconds=interval_seconds,
+        webhook_url=webhook_url,
+        max_iterations=1 if once else None,
+    )
+    click.echo(
+        f"watch: exited after {result.iterations} iteration(s), {result.drift_events} drift event(s).",
+        err=True,
+    )
 
 
 @cli.command("install-precommit")

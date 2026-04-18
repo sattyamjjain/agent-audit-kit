@@ -1612,6 +1612,7 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SUPPLY-01"],
+    auto_fixable=True,
 )
 
 _r(
@@ -1646,6 +1647,7 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-03"],
+    auto_fixable=True,
 )
 
 # ---------------------------------------------------------------------------
