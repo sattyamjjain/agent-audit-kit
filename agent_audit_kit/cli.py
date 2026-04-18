@@ -155,6 +155,12 @@ def cli(ctx: click.Context) -> None:
 @click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify if detected secrets are live (makes network calls).")
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
 @click.option("--llm-scan", is_flag=True, default=False, help="Use local LLM (Ollama) for semantic tool description analysis.")
+@click.option(
+    "--strict-loading",
+    is_flag=True,
+    default=False,
+    help="Fail loudly if any optional scanner module cannot be imported. Default: silently skip.",
+)
 def scan_cmd(
     path: str,
     output_format: str,
@@ -174,6 +180,7 @@ def scan_cmd(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    strict_loading: bool,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
@@ -196,6 +203,7 @@ def scan_cmd(
             verify_secrets=verify_secrets,
             diff_base=diff_base,
             llm_scan=llm_scan,
+            strict_loading=strict_loading,
         )
     except Exception as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -222,6 +230,7 @@ def _run_scan(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    strict_loading: bool,
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
@@ -288,6 +297,7 @@ def _run_scan(
         rules=parsed_rules,
         exclude_rules=parsed_excludes,
         verbose_callback=verbose_cb,
+        strict_loading=strict_loading,
     )
 
     # Diff-aware filtering
@@ -314,14 +324,8 @@ def _run_scan(
         except Exception as e:
             click.echo(f"LLM scan failed: {e}", err=True)
 
-    # Check tool pins (RUGPULL detection as part of scan)
-    try:
-        from agent_audit_kit.pinning import verify_pins
-
-        pin_findings = verify_pins(project_root)
-        result.findings.extend(pin_findings)
-    except Exception:
-        pass
+    # RUGPULL / pin-drift detection now lives in the scanners/pin_drift.py
+    # scanner and runs as part of run_scan() above.
 
     # Compute score
     if show_score or compliance or owasp_report:

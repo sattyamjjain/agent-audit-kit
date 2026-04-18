@@ -1173,6 +1173,24 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# Internal / meta rules (surfaced when the scanner itself has a problem)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-INTERNAL-SCANNER-FAIL",
+    "Scanner module raised an exception",
+    "A scanner module crashed during execution. The scan continued with the "
+    "remaining scanners, but results may be incomplete. This is always a bug "
+    "in agent-audit-kit itself; please file an issue with the evidence string.",
+    Severity.INFO,
+    Category.AGENT_CONFIG,
+    "File an issue at https://github.com/sattyamjjain/agent-audit-kit/issues "
+    "with the scanner name, exception class, and (if safe) the project shape.",
+    sarif_name="InternalScannerFail",
+)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
