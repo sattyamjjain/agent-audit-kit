@@ -43,6 +43,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),
     ("mcp_tasks", "MCP Tasks leakage", []),
+    ("india_pii", "India PII", []),
 ]
 
 

@@ -2027,6 +2027,106 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# India DPDP PII rule pack (AAK-INDIA-PII-001..006)
+#
+# References:
+#   - India Digital Personal Data Protection Act 2023 §8(4) "reasonable
+#     security safeguards"; §8(5) breach notification.
+#   - DPDP Rules 2023, Rule 5(1)(a) — technical and organizational
+#     measures to protect personal data.
+#   - UIDAI Aadhaar Act; RBI circulars on UPI/IFSC.
+#   - CWE-200 (Information Exposure), CWE-312 (Cleartext Storage of
+#     Sensitive Information).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-INDIA-PII-001",
+    "Aadhaar number in source / config",
+    "A 12-digit Aadhaar number passed the Verhoeff checksum and is "
+    "embedded in project text. Aadhaar is restricted under the UIDAI "
+    "Act and India DPDP §8(4). Storing in code is a reportable breach.",
+    Severity.CRITICAL,
+    Category.SECRET_EXPOSURE,
+    "Remove the Aadhaar number. If Aadhaar is genuinely needed, route it "
+    "through an encrypted vault (e.g. AWS KMS / Azure Key Vault) and never "
+    "log or commit it.",
+    sarif_name="IndiaAadhaarInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-INDIA-PII-002",
+    "PAN (Permanent Account Number) in source / config",
+    "A 10-char PAN (5 letters + 4 digits + 1 letter) was detected. "
+    "PAN is tax-linked personal data under DPDP §8(4).",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Remove the PAN. If needed for processing, tokenize it and store "
+    "tokens, not raw PANs.",
+    sarif_name="IndiaPanInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-INDIA-PII-003",
+    "UPI ID in source / config",
+    "A UPI VPA (<handle>@<psp>) was detected. UPI IDs are payment identifiers "
+    "regulated by NPCI and covered by DPDP §8(4).",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Remove the UPI ID. Accept UPI addresses as runtime input only.",
+    sarif_name="IndiaUpiInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-INDIA-PII-004",
+    "IFSC code in source / config",
+    "An IFSC code (4 letters + 0 + 6 alnum) was detected. IFSC is a "
+    "banking identifier; pairing it with an account number constitutes "
+    "DPDP §8(4) 'sensitive personal data'.",
+    Severity.MEDIUM,
+    Category.SECRET_EXPOSURE,
+    "Move IFSC codes out of source; look them up at runtime from RBI's "
+    "public IFSC directory.",
+    sarif_name="IndiaIfscInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-INDIA-PII-005",
+    "Indian mobile number in source / config",
+    "An Indian +91 mobile number (starting 6/7/8/9) was detected. Phone "
+    "numbers are personal data under DPDP §8(4).",
+    Severity.MEDIUM,
+    Category.SECRET_EXPOSURE,
+    "Remove the phone number. Never log raw phone numbers — hash them.",
+    sarif_name="IndiaPhoneInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-INDIA-PII-006",
+    "Indian vehicle registration in source / config",
+    "An Indian state-issued vehicle registration (e.g. 'MH 12 AB 1234') "
+    "was detected. Vehicle registrations are PII in combination with "
+    "driver records.",
+    Severity.LOW,
+    Category.SECRET_EXPOSURE,
+    "Remove the registration from source. If dealing with vehicle data, "
+    "anonymize before checking in.",
+    sarif_name="IndiaVehicleInCode",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

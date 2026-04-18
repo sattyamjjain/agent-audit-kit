@@ -1,0 +1,9 @@
+Non-Indian-PII identifiers (should NOT fire any India PII rule):
+
+us_ssn: 123-45-6789
+gbp_sort: 12-34-56
+eu_iban: DE89370400440532013000
+order_id: ord_12345678
+user_email: test@example.com
+# Random phone that isn't +91:
+phone_us: +1 415-555-0100

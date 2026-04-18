@@ -1,0 +1,8 @@
+Test user data committed in source:
+
+aadhaar: 2345 6789 7432   # Verhoeff-valid 12-digit
+pan: ABCDE1234F
+upi: testuser@oksbi
+ifsc: HDFC0001234
+phone: +91 9876543210
+vehicle: MH12 AB 1234

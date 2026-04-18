@@ -589,7 +589,17 @@ def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
 @click.option(
     "--framework",
     required=True,
-    type=click.Choice(["eu-ai-act", "soc2", "iso27001", "hipaa", "nist-ai-rmf"]),
+    type=click.Choice([
+        "eu-ai-act",
+        "eu-ai-act-art55",
+        "soc2",
+        "iso27001",
+        "iso42001",
+        "hipaa",
+        "nist-ai-rmf",
+        "singapore-agentic",
+        "india-dpdp",
+    ]),
     help="Compliance framework to format for.",
 )
 @click.option(
