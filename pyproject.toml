@@ -58,3 +58,8 @@ testpaths = ["tests"]
 # CVE fixtures contain intentionally broken / vulnerable code; they are
 # scanner INPUT, not library code, so lint them loosely.
 extend-exclude = ["tests/fixtures/cves"]
+
+[[tool.mypy.overrides]]
+# reportlab is used only in output/pdf_report.py; it has no py.typed marker.
+module = ["reportlab", "reportlab.*", "sigstore", "sigstore.*"]
+ignore_missing_imports = true

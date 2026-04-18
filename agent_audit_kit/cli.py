@@ -507,6 +507,95 @@ def kill_cmd() -> None:
         click.echo("No running proxy found.")
 
 
+@cli.command("export-rules")
+@click.option("--out", "-o", "output_file", type=click.Path(), required=True,
+              help="Path to write the signable rule bundle JSON.")
+def export_rules_cmd(output_file: str) -> None:
+    """Write a deterministic JSON bundle of every rule (for Sigstore signing)."""
+    from agent_audit_kit.bundle import write_bundle
+
+    digest = write_bundle(Path(output_file))
+    click.echo(f"wrote {output_file}")
+    click.echo(f"sha256={digest}")
+
+
+@cli.command("verify-bundle")
+@click.argument("bundle", type=click.Path(exists=True, dir_okay=False))
+@click.option("--signature", "-s", "sig_path", type=click.Path(exists=True, dir_okay=False),
+              default=None, help="Sigstore signature bundle.")
+def verify_bundle_cmd(bundle: str, sig_path: str | None) -> None:
+    """Verify a rule bundle's SHA-256 (optionally against a Sigstore signature)."""
+    from agent_audit_kit.bundle import verify_bundle
+
+    ok, message = verify_bundle(Path(bundle), Path(sig_path) if sig_path else None)
+    click.echo(message)
+    if not ok:
+        sys.exit(EXIT_ERROR)
+
+
+@cli.command("sbom")
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+@click.option(
+    "--format",
+    "sbom_format",
+    type=click.Choice(["cyclonedx", "spdx"]),
+    default="cyclonedx",
+    help="SBOM format.",
+)
+@click.option("--output", "-o", "output_file", type=click.Path(), default=None,
+              help="Write SBOM to file (defaults to stdout).")
+def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
+    """Emit a CycloneDX 1.5 or SPDX 2.3 SBOM for the project's MCP dependencies."""
+    from agent_audit_kit.output.sbom import emit_cyclonedx, emit_spdx
+
+    project = Path(path)
+    payload = emit_cyclonedx(project) if sbom_format == "cyclonedx" else emit_spdx(project)
+    if output_file:
+        Path(output_file).write_text(payload, encoding="utf-8")
+        click.echo(f"SBOM written to {output_file}", err=True)
+    else:
+        click.echo(payload)
+
+
+@cli.command("report")
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+@click.option(
+    "--framework",
+    required=True,
+    type=click.Choice(["eu-ai-act", "soc2", "iso27001", "hipaa", "nist-ai-rmf"]),
+    help="Compliance framework to format for.",
+)
+@click.option(
+    "--format",
+    "report_format",
+    type=click.Choice(["pdf", "text"]),
+    default="pdf",
+    help="Output format. 'pdf' requires reportlab; falls back to text when missing.",
+)
+@click.option("--output", "-o", "output_file", type=click.Path(), default=None)
+def report_cmd(path: str, framework: str, report_format: str, output_file: str | None) -> None:
+    """Produce an auditor-ready compliance report (EU AI Act Article 15 etc.)."""
+    from agent_audit_kit.output.pdf_report import emit_pdf, _text_report
+
+    project = Path(path)
+    result = run_scan(project_root=project)
+
+    if report_format == "pdf":
+        out = Path(output_file or f"aak-compliance-{framework}.pdf")
+        ok, msg = emit_pdf(result, framework, out)
+        click.echo(msg, err=True)
+        if not ok:
+            # Fallback text already written by emit_pdf; nothing else to do.
+            return
+    else:
+        text = _text_report(result, framework)
+        if output_file:
+            Path(output_file).write_text(text, encoding="utf-8")
+            click.echo(f"wrote {output_file}", err=True)
+        else:
+            click.echo(text)
+
+
 # Backward compatibility: allow `agent-audit-kit .` without `scan` subcommand
 main = cli
 
