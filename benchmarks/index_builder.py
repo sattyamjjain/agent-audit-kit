@@ -27,7 +27,8 @@ import datetime as dt
 import html
 import json
 import shutil
-from dataclasses import dataclass, asdict
+from collections import Counter
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 
@@ -44,6 +45,13 @@ class ServerCard:
     low: int
     last_scanned: str
     disclosure_state: str  # "embargoed" | "public" | "no-findings"
+    # C11 — which rules fired for this server.
+    rule_hits: dict[str, int] = field(default_factory=dict)
+    # C16 — when findings were first seen (used to transition embargoed -> public after 90 days).
+    first_seen: str = ""
+
+
+EMBARGO_DAYS = 90
 
 
 _TEMPLATE_INDEX = """<!doctype html>
@@ -69,6 +77,10 @@ _TEMPLATE_INDEX = """<!doctype html>
 <a href="https://github.com/sattyamjjain/agent-audit-kit">agent-audit-kit</a>. Snapshot: {snapshot}.</p>
 <p class="muted">New vulnerabilities are reported privately first and surfaced here only after our 90-day
 <a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a> window.</p>
+
+<h2 style="margin-top:1.5rem;font-size:1.1rem">Week-over-week grade distribution</h2>
+{trend_svg}
+
 <table>
 <thead><tr><th>#</th><th>Server</th><th>Grade</th><th>Score</th><th>Criticals</th><th>Highs</th><th>Last scanned</th></tr></thead>
 <tbody>
@@ -82,6 +94,52 @@ Index code: <a href="https://github.com/sattyamjjain/agent-audit-kit/tree/main/b
 </p>
 </body></html>
 """
+
+
+def _render_trend_svg(history: list[dict]) -> str:
+    """C12 — week-over-week grade-distribution trend chart (pure SVG, no deps)."""
+    if len(history) < 2:
+        return '<p class="muted">Not enough snapshots yet for a trend chart (need ≥2).</p>'
+    weeks = history[-12:]  # last 12 weeks
+    width = 720
+    height = 180
+    pad_left = 50
+    pad_right = 15
+    pad_top = 20
+    pad_bottom = 30
+    grades = ["A", "B", "C", "D", "F"]
+    colors = {"A": "#16a34a", "B": "#65a30d", "C": "#ca8a04", "D": "#ea580c", "F": "#dc2626"}
+    max_total = max((w.get("total") or 1) for w in weeks)
+    n = len(weeks)
+    x_step = (width - pad_left - pad_right) / max(n - 1, 1)
+    y_scale = (height - pad_top - pad_bottom) / max_total
+
+    parts: list[str] = [f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="grade distribution trend">']
+    # axis
+    parts.append(f'<line x1="{pad_left}" y1="{height - pad_bottom}" x2="{width - pad_right}" y2="{height - pad_bottom}" stroke="#9ca3af" />')
+    parts.append(f'<line x1="{pad_left}" y1="{pad_top}" x2="{pad_left}" y2="{height - pad_bottom}" stroke="#9ca3af" />')
+    parts.append(f'<text x="5" y="{pad_top + 10}" font-size="9" fill="#374151">{max_total}</text>')
+    parts.append(f'<text x="5" y="{height - pad_bottom}" font-size="9" fill="#374151">0</text>')
+
+    for g in grades:
+        pts: list[str] = []
+        for i, week in enumerate(weeks):
+            count = (week.get("distribution") or {}).get(g, 0)
+            x = pad_left + i * x_step
+            y = (height - pad_bottom) - count * y_scale
+            pts.append(f"{x:.1f},{y:.1f}")
+        parts.append(f'<polyline fill="none" stroke="{colors[g]}" stroke-width="2" points="{" ".join(pts)}" />')
+        # end-label
+        last_week = weeks[-1]
+        count = (last_week.get("distribution") or {}).get(g, 0)
+        last_y = (height - pad_bottom) - count * y_scale
+        parts.append(f'<text x="{width - pad_right + 3}" y="{last_y + 4}" font-size="10" fill="{colors[g]}">{g}</text>')
+
+    # x-axis week ticks (first and last only, to avoid clutter)
+    parts.append(f'<text x="{pad_left}" y="{height - 10}" font-size="9" fill="#374151">{html.escape(weeks[0]["snapshot"].split("T")[0])}</text>')
+    parts.append(f'<text x="{width - pad_right - 55}" y="{height - 10}" font-size="9" fill="#374151">{html.escape(weeks[-1]["snapshot"].split("T")[0])}</text>')
+    parts.append("</svg>")
+    return "\n".join(parts)
 
 
 _TEMPLATE_ROW = """<tr>
@@ -104,6 +162,10 @@ _TEMPLATE_CARD = """<!doctype html>
   .grade-A {{ background: #16a34a; }} .grade-B {{ background: #65a30d; }} .grade-C {{ background: #ca8a04; }}
   .grade-D {{ background: #ea580c; }} .grade-F {{ background: #dc2626; }}
   .stat {{ display: inline-block; margin-right: 1rem; padding: 4px 10px; background: #f3f4f6; border-radius: 4px; }}
+  table.rules {{ width: 100%; border-collapse: collapse; margin-top: 1.5rem; font-size: .9rem; }}
+  table.rules th, table.rules td {{ padding: .4rem .6rem; border-bottom: 1px solid #e6e6e9; text-align: left; }}
+  table.rules th {{ background: #f6f6f8; }}
+  .muted {{ color: #6b7280; font-size: .85rem; }}
 </style>
 </head><body>
 <p><a href="../index.html">← index</a></p>
@@ -116,10 +178,26 @@ _TEMPLATE_CARD = """<!doctype html>
 <span class="stat">Medium {medium}</span>
 <span class="stat">Low {low}</span></p>
 <p>Last scanned {last_scanned}. Disclosure state: <strong>{disclosure_state}</strong>.</p>
-<p>Findings below the 90-day embargo window are omitted. See the
-<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
+
+{rule_hit_section}
+
+<p class="muted">Findings within the 90-day embargo window are shown as
+aggregate counts only; specific rule IDs + locations are held until
+embargo expiry.
+<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">Disclosure policy</a>.</p>
 </body></html>
 """
+
+
+_TEMPLATE_RULE_HIT_SECTION_EMBARGOED = """<p class="muted">Rule-level detail is embargoed until
+{embargo_expires}. Aggregate severity counts above.</p>"""
+
+
+_TEMPLATE_RULE_HIT_SECTION_PUBLIC = """<h3 style="margin-top:1.5rem">Rule hits</h3>
+<table class="rules">
+<thead><tr><th>Rule</th><th>Hits</th></tr></thead>
+<tbody>{rule_rows}</tbody>
+</table>"""
 
 
 def score_to_grade(score: int) -> str:
@@ -200,7 +278,18 @@ def _card_from_crawler_entry(
     # Use source_path to disambiguate multiple configs from the same repo.
     path_hint = entry.get("source_path", "")
     name = f"{repo}/{path_hint}" if path_hint and path_hint != ".mcp.json" else repo
-    return _build_card(repo, name, score, counts, last_scanned, embargoed)
+    rule_hits = dict(Counter(entry.get("rule_violations") or []))
+    first_seen = entry.get("first_seen", "")
+    return _build_card(
+        repo=repo,
+        name=name,
+        score=score,
+        counts=counts,
+        last_scanned=last_scanned,
+        embargoed=embargoed,
+        rule_hits=rule_hits,
+        first_seen=first_seen,
+    )
 
 
 def _build_card(
@@ -210,6 +299,8 @@ def _build_card(
     counts: dict[str, int],
     last_scanned: str,
     embargoed: bool,
+    rule_hits: dict[str, int] | None = None,
+    first_seen: str = "",
 ) -> ServerCard:
     slug = (repo or name or "unknown").replace("/", "__").replace(".", "_").lower()
     has_findings = sum(counts.values()) > 0
@@ -230,12 +321,86 @@ def _build_card(
         low=int(counts.get("low", 0)),
         last_scanned=last_scanned,
         disclosure_state=disclosure_state,
+        rule_hits=rule_hits or {},
+        first_seen=first_seen,
     )
+
+
+def _apply_embargo_transitions(
+    cards: list[ServerCard],
+    prior_index: dict[str, dict],
+    now: dt.datetime,
+) -> list[ServerCard]:
+    """C16 — auto-transition embargoed -> public after 90 days.
+
+    Reads the previous snapshot's index.json (keyed by slug) to find the
+    `first_seen` timestamp per card. Brand-new cards inherit today's
+    timestamp; existing cards preserve theirs. When now - first_seen >
+    EMBARGO_DAYS AND the card is embargoed, flip it to public.
+    """
+    today = now.isoformat(timespec="seconds")
+    for card in cards:
+        prior = prior_index.get(card.slug)
+        if prior and prior.get("first_seen"):
+            card.first_seen = prior["first_seen"]
+        else:
+            card.first_seen = today if card.disclosure_state == "embargoed" else ""
+
+        if card.disclosure_state != "embargoed" or not card.first_seen:
+            continue
+        try:
+            seen = dt.datetime.fromisoformat(card.first_seen)
+        except ValueError:
+            continue
+        if seen.tzinfo is None:
+            seen = seen.replace(tzinfo=dt.timezone.utc)
+        if (now - seen).days >= EMBARGO_DAYS:
+            card.disclosure_state = "public"
+    return cards
+
+
+def _load_prior_index(site_dir: Path) -> dict[str, dict]:
+    """Return {slug: dict} from the previous snapshot's index.json."""
+    prior = site_dir / "data" / "index.json"
+    if not prior.is_file():
+        return {}
+    try:
+        rows = json.loads(prior.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(rows, list):
+        return {}
+    return {row.get("slug"): row for row in rows if isinstance(row, dict) and row.get("slug")}
+
+
+def _rule_hit_section(card: ServerCard, now: dt.datetime) -> str:
+    """C11 — render the rule-hit breakdown for a card (or an embargo notice)."""
+    if card.disclosure_state == "embargoed":
+        try:
+            seen = dt.datetime.fromisoformat(card.first_seen) if card.first_seen else now
+        except ValueError:
+            seen = now
+        if seen.tzinfo is None:
+            seen = seen.replace(tzinfo=dt.timezone.utc)
+        expires = (seen + dt.timedelta(days=EMBARGO_DAYS)).date().isoformat()
+        return _TEMPLATE_RULE_HIT_SECTION_EMBARGOED.format(embargo_expires=expires)
+    if not card.rule_hits:
+        return ""
+    rows = "".join(
+        f"<tr><td>{html.escape(rid)}</td><td>{count}</td></tr>"
+        for rid, count in sorted(card.rule_hits.items(), key=lambda kv: (-kv[1], kv[0]))
+    )
+    return _TEMPLATE_RULE_HIT_SECTION_PUBLIC.format(rule_rows=rows)
 
 
 def write_site(cards: list[ServerCard], site_dir: Path) -> None:
     (site_dir / "data").mkdir(parents=True, exist_ok=True)
     (site_dir / "server").mkdir(parents=True, exist_ok=True)
+    now = dt.datetime.now(dt.timezone.utc)
+
+    # C16 — apply embargo transition using the prior snapshot's first_seen.
+    prior_index = _load_prior_index(site_dir)
+    cards = _apply_embargo_transitions(cards, prior_index, now)
 
     index_json = site_dir / "data" / "index.json"
     index_json.write_text(
@@ -244,15 +409,17 @@ def write_site(cards: list[ServerCard], site_dir: Path) -> None:
     )
 
     history_path = site_dir / "data" / "history.json"
-    history = []
+    history: list[dict] = []
     if history_path.is_file():
         try:
-            history = json.loads(history_path.read_text(encoding="utf-8"))
+            loaded = json.loads(history_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, list):
+                history = loaded
         except json.JSONDecodeError:
             history = []
     history.append(
         {
-            "snapshot": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "snapshot": now.isoformat(timespec="seconds"),
             "total": len(cards),
             "distribution": {
                 "A": sum(1 for c in cards if c.grade == "A"),
@@ -283,8 +450,9 @@ def write_site(cards: list[ServerCard], site_dir: Path) -> None:
     (site_dir / "index.html").write_text(
         _TEMPLATE_INDEX.format(
             total=len(cards),
-            snapshot=dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
+            snapshot=now.isoformat(timespec="minutes"),
             rows=rows,
+            trend_svg=_render_trend_svg(history),
         ),
         encoding="utf-8",
     )
@@ -303,6 +471,7 @@ def write_site(cards: list[ServerCard], site_dir: Path) -> None:
                 low=c.low,
                 last_scanned=c.last_scanned,
                 disclosure_state=c.disclosure_state,
+                rule_hit_section=_rule_hit_section(c, now),
             ),
             encoding="utf-8",
         )
