@@ -10,7 +10,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "atsentia__dinbutler",
@@ -23,7 +25,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "bobmatnyc__ai-power-rankings",
@@ -36,7 +40,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "disler__quick-data-mcp",
@@ -49,7 +55,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "ellisapotheosis__project-nyra",
@@ -62,7 +70,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "jharter1__hashi_homelab",
@@ -75,7 +85,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "johnhkchen__obsidian-knowledge-base",
@@ -88,7 +100,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "lizthedeveloper__superalignment-chatroom",
@@ -101,7 +115,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "quazardous__sailing",
@@ -114,7 +130,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "tofunori__ragdoc",
@@ -127,7 +145,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "tonis2__blender-mcp",
@@ -140,7 +160,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "undergroundrap__uefn-toolbelt",
@@ -153,7 +175,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "wtyler2505__multi-controller-app",
@@ -166,7 +190,9 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "no-findings"
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
   },
   {
     "slug": "josiahsiegel__planview-mcp",
@@ -179,7 +205,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "bbfox0703__roslyncsmcp",
@@ -192,7 +222,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "dg1an3__algt",
@@ -205,7 +239,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "jarmentor__codebase-contextifier-9000",
@@ -218,7 +256,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "jyogi-web__megaro_chebuwarts",
@@ -231,7 +273,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "jyogi-web__megaro_chebuwarts",
@@ -244,7 +290,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "rfxlamia__centotype",
@@ -257,7 +307,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "yintzuyuan__glyphs-info-mcp",
@@ -270,7 +324,11 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "abilityai__trinity",
@@ -283,7 +341,11 @@
     "medium": 2,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "angkira__ninja-cli-mcp",
@@ -296,7 +358,11 @@
     "medium": 3,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "bmorri13__dividend_tracker",
@@ -309,7 +375,12 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "lizthedeveloper__ai_village",
@@ -322,7 +393,12 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "terrylica__trading-fitness",
@@ -335,7 +411,11 @@
     "medium": 3,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "torealden__rlc-agent",
@@ -348,7 +428,12 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "ancient23__agent-base",
@@ -361,7 +446,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "coorpacademy__claude-workshop",
@@ -374,7 +465,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "l3yserepitech__elite-context-engineering",
@@ -387,7 +484,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "medimindai__medplum_medimind",
@@ -400,7 +503,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "aaronsteers__privatebin-mcp",
@@ -413,7 +522,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "dyoshikawa__smartphone-vibe-coding",
@@ -426,7 +541,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "harusame0616__crowdsourcing-scraping",
@@ -439,7 +560,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "qut-dmrc__buttermilk",
@@ -452,7 +579,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "scottbarstow__electron_photo_app",
@@ -465,7 +598,13 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "fredjr__vertaai",
@@ -478,7 +617,11 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "neo4j-partners__hands-on-lab-neo4j-and-microsoft",
@@ -491,7 +634,11 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "kblack0610__binks-agent-orchestrator",
@@ -504,7 +651,13 @@
     "medium": 2,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "danielscholl-osdu__hostk8s",
@@ -517,7 +670,14 @@
     "medium": 2,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "ethrdev__cognitive-memory",
@@ -530,7 +690,12 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "kourtni__dotfiles",
@@ -543,7 +708,12 @@
     "medium": 5,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 4,
+      "AAK-MCP-005": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "chattersorg__chatters",
@@ -556,7 +726,14 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "davidvojvodic__automation-site",
@@ -569,7 +746,14 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "disler__agentic-drop-zones",
@@ -582,7 +766,14 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "morlock52__newmedia",
@@ -595,7 +786,13 @@
     "medium": 1,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "morlock52__newmedia",
@@ -608,7 +805,13 @@
     "medium": 1,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "basalt-ai__cobalt",
@@ -621,7 +824,13 @@
     "medium": 1,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "danmayer__coverband_rails_example",
@@ -634,7 +843,13 @@
     "medium": 1,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "bxxf__todo-mcp-assignment",
@@ -647,7 +862,12 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "richardjlyon__americas_tapestry",
@@ -660,7 +880,12 @@
     "medium": 4,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "richardjlyon__americas_tapestry",
@@ -673,7 +898,12 @@
     "medium": 4,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "gregberns__agent-architect",
@@ -686,7 +916,15 @@
     "medium": 2,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "axiomantic__audiomancer",
@@ -699,7 +937,14 @@
     "medium": 2,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "cyl19970726__code3-workspace",
@@ -712,7 +957,13 @@
     "medium": 2,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "nitrosolutions__10x-project",
@@ -725,7 +976,13 @@
     "medium": 2,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "talent-factory__examcraft",
@@ -738,7 +995,13 @@
     "medium": 2,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "confenge__etp-express",
@@ -751,7 +1014,11 @@
     "medium": 7,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 7
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "stallboy__claude-code-marketplace",
@@ -764,7 +1031,13 @@
     "medium": 1,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "danishi__arcadia",
@@ -777,7 +1050,14 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "msadig__muckrack-data-sourcer",
@@ -790,7 +1070,14 @@
     "medium": 2,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "talkingmonkeyoz__claude-family",
@@ -803,7 +1090,12 @@
     "medium": 7,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 7,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "yanisurbis__bin",
@@ -816,7 +1108,14 @@
     "medium": 1,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "getsentry__spotlight",
@@ -829,7 +1128,12 @@
     "medium": 0,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "riku-ganeko__demo_wave",
@@ -842,7 +1146,14 @@
     "medium": 2,
     "low": 3,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "linus-mcmanamey__need_a_job",
@@ -855,7 +1166,13 @@
     "medium": 3,
     "low": 5,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "abilityai__agent-ruby",
@@ -868,7 +1185,13 @@
     "medium": 1,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 6,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "fbratten__from-blueprint-to-application",
@@ -881,7 +1204,12 @@
     "medium": 15,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 15
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "misasusma__claude-agentic-coding-template",
@@ -894,7 +1222,14 @@
     "medium": 4,
     "low": 3,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "fbratten__from-blueprint-to-application",
@@ -907,7 +1242,12 @@
     "medium": 16,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 16
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "dnyoussef__context-cascade",
@@ -920,7 +1260,15 @@
     "medium": 4,
     "low": 3,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 2,
+      "AAK-MCP-006": 2,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "rousseau-romain__round-timing",
@@ -933,7 +1281,14 @@
     "medium": 5,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "anyplatform__platform_workspace",
@@ -946,7 +1301,16 @@
     "medium": 5,
     "low": 2,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 2,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "abilityai__agent-ruby",
@@ -959,7 +1323,13 @@
     "medium": 8,
     "low": 13,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 8,
+      "AAK-MCP-007": 13,
+      "AAK-SUPPLY-001": 13
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "andrewaltimit__documentation",
@@ -972,7 +1342,15 @@
     "medium": 9,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 9,
+      "AAK-MCP-001": 4,
+      "AAK-MCP-009": 4,
+      "AAK-TRANSPORT-001": 4
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "dexploarer__claudius-skills",
@@ -985,7 +1363,13 @@
     "medium": 10,
     "low": 10,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 10,
+      "AAK-MCP-007": 10,
+      "AAK-SUPPLY-001": 10
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "kensan196948g__itsm-system",
@@ -998,7 +1382,14 @@
     "medium": 4,
     "low": 5,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 2,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "kensan196948g__integrateditassetservicemanagement",
@@ -1011,7 +1402,13 @@
     "medium": 7,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 6,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "mare-datum__arcasadeveloping-bgapp",
@@ -1024,7 +1421,18 @@
     "medium": 27,
     "low": 10,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 13,
+      "AAK-MCP-007": 10,
+      "AAK-MCP-003": 4,
+      "AAK-SECRET-008": 3,
+      "AAK-SECRET-004": 3,
+      "AAK-SUPPLY-001": 10,
+      "AAK-TRANSPORT-003": 14
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "russianroulette84__agentic_project",
@@ -1037,7 +1445,14 @@
     "medium": 4,
     "low": 5,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 5,
+      "AAK-MCP-003": 2,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "tomahawkcm__modern-tco",
@@ -1050,7 +1465,13 @@
     "medium": 7,
     "low": 8,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 8,
+      "AAK-SUPPLY-001": 8
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "xza85hrf__claude-code-agent-kit",
@@ -1063,7 +1484,15 @@
     "medium": 6,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "aegntic__ae-co-system",
@@ -1076,7 +1505,14 @@
     "medium": 15,
     "low": 23,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 15,
+      "AAK-MCP-007": 23,
+      "AAK-SUPPLY-001": 23
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "agisota___dotfiles",
@@ -1089,7 +1525,13 @@
     "medium": 7,
     "low": 7,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 7,
+      "AAK-SUPPLY-001": 7
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "bennoloeffler__bassi",
@@ -1102,7 +1544,13 @@
     "medium": 4,
     "low": 9,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 9,
+      "AAK-SUPPLY-001": 9
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "diegofornalha__jira-ai-crewai-mcp",
@@ -1115,7 +1563,16 @@
     "medium": 6,
     "low": 17,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 17,
+      "AAK-MCP-003": 4,
+      "AAK-MCP-001": 2,
+      "AAK-SUPPLY-001": 17,
+      "AAK-TRANSPORT-004": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "djehring__phc-conference-2026",
@@ -1128,7 +1585,14 @@
     "medium": 4,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-003": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "golgoth31__sreportal",
@@ -1141,7 +1605,15 @@
     "medium": 1,
     "low": 1,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-001": 3,
+      "AAK-MCP-009": 3,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "harrysayers7__claudelife",
@@ -1154,7 +1626,18 @@
     "medium": 14,
     "low": 14,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-003": 33,
+      "AAK-MCP-005": 13,
+      "AAK-MCP-007": 14,
+      "AAK-MCP-001": 3,
+      "AAK-MCP-009": 3,
+      "AAK-SUPPLY-001": 14,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "jasonkwak190__world-cup-platform",
@@ -1167,7 +1650,14 @@
     "medium": 5,
     "low": 5,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 5,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "lesleslie__opera-cloud-mcp",
@@ -1180,7 +1670,13 @@
     "medium": 6,
     "low": 0,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 4,
+      "AAK-MCP-009": 4,
+      "AAK-MCP-005": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "seungwonme___claude",
@@ -1193,7 +1689,18 @@
     "medium": 25,
     "low": 21,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 24,
+      "AAK-MCP-007": 21,
+      "AAK-MCP-003": 7,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 21
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "take566__mcp_server",
@@ -1206,7 +1713,14 @@
     "medium": 4,
     "low": 6,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   },
   {
     "slug": "tbuczen__larpilot",
@@ -1219,6 +1733,15 @@
     "medium": 7,
     "low": 9,
     "last_scanned": "2026-04-18T09:32:27.281088+00:00",
-    "disclosure_state": "embargoed"
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 9,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-SUPPLY-001": 9,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
   }
 ]
