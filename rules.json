@@ -1,0 +1,2875 @@
+{
+  "rules": [
+    {
+      "adversa_references": [
+        "ADV-A2A-01"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A Agent Card exposes internal capabilities or admin-level skills that should not be advertised externally.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Limit Agent Card capabilities to public-facing skills only.",
+      "rule_id": "AAK-A2A-001",
+      "sarif_name": "A2aInternalCapabilities",
+      "severity": "high",
+      "title": "Agent Card exposes internal capabilities"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-02"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A Agent Card does not require authentication for interactions.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Add authentication requirements (OAuth 2.0 or API key) to Agent Card.",
+      "rule_id": "AAK-A2A-002",
+      "sarif_name": "A2aNoAuth",
+      "severity": "high",
+      "title": "Agent Card lacks authentication requirement"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-03"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Define explicit JSON schemas for all skill inputs.",
+      "rule_id": "AAK-A2A-003",
+      "sarif_name": "A2aNoInputSchema",
+      "severity": "medium",
+      "title": "No input schema validation in A2A skill definitions"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-04"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A agent endpoint uses HTTP instead of HTTPS.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Use HTTPS for all A2A endpoints.",
+      "rule_id": "AAK-A2A-004",
+      "sarif_name": "A2aHttpEndpoint",
+      "severity": "medium",
+      "title": "A2A endpoint using HTTP instead of HTTPS"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A Agent Card configures a JWT token lifetime greater than 1 hour (3600 seconds). Long-lived tokens increase the window for token theft and replay attacks.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Set JWT token lifetime to 1 hour (3600 seconds) or less. Use refresh tokens for longer sessions.",
+      "rule_id": "AAK-A2A-005",
+      "sarif_name": "JwtTokenLifetimeTooLong",
+      "severity": "high",
+      "title": "JWT token lifetime exceeds 1 hour"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A Agent Card disables JWT signature verification or allows the 'none' algorithm, permitting token forgery.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Enable signature verification and restrict algorithms to RS256 or ES256. Never allow 'none'.",
+      "rule_id": "AAK-A2A-006",
+      "sarif_name": "WeakJwtValidation",
+      "severity": "high",
+      "title": "Weak JWT validation configuration"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A Agent Card lacks an 'id' or 'identity' field, or uses an HTTP endpoint, making it susceptible to agent impersonation attacks.",
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Add a unique 'id' or 'identity' field to the Agent Card and use HTTPS endpoints.",
+      "rule_id": "AAK-A2A-007",
+      "sarif_name": "AgentImpersonationRisk",
+      "severity": "medium",
+      "title": "Agent impersonation risk"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-05"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "Two agents establish an A2A connection where only the caller authenticates. The callee is trusted by URL alone \u2014 easy to spoof.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Require mutual TLS or dual-bearer auth for all A2A flows.",
+      "rule_id": "AAK-A2A-008",
+      "sarif_name": "A2aNoMutualAuth",
+      "severity": "high",
+      "title": "A2A connection lacks mutual authentication"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-06"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A agent forwards incoming delegation tokens without reducing scope, allowing an N-deep chain to accumulate the caller's full rights.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Reduce delegation scope at each hop; refuse to forward tokens that are already delegated beyond a small bound.",
+      "rule_id": "AAK-A2A-009",
+      "sarif_name": "A2aUnboundedDelegation",
+      "severity": "high",
+      "title": "Unbounded delegation in A2A call chain"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-07"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A agent trusts claims relayed by a peer without verifying the original issuer. 'Agent B says A says X' must not be treated as X.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Require signed attestations from the original issuer; do not trust relayed claims.",
+      "rule_id": "AAK-A2A-010",
+      "sarif_name": "A2aTransitiveTrust",
+      "severity": "high",
+      "title": "Transitive trust accepted in A2A"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-08"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Include jti/nonce and iat/exp claims; reject duplicates inside a replay window.",
+      "rule_id": "AAK-A2A-011",
+      "sarif_name": "A2aReplayable",
+      "severity": "medium",
+      "title": "A2A tokens not anti-replay protected"
+    },
+    {
+      "adversa_references": [
+        "ADV-A2A-09"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics.",
+      "owasp_agentic_references": [
+        "ASI07"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Require an explicit schema version in every message; reject mismatches.",
+      "rule_id": "AAK-A2A-012",
+      "sarif_name": "A2aSchemaConfusion",
+      "severity": "medium",
+      "title": "A2A schema confusion between major versions"
+    },
+    {
+      "adversa_references": [
+        "ADV-HIJACK-01"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "An agent instruction file (AGENTS.md, .cursorrules, CLAUDE.md) contains shell commands or execution directives that could be injected into agent behavior.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Remove shell commands from agent instruction files. Use proper tool definitions instead.",
+      "rule_id": "AAK-AGENT-001",
+      "sarif_name": "AgentShellDirectives",
+      "severity": "critical",
+      "title": "Agent instruction file contains shell command directives"
+    },
+    {
+      "adversa_references": [
+        "ADV-HIJACK-02"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "Agent instruction files reference external URLs that could serve as C2 channels or data exfiltration endpoints.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Remove external URL references from agent instructions.",
+      "rule_id": "AAK-AGENT-002",
+      "sarif_name": "AgentExternalUrls",
+      "severity": "high",
+      "title": "Agent instructions reference external URLs"
+    },
+    {
+      "adversa_references": [
+        "ADV-HIJACK-03"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "Agent instructions contain patterns that attempt to disable or bypass security controls (e.g., 'ignore security warnings', 'skip verification').",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove security override instructions. Agents should respect default security controls.",
+      "rule_id": "AAK-AGENT-003",
+      "sarif_name": "AgentSecurityOverride",
+      "severity": "high",
+      "title": "Agent instructions override security controls"
+    },
+    {
+      "adversa_references": [
+        "ADV-HIJACK-04"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "Agent instruction files reference credentials, API keys, or environment variables.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove credential references from instruction files.",
+      "rule_id": "AAK-AGENT-004",
+      "sarif_name": "AgentCredentialReference",
+      "severity": "medium",
+      "title": "Agent instructions contain credential references"
+    },
+    {
+      "adversa_references": [
+        "ADV-HIJACK-05"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "Agent instruction files contain hidden content via HTML comments, zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove hidden content. All agent instructions should be human-readable.",
+      "rule_id": "AAK-AGENT-005",
+      "sarif_name": "AgentHiddenContent",
+      "severity": "medium",
+      "title": "Agent instruction file contains hidden content"
+    },
+    {
+      "adversa_references": [
+        "ADV-PATH-01"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [
+        "CVE-2026-35603"
+      ],
+      "description": "On Windows, Claude Code prior to 2.1.75 loads `%ProgramData%\\ClaudeCode\\managed-settings.json` without validating directory ownership or ACLs. A low-privileged user can plant a malicious config that executes on every launch. CVE-2026-35603 (CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Upgrade Claude Code to 2.1.75 or later. If the directory must exist for deployment, ship a sibling `setup.ps1` that runs `icacls` to restrict ACLs to TrustedInstaller + administrators before any Claude Code launch.",
+      "rule_id": "AAK-CLAUDE-WIN-001",
+      "sarif_name": "ClaudeCodeWindowsProgramData",
+      "severity": "high",
+      "title": "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A tool description, SKILL.md body, agent card, or system prompt represents the AI as a therapist / counselor / psychologist / 'qualified mental health professional'. Tennessee SB 1580 (signed 2026-04-01) makes this unlawful and enforceable via the TN Consumer Protection Act, with a **private right of action** and $5,000 civil penalty per violation.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Rewrite the description. The AI can support mental-wellness use cases but cannot claim or imply it is (or replaces) a licensed mental-health professional. Add an explicit 'not a substitute for licensed care' disclaimer.",
+      "rule_id": "AAK-HEALTHCARE-AI-001",
+      "sarif_name": "HealthcareAiMentalHealthClaim",
+      "severity": "critical",
+      "title": "AI described as a mental-health professional (Tennessee SB 1580)"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "Code or prompt describes an AI system making prior-authorization or medical-necessity decisions without licensed-physician review. Kansas, Washington, and Utah 2026 laws require a clinician in the loop for these decisions.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Route every prior-auth / medical-necessity output through a licensed-physician review step; expose that review in the audit log.",
+      "rule_id": "AAK-HEALTHCARE-AI-002",
+      "sarif_name": "HealthcareAiPriorAuthSolo",
+      "severity": "high",
+      "title": "AI makes prior-authorization / medical-necessity decisions alone"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "Code / prompt describes an AI system approving or denying insurance coverage without a human in the loop. Georgia and Iowa 2026 laws restrict AI-only coverage / benefit determinations.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Require human sign-off on coverage decisions; disclose AI involvement to the consumer.",
+      "rule_id": "AAK-HEALTHCARE-AI-003",
+      "sarif_name": "HealthcareAiInsuranceSolo",
+      "severity": "high",
+      "title": "AI-only insurance coverage decision"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "Text mentions patient / clinical / mental-health / therapy / diagnosis but the tool never explicitly says the responder is an AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI disclosure in clinical interactions.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Add a visible 'You are talking to an AI; this is not medical advice and is not a substitute for licensed care' disclosure.",
+      "rule_id": "AAK-HEALTHCARE-AI-004",
+      "sarif_name": "HealthcareAiNoDisclosure",
+      "severity": "medium",
+      "title": "Healthcare context without explicit AI-disclosure to user"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A healthcare AI surface mentions suicide / self-harm / crisis but never references 988 / 911 / 112 / 999 / a crisis line. Tennessee HB 1951 (2026) creates criminal liability for encouraging suicide; lacking an escalation path materially worsens the exposure.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Add explicit crisis-line escalation instructions in the prompt / system message; test for the most common suicide / self-harm phrases and escalate before generating any other reply.",
+      "rule_id": "AAK-HEALTHCARE-AI-005",
+      "sarif_name": "HealthcareAiNoCrisisEscalation",
+      "severity": "high",
+      "title": "Crisis keywords handled without escalation path"
+    },
+    {
+      "adversa_references": [
+        "ADV-EXFIL-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [
+        "CVE-2025-59536"
+      ],
+      "description": "A hook command contains network-capable tools (curl, wget, nc, etc.). Hooks run automatically and can exfiltrate code, API keys, or session data.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Remove network calls from hooks. Use file-based logging if audit trail is needed.",
+      "rule_id": "AAK-HOOK-001",
+      "sarif_name": "HookNetworkCapableCommand",
+      "severity": "critical",
+      "title": "Hook executes network-capable command"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-02"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command accesses credential environment variables. This enables direct credential theft via hook execution.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Hooks should never reference credential environment variables.",
+      "rule_id": "AAK-HOOK-002",
+      "sarif_name": "HookCredentialExfiltration",
+      "severity": "critical",
+      "title": "Hook command contains environment variable exfiltration"
+    },
+    {
+      "adversa_references": [
+        "ADV-ESCAPE-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command writes to paths outside the project boundary, which can modify system configs, plant persistence, or stage exfiltration.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Constrain all hook file operations to project directory.",
+      "rule_id": "AAK-HOOK-003",
+      "sarif_name": "HookWriteOutsideProject",
+      "severity": "high",
+      "title": "Hook command writes to files outside project directory"
+    },
+    {
+      "adversa_references": [
+        "ADV-HOOK-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A non-formatting hook is attached to a sensitive lifecycle event (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). These events fire on every tool call or session start.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Audit all hooks on critical lifecycle events. Use deny-lists for non-formatting commands.",
+      "rule_id": "AAK-HOOK-004",
+      "sarif_name": "HookSensitiveLifecycleEvent",
+      "severity": "high",
+      "title": "Hook on security-sensitive lifecycle event"
+    },
+    {
+      "adversa_references": [
+        "ADV-OBFUSC-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command contains base64 operations, commonly used to obfuscate exfiltration payloads or encode stolen credentials.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Remove base64 operations from hooks unless there's a documented, legitimate use case.",
+      "rule_id": "AAK-HOOK-005",
+      "sarif_name": "HookBase64Obfuscation",
+      "severity": "high",
+      "title": "Hook command uses base64 encoding/decoding"
+    },
+    {
+      "adversa_references": [
+        "ADV-PRIV-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command uses sudo, doas, pkexec, or chmod +x. Hooks should never require elevated privileges.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Hooks should never require elevated privileges.",
+      "rule_id": "AAK-HOOK-006",
+      "sarif_name": "HookPrivilegeEscalation",
+      "severity": "medium",
+      "title": "Hook command runs with elevated privileges"
+    },
+    {
+      "adversa_references": [
+        "ADV-SCOPE-03"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025",
+        "MCP08:2025"
+      ],
+      "remediation": "Minimize hooks to essential operations only.",
+      "rule_id": "AAK-HOOK-007",
+      "sarif_name": "ExcessiveHookCount",
+      "severity": "medium",
+      "title": "Excessive number of hooks defined"
+    },
+    {
+      "adversa_references": [
+        "ADV-OBFUSC-02"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command contains hex-encoded strings, unicode escapes, very long commands, or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "All hook commands should be human-readable. Reject obfuscated commands.",
+      "rule_id": "AAK-HOOK-008",
+      "sarif_name": "HookObfuscatedPayload",
+      "severity": "critical",
+      "title": "Hook command contains obfuscated or encoded payload"
+    },
+    {
+      "adversa_references": [
+        "ADV-EXFIL-02"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [],
+      "description": "A hook command reads or references project source code files, which could enable code exfiltration.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Hooks should not access source files. Use dedicated build tools instead.",
+      "rule_id": "AAK-HOOK-009",
+      "sarif_name": "HookReferencesSourceFiles",
+      "severity": "medium",
+      "title": "Hook command references project source files"
+    },
+    {
+      "adversa_references": [
+        "ADV-RCE-01"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [
+        "CVE-2025-59536"
+      ],
+      "description": "A Claude Code hook script command-string interpolates a variable or captured group directly into a shell command. This is the CVE-2025-59536 shape: a poisoned config file triggers arbitrary code execution.",
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Never interpolate hook input into a shell string. Use an argv list and a no-shell exec. Quote with shlex.quote if a shell is absolutely required.",
+      "rule_id": "AAK-HOOK-RCE-001",
+      "sarif_name": "HookRceInterpolation",
+      "severity": "critical",
+      "title": "Hook command interpolates user-controlled input"
+    },
+    {
+      "adversa_references": [
+        "ADV-RCE-02"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [
+        "CVE-2025-59536"
+      ],
+      "description": "A hook script invokes subprocess.run / spawn with shell=True (or the equivalent in Node/Bash) while passing a composed string that includes caller-provided fields.",
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Use shell=False and pass argv as a list. If a shell is needed, build commands from quoted constants only.",
+      "rule_id": "AAK-HOOK-RCE-002",
+      "sarif_name": "HookShellTrue",
+      "severity": "critical",
+      "title": "Hook runs with shell=True and variable interpolation"
+    },
+    {
+      "adversa_references": [
+        "ADV-RCE-03"
+      ],
+      "auto_fixable": false,
+      "category": "hook-injection",
+      "cve_references": [
+        "CVE-2025-59536"
+      ],
+      "description": "A settings.local.json or project-relative hook file executes before the Claude Code trust prompt. This is the core CVE-2025-59536 regression pattern; any project-contained hook must not run until trust is confirmed.",
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Require explicit trust confirmation before loading project-local hook configuration. Upgrade to Claude Code 1.0.111 or later.",
+      "rule_id": "AAK-HOOK-RCE-003",
+      "sarif_name": "HookTrustBypass",
+      "severity": "high",
+      "title": "Hook trust check is bypassable by project-local config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A 12-digit Aadhaar number passed the Verhoeff checksum and is embedded in project text. Aadhaar is restricted under the UIDAI Act and India DPDP \u00a78(4). Storing in code is a reportable breach.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the Aadhaar number. If Aadhaar is genuinely needed, route it through an encrypted vault (e.g. AWS KMS / Azure Key Vault) and never log or commit it.",
+      "rule_id": "AAK-INDIA-PII-001",
+      "sarif_name": "IndiaAadhaarInCode",
+      "severity": "critical",
+      "title": "Aadhaar number in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A 10-char PAN (5 letters + 4 digits + 1 letter) was detected. PAN is tax-linked personal data under DPDP \u00a78(4).",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the PAN. If needed for processing, tokenize it and store tokens, not raw PANs.",
+      "rule_id": "AAK-INDIA-PII-002",
+      "sarif_name": "IndiaPanInCode",
+      "severity": "high",
+      "title": "PAN (Permanent Account Number) in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A UPI VPA (<handle>@<psp>) was detected. UPI IDs are payment identifiers regulated by NPCI and covered by DPDP \u00a78(4).",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the UPI ID. Accept UPI addresses as runtime input only.",
+      "rule_id": "AAK-INDIA-PII-003",
+      "sarif_name": "IndiaUpiInCode",
+      "severity": "high",
+      "title": "UPI ID in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "An IFSC code (4 letters + 0 + 6 alnum) was detected. IFSC is a banking identifier; pairing it with an account number constitutes DPDP \u00a78(4) 'sensitive personal data'.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Move IFSC codes out of source; look them up at runtime from RBI's public IFSC directory.",
+      "rule_id": "AAK-INDIA-PII-004",
+      "sarif_name": "IndiaIfscInCode",
+      "severity": "medium",
+      "title": "IFSC code in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "An Indian +91 mobile number (starting 6/7/8/9) was detected. Phone numbers are personal data under DPDP \u00a78(4).",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the phone number. Never log raw phone numbers \u2014 hash them.",
+      "rule_id": "AAK-INDIA-PII-005",
+      "sarif_name": "IndiaPhoneInCode",
+      "severity": "medium",
+      "title": "Indian mobile number in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "An Indian state-issued vehicle registration (e.g. 'MH 12 AB 1234') was detected. Vehicle registrations are PII in combination with driver records.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the registration from source. If dealing with vehicle data, anonymize before checking in.",
+      "rule_id": "AAK-INDIA-PII-006",
+      "sarif_name": "IndiaVehicleInCode",
+      "severity": "low",
+      "title": "Indian vehicle registration in source / config"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A scanner module crashed during execution. The scan continued with the remaining scanners, but results may be incomplete. This is always a bug in agent-audit-kit itself; please file an issue with the evidence string.",
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "File an issue at https://github.com/sattyamjjain/agent-audit-kit/issues with the scanner name, exception class, and (if safe) the project shape.",
+      "rule_id": "AAK-INTERNAL-SCANNER-FAIL",
+      "sarif_name": "InternalScannerFail",
+      "severity": "info",
+      "title": "Scanner module raised an exception"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-01"
+      ],
+      "auto_fixable": true,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-34070"
+      ],
+      "description": "A dependency file pins langchain or langchain-core to a version earlier than 1.2.22. CVE-2026-34070 allows absolute paths and '..' traversal via load_prompt() / load_prompt_from_config().",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade to langchain-core >= 1.2.22. If you must keep the legacy behavior, pass allow_dangerous_paths=True explicitly.",
+      "rule_id": "AAK-LANGCHAIN-001",
+      "sarif_name": "LangchainPathTraversalVuln",
+      "severity": "high",
+      "title": "Project depends on LangChain < 1.2.22 (load_prompt path traversal)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-02"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [
+        "CVE-2026-34070"
+      ],
+      "description": "Source code calls langchain.load_prompt() or load_prompt_from_config() with a user-controlled path argument. Even on patched versions, the allow_dangerous_paths escape hatch is a sharp edge.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Treat load_prompt() as a file read against a trusted root. Resolve, normalize, and verify the path is inside the intended directory.",
+      "rule_id": "AAK-LANGCHAIN-002",
+      "sarif_name": "LangchainLoadPromptUserPath",
+      "severity": "medium",
+      "title": "Call to load_prompt without allow_dangerous_paths review"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-03"
+      ],
+      "auto_fixable": true,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2025-68664"
+      ],
+      "description": "A dependency file pins langchain / langchainjs to a version vulnerable to GHSA-r399-636x-v7f6 / CVE-2025-68664, a serialization-injection chain that extracts secrets through crafted saved chains.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Upgrade to the patched LangChain / langchainjs release; avoid loading serialized chains from sources you do not fully control.",
+      "rule_id": "AAK-LANGCHAIN-003",
+      "sarif_name": "LangchainDeserializeUntrusted",
+      "severity": "high",
+      "title": "LangChain deserialization of untrusted data"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations on your project.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Review license obligations. Consider replacing with permissively-licensed alternatives.",
+      "rule_id": "AAK-LEGAL-001",
+      "sarif_name": "CopyleftLicenseDep",
+      "severity": "high",
+      "title": "Copyleft license (AGPL/SSPL) in dependency"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A dependency has no declared license, creating legal uncertainty about usage rights.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Contact the maintainer to clarify licensing or replace with a properly licensed alternative.",
+      "rule_id": "AAK-LEGAL-002",
+      "sarif_name": "NoLicenseDep",
+      "severity": "medium",
+      "title": "Dependency with no declared license"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A dependency has been flagged for DMCA/IP violations or contains leaked proprietary code.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Remove the flagged dependency immediately.",
+      "rule_id": "AAK-LEGAL-003",
+      "sarif_name": "DmcaFlaggedPackage",
+      "severity": "critical",
+      "title": "DMCA-flagged package detected"
+    },
+    {
+      "adversa_references": [
+        "ADV-LOG-01"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [
+        "CVE-2026-6494"
+      ],
+      "description": "A `@tool`-decorated function parameter flows into logger.info / print / sys.stdout.write / console.log without stripping control characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 MEDIUM, CWE-117) lets an attacker forge log entries and inject ANSI escape sequences to socially engineer an operator.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Strip \\r\\n\\x1b (or accept only printable ASCII) before logging anything derived from tool input. Prefer structured logging (JSON/logfmt) so log consumers aren't confused by forged lines.",
+      "rule_id": "AAK-LOGINJ-001",
+      "sarif_name": "McpLogInjection",
+      "severity": "medium",
+      "title": "MCP tool logs caller-controlled input without CRLF/ANSI sanitization"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-04"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": ".claude-plugin/marketplace.json lacks a signature or integrity hash field. An attacker with write access to the marketplace can replace the plugin bundle with no detection.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Add a Sigstore signature or subresource-integrity hash to each plugin entry. Verify on install.",
+      "rule_id": "AAK-MARKETPLACE-001",
+      "sarif_name": "MarketplaceUnsigned",
+      "severity": "high",
+      "title": "Unsigned marketplace.json manifest"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-05"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A plugin's manifest grants access to filesystem, network, shell exec, or user-credential surfaces. Broad permissions should be opt-in after a clear user prompt.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Trim permissions to the minimum the plugin needs. Review any 'fs:*' or 'shell:exec' entries.",
+      "rule_id": "AAK-MARKETPLACE-002",
+      "sarif_name": "MarketplaceBroadPermissions",
+      "severity": "medium",
+      "title": "Plugin permission set grants broad access"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-06"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A plugin entry uses a name that is one edit distance from a popular upstream (e.g. 'anthropic', 'langchain', 'mcp'). Typosquatting is the single highest-volume supply-chain attack vector in 2026.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Rename the plugin or flag it for manual review. Cross-reference against a known-upstream list.",
+      "rule_id": "AAK-MARKETPLACE-003",
+      "sarif_name": "MarketplaceTyposquat",
+      "severity": "high",
+      "title": "Plugin name typosquats a well-known package"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-07"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A plugin entry pins to a branch (main/master) or tag without commit SHA. The maintainer (or an attacker with write access) can silently change plugin behavior post-install \u2014 the 'maintainer takeover' pattern from the June 2024 xz incident and its 2026 re-runs.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Pin to an immutable commit SHA. Re-pin during a reviewed dependency bump.",
+      "rule_id": "AAK-MARKETPLACE-004",
+      "sarif_name": "MarketplaceMutableRef",
+      "severity": "high",
+      "title": "Plugin source pins to a mutable git ref"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Add OAuth 2.1 bearer token or API key header authentication.",
+      "rule_id": "AAK-MCP-001",
+      "sarif_name": "RemoteMcpServerNoAuth",
+      "severity": "critical",
+      "title": "Remote MCP server without authentication"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Use direct executable paths without shell wrappers.",
+      "rule_id": "AAK-MCP-002",
+      "sarif_name": "McpCommandShellInjection",
+      "severity": "critical",
+      "title": "MCP server command runs with shell expansion"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Use environment variable references or a secrets manager.",
+      "rule_id": "AAK-MCP-003",
+      "sarif_name": "McpEnvExposesSecrets",
+      "severity": "high",
+      "title": "MCP server environment exposes secrets"
+    },
+    {
+      "adversa_references": [
+        "ADV-SCOPE-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-21852"
+      ],
+      "description": "More than 10 MCP servers in a single config. Large tool surface increases attack surface.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Audit and remove unnecessary servers. Pin to minimum required set.",
+      "rule_id": "AAK-MCP-004",
+      "sarif_name": "ExcessiveMcpServers",
+      "severity": "high",
+      "title": "Excessive number of MCP servers declared"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "remediation": "Pin exact package versions or use locally installed packages.",
+      "rule_id": "AAK-MCP-005",
+      "sarif_name": "McpRuntimePackageFetch",
+      "severity": "medium",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Use absolute paths for MCP server executables.",
+      "rule_id": "AAK-MCP-006",
+      "sarif_name": "McpCommandRelativePath",
+      "severity": "medium",
+      "title": "MCP server command uses relative path"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
+      "rule_id": "AAK-MCP-007",
+      "sarif_name": "McpUnpinnedPackageVersion",
+      "severity": "low",
+      "title": "MCP server lacks version pinning in args"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-03"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead.",
+      "rule_id": "AAK-MCP-008",
+      "sarif_name": "McpHeadersHelperShellExec",
+      "severity": "critical",
+      "title": "MCP server headersHelper executes arbitrary commands"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Ensure local MCP servers are intentional and document the trust assumption.",
+      "rule_id": "AAK-MCP-009",
+      "sarif_name": "McpLocalhostInternalUrl",
+      "severity": "high",
+      "title": "MCP server URL points to localhost/internal network"
+    },
+    {
+      "adversa_references": [
+        "ADV-SCOPE-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Restrict filesystem access to specific project directories only.",
+      "rule_id": "AAK-MCP-010",
+      "sarif_name": "McpFilesystemRootAccess",
+      "severity": "high",
+      "title": "MCP server config allows arbitrary filesystem root access"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-33032"
+      ],
+      "description": "A remote MCP server exposes an HTTP handler with no authentication check. Per MCP spec 2025-11-25 all remote servers must require OAuth 2.1 or an equivalent bearer credential. Matches the CVE-2026-33032 pattern where /mcp_message was exposed without the auth middleware that /mcp used.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Apply the same auth middleware to every MCP HTTP route. Do not branch on method or path before enforcing auth.",
+      "rule_id": "AAK-MCP-011",
+      "sarif_name": "McpHandlerNoAuth",
+      "severity": "critical",
+      "title": "Remote MCP server handler lacks authentication middleware"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-33032"
+      ],
+      "description": "An MCP server's IP allowlist configuration defaults to an empty list, which its middleware interprets as 'allow all'. This is the exact CVE-2026-33032 root cause. Tight-by-default is required.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Default to deny-all; require explicit allowlist entries. Reject empty allowlists at startup.",
+      "rule_id": "AAK-MCP-012",
+      "sarif_name": "McpAllowlistEmpty",
+      "severity": "critical",
+      "title": "MCP server default IP allowlist is empty (allow-all)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-03"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP HTTP endpoint sets Access-Control-Allow-Origin to '*' while also returning credentials/tokens. This allows hostile origins to read MCP responses from a victim browser session.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP08:2025"
+      ],
+      "remediation": "Restrict CORS to an explicit origin allowlist. Never combine '*' with Access-Control-Allow-Credentials: true.",
+      "rule_id": "AAK-MCP-013",
+      "sarif_name": "McpCorsWildcard",
+      "severity": "high",
+      "title": "Wildcard CORS on MCP endpoint"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-04"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP client or server expects authentication tokens in URL query parameters. Query parameters land in server access logs, browser history, and referer headers, making this a token-leak vector.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Pass tokens in the Authorization header, never in query params.",
+      "rule_id": "AAK-MCP-014",
+      "sarif_name": "McpAuthInQueryParam",
+      "severity": "high",
+      "title": "Auth token transmitted via URL query parameter"
+    },
+    {
+      "adversa_references": [
+        "ADV-RES-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server exposes a resource/file handler that passes user-supplied paths to open()/fs.readFile without normalization or allowlist checks. 2,614 MCP implementations surveyed; 82% had this class of issue.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Resolve the requested path, reject '..' components, and verify the final path is under an explicit root directory.",
+      "rule_id": "AAK-MCP-015",
+      "sarif_name": "McpPathTraversal",
+      "severity": "critical",
+      "title": "Path traversal in MCP resource handler"
+    },
+    {
+      "adversa_references": [
+        "ADV-DOS-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server endpoint accepts request bodies without a maximum-size limit. This enables token-cost denial-of-service and memory exhaustion.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Set a per-endpoint max body size (e.g. 1 MiB by default) and reject requests that exceed it.",
+      "rule_id": "AAK-MCP-016",
+      "sarif_name": "McpUnboundedPayload",
+      "severity": "medium",
+      "title": "Unbounded prompt/argument size on MCP endpoint"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRANSPORT-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server configuration binds to plain HTTP without TLS. MCP spec 2025-11-25 requires Streamable HTTP over TLS for remote servers.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Bind only to HTTPS. Terminate TLS at a trusted proxy or use the server's native TLS support. Reject plain-HTTP binds in production mode.",
+      "rule_id": "AAK-MCP-017",
+      "sarif_name": "McpPlainHttp",
+      "severity": "high",
+      "title": "MCP server accepts HTTP (non-TLS) in production config"
+    },
+    {
+      "adversa_references": [
+        "ADV-DOS-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server endpoint does not declare rate limiting. Unrestricted access allows credential stuffing and enumeration attacks.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Add per-IP and per-token rate limits. Reject bursts above the limit with 429.",
+      "rule_id": "AAK-MCP-018",
+      "sarif_name": "McpNoRateLimit",
+      "severity": "medium",
+      "title": "Missing rate limiting on MCP endpoint"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-05"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP handler performs work (e.g. db lookups, external calls) before verifying authentication. This reveals existence/shape of protected resources via timing and error channels.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Enforce authentication as the first step of every handler. Do not branch on caller input before the auth check.",
+      "rule_id": "AAK-MCP-019",
+      "sarif_name": "McpAuthAfterSideEffect",
+      "severity": "high",
+      "title": "MCP auth check runs after side-effect"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-33032"
+      ],
+      "description": "Two MCP HTTP routes share a single handler but only one is wrapped in auth middleware. The second route inherits the tool surface without the auth check. This is the CVE-2026-33032 bypass pattern.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Apply auth middleware at the router level, not per-route. Or, wrap the shared handler in the auth check.",
+      "rule_id": "AAK-MCP-020",
+      "sarif_name": "McpSharedHandlerAuthGap",
+      "severity": "critical",
+      "title": "MCP handler shares routing with an unauthenticated path"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-08"
+      ],
+      "auto_fixable": true,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-35402"
+      ],
+      "description": "A dependency pin targets mcp-neo4j-cypher earlier than 0.6.0, or source code sets read_only=True while issuing CALL apoc.* / db.cypher.runWrite procedures. CVE-2026-35402 (CVSS 2.3 LOW, but integrity-critical) lets attackers bypass the read-only mode and execute arbitrary writes or SSRF.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025",
+        "MCP01:2025"
+      ],
+      "remediation": "Upgrade mcp-neo4j-cypher to 0.6.0 or later. In source code, stop relying on read_only=True as a security boundary when APOC procedures are in scope; deny-list apoc.* at the query layer.",
+      "rule_id": "AAK-NEO4J-001",
+      "sarif_name": "Neo4jApocBypass",
+      "severity": "medium",
+      "title": "mcp-neo4j-cypher < 0.6.0 APOC read-only bypass"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-06"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An OAuth 2.1 client flow does not use PKCE. PKCE is mandatory for all MCP remote server clients per spec 2025-11-25, including confidential clients.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Add a code_verifier/code_challenge pair to every authorization request. Use code_challenge_method=S256.",
+      "rule_id": "AAK-OAUTH-001",
+      "sarif_name": "OAuthMissingPkce",
+      "severity": "high",
+      "title": "OAuth flow without PKCE"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-07"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An OAuth client sets code_challenge_method=plain (or omits it). S256 is mandatory; 'plain' leaks the verifier to anyone with access to the authorization request.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Set code_challenge_method=S256 and derive code_challenge as BASE64URL(SHA256(code_verifier)).",
+      "rule_id": "AAK-OAUTH-002",
+      "sarif_name": "OAuthPkcePlain",
+      "severity": "high",
+      "title": "PKCE using the plain challenge method"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-08"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server receives a bearer token from one identity and forwards it to a downstream service without re-minting. This is the 'confused deputy' shape banned by OAuth 2.1 BCPs.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Use token-exchange (RFC 8693) or a service account to call downstream services. Never forward a user token across trust boundaries.",
+      "rule_id": "AAK-OAUTH-003",
+      "sarif_name": "OAuthTokenPassthrough",
+      "severity": "critical",
+      "title": "OAuth token passthrough between tenants"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-09"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An OAuth client registers a wildcard, localhost-with-any-port, or overly-broad redirect_uri. Attackers can hijack authorization codes via dangling subdomains or open redirectors.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Register exact-match redirect URIs only. No wildcards.",
+      "rule_id": "AAK-OAUTH-004",
+      "sarif_name": "OAuthWildcardRedirect",
+      "severity": "high",
+      "title": "Wildcard or overly-broad redirect_uri"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-10"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP remote server accepts plain Bearer tokens on a flow that MCP spec 2025-11-25 flags for DPoP (Demonstrating Proof of Possession) or mTLS-bound tokens. A stolen Bearer token is fully replayable.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Require DPoP proofs or mTLS-bound tokens for high-privilege flows. Validate the token's cnf claim.",
+      "rule_id": "AAK-OAUTH-005",
+      "sarif_name": "OAuthBearerWhereDpopRequired",
+      "severity": "medium",
+      "title": "Bearer token used where DPoP or mTLS is required"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-01"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove invisible characters from tool descriptions.",
+      "rule_id": "AAK-POISON-001",
+      "sarif_name": "ToolDescInvisibleUnicode",
+      "severity": "critical",
+      "title": "Invisible Unicode characters in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-02"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove injection patterns from tool descriptions.",
+      "rule_id": "AAK-POISON-002",
+      "sarif_name": "ToolDescPromptInjection",
+      "severity": "critical",
+      "title": "Prompt injection patterns in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-03"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Tool descriptions should be self-contained and not reference other tools.",
+      "rule_id": "AAK-POISON-003",
+      "sarif_name": "ToolDescCrossToolRef",
+      "severity": "high",
+      "title": "Cross-tool reference in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-04"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description contains base64, hex, or URL-encoded content that could hide malicious instructions.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "All tool description content should be plain text.",
+      "rule_id": "AAK-POISON-004",
+      "sarif_name": "ToolDescEncodedContent",
+      "severity": "high",
+      "title": "Encoded content in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-05"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description exceeds 500 characters, which increases the surface area for hidden instructions.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Keep tool descriptions concise and under 500 characters.",
+      "rule_id": "AAK-POISON-005",
+      "sarif_name": "ToolDescExcessiveLength",
+      "severity": "medium",
+      "title": "Excessive tool description length"
+    },
+    {
+      "adversa_references": [
+        "ADV-POISON-06"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove URLs and file paths from tool descriptions.",
+      "rule_id": "AAK-POISON-006",
+      "sarif_name": "ToolDescUrlOrPath",
+      "severity": "medium",
+      "title": "URL or file path in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-AGENCY-01"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A routine configuration declares tool permissions wider than what the same user has in interactive Claude Code. A routine running non-interactively at 3am with admin-level tools is an excessive-agency risk (OWASP ASI05).",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Mirror routine permissions from the interactive grant. Require re-prompt for elevation.",
+      "rule_id": "AAK-ROUTINE-001",
+      "sarif_name": "RoutineWiderPerms",
+      "severity": "high",
+      "title": "Routine grants broader permissions than interactive path"
+    },
+    {
+      "adversa_references": [
+        "ADV-AGENCY-02"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A routine's cron expression, HTTP webhook URL, or GitHub event filter is built from a user-controlled value. Schedule injection can repurpose the routine at off-hours without review.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Treat schedule expressions as static constants; never build them from runtime state.",
+      "rule_id": "AAK-ROUTINE-002",
+      "sarif_name": "RoutineScheduleInjection",
+      "severity": "medium",
+      "title": "Routine schedule interpolates unsanitized input"
+    },
+    {
+      "adversa_references": [
+        "ADV-AGENCY-03"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A routine runs tool calls but writes no run-log, making post-hoc audit impossible. An attacker with edit access to the routine file can run anything and delete the evidence.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Route every routine's output (and tool-call trace) to an append-only log the routine cannot modify.",
+      "rule_id": "AAK-ROUTINE-003",
+      "sarif_name": "RoutineNoAudit",
+      "severity": "medium",
+      "title": "Routine executes without audit trail"
+    },
+    {
+      "adversa_references": [
+        "ADV-RUGPULL-01"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A tool's definition (name, description, or input schema) has changed since it was last pinned. This could indicate a rug pull attack.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If suspicious, remove the server.",
+      "rule_id": "AAK-RUGPULL-001",
+      "sarif_name": "ToolDefinitionChanged",
+      "severity": "critical",
+      "title": "Tool definition changed since last pin"
+    },
+    {
+      "adversa_references": [
+        "ADV-RUGPULL-02"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A new tool was added to an MCP server since the last pin. New tools should be reviewed before approval.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Review the new tool's definition and permissions. Pin if approved.",
+      "rule_id": "AAK-RUGPULL-002",
+      "sarif_name": "NewToolSincePin",
+      "severity": "high",
+      "title": "New tool added since last pin"
+    },
+    {
+      "adversa_references": [
+        "ADV-RUGPULL-03"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Investigate why the tool was removed. Update pins if removal was intentional.",
+      "rule_id": "AAK-RUGPULL-003",
+      "sarif_name": "ToolRemovedSincePin",
+      "severity": "medium",
+      "title": "Tool removed since last pin"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A repository whose name or pyproject keywords declare it as an MCP server ships without a top-level SECURITY.md AND without a `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Add SECURITY.md at the repo root with a disclosure email and response SLA; OR add `security_contact` to the project manifest.",
+      "rule_id": "AAK-SEC-MD-001",
+      "sarif_name": "McpServerNoSecurityMd",
+      "severity": "low",
+      "title": "MCP server repo missing SECURITY.md or security_contact"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-03"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove key, rotate immediately, use environment variables.",
+      "rule_id": "AAK-SECRET-001",
+      "sarif_name": "AnthropicApiKeyExposed",
+      "severity": "critical",
+      "title": "Anthropic API key exposed"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-04"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "An OpenAI API key (sk-*) was found in a project file.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove key, rotate immediately, use environment variables.",
+      "rule_id": "AAK-SECRET-002",
+      "sarif_name": "OpenaiApiKeyExposed",
+      "severity": "critical",
+      "title": "OpenAI API key exposed"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-05"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "AWS access key ID or secret access key found in a project file.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Use IAM roles, AWS SSO, or secrets manager.",
+      "rule_id": "AAK-SECRET-003",
+      "sarif_name": "AwsCredentialsExposed",
+      "severity": "critical",
+      "title": "AWS credentials exposed"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-06"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Move to environment variables or secrets manager.",
+      "rule_id": "AAK-SECRET-004",
+      "sarif_name": "GenericHighEntropySecret",
+      "severity": "high",
+      "title": "Generic high-entropy secret"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-07"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A private key file (*.pem, *.key, id_rsa, etc.) or PEM content was found in the project.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove private keys from repository, add to .gitignore.",
+      "rule_id": "AAK-SECRET-005",
+      "sarif_name": "PrivateKeyFilePresent",
+      "severity": "high",
+      "title": "Private key file present"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-08"
+      ],
+      "auto_fixable": true,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A .env file exists but .gitignore does not contain a .env exclusion pattern.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Add .env* to .gitignore.",
+      "rule_id": "AAK-SECRET-006",
+      "sarif_name": "EnvFileNotInGitignore",
+      "severity": "medium",
+      "title": ".env file not in .gitignore"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-09"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Use environment variable references.",
+      "rule_id": "AAK-SECRET-007",
+      "sarif_name": "SecretInMcpEnvBlock",
+      "severity": "medium",
+      "title": "Secret in MCP server environment block"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-10"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove token, rotate immediately, use environment variables.",
+      "rule_id": "AAK-SECRET-008",
+      "sarif_name": "GitTokenExposed",
+      "severity": "critical",
+      "title": "GitHub/GitLab personal access token exposed"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-11"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [],
+      "description": "A Google Cloud service account key JSON file was found in the project.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove key file, use workload identity or environment-based auth.",
+      "rule_id": "AAK-SECRET-009",
+      "sarif_name": "GcpServiceAccountKey",
+      "severity": "high",
+      "title": "Google Cloud service account key file"
+    },
+    {
+      "adversa_references": [
+        "ADV-SKILL-01"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A SKILL.md frontmatter or body declares a post-install or auto-run command (bash, curl, pipe-to-sh, wget). Skills should be declarative; arbitrary installation commands are a rug-pull risk.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove the post-install command. If setup is genuinely required, document it for the user rather than auto-running it.",
+      "rule_id": "AAK-SKILL-001",
+      "sarif_name": "SkillPostInstallCommand",
+      "severity": "critical",
+      "title": "SKILL.md contains a post-install / side-effect command"
+    },
+    {
+      "adversa_references": [
+        "ADV-SKILL-02"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A SKILL.md body contains hidden characters (bidi override, zero-width, tag-unicode) that render differently than they parse. This hides malicious tool-use instructions from human review.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove U+200B-U+200F, U+202A-U+202E, U+E0000-U+E007F and similar invisible / bidi characters from skill text.",
+      "rule_id": "AAK-SKILL-002",
+      "sarif_name": "SkillUnicodeSteg",
+      "severity": "high",
+      "title": "SKILL.md uses unicode steganography in tool descriptions"
+    },
+    {
+      "adversa_references": [
+        "ADV-SKILL-03"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A SKILL.md references outbound HTTP tools (fetch/curl/request) combined with instructions to send local data (files, environment, credentials).",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Remove the exfil instruction. Skills that genuinely need outbound HTTP should declare it explicitly with a documented purpose.",
+      "rule_id": "AAK-SKILL-003",
+      "sarif_name": "SkillExfilPrimitive",
+      "severity": "critical",
+      "title": "SKILL.md embeds data-exfiltration primitives"
+    },
+    {
+      "adversa_references": [
+        "ADV-SKILL-04"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A skill's frontmatter name or description mimics a well-known skill ('pdf', 'docx', 'frontend-design') but the body declares unrelated / hostile instructions. Description hijacking is the ToxicSkills 2026 signature pattern.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Rename the skill to match its actual behavior. Cross-reference the name against the first-party skill directory.",
+      "rule_id": "AAK-SKILL-004",
+      "sarif_name": "SkillNameHijack",
+      "severity": "high",
+      "title": "SKILL.md description hijacks a trusted skill name"
+    },
+    {
+      "adversa_references": [
+        "ADV-SKILL-05"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A SKILL.md frontmatter or YAML header embeds phrases targeted at the loading model ('ignore previous', 'you are now', 'system:'). These are prompt-injection probes rather than legitimate skill metadata.",
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Remove the injection trigger. Skill frontmatter should only contain name, description, tags, and similar metadata.",
+      "rule_id": "AAK-SKILL-005",
+      "sarif_name": "SkillFrontmatterInjection",
+      "severity": "high",
+      "title": "SKILL.md frontmatter contains prompt-injection triggers"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP tool handler fetches a URL provided by the caller with no host/scheme validation. This is the classic SSRF shape (CWE-918).",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Validate the scheme (https only), resolve the host, and reject private-range IPs (RFC 1918, 169.254.*, 127.*, ::1/128, fc00::/7).",
+      "rule_id": "AAK-SSRF-001",
+      "sarif_name": "SsrfUnvalidatedUrl",
+      "severity": "critical",
+      "title": "Unvalidated outbound HTTP in MCP tool handler"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Block loopback and link-local addresses after DNS resolution.",
+      "rule_id": "AAK-SSRF-002",
+      "sarif_name": "SsrfLoopbackReachable",
+      "severity": "high",
+      "title": "Localhost/loopback reachable from MCP tool"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-03"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP metadata) or metadata.google.internal, allowing exfiltration of instance credentials.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Block 169.254.0.0/16 and metadata.google.internal at the HTTP client layer. Use a deny-by-default IP allowlist.",
+      "rule_id": "AAK-SSRF-003",
+      "sarif_name": "SsrfCloudMetadata",
+      "severity": "critical",
+      "title": "Cloud metadata endpoint reachable via MCP tool"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-04"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP tool follows HTTP redirects using the default client settings. An attacker can bypass initial host checks by returning a 3xx to an internal address. DNS rebinding works the same way.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Disable automatic redirects, or re-run host validation on every hop. Cap total redirects at 3.",
+      "rule_id": "AAK-SSRF-004",
+      "sarif_name": "SsrfRedirectRevalidation",
+      "severity": "high",
+      "title": "Redirect chains followed without re-validation"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-05"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP tool performs outbound HTTP but has no allowlist of permitted destinations. Deny-by-default with an explicit allowlist is the only reliable defense against SSRF chains.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Maintain an explicit allowlist of hostnames; reject anything else.",
+      "rule_id": "AAK-SSRF-005",
+      "sarif_name": "SsrfNoAllowlist",
+      "severity": "high",
+      "title": "Missing SSRF allowlist on outbound fetch"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A privacy policy / notice lacks the CCPA-lineage opt-out-of-sale language that Alabama DPPA, CCPA, CPRA, VCDPA, and the other 21 state comprehensive privacy laws converge on.",
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Add a 'Do Not Sell / Share My Personal Information' section and a usable opt-out mechanism.",
+      "rule_id": "AAK-STATE-PRIVACY-001",
+      "sarif_name": "StatePrivacyNoOptOut",
+      "severity": "medium",
+      "title": "Privacy doc missing 'do-not-sell' / opt-out-of-sale language"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A privacy policy does not describe the consumer's access, deletion, or portability rights \u2014 mandatory across every state comprehensive privacy law passed 2018-2026.",
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Describe DSAR submission, 45-day cure window where applicable, and the portability format.",
+      "rule_id": "AAK-STATE-PRIVACY-002",
+      "sarif_name": "StatePrivacyNoConsumerRights",
+      "severity": "medium",
+      "title": "Privacy doc missing access / deletion / portability rights"
+    },
+    {
+      "adversa_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "A privacy policy does not expose a data-controller contact (DPO email / privacy@ / mailing address). Required by most state laws and a prerequisite for any DSAR.",
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Add a privacy@ inbox and a postal mailing address for DSARs.",
+      "rule_id": "AAK-STATE-PRIVACY-003",
+      "sarif_name": "StatePrivacyNoContact",
+      "severity": "low",
+      "title": "Privacy doc missing data-controller contact"
+    },
+    {
+      "adversa_references": [
+        "ADV-RCE-04"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-30615",
+        "CVE-2025-65720",
+        "CVE-2026-30617",
+        "CVE-2026-30618",
+        "CVE-2026-30623",
+        "CVE-2026-30624",
+        "CVE-2026-30625",
+        "CVE-2026-33224",
+        "CVE-2026-26015"
+      ],
+      "description": "User-controllable input flows into a STDIO command executor in an MCP server implementation \u2014 the architectural shape Ox Security traced through CVE-2026-30615 (Windsurf RCE) and nine other CVEs across ~200,000 exposed servers. Matches subprocess / os.system / os.popen / os.exec / eval / exec where an arg references a taint source (request params, stdin, @tool parameter, json.loads(stdin)). TS/JS variant: child_process.spawn / execa with {shell:true} or a request-derived command string.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Never pass caller-controlled data into a shell. Use argv lists (subprocess.run([...]) without shell=True), allowlist the command set, and validate arguments against an explicit schema. For TS, pass argv as an array with shell:false and validate every element against a regex or allowlist.",
+      "rule_id": "AAK-STDIO-001",
+      "sarif_name": "McpStdioCommandInjection",
+      "severity": "critical",
+      "title": "MCP STDIO command-injection (Ox architectural class)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-03"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "MCP server args contain package names without @x.y.z version pinning. Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
+      "rule_id": "AAK-SUPPLY-001",
+      "sarif_name": "McpPackageNotPinned",
+      "severity": "high",
+      "title": "MCP server package not pinned to exact version"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-04"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025",
+        "MCP10:2025"
+      ],
+      "remediation": "Update to patched version or remove dependency.",
+      "rule_id": "AAK-SUPPLY-002",
+      "sarif_name": "KnownVulnerablePackage",
+      "severity": "high",
+      "title": "Known vulnerable package in lockfile"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-05"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "package.json has install scripts (preinstall, postinstall, etc.) that execute arbitrary commands during npm install.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Audit install scripts. Use --ignore-scripts flag and run scripts manually after review.",
+      "rule_id": "AAK-SUPPLY-003",
+      "sarif_name": "DangerousInstallScripts",
+      "severity": "medium",
+      "title": "Dependency uses install scripts"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-06"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A package manifest exists but no lockfile was found. Without lockfiles, dependency versions float and can be silently updated.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Generate and commit lockfile.",
+      "rule_id": "AAK-SUPPLY-004",
+      "sarif_name": "NoLockfilePresent",
+      "severity": "medium",
+      "title": "No lockfile present"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-07"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "More than 200 direct + transitive dependencies in lockfile. Each dependency is a trust decision.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Audit and remove unused dependencies. Consider lighter alternatives.",
+      "rule_id": "AAK-SUPPLY-005",
+      "sarif_name": "ExcessiveDependencyCount",
+      "severity": "low",
+      "title": "Dependency count exceeds threshold"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Update to patched version as listed in the vulnerability database.",
+      "rule_id": "AAK-SUPPLY-006",
+      "sarif_name": "McpSpecificVulnDep",
+      "severity": "high",
+      "title": "Dependency with known MCP-specific vulnerability"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter is passed to os.system(), subprocess, or similar shell execution functions without sanitization.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Sanitize all inputs. Use subprocess with shell=False and explicit argument lists.",
+      "rule_id": "AAK-TAINT-001",
+      "sarif_name": "TaintShellInjection",
+      "severity": "critical",
+      "title": "Tool parameter flows to shell command"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-05"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter flows to eval(), exec(), or compile() enabling arbitrary code execution.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Never pass user-controlled input to eval/exec. Use safe parsing alternatives.",
+      "rule_id": "AAK-TAINT-002",
+      "sarif_name": "TaintCodeInjection",
+      "severity": "critical",
+      "title": "Tool parameter flows to eval/exec"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-06"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter is used in open() or file path construction, enabling path traversal attacks.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Validate and sanitize file paths. Use os.path.realpath() and verify against allowed directories.",
+      "rule_id": "AAK-TAINT-003",
+      "sarif_name": "TaintPathTraversal",
+      "severity": "high",
+      "title": "Tool parameter flows to file open"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-02"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter is passed to requests.get/post or urllib, enabling SSRF attacks.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Validate URLs against an allowlist. Block internal/private IP ranges.",
+      "rule_id": "AAK-TAINT-004",
+      "sarif_name": "TaintSsrf",
+      "severity": "high",
+      "title": "Tool parameter flows to HTTP request"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-07"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter is used in cursor.execute() or similar database query functions via string formatting.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Use parameterized queries. Never use f-strings or .format() for SQL.",
+      "rule_id": "AAK-TAINT-005",
+      "sarif_name": "TaintSqlInjection",
+      "severity": "high",
+      "title": "Tool parameter flows to SQL query"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-08"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function parameter is passed to pickle.loads(), yaml.load(), or similar deserialization functions.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Use safe deserialization (yaml.safe_load, json.loads) instead of unsafe alternatives.",
+      "rule_id": "AAK-TAINT-006",
+      "sarif_name": "TaintDeserialization",
+      "severity": "medium",
+      "title": "Tool parameter flows to deserialization"
+    },
+    {
+      "adversa_references": [
+        "ADV-VALID-01"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function has no type hints or input validation on its parameters.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Add type hints and input validation to all tool function parameters.",
+      "rule_id": "AAK-TAINT-007",
+      "sarif_name": "TaintMissingValidation",
+      "severity": "medium",
+      "title": "Tool function missing input validation"
+    },
+    {
+      "adversa_references": [
+        "ADV-SCOPE-05"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A @tool function accesses more than 3 different dangerous sinks, indicating overly broad permissions.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Split into smaller, focused tool functions with minimal privileges.",
+      "rule_id": "AAK-TAINT-008",
+      "sarif_name": "TaintExcessiveSinks",
+      "severity": "medium",
+      "title": "Tool function with excessive dangerous sinks"
+    },
+    {
+      "adversa_references": [
+        "ADV-TASKS-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "A task read endpoint returns task state based on the task ID alone. Any caller that guesses or enumerates a task ID gets another user's data (CWE-639).",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Verify the caller is the task owner (or has an explicit grant) before returning task state.",
+      "rule_id": "AAK-TASKS-001",
+      "sarif_name": "TasksNoOwnerCheck",
+      "severity": "high",
+      "title": "MCP task read endpoint lacks per-task authorization"
+    },
+    {
+      "adversa_references": [
+        "ADV-TASKS-02"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "A task record retains API keys / OAuth tokens after the task reaches a terminal state (completed/failed/cancelled). Long-lived credentials in persistent state are an obvious exfil target.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Zeroize credential fields when the task transitions to a terminal state. Keep only what a post-mortem actually needs.",
+      "rule_id": "AAK-TASKS-002",
+      "sarif_name": "TasksCredentialPersistence",
+      "severity": "high",
+      "title": "MCP tasks persist credentials past completion"
+    },
+    {
+      "adversa_references": [
+        "ADV-TASKS-03"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "A task record has no expiration and no cancellation endpoint. Orphaned tasks accumulate forever, including their inputs.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Set a TTL on every task; expose a cancellation endpoint that zeroizes inputs and credentials.",
+      "rule_id": "AAK-TASKS-003",
+      "sarif_name": "TasksNoTtl",
+      "severity": "medium",
+      "title": "MCP task has no TTL or cancellation path"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRANSPORT-01"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [],
+      "description": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Use HTTPS for all remote MCP server connections.",
+      "rule_id": "AAK-TRANSPORT-001",
+      "sarif_name": "McpHttpNotHttps",
+      "severity": "critical",
+      "title": "MCP server uses HTTP instead of HTTPS"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRANSPORT-02"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [],
+      "description": "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, enabling MITM attacks.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Remove TLS validation overrides. Use proper certificate management.",
+      "rule_id": "AAK-TRANSPORT-002",
+      "sarif_name": "McpTlsValidationDisabled",
+      "severity": "high",
+      "title": "TLS certificate validation disabled"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRANSPORT-03"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [],
+      "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.",
+      "owasp_agentic_references": [
+        "ASI08"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).",
+      "rule_id": "AAK-TRANSPORT-003",
+      "sarif_name": "McpDeprecatedSse",
+      "severity": "medium",
+      "title": "Deprecated SSE transport in use"
+    },
+    {
+      "adversa_references": [
+        "ADV-TOKEN-12"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [],
+      "description": "A session token or API key is passed as a URL query parameter, risking exposure in logs and referrer headers.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Pass tokens in HTTP headers instead of URL query parameters.",
+      "rule_id": "AAK-TRANSPORT-004",
+      "sarif_name": "McpTokenInUrl",
+      "severity": "high",
+      "title": "Session token in URL query parameter"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRUST-01"
+      ],
+      "auto_fixable": true,
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-21852"
+      ],
+      "description": "Auto-approves ALL MCP servers in .mcp.json without user consent. A compromised repo can ship arbitrary MCP servers that execute immediately.",
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Set to false. Use enabledMcpjsonServers to whitelist specific servers by name.",
+      "rule_id": "AAK-TRUST-001",
+      "sarif_name": "EnableAllProjectMcpServers",
+      "severity": "critical",
+      "title": "enableAllProjectMcpServers is true"
+    },
+    {
+      "adversa_references": [
+        "ADV-REDIRECT-01"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-21852"
+      ],
+      "description": "Redirects all API traffic (including API keys) to attacker-controlled endpoint BEFORE trust prompt displays. This is the exact attack vector of CVE-2026-21852.",
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "NEVER override ANTHROPIC_BASE_URL in project settings. Only set in user-level or system environment.",
+      "rule_id": "AAK-TRUST-002",
+      "sarif_name": "AnthropicBaseUrlOverride",
+      "severity": "critical",
+      "title": "ANTHROPIC_BASE_URL overridden in project settings"
+    },
+    {
+      "adversa_references": [
+        "ADV-SCOPE-04"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Permission allow patterns use wildcards (*, **) or broad tool names. This bypasses the permission system, allowing unchecked tool execution.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Use narrowest possible permission patterns. Specify exact tool names and path constraints.",
+      "rule_id": "AAK-TRUST-003",
+      "sarif_name": "WildcardPermissionAllow",
+      "severity": "high",
+      "title": "Wildcard or overly broad permission allows"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRUST-02"
+      ],
+      "auto_fixable": true,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Settings file has permission allows but empty or missing deny rules. Defense-in-depth requires explicit deny rules for sensitive operations.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025",
+        "MCP08:2025"
+      ],
+      "remediation": "Add deny rules for: file system operations outside project, network tools, credential-accessing tools.",
+      "rule_id": "AAK-TRUST-004",
+      "sarif_name": "MissingDenyRules",
+      "severity": "high",
+      "title": "No deny rules defined"
+    },
+    {
+      "adversa_references": [
+        "ADV-REDIRECT-02"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-21852"
+      ],
+      "description": "An environment variable matching *_BASE_URL, *_API_URL, or *_ENDPOINT is set in project settings. This can redirect authenticated traffic to attacker-controlled servers.",
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Set API URLs only in user-level configuration or system environment variables.",
+      "rule_id": "AAK-TRUST-005",
+      "sarif_name": "CustomApiBaseUrlOverride",
+      "severity": "high",
+      "title": "Custom API base URL for any provider"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRUST-03"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Project settings have permission allows that could shadow user-level deny rules. Misconfigurations can create a false sense of security.",
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Audit that project allows don't re-enable operations the user intended to block.",
+      "rule_id": "AAK-TRUST-006",
+      "sarif_name": "ProjectOverridesUserDeny",
+      "severity": "medium",
+      "title": "Project settings may override user deny rules"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRUST-04"
+      ],
+      "auto_fixable": true,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "No enabledMcpjsonServers allowlist is configured, meaning server approval relies entirely on user prompts.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Configure enabledMcpjsonServers with explicit server names.",
+      "rule_id": "AAK-TRUST-007",
+      "sarif_name": "NoMcpServerAllowlist",
+      "severity": "medium",
+      "title": "No MCP server allowlist configured"
+    },
+    {
+      "adversa_references": [
+        "ADV-RCE-05"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-30615"
+      ],
+      "description": "A `.windsurf/mcp.json` file declares auto_approve:true or auto_execute:true, or contains server `command:` entries with no SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows attackers can inject malicious MCP registrations via HTML prompt injection when auto-approval is enabled.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Set auto_approve and auto_execute to false. Pin every server command to a SHA-256 digest. Upgrade Windsurf to a version with the registration confirmation flow enabled.",
+      "rule_id": "AAK-WINDSURF-001",
+      "sarif_name": "WindsurfAutoApprove",
+      "severity": "high",
+      "title": "Windsurf .windsurf/mcp.json auto-approves server registrations"
+    }
+  ],
+  "schema": "agent-audit-kit/rule-bundle/1"
+}

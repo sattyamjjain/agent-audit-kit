@@ -2271,6 +2271,179 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# Ox MCP STDIO architectural supply-chain class (AAK-STDIO-001)
+#
+# April 16 2026 Ox Security disclosure chained 10 CVEs across 200K+
+# exposed servers to one shape: user-controllable command parameters
+# reaching subprocess/exec/shell on the STDIO server side.
+#
+# References:
+#   - Ox disclosure: https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/
+#   - CVE-2026-30615 (Windsurf, CVSS 8.0): https://nvd.nist.gov/vuln/detail/CVE-2026-30615
+#   - Family: CVE-2025-65720 (GPT Researcher), CVE-2026-30617 (Langchain-Chatchat),
+#     CVE-2026-30618 (Fay), CVE-2026-30623 (LiteLLM), CVE-2026-30624 (Agent Zero),
+#     CVE-2026-30625 (Upsonic), CVE-2026-33224 (Bisheng/Jaaz),
+#     CVE-2026-26015 (DocsGPT).
+#   - CWE-77 (Command Injection).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-STDIO-001",
+    "MCP STDIO command-injection (Ox architectural class)",
+    "User-controllable input flows into a STDIO command executor in an "
+    "MCP server implementation — the architectural shape Ox Security "
+    "traced through CVE-2026-30615 (Windsurf RCE) and nine other CVEs "
+    "across ~200,000 exposed servers. Matches subprocess / os.system / "
+    "os.popen / os.exec / eval / exec where an arg references a taint "
+    "source (request params, stdin, @tool parameter, json.loads(stdin)). "
+    "TS/JS variant: child_process.spawn / execa with {shell:true} or a "
+    "request-derived command string.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Never pass caller-controlled data into a shell. Use argv lists "
+    "(subprocess.run([...]) without shell=True), allowlist the command "
+    "set, and validate arguments against an explicit schema. For TS, "
+    "pass argv as an array with shell:false and validate every element "
+    "against a regex or allowlist.",
+    sarif_name="McpStdioCommandInjection",
+    cve_references=[
+        "CVE-2026-30615",
+        "CVE-2025-65720",
+        "CVE-2026-30617",
+        "CVE-2026-30618",
+        "CVE-2026-30623",
+        "CVE-2026-30624",
+        "CVE-2026-30625",
+        "CVE-2026-33224",
+        "CVE-2026-26015",
+    ],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-RCE-04"],
+)
+
+# ---------------------------------------------------------------------------
+# Windsurf MCP auto-registration hardening (AAK-WINDSURF-001)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-WINDSURF-001",
+    "Windsurf .windsurf/mcp.json auto-approves server registrations",
+    "A `.windsurf/mcp.json` file declares auto_approve:true or "
+    "auto_execute:true, or contains server `command:` entries with no "
+    "SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows "
+    "attackers can inject malicious MCP registrations via HTML prompt "
+    "injection when auto-approval is enabled.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Set auto_approve and auto_execute to false. Pin every server "
+    "command to a SHA-256 digest. Upgrade Windsurf to a version with "
+    "the registration confirmation flow enabled.",
+    sarif_name="WindsurfAutoApprove",
+    cve_references=["CVE-2026-30615"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-RCE-05"],
+)
+
+# ---------------------------------------------------------------------------
+# Neo4j Cypher MCP read-only bypass (AAK-NEO4J-001)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-NEO4J-001",
+    "mcp-neo4j-cypher < 0.6.0 APOC read-only bypass",
+    "A dependency pin targets mcp-neo4j-cypher earlier than 0.6.0, or "
+    "source code sets read_only=True while issuing CALL apoc.* / "
+    "db.cypher.runWrite procedures. CVE-2026-35402 (CVSS 2.3 LOW, but "
+    "integrity-critical) lets attackers bypass the read-only mode and "
+    "execute arbitrary writes or SSRF.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade mcp-neo4j-cypher to 0.6.0 or later. In source code, stop "
+    "relying on read_only=True as a security boundary when APOC "
+    "procedures are in scope; deny-list apoc.* at the query layer.",
+    sarif_name="Neo4jApocBypass",
+    cve_references=["CVE-2026-35402"],
+    owasp_mcp_references=["MCP03:2025", "MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-08"],
+    auto_fixable=True,
+)
+
+# ---------------------------------------------------------------------------
+# Claude Code Windows ProgramData hijack (AAK-CLAUDE-WIN-001)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-CLAUDE-WIN-001",
+    "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path",
+    "On Windows, Claude Code prior to 2.1.75 loads "
+    "`%ProgramData%\\ClaudeCode\\managed-settings.json` without validating "
+    "directory ownership or ACLs. A low-privileged user can plant a "
+    "malicious config that executes on every launch. CVE-2026-35603 "
+    "(CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
+    Severity.HIGH,
+    Category.AGENT_CONFIG,
+    "Upgrade Claude Code to 2.1.75 or later. If the directory must "
+    "exist for deployment, ship a sibling `setup.ps1` that runs "
+    "`icacls` to restrict ACLs to TrustedInstaller + administrators "
+    "before any Claude Code launch.",
+    sarif_name="ClaudeCodeWindowsProgramData",
+    cve_references=["CVE-2026-35603"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-PATH-01"],
+)
+
+# ---------------------------------------------------------------------------
+# Log-injection in MCP tool handlers (AAK-LOGINJ-001)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-LOGINJ-001",
+    "MCP tool logs caller-controlled input without CRLF/ANSI sanitization",
+    "A `@tool`-decorated function parameter flows into logger.info / "
+    "print / sys.stdout.write / console.log without stripping control "
+    "characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 "
+    "MEDIUM, CWE-117) lets an attacker forge log entries and inject "
+    "ANSI escape sequences to socially engineer an operator.",
+    Severity.MEDIUM,
+    Category.TAINT_ANALYSIS,
+    "Strip \\r\\n\\x1b (or accept only printable ASCII) before "
+    "logging anything derived from tool input. Prefer structured "
+    "logging (JSON/logfmt) so log consumers aren't confused by forged "
+    "lines.",
+    sarif_name="McpLogInjection",
+    cve_references=["CVE-2026-6494"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-LOG-01"],
+)
+
+# ---------------------------------------------------------------------------
+# MCP server-repo SECURITY.md requirement (AAK-SEC-MD-001)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SEC-MD-001",
+    "MCP server repo missing SECURITY.md or security_contact",
+    "A repository whose name or pyproject keywords declare it as an "
+    "MCP server ships without a top-level SECURITY.md AND without a "
+    "`security_contact` entry in marketplace.json / pyproject.toml / "
+    "package.json. Anthropic's April 2026 SECURITY.md guidance makes "
+    "this the baseline expectation so researchers have a channel.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Add SECURITY.md at the repo root with a disclosure email and "
+    "response SLA; OR add `security_contact` to the project manifest.",
+    sarif_name="McpServerNoSecurityMd",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

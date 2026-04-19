@@ -184,6 +184,19 @@ def cli(ctx: click.Context) -> None:
     default=False,
     help="With --advisories, preview the advisory payloads without creating them.",
 )
+@click.option(
+    "--step-summary/--no-step-summary",
+    "step_summary",
+    default=True,
+    help="Append a Markdown findings table to $GITHUB_STEP_SUMMARY when running inside GitHub Actions. Default: on.",
+)
+@click.option(
+    "--pr-summary-out",
+    "pr_summary_out",
+    type=click.Path(),
+    default=None,
+    help="Also write the Markdown PR-comment body to this path (used by the Docker action).",
+)
 def scan_cmd(
     path: str,
     output_format: str,
@@ -207,6 +220,8 @@ def scan_cmd(
     strict_loading: bool,
     advisories_repo: str | None,
     advisories_dry_run: bool,
+    step_summary: bool,
+    pr_summary_out: str | None,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
@@ -233,6 +248,8 @@ def scan_cmd(
             strict_loading=strict_loading,
             advisories_repo=advisories_repo,
             advisories_dry_run=advisories_dry_run,
+            step_summary=step_summary,
+            pr_summary_out=pr_summary_out,
         )
     except Exception as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -263,6 +280,8 @@ def _run_scan(
     strict_loading: bool,
     advisories_repo: str | None = None,
     advisories_dry_run: bool = False,
+    step_summary: bool = True,
+    pr_summary_out: str | None = None,
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
@@ -379,7 +398,7 @@ def _run_scan(
     elif output_format == "json":
         output = json_report.format_results(result, severity)
     elif output_format == "sarif":
-        output = sarif.format_results(result, severity)
+        output = sarif.format_results(result, severity, project_root=project_root)
     else:
         output = console.format_results(result, severity, show_score=show_score)
 
@@ -389,6 +408,18 @@ def _run_scan(
             click.echo(f"Report written to {output_file}", err=True)
     else:
         click.echo(output)
+
+    # --- PR-comment markdown: $GITHUB_STEP_SUMMARY + optional explicit path ---
+    if step_summary or pr_summary_out:
+        from agent_audit_kit.output.pr_summary import render_markdown, write_step_summary
+
+        body = render_markdown(result)
+        if pr_summary_out:
+            Path(pr_summary_out).write_text(body, encoding="utf-8")
+            if verbose:
+                click.echo(f"pr-summary written to {pr_summary_out}", err=True)
+        if step_summary:
+            write_step_summary(result)
 
     # --- Optional: open GitHub Security Advisories for CRITICAL findings ---
     if advisories_repo:

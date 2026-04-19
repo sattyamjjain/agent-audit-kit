@@ -46,6 +46,9 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("india_pii", "India PII", []),
     ("healthcare_ai", "Healthcare AI legal triggers", []),
     ("state_privacy", "US state consumer privacy", []),
+    ("stdio_injection", "Ox MCP STDIO command-injection", []),
+    ("neo4j_cve", "mcp-neo4j-cypher CVE-2026-35402", []),
+    ("log_injection", "MCP tool log-injection (CVE-2026-6494)", []),
 ]
 
 

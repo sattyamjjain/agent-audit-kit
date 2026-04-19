@@ -27,8 +27,10 @@ INPUT_RULES="${7:-}"
 INPUT_EXCLUDE_RULES="${8:-}"
 INPUT_IGNORE_PATHS="${9:-}"
 INPUT_CONFIG="${10:-}"
+INPUT_COMMENT_ON_PR="${11:-true}"
 
 SARIF_FILE="agent-audit-results.sarif"
+PR_SUMMARY_FILE="agent-audit-pr-summary.md"
 
 # ---------------------------------------------------------------------------
 # Build CLI command
@@ -58,6 +60,9 @@ fi
 if [ -n "${INPUT_CONFIG}" ]; then
     CMD+=(--config "${INPUT_CONFIG}")
 fi
+
+# v0.3.1: always write the PR-summary markdown so the comment step below can use it.
+CMD+=(--pr-summary-out "${PR_SUMMARY_FILE}")
 
 # ---------------------------------------------------------------------------
 # Run scan and capture exit code
@@ -190,6 +195,57 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             echo "**Result: ERROR** (exit code ${SCAN_EXIT})"
         fi
     } >> "${GITHUB_STEP_SUMMARY}"
+fi
+
+# ---------------------------------------------------------------------------
+# v0.3.1: Sticky PR comment.
+#
+# When comment-on-pr=true AND this is a pull_request event AND we have a
+# token, post/update a single sticky comment using the hidden marker
+# `<!-- agent-audit-kit:pr-summary -->` that the renderer embeds. Any
+# failure here is logged but does NOT change the scan exit code — the
+# scan is the source of truth.
+# ---------------------------------------------------------------------------
+if [ "${INPUT_COMMENT_ON_PR}" = "true" ] \
+    && [ -f "${PR_SUMMARY_FILE}" ] \
+    && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] \
+    && [ -n "${GITHUB_TOKEN:-}" ]; then
+    REPO="${GITHUB_REPOSITORY:-}"
+    PR_NUMBER=""
+    if [ -f "${GITHUB_EVENT_PATH:-}" ]; then
+        PR_NUMBER=$(python3 -c 'import json,sys,os; d=json.load(open(os.environ["GITHUB_EVENT_PATH"])); print(d.get("pull_request",{}).get("number",""))' || echo "")
+    fi
+
+    if [ -n "${REPO}" ] && [ -n "${PR_NUMBER}" ]; then
+        MARKER="<!-- agent-audit-kit:pr-summary -->"
+        API="https://api.github.com/repos/${REPO}/issues/${PR_NUMBER}/comments"
+        # Find an existing sticky comment.
+        EXISTING=$(curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${API}?per_page=100" | python3 -c \
+            'import json,sys; rows=json.load(sys.stdin); m="<!-- agent-audit-kit:pr-summary -->"
+for r in rows:
+    if isinstance(r,dict) and m in (r.get("body") or ""):
+        print(r["id"]); break' || true)
+        BODY_JSON=$(python3 -c 'import json,sys; print(json.dumps({"body": open(sys.argv[1]).read()}))' "${PR_SUMMARY_FILE}")
+        if [ -n "${EXISTING}" ]; then
+            curl -fsSL -X PATCH \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -d "${BODY_JSON}" \
+                "https://api.github.com/repos/${REPO}/issues/comments/${EXISTING}" >/dev/null \
+                || echo "comment-on-pr: PATCH failed (non-fatal)"
+        else
+            curl -fsSL -X POST \
+                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -d "${BODY_JSON}" \
+                "${API}" >/dev/null \
+                || echo "comment-on-pr: POST failed (non-fatal)"
+        fi
+        echo "comment-on-pr: sticky comment updated for PR #${PR_NUMBER}"
+    fi
 fi
 
 exit "${SCAN_EXIT}"

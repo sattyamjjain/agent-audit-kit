@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'Security scanner for MCP agent pipelines — 77 rules, OWASP 10/10, SARIF output'
+description: 'AgentAuditKit — MCP Security Scan (144 rules, OWASP Agentic Top 10 + MCP Top 10)'
 author: 'sattyamjjain'
 
 branding:
@@ -47,6 +47,10 @@ inputs:
     description: 'Path to .agent-audit-kit.yml configuration file'
     required: false
     default: ''
+  comment-on-pr:
+    description: 'Post a sticky PR comment summarising findings (requires pull-request event + issues:write). A Markdown table is also written to $GITHUB_STEP_SUMMARY in every run.'
+    required: false
+    default: 'true'
 
 outputs:
   findings-count:
@@ -74,3 +78,4 @@ runs:
     - ${{ inputs.exclude-rules }}
     - ${{ inputs.ignore-paths }}
     - ${{ inputs.config }}
+    - ${{ inputs.comment-on-pr }}
