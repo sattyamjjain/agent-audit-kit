@@ -1,6 +1,6 @@
 """Safe MCP Tasks fixture: owner checks, TTL, cancel path, zeroization."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class Task:
@@ -9,7 +9,7 @@ class Task:
         self.owner = owner
         self.api_key = api_key
         self.status = "working"
-        self.expires_at = datetime.utcnow() + timedelta(hours=1)
+        self.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
     def mark_completed(self):
         self.status = "completed"

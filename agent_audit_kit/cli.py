@@ -689,6 +689,8 @@ def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
         "nist-ai-rmf",
         "singapore-agentic",
         "india-dpdp",
+        "alabama-dppa",
+        "tennessee-sb1580",
     ]),
     help="Compliance framework to format for.",
 )

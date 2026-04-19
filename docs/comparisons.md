@@ -8,18 +8,65 @@ file an issue and we will correct it within 48 hours.
 
 ## At a glance
 
-| | agent-audit-kit | Snyk Agent Scan (ex Invariant) | Checkmarx | Semgrep Multimodal SAST | Lakera Guard |
+| | agent-audit-kit | Microsoft AGT | Snyk Agent Scan (ex Invariant) | Semgrep Multimodal SAST | Lakera Guard |
 |---|---|---|---|---|---|
-| License | Apache 2.0 | Proprietary | Proprietary | Proprietary + OSS rules | Proprietary |
-| Account required | No | Yes | Yes | Optional | Yes |
-| Cloud round-trip | No | Yes (findings leave your repo) | Yes | Optional | Yes |
-| Compliance-evidence PDF | Yes (EU AI Act / SOC 2 / ISO 27001+42001 / HIPAA / NIST AI RMF) | No (findings only) | Partial (SOC 2) | No | No |
-| India DPDP / Singapore AI framework coverage | Yes | No | No | No | No |
-| Signed rule bundle | Yes (Sigstore) | No (proprietary) | No | No | No |
-| Deterministic (reproducible CI) | Yes | No (multi-model analysis) | Yes | Partial (LLM-assisted reasoning) | No (runtime LLM) |
-| Public 48h CVE-to-rule SLA | Yes (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
-| MCP Security Index / leaderboard | Yes (weekly, 500+ servers) | No | No | No | No |
-| Pin + drift verification of tool surface | Yes | No | No | No | No |
+| License | Apache 2.0 | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
+| Scope | Static scanner + compliance evidence | Runtime governance (policy engine + mesh) | Static + runtime (post-acquisition) | Multimodal SAST | Runtime guardrail |
+| Account / cloud required | No | No (but Azure-native paths) | Yes | Optional | Yes |
+| Cloud round-trip | No | No | Yes (findings leave your repo) | Optional | Yes |
+| Compliance-evidence PDF | **Yes** (EU AI Act, SOC 2, ISO 27001+42001, HIPAA, NIST AI RMF, Singapore, India DPDP, **Alabama DPPA**, **Tennessee SB 1580**) | No (runtime policies, no audit PDFs) | No (findings only) | No | No |
+| Regional / US-state compliance | Yes (India DPDP, Singapore, Alabama, Tennessee) | No | No | No | No |
+| Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No (proprietary) | No | No |
+| Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No (multi-model analysis) | Partial | No |
+| Public 48h CVE-to-rule SLA | **Yes** (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
+| MCP Security Index / leaderboard | **Yes** (weekly, 500+ servers) | No | No | No | No |
+| Pin + drift verification of tool surface | **Yes** | Yes (via Agent Runtime rings) | No | No | No |
+| OWASP Agentic Top 10 coverage | 10/10 | 10/10 | Partial | Partial | Partial |
+
+## Microsoft Agent Governance Toolkit (Apr 2 2026)
+
+Microsoft [open-sourced AGT](https://github.com/microsoft/agent-governance-toolkit)
+under MIT license on April 2 2026, with broad coverage on Apr 16
+([Help Net Security](https://www.helpnetsecurity.com/2026/04/03/microsoft-ai-agent-governance-toolkit/),
+[InfoWorld](https://www.infoworld.com/article/4155591/microsofts-new-agent-governance-toolkit-targets-top-owasp-risks-for-ai-agents.html)).
+It is the first major-vendor entry to claim 10/10 OWASP Agentic Top 10
+coverage with deterministic sub-millisecond policy enforcement.
+
+**AGT is an ally in positioning, not a head-on competitor.** It
+validates the category we've been shipping for months; different tool,
+different layer:
+
+- **agent-audit-kit** runs at CI time and ship time. It's a **static
+  scanner + compliance evidence** generator. You run it on a repo to
+  catch issues before deployment and to produce auditor-ready PDFs
+  (EU AI Act Art. 15, ISO 42001, Alabama DPPA, Tennessee SB 1580, etc.).
+- **Microsoft AGT** runs at **runtime**. Agent OS (policy engine),
+  Agent Mesh (A2A comms), Agent Runtime (dynamic execution rings),
+  Agent SRE (reliability), Agent Compliance (automated evidence
+  collection), Agent Marketplace, Agent Lightning (RL training
+  governance). It enforces policies as agents execute.
+
+Use both: `agent-audit-kit` tells an auditor your design is sound;
+Microsoft AGT tells them your runtime actually behaved. Differentiation
+is the compliance-evidence PDF stack (EU/US state-by-state), the
+**48h CVE-to-rule SLA** with a public ledger, the signed rule bundle,
+and the MCP Security Index leaderboard — none of which are AGT goals.
+
+Microsoft AGT ships Python / TypeScript / Rust / Go / .NET. Integrations
+already operational in Dify, LlamaIndex, OpenAI Agents SDK, Haystack,
+LangGraph, PydanticAI. agent-audit-kit integrates with AGT findings on
+the roadmap (a future `--runtime-policies microsoft-agt` flag can
+cross-check our static rules against a deployed AGT policy set).
+
+## SnapLogic AI Gateway + Trusted Agent Identity (Apr 16 2026)
+
+[SnapLogic announced](https://www.globenewswire.com/news-release/2026/04/16/3275117/0/en/SnapLogic-Announces-AI-Gateway-and-Trusted-Agent-Identity-to-Power-the-Era-of-Digital-Labor.html)
+enterprise iPaaS primitives for agent identity + governance. Signal: "agent
+identity" is now a vendor-category, not a feature. agent-audit-kit's
+`pin` + `verify` commands already cover the "is this the agent I
+expected?" question for MCP tool surface; SnapLogic extends the same
+idea to cross-enterprise RPA / iPaaS flows. Complementary, not
+competing.
 
 ## What we are NOT better at
 

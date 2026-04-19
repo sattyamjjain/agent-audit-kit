@@ -31,6 +31,8 @@ _FRAMEWORK_TITLES = {
     "nist-ai-rmf": "NIST AI RMF 1.0 — GOVERN, MAP, MEASURE, MANAGE",
     "singapore-agentic": "Singapore Agentic AI Governance Framework (Jan 2026)",
     "india-dpdp": "India Digital Personal Data Protection Act 2023",
+    "alabama-dppa": "Alabama Personal Data Protection Act (HB 351, 2026)",
+    "tennessee-sb1580": "Tennessee SB 1580 — Health Care AI (PRA)",
 }
 
 # Coarse mapping from AAK categories to framework control families.
@@ -151,6 +153,35 @@ _CATEGORY_TO_CONTROL = {
         "transport-security": "s.8(4) Reasonable security safeguards",
         "a2a-protocol": "s.8(7) Processor obligations",
         "legal-compliance": "s.5 DPDP Rules 2023 alignment",
+    },
+    "alabama-dppa": {
+        # HB 351 sections. Alabama's structure follows the VCDPA/CCPA lineage.
+        "mcp-config": "§3(b) Reasonable data-security practices",
+        "hook-injection": "§5 Security incident response",
+        "trust-boundary": "§3(b) Reasonable data-security practices",
+        "secret-exposure": "§4 Sensitive data additional protections",
+        "supply-chain": "§6 Processor contracts",
+        "agent-config": "§3(a) Controller obligations",
+        "tool-poisoning": "§3(b) Reasonable data-security practices",
+        "taint-analysis": "§3(b) Reasonable data-security practices",
+        "transport-security": "§3(b) Reasonable data-security practices",
+        "a2a-protocol": "§6 Processor contracts",
+        "legal-compliance": "§2 Privacy-notice content; §10 45-day cure",
+    },
+    "tennessee-sb1580": {
+        # Very narrow law; mapping reflects that the whole control set folds
+        # into "don't represent AI as a mental-health professional".
+        "mcp-config": "Prohibition §1 — no mental-health-professional representation",
+        "hook-injection": "Prohibition §1 — no mental-health-professional representation",
+        "trust-boundary": "Prohibition §1 — no mental-health-professional representation",
+        "secret-exposure": "TCPA §47-18-104 unfair-or-deceptive practice",
+        "supply-chain": "Prohibition §1 applied to 3rd-party agents",
+        "agent-config": "Prohibition §1 — no mental-health-professional representation",
+        "tool-poisoning": "Prohibition §1 — no mental-health-professional representation",
+        "taint-analysis": "Prohibition §1 — no mental-health-professional representation",
+        "transport-security": "TCPA §47-18-104 unfair-or-deceptive practice",
+        "a2a-protocol": "Prohibition §1 — no mental-health-professional representation",
+        "legal-compliance": "TCPA §47-18-109 private right of action ($5,000/violation)",
     },
 }
 

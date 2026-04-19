@@ -2129,6 +2129,148 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# Healthcare-AI regulation triggers (AAK-HEALTHCARE-AI-001..005)
+#
+# References:
+#   - Tennessee SB 1580 (signed 2026-04-01, effective 2026-07-01):
+#     https://www.troutmanprivacy.com/2026/04/tennessee-enacts-health-care-ai-bill-with-private-right-of-action/
+#   - Kansas / Washington / Utah prior-auth physician-review mandates.
+#   - Georgia / Iowa AI-only insurance coverage decision restrictions.
+#   - OWASP Agentic Top 10 ASI05 (Excessive Agency), ASI09 (Improper Isolation).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-HEALTHCARE-AI-001",
+    "AI described as a mental-health professional (Tennessee SB 1580)",
+    "A tool description, SKILL.md body, agent card, or system prompt "
+    "represents the AI as a therapist / counselor / psychologist / "
+    "'qualified mental health professional'. Tennessee SB 1580 (signed "
+    "2026-04-01) makes this unlawful and enforceable via the TN Consumer "
+    "Protection Act, with a **private right of action** and $5,000 "
+    "civil penalty per violation.",
+    Severity.CRITICAL,
+    Category.LEGAL_COMPLIANCE,
+    "Rewrite the description. The AI can support mental-wellness use "
+    "cases but cannot claim or imply it is (or replaces) a licensed "
+    "mental-health professional. Add an explicit 'not a substitute for "
+    "licensed care' disclaimer.",
+    sarif_name="HealthcareAiMentalHealthClaim",
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI05"],
+)
+
+_r(
+    "AAK-HEALTHCARE-AI-002",
+    "AI makes prior-authorization / medical-necessity decisions alone",
+    "Code or prompt describes an AI system making prior-authorization "
+    "or medical-necessity decisions without licensed-physician review. "
+    "Kansas, Washington, and Utah 2026 laws require a clinician in the "
+    "loop for these decisions.",
+    Severity.HIGH,
+    Category.LEGAL_COMPLIANCE,
+    "Route every prior-auth / medical-necessity output through a "
+    "licensed-physician review step; expose that review in the audit log.",
+    sarif_name="HealthcareAiPriorAuthSolo",
+    owasp_agentic_references=["ASI05"],
+)
+
+_r(
+    "AAK-HEALTHCARE-AI-003",
+    "AI-only insurance coverage decision",
+    "Code / prompt describes an AI system approving or denying insurance "
+    "coverage without a human in the loop. Georgia and Iowa 2026 laws "
+    "restrict AI-only coverage / benefit determinations.",
+    Severity.HIGH,
+    Category.LEGAL_COMPLIANCE,
+    "Require human sign-off on coverage decisions; disclose AI "
+    "involvement to the consumer.",
+    sarif_name="HealthcareAiInsuranceSolo",
+    owasp_agentic_references=["ASI05"],
+)
+
+_r(
+    "AAK-HEALTHCARE-AI-004",
+    "Healthcare context without explicit AI-disclosure to user",
+    "Text mentions patient / clinical / mental-health / therapy / "
+    "diagnosis but the tool never explicitly says the responder is an "
+    "AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI "
+    "disclosure in clinical interactions.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "Add a visible 'You are talking to an AI; this is not medical "
+    "advice and is not a substitute for licensed care' disclosure.",
+    sarif_name="HealthcareAiNoDisclosure",
+    owasp_agentic_references=["ASI05"],
+)
+
+_r(
+    "AAK-HEALTHCARE-AI-005",
+    "Crisis keywords handled without escalation path",
+    "A healthcare AI surface mentions suicide / self-harm / crisis but "
+    "never references 988 / 911 / 112 / 999 / a crisis line. Tennessee "
+    "HB 1951 (2026) creates criminal liability for encouraging suicide; "
+    "lacking an escalation path materially worsens the exposure.",
+    Severity.HIGH,
+    Category.LEGAL_COMPLIANCE,
+    "Add explicit crisis-line escalation instructions in the prompt / "
+    "system message; test for the most common suicide / self-harm "
+    "phrases and escalate before generating any other reply.",
+    sarif_name="HealthcareAiNoCrisisEscalation",
+    owasp_agentic_references=["ASI05"],
+)
+
+
+# ---------------------------------------------------------------------------
+# US state consumer privacy disclosure (AAK-STATE-PRIVACY-001..003)
+#
+# References:
+#   - Alabama Personal Data Protection Act (HB 351), signed 2026,
+#     effective 2027-05-01 — the 21st state comprehensive privacy law:
+#     https://iapp.org/news/a/alabama-set-to-add-variation-to-us-state-privacy-patchwork
+#   - IAPP US State Privacy Legislation Tracker (21 states as of Apr 2026).
+#   - OWASP ASI04 (Supply Chain of Trust), CWE-200, CWE-359.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-STATE-PRIVACY-001",
+    "Privacy doc missing 'do-not-sell' / opt-out-of-sale language",
+    "A privacy policy / notice lacks the CCPA-lineage opt-out-of-sale "
+    "language that Alabama DPPA, CCPA, CPRA, VCDPA, and the other 21 "
+    "state comprehensive privacy laws converge on.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "Add a 'Do Not Sell / Share My Personal Information' section and a "
+    "usable opt-out mechanism.",
+    sarif_name="StatePrivacyNoOptOut",
+)
+
+_r(
+    "AAK-STATE-PRIVACY-002",
+    "Privacy doc missing access / deletion / portability rights",
+    "A privacy policy does not describe the consumer's access, "
+    "deletion, or portability rights — mandatory across every state "
+    "comprehensive privacy law passed 2018-2026.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "Describe DSAR submission, 45-day cure window where applicable, and "
+    "the portability format.",
+    sarif_name="StatePrivacyNoConsumerRights",
+)
+
+_r(
+    "AAK-STATE-PRIVACY-003",
+    "Privacy doc missing data-controller contact",
+    "A privacy policy does not expose a data-controller contact (DPO "
+    "email / privacy@ / mailing address). Required by most state laws "
+    "and a prerequisite for any DSAR.",
+    Severity.LOW,
+    Category.LEGAL_COMPLIANCE,
+    "Add a privacy@ inbox and a postal mailing address for DSARs.",
+    sarif_name="StatePrivacyNoContact",
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

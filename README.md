@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-124-red.svg" alt="Rules: 124"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-138-red.svg" alt="Rules: 138"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -23,11 +23,11 @@
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
-- **124 rules** across 11 security categories, covering the 2026 CVE wave
-- **25 scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
-- **14 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`
+- **138 rules** across 11 security categories, covering the 2026 CVE wave
+- **28 scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
-- **Compliance mapping**: EU AI Act Art. 15 + 55, SOC 2, ISO 27001 + 42001, HIPAA, NIST AI RMF — PDF reports via `agent-audit-kit report --format pdf`
+- **Compliance mapping** (11 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`
 - **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`)
 - **MCP Security Index**: weekly public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
 - **AAK Response SLA**: rule coverage within **48 hours** of any disclosed MCP CVE — ledger in [CHANGELOG.cves.md](CHANGELOG.cves.md)
@@ -301,26 +301,32 @@ Detects: tool definitions changed (AAK-RUGPULL-001), new tools added (AAK-RUGPUL
 
 See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Verifiable claims only.
 
-| Feature | AgentAuditKit | mcp-scan | Snyk Agent Scan | Microsoft AGT |
+| Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
-| Detection rules | **124** | ~10 | ~30 | ~20 |
-| Agent platforms | **13** | 1 | 3 | 1 |
-| GitHub Action | **Yes** | No | Yes | No |
-| Tool poisoning + pinning | **Yes** | Yes | Yes | No |
-| Python AST taint + TS/Rust pattern | **Yes** | No | Partial | No |
-| OWASP Agentic 10/10 | **Yes** | No | Partial | Yes |
-| OWASP MCP 10/10 | **Yes** | No | No | No |
-| Auditor-ready PDF compliance | **5 frameworks** | 0 | 0 | 0 |
-| Sigstore-signed rule bundle | **Yes** | No | No | No |
+| Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
+| Detection rules (static) | **138** | Runtime policies, not rules | ~30 | LLM-assisted |
+| OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
+| OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
+| Auditor-ready PDF compliance | **11 frameworks** | No | 0 | 0 |
+| Regional frameworks (IN/SG/AL/TN) | **Yes** | No | No | No |
+| Sigstore-signed rule bundle | **Yes** | SLSA provenance | No | No |
 | CycloneDX + SPDX SBOM output | **Yes** | No | No | No |
 | Public 48h CVE-to-rule SLA | **Yes** | No | No | No |
 | Public grade leaderboard | **Yes** (MCP Security Index) | No | No | No |
-| Auto-fix | **Yes** | No | No | No |
+| Pin + drift verification | **Yes** | Yes (runtime rings) | No | No |
+| Auto-fix CVE dependency bumps | **Yes** (`fix --cve`) | No | No | No |
+| GitHub Security Advisories | **Yes** (`--advisories`) | No | No | No |
 | Secret verification | **Yes** | No | No | No |
-| A2A protocol scanning | **12 rules** | No | No | No |
-| Offline / zero cloud | **Yes** | No | No | Yes |
-| Runtime proxy | **Yes** | No | No | Yes |
-| Open source | **MIT** | Partial | No | MIT |
+| A2A protocol scanning | **12 rules** | Agent Mesh | No | No |
+| Healthcare-AI legal triggers | **Yes** (TN SB 1580, KS/WA/UT) | No | No | No |
+| Offline / zero cloud | **Yes** | Yes | No | Optional |
+| License | **MIT** | MIT | Proprietary | Proprietary |
+
+**Microsoft AGT is an ally, not a competitor.** It governs agents at
+runtime; agent-audit-kit audits them at CI time and produces the PDF an
+auditor needs. Use both — the overlap is small, the reinforcement is
+high. See [docs/comparisons.md](docs/comparisons.md) for the full
+positioning write-up.
 
 ---
 

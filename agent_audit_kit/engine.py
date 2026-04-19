@@ -44,6 +44,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("routines", "Claude Code routines", []),
     ("mcp_tasks", "MCP Tasks leakage", []),
     ("india_pii", "India PII", []),
+    ("healthcare_ai", "Healthcare AI legal triggers", []),
+    ("state_privacy", "US state consumer privacy", []),
 ]
 
 
