@@ -13,9 +13,35 @@ permissions:
 
 jobs:
   # --------------------------------------------------------------------------
+  # 0. Gate: refuse to release while any sla-48h CVE-response issue is open.
+  #    Implements CLAUDE_PROMPT.md §5(1) — "blocks release until the issue
+  #    is closed". (C14)
+  # --------------------------------------------------------------------------
+  cve-response-gate:
+    name: CVE-response gate
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      contents: read
+    steps:
+      - name: Block release if open cve-response issues exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          count=$(gh issue list --repo "$GITHUB_REPOSITORY" --label sla-48h --state open --json number --jq length)
+          if [ "$count" != "0" ]; then
+            echo "::error ::cve-response gate: $count open sla-48h issue(s). Close them (or resolve with patch-release) before tagging."
+            gh issue list --repo "$GITHUB_REPOSITORY" --label sla-48h --state open
+            exit 1
+          fi
+          echo "cve-response gate: clean — 0 open sla-48h issues."
+
+  # --------------------------------------------------------------------------
   # 1. Publish to PyPI using trusted publishing (OIDC)
   # --------------------------------------------------------------------------
   pypi:
+    needs: cve-response-gate
     name: Publish to PyPI
     runs-on: ubuntu-latest
     environment:
@@ -24,10 +50,10 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -45,6 +71,7 @@ jobs:
   # --------------------------------------------------------------------------
   docker:
     name: Push Docker image to GHCR
+    needs: cve-response-gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -52,13 +79,13 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -69,14 +96,14 @@ jobs:
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build image for scanning
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        uses: docker/build-push-action@v5
         with:
           context: .
           load: true
           tags: agent-audit-kit:scan
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: agent-audit-kit:scan
           format: sarif
@@ -85,7 +112,7 @@ jobs:
 
       - name: Build and push
         id: push
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        uses: docker/build-push-action@v5
         with:
           context: .
           push: true
@@ -102,7 +129,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Generate SLSA provenance attestation
-        uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c # v1.4.3
+        uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/sattyamjjain/agent-audit-kit
           subject-digest: ${{ steps.push.outputs.digest }}
@@ -113,15 +140,16 @@ jobs:
   # --------------------------------------------------------------------------
   bundle-and-sign:
     name: Rule bundle + SBOM (Sigstore)
+    needs: cve-response-gate
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v4.7.1
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -146,6 +174,14 @@ jobs:
             rules.json
             sbom.cdx.json
             sbom.spdx.json
+          # Keep sigs in the workflow; we attach them ourselves in github-release.
+          release-signing-artifacts: false
+          upload-signing-artifacts: true
+
+      - name: Verify sigstore outputs landed
+        run: |
+          ls -la ./*.sigstore* || true
+          ls -la ./rules.json ./sbom.cdx.json ./sbom.spdx.json
 
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
@@ -157,6 +193,9 @@ jobs:
             sbom.cdx.json
             sbom.spdx.json
             *.sigstore
+            *.sigstore.json
+            *.sig
+          if-no-files-found: warn
 
   # --------------------------------------------------------------------------
   # 4. Create GitHub Release with auto-generated notes + signed bundle
@@ -168,7 +207,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@v4
 
       - name: Download signed artifacts
         uses: actions/download-artifact@v4
@@ -177,7 +216,7 @@ jobs:
           path: signed
 
       - name: Create release
-        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
+        uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
@@ -186,6 +225,8 @@ jobs:
             signed/sbom.cdx.json
             signed/sbom.spdx.json
             signed/*.sigstore
+            signed/*.sigstore.json
+            signed/*.sig
           body: |
             ## Installation
 

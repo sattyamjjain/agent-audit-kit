@@ -1,8 +1,18 @@
 name: MCP Security Index — weekly snapshot
 
+# Closes B4 / #25: MkDocs docs live at gh-pages/docs/, MCP Security
+# Index at gh-pages/. Replaces the broken .github/workflows/docs.yml
+# (stale deploy-pages SHA) with a single deploy pipeline.
+
 on:
   schedule:
     - cron: "11 7 * * 1"   # Mondays, 07:11 UTC
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/mcp-security-index.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -21,10 +31,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install agent-audit-kit
-        run: pip install -e .
+      - name: Install agent-audit-kit + MkDocs
+        run: |
+          pip install -e .
+          pip install mkdocs mkdocs-material
 
+      # ---- MCP Security Index (only on schedule / manual dispatch) ----
       - name: Crawl public MCP servers
+        if: github.event_name != 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -32,15 +46,42 @@ jobs:
           python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
 
       - name: Build MCP Security Index site
+        if: github.event_name != 'push'
         run: python benchmarks/index_builder.py --input benchmarks/results.json --site-dir benchmarks/site --clean
 
-      - name: Commit snapshot to gh-pages branch
+      # ---- MkDocs ----
+      - name: Build MkDocs
+        run: mkdocs build -d docs_build
+
+      # ---- Assemble gh-pages payload: index/ at root, docs at /docs/ ----
+      - name: Fetch prior gh-pages state (so we preserve the index on docs-only pushes)
         run: |
+          git fetch origin gh-pages:gh-pages-remote || echo "no existing gh-pages branch"
+          mkdir -p pages_staging
+          if git show-ref --verify --quiet refs/heads/gh-pages-remote; then
+            git --work-tree=pages_staging checkout gh-pages-remote -- . || true
+          fi
+
+      - name: Stage payload
+        run: |
+          # docs always rebuilt from latest main
+          rm -rf pages_staging/docs
+          mv docs_build pages_staging/docs
+          # index only refreshed on schedule / dispatch
+          if [ -d benchmarks/site ]; then
+            cp -r benchmarks/site/. pages_staging/
+          fi
+          # .nojekyll so GitHub Pages serves the raw HTML
+          touch pages_staging/.nojekyll
+
+      - name: Publish to gh-pages
+        run: |
+          cd pages_staging
+          git init -q
           git config user.name 'mcp-security-index'
           git config user.email 'mcp-security-index@users.noreply.github.com'
-          git checkout --orphan gh-pages || git checkout gh-pages
-          rm -rf ./* 2>/dev/null || true
-          mv benchmarks/site/* .
-          git add -A
-          git commit -m "snapshot: $(date -u +%Y-%m-%d)" || echo "nothing to commit"
+          git checkout -b gh-pages
+          git add .
+          git commit -q -m "snapshot: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git push --force origin gh-pages

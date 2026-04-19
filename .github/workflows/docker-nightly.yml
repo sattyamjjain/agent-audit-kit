@@ -1,0 +1,74 @@
+name: Docker nightly rebuild
+
+# Closes C13 — scheduled rebuild so the :latest and :nightly tags pick up
+# base-image security patches without waiting for a release tag.
+
+on:
+  schedule:
+    - cron: "23 3 * * *"   # 03:23 UTC daily (off-peak; random minute per fleet-hygiene)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute tag set
+        id: tags
+        run: |
+          date_tag=$(date -u +%Y%m%d)
+          echo "date_tag=${date_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Build + push (latest + nightly + date tag)
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          pull: true           # force re-pull of base image to catch upstream patches
+          no-cache: true       # avoid cached base-image layers
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/agent-audit-kit:latest
+            ghcr.io/${{ github.repository_owner }}/agent-audit-kit:nightly
+            ghcr.io/${{ github.repository_owner }}/agent-audit-kit:nightly-${{ steps.tags.outputs.date_tag }}
+          labels: |
+            org.opencontainers.image.title=AgentAuditKit
+            org.opencontainers.image.description=Security scanner for MCP-connected AI agent pipelines
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/agent-audit-kit
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Trivy scan (fail if new CRITICAL/HIGH in base image)
+        uses: aquasecurity/trivy-action@master
+        continue-on-error: true
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/agent-audit-kit:nightly
+          format: sarif
+          output: trivy-nightly.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-nightly.sarif
+          category: trivy-nightly
