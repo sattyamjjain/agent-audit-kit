@@ -166,4 +166,82 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         for entry in plugins:
             if isinstance(entry, dict):
                 findings.extend(_check_plugin_entry(entry, manifest_path, project_root, raw))
+
+    # AAK-SEC-MD-001: MCP-server repos should ship SECURITY.md / security_contact.
+    findings.extend(_check_mcp_security_md(project_root, scanned))
     return findings, scanned
+
+
+def _check_mcp_security_md(
+    project_root: Path,
+    scanned: set[str],
+) -> list[Finding]:
+    """Fire AAK-SEC-MD-001 if this repo advertises itself as an MCP server
+    but has no SECURITY.md + no security_contact manifest field."""
+    import tomllib
+
+    # Detect whether this repo identifies as an MCP server.
+    name = ""
+    keywords: list[str] = []
+    security_contact_declared = False
+
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        scanned.add("pyproject.toml")
+        try:
+            data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+            project = data.get("project", {})
+            name = str(project.get("name") or name)
+            keywords = [str(k) for k in project.get("keywords", []) if k]
+            urls = project.get("urls") or {}
+            if any("security" in str(k).lower() for k in urls):
+                security_contact_declared = True
+            if "security-contact" in project or "security_contact" in project:
+                security_contact_declared = True
+        except Exception:  # noqa: BLE001
+            pass
+
+    pkg_json = project_root / "package.json"
+    if pkg_json.is_file():
+        scanned.add("package.json")
+        try:
+            data = json.loads(pkg_json.read_text(encoding="utf-8"))
+            if not name:
+                name = str(data.get("name") or "")
+            keywords = keywords or [str(k) for k in data.get("keywords", []) if k]
+            if "security_contact" in data or "securityContact" in data:
+                security_contact_declared = True
+        except json.JSONDecodeError:
+            pass
+
+    marketplace = project_root / ".claude-plugin" / "marketplace.json"
+    if marketplace.is_file():
+        try:
+            data = json.loads(marketplace.read_text(encoding="utf-8"))
+            if data.get("security_contact") or data.get("securityContact"):
+                security_contact_declared = True
+            if not name:
+                name = str(data.get("name") or "")
+            keywords = keywords or [str(k) for k in data.get("keywords", []) if k]
+        except json.JSONDecodeError:
+            pass
+
+    advertises_mcp = "mcp" in name.lower() or any("mcp" in k.lower() for k in keywords)
+    if not advertises_mcp:
+        return []
+
+    has_security_md = (project_root / "SECURITY.md").is_file() or (
+        project_root / ".github" / "SECURITY.md"
+    ).is_file()
+    if has_security_md or security_contact_declared:
+        return []
+
+    anchor_path = "SECURITY.md"
+    return [
+        make_finding(
+            "AAK-SEC-MD-001",
+            anchor_path,
+            f"Repo advertises itself as MCP (name={name!r}, keywords={keywords!r}) "
+            "but ships no SECURITY.md and no security_contact manifest field",
+        )
+    ]

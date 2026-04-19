@@ -2,7 +2,7 @@
   "name": "agent-audit-kit",
   "displayName": "AgentAuditKit",
   "description": "Security scanner for MCP-connected AI agent pipelines",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "sattyamjjain",
   "license": "MIT",
   "repository": {

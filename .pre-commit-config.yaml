@@ -1,0 +1,26 @@
+# Pre-commit hooks run against this repo.
+# Install once:
+#   pip install pre-commit && pre-commit install
+#
+# To skip (e.g. emergency commits): `git commit --no-verify`.
+repos:
+  # ---------------------------------------------------------------------
+  # Local: block rule-count drift at commit time.
+  # ---------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: aak-sync-rule-count
+        name: AAK — rule count in lockstep with rules.json
+        entry: python scripts/sync_rule_count.py --check
+        language: system
+        pass_filenames: false
+        files: "^(rules\\.json|README\\.md|action\\.yml|agent_audit_kit/rules/|agent_audit_kit/__init__\\.py$)"
+
+  # ---------------------------------------------------------------------
+  # Upstream lint / format.
+  # ---------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
