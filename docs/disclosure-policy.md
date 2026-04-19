@@ -47,9 +47,9 @@ research-grade detail is held until embargo expiry.
 ## Contact
 
 Security reports about agent-audit-kit itself: open a private advisory
-at <https://github.com/sattyamjjain/agent-audit-kit/security/advisories>
-or email `platform.dev@attri.ai` with "agent-audit-kit security" in
-the subject line.
+at <https://github.com/sattyamjjain/agent-audit-kit/security/advisories>.
+This is the only supported channel — it creates a timestamped, triaged
+record and starts the 90-day disclosure clock automatically.
 
 ## Scope
 

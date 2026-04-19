@@ -53,8 +53,9 @@ If you maintain an MCP server:
 1. Install agent-audit-kit and run `agent-audit-kit scan .` locally.
 2. Open your security advisory inbox — that's the channel we use first.
 3. If we have an embargoed finding against your server you'd like to fix
-   faster than 90 days, ping `platform.dev@attri.ai` and we'll share the
-   detail immediately.
+   faster than 90 days, open a Discussion on
+   [the agent-audit-kit repo](https://github.com/sattyamjjain/agent-audit-kit/discussions)
+   and we'll share the detail immediately.
 
 ---
 

@@ -32,7 +32,7 @@ for a same-day embargo so they publish at or just after launch.
 > available as angles if they're more interesting than the headline
 > numbers.
 >
-> Founder contact: platform.dev@attri.ai
+> Founder contact: {your-public-email}
 > Repo: https://github.com/sattyamjjain/agent-audit-kit
 > Leaderboard: https://mcp-security-index.com/
 >
