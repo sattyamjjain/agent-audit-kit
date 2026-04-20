@@ -24,9 +24,13 @@ from agent_audit_kit.rules.builtin import RULES
 
 def build_bundle() -> dict:
     """Assemble a deterministic dict of every rule (for signing)."""
+    from agent_audit_kit.models import SCHEMA_VERSION
+
     entries = sorted(RULES.items())
     return {
-        "schema": "agent-audit-kit/rule-bundle/1",
+        # schema-version string is bumped whenever RuleDefinition grows
+        # new reference fields. v2 adds incident_references + aicm_references.
+        "schema": f"agent-audit-kit/rule-bundle/{SCHEMA_VERSION}",
         "rules": [
             {
                 "rule_id": rid,

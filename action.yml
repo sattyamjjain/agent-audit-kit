@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'AgentAuditKit — MCP Security Scan (144 rules, OWASP Agentic Top 10 + MCP Top 10)'
+description: 'AgentAuditKit — MCP Security Scan (148 rules, OWASP Agentic Top 10 + MCP Top 10)'
 author: 'sattyamjjain'
 
 branding:
@@ -51,6 +51,10 @@ inputs:
     description: 'Post a sticky PR comment summarising findings (requires pull-request event + issues:write). A Markdown table is also written to $GITHUB_STEP_SUMMARY in every run.'
     required: false
     default: 'true'
+  fingerprint-strategy:
+    description: 'SARIF fingerprint mode. "auto" (default) uses content-hash when source is co-located, else location-hash — matches GitHub Code Scanning de-dup. "line-hash" forces content-hash; "disabled" emits no fingerprints (for marketplace runners that compute them downstream). GH Code Scanning requires self-emitted fingerprints when the SARIF uploader is not co-located with source: https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/sarif-support-for-code-scanning'
+    required: false
+    default: 'auto'
 
 outputs:
   findings-count:
@@ -79,3 +83,4 @@ runs:
     - ${{ inputs.ignore-paths }}
     - ${{ inputs.config }}
     - ${{ inputs.comment-on-pr }}
+    - ${{ inputs.fingerprint-strategy }}

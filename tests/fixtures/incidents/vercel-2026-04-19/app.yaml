@@ -1,0 +1,9 @@
+runtime: python311
+service: agent-worker
+
+env_variables:
+  OAUTH_CLIENT_ID: "999999999999-syntheticdemoclientidforaudit123.apps.googleusercontent.com"
+  OAUTH_SCOPES: |
+    https://www.googleapis.com/auth/admin.directory.user
+    https://www.googleapis.com/auth/cloud-platform
+    https://www.googleapis.com/auth/drive
