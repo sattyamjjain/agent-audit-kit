@@ -178,7 +178,10 @@ def _check_mcp_security_md(
 ) -> list[Finding]:
     """Fire AAK-SEC-MD-001 if this repo advertises itself as an MCP server
     but has no SECURITY.md + no security_contact manifest field."""
-    import tomllib
+    try:
+        import tomllib  # type: ignore[import-not-found]  # Python 3.11+
+    except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+        import tomli as tomllib  # type: ignore[import-not-found, no-redef]
 
     # Detect whether this repo identifies as an MCP server.
     name = ""
