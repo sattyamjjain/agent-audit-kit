@@ -24,6 +24,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable
 
 from agent_audit_kit.pinning import verify_pins
 
@@ -67,7 +68,7 @@ def run_watch(
     interval_seconds: int = 300,
     webhook_url: str | None = None,
     max_iterations: int | None = None,
-    on_drift: "callable | None" = None,  # type: ignore[valid-type]
+    on_drift: Callable[[int, list[Any]], None] | None = None,
 ) -> WatchResult:
     """Main watch loop.
 
