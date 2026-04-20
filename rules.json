@@ -4,10 +4,12 @@
       "adversa_references": [
         "ADV-A2A-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A Agent Card exposes internal capabilities or admin-level skills that should not be advertised externally.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -24,10 +26,12 @@
       "adversa_references": [
         "ADV-A2A-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A Agent Card does not require authentication for interactions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -44,10 +48,12 @@
       "adversa_references": [
         "ADV-A2A-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -64,10 +70,12 @@
       "adversa_references": [
         "ADV-A2A-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A agent endpoint uses HTTP instead of HTTPS.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -84,10 +92,12 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A Agent Card configures a JWT token lifetime greater than 1 hour (3600 seconds). Long-lived tokens increase the window for token theft and replay attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -104,10 +114,12 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A Agent Card disables JWT signature verification or allows the 'none' algorithm, permitting token forgery.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -124,10 +136,12 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A Agent Card lacks an 'id' or 'identity' field, or uses an HTTP endpoint, making it susceptible to agent impersonation attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -144,10 +158,12 @@
       "adversa_references": [
         "ADV-A2A-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "Two agents establish an A2A connection where only the caller authenticates. The callee is trusted by URL alone \u2014 easy to spoof.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -164,10 +180,12 @@
       "adversa_references": [
         "ADV-A2A-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A agent forwards incoming delegation tokens without reducing scope, allowing an N-deep chain to accumulate the caller's full rights.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -184,10 +202,12 @@
       "adversa_references": [
         "ADV-A2A-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A agent trusts claims relayed by a peer without verifying the original issuer. 'Agent B says A says X' must not be treated as X.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -204,10 +224,12 @@
       "adversa_references": [
         "ADV-A2A-08"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -224,10 +246,12 @@
       "adversa_references": [
         "ADV-A2A-09"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
       "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -244,10 +268,12 @@
       "adversa_references": [
         "ADV-HIJACK-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "An agent instruction file (AGENTS.md, .cursorrules, CLAUDE.md) contains shell commands or execution directives that could be injected into agent behavior.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -264,10 +290,12 @@
       "adversa_references": [
         "ADV-HIJACK-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "Agent instruction files reference external URLs that could serve as C2 channels or data exfiltration endpoints.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -284,10 +312,12 @@
       "adversa_references": [
         "ADV-HIJACK-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "Agent instructions contain patterns that attempt to disable or bypass security controls (e.g., 'ignore security warnings', 'skip verification').",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -304,10 +334,12 @@
       "adversa_references": [
         "ADV-HIJACK-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "Agent instruction files reference credentials, API keys, or environment variables.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -324,10 +356,12 @@
       "adversa_references": [
         "ADV-HIJACK-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "Agent instruction files contain hidden content via HTML comments, zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -344,12 +378,14 @@
       "adversa_references": [
         "ADV-PATH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [
         "CVE-2026-35603"
       ],
       "description": "On Windows, Claude Code prior to 2.1.75 loads `%ProgramData%\\ClaudeCode\\managed-settings.json` without validating directory ownership or ACLs. A low-privileged user can plant a malicious config that executes on every launch. CVE-2026-35603 (CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -363,11 +399,37 @@
       "title": "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path"
     },
     {
+      "adversa_references": [
+        "ADV-RCE-04"
+      ],
+      "aicm_references": [],
+      "auto_fixable": true,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-40933"
+      ],
+      "description": "Package manifest depends on `flowise` or `flowise-components` at version < 3.1.0, and/or a Flowise flow config (`.flowise/*.json`, `flows/*.json`) declares an MCP adapter node with `customFunction` or `runCode` sinks. CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated attacker combine allowlisted commands like `npx` with execution flags such as `-c` to achieve arbitrary OS command execution. Same architectural class as Ox's original STDIO disclosure (see AAK-STDIO-001).",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Upgrade flowise and flowise-components to 3.1.0 or later. Audit every MCP adapter node in your flow configs; remove `customFunction`/`runCode` sinks unless they're validated against a strict argv allowlist. See also AAK-STDIO-001 for the architectural-class detector.",
+      "rule_id": "AAK-FLOWISE-001",
+      "sarif_name": "FlowiseMcpAdapterRce",
+      "severity": "critical",
+      "title": "Flowise < 3.1.0 MCP adapter authenticated RCE"
+    },
+    {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A tool description, SKILL.md body, agent card, or system prompt represents the AI as a therapist / counselor / psychologist / 'qualified mental health professional'. Tennessee SB 1580 (signed 2026-04-01) makes this unlawful and enforceable via the TN Consumer Protection Act, with a **private right of action** and $5,000 civil penalty per violation.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -382,10 +444,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "Code or prompt describes an AI system making prior-authorization or medical-necessity decisions without licensed-physician review. Kansas, Washington, and Utah 2026 laws require a clinician in the loop for these decisions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -398,10 +462,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "Code / prompt describes an AI system approving or denying insurance coverage without a human in the loop. Georgia and Iowa 2026 laws restrict AI-only coverage / benefit determinations.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -414,10 +480,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "Text mentions patient / clinical / mental-health / therapy / diagnosis but the tool never explicitly says the responder is an AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI disclosure in clinical interactions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -430,10 +498,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A healthcare AI surface mentions suicide / self-harm / crisis but never references 988 / 911 / 112 / 999 / a crisis line. Tennessee HB 1951 (2026) creates criminal liability for encouraging suicide; lacking an escalation path materially worsens the exposure.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -448,12 +518,14 @@
       "adversa_references": [
         "ADV-EXFIL-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [
         "CVE-2025-59536"
       ],
       "description": "A hook command contains network-capable tools (curl, wget, nc, etc.). Hooks run automatically and can exfiltrate code, API keys, or session data.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -470,10 +542,12 @@
       "adversa_references": [
         "ADV-TOKEN-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command accesses credential environment variables. This enables direct credential theft via hook execution.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -490,10 +564,12 @@
       "adversa_references": [
         "ADV-ESCAPE-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command writes to paths outside the project boundary, which can modify system configs, plant persistence, or stage exfiltration.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -510,10 +586,12 @@
       "adversa_references": [
         "ADV-HOOK-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A non-formatting hook is attached to a sensitive lifecycle event (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). These events fire on every tool call or session start.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -530,10 +608,12 @@
       "adversa_references": [
         "ADV-OBFUSC-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command contains base64 operations, commonly used to obfuscate exfiltration payloads or encode stolen credentials.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -550,10 +630,12 @@
       "adversa_references": [
         "ADV-PRIV-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command uses sudo, doas, pkexec, or chmod +x. Hooks should never require elevated privileges.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -570,10 +652,12 @@
       "adversa_references": [
         "ADV-SCOPE-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -591,10 +675,12 @@
       "adversa_references": [
         "ADV-OBFUSC-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command contains hex-encoded strings, unicode escapes, very long commands, or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -611,10 +697,12 @@
       "adversa_references": [
         "ADV-EXFIL-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
       "description": "A hook command reads or references project source code files, which could enable code exfiltration.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -631,12 +719,14 @@
       "adversa_references": [
         "ADV-RCE-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [
         "CVE-2025-59536"
       ],
       "description": "A Claude Code hook script command-string interpolates a variable or captured group directly into a shell command. This is the CVE-2025-59536 shape: a poisoned config file triggers arbitrary code execution.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -653,12 +743,14 @@
       "adversa_references": [
         "ADV-RCE-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [
         "CVE-2025-59536"
       ],
       "description": "A hook script invokes subprocess.run / spawn with shell=True (or the equivalent in Node/Bash) while passing a composed string that includes caller-provided fields.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -675,12 +767,14 @@
       "adversa_references": [
         "ADV-RCE-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [
         "CVE-2025-59536"
       ],
       "description": "A settings.local.json or project-relative hook file executes before the Claude Code trust prompt. This is the core CVE-2025-59536 regression pattern; any project-contained hook must not run until trust is confirmed.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -695,10 +789,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A 12-digit Aadhaar number passed the Verhoeff checksum and is embedded in project text. Aadhaar is restricted under the UIDAI Act and India DPDP \u00a78(4). Storing in code is a reportable breach.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -713,10 +809,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A 10-char PAN (5 letters + 4 digits + 1 letter) was detected. PAN is tax-linked personal data under DPDP \u00a78(4).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -731,10 +829,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A UPI VPA (<handle>@<psp>) was detected. UPI IDs are payment identifiers regulated by NPCI and covered by DPDP \u00a78(4).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -749,10 +849,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "An IFSC code (4 letters + 0 + 6 alnum) was detected. IFSC is a banking identifier; pairing it with an account number constitutes DPDP \u00a78(4) 'sensitive personal data'.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -767,10 +869,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "An Indian +91 mobile number (starting 6/7/8/9) was detected. Phone numbers are personal data under DPDP \u00a78(4).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -785,10 +889,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "An Indian state-issued vehicle registration (e.g. 'MH 12 AB 1234') was detected. Vehicle registrations are PII in combination with driver records.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -803,10 +909,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "A scanner module crashed during execution. The scan continued with the remaining scanners, but results may be incomplete. This is always a bug in agent-audit-kit itself; please file an issue with the evidence string.",
+      "incident_references": [],
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "File an issue at https://github.com/sattyamjjain/agent-audit-kit/issues with the scanner name, exception class, and (if safe) the project shape.",
@@ -819,12 +927,14 @@
       "adversa_references": [
         "ADV-SUPPLY-01"
       ],
+      "aicm_references": [],
       "auto_fixable": true,
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-34070"
       ],
       "description": "A dependency file pins langchain or langchain-core to a version earlier than 1.2.22. CVE-2026-34070 allows absolute paths and '..' traversal via load_prompt() / load_prompt_from_config().",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -841,12 +951,14 @@
       "adversa_references": [
         "ADV-SUPPLY-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-34070"
       ],
       "description": "Source code calls langchain.load_prompt() or load_prompt_from_config() with a user-controlled path argument. Even on patched versions, the allow_dangerous_paths escape hatch is a sharp edge.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -863,12 +975,14 @@
       "adversa_references": [
         "ADV-SUPPLY-03"
       ],
+      "aicm_references": [],
       "auto_fixable": true,
       "category": "supply-chain",
       "cve_references": [
         "CVE-2025-68664"
       ],
       "description": "A dependency file pins langchain / langchainjs to a version vulnerable to GHSA-r399-636x-v7f6 / CVE-2025-68664, a serialization-injection chain that extracts secrets through crafted saved chains.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -883,10 +997,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations on your project.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -901,10 +1017,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A dependency has no declared license, creating legal uncertainty about usage rights.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -919,10 +1037,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A dependency has been flagged for DMCA/IP violations or contains leaked proprietary code.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -939,12 +1059,16 @@
       "adversa_references": [
         "ADV-LOG-01"
       ],
+      "aicm_references": [
+        "LOG-06"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-6494"
       ],
       "description": "A `@tool`-decorated function parameter flows into logger.info / print / sys.stdout.write / console.log without stripping control characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 MEDIUM, CWE-117) lets an attacker forge log entries and inject ANSI escape sequences to socially engineer an operator.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -961,10 +1085,12 @@
       "adversa_references": [
         "ADV-SUPPLY-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": ".claude-plugin/marketplace.json lacks a signature or integrity hash field. An attacker with write access to the marketplace can replace the plugin bundle with no detection.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -981,10 +1107,12 @@
       "adversa_references": [
         "ADV-SUPPLY-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A plugin's manifest grants access to filesystem, network, shell exec, or user-credential surfaces. Broad permissions should be opt-in after a clear user prompt.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1001,10 +1129,12 @@
       "adversa_references": [
         "ADV-SUPPLY-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A plugin entry uses a name that is one edit distance from a popular upstream (e.g. 'anthropic', 'langchain', 'mcp'). Typosquatting is the single highest-volume supply-chain attack vector in 2026.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1021,10 +1151,12 @@
       "adversa_references": [
         "ADV-SUPPLY-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A plugin entry pins to a branch (main/master) or tag without commit SHA. The maintainer (or an attacker with write access) can silently change plugin behavior post-install \u2014 the 'maintainer takeover' pattern from the June 2024 xz incident and its 2026 re-runs.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1041,10 +1173,12 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1061,10 +1195,12 @@
       "adversa_references": [
         "ADV-INJECT-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1081,10 +1217,12 @@
       "adversa_references": [
         "ADV-TOKEN-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1101,12 +1239,14 @@
       "adversa_references": [
         "ADV-SCOPE-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-21852"
       ],
       "description": "More than 10 MCP servers in a single config. Large tool surface increases attack surface.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1123,10 +1263,12 @@
       "adversa_references": [
         "ADV-SUPPLY-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1144,10 +1286,12 @@
       "adversa_references": [
         "ADV-INJECT-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1164,10 +1308,12 @@
       "adversa_references": [
         "ADV-SUPPLY-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1184,10 +1330,12 @@
       "adversa_references": [
         "ADV-INJECT-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1204,10 +1352,12 @@
       "adversa_references": [
         "ADV-SSRF-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1224,10 +1374,12 @@
       "adversa_references": [
         "ADV-SCOPE-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1244,12 +1396,14 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-33032"
       ],
       "description": "A remote MCP server exposes an HTTP handler with no authentication check. Per MCP spec 2025-11-25 all remote servers must require OAuth 2.1 or an equivalent bearer credential. Matches the CVE-2026-33032 pattern where /mcp_message was exposed without the auth middleware that /mcp used.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1267,12 +1421,14 @@
       "adversa_references": [
         "ADV-AUTH-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-33032"
       ],
       "description": "An MCP server's IP allowlist configuration defaults to an empty list, which its middleware interprets as 'allow all'. This is the exact CVE-2026-33032 root cause. Tight-by-default is required.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1289,10 +1445,12 @@
       "adversa_references": [
         "ADV-AUTH-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP HTTP endpoint sets Access-Control-Allow-Origin to '*' while also returning credentials/tokens. This allows hostile origins to read MCP responses from a victim browser session.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1309,10 +1467,12 @@
       "adversa_references": [
         "ADV-AUTH-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP client or server expects authentication tokens in URL query parameters. Query parameters land in server access logs, browser history, and referer headers, making this a token-leak vector.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1329,10 +1489,12 @@
       "adversa_references": [
         "ADV-RES-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server exposes a resource/file handler that passes user-supplied paths to open()/fs.readFile without normalization or allowlist checks. 2,614 MCP implementations surveyed; 82% had this class of issue.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1349,10 +1511,12 @@
       "adversa_references": [
         "ADV-DOS-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server endpoint accepts request bodies without a maximum-size limit. This enables token-cost denial-of-service and memory exhaustion.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1369,10 +1533,14 @@
       "adversa_references": [
         "ADV-TRANSPORT-01"
       ],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server configuration binds to plain HTTP without TLS. MCP spec 2025-11-25 requires Streamable HTTP over TLS for remote servers.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1389,10 +1557,12 @@
       "adversa_references": [
         "ADV-DOS-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server endpoint does not declare rate limiting. Unrestricted access allows credential stuffing and enumeration attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1409,10 +1579,12 @@
       "adversa_references": [
         "ADV-AUTH-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP handler performs work (e.g. db lookups, external calls) before verifying authentication. This reveals existence/shape of protected resources via timing and error channels.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1429,12 +1601,14 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-33032"
       ],
       "description": "Two MCP HTTP routes share a single handler but only one is wrapped in auth middleware. The second route inherits the tool surface without the auth check. This is the CVE-2026-33032 bypass pattern.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1449,14 +1623,46 @@
     },
     {
       "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-33032",
+        "CVE-2026-27944"
+      ],
+      "description": "Two routes matching the MCP endpoint pattern (`/mcp`, `/mcp_message`, `/mcp/messages`, `/mcp[_-]invoke`, `/mcp[_-]tool`, ...) are declared in the same file, but one has no auth middleware while its twin does. This is the exact CVE-2026-33032 shape nginx-ui 2.3.4 patched and which VulnCheck KEV-listed on 2026-04-13 as actively exploited (CVSS 9.8). ~2,689 Shodan instances were exposed at disclosure; any network-adjacent caller can invoke the protected tools with zero credentials.",
+      "incident_references": [
+        "MCPWN-2026-04-16"
+      ],
+      "owasp_agentic_references": [
+        "ASI01",
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Apply the same auth middleware to every MCP endpoint in a file. For Gin, use a `router.Use(AuthRequired())` group and mount all MCP routes inside it. For FastAPI, share a single `Depends(auth)` dependency across `@app.post('/mcp*')` decorators. For Express, create an `mcpRouter.use(authMw)` and mount it once.",
+      "rule_id": "AAK-MCPWN-001",
+      "sarif_name": "McpwnTwinAsymmetry",
+      "severity": "critical",
+      "title": "MCP route twin-asymmetry: auth middleware missing on sibling route (MCPwn, CVE-2026-33032)"
+    },
+    {
+      "adversa_references": [
         "ADV-SUPPLY-08"
       ],
+      "aicm_references": [],
       "auto_fixable": true,
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-35402"
       ],
       "description": "A dependency pin targets mcp-neo4j-cypher earlier than 0.6.0, or source code sets read_only=True while issuing CALL apoc.* / db.cypher.runWrite procedures. CVE-2026-35402 (CVSS 2.3 LOW, but integrity-critical) lets attackers bypass the read-only mode and execute arbitrary writes or SSRF.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1474,10 +1680,12 @@
       "adversa_references": [
         "ADV-AUTH-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An OAuth 2.1 client flow does not use PKCE. PKCE is mandatory for all MCP remote server clients per spec 2025-11-25, including confidential clients.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1494,10 +1702,12 @@
       "adversa_references": [
         "ADV-AUTH-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An OAuth client sets code_challenge_method=plain (or omits it). S256 is mandatory; 'plain' leaks the verifier to anyone with access to the authorization request.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1514,10 +1724,12 @@
       "adversa_references": [
         "ADV-AUTH-08"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP server receives a bearer token from one identity and forwards it to a downstream service without re-minting. This is the 'confused deputy' shape banned by OAuth 2.1 BCPs.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1534,10 +1746,12 @@
       "adversa_references": [
         "ADV-AUTH-09"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An OAuth client registers a wildcard, localhost-with-any-port, or overly-broad redirect_uri. Attackers can hijack authorization codes via dangling subdomains or open redirectors.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1554,10 +1768,12 @@
       "adversa_references": [
         "ADV-AUTH-10"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP remote server accepts plain Bearer tokens on a flow that MCP spec 2025-11-25 flags for DPoP (Demonstrating Proof of Possession) or mTLS-bound tokens. A stolen Bearer token is fully replayable.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1571,13 +1787,59 @@
       "title": "Bearer token used where DPoP or mTLS is required"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "The project depends on an agent-platform SDK (context-ai, langsmith, helicone, langfuse, humanloop, MCP SDK). Informational finding so reviewers audit the vendor's OAuth-scope footprint before merging. Raised to MEDIUM because the April 19 2026 Vercel \u00d7 Context.ai incident showed a single vendor compromise can turn into a production breach via transitive OAuth grants.",
+      "incident_references": [
+        "VERCEL-2026-04-19"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Pin the SDK to an exact version, audit the OAuth scopes it requests, and keep any deployment-level grants (Vercel, GCP, Workspace) in a secrets vault \u2014 never in a committed env file. See Vercel's bulletin for sensitive-env-var guidance: https://vercel.com/kb/bulletin/vercel-april-2026-security-incident",
+      "rule_id": "AAK-OAUTH-3P-001",
+      "sarif_name": "ThirdPartyAgentPlatformSdk",
+      "severity": "medium",
+      "title": "Repo depends on a third-party agent-platform SDK"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "A config file in this repo grants a non-first-party Google OAuth client broad Workspace scopes (admin.*, cloud-platform, drive, directory.*, gmail.modify/send). The April 19 2026 Vercel \u00d7 Context.ai breach is the template: a single compromised third-party OAuth app with deployment-level scopes let attackers pivot into production. Explicitly allowlist trusted client IDs in `.aak-oauth-trust.yml`.",
+      "incident_references": [
+        "VERCEL-2026-04-19"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Review the granted scopes \u2014 drop admin.* / cloud-platform where possible. Add every legitimate third-party client_id to `.aak-oauth-trust.yml` under `trusted_client_ids:`. Rotate the consent if the client isn't recognised.",
+      "rule_id": "AAK-OAUTH-SCOPE-001",
+      "sarif_name": "ThirdPartyOAuthBroadScope",
+      "severity": "high",
+      "title": "Third-party OAuth client granted broad Workspace scopes"
+    },
+    {
       "adversa_references": [
         "ADV-POISON-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1594,10 +1856,12 @@
       "adversa_references": [
         "ADV-POISON-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1614,10 +1878,12 @@
       "adversa_references": [
         "ADV-POISON-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1634,10 +1900,12 @@
       "adversa_references": [
         "ADV-POISON-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description contains base64, hex, or URL-encoded content that could hide malicious instructions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1654,10 +1922,12 @@
       "adversa_references": [
         "ADV-POISON-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description exceeds 500 characters, which increases the surface area for hidden instructions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1674,10 +1944,12 @@
       "adversa_references": [
         "ADV-POISON-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1694,10 +1966,12 @@
       "adversa_references": [
         "ADV-AGENCY-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "A routine configuration declares tool permissions wider than what the same user has in interactive Claude Code. A routine running non-interactively at 3am with admin-level tools is an excessive-agency risk (OWASP ASI05).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1714,10 +1988,12 @@
       "adversa_references": [
         "ADV-AGENCY-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "A routine's cron expression, HTTP webhook URL, or GitHub event filter is built from a user-controlled value. Schedule injection can repurpose the routine at off-hours without review.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1734,10 +2010,12 @@
       "adversa_references": [
         "ADV-AGENCY-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
       "description": "A routine runs tool calls but writes no run-log, making post-hoc audit impossible. An attacker with edit access to the routine file can run anything and delete the evidence.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1754,10 +2032,12 @@
       "adversa_references": [
         "ADV-RUGPULL-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A tool's definition (name, description, or input schema) has changed since it was last pinned. This could indicate a rug pull attack.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1774,10 +2054,12 @@
       "adversa_references": [
         "ADV-RUGPULL-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A new tool was added to an MCP server since the last pin. New tools should be reviewed before approval.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1794,10 +2076,12 @@
       "adversa_references": [
         "ADV-RUGPULL-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1812,10 +2096,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A repository whose name or pyproject keywords declare it as an MCP server ships without a top-level SECURITY.md AND without a `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1832,10 +2118,14 @@
       "adversa_references": [
         "ADV-TOKEN-03"
       ],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1852,10 +2142,14 @@
       "adversa_references": [
         "ADV-TOKEN-04"
       ],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "An OpenAI API key (sk-*) was found in a project file.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1872,10 +2166,12 @@
       "adversa_references": [
         "ADV-TOKEN-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "AWS access key ID or secret access key found in a project file.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1892,10 +2188,12 @@
       "adversa_references": [
         "ADV-TOKEN-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1912,10 +2210,12 @@
       "adversa_references": [
         "ADV-TOKEN-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A private key file (*.pem, *.key, id_rsa, etc.) or PEM content was found in the project.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1932,10 +2232,14 @@
       "adversa_references": [
         "ADV-TOKEN-08"
       ],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": true,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A .env file exists but .gitignore does not contain a .env exclusion pattern.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1952,10 +2256,12 @@
       "adversa_references": [
         "ADV-TOKEN-09"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1972,10 +2278,12 @@
       "adversa_references": [
         "ADV-TOKEN-10"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1992,10 +2300,12 @@
       "adversa_references": [
         "ADV-TOKEN-11"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
       "description": "A Google Cloud service account key JSON file was found in the project.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2012,10 +2322,12 @@
       "adversa_references": [
         "ADV-SKILL-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A SKILL.md frontmatter or body declares a post-install or auto-run command (bash, curl, pipe-to-sh, wget). Skills should be declarative; arbitrary installation commands are a rug-pull risk.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2032,10 +2344,12 @@
       "adversa_references": [
         "ADV-SKILL-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A SKILL.md body contains hidden characters (bidi override, zero-width, tag-unicode) that render differently than they parse. This hides malicious tool-use instructions from human review.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2052,10 +2366,12 @@
       "adversa_references": [
         "ADV-SKILL-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A SKILL.md references outbound HTTP tools (fetch/curl/request) combined with instructions to send local data (files, environment, credentials).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2072,10 +2388,12 @@
       "adversa_references": [
         "ADV-SKILL-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A skill's frontmatter name or description mimics a well-known skill ('pdf', 'docx', 'frontend-design') but the body declares unrelated / hostile instructions. Description hijacking is the ToxicSkills 2026 signature pattern.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2092,10 +2410,12 @@
       "adversa_references": [
         "ADV-SKILL-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
       "description": "A SKILL.md frontmatter or YAML header embeds phrases targeted at the loading model ('ignore previous', 'you are now', 'system:'). These are prompt-injection probes rather than legitimate skill metadata.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -2112,10 +2432,12 @@
       "adversa_references": [
         "ADV-SSRF-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP tool handler fetches a URL provided by the caller with no host/scheme validation. This is the classic SSRF shape (CWE-918).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2132,10 +2454,12 @@
       "adversa_references": [
         "ADV-SSRF-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2152,10 +2476,12 @@
       "adversa_references": [
         "ADV-SSRF-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP metadata) or metadata.google.internal, allowing exfiltration of instance credentials.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2172,10 +2498,12 @@
       "adversa_references": [
         "ADV-SSRF-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP tool follows HTTP redirects using the default client settings. An attacker can bypass initial host checks by returning a 3xx to an internal address. DNS rebinding works the same way.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2192,10 +2520,12 @@
       "adversa_references": [
         "ADV-SSRF-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "An MCP tool performs outbound HTTP but has no allowlist of permitted destinations. Deny-by-default with an explicit allowlist is the only reliable defense against SSRF chains.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2210,10 +2540,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A privacy policy / notice lacks the CCPA-lineage opt-out-of-sale language that Alabama DPPA, CCPA, CPRA, VCDPA, and the other 21 state comprehensive privacy laws converge on.",
+      "incident_references": [],
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Add a 'Do Not Sell / Share My Personal Information' section and a usable opt-out mechanism.",
@@ -2224,10 +2556,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A privacy policy does not describe the consumer's access, deletion, or portability rights \u2014 mandatory across every state comprehensive privacy law passed 2018-2026.",
+      "incident_references": [],
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Describe DSAR submission, 45-day cure window where applicable, and the portability format.",
@@ -2238,10 +2572,12 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
       "description": "A privacy policy does not expose a data-controller contact (DPO email / privacy@ / mailing address). Required by most state laws and a prerequisite for any DSAR.",
+      "incident_references": [],
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Add a privacy@ inbox and a postal mailing address for DSARs.",
@@ -2254,6 +2590,7 @@
       "adversa_references": [
         "ADV-RCE-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
@@ -2268,6 +2605,9 @@
         "CVE-2026-26015"
       ],
       "description": "User-controllable input flows into a STDIO command executor in an MCP server implementation \u2014 the architectural shape Ox Security traced through CVE-2026-30615 (Windsurf RCE) and nine other CVEs across ~200,000 exposed servers. Matches subprocess / os.system / os.popen / os.exec / eval / exec where an arg references a taint source (request params, stdin, @tool parameter, json.loads(stdin)). TS/JS variant: child_process.spawn / execa with {shell:true} or a request-derived command string.",
+      "incident_references": [
+        "OX-MCP-2026-04-15"
+      ],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2284,10 +2624,14 @@
       "adversa_references": [
         "ADV-SUPPLY-03"
       ],
+      "aicm_references": [
+        "STA-02"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "MCP server args contain package names without @x.y.z version pinning. Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2304,10 +2648,14 @@
       "adversa_references": [
         "ADV-SUPPLY-04"
       ],
+      "aicm_references": [
+        "STA-08"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2325,10 +2673,12 @@
       "adversa_references": [
         "ADV-SUPPLY-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "package.json has install scripts (preinstall, postinstall, etc.) that execute arbitrary commands during npm install.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2345,10 +2695,12 @@
       "adversa_references": [
         "ADV-SUPPLY-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A package manifest exists but no lockfile was found. Without lockfiles, dependency versions float and can be silently updated.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2365,10 +2717,12 @@
       "adversa_references": [
         "ADV-SUPPLY-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "More than 200 direct + transitive dependencies in lockfile. Each dependency is a trust decision.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2385,10 +2739,12 @@
       "adversa_references": [
         "ADV-SUPPLY-08"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
       "description": "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2405,10 +2761,12 @@
       "adversa_references": [
         "ADV-INJECT-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter is passed to os.system(), subprocess, or similar shell execution functions without sanitization.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2425,10 +2783,12 @@
       "adversa_references": [
         "ADV-INJECT-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter flows to eval(), exec(), or compile() enabling arbitrary code execution.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2445,10 +2805,12 @@
       "adversa_references": [
         "ADV-INJECT-06"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter is used in open() or file path construction, enabling path traversal attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2465,10 +2827,12 @@
       "adversa_references": [
         "ADV-SSRF-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter is passed to requests.get/post or urllib, enabling SSRF attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2485,10 +2849,12 @@
       "adversa_references": [
         "ADV-INJECT-07"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter is used in cursor.execute() or similar database query functions via string formatting.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2505,10 +2871,12 @@
       "adversa_references": [
         "ADV-INJECT-08"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function parameter is passed to pickle.loads(), yaml.load(), or similar deserialization functions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2525,10 +2893,12 @@
       "adversa_references": [
         "ADV-VALID-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function has no type hints or input validation on its parameters.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2545,10 +2915,12 @@
       "adversa_references": [
         "ADV-SCOPE-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
       "description": "A @tool function accesses more than 3 different dangerous sinks, indicating overly broad permissions.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2565,10 +2937,12 @@
       "adversa_references": [
         "ADV-TASKS-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "A task read endpoint returns task state based on the task ID alone. Any caller that guesses or enumerates a task ID gets another user's data (CWE-639).",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2585,10 +2959,12 @@
       "adversa_references": [
         "ADV-TASKS-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "A task record retains API keys / OAuth tokens after the task reaches a terminal state (completed/failed/cancelled). Long-lived credentials in persistent state are an obvious exfil target.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2605,10 +2981,12 @@
       "adversa_references": [
         "ADV-TASKS-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
       "description": "A task record has no expiration and no cancellation endpoint. Orphaned tasks accumulate forever, including their inputs.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2625,10 +3003,12 @@
       "adversa_references": [
         "ADV-TRANSPORT-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
       "description": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2645,10 +3025,12 @@
       "adversa_references": [
         "ADV-TRANSPORT-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
       "description": "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, enabling MITM attacks.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2665,10 +3047,12 @@
       "adversa_references": [
         "ADV-TRANSPORT-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
       "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI08"
       ],
@@ -2685,10 +3069,12 @@
       "adversa_references": [
         "ADV-TOKEN-12"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
       "description": "A session token or API key is passed as a URL query parameter, risking exposure in logs and referrer headers.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2705,12 +3091,16 @@
       "adversa_references": [
         "ADV-TRUST-01"
       ],
+      "aicm_references": [
+        "IAM-16"
+      ],
       "auto_fixable": true,
       "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-21852"
       ],
       "description": "Auto-approves ALL MCP servers in .mcp.json without user consent. A compromised repo can ship arbitrary MCP servers that execute immediately.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -2727,12 +3117,14 @@
       "adversa_references": [
         "ADV-REDIRECT-01"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-21852"
       ],
       "description": "Redirects all API traffic (including API keys) to attacker-controlled endpoint BEFORE trust prompt displays. This is the exact attack vector of CVE-2026-21852.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -2749,10 +3141,12 @@
       "adversa_references": [
         "ADV-SCOPE-04"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [],
       "description": "Permission allow patterns use wildcards (*, **) or broad tool names. This bypasses the permission system, allowing unchecked tool execution.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2769,10 +3163,14 @@
       "adversa_references": [
         "ADV-TRUST-02"
       ],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": true,
       "category": "trust-boundary",
       "cve_references": [],
       "description": "Settings file has permission allows but empty or missing deny rules. Defense-in-depth requires explicit deny rules for sensitive operations.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2790,12 +3188,14 @@
       "adversa_references": [
         "ADV-REDIRECT-02"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [
         "CVE-2026-21852"
       ],
       "description": "An environment variable matching *_BASE_URL, *_API_URL, or *_ENDPOINT is set in project settings. This can redirect authenticated traffic to attacker-controlled servers.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -2812,10 +3212,12 @@
       "adversa_references": [
         "ADV-TRUST-03"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [],
       "description": "Project settings have permission allows that could shadow user-level deny rules. Misconfigurations can create a false sense of security.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -2832,10 +3234,12 @@
       "adversa_references": [
         "ADV-TRUST-04"
       ],
+      "aicm_references": [],
       "auto_fixable": true,
       "category": "trust-boundary",
       "cve_references": [],
       "description": "No enabledMcpjsonServers allowlist is configured, meaning server approval relies entirely on user prompts.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2852,12 +3256,14 @@
       "adversa_references": [
         "ADV-RCE-05"
       ],
+      "aicm_references": [],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-30615"
       ],
       "description": "A `.windsurf/mcp.json` file declares auto_approve:true or auto_execute:true, or contains server `command:` entries with no SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows attackers can inject malicious MCP registrations via HTML prompt injection when auto-approval is enabled.",
+      "incident_references": [],
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2871,5 +3277,5 @@
       "title": "Windsurf .windsurf/mcp.json auto-approves server registrations"
     }
   ],
-  "schema": "agent-audit-kit/rule-bundle/1"
+  "schema": "agent-audit-kit/rule-bundle/2"
 }

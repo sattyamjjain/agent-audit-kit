@@ -39,4 +39,6 @@ def make_finding(
         owasp_mcp_references=rule.owasp_mcp_references,
         owasp_agentic_references=rule.owasp_agentic_references,
         adversa_references=rule.adversa_references,
+        incident_references=rule.incident_references,
+        aicm_references=rule.aicm_references,
     )

@@ -151,7 +151,7 @@ def cli(ctx: click.Context) -> None:
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Show detailed scan progress.")
 @click.option("--score", "show_score", is_flag=True, default=False, help="Show security score and grade.")
 @click.option("--owasp-report", is_flag=True, default=False, help="Show OWASP coverage matrix.")
-@click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf.")
+@click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf, aicm (CSA AI Controls Matrix, CSV output).")
 @click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify if detected secrets are live (makes network calls).")
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
 @click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
@@ -197,6 +197,13 @@ def cli(ctx: click.Context) -> None:
     default=None,
     help="Also write the Markdown PR-comment body to this path (used by the Docker action).",
 )
+@click.option(
+    "--fingerprint-strategy",
+    "fingerprint_strategy",
+    type=click.Choice(["auto", "line-hash", "disabled"]),
+    default="auto",
+    help="SARIF fingerprint mode. 'auto' (default) emits content-hash when source is co-located, else location-hash — matches GitHub Code Scanning's de-dup expectation. 'line-hash' forces the content-hash code path; 'disabled' emits none.",
+)
 def scan_cmd(
     path: str,
     output_format: str,
@@ -222,6 +229,7 @@ def scan_cmd(
     advisories_dry_run: bool,
     step_summary: bool,
     pr_summary_out: str | None,
+    fingerprint_strategy: str,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
@@ -250,6 +258,7 @@ def scan_cmd(
             advisories_dry_run=advisories_dry_run,
             step_summary=step_summary,
             pr_summary_out=pr_summary_out,
+            fingerprint_strategy=fingerprint_strategy,
         )
     except Exception as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -282,6 +291,7 @@ def _run_scan(
     advisories_dry_run: bool = False,
     step_summary: bool = True,
     pr_summary_out: str | None = None,
+    fingerprint_strategy: str = "auto",
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
     from agent_audit_kit.output import console, json_report, sarif
@@ -391,6 +401,10 @@ def _run_scan(
         from agent_audit_kit.output.owasp_report import format_results as fmt_owasp
 
         output = fmt_owasp(result)
+    elif compliance == "aicm":
+        from agent_audit_kit.output.aicm import format_results as fmt_aicm
+
+        output = fmt_aicm(result)
     elif compliance:
         from agent_audit_kit.output.compliance import format_results as fmt_compliance
 
@@ -398,7 +412,12 @@ def _run_scan(
     elif output_format == "json":
         output = json_report.format_results(result, severity)
     elif output_format == "sarif":
-        output = sarif.format_results(result, severity, project_root=project_root)
+        output = sarif.format_results(
+            result,
+            severity,
+            project_root=project_root,
+            fingerprint_strategy=fingerprint_strategy,
+        )
     else:
         output = console.format_results(result, severity, show_score=show_score)
 

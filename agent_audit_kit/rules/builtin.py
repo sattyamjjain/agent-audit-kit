@@ -19,9 +19,50 @@ class RuleDefinition:
     owasp_agentic_references: list[str] = field(default_factory=list)
     adversa_references: list[str] = field(default_factory=list)
     auto_fixable: bool = False
+    # v0.3.2 — SCHEMA_VERSION 2
+    incident_references: list[str] = field(default_factory=list)
+    aicm_references: list[str] = field(default_factory=list)
 
 
 RULES: dict[str, RuleDefinition] = {}
+
+
+# ---------------------------------------------------------------------------
+# AICM tag overlay
+#
+# The CSA AI Controls Matrix (AICM, v1.0 July 2025) defines 243 controls
+# across 18 domains. We tag the most obvious ten AAK rules so the
+# `--compliance aicm` report + CSV surface has something to group on out
+# of the box. Every entry here is applied after each rule is registered
+# via `_r(...)` — see `_apply_aicm_overlay()` at the bottom of this file.
+#
+# TODO(csa-mcp-baseline): CSA's "MCP Security Baseline v0.1" RC is "coming
+# soon" per their MCP Security Resource Center announcement
+# (https://cloudsecurityalliance.org/blog/2025/08/20/securing-the-agentic-ai-control-plane-announcing-the-mcp-security-resource-center).
+# When the RC1 URL drops, add a `csa_mcp_baseline_references` field to
+# RuleDefinition and tag the AAK-MCP-* / AAK-A2A-* / AAK-STDIO-* rules.
+# scripts/watch_csa_mcp_baseline.py polls for the drop and opens a
+# tracking issue automatically.
+# ---------------------------------------------------------------------------
+
+_AICM_TAGS: dict[str, list[str]] = {
+    # Secrets mgmt (DSP-17 Secrets Management; see CSA AICM v1.0 DSP).
+    "AAK-SECRET-001": ["DSP-17"],
+    "AAK-SECRET-002": ["DSP-17"],
+    "AAK-SECRET-006": ["DSP-17"],
+    # Identity & Access.
+    "AAK-TRUST-001": ["IAM-16"],   # Least privilege on MCP server surface.
+    "AAK-TRUST-004": ["IAM-02"],   # Separation of duties / deny-by-default.
+    # Supply chain.
+    "AAK-SUPPLY-001": ["STA-02"],  # Dependency management & pinning.
+    "AAK-SUPPLY-002": ["STA-08"],  # Known-vulnerable component handling.
+    # Transport / crypto.
+    "AAK-MCP-017": ["CEK-08"],     # Data-in-transit encryption.
+    # Logging & monitoring.
+    "AAK-LOGINJ-001": ["LOG-06"],  # Integrity / tamper-evidence of logs.
+    # Auth — the MCPwn twin pattern is squarely an IAM-01 failure.
+    "AAK-MCPWN-001": ["IAM-01"],
+}
 
 
 def _r(
@@ -37,6 +78,8 @@ def _r(
     owasp_agentic_references: list[str] | None = None,
     adversa_references: list[str] | None = None,
     auto_fixable: bool = False,
+    incident_references: list[str] | None = None,
+    aicm_references: list[str] | None = None,
 ) -> None:
     RULES[rule_id] = RuleDefinition(
         rule_id=rule_id,
@@ -51,6 +94,8 @@ def _r(
         owasp_agentic_references=owasp_agentic_references or [],
         adversa_references=adversa_references or [],
         auto_fixable=auto_fixable,
+        incident_references=incident_references or [],
+        aicm_references=aicm_references or [],
     )
 
 
@@ -2320,6 +2365,7 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
+    incident_references=["OX-MCP-2026-04-15"],
 )
 
 # ---------------------------------------------------------------------------
@@ -2444,6 +2490,133 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# MCPwn — targeted detection for CVE-2026-33032 middleware-asymmetry class
+#
+# The generic AAK-MCP-011/012/020 rules fire on *single-route* auth
+# absence. MCPwn (CVSS 9.8, KEV-listed 2026-04-13) is a different shape
+# entirely: TWO routes share a handler, but only one is wrapped in
+# AuthRequired. That's the bug nginx-ui 2.3.4 patched.
+#
+# References:
+#   NVD    https://nvd.nist.gov/vuln/detail/CVE-2026-33032
+#   Rapid7 https://www.rapid7.com/blog/post/etr-cve-2026-33032-nginx-ui-missing-mcp-authentication/
+#   Picus  https://www.picussecurity.com/resource/blog/cve-2026-33032-mcpwn-how-a-missing-middleware-call-in-nginx-ui-hands-attackers-full-web-server-takeover
+#   PoC    https://github.com/Twinson333/cve-2026-33032-scanner
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCPWN-001",
+    "MCP route twin-asymmetry: auth middleware missing on sibling route (MCPwn, CVE-2026-33032)",
+    "Two routes matching the MCP endpoint pattern (`/mcp`, `/mcp_message`, "
+    "`/mcp/messages`, `/mcp[_-]invoke`, `/mcp[_-]tool`, ...) are declared "
+    "in the same file, but one has no auth middleware while its twin does. "
+    "This is the exact CVE-2026-33032 shape nginx-ui 2.3.4 patched and "
+    "which VulnCheck KEV-listed on 2026-04-13 as actively exploited "
+    "(CVSS 9.8). ~2,689 Shodan instances were exposed at disclosure; any "
+    "network-adjacent caller can invoke the protected tools with zero "
+    "credentials.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Apply the same auth middleware to every MCP endpoint in a file. "
+    "For Gin, use a `router.Use(AuthRequired())` group and mount all MCP "
+    "routes inside it. For FastAPI, share a single `Depends(auth)` "
+    "dependency across `@app.post('/mcp*')` decorators. For Express, "
+    "create an `mcpRouter.use(authMw)` and mount it once.",
+    sarif_name="McpwnTwinAsymmetry",
+    cve_references=["CVE-2026-33032", "CVE-2026-27944"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI01", "ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    incident_references=["MCPWN-2026-04-16"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Flowise MCP-adapter RCE (CVE-2026-40933 / GHSA-c9gw-hvqq-f33r)
+#
+# Authenticated RCE — npx with `-c` flag bypasses the allowlist. CVSS 10.0.
+# Fixed in flowise 3.1.0 (verified via GHSA on 2026-04-20).
+# Family: inherits from the Ox STDIO class already covered by
+# AAK-STDIO-001; this is the Flowise-specific pin + flow-config check.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-FLOWISE-001",
+    "Flowise < 3.1.0 MCP adapter authenticated RCE",
+    "Package manifest depends on `flowise` or `flowise-components` at "
+    "version < 3.1.0, and/or a Flowise flow config (`.flowise/*.json`, "
+    "`flows/*.json`) declares an MCP adapter node with `customFunction` "
+    "or `runCode` sinks. CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) "
+    "lets an authenticated attacker combine allowlisted commands like "
+    "`npx` with execution flags such as `-c` to achieve arbitrary OS "
+    "command execution. Same architectural class as Ox's original STDIO "
+    "disclosure (see AAK-STDIO-001).",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade flowise and flowise-components to 3.1.0 or later. Audit "
+    "every MCP adapter node in your flow configs; remove "
+    "`customFunction`/`runCode` sinks unless they're validated against "
+    "a strict argv allowlist. See also AAK-STDIO-001 for the "
+    "architectural-class detector.",
+    sarif_name="FlowiseMcpAdapterRce",
+    cve_references=["CVE-2026-40933"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-RCE-04"],
+    auto_fixable=True,
+)
+
+
+# ---------------------------------------------------------------------------
+# Third-party OAuth-app risk surface (VERCEL-2026-04-19 class)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-OAUTH-SCOPE-001",
+    "Third-party OAuth client granted broad Workspace scopes",
+    "A config file in this repo grants a non-first-party Google OAuth "
+    "client broad Workspace scopes (admin.*, cloud-platform, drive, "
+    "directory.*, gmail.modify/send). The April 19 2026 Vercel × "
+    "Context.ai breach is the template: a single compromised third-"
+    "party OAuth app with deployment-level scopes let attackers pivot "
+    "into production. Explicitly allowlist trusted client IDs in "
+    "`.aak-oauth-trust.yml`.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Review the granted scopes — drop admin.* / cloud-platform where "
+    "possible. Add every legitimate third-party client_id to "
+    "`.aak-oauth-trust.yml` under `trusted_client_ids:`. Rotate the "
+    "consent if the client isn't recognised.",
+    sarif_name="ThirdPartyOAuthBroadScope",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04"],
+    incident_references=["VERCEL-2026-04-19"],
+)
+
+_r(
+    "AAK-OAUTH-3P-001",
+    "Repo depends on a third-party agent-platform SDK",
+    "The project depends on an agent-platform SDK (context-ai, "
+    "langsmith, helicone, langfuse, humanloop, MCP SDK). Informational "
+    "finding so reviewers audit the vendor's OAuth-scope footprint "
+    "before merging. Raised to MEDIUM because the April 19 2026 "
+    "Vercel × Context.ai incident showed a single vendor compromise "
+    "can turn into a production breach via transitive OAuth grants.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Pin the SDK to an exact version, audit the OAuth scopes it "
+    "requests, and keep any deployment-level grants (Vercel, GCP, "
+    "Workspace) in a secrets vault — never in a committed env file. "
+    "See Vercel's bulletin for sensitive-env-var guidance: "
+    "https://vercel.com/kb/bulletin/vercel-april-2026-security-incident",
+    sarif_name="ThirdPartyAgentPlatformSdk",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04"],
+    incident_references=["VERCEL-2026-04-19"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 
@@ -2496,3 +2669,18 @@ def rules_for_category(category: Category) -> list[RuleDefinition]:
         A list of RuleDefinition objects matching the category.
     """
     return [r for r in RULES.values() if r.category == category]
+
+
+def _apply_aicm_overlay() -> None:
+    """Apply _AICM_TAGS to registered rules. Missing rule IDs are ignored
+    so the overlay doesn't fail the module if someone removes a rule."""
+    for rid, controls in _AICM_TAGS.items():
+        rule = RULES.get(rid)
+        if rule is None:
+            continue
+        for cid in controls:
+            if cid not in rule.aicm_references:
+                rule.aicm_references.append(cid)
+
+
+_apply_aicm_overlay()

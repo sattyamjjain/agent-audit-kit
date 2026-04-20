@@ -103,6 +103,10 @@ def _rule_to_sarif(rule_id: str, index: int) -> dict:  # noqa: ARG001
         tags.extend(f"OWASP-Agentic-{r}" for r in rule.owasp_agentic_references)
     if rule.adversa_references:
         tags.extend(f"Adversa-{r}" for r in rule.adversa_references)
+    if rule.incident_references:
+        tags.extend(f"incident-{r}" for r in rule.incident_references)
+    if rule.aicm_references:
+        tags.extend(f"AICM-{r}" for r in rule.aicm_references)
 
     # Build help text with remediation and references
     help_text = rule.remediation
@@ -141,10 +145,14 @@ def _rule_to_sarif(rule_id: str, index: int) -> dict:  # noqa: ARG001
     }
 
 
+FINGERPRINT_STRATEGIES = ("auto", "line-hash", "disabled")
+
+
 def _finding_to_result(
     finding: Finding,
     rule_index_map: dict[str, int],
     project_root: Path | None = None,
+    fingerprint_strategy: str = "auto",
 ) -> dict:
     """Convert a Finding to a SARIF result object.
 
@@ -166,26 +174,32 @@ def _finding_to_result(
     if finding.line_number:
         location["physicalLocation"]["region"] = {"startLine": finding.line_number}
 
-    full_fingerprint = _build_fingerprint(finding)
-    line_content = _read_finding_line(finding, project_root)
-    partial_fingerprint = _build_partial_fingerprint(finding, line_content)
-
     result: dict = {
         "ruleId": finding.rule_id,
         "ruleIndex": rule_index_map.get(finding.rule_id, 0),
         "level": SEVERITY_TO_LEVEL[finding.severity],
         "message": {"text": finding.description},
         "locations": [location],
-        "fingerprints": {
-            "primaryLocationFingerprint": full_fingerprint,
-        },
-        "partialFingerprints": {
-            "primaryLocationLineHash": partial_fingerprint,
-        },
         "properties": {
             "security-severity": SEVERITY_TO_SCORE[finding.severity],
         },
     }
+
+    if fingerprint_strategy != "disabled":
+        full_fingerprint = _build_fingerprint(finding)
+        result["fingerprints"] = {"primaryLocationFingerprint": full_fingerprint}
+        if fingerprint_strategy == "line-hash":
+            # Force content-hash mode even when source isn't on disk —
+            # falls back to location-hash inside _build_partial_fingerprint
+            # so the SARIF always validates.
+            line_content = _read_finding_line(finding, project_root)
+            partial_fingerprint = _build_partial_fingerprint(finding, line_content)
+        else:  # "auto"
+            line_content = _read_finding_line(finding, project_root)
+            partial_fingerprint = _build_partial_fingerprint(finding, line_content)
+        result["partialFingerprints"] = {
+            "primaryLocationLineHash": partial_fingerprint,
+        }
 
     if finding.evidence:
         result["message"]["text"] += f"\n\nEvidence: {finding.evidence}"
@@ -200,6 +214,7 @@ def format_results(
     result: ScanResult,
     min_severity: Severity = Severity.LOW,
     project_root: Path | None = None,
+    fingerprint_strategy: str = "auto",
 ) -> str:
     """Format scan results as SARIF 2.1.0 JSON for GitHub Code Scanning.
 
@@ -209,7 +224,20 @@ def format_results(
         project_root: used for content-aware partialFingerprint hashing.
             When omitted, partial fingerprints fall back to
             location-based hashing.
+        fingerprint_strategy: one of ``auto``, ``line-hash``, ``disabled``.
+            - ``auto`` (default) — emit both full + partial fingerprints;
+              use content hashing if source is co-located, location hash
+              otherwise. Matches GitHub Code Scanning's expectation.
+            - ``line-hash`` — same behaviour as ``auto`` today; kept as a
+              forward-compat slot for when we add AST-based fingerprints.
+            - ``disabled`` — emit no fingerprints. Useful for bespoke
+              downstream processors that compute their own.
     """
+    if fingerprint_strategy not in FINGERPRINT_STRATEGIES:
+        raise ValueError(
+            f"unknown fingerprint_strategy {fingerprint_strategy!r}; "
+            f"expected one of {FINGERPRINT_STRATEGIES}"
+        )
     filtered = result.findings_at_or_above(min_severity)
 
     # Build ordered rules list (preserving first-seen order, deduped)
@@ -238,7 +266,10 @@ def format_results(
                 "automationDetails": {
                     "id": "agent-audit-kit/",
                 },
-                "results": [_finding_to_result(f, rule_index_map, project_root) for f in filtered],
+                "results": [
+                    _finding_to_result(f, rule_index_map, project_root, fingerprint_strategy)
+                    for f in filtered
+                ],
             }
         ],
     }

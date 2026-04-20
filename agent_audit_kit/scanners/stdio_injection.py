@@ -298,4 +298,85 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         findings.extend(_check_js_file(path, project_root))
+    findings.extend(_check_flowise(project_root, scanned))
     return findings, scanned
+
+
+# ---------------------------------------------------------------------------
+# AAK-FLOWISE-001 — CVE-2026-40933 (Flowise < 3.1.0, CVSS 10.0).
+# ---------------------------------------------------------------------------
+
+
+_FLOWISE_PATCHED_VERSION = (3, 1, 0)
+
+
+def _parse_semver(spec: str) -> tuple[int, int, int] | None:
+    import re as _re
+    m = _re.match(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?", spec)
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+
+
+def _check_flowise(project_root: Path, scanned: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    vulnerable = False
+    pkg = project_root / "package.json"
+    if pkg.is_file():
+        import json as _json
+
+        rel = str(pkg.relative_to(project_root))
+        scanned.add(rel)
+        try:
+            data = _json.loads(pkg.read_text(encoding="utf-8", errors="replace"))
+        except _json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict):
+            for section in ("dependencies", "devDependencies", "peerDependencies"):
+                deps = data.get(section) or {}
+                if not isinstance(deps, dict):
+                    continue
+                for name, spec in deps.items():
+                    if name not in ("flowise", "flowise-components"):
+                        continue
+                    version = _parse_semver(str(spec))
+                    if version is None or version < _FLOWISE_PATCHED_VERSION:
+                        findings.append(make_finding(
+                            "AAK-FLOWISE-001",
+                            rel,
+                            f"{name} pinned at {spec!r} — CVE-2026-40933 (CVSS 10.0) "
+                            "is patched in 3.1.0.",
+                        ))
+                        vulnerable = True
+
+    # Whether or not the version was pinned, any flow config with an
+    # MCP adapter sink is worth flagging — the same primitive appears
+    # in Flowise Enterprise where the version lives outside package.json.
+    flow_globs = (".flowise/*.json", "flows/*.json", "flows/**/*.json")
+    sink_re_src = r'"(?:customFunction|runCode|executeCommand)"\s*:\s*(?:"|{)'
+    import re as _re
+
+    for pattern in flow_globs:
+        for path in project_root.glob(pattern):
+            if not path.is_file():
+                continue
+            rel = str(path.relative_to(project_root))
+            scanned.add(rel)
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if "mcp" not in text.lower():
+                continue
+            if _re.search(sink_re_src, text):
+                findings.append(make_finding(
+                    "AAK-FLOWISE-001",
+                    rel,
+                    "Flowise flow config declares an MCP adapter with a "
+                    "customFunction / runCode / executeCommand sink — "
+                    "CVE-2026-40933 shape.",
+                    line_number=find_line_number(text, "customFunction"),
+                ))
+                vulnerable = True
+
+    return findings if vulnerable else findings

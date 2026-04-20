@@ -28,6 +28,7 @@ INPUT_EXCLUDE_RULES="${8:-}"
 INPUT_IGNORE_PATHS="${9:-}"
 INPUT_CONFIG="${10:-}"
 INPUT_COMMENT_ON_PR="${11:-true}"
+INPUT_FINGERPRINT_STRATEGY="${12:-auto}"
 
 SARIF_FILE="agent-audit-results.sarif"
 PR_SUMMARY_FILE="agent-audit-pr-summary.md"
@@ -63,6 +64,9 @@ fi
 
 # v0.3.1: always write the PR-summary markdown so the comment step below can use it.
 CMD+=(--pr-summary-out "${PR_SUMMARY_FILE}")
+
+# v0.3.2: thread through the SARIF fingerprint strategy.
+CMD+=(--fingerprint-strategy "${INPUT_FINGERPRINT_STRATEGY}")
 
 # ---------------------------------------------------------------------------
 # Run scan and capture exit code

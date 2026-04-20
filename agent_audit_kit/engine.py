@@ -49,6 +49,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("stdio_injection", "Ox MCP STDIO command-injection", []),
     ("neo4j_cve", "mcp-neo4j-cypher CVE-2026-35402", []),
     ("log_injection", "MCP tool log-injection (CVE-2026-6494)", []),
+    ("mcp_middleware", "MCPwn twin-route middleware asymmetry (CVE-2026-33032)", []),
+    ("oauth_surface", "Third-party OAuth surface (VERCEL-2026-04-19)", []),
 ]
 
 
