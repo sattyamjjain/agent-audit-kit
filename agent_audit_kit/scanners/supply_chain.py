@@ -462,7 +462,63 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_scan_rust_deps(project_root))
     findings.extend(_check_lockfile_exists(project_root))
     findings.extend(_check_mcp_specific_vulns(project_root))
+    findings.extend(_check_doris_mcp_pin(project_root, scanned_files))
     return findings, scanned_files
+
+
+# ---------------------------------------------------------------------------
+# AAK-DORIS-001 — apache-doris-mcp-server < 0.6.1 (CVE-2025-66335).
+# Published 2026-04-20. Context-neutralization bypass reached via crafted
+# tool arguments. Separate pin-check because the Python lockfile scanner
+# above operates on a fixed KNOWN_VULNERABLE_PACKAGES table and we want
+# this check to run even if that table hasn't been extended yet.
+# ---------------------------------------------------------------------------
+
+_DORIS_PATCHED = (0, 6, 1)
+_DORIS_VERSION_RE = re.compile(
+    r"apache-doris-mcp-server\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _semver3(spec: str) -> tuple[int, int, int] | None:
+    m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", str(spec))
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+
+
+def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str) -> None:
+        findings.append(make_finding(
+            "AAK-DORIS-001",
+            rel,
+            f"apache-doris-mcp-server pinned at {raw!r} — CVE-2025-66335 "
+            "SQL injection is patched in 0.6.1.",
+        ))
+
+    candidates: list[Path] = []
+    candidates.extend(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for m in _DORIS_VERSION_RE.finditer(text):
+            version = _semver3(m.group(1))
+            if version is None or version < _DORIS_PATCHED:
+                rel = str(path.relative_to(project_root))
+                scanned_files.add(rel)
+                _fire(rel, m.group(1))
+                break  # one finding per file is enough
+    return findings
 
 
 def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:

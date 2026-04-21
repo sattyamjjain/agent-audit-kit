@@ -705,18 +705,37 @@ def verify_bundle_cmd(bundle: str, sig_path: str | None) -> None:
 @click.option(
     "--format",
     "sbom_format",
-    type=click.Choice(["cyclonedx", "spdx"]),
+    type=click.Choice(["cyclonedx", "spdx", "aibom"]),
     default="cyclonedx",
-    help="SBOM format.",
+    help=(
+        "SBOM format. `cyclonedx` + `spdx` are standard SBOMs; `aibom` "
+        "emits a CycloneDX 1.5 AI/ML-BOM with machine-learning-model "
+        "components, detected agent-platform SDKs, and rule-bundle "
+        "provenance properties."
+    ),
 )
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None,
               help="Write SBOM to file (defaults to stdout).")
 def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
-    """Emit a CycloneDX 1.5 or SPDX 2.3 SBOM for the project's MCP dependencies."""
+    """Emit a CycloneDX 1.5 / SPDX 2.3 SBOM or a CycloneDX AI-BOM (`--format aibom`)."""
     from agent_audit_kit.output.sbom import emit_cyclonedx, emit_spdx
 
     project = Path(path)
-    payload = emit_cyclonedx(project) if sbom_format == "cyclonedx" else emit_spdx(project)
+    if sbom_format == "spdx":
+        payload = emit_spdx(project)
+    elif sbom_format == "aibom":
+        # Best-effort: pull the shipped rule-bundle hash if the user has
+        # the file committed locally; don't fail the emit if it's absent.
+        sha256_path = project / "rules.json.sha256"
+        rule_hash: str | None = None
+        if sha256_path.is_file():
+            try:
+                rule_hash = sha256_path.read_text(encoding="utf-8").split()[0]
+            except OSError:
+                rule_hash = None
+        payload = emit_cyclonedx(project, aibom=True, rule_bundle_sha256=rule_hash)
+    else:
+        payload = emit_cyclonedx(project)
     if output_file:
         Path(output_file).write_text(payload, encoding="utf-8")
         click.echo(f"SBOM written to {output_file}", err=True)
