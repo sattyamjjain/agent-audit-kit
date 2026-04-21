@@ -45,3 +45,6 @@ Thumbs.db
 benchmarks/data/
 benchmarks/results.json
 benchmarks/site/
+
+# v0.3.3: cve-watcher persistent state
+.aak/cve-watcher-state.json
