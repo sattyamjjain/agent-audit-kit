@@ -1,0 +1,4 @@
+accepts_stdio_risk: true
+justification: >
+  This server runs in an isolated container with only a fixed,
+  allowlisted argv. Reviewed 2026-04-21 by security team.

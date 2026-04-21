@@ -1,0 +1,7 @@
+{
+  "name": "vulnerable-ts-mcp-server",
+  "version": "0.0.1",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

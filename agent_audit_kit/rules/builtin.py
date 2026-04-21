@@ -2617,6 +2617,103 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# mcp-framework HTTP-body DoS (CVE-2026-39313 / GHSA: mcp-framework < 0.2.22).
+# readRequestBody concatenates request body chunks into a single string with
+# no cap — maxMessageSize is never consulted — so a single large POST to
+# /mcp exhausts memory.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCPFRAME-001",
+    "mcp-framework < 0.2.22 HTTP-body DoS",
+    "Project depends on `mcp-framework` at a version < 0.2.22, or a TS/JS "
+    "file implements an MCP HTTP transport that concatenates request "
+    "body chunks into a string without consulting Content-Length or a "
+    "`maxMessageSize` guard. CVE-2026-39313 lets an unauthenticated "
+    "attacker crash the server with a single large POST to /mcp by "
+    "exhausting process memory. Fixed in 0.2.22.",
+    Severity.MEDIUM,
+    Category.TRANSPORT_SECURITY,
+    "Upgrade `mcp-framework` to 0.2.22 or newer. For custom transports, "
+    "enforce a hard body-size cap before accumulating chunks — reject "
+    "early when `Content-Length` exceeds your `maxMessageSize`.",
+    sarif_name="McpFrameworkHttpBodyDos",
+    cve_references=["CVE-2026-39313"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-DOS-01"],
+    aicm_references=["LOG-13"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Apache Doris MCP Server SQL injection (CVE-2025-66335, Doris MCP < 0.6.1).
+# Published 2026-04-20. Query-context neutralization bypass in the adapter's
+# tool layer lets crafted tool calls inject SQL.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-DORIS-001",
+    "apache-doris-mcp-server < 0.6.1 SQL injection",
+    "Project depends on `apache-doris-mcp-server` at a version < 0.6.1. "
+    "CVE-2025-66335 is a query-context neutralization bypass in the MCP "
+    "adapter's tool layer — crafted tool arguments are concatenated into "
+    "Doris SQL without a parameterized boundary, letting an LLM-driven "
+    "tool call reach into arbitrary reads/writes. Fixed in 0.6.1.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `apache-doris-mcp-server` to 0.6.1 or newer. Audit every "
+    "tool the adapter exposes to confirm arguments flow through a "
+    "parameterized query builder, never string concatenation.",
+    sarif_name="DorisMcpSqlInjection",
+    cve_references=["CVE-2025-66335"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-02"],
+    aicm_references=["AIS-07", "DSP-07"],
+)
+
+
+# ---------------------------------------------------------------------------
+# SDK-level STDIO sanitization inheritance (OX-MCP-2026-04-15 incident class).
+# Anthropic declined to CVE this — OX Security's "Mother of all AI supply
+# chains" disclosure confirms the STDIO interface in the upstream MCP SDKs
+# passes configuration to the OS as command execution by design. Downstream
+# servers must add their own sanitizer.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-ANTHROPIC-SDK-001",
+    "MCP server built on the upstream SDK without STDIO sanitizer",
+    "Repository declares a dependency on the upstream Anthropic / "
+    "ModelContextProtocol SDK (Python `mcp` / `modelcontextprotocol`, "
+    "TS `@modelcontextprotocol/sdk`, Java `io.modelcontextprotocol:*`, "
+    "Rust `mcp` / `modelcontextprotocol`) and exposes a STDIO transport "
+    "(`StdioServerTransport`, `stdio_server`, etc.) without a sanitizer "
+    "on argv assembly. Anthropic declined to CVE this as working as "
+    "designed — sanitization is the developer's responsibility. The OX "
+    "Security disclosure on 2026-04-15 rolled up LiteLLM, LangChain and "
+    "IBM LangFlow as downstream casualties of exactly this pattern. "
+    "See also AAK-STDIO-001 for the sink-level detector.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Wrap every argv the STDIO transport builds in an allow-list "
+    "sanitizer — `shlex.quote` in Python, `execFile` with an explicit "
+    "argv array in Node, equivalent in Java/Rust. OR switch the "
+    "transport off STDIO (`transports=['http']` / `['sse']`). If you "
+    "have deliberately accepted the risk, add "
+    "`accepts_stdio_risk: true` plus a `justification:` field in "
+    "`.agent-audit-kit.yml`.",
+    sarif_name="AnthropicSdkStdioSanitizer",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-INJECT-01"],
+    incident_references=["OX-MCP-2026-04-15"],
+    aicm_references=["AIS-07", "STA-08"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

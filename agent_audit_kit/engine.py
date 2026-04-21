@@ -51,6 +51,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("log_injection", "MCP tool log-injection (CVE-2026-6494)", []),
     ("mcp_middleware", "MCPwn twin-route middleware asymmetry (CVE-2026-33032)", []),
     ("oauth_surface", "Third-party OAuth surface (VERCEL-2026-04-19)", []),
+    ("transport_limits", "Transport body-size limits (CVE-2026-39313)", []),
+    ("mcp_sdk_hardening", "Upstream MCP SDK STDIO hardening (OX-MCP-2026-04-15)", []),
 ]
 
 
