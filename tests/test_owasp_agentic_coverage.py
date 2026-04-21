@@ -40,6 +40,25 @@ def test_every_owasp_agentic_entry_has_at_least_one_rule(asi: str) -> None:
     )
 
 
+# Density floor — ensure no slot is single-ruled. Single-ruled slots
+# create a fragility where dropping one rule drops the whole slot, and
+# they make the marketing claim "10/10 covered" weaker than the test
+# reads. Floor is modest (≥3) and trips only when a slot is genuinely
+# under-covered.
+_DENSITY_FLOOR = 3
+
+
+@pytest.mark.parametrize("asi", OWASP_TOP_10_IDS)
+def test_owasp_density_floor(asi: str) -> None:
+    coverage = _coverage_map()
+    rules = coverage.get(asi, [])
+    assert len(rules) >= _DENSITY_FLOOR, (
+        f"{asi} is covered by only {len(rules)} rule(s) "
+        f"({rules}). Density floor is {_DENSITY_FLOOR}. Tag additional "
+        "rules in agent_audit_kit/rules/builtin.py."
+    )
+
+
 def test_no_typo_owasp_agentic_references() -> None:
     """Every ASI reference must be a known ASI01-ASI10. Catches typos."""
     coverage = _coverage_map()

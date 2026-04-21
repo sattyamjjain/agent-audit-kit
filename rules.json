@@ -4,7 +4,9 @@
       "adversa_references": [
         "ADV-A2A-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-04"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -26,7 +28,9 @@
       "adversa_references": [
         "ADV-A2A-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -48,14 +52,17 @@
       "adversa_references": [
         "ADV-A2A-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
-      "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents.",
+      "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents. Unvalidated cross-agent payloads are the canonical ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
       "owasp_agentic_references": [
-        "ASI07"
+        "ASI07",
+        "ASI08"
       ],
       "owasp_mcp_references": [
         "MCP04:2025"
@@ -70,7 +77,9 @@
       "adversa_references": [
         "ADV-A2A-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -92,7 +101,9 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -114,7 +125,9 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -136,7 +149,9 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-04"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -158,7 +173,9 @@
       "adversa_references": [
         "ADV-A2A-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -180,7 +197,9 @@
       "adversa_references": [
         "ADV-A2A-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-04"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -202,7 +221,9 @@
       "adversa_references": [
         "ADV-A2A-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-04"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
@@ -224,14 +245,17 @@
       "adversa_references": [
         "ADV-A2A-08"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
-      "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed.",
+      "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed. Replayed agent messages are a core ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
       "owasp_agentic_references": [
-        "ASI07"
+        "ASI07",
+        "ASI08"
       ],
       "owasp_mcp_references": [
         "MCP01:2025"
@@ -246,14 +270,17 @@
       "adversa_references": [
         "ADV-A2A-09"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "a2a-protocol",
       "cve_references": [],
-      "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics.",
+      "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics. Schema-confusion injection is an ASI08 Agent Communication Poisoning pattern.",
       "incident_references": [],
       "owasp_agentic_references": [
-        "ASI07"
+        "ASI07",
+        "ASI08"
       ],
       "owasp_mcp_references": [
         "MCP04:2025"
@@ -268,7 +295,9 @@
       "adversa_references": [
         "ADV-HIJACK-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
@@ -290,7 +319,9 @@
       "adversa_references": [
         "ADV-HIJACK-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
@@ -376,9 +407,39 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "Repository declares a dependency on the upstream Anthropic / ModelContextProtocol SDK (Python `mcp` / `modelcontextprotocol`, TS `@modelcontextprotocol/sdk`, Java `io.modelcontextprotocol:*`, Rust `mcp` / `modelcontextprotocol`) and exposes a STDIO transport (`StdioServerTransport`, `stdio_server`, etc.) without a sanitizer on argv assembly. Anthropic declined to CVE this as working as designed \u2014 sanitization is the developer's responsibility. The OX Security disclosure on 2026-04-15 rolled up LiteLLM, LangChain and IBM LangFlow as downstream casualties of exactly this pattern. See also AAK-STDIO-001 for the sink-level detector.",
+      "incident_references": [
+        "OX-MCP-2026-04-15"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Wrap every argv the STDIO transport builds in an allow-list sanitizer \u2014 `shlex.quote` in Python, `execFile` with an explicit argv array in Node, equivalent in Java/Rust. OR switch the transport off STDIO (`transports=['http']` / `['sse']`). If you have deliberately accepted the risk, add `accepts_stdio_risk: true` plus a `justification:` field in `.agent-audit-kit.yml`.",
+      "rule_id": "AAK-ANTHROPIC-SDK-001",
+      "sarif_name": "AnthropicSdkStdioSanitizer",
+      "severity": "high",
+      "title": "MCP server built on the upstream SDK without STDIO sanitizer"
+    },
+    {
+      "adversa_references": [
         "ADV-PATH-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [
@@ -400,9 +461,38 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-02"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-07"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2025-66335"
+      ],
+      "description": "Project depends on `apache-doris-mcp-server` at a version < 0.6.1. CVE-2025-66335 is a query-context neutralization bypass in the MCP adapter's tool layer \u2014 crafted tool arguments are concatenated into Doris SQL without a parameterized boundary, letting an LLM-driven tool call reach into arbitrary reads/writes. Fixed in 0.6.1.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `apache-doris-mcp-server` to 0.6.1 or newer. Audit every tool the adapter exposes to confirm arguments flow through a parameterized query builder, never string concatenation.",
+      "rule_id": "AAK-DORIS-001",
+      "sarif_name": "DorisMcpSqlInjection",
+      "severity": "high",
+      "title": "apache-doris-mcp-server < 0.6.1 SQL injection"
+    },
+    {
+      "adversa_references": [
         "ADV-RCE-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-08"
+      ],
       "auto_fixable": true,
       "category": "supply-chain",
       "cve_references": [
@@ -518,7 +608,9 @@
       "adversa_references": [
         "ADV-EXFIL-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [
@@ -542,7 +634,9 @@
       "adversa_references": [
         "ADV-TOKEN-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -564,7 +658,9 @@
       "adversa_references": [
         "ADV-ESCAPE-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -586,7 +682,9 @@
       "adversa_references": [
         "ADV-HOOK-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -608,7 +706,9 @@
       "adversa_references": [
         "ADV-OBFUSC-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -630,7 +730,9 @@
       "adversa_references": [
         "ADV-PRIV-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -652,7 +754,9 @@
       "adversa_references": [
         "ADV-SCOPE-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CCC-08"
+      ],
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
@@ -1085,7 +1189,9 @@
       "adversa_references": [
         "ADV-SUPPLY-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -1107,7 +1213,9 @@
       "adversa_references": [
         "ADV-SUPPLY-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -1129,7 +1237,9 @@
       "adversa_references": [
         "ADV-SUPPLY-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -1151,7 +1261,9 @@
       "adversa_references": [
         "ADV-SUPPLY-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -1623,6 +1735,32 @@
     },
     {
       "adversa_references": [
+        "ADV-DOS-01"
+      ],
+      "aicm_references": [
+        "LOG-13"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-39313"
+      ],
+      "description": "Project depends on `mcp-framework` at a version < 0.2.22, or a TS/JS file implements an MCP HTTP transport that concatenates request body chunks into a string without consulting Content-Length or a `maxMessageSize` guard. CVE-2026-39313 lets an unauthenticated attacker crash the server with a single large POST to /mcp by exhausting process memory. Fixed in 0.2.22.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `mcp-framework` to 0.2.22 or newer. For custom transports, enforce a hard body-size cap before accumulating chunks \u2014 reject early when `Content-Length` exceeds your `maxMessageSize`.",
+      "rule_id": "AAK-MCPFRAME-001",
+      "sarif_name": "McpFrameworkHttpBodyDos",
+      "severity": "medium",
+      "title": "mcp-framework < 0.2.22 HTTP-body DoS"
+    },
+    {
+      "adversa_references": [
         "ADV-AUTH-01"
       ],
       "aicm_references": [
@@ -1655,7 +1793,9 @@
       "adversa_references": [
         "ADV-SUPPLY-08"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": true,
       "category": "supply-chain",
       "cve_references": [
@@ -1680,7 +1820,10 @@
       "adversa_references": [
         "ADV-AUTH-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01",
+        "IAM-16"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -1702,7 +1845,9 @@
       "adversa_references": [
         "ADV-AUTH-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -1724,7 +1869,9 @@
       "adversa_references": [
         "ADV-AUTH-08"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -1746,7 +1893,9 @@
       "adversa_references": [
         "ADV-AUTH-09"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -1768,7 +1917,9 @@
       "adversa_references": [
         "ADV-AUTH-10"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-01"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -1788,7 +1939,9 @@
     },
     {
       "adversa_references": [],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-08"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -1810,7 +1963,9 @@
     },
     {
       "adversa_references": [],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-16"
+      ],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [],
@@ -1834,7 +1989,9 @@
       "adversa_references": [
         "ADV-POISON-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1856,7 +2013,9 @@
       "adversa_references": [
         "ADV-POISON-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1878,7 +2037,9 @@
       "adversa_references": [
         "ADV-POISON-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1900,7 +2061,9 @@
       "adversa_references": [
         "ADV-POISON-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1922,7 +2085,9 @@
       "adversa_references": [
         "ADV-POISON-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1944,7 +2109,9 @@
       "adversa_references": [
         "ADV-POISON-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -1966,7 +2133,9 @@
       "adversa_references": [
         "ADV-AGENCY-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
@@ -2096,7 +2265,9 @@
     },
     {
       "adversa_references": [],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -2166,7 +2337,9 @@
       "adversa_references": [
         "ADV-TOKEN-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2188,7 +2361,9 @@
       "adversa_references": [
         "ADV-TOKEN-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2210,7 +2385,9 @@
       "adversa_references": [
         "ADV-TOKEN-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2256,7 +2433,9 @@
       "adversa_references": [
         "ADV-TOKEN-09"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2278,7 +2457,9 @@
       "adversa_references": [
         "ADV-TOKEN-10"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2300,7 +2481,9 @@
       "adversa_references": [
         "ADV-TOKEN-11"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "DSP-17"
+      ],
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
@@ -2322,7 +2505,9 @@
       "adversa_references": [
         "ADV-SKILL-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -2344,7 +2529,9 @@
       "adversa_references": [
         "ADV-SKILL-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -2366,7 +2553,9 @@
       "adversa_references": [
         "ADV-SKILL-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -2388,7 +2577,9 @@
       "adversa_references": [
         "ADV-SKILL-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -2410,7 +2601,9 @@
       "adversa_references": [
         "ADV-SKILL-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-10"
+      ],
       "auto_fixable": false,
       "category": "tool-poisoning",
       "cve_references": [],
@@ -2432,7 +2625,9 @@
       "adversa_references": [
         "ADV-SSRF-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IVS-04"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -2454,7 +2649,9 @@
       "adversa_references": [
         "ADV-SSRF-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IVS-04"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -2476,7 +2673,9 @@
       "adversa_references": [
         "ADV-SSRF-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IVS-04"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -2498,7 +2697,9 @@
       "adversa_references": [
         "ADV-SSRF-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IVS-04"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -2520,7 +2721,9 @@
       "adversa_references": [
         "ADV-SSRF-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IVS-04"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
@@ -2590,7 +2793,9 @@
       "adversa_references": [
         "ADV-RCE-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
@@ -2673,7 +2878,9 @@
       "adversa_references": [
         "ADV-SUPPLY-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-02"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -2695,7 +2902,9 @@
       "adversa_references": [
         "ADV-SUPPLY-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-02"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -2717,7 +2926,9 @@
       "adversa_references": [
         "ADV-SUPPLY-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-08"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -2739,7 +2950,9 @@
       "adversa_references": [
         "ADV-SUPPLY-08"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "STA-08"
+      ],
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
@@ -2761,7 +2974,9 @@
       "adversa_references": [
         "ADV-INJECT-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2783,7 +2998,9 @@
       "adversa_references": [
         "ADV-INJECT-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2805,7 +3022,9 @@
       "adversa_references": [
         "ADV-INJECT-06"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2827,7 +3046,9 @@
       "adversa_references": [
         "ADV-SSRF-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2849,7 +3070,9 @@
       "adversa_references": [
         "ADV-INJECT-07"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2871,7 +3094,9 @@
       "adversa_references": [
         "ADV-INJECT-08"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2893,7 +3118,9 @@
       "adversa_references": [
         "ADV-VALID-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -2915,7 +3142,9 @@
       "adversa_references": [
         "ADV-SCOPE-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
@@ -3003,7 +3232,9 @@
       "adversa_references": [
         "ADV-TRANSPORT-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
@@ -3025,7 +3256,9 @@
       "adversa_references": [
         "ADV-TRANSPORT-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
@@ -3047,7 +3280,9 @@
       "adversa_references": [
         "ADV-TRANSPORT-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
@@ -3069,7 +3304,9 @@
       "adversa_references": [
         "ADV-TOKEN-12"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "CEK-08"
+      ],
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
@@ -3117,7 +3354,9 @@
       "adversa_references": [
         "ADV-REDIRECT-01"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-16"
+      ],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [
@@ -3141,7 +3380,9 @@
       "adversa_references": [
         "ADV-SCOPE-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [],
@@ -3188,7 +3429,9 @@
       "adversa_references": [
         "ADV-REDIRECT-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-16"
+      ],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [
@@ -3212,7 +3455,9 @@
       "adversa_references": [
         "ADV-TRUST-03"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-16"
+      ],
       "auto_fixable": false,
       "category": "trust-boundary",
       "cve_references": [],
@@ -3234,7 +3479,9 @@
       "adversa_references": [
         "ADV-TRUST-04"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": true,
       "category": "trust-boundary",
       "cve_references": [],
@@ -3256,7 +3503,9 @@
       "adversa_references": [
         "ADV-RCE-05"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [

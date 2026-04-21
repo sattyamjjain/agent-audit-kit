@@ -45,6 +45,25 @@ def test_secret_rules_tagged_dsp_17() -> None:
     assert RULES["AAK-SECRET-006"].aicm_references == ["DSP-17"]
 
 
+# --------------------------------------------------------------------------
+# Density floor (v0.3.3). Expand from 10 → ≥75 rules so ``--compliance
+# aicm`` is useful out of the box and the CSA Agentic AI Security
+# Summit (2026-04-29) pre-sales angle stops being aspirational.
+# --------------------------------------------------------------------------
+
+
+_AICM_DENSITY_FLOOR = 75
+
+
+def test_aicm_density_floor() -> None:
+    tagged = [rid for rid, r in RULES.items() if r.aicm_references]
+    assert len(tagged) >= _AICM_DENSITY_FLOOR, (
+        f"{len(tagged)} rules tagged with AICM controls; floor is "
+        f"{_AICM_DENSITY_FLOOR}. Extend _AICM_TAGS in "
+        "agent_audit_kit/rules/builtin.py."
+    )
+
+
 def test_mcpwn_rule_tagged_iam_01() -> None:
     assert "IAM-01" in RULES["AAK-MCPWN-001"].aicm_references
 

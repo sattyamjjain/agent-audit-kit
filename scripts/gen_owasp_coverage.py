@@ -18,6 +18,10 @@ from collections import defaultdict
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOC_PATH = REPO_ROOT / "docs" / "owasp-agentic-coverage.md"
+README_PATH = REPO_ROOT / "README.md"
+
+_MARKER_START = "<!-- owasp-coverage:start -->"
+_MARKER_END = "<!-- owasp-coverage:end -->"
 
 # Canonical OWASP Agentic Top 10 2026 titles. Source:
 # https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
@@ -68,6 +72,32 @@ def render_markdown(coverage: dict[str, list[str]]) -> str:
     return "\n".join(lines)
 
 
+def render_readme_snippet(coverage: dict[str, list[str]]) -> str:
+    """Compact summary suitable for the README marker block."""
+    lines = ["| ASI | Title | # rules |", "| --- | --- | --- |"]
+    for asi in sorted(ASI_TITLES):
+        rules = coverage.get(asi, [])
+        lines.append(f"| **{asi}** | {ASI_TITLES[asi]} | {len(rules)} |")
+    return "\n".join(lines)
+
+
+def _update_readme_marker(snippet: str) -> bool:
+    if not README_PATH.is_file():
+        return False
+    text = README_PATH.read_text(encoding="utf-8")
+    if _MARKER_START not in text or _MARKER_END not in text:
+        return False
+    before, _, rest = text.partition(_MARKER_START)
+    _, _, after = rest.partition(_MARKER_END)
+    rebuilt = (
+        f"{before}{_MARKER_START}\n{snippet}\n{_MARKER_END}{after}"
+    )
+    if rebuilt != text:
+        README_PATH.write_text(rebuilt, encoding="utf-8")
+        return True
+    return False
+
+
 def main() -> int:
     coverage = build_coverage()
     missing = [asi for asi in ASI_TITLES if not coverage.get(asi)]
@@ -75,6 +105,8 @@ def main() -> int:
     DOC_PATH.parent.mkdir(parents=True, exist_ok=True)
     DOC_PATH.write_text(text, encoding="utf-8")
     sys.stdout.write(f"wrote {DOC_PATH} ({len(text)} bytes)\n")
+    if _update_readme_marker(render_readme_snippet(coverage)):
+        sys.stdout.write(f"updated README.md owasp-coverage marker\n")
     if missing:
         sys.stderr.write(
             "coverage gap: no rules tag "

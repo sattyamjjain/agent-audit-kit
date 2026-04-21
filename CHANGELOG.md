@@ -5,6 +5,127 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-21
+
+**Headline: mcp-framework + Apache Doris pin-checks, Anthropic MCP SDK
+STDIO hardening, CVE-watcher dedup, AICM density to ≥51%, CycloneDX
+AI-BOM emitter.**
+
+Clears the 48h SLA on CVE-2026-39313 and CVE-2025-66335, adds the
+SDK-level inheritance check the OX Security 2026-04-15 disclosure asked
+for, roots out the watcher regression that opened five copies of
+CVE-2026-6599, and lifts the AICM mapping density from a 7% starter to
+a real procurement-facing 63%.
+
+### Added — rule coverage (3 new rules, 148 → 151)
+
+- **AAK-MCPFRAME-001** (MEDIUM) — CVE-2026-39313, mcp-framework < 0.2.22
+  HTTP-body DoS. Detection: `package.json` pin-check + TS/JS regex for
+  `readRequestBody`-style chunk-concat accumulating into a string
+  without a `Content-Length` / `maxMessageSize` guard. Ships in a new
+  `scanners/transport_limits.py`. Strips `//` and `/* ... */` comments
+  before matching the size-guard regex so docstring mentions do not
+  spuriously suppress.
+- **AAK-DORIS-001** (HIGH) — CVE-2025-66335, apache-doris-mcp-server
+  < 0.6.1 SQL injection via query-context neutralization bypass.
+  Pin-check scans `requirements*.txt`, `pyproject.toml`,
+  `Pipfile(.lock)`, `poetry.lock`, `uv.lock`. Lives in
+  `scanners/supply_chain.py`.
+- **AAK-ANTHROPIC-SDK-001** (HIGH) — SDK-level STDIO sanitization
+  inheritance check covering the OX Security 2026-04-15 class.
+  Anthropic declined to CVE — "sanitization is the developer's
+  responsibility". Fires only when (a) an upstream MCP SDK is declared
+  in a manifest (Python `mcp`/`modelcontextprotocol`, TS
+  `@modelcontextprotocol/sdk`, Java `io.modelcontextprotocol:*`, Rust
+  equivalents), (b) a STDIO transport is exposed, and (c) no
+  sanitizer, HTTP opt-out, or documented risk acceptance is present.
+  Opt-out via `.agent-audit-kit.yml` with `accepts_stdio_risk: true`
+  plus a non-empty `justification:`. Ships in a new
+  `scanners/mcp_sdk_hardening.py`. Tagged
+  `incident_references=["OX-MCP-2026-04-15"]`.
+
+### Added — OWASP Agentic 2026 density floor
+
+- `tests/test_owasp_agentic_coverage.py` now enforces a **≥3 rules per
+  ASI slot** density floor (parametrized). The marketing claim
+  "OWASP Agentic Top 10: 10/10" is now backed by a test that fails
+  CI if any slot falls below three rules.
+- `AAK-A2A-003`, `AAK-A2A-011`, `AAK-A2A-012` gain `ASI08` tags
+  (Agent Communication Poisoning) — lifts ASI08 coverage from 1 rule
+  to 3.
+- `scripts/gen_owasp_coverage.py` additionally rewrites a
+  `<!-- owasp-coverage:start -->`…`<!-- owasp-coverage:end -->`
+  marker in `README.md` so the rendered coverage table stays in lockstep
+  with the code.
+
+### Added — CSA AICM density to ≥51%
+
+- `_AICM_TAGS` in `agent_audit_kit/rules/builtin.py` expands from 10
+  rules (7%) to **95 rules (63%)**, covering the SECRET-*, SUPPLY-*,
+  TRUST-*, TRANSPORT-*, A2A-*, POISON-*, TAINT-*, SSRF-*, OAUTH-*,
+  SKILL-*, MARKETPLACE-*, HOOK-*, and CVE-response families. Each
+  family maps to the canonical AICM control domain (DSP / IAM / STA /
+  CEK / AIS / LOG / IVS / CCC).
+- `tests/test_aicm.py` gets a **density floor assertion** — the suite
+  now fails CI if fewer than 75 rules carry an AICM tag.
+- `--compliance aicm` CSV output reflects the expanded mapping
+  automatically; no CLI change needed.
+
+### Added — CycloneDX AI-BOM emitter
+
+- `agent-audit-kit sbom --format aibom` emits a CycloneDX 1.5 AI/ML-BOM
+  on top of the existing SBOM primitive. Adds:
+  - `components` entries with `type: "machine-learning-model"` for each
+    detected vendor SDK (anthropic/Claude, openai/GPT, cohere/Command).
+  - A `formulation` block listing detected agent-platform SDKs
+    (LangChain, LangSmith, LangGraph, LangFuse, Helicone, Humanloop,
+    MCP SDK) with pURLs where the pin can be extracted.
+  - `metadata.properties`: `aak:rule-bundle-sha256` (pulled from
+    `rules.json.sha256` if present), `aak:aibom: "1"` marker, and one
+    `aak:incident-fired` per fired incident reference so the BOM can
+    double as attestation evidence.
+- Covered by `tests/test_cyclonedx_aibom.py`.
+
+### Fixed — CVE-response watcher dedup (Task A)
+
+- `scripts/cve_watcher.py` was only deduping against
+  `CHANGELOG.cves.md`. A CVE sitting in the SLA queue without a rule
+  yet never reached the changelog, so the 6-hourly cron re-opened it.
+  Over 48h this filed five copies of CVE-2026-6599 (#47/#48/#50/#52/#55)
+  and three of CVE-2025-66335.
+- Rewritten with three layers of dedup (any one suppresses):
+  1. `CHANGELOG.cves.md`.
+  2. Persistent `.aak/cve-watcher-state.json` (cached across workflow
+     runs via `actions/cache`).
+  3. Open `cve-response` issue titles + bodies via the GitHub REST API.
+- New `scripts/close_duplicate_cve_issues.py` groups existing open
+  `cve-response` issues by extracted CVE ID, keeps the lowest-numbered,
+  closes the rest with a cross-reference body. Ran against live repo
+  during this release: closed #48, #50, #51, #52, #54, #55, #56 (7
+  dups).
+- `.github/workflows/cve-watcher.yml` now wires `GITHUB_TOKEN` +
+  `GITHUB_REPOSITORY` into the diff step and restores the state file
+  from `actions/cache`.
+- Covered by `tests/test_cve_watcher_dedup.py` — five scenarios
+  including the observed "same CVE × 3 cron runs" replay.
+
+### Added — provenance plumbing
+
+- `CHANGELOG.cves.md` gains entries for CVE-2026-39313,
+  CVE-2025-66335, and the OX-MCP-2026-04-15 incident class.
+- `watch.py` parameter annotations updated from the string-form
+  `"callable | None"` to the proper `Callable[[int, list[Any]], None]`
+  (incidental mypy-1.x compatibility fix carried over from 0.3.2.1
+  hotfix).
+- `scanners/marketplace_manifest.py` ships the Python 3.10 `tomli`
+  fallback that made CI green for 0.3.2 — kept for 0.3.3.
+
+### Thanks
+
+OX Security for the 2026-04-15 "Mother of all AI supply chains"
+disclosure; Apache Doris for the 0.6.1 patch turnaround; the CSA AICM
+working group for publishing a v1 control catalog we can map to.
+
 ## [0.3.2] - 2026-04-20
 
 **Headline: MCPwn coverage + third-party OAuth-app surface + OWASP Agentic 2026 coverage proof.**

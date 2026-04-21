@@ -46,22 +46,110 @@ RULES: dict[str, RuleDefinition] = {}
 # ---------------------------------------------------------------------------
 
 _AICM_TAGS: dict[str, list[str]] = {
-    # Secrets mgmt (DSP-17 Secrets Management; see CSA AICM v1.0 DSP).
+    # ---- Secrets Management (DSP-17) -----------------------------------
     "AAK-SECRET-001": ["DSP-17"],
     "AAK-SECRET-002": ["DSP-17"],
+    "AAK-SECRET-003": ["DSP-17"],
+    "AAK-SECRET-004": ["DSP-17"],
+    "AAK-SECRET-005": ["DSP-17"],
     "AAK-SECRET-006": ["DSP-17"],
-    # Identity & Access.
-    "AAK-TRUST-001": ["IAM-16"],   # Least privilege on MCP server surface.
-    "AAK-TRUST-004": ["IAM-02"],   # Separation of duties / deny-by-default.
-    # Supply chain.
-    "AAK-SUPPLY-001": ["STA-02"],  # Dependency management & pinning.
-    "AAK-SUPPLY-002": ["STA-08"],  # Known-vulnerable component handling.
-    # Transport / crypto.
-    "AAK-MCP-017": ["CEK-08"],     # Data-in-transit encryption.
-    # Logging & monitoring.
-    "AAK-LOGINJ-001": ["LOG-06"],  # Integrity / tamper-evidence of logs.
-    # Auth — the MCPwn twin pattern is squarely an IAM-01 failure.
+    "AAK-SECRET-007": ["DSP-17"],
+    "AAK-SECRET-008": ["DSP-17"],
+    "AAK-SECRET-009": ["DSP-17"],
+    # ---- Identity & Access Management ----------------------------------
+    "AAK-TRUST-001": ["IAM-16"],
+    "AAK-TRUST-002": ["IAM-16"],
+    "AAK-TRUST-003": ["IAM-02"],
+    "AAK-TRUST-004": ["IAM-02"],
+    "AAK-TRUST-005": ["IAM-16"],
+    "AAK-TRUST-006": ["IAM-16"],
+    "AAK-TRUST-007": ["IAM-02"],
+    "AAK-OAUTH-001": ["IAM-01", "IAM-16"],
+    "AAK-OAUTH-002": ["IAM-01"],
+    "AAK-OAUTH-003": ["IAM-01"],
+    "AAK-OAUTH-004": ["IAM-01"],
+    "AAK-OAUTH-005": ["IAM-01"],
+    "AAK-OAUTH-SCOPE-001": ["IAM-16"],
+    "AAK-OAUTH-3P-001": ["STA-08"],
+    # ---- Supply Chain Management ---------------------------------------
+    "AAK-SUPPLY-001": ["STA-02"],
+    "AAK-SUPPLY-002": ["STA-08"],
+    "AAK-SUPPLY-003": ["STA-02"],
+    "AAK-SUPPLY-004": ["STA-02"],
+    "AAK-SUPPLY-005": ["STA-08"],
+    "AAK-SUPPLY-006": ["STA-08"],
+    "AAK-MARKETPLACE-001": ["STA-10"],
+    "AAK-MARKETPLACE-002": ["STA-10"],
+    "AAK-MARKETPLACE-003": ["STA-10"],
+    "AAK-MARKETPLACE-004": ["STA-10"],
+    "AAK-SKILL-001": ["STA-10"],
+    "AAK-SKILL-002": ["STA-10"],
+    "AAK-SKILL-003": ["STA-10"],
+    "AAK-SKILL-004": ["STA-10"],
+    "AAK-SKILL-005": ["STA-10"],
+    # ---- Transport / Crypto --------------------------------------------
+    "AAK-MCP-017": ["CEK-08"],
+    "AAK-TRANSPORT-001": ["CEK-08"],
+    "AAK-TRANSPORT-002": ["CEK-08"],
+    "AAK-TRANSPORT-003": ["CEK-08"],
+    "AAK-TRANSPORT-004": ["CEK-08"],
+    # ---- Input validation / tool injection (AIS-07) --------------------
+    "AAK-TAINT-001": ["AIS-07"],
+    "AAK-TAINT-002": ["AIS-07"],
+    "AAK-TAINT-003": ["AIS-07"],
+    "AAK-TAINT-004": ["AIS-07"],
+    "AAK-TAINT-005": ["AIS-07"],
+    "AAK-TAINT-006": ["AIS-07"],
+    "AAK-TAINT-007": ["AIS-07"],
+    "AAK-TAINT-008": ["AIS-07"],
+    "AAK-POISON-001": ["AIS-07"],
+    "AAK-POISON-002": ["AIS-07"],
+    "AAK-POISON-003": ["AIS-07"],
+    "AAK-POISON-004": ["AIS-07"],
+    "AAK-POISON-005": ["AIS-07"],
+    "AAK-POISON-006": ["AIS-07"],
+    "AAK-SSRF-001": ["IVS-04"],
+    "AAK-SSRF-002": ["IVS-04"],
+    "AAK-SSRF-003": ["IVS-04"],
+    "AAK-SSRF-004": ["IVS-04"],
+    "AAK-SSRF-005": ["IVS-04"],
+    # ---- A2A protocol (IAM + STA) --------------------------------------
+    "AAK-A2A-001": ["IAM-04"],
+    "AAK-A2A-002": ["IAM-01"],
+    "AAK-A2A-003": ["AIS-07"],
+    "AAK-A2A-004": ["CEK-08"],
+    "AAK-A2A-005": ["IAM-01"],
+    "AAK-A2A-006": ["IAM-01"],
+    "AAK-A2A-007": ["IAM-04"],
+    "AAK-A2A-008": ["IAM-01"],
+    "AAK-A2A-009": ["IAM-04"],
+    "AAK-A2A-010": ["IAM-04"],
+    "AAK-A2A-011": ["IAM-01"],
+    "AAK-A2A-012": ["AIS-07"],
+    # ---- Hook / Agent / Routine (IAM + change control) -----------------
+    "AAK-HOOK-001": ["CCC-08"],
+    "AAK-HOOK-002": ["CCC-08"],
+    "AAK-HOOK-003": ["CCC-08"],
+    "AAK-HOOK-004": ["IAM-01"],
+    "AAK-HOOK-005": ["IAM-01"],
+    "AAK-HOOK-006": ["CCC-08"],
+    "AAK-HOOK-007": ["CCC-08"],
+    "AAK-AGENT-001": ["IAM-02"],
+    "AAK-AGENT-002": ["IAM-02"],
+    "AAK-ROUTINE-001": ["IAM-02"],
+    # ---- Logging (LOG) -------------------------------------------------
+    "AAK-LOGINJ-001": ["LOG-06"],
+    # ---- MCPwn / SDK hardening / CVE-response coverage -----------------
     "AAK-MCPWN-001": ["IAM-01"],
+    "AAK-MCPFRAME-001": ["LOG-13"],
+    "AAK-DORIS-001": ["AIS-07", "DSP-07"],
+    "AAK-ANTHROPIC-SDK-001": ["AIS-07", "STA-08"],
+    "AAK-FLOWISE-001": ["STA-08"],
+    "AAK-STDIO-001": ["AIS-07"],
+    "AAK-WINDSURF-001": ["AIS-07"],
+    "AAK-NEO4J-001": ["IAM-02"],
+    "AAK-CLAUDE-WIN-001": ["CCC-08"],
+    "AAK-SEC-MD-001": ["STA-10"],
 }
 
 
@@ -1064,13 +1152,14 @@ _r(
     "AAK-A2A-003",
     "No input schema validation in A2A skill definitions",
     "A2A skill definitions lack input schemas, allowing unvalidated data to be passed "
-    "between agents.",
+    "between agents. Unvalidated cross-agent payloads are the canonical "
+    "ASI08 Agent Communication Poisoning primitive.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Define explicit JSON schemas for all skill inputs.",
     sarif_name="A2aNoInputSchema",
     owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-03"],
 )
 
@@ -1894,14 +1983,15 @@ _r(
     "AAK-A2A-011",
     "A2A tokens not anti-replay protected",
     "An A2A flow accepts tokens without nonce, timestamp, or jti checks, "
-    "allowing captured messages to be replayed.",
+    "allowing captured messages to be replayed. Replayed agent messages "
+    "are a core ASI08 Agent Communication Poisoning primitive.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Include jti/nonce and iat/exp claims; reject duplicates inside a "
     "replay window.",
     sarif_name="A2aReplayable",
     owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-08"],
 )
 
@@ -1910,13 +2000,14 @@ _r(
     "A2A schema confusion between major versions",
     "An A2A endpoint accepts messages without version discriminator, "
     "allowing a v1 payload to be interpreted by a v2 handler (or vice "
-    "versa) with changed field semantics.",
+    "versa) with changed field semantics. Schema-confusion injection "
+    "is an ASI08 Agent Communication Poisoning pattern.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Require an explicit schema version in every message; reject mismatches.",
     sarif_name="A2aSchemaConfusion",
     owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-09"],
 )
 
