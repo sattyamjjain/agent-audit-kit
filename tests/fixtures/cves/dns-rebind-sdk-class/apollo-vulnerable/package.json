@@ -1,0 +1,7 @@
+{
+  "name": "mcp-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "@apollo/mcp-server": "1.6.0"
+  }
+}

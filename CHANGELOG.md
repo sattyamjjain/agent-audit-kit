@@ -5,6 +5,98 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-04-24
+
+**Headline: DNS-rebinding SDK class (CVE-2025-66414/66416, CVE-2026-35568,
+CVE-2026-35577), Splunk MCP token-in-log (CVE-2026-20205), GitHub Actions
+Immutable-Action / SHA-pin gate, in-flight CVE pin-checks (CVE-2026-40576,
+CVE-2026-40608), OWASP Agentic public JSON artefact, repo-metadata sync.**
+
+Closes the April-2026 DNS-rebinding cluster across the Python, Java, TS and
+Apollo MCP SDKs, ships a token-in-log sink detector covering the Splunk
+MCP bulletin, wires a SHA-pin regression fence for downstream users on the
+GitHub Actions 2026 roadmap, and publishes the OWASP Agentic reference-tool
+submission packet with a machine-readable coverage artefact.
+
+### Added — rule coverage (6 new rules, 151 → 157)
+
+- **AAK-DNS-REBIND-001** (CRITICAL, Category.TRANSPORT_SECURITY) — MCP
+  `StreamableHTTP*` transport exposed without a Host-header allow-list.
+  Covers CVE-2025-66414, CVE-2025-66416 (Python `mcp`), CVE-2026-35568
+  (Java `io.modelcontextprotocol.sdk:mcp-core`), CVE-2026-35577
+  (`@apollo/mcp-server`). New scanner `scanners/dns_rebind.py` walks
+  `.py`/`.ts`/`.js`/`.mjs`/`.cjs` sources for `StreamableHTTPSessionManager`,
+  `streamable_http`, `StreamableHTTPTransport` and suppresses only when a
+  host allow-list marker (`TrustedHostMiddleware`, `allowed_hosts=`,
+  `allowedHosts:`, `validate_host`, `HostHeaderFilter`) is reachable
+  anywhere in the project.
+- **AAK-DNS-REBIND-002** (HIGH, Category.SUPPLY_CHAIN) — vulnerable MCP SDK
+  version pinned in a manifest. Patched floors: Python `mcp` ≥ 1.23.0, TS
+  `@modelcontextprotocol/sdk` ≥ 1.21.1, Java `mcp-core` ≥ 0.11.0,
+  `@apollo/mcp-server` ≥ 1.7.0. Scans `requirements*.txt`, `pyproject.toml`,
+  `package.json` (dependencies / devDependencies / peerDependencies),
+  `pom.xml`, `build.gradle`, `build.gradle.kts`.
+- **AAK-SPLUNK-TOKLOG-001** (HIGH, Category.SECRET_EXPOSURE) — token-shaped
+  values (Bearer, JWT, `splunkd_session`, `st-*`, `sk-ant-*`, `ghp_*`) or
+  unredacted token-named variables interpolated into a log sink
+  (`logger.info/warn/error`, `print`, `console.log`, `System.out.println`).
+  Suppresses on explicit redact markers (`***`, `<redacted>`, `mask(...)`).
+  New scanner `scanners/log_token_leak.py`. Pin-check for
+  `splunk-mcp-server < 1.0.3` (CVE-2026-20205).
+- **AAK-GHA-IMMUTABLE-001** (MEDIUM, Category.SUPPLY_CHAIN) — third-party
+  GitHub Action pinned by tag or branch instead of 40-character commit SHA.
+  `actions/*` and `github/*` are exempt (Immutable-Actions publishers).
+  Local composite actions (`./path/to/action`) are exempt. New scanner
+  `scanners/gha_hardening.py` walks `.github/workflows/*.yml` via PyYAML so
+  every `uses:` step shape is covered. Aligned to the GitHub Actions 2026
+  Security Roadmap.
+- **AAK-EXCEL-MCP-001** (CRITICAL, Category.SUPPLY_CHAIN) — CVE-2026-40576,
+  `excel-mcp-server <= 0.1.7` path-traversal in `get_excel_path()` combined
+  with the default 0.0.0.0 bind on SSE / Streamable-HTTP. Pin-check in
+  `scanners/supply_chain.py`. Patched in 0.1.8.
+- **AAK-NEXT-AI-DRAW-001** (MEDIUM, Category.TRANSPORT_SECURITY) —
+  CVE-2026-40608, `next-ai-draw-io < 0.4.15` body-accumulation OOM in the
+  embedded HTTP sidecar. Pin-check in `scanners/transport_limits.py` next
+  to AAK-MCPFRAME-001 (same class).
+
+### Added — coverage artefacts
+
+- `public/owasp-agentic-coverage.json` — machine-readable OWASP Agentic
+  Top 10 2026 coverage schema (v1) with ASI slot density, CVE references,
+  AICM references per rule. Regenerated on every release by
+  `scripts/gen_owasp_coverage.py`. `tests/test_owasp_public_json.py`
+  enforces the schema and ≥3 rule density floor.
+- `docs/launch/owasp-reference-tool-submission.md` — pre-filled submission
+  packet for the OWASP Agentic reference-tool registry. Closes #24 + #25.
+
+### Added — release-mechanics / tooling
+
+- `scripts/sync_repo_metadata.py` — single source of truth for
+  `sattyamjjain/agent-audit-kit@vX.Y.Z` pins across `README.md`,
+  `docs/**/*.md` (excluding frozen `release-notes-v*.md` history), and the
+  canonical GitHub repo description string. `--check` exits non-zero on
+  drift, `--write` rewrites, `--description` prints the string.
+- `.github/workflows/sync-repo-metadata.yml` — triggers on
+  `release.published` + `workflow_dispatch`; rewrites pins and edits the
+  repo description via `gh repo edit`. Uses SHA-pinned actions only.
+- `tests/test_repo_metadata_sync.py` — regression fence: every README pin
+  must match the live `pyproject.toml` version.
+
+### Fixed
+
+- Closed the cross-category drift where the README badge showed
+  "rules-151" while the OpenGraph / repo-description field was stuck at
+  "77 rules". The new sync workflow plus regression test remove the class.
+- README example snippets now bump in lock-step with the release tag
+  instead of requiring a manual edit.
+
+### Deferred to v0.3.5
+
+- CSA MCP Security Baseline v1.0 mapping — not yet public as of 2026-04-24.
+  Watcher (`scripts/watch_csa_mcp_baseline.py`) remains armed.
+- CVE-2026-31504 (Linux kernel fanout UAF) — out-of-scope for an MCP /
+  agent-pipeline scanner. Closed on the CVE-response queue with rationale.
+
 ## [0.3.3] - 2026-04-21
 
 **Headline: mcp-framework + Apache Doris pin-checks, Anthropic MCP SDK

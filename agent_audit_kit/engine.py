@@ -53,6 +53,9 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("oauth_surface", "Third-party OAuth surface (VERCEL-2026-04-19)", []),
     ("transport_limits", "Transport body-size limits (CVE-2026-39313)", []),
     ("mcp_sdk_hardening", "Upstream MCP SDK STDIO hardening (OX-MCP-2026-04-15)", []),
+    ("dns_rebind", "MCP SDK DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577)", []),
+    ("gha_hardening", "GitHub Actions SHA-pin / Immutable Action policy", []),
+    ("log_token_leak", "Token-shaped values in log sinks (CVE-2026-20205)", []),
 ]
 
 
