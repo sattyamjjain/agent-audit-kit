@@ -23,6 +23,7 @@ from agent_audit_kit.models import Finding
 from ._helpers import SKIP_DIRS, find_line_number, make_finding
 
 _MCPFRAME_PATCHED = (0, 2, 22)
+_NEXT_AI_DRAW_PATCHED = (0, 4, 15)
 
 _SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
 
@@ -97,16 +98,25 @@ def _check_package_json(project_root: Path, scanned: set[str]) -> list[Finding]:
         if not isinstance(deps, dict):
             continue
         spec = deps.get("mcp-framework")
-        if not spec:
-            continue
-        parsed = _parse_semver(str(spec))
-        if parsed is None or parsed < _MCPFRAME_PATCHED:
-            findings.append(make_finding(
-                "AAK-MCPFRAME-001",
-                rel,
-                f"mcp-framework pinned at {spec!r} in {section} — "
-                "CVE-2026-39313 HTTP-body DoS is patched in 0.2.22.",
-            ))
+        if spec:
+            parsed = _parse_semver(str(spec))
+            if parsed is None or parsed < _MCPFRAME_PATCHED:
+                findings.append(make_finding(
+                    "AAK-MCPFRAME-001",
+                    rel,
+                    f"mcp-framework pinned at {spec!r} in {section} — "
+                    "CVE-2026-39313 HTTP-body DoS is patched in 0.2.22.",
+                ))
+        draw_spec = deps.get("next-ai-draw-io")
+        if draw_spec:
+            parsed = _parse_semver(str(draw_spec))
+            if parsed is None or parsed < _NEXT_AI_DRAW_PATCHED:
+                findings.append(make_finding(
+                    "AAK-NEXT-AI-DRAW-001",
+                    rel,
+                    f"next-ai-draw-io pinned at {draw_spec!r} in {section} — "
+                    "CVE-2026-40608 body-accumulation DoS is patched in 0.4.15.",
+                ))
     return findings
 
 

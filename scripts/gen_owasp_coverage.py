@@ -1,24 +1,58 @@
 #!/usr/bin/env python3
-"""Auto-generate docs/owasp-agentic-coverage.md.
+"""Auto-generate OWASP Agentic Top 10 coverage artefacts.
 
-Walks `agent_audit_kit.rules.builtin.RULES` and writes one row per
-OWASP Agentic Top 10 2026 entry (ASI01…ASI10) with the rule IDs that
-tag it. Missing slots fail loudly — the corresponding pytest is the
-regression fence.
+Walks `agent_audit_kit.rules.builtin.RULES` and emits:
 
-Run locally or from CI (planned in `sync-rule-count.yml`).
+- `docs/owasp-agentic-coverage.md` — the human-facing coverage table.
+- `public/owasp-agentic-coverage.json` — machine-readable artefact the
+  OWASP Agentic Reference-Tool submission packet links to. Schema:
+
+      {
+        "schema_version": "1",
+        "last_updated": "<ISO8601 UTC>",
+        "aak_version": "<pyproject version>",
+        "rule_count": <int>,
+        "coverage": [
+          {
+            "asi_id": "ASI01",
+            "title": "Goal Hijack",
+            "rule_density": <int>,
+            "rules": [
+              {"id": "...", "severity": "...",
+               "cve_references": [...], "aicm_references": [...]}
+            ]
+          },
+          ...
+        ]
+      }
+
+- README.md block between `<!-- owasp-coverage:start -->` and
+  `<!-- owasp-coverage:end -->` — compact summary.
+
+`tests/test_owasp_agentic_coverage.py` is the regression fence; missing
+slots still cause `main()` to exit non-zero.
 """
 
 from __future__ import annotations
 
+import argparse
+import json
 import pathlib
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
+
+try:  # Python 3.11+ stdlib
+    import tomllib  # type: ignore[import-not-found]
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOC_PATH = REPO_ROOT / "docs" / "owasp-agentic-coverage.md"
 README_PATH = REPO_ROOT / "README.md"
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+DEFAULT_JSON_PATH = REPO_ROOT / "public" / "owasp-agentic-coverage.json"
 
 _MARKER_START = "<!-- owasp-coverage:start -->"
 _MARKER_END = "<!-- owasp-coverage:end -->"
@@ -81,6 +115,47 @@ def render_readme_snippet(coverage: dict[str, list[str]]) -> str:
     return "\n".join(lines)
 
 
+def _read_version() -> str:
+    try:
+        with PYPROJECT.open("rb") as fh:
+            data = tomllib.load(fh)
+        return str(data["project"]["version"])
+    except (OSError, KeyError):
+        return "unknown"
+
+
+def build_public_json(coverage: dict[str, list[str]]) -> dict:
+    from agent_audit_kit.rules.builtin import RULES
+
+    entries = []
+    for asi in sorted(ASI_TITLES):
+        rule_ids = coverage.get(asi, [])
+        rules_out = []
+        for rid in rule_ids:
+            rule = RULES.get(rid)
+            if rule is None:
+                continue
+            rules_out.append({
+                "id": rid,
+                "severity": rule.severity.value,
+                "cve_references": sorted(rule.cve_references),
+                "aicm_references": sorted(rule.aicm_references),
+            })
+        entries.append({
+            "asi_id": asi,
+            "title": ASI_TITLES[asi],
+            "rule_density": len(rule_ids),
+            "rules": rules_out,
+        })
+    return {
+        "schema_version": "1",
+        "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "aak_version": _read_version(),
+        "rule_count": len(RULES),
+        "coverage": entries,
+    }
+
+
 def _update_readme_marker(snippet: str) -> bool:
     if not README_PATH.is_file():
         return False
@@ -98,7 +173,22 @@ def _update_readme_marker(snippet: str) -> bool:
     return False
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--json",
+        type=pathlib.Path,
+        default=DEFAULT_JSON_PATH,
+        help="Path to write the machine-readable coverage JSON",
+    )
+    parser.add_argument(
+        "--skip-json",
+        action="store_true",
+        help="Skip writing the JSON artefact (keeps legacy MD/README behaviour)",
+    )
+    # Default to [] not sys.argv when invoked as `main()` from tests.
+    args = parser.parse_args(argv if argv is not None else [])
+
     coverage = build_coverage()
     missing = [asi for asi in ASI_TITLES if not coverage.get(asi)]
     text = render_markdown(coverage)
@@ -106,7 +196,17 @@ def main() -> int:
     DOC_PATH.write_text(text, encoding="utf-8")
     sys.stdout.write(f"wrote {DOC_PATH} ({len(text)} bytes)\n")
     if _update_readme_marker(render_readme_snippet(coverage)):
-        sys.stdout.write(f"updated README.md owasp-coverage marker\n")
+        sys.stdout.write("updated README.md owasp-coverage marker\n")
+
+    if not args.skip_json:
+        payload = build_public_json(coverage)
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(
+            json.dumps(payload, indent=2, sort_keys=False) + "\n",
+            encoding="utf-8",
+        )
+        sys.stdout.write(f"wrote {args.json}\n")
+
     if missing:
         sys.stderr.write(
             "coverage gap: no rules tag "

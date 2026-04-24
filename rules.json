@@ -461,6 +461,72 @@
     },
     {
       "adversa_references": [
+        "ADV-NETWORK-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "CEK-08"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2025-66414",
+        "CVE-2025-66416",
+        "CVE-2026-35568",
+        "CVE-2026-35577"
+      ],
+      "description": "The upstream MCP Python, Java, Apollo and TypeScript SDKs shipped a StreamableHTTP transport that trusts the browser-supplied `Host` header. A malicious web page that a user visits can resolve a custom domain to 127.0.0.1 via DNS rebinding and reach a local MCP server, turning every browser tab into a remote-attack surface for stdio-grade tools. The upstream patch adds a Host allow-list; downstream servers embedding StreamableHTTP must enforce one too. See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), CVE-2026-35577 (Apollo).",
+      "incident_references": [
+        "MCP-DNS-REBIND-2026-04"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Wrap the StreamableHTTP app with a Host-header allow-list. In Starlette / FastAPI attach `TrustedHostMiddleware(allowed_hosts=...)`; in Node attach an `allowedHosts:` option or a Host middleware; in Java/Apollo enable `HostHeaderFilter` / `allowedHosts` config. Alternatively upgrade the SDK to a patched version and pass through its host-validation option.",
+      "rule_id": "AAK-DNS-REBIND-001",
+      "sarif_name": "McpStreamableHttpDnsRebind",
+      "severity": "critical",
+      "title": "MCP StreamableHTTP transport without Host-header allow-list"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-01"
+      ],
+      "aicm_references": [
+        "STA-02",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2025-66414",
+        "CVE-2025-66416",
+        "CVE-2026-35568",
+        "CVE-2026-35577"
+      ],
+      "description": "A project dependency manifest (requirements.txt, pyproject.toml, package.json, pom.xml, build.gradle) pins an MCP SDK at a version below the DNS-rebinding fix. Patched versions: Python `mcp` >= 1.23.0, TS `@modelcontextprotocol/sdk` >= 1.21.1, Java `io.modelcontextprotocol.sdk:mcp-core` >= 0.11.0, `@apollo/mcp-server` >= 1.7.0. Even if the project never serves over StreamableHTTP itself, transitive servers built on the SDK inherit the bug.",
+      "incident_references": [
+        "MCP-DNS-REBIND-2026-04"
+      ],
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Bump the SDK to the patched version listed in the rule title. If a bump is not yet possible, ensure every transport surface has its own Host-header allow-list (see AAK-DNS-REBIND-001 remediation).",
+      "rule_id": "AAK-DNS-REBIND-002",
+      "sarif_name": "McpSdkDnsRebindPin",
+      "severity": "high",
+      "title": "Vulnerable MCP SDK version pinned (DNS-rebinding fix missing)"
+    },
+    {
+      "adversa_references": [
         "ADV-INJECT-02"
       ],
       "aicm_references": [
@@ -488,6 +554,35 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-03"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "IVS-04"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-40576"
+      ],
+      "description": "Project depends on `excel-mcp-server` at a version <= 0.1.7. CVE-2026-40576 is a path-traversal in the server's `get_excel_path()` helper \u2014 absolute paths pass through unchecked, relative paths are joined without resolving-and-validating the result. Combined with the default 0.0.0.0 bind + zero authentication on SSE / Streamable-HTTP, any unauthenticated network peer can read, write or overwrite files anywhere on the host. Fixed in 0.1.8.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025",
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `excel-mcp-server` to 0.1.8 or later. Until the bump is in, bind the server to 127.0.0.1 and front it with an auth proxy.",
+      "rule_id": "AAK-EXCEL-MCP-001",
+      "sarif_name": "ExcelMcpPathTraversal",
+      "severity": "critical",
+      "title": "excel-mcp-server <= 0.1.7 path traversal"
+    },
+    {
+      "adversa_references": [
         "ADV-RCE-04"
       ],
       "aicm_references": [
@@ -511,6 +606,33 @@
       "sarif_name": "FlowiseMcpAdapterRce",
       "severity": "critical",
       "title": "Flowise < 3.1.0 MCP adapter authenticated RCE"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-02"
+      ],
+      "aicm_references": [
+        "STA-02",
+        "CCC-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A workflow in `.github/workflows/` uses a third-party Action (`owner/action@ref`) where `ref` is a tag or branch name instead of a 40-character commit SHA. A repo-takeover of the Action's publisher can re-point the tag to a malicious revision \u2014 the downstream repo consuming it will happily run the new code with `GITHUB_TOKEN` and write permissions. GitHub's April 2026 Security Roadmap ships Immutable Actions and makes SHA pinning the default policy.",
+      "incident_references": [
+        "GHA-IMMUTABLE-2026-04"
+      ],
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Repin third-party Actions to a 40-character commit SHA and add a `# v1.2.3`-style trailing comment for humans. First-party Actions under `actions/` and `github/` are exempt (they now ship Immutable Actions). Dependabot will auto-bump SHA pins when `update-type: all` is set.",
+      "rule_id": "AAK-GHA-IMMUTABLE-001",
+      "sarif_name": "GhaNonShaPin",
+      "severity": "medium",
+      "title": "Third-party GitHub Action not pinned by full commit SHA"
     },
     {
       "adversa_references": [],
@@ -1818,6 +1940,32 @@
     },
     {
       "adversa_references": [
+        "ADV-DOS-02"
+      ],
+      "aicm_references": [
+        "LOG-13"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-40608"
+      ],
+      "description": "Project depends on `next-ai-draw-io` at a version below 0.4.15. CVE-2026-40608 is a body-accumulation OOM in the embedded HTTP sidecar's /api/state, /api/restore and /api/history-svg handlers \u2014 the entire request body is concatenated into a JavaScript string without a size cap, so a single ~500 MiB POST exhausts V8 heap and crashes the MCP server. Same class as CVE-2026-39313 (AAK-MCPFRAME-001). Fixed in 0.4.15.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `next-ai-draw-io` to 0.4.15 or later. For custom transports that replicate the pattern, enforce a hard body-size cap before accumulating chunks and reject early when `Content-Length` exceeds the cap.",
+      "rule_id": "AAK-NEXT-AI-DRAW-001",
+      "sarif_name": "NextAiDrawBodyDos",
+      "severity": "medium",
+      "title": "next-ai-draw-io < 0.4.15 body-accumulation DoS"
+    },
+    {
+      "adversa_references": [
         "ADV-AUTH-06"
       ],
       "aicm_references": [
@@ -2620,6 +2768,35 @@
       "sarif_name": "SkillFrontmatterInjection",
       "severity": "high",
       "title": "SKILL.md frontmatter contains prompt-injection triggers"
+    },
+    {
+      "adversa_references": [
+        "ADV-LEAK-01"
+      ],
+      "aicm_references": [
+        "DSP-17",
+        "LOG-06"
+      ],
+      "auto_fixable": false,
+      "category": "secret-exposure",
+      "cve_references": [
+        "CVE-2026-20205"
+      ],
+      "description": "An MCP server, agent, or tool logs a session token, JWT, or Bearer credential through a generic log sink (logger.info / .warn / .error, print) without redaction. CVE-2026-20205 (splunk-mcp-server < 1.0.3) shipped this exact pattern \u2014 session tokens ended up in the Splunk `_internal` index, readable by anyone with index-read. Any token written to a log sink is also a supply-chain risk: the log file, shipper, and SIEM are now in scope for the token's blast radius.",
+      "incident_references": [
+        "SVD-2026-0405"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP08:2025"
+      ],
+      "remediation": "Redact token-shaped values before logging. Never interpolate a raw `Authorization`, `Bearer`, JWT, `splunkd_session`, or `st-` credential into a log message. Pin `splunk-mcp-server >= 1.0.3`.",
+      "rule_id": "AAK-SPLUNK-TOKLOG-001",
+      "sarif_name": "SplunkMcpTokenLog",
+      "severity": "high",
+      "title": "Session token written to log sink in cleartext"
     },
     {
       "adversa_references": [

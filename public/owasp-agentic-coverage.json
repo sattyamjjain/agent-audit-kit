@@ -1,0 +1,1332 @@
+{
+  "schema_version": "1",
+  "last_updated": "2026-04-24T09:09:53Z",
+  "aak_version": "0.3.4",
+  "rule_count": 157,
+  "coverage": [
+    {
+      "asi_id": "ASI01",
+      "title": "Goal Hijack",
+      "rule_density": 7,
+      "rules": [
+        {
+          "id": "AAK-AGENT-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENT-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENT-005",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCPWN-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-27944",
+            "CVE-2026-33032"
+          ],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI02",
+      "title": "Tool Misuse",
+      "rule_density": 13,
+      "rules": [
+        {
+          "id": "AAK-ANTHROPIC-SDK-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-DORIS-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2025-66335"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-07"
+          ]
+        },
+        {
+          "id": "AAK-EXCEL-MCP-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-40576"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-FLOWISE-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-40933"
+          ],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-007",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-004",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-21852"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-009",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-010",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCPWN-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-27944",
+            "CVE-2026-33032"
+          ],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-STDIO-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2025-65720",
+            "CVE-2026-26015",
+            "CVE-2026-30615",
+            "CVE-2026-30617",
+            "CVE-2026-30618",
+            "CVE-2026-30623",
+            "CVE-2026-30624",
+            "CVE-2026-30625",
+            "CVE-2026-33224"
+          ],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-007",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-008",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI03",
+      "title": "Memory Poisoning",
+      "rule_density": 42,
+      "rules": [
+        {
+          "id": "AAK-A2A-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-A2A-006",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-INDIA-PII-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-INDIA-PII-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-INDIA-PII-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-INDIA-PII-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-INDIA-PII-005",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-INDIA-PII-006",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-011",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-33032"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-012",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-33032"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-013",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-014",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-017",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-019",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-020",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-33032"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-OAUTH-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01",
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-005",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-007",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-008",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-SECRET-009",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "DSP-17"
+          ]
+        },
+        {
+          "id": "AAK-TASKS-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-TASKS-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-TASKS-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-TRANSPORT-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-TRANSPORT-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-TRANSPORT-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-007",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI04",
+      "title": "Identity & Privilege Abuse",
+      "rule_density": 23,
+      "rules": [
+        {
+          "id": "AAK-DNS-REBIND-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2025-66414",
+            "CVE-2025-66416",
+            "CVE-2026-35568",
+            "CVE-2026-35577"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-EXCEL-MCP-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-40576"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-LANGCHAIN-003",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2025-68664"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-LEGAL-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-LEGAL-002",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-LEGAL-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MARKETPLACE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-MARKETPLACE-002",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-MARKETPLACE-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-MARKETPLACE-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-MCP-005",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-007",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-NEO4J-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-35402"
+          ],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-3P-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-SCOPE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-SEC-MD-001",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SPLUNK-TOKLOG-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-20205"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "LOG-06"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-005",
+          "severity": "low",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-SUPPLY-006",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-08"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI05",
+      "title": "Cascading Failures",
+      "rule_density": 25,
+      "rules": [
+        {
+          "id": "AAK-HEALTHCARE-AI-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HEALTHCARE-AI-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HEALTHCARE-AI-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HEALTHCARE-AI-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HEALTHCARE-AI-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HOOK-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2025-59536"
+          ],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-HOOK-008",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HOOK-009",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-LOGINJ-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-6494"
+          ],
+          "aicm_references": [
+            "LOG-06"
+          ]
+        },
+        {
+          "id": "AAK-MCP-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-008",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-016",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-018",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-ROUTINE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
+          "id": "AAK-ROUTINE-002",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-ROUTINE-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-TAINT-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TAINT-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI06",
+      "title": "Unauthorized Capability Acquisition",
+      "rule_density": 23,
+      "rules": [
+        {
+          "id": "AAK-CLAUDE-WIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-35603"
+          ],
+          "aicm_references": [
+            "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-LANGCHAIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-34070"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-LANGCHAIN-002",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-34070"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-015",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-POISON-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-POISON-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-POISON-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-POISON-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-POISON-005",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-POISON-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-RUGPULL-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-RUGPULL-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-RUGPULL-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-SKILL-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-004",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-005",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-WINDSURF-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-30615"
+          ],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI07",
+      "title": "Plan Injection",
+      "rule_density": 9,
+      "rules": [
+        {
+          "id": "AAK-A2A-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-04"
+          ]
+        },
+        {
+          "id": "AAK-A2A-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-A2A-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-A2A-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-A2A-008",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-A2A-009",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-04"
+          ]
+        },
+        {
+          "id": "AAK-A2A-010",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-04"
+          ]
+        },
+        {
+          "id": "AAK-A2A-011",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-A2A-012",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI08",
+      "title": "Agent Communication Poisoning",
+      "rule_density": 4,
+      "rules": [
+        {
+          "id": "AAK-A2A-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-A2A-011",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-A2A-012",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TRANSPORT-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI09",
+      "title": "Resource Abuse",
+      "rule_density": 6,
+      "rules": [
+        {
+          "id": "AAK-HOOK-RCE-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2025-59536"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HOOK-RCE-002",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2025-59536"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-HOOK-RCE-003",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2025-59536"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCPFRAME-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-39313"
+          ],
+          "aicm_references": [
+            "LOG-13"
+          ]
+        },
+        {
+          "id": "AAK-NEXT-AI-DRAW-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-40608"
+          ],
+          "aicm_references": [
+            "LOG-13"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-006",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-16"
+          ]
+        }
+      ]
+    },
+    {
+      "asi_id": "ASI10",
+      "title": "Supply-Chain",
+      "rule_density": 7,
+      "rules": [
+        {
+          "id": "AAK-A2A-007",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-04"
+          ]
+        },
+        {
+          "id": "AAK-ANTHROPIC-SDK-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-DNS-REBIND-002",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2025-66414",
+            "CVE-2025-66416",
+            "CVE-2026-35568",
+            "CVE-2026-35577"
+          ],
+          "aicm_references": [
+            "STA-02",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-GHA-IMMUTABLE-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08",
+            "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-21852"
+          ],
+          "aicm_references": [
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-002",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-21852"
+          ],
+          "aicm_references": [
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-005",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-21852"
+          ],
+          "aicm_references": [
+            "IAM-16"
+          ]
+        }
+      ]
+    }
+  ]
+}
