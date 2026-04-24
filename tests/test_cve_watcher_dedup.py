@@ -86,7 +86,8 @@ def test_three_calls_produce_one_file_event(tmp_path: Path) -> None:
     state = tmp_path / "state.json"
     changelog = tmp_path / "CHANGELOG.cves.md"
 
-    fetcher = lambda _kw: [_vuln("CVE-2026-99999")]
+    def fetcher(_kw):
+        return [_vuln("CVE-2026-99999")]
 
     run1, state_after_1 = module.collect_new_cves(
         changelog_path=changelog,
