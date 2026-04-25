@@ -38,6 +38,13 @@ DOCS_DIR = REPO_ROOT / "docs"
 AAK_PKG = REPO_ROOT / "agent_audit_kit" / "__init__.py"
 
 _REPO_REF_RE = re.compile(r"sattyamjjain/agent-audit-kit@v\d+\.\d+\.\d+")
+# Pre-commit `rev:` strings under a `repos:` block. We only rewrite a
+# `rev: vX.Y.Z` line when the surrounding YAML names this repo — a bare
+# `rev: v1.2.3` could belong to any hook in the README's example list.
+_PRECOMMIT_BLOCK_RE = re.compile(
+    r"(?P<prefix>repo:\s*https://github\.com/sattyamjjain/agent-audit-kit\s*\n\s*rev:\s*)"
+    r"v\d+\.\d+\.\d+"
+)
 _HISTORY_STEM_RE = re.compile(r"release-notes-v\d+\.\d+\.\d+")
 
 
@@ -65,23 +72,34 @@ def _iter_docs() -> list[Path]:
     return out
 
 
-def _rewrite(doc: Path, target_ref: str) -> tuple[bool, int]:
+def _rewrite(doc: Path, target_ref: str, target_version: str) -> tuple[bool, int]:
     text = doc.read_text(encoding="utf-8")
-    new_text, n = _REPO_REF_RE.subn(target_ref, text)
-    if n and new_text != text:
+    new_text, n_action = _REPO_REF_RE.subn(target_ref, text)
+    new_text, n_rev = _PRECOMMIT_BLOCK_RE.subn(
+        lambda m: f"{m.group('prefix')}v{target_version}",
+        new_text,
+    )
+    total = n_action + n_rev
+    if total and new_text != text:
         doc.write_text(new_text, encoding="utf-8")
-        return True, n
+        return True, total
     return False, 0
 
 
-def _check(target_ref: str) -> list[Path]:
+def _check(target_ref: str, target_version: str) -> list[Path]:
     drift: list[Path] = []
+    target_rev = f"v{target_version}"
     for doc in _iter_docs():
         text = doc.read_text(encoding="utf-8")
         for m in _REPO_REF_RE.finditer(text):
             if m.group(0) != target_ref:
                 drift.append(doc)
                 break
+        else:
+            for m in _PRECOMMIT_BLOCK_RE.finditer(text):
+                if not m.group(0).endswith(target_rev):
+                    drift.append(doc)
+                    break
     return drift
 
 
@@ -115,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.check:
-        drift = _check(target_ref)
+        drift = _check(target_ref, version)
         if not drift:
             return 0
         sys.stderr.write(
@@ -132,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     # --write
     total = 0
     for doc in _iter_docs():
-        wrote, n = _rewrite(doc, target_ref)
+        wrote, n = _rewrite(doc, target_ref, version)
         if wrote:
             sys.stdout.write(
                 f"{doc.relative_to(REPO_ROOT)}: {n} rewrite(s) → {target_ref}\n"

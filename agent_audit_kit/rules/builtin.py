@@ -84,6 +84,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-GHA-IMMUTABLE-001": ["STA-02", "CCC-08"],
     "AAK-EXCEL-MCP-001": ["AIS-07", "IVS-04"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
+    "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
+    "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
+    "AAK-AZURE-MCP-001": ["IAM-01", "IAM-16"],
+    "AAK-TOXICFLOW-001": ["AIS-12", "CCC-08"],
     "AAK-MARKETPLACE-001": ["STA-10"],
     "AAK-MARKETPLACE-002": ["STA-10"],
     "AAK-MARKETPLACE-003": ["STA-10"],
@@ -2996,6 +3000,140 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-DOS-02"],
+)
+
+
+# ---------------------------------------------------------------------------
+# LangChain SSRF redirect bypass (CVE-2026-41481, langchain-text-splitters
+# < 1.1.2). HTMLHeaderTextSplitter.split_text_from_url() validates the
+# initial URL via validate_safe_url() and then fetches with redirects on
+# by default — so a 302 from an attacker-controlled host into the cloud
+# metadata endpoint reaches the parsed Document.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-LANGCHAIN-SSRF-REDIR-001",
+    "Validate-then-fetch SSRF (redirects enabled past allow-list)",
+    "A function calls a known SSRF guard helper "
+    "(`validate_safe_url`, `is_safe_url`, `validateSafeUrl`, etc.) and "
+    "then fetches the same URL via `requests.get`, `httpx.get`, "
+    "`urllib.request.urlopen`, `fetch`, or similar without disabling "
+    "redirects. The allow-list fires once on the initial URL, but "
+    "`requests` follows 3xx by default — a redirect into "
+    "`http://169.254.169.254/...`, `http://localhost`, or another "
+    "blocked target bypasses the guard and pulls the response back into "
+    "the calling context. CVE-2026-41481 is the in-tree example "
+    "(langchain-text-splitters < 1.1.2). Same shape applies in any "
+    "agent-tooling code that does validate→fetch without "
+    "`allow_redirects=False` / `follow_redirects=False` / "
+    "`redirect: 'manual'`.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Disable redirect following on the fetch call: "
+    "`requests.get(url, allow_redirects=False)`, "
+    "`httpx.get(url, follow_redirects=False)`, "
+    "`fetch(url, { redirect: 'manual' })`. Or revalidate the URL on "
+    "every redirect hop. For `langchain-text-splitters`, bump to "
+    ">= 1.1.2.",
+    sarif_name="LangchainSsrfRedirect",
+    cve_references=["CVE-2026-41481"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
+    adversa_references=["ADV-NETWORK-02"],
+    incident_references=["GHSA-fv5p-p927-qmxr"],
+)
+
+
+# ---------------------------------------------------------------------------
+# TOCTOU / DNS-rebind in URL allow-list (CVE-2026-41488, langchain-openai
+# < 1.1.14). _url_to_size() validates a URL, then re-resolves DNS in a
+# separate fetch — leaving a window for a hostname to rotate from a
+# public IP to a private one between the two operations.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SSRF-TOCTOU-001",
+    "Validate-then-fetch DNS-rebind / TOCTOU on URL allow-list",
+    "A function validates a URL via an SSRF guard, then performs a "
+    "separate network fetch that triggers an independent DNS "
+    "resolution. Between the two resolutions a malicious hostname can "
+    "rotate from a public IP to a private/localhost/cloud-metadata IP "
+    "(DNS rebinding) — bypassing the allow-list. CVE-2026-41488 "
+    "(langchain-openai `_url_to_size`) is the canonical example. The "
+    "fix is to resolve once, pin the IP, and reuse the same `Session` / "
+    "`HTTPAdapter` for the fetch — or drive the allow-list check on the "
+    "resolved IP instead of the hostname.",
+    Severity.MEDIUM,
+    Category.TRANSPORT_SECURITY,
+    "Resolve the hostname once with `socket.getaddrinfo`, validate the "
+    "resolved IP against the allow-list, then make the fetch over a "
+    "`Session` / connection pinned to that IP (e.g. via `Host:` header "
+    "+ explicit IP, custom `HTTPAdapter`, or `pinned_ip`-style helper). "
+    "Pin `langchain-openai >= 1.1.14`.",
+    sarif_name="UrlAllowListToctou",
+    cve_references=["CVE-2026-41488"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-NETWORK-03"],
+    incident_references=["GHSA-r7w7-9xr2-qq2r"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Azure MCP missing-auth (CVE-2026-32211). Server published with no
+# authentication on the MCP endpoint; consumer-side check is "your
+# .mcp.json points at it without an Authorization header / mTLS / Azure-AD".
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-AZURE-MCP-001",
+    "Azure MCP server consumed without authentication",
+    "An `.mcp.json` / `.azure-mcp/` config references an Azure MCP "
+    "server endpoint without an `Authorization:` header, mTLS client "
+    "cert, or Azure-AD token-exchange. CVE-2026-32211 (CVSS 9.1) "
+    "documented the server-side default of no auth on the MCP "
+    "endpoint; downstream agents must add a transport-layer credential "
+    "or risk session-hijack / tool-impersonation by anyone reachable "
+    "on the network.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Add an `Authorization` header with an Azure-AD token (preferred), "
+    "an mTLS client certificate, or a static API key obtained from a "
+    "secrets vault. Azure-AD managed identities or workload identity "
+    "federation are the documented production paths.",
+    sarif_name="AzureMcpMissingAuth",
+    cve_references=["CVE-2026-32211"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    incident_references=["MSRC-2026-04-03-AZUREMCP"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Toxic-flow scoring (Snyk Agent Scan parity).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-TOXICFLOW-001",
+    "Toxic flow: sensitive source paired with external sink",
+    "An agent project exposes both a sensitive source tool (filesystem "
+    "read, secrets read, database query) and an external sink tool "
+    "(HTTP POST, email send, git push) without an explicit "
+    "`.aak-toxic-flow-trust.yml` allow-list entry. Even if each tool "
+    "is individually safe, the LLM can chain them — the canonical "
+    "exfil pattern is `read_file -> http.post`. Suppress with an "
+    "allow-list when the pairing is a documented product feature.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Add the source/sink pair to `.aak-toxic-flow-trust.yml` with a "
+    "`justification:` field, scope the source tool to a directory the "
+    "sink cannot reach, or remove one side of the pair. Run "
+    "`agent-audit-kit toxic-flow --explain` to see the full graph.",
+    sarif_name="ToxicFlowSourceSink",
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI02", "ASI09"],
+    adversa_references=["ADV-CHAIN-01"],
 )
 
 

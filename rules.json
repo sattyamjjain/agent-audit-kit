@@ -435,6 +435,35 @@
     },
     {
       "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IAM-16"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-32211"
+      ],
+      "description": "An `.mcp.json` / `.azure-mcp/` config references an Azure MCP server endpoint without an `Authorization:` header, mTLS client cert, or Azure-AD token-exchange. CVE-2026-32211 (CVSS 9.1) documented the server-side default of no auth on the MCP endpoint; downstream agents must add a transport-layer credential or risk session-hijack / tool-impersonation by anyone reachable on the network.",
+      "incident_references": [
+        "MSRC-2026-04-03-AZUREMCP"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025"
+      ],
+      "remediation": "Add an `Authorization` header with an Azure-AD token (preferred), an mTLS client certificate, or a static API key obtained from a secrets vault. Azure-AD managed identities or workload identity federation are the documented production paths.",
+      "rule_id": "AAK-AZURE-MCP-001",
+      "sarif_name": "AzureMcpMissingAuth",
+      "severity": "high",
+      "title": "Azure MCP server consumed without authentication"
+    },
+    {
+      "adversa_references": [
         "ADV-PATH-01"
       ],
       "aicm_references": [
@@ -1220,6 +1249,36 @@
       "sarif_name": "LangchainDeserializeUntrusted",
       "severity": "high",
       "title": "LangChain deserialization of untrusted data"
+    },
+    {
+      "adversa_references": [
+        "ADV-NETWORK-02"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-41481"
+      ],
+      "description": "A function calls a known SSRF guard helper (`validate_safe_url`, `is_safe_url`, `validateSafeUrl`, etc.) and then fetches the same URL via `requests.get`, `httpx.get`, `urllib.request.urlopen`, `fetch`, or similar without disabling redirects. The allow-list fires once on the initial URL, but `requests` follows 3xx by default \u2014 a redirect into `http://169.254.169.254/...`, `http://localhost`, or another blocked target bypasses the guard and pulls the response back into the calling context. CVE-2026-41481 is the in-tree example (langchain-text-splitters < 1.1.2). Same shape applies in any agent-tooling code that does validate\u2192fetch without `allow_redirects=False` / `follow_redirects=False` / `redirect: 'manual'`.",
+      "incident_references": [
+        "GHSA-fv5p-p927-qmxr"
+      ],
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Disable redirect following on the fetch call: `requests.get(url, allow_redirects=False)`, `httpx.get(url, follow_redirects=False)`, `fetch(url, { redirect: 'manual' })`. Or revalidate the URL on every redirect hop. For `langchain-text-splitters`, bump to >= 1.1.2.",
+      "rule_id": "AAK-LANGCHAIN-SSRF-REDIR-001",
+      "sarif_name": "LangchainSsrfRedirect",
+      "severity": "high",
+      "title": "Validate-then-fetch SSRF (redirects enabled past allow-list)"
     },
     {
       "adversa_references": [],
@@ -2919,6 +2978,35 @@
       "title": "Missing SSRF allowlist on outbound fetch"
     },
     {
+      "adversa_references": [
+        "ADV-NETWORK-03"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08"
+      ],
+      "auto_fixable": false,
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-41488"
+      ],
+      "description": "A function validates a URL via an SSRF guard, then performs a separate network fetch that triggers an independent DNS resolution. Between the two resolutions a malicious hostname can rotate from a public IP to a private/localhost/cloud-metadata IP (DNS rebinding) \u2014 bypassing the allow-list. CVE-2026-41488 (langchain-openai `_url_to_size`) is the canonical example. The fix is to resolve once, pin the IP, and reuse the same `Session` / `HTTPAdapter` for the fetch \u2014 or drive the allow-list check on the resolved IP instead of the hostname.",
+      "incident_references": [
+        "GHSA-r7w7-9xr2-qq2r"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Resolve the hostname once with `socket.getaddrinfo`, validate the resolved IP against the allow-list, then make the fetch over a `Session` / connection pinned to that IP (e.g. via `Host:` header + explicit IP, custom `HTTPAdapter`, or `pinned_ip`-style helper). Pin `langchain-openai >= 1.1.14`.",
+      "rule_id": "AAK-SSRF-TOCTOU-001",
+      "sarif_name": "UrlAllowListToctou",
+      "severity": "medium",
+      "title": "Validate-then-fetch DNS-rebind / TOCTOU on URL allow-list"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
@@ -3404,6 +3492,32 @@
       "sarif_name": "TasksNoTtl",
       "severity": "medium",
       "title": "MCP task has no TTL or cancellation path"
+    },
+    {
+      "adversa_references": [
+        "ADV-CHAIN-01"
+      ],
+      "aicm_references": [
+        "AIS-12",
+        "CCC-08"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "An agent project exposes both a sensitive source tool (filesystem read, secrets read, database query) and an external sink tool (HTTP POST, email send, git push) without an explicit `.aak-toxic-flow-trust.yml` allow-list entry. Even if each tool is individually safe, the LLM can chain them \u2014 the canonical exfil pattern is `read_file -> http.post`. Suppress with an allow-list when the pairing is a documented product feature.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI09"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Add the source/sink pair to `.aak-toxic-flow-trust.yml` with a `justification:` field, scope the source tool to a directory the sink cannot reach, or remove one side of the pair. Run `agent-audit-kit toxic-flow --explain` to see the full graph.",
+      "rule_id": "AAK-TOXICFLOW-001",
+      "sarif_name": "ToxicFlowSourceSink",
+      "severity": "high",
+      "title": "Toxic flow: sensitive source paired with external sink"
     },
     {
       "adversa_references": [

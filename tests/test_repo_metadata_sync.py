@@ -55,6 +55,25 @@ def test_check_mode_passes_on_clean_tree() -> None:
     assert rc == 0
 
 
+def test_pre_commit_rev_pin_matches_version() -> None:
+    """README pre-commit example must use the live pyproject version."""
+    module = _load_module()
+    version = module._read_version()
+    target_rev = f"v{version}"
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    matches = re.findall(
+        r"repo:\s*https://github\.com/sattyamjjain/agent-audit-kit\s*\n\s*rev:\s*(v\d+\.\d+\.\d+)",
+        readme,
+    )
+    assert matches, "README must contain at least one pre-commit rev pin"
+    for rev in matches:
+        assert rev == target_rev, (
+            f"README pre-commit rev pin {rev!r} drifts from "
+            f"pyproject {target_rev!r}. "
+            "Run `python scripts/sync_repo_metadata.py --write`."
+        )
+
+
 def test_history_files_are_not_rewritten() -> None:
     # release-notes-vX.Y.Z.md should be left alone even though it
     # contains a pin, because it documents the release that shipped at

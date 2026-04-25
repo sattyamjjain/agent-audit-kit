@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-04-24T09:09:53Z",
-  "aak_version": "0.3.4",
-  "rule_count": 157,
+  "last_updated": "2026-04-25T14:34:21Z",
+  "aak_version": "0.3.5",
+  "rule_count": 161,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -67,7 +67,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 13,
+      "rule_density": 14,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -189,6 +189,15 @@
           "cve_references": [],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-TOXICFLOW-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-12",
+            "CCC-08"
           ]
         }
       ]
@@ -512,8 +521,19 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 23,
+      "rule_density": 26,
       "rules": [
+        {
+          "id": "AAK-AZURE-MCP-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-32211"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IAM-16"
+          ]
+        },
         {
           "id": "AAK-DNS-REBIND-001",
           "severity": "critical",
@@ -546,6 +566,17 @@
             "CVE-2025-68664"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-LANGCHAIN-SSRF-REDIR-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-41481"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
+          ]
         },
         {
           "id": "AAK-LEGAL-001",
@@ -652,6 +683,17 @@
           "aicm_references": [
             "DSP-17",
             "LOG-06"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-TOCTOU-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-41488"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
           ]
         },
         {
@@ -1195,7 +1237,7 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 6,
+      "rule_density": 8,
       "rules": [
         {
           "id": "AAK-HOOK-RCE-001",
@@ -1222,6 +1264,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-LANGCHAIN-SSRF-REDIR-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-41481"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
+          ]
+        },
+        {
           "id": "AAK-MCPFRAME-001",
           "severity": "medium",
           "cve_references": [
@@ -1239,6 +1292,15 @@
           ],
           "aicm_references": [
             "LOG-13"
+          ]
+        },
+        {
+          "id": "AAK-TOXICFLOW-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-12",
+            "CCC-08"
           ]
         },
         {
