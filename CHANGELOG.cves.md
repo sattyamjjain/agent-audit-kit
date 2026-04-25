@@ -8,6 +8,14 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.5 (2026-04-25)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-41481 | [GLAD GHSA-fv5p-p927-qmxr](https://advisories.gitlab.com/pypi/langchain-text-splitters/GHSA-fv5p-p927-qmxr/) — langchain-text-splitters < 1.1.2 SSRF redirect bypass (#61) | **AAK-LANGCHAIN-SSRF-REDIR-001** | 2026-04-25 | <48h |
+| CVE-2026-41488 | [GLAD GHSA-r7w7-9xr2-qq2r](https://advisories.gitlab.com/pypi/langchain-openai/GHSA-r7w7-9xr2-qq2r/) — langchain-openai < 1.1.14 TOCTOU / DNS rebinding (#62) | **AAK-SSRF-TOCTOU-001** | 2026-04-25 | <48h |
+| CVE-2026-32211 | [DEV — Azure MCP missing-auth](https://dev.to/michael_onyekwere/cve-2026-32211-what-the-azure-mcp-server-flaw-means-for-your-agent-security-14db) — server-side default no-auth | **AAK-AZURE-MCP-001** | 2026-04-25 | targeted follow-up 22d post-disclosure |
+
 ## Shipped in v0.3.4 (2026-04-24)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

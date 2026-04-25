@@ -56,6 +56,9 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("dns_rebind", "MCP SDK DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577)", []),
     ("gha_hardening", "GitHub Actions SHA-pin / Immutable Action policy", []),
     ("log_token_leak", "Token-shaped values in log sinks (CVE-2026-20205)", []),
+    ("ssrf_redirect", "SSRF: validate-then-fetch with redirects (CVE-2026-41481)", []),
+    ("ssrf_toctou", "SSRF: validate-then-fetch DNS-rebind / TOCTOU (CVE-2026-41488)", []),
+    ("toxic_flow", "Toxic-flow source/sink pair scoring", []),
 ]
 
 

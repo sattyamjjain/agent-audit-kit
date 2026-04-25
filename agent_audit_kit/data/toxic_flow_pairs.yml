@@ -1,0 +1,75 @@
+# Toxic-flow source/sink pairs (AAK-TOXICFLOW-001).
+#
+# Each entry pairs a sensitive source family with an external sink
+# family. If the same scan surfaces tools from both columns the rule
+# fires unless the user lists the pair in `.aak-toxic-flow-trust.yml`
+# with a justification.
+#
+# Source: https://github.com/snyk/agent-scan toxic-flow analysis
+# (Apr 2026); pairs adapted for MCP tool naming conventions.
+
+sources:
+  fs_read:
+    - read_file
+    - readFile
+    - fs_read
+    - filesystem.read
+    - mcp__filesystem__read_text_file
+    - mcp__filesystem__read_file
+    - mcp__filesystem__read_multiple_files
+  secrets_read:
+    - secrets.get
+    - read_secret
+    - vault.read
+    - mcp__1password__get
+    - mcp__vault__read_secret
+  db_query:
+    - sql.execute
+    - db.query
+    - postgres.query
+    - mongo.find
+    - mcp__postgres__query
+    - mcp__sqlite__query
+
+sinks:
+  http_post:
+    - http.post
+    - requests.post
+    - fetch
+    - axios.post
+    - mcp__fetch__post
+  email_send:
+    - email.send
+    - smtp.send
+    - mailgun.send
+    - mcp__email__send
+  git_push:
+    - git.push
+    - github.push
+    - mcp__git__push
+  shell_exec:
+    - shell.exec
+    - subprocess.run
+    - bash
+    - mcp__shell__exec
+
+# Pairs that fire. Each (source_family, sink_family) is independent —
+# discovering ANY tool in the source family alongside ANY tool in the
+# sink family is enough to trigger the rule.
+pairs:
+  - source: fs_read
+    sink: http_post
+  - source: fs_read
+    sink: email_send
+  - source: fs_read
+    sink: git_push
+  - source: secrets_read
+    sink: http_post
+  - source: secrets_read
+    sink: email_send
+  - source: secrets_read
+    sink: shell_exec
+  - source: db_query
+    sink: http_post
+  - source: db_query
+    sink: email_send

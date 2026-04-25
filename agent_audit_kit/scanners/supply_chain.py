@@ -464,6 +464,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_mcp_specific_vulns(project_root))
     findings.extend(_check_doris_mcp_pin(project_root, scanned_files))
     findings.extend(_check_excel_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_azure_mcp_auth(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -564,6 +565,90 @@ def _check_excel_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
                 scanned_files.add(rel)
                 _fire(rel, m.group(1))
                 break
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-AZURE-MCP-001 — Azure MCP server consumed without authentication
+# (CVE-2026-32211). Server-side default ships with no auth on the MCP
+# endpoint; consumer-side check is "your .mcp.json points at it without
+# Authorization / mTLS / Azure-AD token exchange".
+# ---------------------------------------------------------------------------
+
+_AZURE_MCP_HOST_RE = re.compile(
+    r"""
+    (?:
+        \.azure\.com
+      | \.azurewebsites\.net
+      | \.cognitiveservices\.azure\.com
+      | \.openai\.azure\.com
+      | azure[-_]?mcp
+    )
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+_AUTH_HINT_RE = re.compile(
+    r"""
+    (?:
+        Authorization
+      | client_certificate
+      | client[_-]?cert
+      | mtls
+      | api[_-]?key
+      | x-functions-key
+      | DefaultAzureCredential
+      | ManagedIdentity
+      | WorkloadIdentity
+      | azure[_-]?ad
+      | bearer_token
+    )
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+
+def _check_azure_mcp_auth(
+    project_root: Path, scanned_files: set[str]
+) -> list[Finding]:
+    findings: list[Finding] = []
+    candidates: list[Path] = []
+    for name in (
+        ".mcp.json",
+        ".cursor/mcp.json",
+        ".vscode/mcp.json",
+        ".amazonq/mcp.json",
+        "mcp.json",
+    ):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    az_dir = project_root / ".azure-mcp"
+    if az_dir.is_dir():
+        for p in az_dir.rglob("*.json"):
+            if p.is_file():
+                candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not _AZURE_MCP_HOST_RE.search(text):
+            continue
+        if _AUTH_HINT_RE.search(text):
+            continue
+        rel = str(path.relative_to(project_root))
+        scanned_files.add(rel)
+        findings.append(make_finding(
+            "AAK-AZURE-MCP-001",
+            rel,
+            "Azure MCP endpoint configured without an Authorization "
+            "header, mTLS client certificate, or Azure-AD token. "
+            "CVE-2026-32211: the server-side default ships with no "
+            "auth on the MCP endpoint.",
+            line_number=find_line_number(text, "azure")
+            or find_line_number(text, "azurewebsites"),
+        ))
     return findings
 
 

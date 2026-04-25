@@ -5,6 +5,81 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - 2026-04-25
+
+**Headline: LangChain SSRF redirect (CVE-2026-41481), URL-allow-list TOCTOU /
+DNS rebinding (CVE-2026-41488), Azure MCP missing-auth (CVE-2026-32211),
+toxic-flow source/sink scanner (Snyk Agent Scan parity, feature-flagged),
+pre-commit `rev:` pin sync, GitHub verified-creator application packet.**
+
+Closes the watcher-filed 48h SLA on #61 and #62, ships the broader
+validate-then-fetch class as two distinct rules (redirect bypass vs. DNS
+rebinding TOCTOU), pulls Snyk's toxic-flow scanner into the AAK rule set
+behind a feature flag, and removes the README pre-commit `rev:` drift the
+v0.3.4 sync workflow missed.
+
+### Added — rule coverage (4 new rules, 157 → 161)
+
+- **AAK-LANGCHAIN-SSRF-REDIR-001** (HIGH, Category.TRANSPORT_SECURITY) —
+  validate-then-fetch SSRF: a function calls a known SSRF guard helper
+  (`validate_safe_url`, `is_safe_url`, `validateSafeUrl`, …) and then
+  fetches via `requests.get` / `httpx.get` / `urllib.urlopen` / `fetch` /
+  `axios.get` / `got` without `allow_redirects=False`,
+  `follow_redirects=False`, `redirect: 'manual'`, or `maxRedirects: 0`.
+  CVE-2026-41481 (langchain-text-splitters < 1.1.2). New scanner
+  `scanners/ssrf_redirect.py` walks Python AST (sorted by source line so
+  BFS-walk doesn't reorder fetch-before-guard) and applies a regex pass
+  for TS/JS sources. Pin-check across `requirements*.txt`,
+  `pyproject.toml`, `poetry.lock`, `Pipfile.lock`, `uv.lock`.
+- **AAK-SSRF-TOCTOU-001** (MEDIUM, Category.TRANSPORT_SECURITY) —
+  validate-then-fetch DNS-rebind / TOCTOU. Same SSRF guard but the rule
+  fires on the second-DNS-resolution shape: guard call followed by a
+  fetch with no IP-pinning marker (`socket.getaddrinfo`, `HTTPAdapter`,
+  `pinned_ip`, `Host:` header pin) in the same function. CVE-2026-41488
+  (langchain-openai < 1.1.14). New scanner `scanners/ssrf_toctou.py`.
+- **AAK-AZURE-MCP-001** (HIGH, Category.MCP_CONFIG) — Azure MCP server
+  consumed without authentication. Detects `.mcp.json` / `.azure-mcp/`
+  configs that point at an Azure MCP endpoint without `Authorization:`,
+  mTLS client cert, or Azure-AD / managed-identity token. CVE-2026-32211
+  (CVSS 9.1, server-side default ships with no auth). Extends
+  `scanners/supply_chain.py`.
+- **AAK-TOXICFLOW-001** (HIGH, Category.TOOL_POISONING) — Snyk Agent Scan
+  parity. Per-scan tool-graph from MCP servers in `.mcp.json` and
+  `@tool`/`@mcp.tool`-decorated Python functions. Emits a finding for
+  every (sensitive_source, external_sink) pair listed in
+  `agent_audit_kit/data/toxic_flow_pairs.yml` unless allow-listed in
+  `.aak-toxic-flow-trust.yml` with a non-empty justification. Behind
+  `AAK_TOXIC_FLOW=1` feature flag for v0.3.5; full deny-graph design
+  review queues for v0.4.0. New scanner `scanners/toxic_flow.py`, data
+  file `agent_audit_kit/data/toxic_flow_pairs.yml`.
+
+### Added — release-mechanics / docs
+
+- `scripts/sync_repo_metadata.py` extended with
+  `_PRECOMMIT_BLOCK_RE` — rewrites `rev: vX.Y.Z` lines under
+  `repo: https://github.com/sattyamjjain/agent-audit-kit` only (won't
+  touch unrelated pre-commit hooks). New regression test
+  `test_pre_commit_rev_pin_matches_version` proves the README pre-commit
+  example aligns with `pyproject.toml` on every PR.
+- `docs/launch/github-verified-creator-application.md` — pre-filled
+  application packet for the GitHub Marketplace verified-creator badge,
+  citing PyPI OIDC trusted publishing, Sigstore attestations, SLSA
+  provenance v1, Immutable-Action manifest, and the 749-test +
+  161-rule signed bundle.
+
+### Fixed
+
+- README pre-commit example pinned at `rev: v0.3.0` while v0.3.4 was
+  current — surfaced by browsing main on 2026-04-25. The new
+  `_PRECOMMIT_BLOCK_RE` pass and its regression test prevent recurrence.
+
+### Issue closures
+
+- Closes #61 (CVE-response: CVE-2026-41481) — covered by
+  AAK-LANGCHAIN-SSRF-REDIR-001.
+- Closes #62 (CVE-response: CVE-2026-41488) — covered by
+  AAK-SSRF-TOCTOU-001.
+
 ## [0.3.4] - 2026-04-24
 
 **Headline: DNS-rebinding SDK class (CVE-2025-66414/66416, CVE-2026-35568,
