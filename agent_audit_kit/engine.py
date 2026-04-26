@@ -59,6 +59,10 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("ssrf_redirect", "SSRF: validate-then-fetch with redirects (CVE-2026-41481)", []),
     ("ssrf_toctou", "SSRF: validate-then-fetch DNS-rebind / TOCTOU (CVE-2026-41488)", []),
     ("toxic_flow", "Toxic-flow source/sink pair scoring", []),
+    ("mcp_stdio_params", "MCP StdioServerParameters config-to-spawn taint (OX-MCP-2026-04-25)", []),
+    ("mcp_marketplace_fetch", "MCP marketplace-fetch → StdioServerParameters", []),
+    ("mcp_server_auth", "MCP server-author missing auth (Azure MCP, CVE-2026-32211)", []),
+    ("splunk_mcp_config", "splunk-mcp-server config-side token-leak (CVE-2026-20205)", []),
 ]
 
 

@@ -8,6 +8,16 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.6 (2026-04-26)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-30615 / 30617 / 30623 / 22252 / 22688 / 33224 / 40933 / 6980 | OX MCP advisory hub (Apr 2026 reframe) | **AAK-MCP-STDIO-CMD-INJ-001/002/003/004** (Python/TS/Java/Rust) | 2026-04-26 | class-coverage release |
+| OX-MCP-2026-04-25 + Cloudflare MCP-defender (incidents) | [Cloudflare blog](https://blog.cloudflare.com/), OX MCP hub | **AAK-MCP-MARKETPLACE-CONFIG-FETCH-001** | 2026-04-26 | <24h |
+| CVE-2026-32211 (server-side variant) | [DEV — Azure MCP missing-auth](https://dev.to/michael_onyekwere/cve-2026-32211-what-the-azure-mcp-server-flaw-means-for-your-agent-security-14db) | **AAK-AZURE-MCP-NOAUTH-001** | 2026-04-26 | sister to v0.3.5's AAK-AZURE-MCP-001 |
+| CVE-2026-33626 | GHSA index — LMDeploy VL SSRF (NVD pending) | **AAK-LMDEPLOY-VL-SSRF-001** | 2026-04-26 | <48h on GHSA |
+| CVE-2026-20205 (config variant) | [Splunk SVD-2026-0405](https://advisory.splunk.com/advisories/SVD-2026-0405) | **AAK-SPLUNK-MCP-TOKEN-LEAK-001** | 2026-04-26 | sister to v0.3.4's AAK-SPLUNK-TOKLOG-001 |
+
 ## Shipped in v0.3.5 (2026-04-25)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

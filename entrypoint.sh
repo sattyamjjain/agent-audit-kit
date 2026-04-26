@@ -13,8 +13,9 @@ set -euo pipefail
 #   $6  = include-user-config (default: "false")
 #   $7  = rules             (default: "")
 #   $8  = exclude-rules     (default: "")
-#   $9  = ignore-paths      (default: "")
-#   $10 = config            (default: "")
+#   $9  = preset            (default: "")
+#   $10 = ignore-paths      (default: "")
+#   $11 = config            (default: "")
 # ---------------------------------------------------------------------------
 
 INPUT_PATH="${1:-.}"
@@ -25,10 +26,11 @@ INPUT_UPLOAD_SARIF="${5:-true}"
 INPUT_INCLUDE_USER_CONFIG="${6:-false}"
 INPUT_RULES="${7:-}"
 INPUT_EXCLUDE_RULES="${8:-}"
-INPUT_IGNORE_PATHS="${9:-}"
-INPUT_CONFIG="${10:-}"
-INPUT_COMMENT_ON_PR="${11:-true}"
-INPUT_FINGERPRINT_STRATEGY="${12:-auto}"
+INPUT_PRESET="${9:-}"
+INPUT_IGNORE_PATHS="${10:-}"
+INPUT_CONFIG="${11:-}"
+INPUT_COMMENT_ON_PR="${12:-true}"
+INPUT_FINGERPRINT_STRATEGY="${13:-auto}"
 
 SARIF_FILE="agent-audit-results.sarif"
 PR_SUMMARY_FILE="agent-audit-pr-summary.md"
@@ -52,6 +54,10 @@ fi
 
 if [ -n "${INPUT_EXCLUDE_RULES}" ]; then
     CMD+=(--exclude-rules "${INPUT_EXCLUDE_RULES}")
+fi
+
+if [ -n "${INPUT_PRESET}" ]; then
+    CMD+=(--preset "${INPUT_PRESET}")
 fi
 
 if [ -n "${INPUT_IGNORE_PATHS}" ]; then

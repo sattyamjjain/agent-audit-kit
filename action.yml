@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'AgentAuditKit — MCP Security Scan (161 rules, OWASP Agentic Top 10 + MCP Top 10)'
+description: 'AgentAuditKit — MCP Security Scan (169 rules, OWASP Agentic Top 10 + MCP Top 10)'
 author: 'sattyamjjain'
 
 branding:
@@ -37,6 +37,10 @@ inputs:
     default: ''
   exclude-rules:
     description: 'Comma-separated rule IDs to skip'
+    required: false
+    default: ''
+  preset:
+    description: 'Activate a curated rule preset (e.g. "mcp-ox-2026-04"). Equivalent to --preset on the CLI.'
     required: false
     default: ''
   ignore-paths:
@@ -80,6 +84,7 @@ runs:
     - ${{ inputs.include-user-config }}
     - ${{ inputs.rules }}
     - ${{ inputs.exclude-rules }}
+    - ${{ inputs.preset }}
     - ${{ inputs.ignore-paths }}
     - ${{ inputs.config }}
     - ${{ inputs.comment-on-pr }}
