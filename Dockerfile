@@ -9,13 +9,15 @@ COPY . /app
 WORKDIR /app
 RUN pip install --no-cache-dir .
 
-# Create non-root user for security
-RUN groupadd -r scanner && useradd -r -g scanner -d /home/scanner -s /sbin/nologin scanner
-RUN mkdir -p /home/scanner && chown -R scanner:scanner /home/scanner
-
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-USER scanner
+# NOTE: We deliberately run the container as root. Docker GitHub
+# Actions mount /github/workspace (the runner's checkout) into the
+# container, owned by the runner's UID; a non-root container user
+# cannot write the SARIF output back. v0.3.6 shipped with
+# `USER scanner` and was unwriteable in CI for any consumer — see
+# self-scan workflow logs from PR #71. Container isolation, not
+# in-container UID, is the load-bearing security boundary here.
 
 ENTRYPOINT ["/entrypoint.sh"]
