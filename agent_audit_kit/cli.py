@@ -130,6 +130,16 @@ def cli(ctx: click.Context) -> None:
 @click.option("--rules", default=None, help="Comma-separated rule IDs to run (default: all).")
 @click.option("--exclude-rules", default=None, help="Comma-separated rule IDs to skip.")
 @click.option(
+    "--preset",
+    "preset",
+    default=None,
+    help=(
+        "Activate a curated rule preset (yaml under agent_audit_kit/presets/). "
+        "Equivalent to passing --rules with the preset's rule list. "
+        "Example: --preset mcp-ox-2026-04."
+    ),
+)
+@click.option(
     "--fail-on",
     type=click.Choice(FAIL_ON_CHOICES),
     default=None,
@@ -213,6 +223,7 @@ def scan_cmd(
     ignore_paths: str | None,
     rules: str | None,
     exclude_rules: str | None,
+    preset: str | None,
     fail_on: str,
     config_path: str | None,
     ci: bool,
@@ -233,6 +244,15 @@ def scan_cmd(
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
+        # Preset → rules expansion. Preset narrows the rule set to a
+        # curated list; combining --preset with --rules unions both.
+        if preset:
+            from agent_audit_kit.presets import load_preset
+            preset_rules = load_preset(preset)
+            if rules:
+                rules = ",".join(sorted(set(rules.split(",")) | set(preset_rules)))
+            else:
+                rules = ",".join(preset_rules)
         _run_scan(
             path=path,
             output_format=output_format,

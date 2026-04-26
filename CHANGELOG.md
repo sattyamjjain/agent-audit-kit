@@ -5,6 +5,68 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-04-26
+
+**Headline: OX MCP STDIO architectural class — Python/TS/Java/Rust SDK
+rules, marketplace-fetch detection, Azure/LMDeploy/Splunk variants,
+mcp-ox-2026-04 preset.**
+
+Converts AAK's posture from CVE-by-CVE response to class coverage. 8
+CVEs (CVE-2026-30615, 30617, 30623, 22252, 22688, 33224, 40933, 6980)
+all trace to `StdioServerParameters(command=<network_input>)` across
+the upstream MCP SDKs; v0.3.6 ships one rule per language plus the
+marketplace-fetch single-line shape Cloudflare's MCP-defender writeup
+called out as the highest-risk bug in the wild.
+
+### Added — rule coverage (8 new rules, 161 → 169)
+
+- **AAK-MCP-STDIO-CMD-INJ-001** (CRITICAL, SUPPLY_CHAIN, Python) —
+  `StdioServerParameters(command=...)` from `mcp.client.stdio` /
+  `modelcontextprotocol.client` reached via tainted source. AST walk
+  with calls sorted by source line.
+- **AAK-MCP-STDIO-CMD-INJ-002** (CRITICAL, TypeScript) —
+  `new StdioClientTransport({...})` after a fetch / req.body /
+  process.env / JSON.parse marker. Regex pass.
+- **AAK-MCP-STDIO-CMD-INJ-003** (CRITICAL, Java) —
+  `StdioServerParameters.Builder().command(...).args(...).build()`
+  after a HttpServletRequest / RestTemplate / WebClient /
+  ObjectMapper.readValue / System.getenv marker. Nested-paren-safe
+  regex (split into opener + terminator-window scan).
+- **AAK-MCP-STDIO-CMD-INJ-004** (CRITICAL, Rust, regex-only) —
+  `Command::new(...)` adjacent to mcp_sdk / modelcontextprotocol
+  imports after a reqwest / serde_json / std::env / hyper / actix /
+  axum body-extractor marker. ~10% FP rate on macro-heavy codebases
+  until #22 lands tree-sitter-rust.
+- **AAK-MCP-MARKETPLACE-CONFIG-FETCH-001** (CRITICAL, SUPPLY_CHAIN) —
+  fetch(URL) → StdioServerParameters in same function. Suppression
+  via `.aak-mcp-marketplace-trust.yml` with required justification.
+- **AAK-AZURE-MCP-NOAUTH-001** (HIGH, MCP_CONFIG, server-side) — repos
+  publishing Azure-MCP-shaped servers without auth middleware on
+  `/mcp/*` routes. Sister to v0.3.5's consumer-side AAK-AZURE-MCP-001.
+  CVE-2026-32211.
+- **AAK-LMDEPLOY-VL-SSRF-001** (HIGH, TRANSPORT_SECURITY) — LMDeploy
+  VL image-loader fetches user-controlled URLs without allow-list.
+  CVE-2026-33626 (GHSA-only at cut; NVD enrichment pending).
+- **AAK-SPLUNK-MCP-TOKEN-LEAK-001** (HIGH, SECRET_EXPOSURE,
+  config variant) — splunk-mcp-server config files routing token
+  sourcetypes to `_internal` / `_audit` indexes. Distinct from v0.3.4's
+  runtime taint detector AAK-SPLUNK-TOKLOG-001.
+
+### Added — preset infrastructure
+
+- `agent_audit_kit/presets/__init__.py` + `load_preset()` registry.
+- `agent_audit_kit/presets/mcp-ox-2026-04.yaml` bundles 12 OX-class
+  rules.
+- CLI flag `--preset <name>` + `preset:` input in `action.yml` +
+  positional arg in `entrypoint.sh`.
+- Per-preset doc at `docs/presets/mcp-ox-2026-04.md`.
+
+### Caveats
+
+- Rust adapter is regex-only until #22 lands tree-sitter-rust.
+- CVE-2026-33626 ships citing GHSA index entry; NVD enrichment
+  pending. Pin floor will tighten in v0.3.7.
+
 ## [0.3.5] - 2026-04-25
 
 **Headline: LangChain SSRF redirect (CVE-2026-41481), URL-allow-list TOCTOU /

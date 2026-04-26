@@ -1,0 +1,25 @@
+# mcp-ox-2026-04 — operationalises the OX Security MCP STDIO disclosure
+# (Apr 2026) for downstream consumers. Bundles every rule that maps to
+# the architectural class so `aak scan --preset mcp-ox-2026-04 .` emits
+# only OX-relevant findings.
+#
+# Source: OX Security MCP advisory hub, Cloudflare MCP-defender reframe
+# (2026-04-25).
+name: mcp-ox-2026-04
+description: >-
+  OX MCP STDIO architectural class — Python/TS/Java/Rust SDK rules,
+  marketplace-fetch detection, Azure/LMDeploy/Splunk variants. Bundles
+  every AAK rule that maps to the OX Apr-2026 disclosure.
+rules:
+  - AAK-STDIO-001
+  - AAK-WINDSURF-001
+  - AAK-FLOWISE-001
+  - AAK-ANTHROPIC-SDK-001
+  - AAK-MCP-STDIO-CMD-INJ-001
+  - AAK-MCP-STDIO-CMD-INJ-002
+  - AAK-MCP-STDIO-CMD-INJ-003
+  - AAK-MCP-STDIO-CMD-INJ-004
+  - AAK-MCP-MARKETPLACE-CONFIG-FETCH-001
+  - AAK-AZURE-MCP-NOAUTH-001
+  - AAK-LMDEPLOY-VL-SSRF-001
+  - AAK-SPLUNK-MCP-TOKEN-LEAK-001

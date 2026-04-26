@@ -321,9 +321,64 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
     return findings
 
 
+# ---------------------------------------------------------------------------
+# AAK-LMDEPLOY-VL-SSRF-001 — vision-language image loader SSRF
+# (CVE-2026-33626, GHSA-only at v0.3.6 cut).
+# ---------------------------------------------------------------------------
+
+
+_LMDEPLOY_VL_RE = re.compile(
+    r"""
+    (?:
+        lmdeploy\.serve\.vl_engine\.VLEngine
+      | VLEngine\s*\(\s*\)
+      | preprocess_image_url\s*\(
+      | load_image\s*\(\s*url
+      | encode_image\s*\(\s*url
+    )
+    """,
+    re.VERBOSE,
+)
+_LMDEPLOY_HINT_RE = re.compile(r"\blmdeploy\b")
+
+
+def _check_lmdeploy_vl(project_root: Path, scanned: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    for path in project_root.rglob("*.py"):
+        if any(part in SKIP_DIRS for part in path.parts):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not _LMDEPLOY_HINT_RE.search(text):
+            continue
+        if not _LMDEPLOY_VL_RE.search(text):
+            continue
+        # Suppress if the same file has an SSRF guard.
+        if any(name in text for name in _VALIDATOR_NAMES):
+            continue
+        if "ALLOWED_HOSTS" in text or "TrustedHostMiddleware" in text:
+            continue
+        rel = str(path.relative_to(project_root))
+        scanned.add(rel)
+        m = _LMDEPLOY_VL_RE.search(text)
+        line = (text.count("\n", 0, m.start()) + 1) if m else None
+        findings.append(make_finding(
+            "AAK-LMDEPLOY-VL-SSRF-001",
+            rel,
+            "LMDeploy VL pipeline preprocesses a URL-typed image "
+            "argument without a Host allow-list / validate_safe_url "
+            "guard in the same file. CVE-2026-33626.",
+            line_number=line,
+        ))
+    return findings
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
     findings: list[Finding] = []
     findings.extend(_check_pattern(project_root, scanned))
     findings.extend(_check_pin(project_root, scanned))
+    findings.extend(_check_lmdeploy_vl(project_root, scanned))
     return findings, scanned

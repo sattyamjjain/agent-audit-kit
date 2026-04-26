@@ -88,6 +88,14 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
     "AAK-AZURE-MCP-001": ["IAM-01", "IAM-16"],
     "AAK-TOXICFLOW-001": ["AIS-12", "CCC-08"],
+    "AAK-MCP-STDIO-CMD-INJ-001": ["AIS-08", "IAM-05"],
+    "AAK-MCP-STDIO-CMD-INJ-002": ["AIS-08", "IAM-05"],
+    "AAK-MCP-STDIO-CMD-INJ-003": ["AIS-08", "IAM-05"],
+    "AAK-MCP-STDIO-CMD-INJ-004": ["AIS-08", "IAM-05"],
+    "AAK-MCP-MARKETPLACE-CONFIG-FETCH-001": ["AIS-08", "STA-02"],
+    "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
+    "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
+    "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
     "AAK-MARKETPLACE-002": ["STA-10"],
     "AAK-MARKETPLACE-003": ["STA-10"],
@@ -3134,6 +3142,252 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI02", "ASI09"],
     adversa_references=["ADV-CHAIN-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# OX MCP STDIO architectural class (Apr 2026 reframe). 8 CVEs trace to
+# StdioServerParameters(command=<network_input>) across the upstream MCP
+# Python / TS / Java / Rust SDKs. AAK-STDIO-001 detects the broader
+# subprocess(shell=True) sink shape; this rule family targets the
+# SDK-named API specifically — same root cause, different detector.
+# ---------------------------------------------------------------------------
+
+_OX_MCP_STDIO_CVES = [
+    "CVE-2026-30615",
+    "CVE-2026-30617",
+    "CVE-2026-30623",
+    "CVE-2026-22252",
+    "CVE-2026-22688",
+    "CVE-2026-33224",
+    "CVE-2026-40933",
+    "CVE-2026-6980",
+]
+
+_r(
+    "AAK-MCP-STDIO-CMD-INJ-001",
+    "MCP StdioServerParameters built from network-controlled input (Python)",
+    "A Python function calls `StdioServerParameters(command=..., args=...)` "
+    "from `mcp.client.stdio` / `modelcontextprotocol.client` while also "
+    "reading from a network-controlled source (request body, fetched "
+    "JSON, environment variable wired to a webhook, untrusted YAML). "
+    "The OX MCP April-2026 architectural class makes this exploitable: "
+    "the SDK executes whatever ends up in `command`/`args` verbatim. "
+    "See AAK-STDIO-001 for the broader sink-pattern detector; this rule "
+    "is the SDK-named-API config-side counterpart.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Never build `StdioServerParameters.command` / `.args` from a "
+    "network-controlled value. Pin `command` to a constant binary path "
+    "and validate `args` against an allow-list. If a tenant must pick "
+    "the server, look the choice up in a server-side allow-list keyed "
+    "by tenant identity, not by a free-form string in the request.",
+    sarif_name="McpStdioServerParamsTainted",
+    cve_references=list(_OX_MCP_STDIO_CVES),
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["OX-MCP-2026-04-25"],
+)
+
+_r(
+    "AAK-MCP-STDIO-CMD-INJ-002",
+    "MCP StdioClientTransport built from network-controlled input (TypeScript)",
+    "A TypeScript / JavaScript file constructs "
+    "`new StdioClientTransport({ command, args })` from "
+    "`@modelcontextprotocol/sdk/client/stdio` shortly after a "
+    "network-controlled source (`req.body`, `await fetch(...).then(...)`, "
+    "`process.env.<NETWORK_VAR>`, `JSON.parse(...)`). Same OX MCP "
+    "April-2026 class as AAK-MCP-STDIO-CMD-INJ-001.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Pin `command` to a constant binary path; validate `args` against "
+    "an allow-list before passing them into the transport. Never feed "
+    "fetched JSON or `req.body` directly into the transport options.",
+    sarif_name="McpStdioClientTransportTainted",
+    cve_references=list(_OX_MCP_STDIO_CVES),
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["OX-MCP-2026-04-25"],
+)
+
+_r(
+    "AAK-MCP-STDIO-CMD-INJ-003",
+    "MCP StdioServerParameters built from network-controlled input (Java)",
+    "A Java file constructs "
+    "`StdioServerParameters.Builder().command(...).args(...).build()` "
+    "from `io.modelcontextprotocol.sdk.client.stdio` after a "
+    "network-controlled source (`HttpServletRequest`, "
+    "`RestTemplate.getForObject`, `WebClient`, "
+    "`ObjectMapper.readValue(...)`, `System.getenv(...)`). Same OX MCP "
+    "April-2026 class as AAK-MCP-STDIO-CMD-INJ-001.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Pin `command()` to a constant; validate `args()` against an "
+    "allow-list. If using Spring, prefer `@Value`-injected configuration "
+    "over per-request resolution.",
+    sarif_name="McpStdioServerParamsTaintedJava",
+    cve_references=list(_OX_MCP_STDIO_CVES),
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["OX-MCP-2026-04-25"],
+)
+
+_r(
+    "AAK-MCP-STDIO-CMD-INJ-004",
+    "MCP STDIO command spawned from network-controlled input (Rust)",
+    "A Rust file invokes `tokio::process::Command::new(...)` or "
+    "`std::process::Command::new(...)` in a module that imports "
+    "`mcp_sdk` / `modelcontextprotocol` after a network-controlled "
+    "source (`reqwest`, `serde_json::from_str`, `std::env::var`, "
+    "`hyper::body`, `actix_web::web::Json`, `axum::extract::Json`). "
+    "Same OX MCP April-2026 class. NOTE: this rule is regex-only "
+    "until #22 lands tree-sitter-rust; expect ~10% false-positive rate "
+    "on macro-heavy code.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Pin the `Command::new(...)` argument to a constant binary path "
+    "and validate any subsequent `.arg(...)` values. Or move the "
+    "process-spawn out of the request path entirely.",
+    sarif_name="McpStdioCommandTaintedRust",
+    cve_references=list(_OX_MCP_STDIO_CVES),
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["OX-MCP-2026-04-25"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Marketplace-fetch → StdioServerParameters single-line pattern.
+# Cloudflare's MCP-defender reframe (2026-04-25) called this out as the
+# highest-risk single-line bug in the wild.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-MARKETPLACE-CONFIG-FETCH-001",
+    "MCP server config fetched from a marketplace URL and spawned",
+    "A function fetches a remote URL "
+    "(`requests.get` / `httpx.get` / `urllib.request.urlopen` / "
+    "`fetch`) and pipes the JSON / text return value into "
+    "`StdioServerParameters(...)` or "
+    "`new StdioClientTransport({...})` in the same function or one "
+    "frame deep. The OX MCP April-2026 disclosure plus Cloudflare's "
+    "MCP-defender reframe both call this out as the canonical "
+    "supply-chain inversion: a marketplace compromise becomes "
+    "client-side RCE on every consumer at the next refresh. Suppress "
+    "with an entry in `.aak-mcp-marketplace-trust.yml`.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Never feed a fetched marketplace manifest directly into "
+    "`StdioServerParameters`. Cache the response, sign it, verify the "
+    "signature on load, and pin `command` to a constant binary path "
+    "regardless of what the manifest says. If the manifest URL is "
+    "trusted (e.g. an internal artifact registry), add it to "
+    "`.aak-mcp-marketplace-trust.yml` with a `justification:` field.",
+    sarif_name="McpMarketplaceConfigFetch",
+    owasp_mcp_references=["MCP05:2025", "MCP09:2025"],
+    owasp_agentic_references=["ASI10"],
+    adversa_references=["ADV-SUPPLY-03"],
+    incident_references=["OX-MCP-2026-04-25", "CLOUDFLARE-MCP-DEFENDER-2026-04-25"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Server-author Azure MCP missing-auth (CVE-2026-32211 server-side).
+# v0.3.5's AAK-AZURE-MCP-001 detects the consumer side; this rule fires
+# on repos that publish an Azure-MCP-shaped server without auth
+# middleware on /mcp/* routes.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-AZURE-MCP-NOAUTH-001",
+    "Azure MCP server published without auth middleware on /mcp routes",
+    "Repository publishes an Azure-MCP-shaped server "
+    "(`@azure/mcp-server`, `azure-mcp-server` Python package, or "
+    "`mcp-server-azure` keywords in `pyproject.toml` / `package.json`) "
+    "and exposes one or more `/mcp/*` route handlers without an auth "
+    "middleware on the same route. CVE-2026-32211 (CVSS 9.1) is the "
+    "server-side default that AAK-AZURE-MCP-001 catches on the "
+    "consumer side; this rule is the upstream pair so server authors "
+    "ship secure defaults.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Add an auth middleware to every `/mcp/*` route — Azure-AD JWT "
+    "validation, `client_credentials`, mTLS, or a vault-issued API "
+    "key checked at request time. Reject unauthenticated requests "
+    "with HTTP 401 *before* dispatching to the MCP handler.",
+    sarif_name="AzureMcpServerNoAuth",
+    cve_references=["CVE-2026-32211"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-02"],
+    incident_references=["MSRC-2026-04-03-AZUREMCP"],
+)
+
+
+# ---------------------------------------------------------------------------
+# LMDeploy VL image-loader SSRF (CVE-2026-33626, GHSA published 2026-04-25).
+# Pin info will be tightened once NVD enriches.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-LMDEPLOY-VL-SSRF-001",
+    "LMDeploy VL image loader fetches user-controlled URLs without allow-list",
+    "A vision-language pipeline calls `lmdeploy.serve.vl_engine.*` "
+    "(or framework-equivalent) preprocessing helpers with a URL "
+    "argument that is not validated against an allow-list. CVE-2026-33626 "
+    "(GHSA-only at time of v0.3.6 cut — NVD enrichment pending) "
+    "documents this exact shape: an attacker submits an image URL that "
+    "points at a private endpoint, the loader fetches it server-side, "
+    "and the response is processed by the VL pipeline. Same SSRF class "
+    "as AAK-LANGCHAIN-SSRF-REDIR-001 but tied to the VL image loader.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Wrap the URL with the same SSRF guard you use for any other "
+    "fetch: validate the resolved IP against an allow-list, disable "
+    "redirects, and pin the resolved IP for the actual request. "
+    "Bump `lmdeploy` to the patched release (see GHSA for the exact "
+    "version once NVD enrichment lands).",
+    sarif_name="LmdeployVlSsrf",
+    cve_references=["CVE-2026-33626"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
+    adversa_references=["ADV-NETWORK-04"],
+    incident_references=["GHSA-LMDEPLOY-VL-2026-04-25"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Splunk MCP server config-side token-leak (CVE-2026-20205 variant).
+# v0.3.4's AAK-SPLUNK-TOKLOG-001 catches token shapes in log sinks. This
+# variant catches the upstream config that *makes* the leak inevitable.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
+    "splunk-mcp-server configured to write tokens to _internal / audit",
+    "A splunk-mcp-server configuration (`inputs.conf`, "
+    "`splunk-mcp.yaml`, or any file under `splunk-mcp/`) routes a "
+    "token-bearing source into the `_internal` or `_audit` index, "
+    "or names a sourcetype known to carry session tokens "
+    "(`splunk_session`, `mcp_auth`, `bearer`). Distinct from "
+    "AAK-SPLUNK-TOKLOG-001 which fires on log-sink taint at runtime — "
+    "this rule fires on the configuration that *makes* the runtime "
+    "leak inevitable. CVE-2026-20205 origin.",
+    Severity.HIGH,
+    Category.SECRET_EXPOSURE,
+    "Route token-bearing inputs to a redaction stage *before* the "
+    "Splunk forwarder. Never write to `_internal` from the MCP "
+    "server. Bump `splunk-mcp-server` to >= 1.0.3.",
+    sarif_name="SplunkMcpTokenIndexLeak",
+    cve_references=["CVE-2026-20205"],
+    owasp_mcp_references=["MCP08:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-LEAK-02"],
+    incident_references=["SVD-2026-0405"],
 )
 
 
