@@ -175,9 +175,29 @@ def run_scan(
         all_scanned_files.update(files)
         _log(f"  {reg.name}: {len(files)} files, {len(findings)} findings")
 
+    # Apply global ignore_paths filter. Historically ignore_paths was
+    # threaded only into secret_exposure (the only scanner that took
+    # the kwarg); other scanners surfaced findings from explicitly
+    # excluded directories. Centralising here means every scanner
+    # honours the flag without each one re-implementing the path check.
+    ignore_path_prefixes = tuple(p.rstrip("/") for p in (ignore_paths or []) if p)
+
+    def _is_ignored(file_path: str) -> bool:
+        if not ignore_path_prefixes:
+            return False
+        # Normalise leading "./" so callers can pass either form.
+        normalised = file_path[2:] if file_path.startswith("./") else file_path
+        return any(
+            normalised == prefix or normalised.startswith(prefix + "/")
+            for prefix in ignore_path_prefixes
+        )
+
     for finding in all_findings:
-        if finding.rule_id in active_rules or finding.rule_id == "AAK-INTERNAL-SCANNER-FAIL":
-            result.findings.append(finding)
+        if finding.rule_id not in active_rules and finding.rule_id != "AAK-INTERNAL-SCANNER-FAIL":
+            continue
+        if _is_ignored(finding.file_path or ""):
+            continue
+        result.findings.append(finding)
 
     result.files_scanned = len(all_scanned_files)
     result.scan_duration_ms = (time.monotonic() - start) * 1000

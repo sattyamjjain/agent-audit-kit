@@ -1,0 +1,82 @@
+name: Self-scan (dogfood the published Action)
+
+# Runs the most-recently-shipped AAK GitHub Action against this repo on
+# every push / PR. This is *separate* from the in-tree CLI self-scan in
+# ci.yml — that step verifies the source build; this workflow verifies
+# the *published Marketplace listing* (Dockerfile build, action.yml
+# inputs, SARIF upload, sticky PR comment, --preset wiring).
+#
+# Pin to the commit SHA of the v0.3.6 tag per AAK-GHA-IMMUTABLE-001.
+# `scripts/sync_repo_metadata.py` does NOT yet bump SHA pins, so
+# refresh by hand on each release: `git rev-parse v0.X.Y^{commit}` →
+# replace below, update the `# vX.Y.Z` trailing comment.
+#
+# Why fail-on: none for now: the published v0.3.6 Action ships with
+# `ignore_paths` honoured ONLY by the secret_exposure scanner — every
+# other scanner surfaces findings from `tests/`, `examples/`, etc. The
+# engine fix for global `ignore_paths` (this PR) ships in v0.3.7+; once
+# v0.3.7 is published, bump the SHA pin AND switch fail-on to
+# `critical` in the same commit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Tuesday 06:17 UTC — catches drift after Dependabot bumps merge.
+    - cron: '17 6 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  default-scan:
+    name: Self-scan (default ruleset, fail on critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+      - name: AgentAuditKit MCP Security Scan
+        uses: sattyamjjain/agent-audit-kit@6b02658a084bb60cf652b1d66aa7d35d2ea237dc  # v0.3.6
+        with:
+          path: '.'
+          severity: 'low'
+          fail-on: 'none'
+          format: 'sarif'
+          upload-sarif: 'true'
+          # Skip intentionally-vulnerable trees so the scan only
+          # surfaces issues in the actual product surface:
+          # - tests/                    test suite + fixtures
+          # - benchmarks/               crawled real-world dataset
+          # - examples/                 vulnerable demo configs (the
+          #                             "open this and AAK fires" tour)
+          # - docs/                     marketing copy + per-rule docs
+          #                             with example token strings
+          # - CLAUDE.md, rules.json     AAK's own rule corpus —
+          #                             AAK-AGENT-001 / AAK-HEALTHCARE-AI-001
+          #                             false-positive on rule
+          #                             descriptions and trigger lists.
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json'
+          comment-on-pr: 'true'
+          fingerprint-strategy: 'auto'
+
+  preset-mcp-ox:
+    name: Self-scan (--preset mcp-ox-2026-04)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+      - name: AgentAuditKit MCP Security Scan (OX preset)
+        uses: sattyamjjain/agent-audit-kit@6b02658a084bb60cf652b1d66aa7d35d2ea237dc  # v0.3.6
+        with:
+          path: '.'
+          severity: 'low'
+          fail-on: 'none'
+          format: 'sarif'
+          upload-sarif: 'false'  # avoid double-upload colliding with default-scan
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json'
+          preset: 'mcp-ox-2026-04'
+          comment-on-pr: 'false'  # default-scan already posts the sticky comment
+          fingerprint-strategy: 'auto'
