@@ -5,6 +5,50 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-04-26
+
+**Headline: critical Action / Dockerfile fix — published v0.3.6 was
+unwriteable for every consumer; v0.3.7 makes the GitHub Marketplace
+listing actually work.**
+
+No new rules. No new scanners. v0.3.7 is a release-mechanics patch:
+the Dockerfile fix is load-bearing for any consumer who ran the
+Action from Marketplace and hit `Permission denied:
+'agent-audit-results.sarif'`. Engine ignore_paths fix lands at the
+same time so `--ignore-paths` finally works the way the docs claim.
+
+### Fixed
+
+- **Critical: Docker container ran as `USER scanner`** (UID 999) but
+  `/github/workspace` is mounted from the runner's checkout owned by
+  the runner UID; the container could not write the SARIF output.
+  Every consumer of `sattyamjjain/agent-audit-kit@v0.3.6` (and
+  earlier) saw `Permission denied: 'agent-audit-results.sarif'`.
+  Surfaced via the new dogfood self-scan workflow (PR #71) — the
+  loop validates that what we publish actually runs end-to-end.
+  Dropped the `USER scanner` directive; container isolation, not
+  in-container UID, is the load-bearing security boundary for an
+  ephemeral GitHub Docker Action.
+- **`engine.run_scan` now applies `--ignore-paths` globally** instead
+  of only via the `secret_exposure` scanner kwarg. Every scanner now
+  honours the flag. 5 new tests in `tests/test_engine_ignore_paths.py`
+  fence the behaviour (subpath match, prefix-not-substring, exact
+  file match, trailing-slash insensitivity, multi-scanner suppression).
+
+### Added — release infrastructure
+
+- `.github/workflows/self-scan.yml` — runs the local Action against
+  this repo on every push / PR. `default-scan` job (full ruleset,
+  `fail-on: critical`) plus `preset-mcp-ox-2026-04` job that
+  exercises the `--preset` input end-to-end.
+
+### Upgrade impact
+
+- **Anyone using `sattyamjjain/agent-audit-kit@v0.3.6`** should bump
+  to `@v0.3.7` immediately. v0.3.6 silently failed to produce SARIF
+  output. Workflow YAML is otherwise compatible — no input/output
+  changes.
+
 ## [0.3.6] - 2026-04-26
 
 **Headline: OX MCP STDIO architectural class — Python/TS/Java/Rust SDK
