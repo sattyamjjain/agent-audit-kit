@@ -57,7 +57,14 @@ jobs:
           #                             AAK-AGENT-001 / AAK-HEALTHCARE-AI-001
           #                             false-positive on rule
           #                             descriptions and trigger lists.
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json'
+          # - agent_audit_kit/rules/builtin.py
+          #                             rule registry — descriptions
+          #                             mention `os.system`, `mcp-atlassian`,
+          #                             etc. as the *thing the rule fires on*.
+          # - agent_audit_kit/data      threat-corpus data files — payload
+          #                             regexes / FHI suffix tokens are
+          #                             literally the patterns rules match.
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data'
           comment-on-pr: 'true'
           fingerprint-strategy: 'auto'
 
@@ -74,7 +81,7 @@ jobs:
           fail-on: 'critical'
           format: 'sarif'
           upload-sarif: 'false'  # avoid double-upload colliding with default-scan
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json'
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data'
           preset: 'mcp-ox-2026-04'
           comment-on-pr: 'false'  # default-scan already posts the sticky comment
           fingerprint-strategy: 'auto'

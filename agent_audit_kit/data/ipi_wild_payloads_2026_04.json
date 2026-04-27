@@ -1,0 +1,88 @@
+{
+  "schema_version": "1",
+  "corpus_version": "2026-04-24",
+  "source": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/",
+  "secondary_source": "https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/",
+  "payloads": [
+    {
+      "id": "IPI-2026-04-WILD-01",
+      "label": "ignore-prior + exfil",
+      "regex": "(?i)ignore\\s+(?:all|previous|prior)\\s+(?:instructions|tools).*?(?:read|cat|leak|exfil|send)",
+      "severity": "critical",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-02",
+      "label": "system-role override",
+      "regex": "(?i)<\\|?(?:system|admin|root)\\|?>.*?(?:execute|run|fetch|disclose)",
+      "severity": "high",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-03",
+      "label": "reveal system prompt",
+      "regex": "(?i)(?:reveal|print|disclose|leak)\\s+(?:your|the)\\s+system\\s+prompt",
+      "severity": "high",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-04",
+      "label": "credential exfil via cURL",
+      "regex": "(?i)curl\\s+[^\\n]*(?:GITHUB_TOKEN|GH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET)",
+      "severity": "critical",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-05",
+      "label": "tool-call rerouting",
+      "regex": "(?i)redirect\\s+(?:tool|api)\\s+calls?\\s+to",
+      "severity": "high",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-06",
+      "label": "delete repository",
+      "regex": "(?i)(?:delete|wipe|rm\\s+-rf|drop)\\s+(?:repository|repo|database|table)",
+      "severity": "critical",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-07",
+      "label": "admin role escalation",
+      "regex": "(?i)(?:assume|elevate|sudo).*?(?:admin|root|superuser).*?(?:privileges|permissions)",
+      "severity": "high",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-08",
+      "label": "obfuscated prompt break",
+      "regex": "(?i)\\\\u006e\\\\u0065\\\\u0077.*?(?:instructions?|prompt)",
+      "severity": "medium",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-09",
+      "label": "image-attached IPI",
+      "regex": "(?i)\\[image:.*?\\].*?(?:instructions?|ignore)",
+      "severity": "medium",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/"
+    },
+    {
+      "id": "IPI-2026-04-WILD-10",
+      "label": "RAG-poisoned document",
+      "regex": "(?i)<!--\\s*PROMPT_INJECT.*?-->",
+      "severity": "high",
+      "first_seen": "2026-04-24",
+      "source_url": "https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/"
+    }
+  ]
+}

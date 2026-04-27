@@ -93,6 +93,12 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STDIO-CMD-INJ-003": ["AIS-08", "IAM-05"],
     "AAK-MCP-STDIO-CMD-INJ-004": ["AIS-08", "IAM-05"],
     "AAK-MCP-MARKETPLACE-CONFIG-FETCH-001": ["AIS-08", "STA-02"],
+    "AAK-PRTITLE-IPI-001": ["AIS-07", "AIS-12"],
+    "AAK-MCP-FHI-001": ["AIS-12", "CCC-08"],
+    "AAK-MCP-ATLASSIAN-CVE-2026-27825-001": ["AIS-07", "STA-02"],
+    "AAK-MCP-ATLASSIAN-CVE-2026-27826-001": ["AIS-07", "STA-02"],
+    "AAK-IPI-WILD-CORPUS-001": ["AIS-07", "DSP-17"],
+    "AAK-MCP-INSPECTOR-CVE-2026-23744-001": ["STA-02", "STA-08"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
@@ -3388,6 +3394,186 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-LEAK-02"],
     incident_references=["SVD-2026-0405"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Comment-and-Control PR-title indirect prompt injection (CVSS 9.4).
+# Aonan Guan disclosure 2026-04-25 — credential theft across Claude
+# Code Security Review, Gemini CLI Action, GitHub Copilot Agent.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-PRTITLE-IPI-001",
+    "PR/issue title flows into LLM client without sanitiser",
+    "A function pulls a title-like field from a GitHub event source "
+    "(`pull_request.title`, `pull_request.head.ref`, `issue.title`, "
+    "or env vars wired to the same) and feeds it into an LLM client "
+    "call (`anthropic.messages.create`, `openai.chat.completions.create`, "
+    "`genai.GenerativeModel.generate_content`, `langchain.*.invoke`) "
+    "without an HTML-escape, allow-list, or hash on the title. "
+    "Aonan Guan's 2026-04-25 Comment-and-Control disclosure (CVSS 9.4) "
+    "showed an attacker-controlled PR title injects instructions the "
+    "agent executes with its own credentials — credential theft "
+    "demonstrated against Claude Code Security Review, Gemini CLI "
+    "Action, and GitHub Copilot Agent.",
+    Severity.HIGH,
+    Category.TAINT_ANALYSIS,
+    "Wrap the title in `html.escape` (or `markupsafe.escape`), or "
+    "validate against a strict allow-list, or hash it before "
+    "interpolating into the prompt. For TS/JS, use the equivalent. "
+    "For shell-style agents, prefer `shlex.quote`. The fix is "
+    "structural — never interpolate untrusted GitHub event content "
+    "into an LLM prompt.",
+    sarif_name="PrTitleIndirectPromptInjection",
+    cve_references=[],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-PROMPT-01"],
+    incident_references=["COMMENT-AND-CONTROL-2026-04-25"],
+)
+
+
+# ---------------------------------------------------------------------------
+# MCP Function-Hijacking via adversarial tool descriptions.
+# arXiv 2604.20994 (2026-04-23) — 70-100% ASR on BFCL.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-FHI-001",
+    "MCP tool description carries adversarial-suffix shape",
+    "A registered MCP tool (Python `@mcp.tool` / `@server.tool`, TS "
+    "`server.tool(...)`, Java `@Tool`, Rust `#[mcp_tool]`) carries a "
+    "description containing imperative override language ('ignore "
+    "previous', 'always call', 'this tool must be invoked first', "
+    "'supersedes all other tools') or a universal-suffix token from "
+    "the FHI corpus (`agent_audit_kit/data/fhi_universal_suffixes.txt`). "
+    "Function-Hijacking attacks steer the LLM planner into picking a "
+    "malicious tool first regardless of intent — arXiv 2604.20994 "
+    "reports 70-100% ASR on BFCL.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Audit tool registration sites for descriptions that try to "
+    "command the planner. Reject tools whose descriptions include "
+    "directives like 'ignore previous instructions' or 'always invoke "
+    "first'. Refresh the suffix corpus regularly with "
+    "`aak corpus update --fhi`.",
+    sarif_name="McpFunctionHijacking",
+    cve_references=[],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-CHAIN-02"],
+    incident_references=["ARXIV-2604.20994"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Atlassian MCP RCE chain (CVE-2026-27825 / CVE-2026-27826).
+# Two paired rules so SARIF carries the distinguishing CVE id.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
+    "mcp-atlassian Jira/Confluence content reaches subprocess sink",
+    "CVE-2026-27825 (CVSS 9.1): a Jira/Confluence field "
+    "(`issue.fields.*`, `issue.description`, `comment.body`, "
+    "`page.content`) flows from a tool handler into "
+    "`subprocess.run/Popen/check_output`, `os.system`, or `os.popen` "
+    "without input validation. Hacker News + The Hacker News (2026-04-22) "
+    "documented public PoC; Atlassian is in every enterprise stack so "
+    "treat any unpinned `mcp-atlassian` install as exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Pin `mcp-atlassian` to the patched version. Until the bump is "
+    "in, wrap every Jira/Confluence field with an allow-list or "
+    "shlex.quote before passing into subprocess. Consider front-running "
+    "the agent surface with a redaction proxy.",
+    sarif_name="McpAtlassianRce27825",
+    cve_references=["CVE-2026-27825"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-05"],
+    incident_references=["ANTHROPIC-MCP-2026-04-22"],
+)
+
+_r(
+    "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
+    "mcp-atlassian Jira/Confluence content reaches file-write sink",
+    "CVE-2026-27826 (CVSS 8.2): companion bug to CVE-2026-27825 — "
+    "Jira/Confluence field content flows into `open(... 'w')`, "
+    "`Path.write_text`, `shutil.move/copy` without validation. Lower "
+    "blast radius than the subprocess variant but trivially weaponisable "
+    "for path traversal + data planting.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Same as CVE-2026-27825: pin `mcp-atlassian` to patched. For "
+    "file-writes, additionally enforce a path allow-list rooted at "
+    "the agent's tenant directory.",
+    sarif_name="McpAtlassianRce27826",
+    cve_references=["CVE-2026-27826"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-05"],
+    incident_references=["ANTHROPIC-MCP-2026-04-22"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Wild IPI payload corpus (Help Net Security / Infosec Magazine 2026-04-24).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-IPI-WILD-CORPUS-001",
+    "Indirect-prompt-injection wild payload checked into repo",
+    "A source / config file (`.md`, `.txt`, `.yml`, `.yaml`, `.json`, "
+    "`.py`) embeds a known wild IPI payload from the 2026-04-24 "
+    "Help Net Security + Infosec Magazine catalogue. Common shapes: "
+    "ignore-prior + exfil, system-role override, reveal-system-prompt, "
+    "credential exfil via cURL, tool-call rerouting, delete-repository, "
+    "admin role escalation, obfuscated prompt break, image-attached IPI, "
+    "RAG-poisoned document. Refresh the corpus with "
+    "`aak corpus update --ipi`.",
+    Severity.HIGH,
+    Category.TAINT_ANALYSIS,
+    "Remove the payload from the file. If the file is intentionally "
+    "an attack-corpus fixture, exclude it via `--ignore-paths`. The "
+    "real risk is checked-in poisoned templates / system-prompt "
+    "files / RAG seed corpora — those need to be sanitized at "
+    "ingestion time, not at scan time.",
+    sarif_name="IpiWildPayload",
+    cve_references=[],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-PROMPT-02"],
+    incident_references=["IPI-WILD-2026-04-24"],
+)
+
+
+# ---------------------------------------------------------------------------
+# MCPJam Inspector vendored fork (CVE-2026-23744, CVSS 9.8).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
+    "Vendored mcpjam-inspector fork carries CVE-2026-23744",
+    "CVE-2026-23744 (CVSS 9.8) in mcp-inspector ≤ 1.4.2. The "
+    "preset-only entry from v0.3.5 caught configured presence; this "
+    "rule catches forks that vendored or `node_modules`-pinned the "
+    "vulnerable code regardless of declared dependency. Path-match on "
+    "`vendor/mcpjam-inspector/**`, `node_modules/@mcpjam/inspector/**`, "
+    "any `**/mcpjam-inspector/**` plus the unique "
+    "`inspectorServer.handle(...)` call shape.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Bump `@mcpjam/inspector` to >= 1.4.3 in package.json AND remove "
+    "any vendored copies. Do not patch in-tree — rebase onto the "
+    "published patched release.",
+    sarif_name="McpInspectorCve23744",
+    cve_references=["CVE-2026-23744"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI10"],
+    adversa_references=["ADV-SUPPLY-04"],
+    incident_references=["MCPJAM-INSPECTOR-2026-04"],
 )
 
 
