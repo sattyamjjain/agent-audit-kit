@@ -642,6 +642,157 @@ def kill_cmd() -> None:
         click.echo("No running proxy found.")
 
 
+@cli.group("corpus")
+def corpus_cmd() -> None:
+    """Refresh threat-corpus data files (IPI payloads, FHI suffixes, ...)."""
+
+
+@corpus_cmd.command("update")
+@click.option("--ipi", "update_ipi", is_flag=True, default=False, help="Update the wild IPI payload corpus.")
+@click.option("--fhi", "update_fhi", is_flag=True, default=False, help="Update the FHI universal-suffix corpus.")
+@click.option("--all", "update_all", is_flag=True, default=False, help="Update every corpus listed in the manifest.")
+@click.option("--manifest", "manifest_url", default=None, help="Override the manifest URL (default: gh-pages).")
+def corpus_update_cmd(
+    update_ipi: bool, update_fhi: bool, update_all: bool, manifest_url: str | None
+) -> None:
+    """Pull a signed corpus manifest and refresh local data files."""
+    from agent_audit_kit.corpus.manifest import (
+        CorpusVerificationError,
+        fetch_and_verify,
+        load_manifest,
+        write_corpus,
+    )
+
+    if not (update_ipi or update_fhi or update_all):
+        click.echo("Error: pass at least one of --ipi / --fhi / --all", err=True)
+        sys.exit(EXIT_ERROR)
+
+    selected_ids: set[str] = set()
+    if update_all:
+        selected_ids = {"ipi_wild_2026_04", "fhi_universal_suffixes"}
+    if update_ipi:
+        selected_ids.add("ipi_wild_2026_04")
+    if update_fhi:
+        selected_ids.add("fhi_universal_suffixes")
+
+    try:
+        entries = load_manifest(manifest_url)
+    except Exception as exc:  # noqa: BLE001
+        click.echo(f"Error: failed to load manifest: {exc}", err=True)
+        sys.exit(EXIT_ERROR)
+
+    failures = 0
+    for entry in entries:
+        if entry.id not in selected_ids:
+            continue
+        try:
+            body = fetch_and_verify(entry)
+        except CorpusVerificationError as exc:
+            click.echo(f"  {entry.id}: VERIFY FAILED — {exc}", err=True)
+            failures += 1
+            continue
+        except Exception as exc:  # noqa: BLE001
+            click.echo(f"  {entry.id}: fetch failed — {exc}", err=True)
+            failures += 1
+            continue
+        write_corpus(entry, body)
+        click.echo(f"  {entry.id}: refreshed -> {entry.target_path}")
+    if failures:
+        sys.exit(EXIT_ERROR)
+
+
+@cli.command("diff")
+@click.option(
+    "--baseline", "baseline_path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    required=True,
+    help="Path to the prior SARIF file to diff against.",
+)
+@click.option(
+    "--current", "current_path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False),
+    required=True,
+    help="Path to the current SARIF file.",
+)
+@click.option(
+    "--output", "-o", "output_path",
+    type=click.Path(),
+    default=None,
+    help="Write the diff SARIF here. Default: stdout.",
+)
+@click.option(
+    "--fail-on-new",
+    is_flag=True,
+    default=False,
+    help="Exit 1 if any results are tagged `newly_introduced`.",
+)
+def diff_cmd(
+    baseline_path: str, current_path: str, output_path: str | None, fail_on_new: bool
+) -> None:
+    """Diff two SARIF files: tag every result with newly_introduced /
+    newly_resolved / still_present."""
+    from agent_audit_kit.sarif.diff import diff_sarif, dump_sarif, load_sarif
+
+    baseline = load_sarif(Path(baseline_path).read_text(encoding="utf-8"))
+    current = load_sarif(Path(current_path).read_text(encoding="utf-8"))
+    out = diff_sarif(baseline, current)
+    body = dump_sarif(out)
+    if output_path:
+        Path(output_path).write_text(body, encoding="utf-8")
+    else:
+        click.echo(body)
+
+    summary = (
+        out.get("runs", [{}])[0]
+        .get("properties", {})
+        .get("aak_diff_summary", {})
+    )
+    click.echo(
+        f"diff: {summary.get('newly_introduced', 0)} new, "
+        f"{summary.get('newly_resolved', 0)} resolved, "
+        f"{summary.get('still_present', 0)} still present.",
+        err=True,
+    )
+    if fail_on_new and summary.get("newly_introduced", 0) > 0:
+        sys.exit(EXIT_FINDINGS)
+
+
+@cli.command("suggest")
+@click.argument("sarif_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
+@click.option(
+    "--pr", "pr_mode", is_flag=True, default=False,
+    help="Emit a Markdown PR body suitable for `gh pr create --body-file -`.",
+)
+@click.option(
+    "--apply-trivial", is_flag=True, default=False,
+    help="Apply mechanically-safe codemods in-place (NOT YET IMPLEMENTED in v0.3.8 — scaffolded).",
+)
+@click.option(
+    "--output", "-o", "output_path",
+    type=click.Path(),
+    default=None,
+    help="Write the Markdown body here. Default: stdout.",
+)
+def suggest_cmd(
+    sarif_path: str, pr_mode: bool, apply_trivial: bool, output_path: str | None
+) -> None:
+    """Generate per-finding remediation hints from a SARIF run."""
+    from agent_audit_kit.remediation.engine import sarif_to_markdown
+
+    sarif_text = Path(sarif_path).read_text(encoding="utf-8")
+    body = sarif_to_markdown(sarif_text, pr_mode=pr_mode)
+    if output_path:
+        Path(output_path).write_text(body, encoding="utf-8")
+    else:
+        click.echo(body)
+    if apply_trivial:
+        click.echo(
+            "suggest: --apply-trivial is scaffolded but not yet implemented "
+            "(queued for v0.3.9). The Markdown body above lists each fix.",
+            err=True,
+        )
+
+
 @cli.command("watch")
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option("--interval", "interval_seconds", type=int, default=300,

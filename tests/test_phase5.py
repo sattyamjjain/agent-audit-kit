@@ -55,4 +55,4 @@ def test_gitlab_template_is_valid_yaml() -> None:
 def test_version_is_bumped() -> None:
     from agent_audit_kit import __version__
 
-    assert __version__ == "0.3.7"
+    assert __version__ == "0.3.8"

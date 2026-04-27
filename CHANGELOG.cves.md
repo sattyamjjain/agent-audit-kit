@@ -8,6 +8,21 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.8 (2026-04-27)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| Comment-and-Control 2026-04-25 (CVSS 9.4) | [oddguan.com](https://oddguan.com/blog/comment-and-control-prompt-injection-credential-theft-claude-code-gemini-cli-github-copilot/) | **AAK-PRTITLE-IPI-001** | 2026-04-27 | <48h |
+| arXiv 2604.20994 (2026-04-23, BFCL FHI) | [arXiv](https://arxiv.org/abs/2604.20994) | **AAK-MCP-FHI-001** | 2026-04-27 | <96h |
+| CVE-2026-27825 (CVSS 9.1) | [The Hacker News](https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html) | **AAK-MCP-ATLASSIAN-CVE-2026-27825-001** | 2026-04-27 | targeted follow-up 5d |
+| CVE-2026-27826 (CVSS 8.2) | The Hacker News (paired with 27825) | **AAK-MCP-ATLASSIAN-CVE-2026-27826-001** | 2026-04-27 | same |
+| Wild-IPI corpus 2026-04-24 | [Help Net Security](https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/) · [Infosec Mag](https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/) | **AAK-IPI-WILD-CORPUS-001** | 2026-04-27 | <72h |
+| CVE-2026-23744 (CVSS 9.8) | [feedly](https://feedly.com/cve/CVE-2026-23744) | **AAK-MCP-INSPECTOR-CVE-2026-23744-001** (vendored fork SAST) | 2026-04-27 | targeted follow-up |
+
+## Shipped in v0.3.7 (2026-04-26)
+
+v0.3.7 was a release-mechanics patch (Dockerfile + global ignore_paths fixes). No new CVE coverage.
+
 ## Shipped in v0.3.6 (2026-04-26)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

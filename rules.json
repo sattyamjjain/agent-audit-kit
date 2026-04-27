@@ -1209,6 +1209,33 @@
     },
     {
       "adversa_references": [
+        "ADV-PROMPT-02"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-17"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A source / config file (`.md`, `.txt`, `.yml`, `.yaml`, `.json`, `.py`) embeds a known wild IPI payload from the 2026-04-24 Help Net Security + Infosec Magazine catalogue. Common shapes: ignore-prior + exfil, system-role override, reveal-system-prompt, credential exfil via cURL, tool-call rerouting, delete-repository, admin role escalation, obfuscated prompt break, image-attached IPI, RAG-poisoned document. Refresh the corpus with `aak corpus update --ipi`.",
+      "incident_references": [
+        "IPI-WILD-2026-04-24"
+      ],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Remove the payload from the file. If the file is intentionally an attack-corpus fixture, exclude it via `--ignore-paths`. The real risk is checked-in poisoned templates / system-prompt files / RAG seed corpora \u2014 those need to be sanitized at ingestion time, not at scan time.",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "sarif_name": "IpiWildPayload",
+      "severity": "high",
+      "title": "Indirect-prompt-injection wild payload checked into repo"
+    },
+    {
+      "adversa_references": [
         "ADV-SUPPLY-01"
       ],
       "aicm_references": [],
@@ -1975,6 +2002,120 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-05"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "STA-02"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-27825"
+      ],
+      "description": "CVE-2026-27825 (CVSS 9.1): a Jira/Confluence field (`issue.fields.*`, `issue.description`, `comment.body`, `page.content`) flows from a tool handler into `subprocess.run/Popen/check_output`, `os.system`, or `os.popen` without input validation. Hacker News + The Hacker News (2026-04-22) documented public PoC; Atlassian is in every enterprise stack so treat any unpinned `mcp-atlassian` install as exposed.",
+      "incident_references": [
+        "ANTHROPIC-MCP-2026-04-22"
+      ],
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Pin `mcp-atlassian` to the patched version. Until the bump is in, wrap every Jira/Confluence field with an allow-list or shlex.quote before passing into subprocess. Consider front-running the agent surface with a redaction proxy.",
+      "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
+      "sarif_name": "McpAtlassianRce27825",
+      "severity": "critical",
+      "title": "mcp-atlassian Jira/Confluence content reaches subprocess sink"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-05"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "STA-02"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-27826"
+      ],
+      "description": "CVE-2026-27826 (CVSS 8.2): companion bug to CVE-2026-27825 \u2014 Jira/Confluence field content flows into `open(... 'w')`, `Path.write_text`, `shutil.move/copy` without validation. Lower blast radius than the subprocess variant but trivially weaponisable for path traversal + data planting.",
+      "incident_references": [
+        "ANTHROPIC-MCP-2026-04-22"
+      ],
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Same as CVE-2026-27825: pin `mcp-atlassian` to patched. For file-writes, additionally enforce a path allow-list rooted at the agent's tenant directory.",
+      "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
+      "sarif_name": "McpAtlassianRce27826",
+      "severity": "high",
+      "title": "mcp-atlassian Jira/Confluence content reaches file-write sink"
+    },
+    {
+      "adversa_references": [
+        "ADV-CHAIN-02"
+      ],
+      "aicm_references": [
+        "AIS-12",
+        "CCC-08"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A registered MCP tool (Python `@mcp.tool` / `@server.tool`, TS `server.tool(...)`, Java `@Tool`, Rust `#[mcp_tool]`) carries a description containing imperative override language ('ignore previous', 'always call', 'this tool must be invoked first', 'supersedes all other tools') or a universal-suffix token from the FHI corpus (`agent_audit_kit/data/fhi_universal_suffixes.txt`). Function-Hijacking attacks steer the LLM planner into picking a malicious tool first regardless of intent \u2014 arXiv 2604.20994 reports 70-100% ASR on BFCL.",
+      "incident_references": [
+        "ARXIV-2604.20994"
+      ],
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Audit tool registration sites for descriptions that try to command the planner. Reject tools whose descriptions include directives like 'ignore previous instructions' or 'always invoke first'. Refresh the suffix corpus regularly with `aak corpus update --fhi`.",
+      "rule_id": "AAK-MCP-FHI-001",
+      "sarif_name": "McpFunctionHijacking",
+      "severity": "high",
+      "title": "MCP tool description carries adversarial-suffix shape"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-04"
+      ],
+      "aicm_references": [
+        "STA-02",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-23744"
+      ],
+      "description": "CVE-2026-23744 (CVSS 9.8) in mcp-inspector \u2264 1.4.2. The preset-only entry from v0.3.5 caught configured presence; this rule catches forks that vendored or `node_modules`-pinned the vulnerable code regardless of declared dependency. Path-match on `vendor/mcpjam-inspector/**`, `node_modules/@mcpjam/inspector/**`, any `**/mcpjam-inspector/**` plus the unique `inspectorServer.handle(...)` call shape.",
+      "incident_references": [
+        "MCPJAM-INSPECTOR-2026-04"
+      ],
+      "owasp_agentic_references": [
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Bump `@mcpjam/inspector` to >= 1.4.3 in package.json AND remove any vendored copies. Do not patch in-tree \u2014 rebase onto the published patched release.",
+      "rule_id": "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
+      "sarif_name": "McpInspectorCve23744",
+      "severity": "critical",
+      "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
+    },
+    {
+      "adversa_references": [
         "ADV-SUPPLY-03"
       ],
       "aicm_references": [
@@ -2575,6 +2716,33 @@
       "sarif_name": "ToolDescUrlOrPath",
       "severity": "medium",
       "title": "URL or file path in tool description"
+    },
+    {
+      "adversa_references": [
+        "ADV-PROMPT-01"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "AIS-12"
+      ],
+      "auto_fixable": false,
+      "category": "taint-analysis",
+      "cve_references": [],
+      "description": "A function pulls a title-like field from a GitHub event source (`pull_request.title`, `pull_request.head.ref`, `issue.title`, or env vars wired to the same) and feeds it into an LLM client call (`anthropic.messages.create`, `openai.chat.completions.create`, `genai.GenerativeModel.generate_content`, `langchain.*.invoke`) without an HTML-escape, allow-list, or hash on the title. Aonan Guan's 2026-04-25 Comment-and-Control disclosure (CVSS 9.4) showed an attacker-controlled PR title injects instructions the agent executes with its own credentials \u2014 credential theft demonstrated against Claude Code Security Review, Gemini CLI Action, and GitHub Copilot Agent.",
+      "incident_references": [
+        "COMMENT-AND-CONTROL-2026-04-25"
+      ],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Wrap the title in `html.escape` (or `markupsafe.escape`), or validate against a strict allow-list, or hash it before interpolating into the prompt. For TS/JS, use the equivalent. For shell-style agents, prefer `shlex.quote`. The fix is structural \u2014 never interpolate untrusted GitHub event content into an LLM prompt.",
+      "rule_id": "AAK-PRTITLE-IPI-001",
+      "sarif_name": "PrTitleIndirectPromptInjection",
+      "severity": "high",
+      "title": "PR/issue title flows into LLM client without sanitiser"
     },
     {
       "adversa_references": [

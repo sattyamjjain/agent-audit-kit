@@ -63,6 +63,11 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_marketplace_fetch", "MCP marketplace-fetch → StdioServerParameters", []),
     ("mcp_server_auth", "MCP server-author missing auth (Azure MCP, CVE-2026-32211)", []),
     ("splunk_mcp_config", "splunk-mcp-server config-side token-leak (CVE-2026-20205)", []),
+    ("prtitle_ipi", "PR-title indirect prompt injection (Comment-and-Control 2026-04-25)", []),
+    ("mcp_fhi", "MCP function-hijacking adversarial tool descriptions (arXiv 2604.20994)", []),
+    ("mcp_atlassian", "Atlassian MCP RCE chain (CVE-2026-27825/27826)", []),
+    ("ipi_wild_corpus", "Wild IPI payload corpus (2026-04-24)", []),
+    ("mcp_inspector_cve", "MCPJam Inspector vendored fork (CVE-2026-23744)", []),
 ]
 
 

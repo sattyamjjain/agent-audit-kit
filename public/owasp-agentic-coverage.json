@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-04-26T05:39:18Z",
-  "aak_version": "0.3.7",
-  "rule_count": 169,
+  "last_updated": "2026-04-27T11:00:58Z",
+  "aak_version": "0.3.8",
+  "rule_count": 175,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -67,7 +67,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 18,
+      "rule_density": 20,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -137,6 +137,28 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-27825"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-27826"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-02"
+          ]
         },
         {
           "id": "AAK-MCP-STDIO-CMD-INJ-001",
@@ -277,7 +299,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 42,
+      "rule_density": 44,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -346,6 +368,15 @@
           "severity": "low",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-IPI-WILD-CORPUS-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-17"
+          ]
         },
         {
           "id": "AAK-MCP-001",
@@ -448,6 +479,15 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-PRTITLE-IPI-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "AIS-12"
           ]
         },
         {
@@ -593,7 +633,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 29,
+      "rule_density": 30,
       "rules": [
         {
           "id": "AAK-AZURE-MCP-001",
@@ -733,6 +773,15 @@
           "severity": "low",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-FHI-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-12",
+            "CCC-08"
+          ]
         },
         {
           "id": "AAK-NEO4J-001",
@@ -1432,7 +1481,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 12,
+      "rule_density": 13,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -1472,6 +1521,17 @@
           "aicm_references": [
             "CCC-08",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-23744"
+          ],
+          "aicm_references": [
+            "STA-02",
+            "STA-08"
           ]
         },
         {
