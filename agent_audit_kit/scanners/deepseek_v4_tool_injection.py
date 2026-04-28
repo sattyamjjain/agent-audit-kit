@@ -81,7 +81,8 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         def _scan(self, func: ast.AST) -> None:
             lines = text.splitlines()
             start = max(0, func.lineno - 1)  # type: ignore[attr-defined]
-            end = min(len(lines), getattr(func, "end_lineno", func.lineno))  # type: ignore[attr-defined]
+            end_lineno = getattr(func, "end_lineno", func.lineno) or func.lineno  # type: ignore[attr-defined]
+            end = min(len(lines), end_lineno)
             body = "\n".join(lines[start:end])
             if not _TAINT_RE.search(body):
                 return
