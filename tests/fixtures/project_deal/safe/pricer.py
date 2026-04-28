@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import os
 
-import stripe  # commerce hint
+import stripe  # noqa: F401 — commerce hint, drives scope gate
 from anthropic import Anthropic
 
 from agent_audit_kit.parity import check as parity_check
