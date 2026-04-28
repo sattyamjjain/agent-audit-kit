@@ -518,6 +518,26 @@
       "title": "Claude Code < 2.1.75 reads managed-settings.json from unsafe ProgramData path"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A function that targets DeepSeek V4 (OpenAI-compatible client with `base_url=` containing 'deepseek', or `import deepseek`) reads from an untrusted source (request body, document loader, file read) and passes the value into a `tools=[{description: ...}]` payload without calling `sanitize_tool_description`. DeepSeek V4 (Apache 2.0, 2026-04-24) exposes MoE routing via its tool-call envelope \u2014 untrusted text inside a tool description can poison expert selection (LLM01 with MoE-specific surface). Speculative shape until corpus refresh.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Pipe untrusted tool descriptions through `agent_audit_kit.sanitizers.deepseek.sanitize_tool_description` before assembling the `tools=` payload. The sanitiser strips ANSI / control characters and routing-poison tokens ([ROUTE: ...], <|route_id|>, __route__=, etc.) and truncates to a max length. Calling it in the same function suppresses this rule.",
+      "rule_id": "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001",
+      "sarif_name": "DeepSeekV4MoeToolInjection",
+      "severity": "high",
+      "title": "DeepSeek V4 MoE-routed tool description injection"
+    },
+    {
       "adversa_references": [
         "ADV-NETWORK-01"
       ],
@@ -1335,6 +1355,26 @@
       "sarif_name": "LangchainSsrfRedirect",
       "severity": "high",
       "title": "Validate-then-fetch SSRF (redirects enabled past allow-list)"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
+      "auto_fixable": true,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "Source code calls `ToolNode([...])` (or `ToolNode(some_list)`) with a positional list rather than the documented `ToolNode(tools=[...])` keyword form. langgraph-prebuilt 1.0.11 (2026-04-24) regressed and silently coerces a positional list into a single-tool node, dropping every tool past the first and producing message-loop bugs in agents that depend on tool-routing behaviour.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Switch every `ToolNode([t1, t2, ...])` to `ToolNode(tools=[t1, t2, ...])`. The codemod at `agent_audit_kit/autofix/langgraph_toolnode.py` rewrites the trivial shape; `aak suggest --apply-trivial --rule AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001` will run it (queued for v0.4.0).",
+      "rule_id": "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001",
+      "sarif_name": "LangGraphToolNodePositionalList",
+      "severity": "medium",
+      "title": "langgraph.prebuilt.ToolNode positional-list misuse"
     },
     {
       "adversa_references": [],
@@ -2574,6 +2614,24 @@
       "title": "Third-party OAuth client granted broad Workspace scopes"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "Meta / informational rule that surfaces the project's static CVE coverage map (`agent_audit_kit/data/ox-cve-manifest.json`). Drives the OX-coverage badge endpoint and the `aak coverage --source ox` CLI; never fires findings on user code.",
+      "incident_references": [],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Run `aak coverage --source ox` to see which OX-disclosed CVEs are covered by AAK rules. The manifest is regenerated on every release and powers the `OX coverage` badge in README.",
+      "rule_id": "AAK-OX-COVERAGE-MANIFEST-001",
+      "sarif_name": "OxCoverageManifest",
+      "severity": "info",
+      "title": "Project OX-disclosed CVE coverage manifest"
+    },
+    {
       "adversa_references": [
         "ADV-POISON-01"
       ],
@@ -2716,6 +2774,29 @@
       "sarif_name": "ToolDescUrlOrPath",
       "severity": "medium",
       "title": "URL or file path in tool description"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-07"
+      ],
+      "auto_fixable": false,
+      "category": "agent-config",
+      "cve_references": [],
+      "description": "A pricing function (set_price / quote / bid / list_price / negotiate / price_item / compute_price) calls an LLM with a templated `model=` argument and is not gated by `@aak.parity.check` (or equivalent). Anthropic's 2026-04-26 Project Deal experiment found Opus sellers earned $2.68/item more than Haiku sellers despite identical buyer ratings (4.06 vs 4.05). This is OWASP LLM09 (overreliance / economic harm) \u2014 without per-tier parity assertions, deploying multiple model tiers behind the same pricing surface produces silent revenue / cost drift across customer cohorts.",
+      "incident_references": [
+        "ANTHROPIC-PROJECT-DEAL-2026-04-26"
+      ],
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Wrap pricing functions with `@aak.parity.check(dimensions=['model'], metric='price', max_drift_pct=1.5)` and run `aak parity report` in CI. The decorator records every invocation's (model, price) tuple and raises `ParityDriftError` if any per-tier mean drifts more than the configured threshold from the overall mean.",
+      "rule_id": "AAK-PROJECT-DEAL-DRIFT-001",
+      "sarif_name": "ProjectDealEconomicDrift",
+      "severity": "high",
+      "title": "Cross-tier LLM pricing without parity check (Project Deal class)"
     },
     {
       "adversa_references": [
@@ -3929,6 +4010,29 @@
       "sarif_name": "TasksNoTtl",
       "severity": "medium",
       "title": "MCP task has no TTL or cancellation path"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "IAM-02",
+        "CCC-08"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Source code wires a social-platform reply sink (`tiktok_api.reply`, `instagrapi.direct.send`, `tweepy.API.update_status`, `discord.Message.reply`, etc.) to a user-content source (`comments.fetch`, webhook payload `text` field, media comments) without an `aak.review.human_in_loop()` / `human_in_the_loop()` / `require_approval()` gate. Jiacheng Zhong's BlackHat Asia 2026 (2026-04-24) talk demonstrates hijacks in this class \u2014 attacker posts a crafted comment that the agent's own reply loop turns into a tool call, reflecting attacker text back to the platform's audience. OWASP LLM08 (Excessive Agency).",
+      "incident_references": [
+        "BHASIA-2026-TIKTOK-HIJACK"
+      ],
+      "owasp_agentic_references": [
+        "ASI09"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Place every social-platform write call behind a human-review gate. AAK ships an `aak.review.human_in_loop(text, comment=...)` helper that defaults closed and requires explicit approval (CLI, webhook, or workflow). For high-volume agents, route generated replies to a moderation queue instead of the platform sink directly.",
+      "rule_id": "AAK-TIKTOK-AGENT-HIJACK-001",
+      "sarif_name": "TikTokAgentHijack",
+      "severity": "high",
+      "title": "Social-agent auto-reply without human-in-loop gate"
     },
     {
       "adversa_references": [

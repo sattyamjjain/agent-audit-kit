@@ -1,0 +1,15 @@
+id = "agent-audit-kit"
+name = "AgentAuditKit"
+version = "0.3.9"
+schema_version = 1
+authors = ["sattyamjjain <platform.dev@attri.ai>"]
+description = "Live AAK security findings as LSP diagnostics in Zed."
+repository = "https://github.com/sattyamjjain/agent-audit-kit"
+
+[language_servers.agent-audit-kit]
+name = "agent-audit-kit"
+languages = ["Python", "TypeScript", "JavaScript", "TSX", "JSX", "Rust", "YAML"]
+
+[language_servers.agent-audit-kit.binary]
+path_lookup = true
+arguments = ["inspect-ide", ".", "--serve"]

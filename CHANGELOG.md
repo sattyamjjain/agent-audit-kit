@@ -5,6 +5,107 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-04-28
+
+**Headline: 5 new rules (180 total), 4 new CLI commands, runtime
+parity-drift detector, Pipelock v2.3 policy bridge, and a stdio LSP
+adapter that drops AAK findings into Zed and VS Code.**
+
+This release lands the v0.3.9 plan in full: 3× P0 SAST rules for the
+2026-04-24/25/26 cluster (Project Deal economic drift, LangGraph
+ToolNode regression, DeepSeek V4 MoE tool injection), one P2 rule for
+the BlackHat Asia 2026 social-agent hijack class, an OX-disclosed CVE
+coverage manifest with a public badge, a Pipelock v2.3 → AAK config
+translator, an `aak inspect-ide` CLI that publishes LSP diagnostics
+(plus a Zed extension), a runtime `@aak.parity.check` decorator with
+`aak parity report`, and corpus-manifest provenance fields
+(`source_url` / `license` / `fetched_at`).
+
+### Added — Rules (5)
+
+- **AAK-PROJECT-DEAL-DRIFT-001** (HIGH) — pricing function calls an
+  LLM with a templated `model=` and no `@aak.parity.check`. Anthropic
+  Project Deal class (LLM09 / economic harm).
+- **AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001** (MEDIUM,
+  auto-fixable) — `ToolNode([...])` positional list; LangGraph
+  prebuilt 1.0.11 silently coerces. Codemod queued via
+  `aak suggest --apply-trivial` in v0.4.0.
+- **AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001** (HIGH) — DeepSeek V4 MoE-routed
+  tool description sourced from a request body / document loader
+  without `sanitize_tool_description`. LLM01 with MoE-specific
+  surface.
+- **AAK-TIKTOK-AGENT-HIJACK-001** (HIGH) — social-agent reply sink
+  reachable from user-content source without a human-in-loop gate.
+  BlackHat Asia 2026 (Jiacheng Zhong) hijack class (LLM08).
+- **AAK-OX-COVERAGE-MANIFEST-001** (INFO, meta) — drives the
+  OX-disclosed CVE coverage badge + `aak coverage --source ox`.
+
+### Added — CLI commands (4)
+
+- `aak coverage --source ox` — prints AAK's static coverage of the
+  OX disclosure timeline. `--format text|json|badge`.
+- `aak pipelock import <policy.yaml>` — translates a Pipelock v2.3
+  policy into a `.agent-audit-kit.yml`. `--dry-run` prints to stdout.
+- `aak inspect-ide [PATH]` — runs AAK and emits LSP-shape
+  diagnostics. `--serve` starts a stdio LSP server (Zed / VS Code
+  language clients can attach).
+- `aak parity report` — reads the in-process `@aak.parity.check`
+  registry and runs the parity assertion. `--window` accepts `7d`,
+  `24h`, `60m`, `30s`.
+
+### Added — Runtime helpers
+
+- `agent_audit_kit.parity.check(...)` decorator — records every
+  invocation's `(dimensions, metric)` tuple; thread-safe.
+- `agent_audit_kit.checks.economic_drift.assert_parity(...)` —
+  per-bucket mean drift assertion. `ParityDriftError` on failure.
+- `agent_audit_kit.sanitizers.deepseek.sanitize_tool_description` —
+  strips control characters + routing-poison tokens, truncates.
+  Calling it in the same function suppresses the SAST rule.
+- `agent_audit_kit.autofix.langgraph_toolnode.fix(text)` —
+  idempotent text-level rewrite for the ToolNode regression.
+
+### Added — Editor / IDE
+
+- `editors/zed/extension.toml` — Zed extension that auto-launches
+  `agent-audit-kit inspect-ide --serve`.
+- `agent_audit_kit/ide/lsp_diag.py` — minimal stdio LSP server,
+  `diagnostics_for(path)` helper.
+
+### Added — Coverage / housekeeping
+
+- `agent_audit_kit/data/ox-cve-manifest.json` — 19 OX-disclosed CVE
+  entries, all currently covered.
+- `schema/ox-cve-manifest.schema.json` — JSON Schema for the
+  manifest.
+- `.github/workflows/badge-ox-coverage.yml` — auto-publishes
+  `public/badges/ox-coverage.json` when the manifest changes.
+- `public/corpora/manifest.json` — bumped `schema_version` to `2`;
+  every entry now carries `source_url`, `license`, `fetched_at`.
+- `agent_audit_kit/corpus/manifest.py` — `CorpusEntry` carries the
+  new provenance fields.
+
+### Tests
+
+- `tests/test_v0_3_9_rules.py` — 14 cases covering the 4 new SAST
+  scanners + the autofix codemod (vulnerable + safe + scope-gate).
+- `tests/test_v0_3_9_features.py` — 10 cases for parity decorator,
+  drift assertion, sanitiser idempotence + truncation.
+- `tests/test_v0_3_9_features_p1.py` — 15 cases for OX coverage,
+  Pipelock translator, IDE LSP adapter (CLI + library).
+
+Total suite: 869 passing.
+
+
+## [0.3.8] - 2026-04-27
+
+5 new SAST rules + 5 fixture sets + supporting infrastructure for
+Comment-and-Control PR title indirect-prompt-injection, MCP function
+hijacking (FHI), Atlassian RCE chain, the wild IPI payload corpus,
+and the MCPJam Inspector vendored fork. Released alongside the
+critical Dockerfile / engine ignore_paths fix from 0.3.7.
+
+
 ## [0.3.7] - 2026-04-26
 
 **Headline: critical Action / Dockerfile fix — published v0.3.6 was

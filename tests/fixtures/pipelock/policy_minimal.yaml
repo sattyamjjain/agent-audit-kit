@@ -1,0 +1,20 @@
+schema: pipelock/v2.3
+name: minimal-policy
+rules:
+  allow:
+    - AAK-MCP-001
+    - AAK-HOOK-001
+  deny:
+    - id: AAK-AGENT-002
+      severity_floor: medium
+integrations:
+  git:
+    fail_on: high
+  user_config_scan: false
+paths:
+  ignore:
+    - vendor/
+    - tmp/
+output:
+  format: sarif
+  file: aak.sarif
