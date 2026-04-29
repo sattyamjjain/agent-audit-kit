@@ -1,0 +1,236 @@
+{
+  "total_static": 20,
+  "covered": 20,
+  "coverage_pct": 100.0,
+  "entries": [
+    {
+      "airs_attack_id": "PA-AIRS-001",
+      "title": "Prompt injection via tool description",
+      "category": "prompt-injection",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-MCP-FHI-001",
+        "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-002",
+      "title": "Prompt injection via document loader",
+      "category": "prompt-injection",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-IPI-WILD-CORPUS-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-003",
+      "title": "Tool-call SSRF via untrusted URL",
+      "category": "ssrf",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-SSRF-001",
+        "AAK-SSRF-002",
+        "AAK-CREWAI-CVE-2026-2286-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-004",
+      "title": "Tool-call command injection",
+      "category": "rce",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-TAINT-001",
+        "AAK-MCP-002",
+        "AAK-MCPWN-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-005",
+      "title": "Sandbox escape via unsafe interpreter mode",
+      "category": "rce",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-CREWAI-CVE-2026-2275-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-006",
+      "title": "JSON / YAML loader path traversal",
+      "category": "path-traversal",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-CREWAI-CVE-2026-2285-001",
+        "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001",
+        "AAK-EXCEL-MCP-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-007",
+      "title": "MCP STDIO config-to-spawn taint",
+      "category": "rce",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-MCP-STDIO-PARAMS-001",
+        "AAK-STDIO-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-008",
+      "title": "MCP transport DNS rebinding",
+      "category": "network",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-DNS-REBIND-001",
+        "AAK-DNS-REBIND-002"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-009",
+      "title": "Token logging in cleartext",
+      "category": "leak",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-SPLUNK-TOKLOG-001",
+        "AAK-LOG-TOKEN-LEAK-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-010",
+      "title": "Cross-tenant agent role escalation",
+      "category": "privesc",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-OPENCLAW-PRIVESC-001",
+        "AAK-A2A-002"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-011",
+      "title": "Indirect prompt injection via PR title / commit metadata",
+      "category": "prompt-injection",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-PRTITLE-IPI-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-012",
+      "title": "Tool-poisoning via adversarial description suffix",
+      "category": "tool-poisoning",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-MCP-FHI-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-013",
+      "title": "Validate-then-fetch SSRF (redirect bypass)",
+      "category": "ssrf",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-LANGCHAIN-SSRF-REDIR-001",
+        "AAK-LANGCHAIN-SSRF-TOCTOU-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-014",
+      "title": "MoE-routed tool description injection",
+      "category": "prompt-injection",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-015",
+      "title": "Social-agent auto-reply hijack",
+      "category": "agency",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-TIKTOK-AGENT-HIJACK-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-016",
+      "title": "Cross-tier economic drift in multi-model pricing",
+      "category": "economic",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-PROJECT-DEAL-DRIFT-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-017",
+      "title": "OAuth scope creep via third-party agent SDK",
+      "category": "supply-chain",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-OAUTH-3P-001",
+        "AAK-OAUTH-3P-BROAD-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-018",
+      "title": "MCP marketplace fetch SSRF + spawn",
+      "category": "supply-chain",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-MCP-MARKETPLACE-FETCH-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-019",
+      "title": "GitHub Actions tag-pinned third-party Action",
+      "category": "supply-chain",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-GHA-IMMUTABLE-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-020",
+      "title": "Agent prompt-loader path traversal",
+      "category": "path-traversal",
+      "status": "covered",
+      "aak_rule_ids": [
+        "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001",
+        "AAK-CREWAI-CVE-2026-2285-001"
+      ]
+    },
+    {
+      "airs_attack_id": "PA-AIRS-021",
+      "title": "Runtime DLP \u2014 agent egress without redaction",
+      "category": "leak",
+      "status": "runtime-only",
+      "aak_rule_ids": []
+    },
+    {
+      "airs_attack_id": "PA-AIRS-022",
+      "title": "Live attack-tree red-teaming",
+      "category": "red-team",
+      "status": "runtime-only",
+      "aak_rule_ids": []
+    },
+    {
+      "airs_attack_id": "PA-AIRS-023",
+      "title": "Memory poisoning persistence",
+      "category": "memory",
+      "status": "runtime-only",
+      "aak_rule_ids": []
+    },
+    {
+      "airs_attack_id": "PA-AIRS-024",
+      "title": "Live tool-call replay detection",
+      "category": "runtime",
+      "status": "runtime-only",
+      "aak_rule_ids": []
+    },
+    {
+      "airs_attack_id": "PA-AIRS-025",
+      "title": "Adversarial multimodal payload",
+      "category": "multimodal",
+      "status": "catalog-private",
+      "aak_rule_ids": []
+    }
+  ]
+}

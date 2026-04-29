@@ -1,0 +1,167 @@
+{
+  "total": 19,
+  "covered": 19,
+  "coverage_pct": 100.0,
+  "entries": [
+    {
+      "cve": "CVE-2025-66335",
+      "title": "apache-doris-mcp-server SQL injection",
+      "covered": true,
+      "rules": [
+        "AAK-DORIS-001"
+      ]
+    },
+    {
+      "cve": "CVE-2025-66414",
+      "title": "MCP Python SDK StreamableHTTP DNS rebinding",
+      "covered": true,
+      "rules": [
+        "AAK-DNS-REBIND-001",
+        "AAK-DNS-REBIND-002"
+      ]
+    },
+    {
+      "cve": "CVE-2025-66416",
+      "title": "MCP Python SDK StreamableHTTP DNS rebinding (companion)",
+      "covered": true,
+      "rules": [
+        "AAK-DNS-REBIND-001",
+        "AAK-DNS-REBIND-002"
+      ]
+    },
+    {
+      "cve": "CVE-2026-20205",
+      "title": "splunk-mcp-server token-cleartext logging",
+      "covered": true,
+      "rules": [
+        "AAK-SPLUNK-TOKLOG-001",
+        "AAK-LOG-TOKEN-LEAK-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-23744",
+      "title": "MCPJam Inspector vendored fork",
+      "covered": true,
+      "rules": [
+        "AAK-MCP-INSPECTOR-CVE-2026-23744-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-27825",
+      "title": "Atlassian MCP RCE chain",
+      "covered": true,
+      "rules": [
+        "AAK-MCP-ATLASSIAN-CVE-2026-27825-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-32211",
+      "title": "Azure MCP server-author missing auth",
+      "covered": true,
+      "rules": [
+        "AAK-MCP-SERVER-AUTH-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-33032",
+      "title": "MCPwn twin-route middleware asymmetry",
+      "covered": true,
+      "rules": [
+        "AAK-MCPWN-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-35402",
+      "title": "mcp-neo4j-cypher Cypher-injection",
+      "covered": true,
+      "rules": [
+        "AAK-NEO4J-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-35568",
+      "title": "MCP Java SDK StreamableHTTP DNS rebinding",
+      "covered": true,
+      "rules": [
+        "AAK-DNS-REBIND-001",
+        "AAK-DNS-REBIND-002"
+      ]
+    },
+    {
+      "cve": "CVE-2026-35577",
+      "title": "Apollo MCP server StreamableHTTP DNS rebinding",
+      "covered": true,
+      "rules": [
+        "AAK-DNS-REBIND-001",
+        "AAK-DNS-REBIND-002"
+      ]
+    },
+    {
+      "cve": "CVE-2026-39313",
+      "title": "mcp-framework HTTP-body DoS",
+      "covered": true,
+      "rules": [
+        "AAK-MCPFRAME-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-40576",
+      "title": "excel-mcp-server path traversal",
+      "covered": true,
+      "rules": [
+        "AAK-EXCEL-MCP-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-40608",
+      "title": "next-ai-draw-io body-accumulation DoS",
+      "covered": true,
+      "rules": [
+        "AAK-NEXT-AI-DRAW-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-41481",
+      "title": "langchain-text-splitters validate-then-fetch SSRF",
+      "covered": true,
+      "rules": [
+        "AAK-LANGCHAIN-SSRF-REDIR-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-41488",
+      "title": "validate-then-fetch DNS-rebind / TOCTOU SSRF",
+      "covered": true,
+      "rules": [
+        "AAK-LANGCHAIN-SSRF-TOCTOU-001"
+      ]
+    },
+    {
+      "cve": "CVE-2026-6494",
+      "title": "MCP tool log-injection",
+      "covered": true,
+      "rules": [
+        "AAK-LOGINJ-001"
+      ]
+    },
+    {
+      "cve": "OX-MCP-2026-04-15",
+      "title": "Upstream MCP SDK STDIO command-injection inheritance",
+      "covered": true,
+      "rules": [
+        "AAK-ANTHROPIC-SDK-001",
+        "AAK-STDIO-001",
+        "AAK-MCPWN-001"
+      ]
+    },
+    {
+      "cve": "OX-MCP-2026-04-25",
+      "title": "MCP StdioServerParameters config-to-spawn taint",
+      "covered": true,
+      "rules": [
+        "AAK-MCP-STDIO-PARAMS-001",
+        "AAK-MCP-MARKETPLACE-FETCH-001"
+      ]
+    }
+  ]
+}

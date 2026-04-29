@@ -72,6 +72,9 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("langgraph_toolnode", "LangGraph ToolNode positional-list regression (1.0.11)", []),
     ("deepseek_v4_tool_injection", "DeepSeek V4 MoE-routed tool injection", []),
     ("social_agent_hijack", "Social-agent auto-reply hijack (BHASIA 2026)", []),
+    ("crewai_rce_chain", "CrewAI four-CVE chain (CERT/CC VU#221883)", []),
+    ("langchain_prompt_loader", "LangChain load_prompt path traversal (CVE-2026-34070)", []),
+    ("openclaw_privesc", "OpenClaw missing-role privesc (provisional)", []),
 ]
 
 

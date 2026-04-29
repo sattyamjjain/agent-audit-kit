@@ -1,3 +1,10 @@
+"""Scoring package — penalty-based AAK score + AIVSS v0.8 annotator.
+
+`compute_score` and `generate_badge` are the original AAK score
+(0–100, letter grade) used by `aak score <path>` (legacy).
+`aivss.score_finding` and `aivss.annotate_sarif` are the v0.3.10
+AIVSS v0.8 layer used by `aak score <sarif-in> --aivss`.
+"""
 from __future__ import annotations
 
 from agent_audit_kit.models import ScanResult, Severity
@@ -6,13 +13,8 @@ from agent_audit_kit.models import ScanResult, Severity
 def compute_score(result: ScanResult) -> None:
     """Mutates result.score and result.grade in place.
 
-    Applies a penalty-based scoring system where each finding deducts
-    points based on severity: CRITICAL (-20), HIGH (-10), MEDIUM (-5),
-    LOW (-2). The final score is clamped to [0, 100] and mapped to a
-    letter grade.
-
-    Args:
-        result: The ScanResult whose score and grade fields will be set.
+    Penalty-based: CRITICAL -20, HIGH -10, MEDIUM -5, LOW -2.
+    Score is clamped to [0, 100] and mapped to a letter grade.
     """
     score = 100
     for f in result.findings:
@@ -42,15 +44,7 @@ def compute_score(result: ScanResult) -> None:
 
 
 def generate_badge(score: int, grade: str) -> str:
-    """Generate an SVG badge string for the audit score.
-
-    Args:
-        score: Numeric score between 0 and 100.
-        grade: Letter grade (A, B, C, D, or F).
-
-    Returns:
-        An SVG string representing the audit badge.
-    """
+    """Generate an SVG badge string for the audit score."""
     colors = {
         "A": "#4c1",
         "B": "#97CA00",
@@ -79,3 +73,6 @@ def generate_badge(score: int, grade: str) -> str:
         f"  </g>\n"
         f"</svg>"
     )
+
+
+__all__ = ["compute_score", "generate_badge"]

@@ -578,15 +578,45 @@ def fix_cmd(path: str, dry_run: bool, cve_only: bool) -> None:
 
 
 @cli.command("score")
-@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
-@click.option("--badge", is_flag=True, default=False, help="Generate SVG badge.")
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=True, dir_okay=True, resolve_path=True))
+@click.option("--badge", is_flag=True, default=False, help="Generate SVG badge (project-score mode only).")
+@click.option("--aivss", is_flag=True, default=False, help="Annotate a SARIF file with AIVSS v0.8 scores.")
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None)
-def score_cmd(path: str, badge: bool, output_file: str | None) -> None:
-    """Show security score and grade for a project."""
+def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> None:
+    """Score a project (legacy AAK letter grade) OR annotate a SARIF
+    file with AIVSS v0.8 scores via --aivss."""
+    import json
+
     from agent_audit_kit.scoring import compute_score, generate_badge
 
-    project_root = Path(path)
-    result = run_scan(project_root=project_root)
+    target = Path(path)
+
+    # SARIF mode: --aivss + a file path → annotate SARIF.
+    if aivss:
+        if target.is_dir():
+            click.echo("--aivss expects a SARIF file path, not a directory.", err=True)
+            sys.exit(EXIT_ERROR)
+        from agent_audit_kit.rules.builtin import get_rule
+        from agent_audit_kit.scoring.aivss import annotate_sarif
+
+        sarif = json.loads(target.read_text(encoding="utf-8"))
+        annotated = annotate_sarif(sarif, get_rule)
+        text = json.dumps(annotated, indent=2)
+        if output_file:
+            Path(output_file).write_text(text, encoding="utf-8")
+            click.echo(f"wrote {output_file}", err=True)
+        else:
+            click.echo(text)
+        return
+
+    # Legacy project-score mode.
+    if target.is_file():
+        click.echo(
+            "score: pass a project directory, or pass a SARIF file with --aivss.",
+            err=True,
+        )
+        sys.exit(EXIT_ERROR)
+    result = run_scan(project_root=target)
     compute_score(result)
     click.echo(f"\nSecurity Score: {result.score}/100  Grade: {result.grade}\n")
     if badge:
@@ -973,7 +1003,7 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
 @cli.command("coverage")
 @click.option(
     "--source",
-    type=click.Choice(["ox"]),
+    type=click.Choice(["ox", "prisma-airs"]),
     default="ox",
     help="Coverage source to report on.",
 )
@@ -984,17 +1014,53 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
     default="text",
 )
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None)
-def coverage_cmd(source: str, fmt: str, output_file: str | None) -> None:
-    """Report AAK's coverage of disclosed-CVE manifests (OX, etc.)."""
+@click.option(
+    "--fail-under",
+    type=float,
+    default=None,
+    help="Exit 1 if coverage_pct < threshold (CI use).",
+)
+def coverage_cmd(
+    source: str, fmt: str, output_file: str | None, fail_under: float | None
+) -> None:
+    """Report AAK's coverage of external manifests (OX, Prisma AIRS)."""
     import json
-    from agent_audit_kit.coverage import load_manifest, summarize
 
-    if source != "ox":  # pragma: no cover — guarded by Click choice
-        click.echo(f"Unknown coverage source: {source}", err=True)
-        sys.exit(EXIT_ERROR)
+    def _ox_row(e: dict) -> str:
+        rules = ", ".join(e["rules"]) or "—"
+        mark = "✔" if e["covered"] else "✘"
+        return f"  {mark} {e['cve']}: {e['title']} → {rules}"
 
-    entries = load_manifest("ox")
-    summary = summarize(entries)
+    def _airs_row(e: dict) -> str:
+        rules = ", ".join(e["aak_rule_ids"]) or "—"
+        mark = "✔" if e["aak_rule_ids"] else "·"
+        return f"  {mark} {e['airs_attack_id']} [{e['status']}]: {e['title']} → {rules}"
+
+    if source == "ox":
+        from agent_audit_kit.coverage import load_manifest, summarize as ox_summarize
+
+        entries = load_manifest("ox")
+        summary = ox_summarize(entries)
+        label = "OX coverage"
+        total_key = "total"
+        item_renderer = _ox_row
+        header = (
+            f"OX-disclosed CVE coverage: "
+            f"{summary['covered']}/{summary[total_key]} "
+            f"({summary['coverage_pct']}%)"
+        )
+    else:
+        from agent_audit_kit.translators.prisma_airs import summarize as airs_summarize
+
+        summary = airs_summarize()
+        label = "Prisma AIRS coverage"
+        total_key = "total_static"
+        item_renderer = _airs_row
+        header = (
+            f"Prisma AIRS coverage (static-relevant only): "
+            f"{summary['covered']}/{summary[total_key]} "
+            f"({summary['coverage_pct']}%)"
+        )
 
     if fmt == "json":
         text = json.dumps(summary, indent=2, sort_keys=True)
@@ -1004,23 +1070,16 @@ def coverage_cmd(source: str, fmt: str, output_file: str | None) -> None:
         text = json.dumps(
             {
                 "schemaVersion": 1,
-                "label": "OX coverage",
+                "label": label,
                 "message": f"{pct}%",
                 "color": colour,
             },
             indent=2,
         )
     else:
-        lines = [
-            f"OX-disclosed CVE coverage: "
-            f"{summary['covered']}/{summary['total']} "
-            f"({summary['coverage_pct']}%)",
-            "",
-        ]
+        lines = [header, ""]
         for entry in summary["entries"]:
-            mark = "✔" if entry["covered"] else "✘"
-            rules = ", ".join(entry["rules"]) or "—"
-            lines.append(f"  {mark} {entry['cve']}: {entry['title']} → {rules}")
+            lines.append(item_renderer(entry))
         text = "\n".join(lines) + "\n"
 
     if output_file:
@@ -1028,6 +1087,13 @@ def coverage_cmd(source: str, fmt: str, output_file: str | None) -> None:
         click.echo(f"wrote {output_file}", err=True)
     else:
         click.echo(text)
+
+    if fail_under is not None and summary["coverage_pct"] < fail_under:
+        click.echo(
+            f"coverage {summary['coverage_pct']}% < --fail-under {fail_under}%",
+            err=True,
+        )
+        sys.exit(EXIT_FINDINGS)
 
 
 @cli.group("pipelock")
@@ -1160,6 +1226,71 @@ def parity_cmd(
         click.echo(f"parity {subcommand}: {type(exc).__name__}: {exc}", err=True)
         sys.exit(EXIT_FINDINGS)
     click.echo(json.dumps(out, indent=2, default=str))
+
+
+# ---------------------------------------------------------------------------
+# v0.3.10 commands: watch, rule lint  (score gained --aivss above)
+# ---------------------------------------------------------------------------
+
+
+@cli.command("watch-cve")
+@click.option(
+    "--feeds",
+    default="ox,cert-cc,thaicert,ironplate",
+    help="Comma-separated feed IDs to poll.",
+)
+@click.option(
+    "--emit",
+    default=None,
+    help="Notification sink: slack://...|webhook://...|github://owner/repo",
+)
+@click.option("--interval-seconds", type=int, default=1800)
+@click.option("--max-iterations", type=int, default=0, help="0 = run forever.")
+@click.option("--dry-run", is_flag=True, default=False)
+def watch_cve_cmd(
+    feeds: str,
+    emit: str | None,
+    interval_seconds: int,
+    max_iterations: int,
+    dry_run: bool,
+) -> None:
+    """Poll CVE feeds and surface new entries that lack an AAK rule.
+
+    Distinct from `aak watch` (legacy pin-drift monitor)."""
+    from agent_audit_kit.feeds import run_watch as run_feed_watch
+
+    feed_ids = [f.strip() for f in feeds.split(",") if f.strip()]
+    rc = run_feed_watch(
+        feed_ids=feed_ids,
+        emit=emit,
+        interval_seconds=interval_seconds,
+        max_iterations=max_iterations,
+        dry_run=dry_run,
+    )
+    sys.exit(rc)
+
+
+@cli.group("rule")
+def rule_cmd() -> None:
+    """Rule-registry hygiene commands."""
+
+
+@rule_cmd.command("lint")
+@click.option("--ci", is_flag=True, default=False, help="Exit 1 on any violation.")
+@click.option("--rule", "rule_filter", default=None, help="Lint only this rule_id.")
+def rule_lint_cmd(ci: bool, rule_filter: str | None) -> None:
+    """Validate the RuleDefinition registry against AAK metadata invariants."""
+    from agent_audit_kit.cli_modules.rule_lint import run_lint
+
+    violations = run_lint(rule_filter=rule_filter)
+    if not violations:
+        click.echo("rule lint: clean.")
+        return
+    for v in violations:
+        click.echo(f"  {v['rule_id']}: {v['message']}", err=True)
+    click.echo(f"rule lint: {len(violations)} violation(s).", err=True)
+    if ci:
+        sys.exit(EXIT_FINDINGS)
 
 
 # Backward compatibility: allow `agent-audit-kit .` without `scan` subcommand

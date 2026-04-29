@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "manifest_version": "2026-04-29",
+  "fetched_at": "2026-04-29",
+  "map": [
+    {"airs_attack_id": "PA-AIRS-001", "aak_rule_ids": ["AAK-MCP-FHI-001", "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-002", "aak_rule_ids": ["AAK-IPI-WILD-CORPUS-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-003", "aak_rule_ids": ["AAK-SSRF-001", "AAK-SSRF-002", "AAK-CREWAI-CVE-2026-2286-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-004", "aak_rule_ids": ["AAK-TAINT-001", "AAK-MCP-002", "AAK-MCPWN-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-005", "aak_rule_ids": ["AAK-CREWAI-CVE-2026-2275-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-006", "aak_rule_ids": ["AAK-CREWAI-CVE-2026-2285-001", "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001", "AAK-EXCEL-MCP-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-007", "aak_rule_ids": ["AAK-MCP-STDIO-PARAMS-001", "AAK-STDIO-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-008", "aak_rule_ids": ["AAK-DNS-REBIND-001", "AAK-DNS-REBIND-002"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-009", "aak_rule_ids": ["AAK-SPLUNK-TOKLOG-001", "AAK-LOG-TOKEN-LEAK-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-010", "aak_rule_ids": ["AAK-OPENCLAW-PRIVESC-001", "AAK-A2A-002"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-011", "aak_rule_ids": ["AAK-PRTITLE-IPI-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-012", "aak_rule_ids": ["AAK-MCP-FHI-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-013", "aak_rule_ids": ["AAK-LANGCHAIN-SSRF-REDIR-001", "AAK-LANGCHAIN-SSRF-TOCTOU-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-014", "aak_rule_ids": ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-015", "aak_rule_ids": ["AAK-TIKTOK-AGENT-HIJACK-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-016", "aak_rule_ids": ["AAK-PROJECT-DEAL-DRIFT-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-017", "aak_rule_ids": ["AAK-OAUTH-3P-001", "AAK-OAUTH-3P-BROAD-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-018", "aak_rule_ids": ["AAK-MCP-MARKETPLACE-FETCH-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-019", "aak_rule_ids": ["AAK-GHA-IMMUTABLE-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-020", "aak_rule_ids": ["AAK-LANGCHAIN-PROMPT-LOADER-PATH-001", "AAK-CREWAI-CVE-2026-2285-001"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-021", "aak_rule_ids": [], "status": "runtime-only"},
+    {"airs_attack_id": "PA-AIRS-022", "aak_rule_ids": [], "status": "runtime-only"},
+    {"airs_attack_id": "PA-AIRS-023", "aak_rule_ids": [], "status": "runtime-only"},
+    {"airs_attack_id": "PA-AIRS-024", "aak_rule_ids": [], "status": "runtime-only"},
+    {"airs_attack_id": "PA-AIRS-025", "aak_rule_ids": [], "status": "catalog-private"}
+  ]
+}

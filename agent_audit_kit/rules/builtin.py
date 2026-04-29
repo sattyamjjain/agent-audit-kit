@@ -180,6 +180,15 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001": ["AIS-07"],
     "AAK-TIKTOK-AGENT-HIJACK-001": ["IAM-02", "CCC-08"],
     "AAK-OX-COVERAGE-MANIFEST-001": ["STA-08"],
+    # ---- v0.3.10 (2026-04-29) -------------------------------------------
+    "AAK-CREWAI-CHAIN-2026-04-001": ["AIS-07", "STA-08"],
+    "AAK-CREWAI-CVE-2026-2275-001": ["AIS-07", "IVS-04"],
+    "AAK-CREWAI-CVE-2026-2285-001": ["AIS-07"],
+    "AAK-CREWAI-CVE-2026-2286-001": ["IVS-04"],
+    "AAK-CREWAI-CVE-2026-2287-001": ["AIS-07", "IVS-04"],
+    "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001": ["AIS-07"],
+    "AAK-PRISMA-AIRS-COVERAGE-001": ["STA-08"],
+    "AAK-OPENCLAW-PRIVESC-001": ["IAM-02"],
 }
 
 
@@ -3007,8 +3016,8 @@ _r(
     "sidecar's /api/state, /api/restore and /api/history-svg handlers — "
     "the entire request body is concatenated into a JavaScript string "
     "without a size cap, so a single ~500 MiB POST exhausts V8 heap and "
-    "crashes the MCP server. Same class as CVE-2026-39313 "
-    "(AAK-MCPFRAME-001). Fixed in 0.4.15.",
+    "crashes the MCP server. Same DoS class as AAK-MCPFRAME-001. "
+    "Fixed in 0.4.15.",
     Severity.MEDIUM,
     Category.TRANSPORT_SECURITY,
     "Upgrade `next-ai-draw-io` to 0.4.15 or later. For custom transports "
@@ -3516,7 +3525,7 @@ _r(
     "file-writes, additionally enforce a path allow-list rooted at "
     "the agent's tenant directory.",
     sarif_name="McpAtlassianRce27826",
-    cve_references=["CVE-2026-27826"],
+    cve_references=["CVE-2026-27826", "CVE-2026-27825"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-05"],
@@ -3696,6 +3705,186 @@ _r(
     "covered by AAK rules. The manifest is regenerated on every release "
     "and powers the `OX coverage` badge in README.",
     sarif_name="OxCoverageManifest",
+)
+
+
+# ---------------------------------------------------------------------------
+# v0.3.10 (2026-04-29) — CrewAI four-CVE chain (CERT/CC VU#221883),
+# LangChain prompt-loader path traversal (CVE-2026-34070), Prisma AIRS
+# coverage manifest, OpenClaw privesc (provisional, IronPlate-cited).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-CREWAI-CHAIN-2026-04-001",
+    "CrewAI four-CVE exploit chain reachable in one module",
+    "Meta-rule: fires when all four CrewAI 0.x exploit-chain shapes "
+    "are reachable in the same module — CVE-2026-2275 "
+    "(CodeInterpreterTool unsafe_mode), CVE-2026-2285 (JSON loader "
+    "path traversal), CVE-2026-2286 (RAG SSRF) and CVE-2026-2287 "
+    "(missing Docker liveness gate). ThaiCERT 2026-04-02 + CERT/CC "
+    "VU#221883 demonstrate that an untrusted prompt walks the chain "
+    "to host RCE without further exploitation.",
+    Severity.CRITICAL,
+    Category.AGENT_CONFIG,
+    "Apply each child-rule's remediation. The single hardest gate is "
+    "CVE-2026-2275 (CodeInterpreterTool unsafe_mode); fixing that one "
+    "breaks the chain. The runtime helpers in "
+    "`agent_audit_kit.sanitizers.crewai` collectively suppress all "
+    "four sub-rules.",
+    sarif_name="CrewAiFourCveChain",
+    cve_references=[
+        "CVE-2026-2275",
+        "CVE-2026-2285",
+        "CVE-2026-2286",
+        "CVE-2026-2287",
+    ],
+    owasp_agentic_references=["ASI01", "ASI05", "ASI09"],
+    incident_references=["CERT-CC-VU-221883"],
+    aicm_references=["AIS-07", "STA-08"],
+)
+
+_r(
+    "AAK-CREWAI-CVE-2026-2275-001",
+    "CrewAI CodeInterpreterTool with unsafe_mode=True",
+    "`CodeInterpreterTool(unsafe_mode=True)` drops into a host Python "
+    "interpreter where ctypes / os.system are reachable. CVE-2026-2275 "
+    "is the canonical sandbox-escape primitive in the CrewAI 0.x chain "
+    "(ThaiCERT 2026-04-02 / CERT/CC VU#221883).",
+    Severity.CRITICAL,
+    Category.AGENT_CONFIG,
+    "Set `unsafe_mode=False` on every CodeInterpreterTool invocation. "
+    "If you must run untrusted code, wrap with a real container "
+    "sandbox and call "
+    "`agent_audit_kit.sanitizers.crewai.assert_codeinterp_safe_mode("
+    "False)` in the same function to suppress this rule.",
+    sarif_name="CrewAiCodeInterpUnsafeMode",
+    cve_references=["CVE-2026-2275"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    incident_references=["CERT-CC-VU-221883"],
+)
+
+_r(
+    "AAK-CREWAI-CVE-2026-2285-001",
+    "CrewAI JSON loader path traversal",
+    "`JSONSearchTool(file_path=...)` / `JSONLoader(path=...)` accepts "
+    "an attacker-influenceable path without anchoring to a project "
+    "root. CVE-2026-2285: untrusted JSON-loader path lets the agent "
+    "read arbitrary files (chained with the other three CVEs into "
+    "host RCE).",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Anchor every JSON-loader path with "
+    "`agent_audit_kit.sanitizers.crewai.validate_jsonloader_path("
+    "path, root=...)` before passing into the tool. Calling the "
+    "validator in the same function suppresses this rule.",
+    sarif_name="CrewAiJsonLoaderTraversal",
+    cve_references=["CVE-2026-2285"],
+    owasp_agentic_references=["ASI02"],
+    incident_references=["CERT-CC-VU-221883"],
+)
+
+_r(
+    "AAK-CREWAI-CVE-2026-2286-001",
+    "CrewAI RagTool / WebsiteSearchTool SSRF",
+    "`RagTool(url=...)` / `WebsiteSearchTool(url=...)` accepts a "
+    "non-constant URL reachable from an untrusted source without an "
+    "allow-list / private-network guard. CVE-2026-2286: cloud-metadata "
+    "or loopback SSRF feeds back into the agent tool-use loop.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Wrap every RAG / website URL with "
+    "`agent_audit_kit.sanitizers.crewai.validate_rag_url(url, "
+    "allowlist=[...])`. The helper rejects private IPs after DNS "
+    "resolution and enforces an explicit hostname allow-list.",
+    sarif_name="CrewAiRagSsrf",
+    cve_references=["CVE-2026-2286"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI04"],
+    incident_references=["CERT-CC-VU-221883"],
+)
+
+_r(
+    "AAK-CREWAI-CVE-2026-2287-001",
+    "CrewAI sandbox fallback without Docker liveness check",
+    "`CodeInterpreterTool(...)` does not gate execution on a Docker "
+    "liveness check (`docker_required=True` is unset and "
+    "`require_docker_liveness(client)` is not called). A dead Docker "
+    "daemon silently falls back to the host Python interpreter, "
+    "completing the chain to host RCE (CVE-2026-2287).",
+    Severity.HIGH,
+    Category.AGENT_CONFIG,
+    "Either set `docker_required=True` on CodeInterpreterTool or "
+    "call `agent_audit_kit.sanitizers.crewai.require_docker_liveness("
+    "client)` in the same function — the helper raises before the "
+    "tool ever sees the host fallback.",
+    sarif_name="CrewAiDockerLivenessMissing",
+    cve_references=["CVE-2026-2287"],
+    owasp_agentic_references=["ASI09"],
+    incident_references=["CERT-CC-VU-221883"],
+)
+
+_r(
+    "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001",
+    "LangChain load_prompt path traversal (CVE-2026-34070)",
+    "`langchain.prompts.load_prompt(path)` / "
+    "`PromptTemplate.from_file(path)` accepts an attacker-influenced "
+    "path without anchoring to a project root or allow-listed URI "
+    "scheme. CVE-2026-34070 (CVSS 7.5): the lc:// scheme + raw file "
+    "paths let a crafted prompt template read arbitrary files. Patched "
+    "in `langchain-core>=0.3.74`; pinning a vulnerable version is also "
+    "a finding.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Validate every prompt path with "
+    "`agent_audit_kit.checks.path_under_root(path, root)` before "
+    "calling load_prompt. For S3 / HTTP backed prompt stores, prefer "
+    "the explicit `langchain_community.storage.*` adapters; AAK "
+    "exempts those via pattern-not-inside. Bump "
+    "`langchain-core` to >= 0.3.74.",
+    sarif_name="LangChainPromptLoaderTraversal",
+    cve_references=["CVE-2026-34070"],
+    owasp_agentic_references=["ASI02"],
+    incident_references=["LANGCHAIN-PROMPT-LOADER-2026-03"],
+)
+
+_r(
+    "AAK-PRISMA-AIRS-COVERAGE-001",
+    "Prisma AIRS catalog coverage manifest",
+    "Meta / informational rule that surfaces AAK's static coverage of "
+    "the public Prisma AIRS 3.0 attack catalog. Drives "
+    "`aak coverage --source prisma-airs` and the published coverage "
+    "matrix. Never fires findings on user code.",
+    Severity.INFO,
+    Category.SUPPLY_CHAIN,
+    "Run `aak coverage --source prisma-airs` to see how AAK's static "
+    "ruleset maps onto Palo Alto's published Prisma AIRS attack "
+    "catalog. The map is hand-curated; entries flagged "
+    "`status: catalog-private` are not publicly disclosed and "
+    "intentionally absent from AAK coverage.",
+    sarif_name="PrismaAirsCoverageManifest",
+)
+
+_r(
+    "AAK-OPENCLAW-PRIVESC-001",
+    "OpenClaw agent role missing or attacker-influenced",
+    "`OpenClawAgent(role=...)` is unset, None, or sourced from "
+    "untrusted input without `assert_role_allowlisted(role)`. "
+    "IronPlate's 2026-04-07 weekly intel flagged a CVSS 9.9 "
+    "privilege-escalation in OpenClaw where a missing/forgable role "
+    "default lets a prompt-borne agent escalate to admin actions. "
+    "Provisional rule pending a public CVE assignment.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Always pass an explicit, allow-listed role to OpenClawAgent. "
+    "Wrap the assignment with `aak.checks.openclaw."
+    "assert_role_allowlisted(role)`. Pin the OpenClaw version once "
+    "the upstream patch ships; the AAK rule will auto-promote from "
+    "`provisional` to `confirmed` when "
+    "`scripts/refresh_openclaw_status.py` finds a CVE ID.",
+    sarif_name="OpenClawPrivesc",
+    owasp_agentic_references=["ASI03"],
+    incident_references=["IRONPLATE-2026-04-07"],
 )
 
 

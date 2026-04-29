@@ -5,6 +5,95 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10] - 2026-04-29
+
+**Headline: 8 new rules (188 total), 4 new product surfaces — CrewAI
+four-CVE chain (CERT/CC VU#221883), AIVSS v0.8 scoring, LangChain
+prompt-loader CVE-2026-34070, Prisma AIRS catalog mapper, OpenClaw
+provisional rule, `aak watch-cve` daemon, public coverage page,
+`aak rule lint`.**
+
+This release lands the v0.3.10 plan in full: 5 SAST rules + 1 meta
+rule for the CrewAI exploit chain, OWASP AIVSS v0.8 scoring during
+the public-review window, four new CLI surfaces (`aak score
+<sarif> --aivss`, `aak watch-cve`, `aak coverage --source
+prisma-airs`, `aak rule lint`), and three open-issue resolutions
+(fixture license declarations, parity per-region drift tests, SARIF
+runtime-context spec).
+
+### Added — Rules (8)
+
+- **AAK-CREWAI-CHAIN-2026-04-001** (CRITICAL, meta) — fires when all
+  four CrewAI 0.x exploit-chain shapes are reachable in one module.
+- **AAK-CREWAI-CVE-2026-2275-001** (CRITICAL) — `CodeInterpreterTool(
+  unsafe_mode=True)` host-Python sandbox escape.
+- **AAK-CREWAI-CVE-2026-2285-001** (HIGH) — `JSONSearchTool` /
+  `JSONLoader` path traversal via untrusted file_path.
+- **AAK-CREWAI-CVE-2026-2286-001** (HIGH) — `RagTool` /
+  `WebsiteSearchTool` SSRF without allow-list / private-net guard.
+- **AAK-CREWAI-CVE-2026-2287-001** (HIGH) — `CodeInterpreterTool` no
+  Docker liveness gate; silent fallback to host Python.
+- **AAK-LANGCHAIN-PROMPT-LOADER-PATH-001** (HIGH) —
+  `langchain.prompts.load_prompt(path)` traversal (CVE-2026-34070,
+  patched in `langchain-core>=0.3.74`).
+- **AAK-PRISMA-AIRS-COVERAGE-001** (INFO, meta) — Prisma AIRS catalog
+  coverage manifest.
+- **AAK-OPENCLAW-PRIVESC-001** (HIGH, provisional) — OpenClaw
+  `OpenClawAgent(role=...)` missing / forgable; IronPlate
+  2026-04-07 weekly intel CVSS 9.9.
+
+### Added — CLI commands
+
+- `aak score <sarif> --aivss` — annotate SARIF with AIVSS v0.8
+  scores (AARS, environmental, threat, exploit-availability).
+- `aak coverage --source prisma-airs` — coverage matrix vs the
+  public Prisma AIRS attack catalog. `--fail-under N` for CI.
+- `aak watch-cve --feeds ox,cert-cc,thaicert,ironplate` — CVE-feed
+  daemon. Polling + dedup + dispatch framework; per-feed fetchers
+  land in v0.3.11.
+- `aak rule lint --ci` — validate the RuleDefinition registry against
+  AAK metadata invariants.
+
+### Added — Runtime helpers
+
+- `agent_audit_kit.scoring.aivss.score_finding(rule_meta, runtime_ctx)`
+  + `annotate_sarif(sarif, get_rule)` — AIVSS v0.8 annotator.
+- `agent_audit_kit.checks.path_under_root(path, root)` — generic
+  path-traversal guard, suppresses
+  `AAK-LANGCHAIN-PROMPT-LOADER-PATH-001`.
+- `agent_audit_kit.checks.openclaw.assert_role_allowlisted(role,
+  allowlist=...)` — suppresses `AAK-OPENCLAW-PRIVESC-001`.
+- `agent_audit_kit.sanitizers.crewai`:
+  `assert_codeinterp_safe_mode`, `validate_jsonloader_path`,
+  `validate_rag_url`, `require_docker_liveness` — suppress the four
+  CrewAI sub-rules.
+
+### Added — Manifests & data
+
+- `agent_audit_kit/data/aivss-v08-defaults.json` — per-rule AARS /
+  environmental / threat / exploit defaults.
+- `agent_audit_kit/data/prisma-airs-catalog.json` + `-aak-map.json`
+  — public Prisma AIRS catalog subset + AAK rule mapping.
+- `scripts/build_coverage_page.py` + `.github/workflows/coverage-page.yml`
+  — nightly public coverage page (HTML + JSON) on gh-pages.
+
+### Housekeeping
+
+- O10 — `tests/fixtures/LICENSES.md` declares derivation + license
+  per fixture set.
+- O11 — `tests/test_parity_region_drift.py` adds per-region drift
+  tests + windowed report (28d / 1s edge cases).
+- O12 — `docs/spec/sarif-runtime-context.md` proposes
+  `properties.runtime_context` for SARIF.
+
+### Tests
+
+- `tests/test_v0_3_10_rules.py` (10) + `tests/test_v0_3_10_features.py`
+  (15) + `tests/test_parity_region_drift.py` (4).
+
+Total suite: 898 passing.
+
+
 ## [0.3.9] - 2026-04-28
 
 **Headline: 5 new rules (180 total), 4 new CLI commands, runtime
