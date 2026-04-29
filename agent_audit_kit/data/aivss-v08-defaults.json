@@ -1,0 +1,88 @@
+{
+  "schema_version": "1",
+  "aivss_version": "0.8",
+  "fetched_at": "2026-04-29",
+  "source": "AAK hand-curated AIVSS v0.8 defaults; revisit when v0.9 ships.",
+  "_default": {
+    "aars": {
+      "has_tool_use": false,
+      "internet_egress": false,
+      "persistent_memory": false,
+      "human_in_loop": false
+    },
+    "environmental": {
+      "network_exposure": "internal",
+      "data_sensitivity": "internal",
+      "blast_radius": "host"
+    },
+    "threat": {
+      "poc_public": false,
+      "weaponized": false,
+      "in_the_wild": false
+    },
+    "exploit": {
+      "patch_available": false,
+      "workaround_available": false
+    }
+  },
+  "rules": {
+    "AAK-CREWAI-CHAIN-2026-04-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true, "persistent_memory": true},
+      "threat": {"poc_public": true, "weaponized": true},
+      "exploit": {"workaround_available": true}
+    },
+    "AAK-CREWAI-CVE-2026-2275-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true},
+      "threat": {"poc_public": true, "weaponized": true},
+      "exploit": {"workaround_available": true}
+    },
+    "AAK-CREWAI-CVE-2026-2285-001": {
+      "aars": {"has_tool_use": true, "persistent_memory": true},
+      "threat": {"poc_public": true},
+      "exploit": {"workaround_available": true}
+    },
+    "AAK-CREWAI-CVE-2026-2286-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true},
+      "threat": {"poc_public": true},
+      "exploit": {"workaround_available": true}
+    },
+    "AAK-CREWAI-CVE-2026-2287-001": {
+      "aars": {"has_tool_use": true},
+      "threat": {"poc_public": true},
+      "exploit": {"workaround_available": true}
+    },
+    "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001": {
+      "aars": {"has_tool_use": true, "persistent_memory": true},
+      "threat": {"poc_public": true},
+      "exploit": {"patch_available": true, "patch_version": "langchain-core>=0.3.74"}
+    },
+    "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true}
+    },
+    "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001": {
+      "aars": {"has_tool_use": true}
+    },
+    "AAK-PROJECT-DEAL-DRIFT-001": {
+      "aars": {"has_tool_use": true, "human_in_loop": false},
+      "environmental": {"data_sensitivity": "regulated"}
+    },
+    "AAK-TIKTOK-AGENT-HIJACK-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true},
+      "environmental": {"network_exposure": "internet", "blast_radius": "tenant"}
+    },
+    "AAK-MCPWN-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true},
+      "environmental": {"network_exposure": "internet"}
+    },
+    "AAK-DNS-REBIND-001": {
+      "aars": {"has_tool_use": true, "internet_egress": true},
+      "environmental": {"network_exposure": "internet", "blast_radius": "host"},
+      "threat": {"poc_public": true}
+    },
+    "AAK-OPENCLAW-PRIVESC-001": {
+      "aars": {"has_tool_use": true},
+      "threat": {"poc_public": false},
+      "exploit": {"patch_available": false, "workaround_available": true}
+    }
+  }
+}

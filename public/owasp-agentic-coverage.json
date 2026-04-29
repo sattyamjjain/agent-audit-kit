@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-04-28T14:09:55Z",
-  "aak_version": "0.3.8",
-  "rule_count": 180,
+  "last_updated": "2026-04-29T08:27:41Z",
+  "aak_version": "0.3.10",
+  "rule_count": 188,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 8,
+      "rule_density": 9,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -44,6 +44,20 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-CREWAI-CHAIN-2026-04-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-2275",
+            "CVE-2026-2285",
+            "CVE-2026-2286",
+            "CVE-2026-2287"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001",
           "severity": "high",
           "cve_references": [],
@@ -75,7 +89,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 20,
+      "rule_density": 22,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -84,6 +98,16 @@
           "aicm_references": [
             "AIS-07",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-CREWAI-CVE-2026-2285-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-2285"
+          ],
+          "aicm_references": [
+            "AIS-07"
           ]
         },
         {
@@ -127,6 +151,16 @@
           ]
         },
         {
+          "id": "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-34070"
+          ],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
           "id": "AAK-MCP-004",
           "severity": "high",
           "cve_references": [
@@ -161,6 +195,7 @@
           "id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-27825",
             "CVE-2026-27826"
           ],
           "aicm_references": [
@@ -307,7 +342,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 44,
+      "rule_density": 45,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -490,6 +525,14 @@
           ]
         },
         {
+          "id": "AAK-OPENCLAW-PRIVESC-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-02"
+          ]
+        },
+        {
           "id": "AAK-PRTITLE-IPI-001",
           "severity": "high",
           "cve_references": [],
@@ -641,7 +684,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 30,
+      "rule_density": 31,
       "rules": [
         {
           "id": "AAK-AZURE-MCP-001",
@@ -663,6 +706,16 @@
           "aicm_references": [
             "IAM-01",
             "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-CREWAI-CVE-2026-2286-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-2286"
+          ],
+          "aicm_references": [
+            "IVS-04"
           ]
         },
         {
@@ -911,8 +964,33 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 25,
+      "rule_density": 27,
       "rules": [
+        {
+          "id": "AAK-CREWAI-CHAIN-2026-04-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-2275",
+            "CVE-2026-2285",
+            "CVE-2026-2286",
+            "CVE-2026-2287"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-CREWAI-CVE-2026-2275-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-2275"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04"
+          ]
+        },
         {
           "id": "AAK-HEALTHCARE-AI-001",
           "severity": "critical",
@@ -1408,8 +1486,33 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 11,
+      "rule_density": 13,
       "rules": [
+        {
+          "id": "AAK-CREWAI-CHAIN-2026-04-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-2275",
+            "CVE-2026-2285",
+            "CVE-2026-2286",
+            "CVE-2026-2287"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-CREWAI-CVE-2026-2287-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-2287"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04"
+          ]
+        },
         {
           "id": "AAK-HOOK-RCE-001",
           "severity": "critical",

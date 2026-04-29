@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-180-blue.svg" alt="Rules: 180"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-188-blue.svg" alt="Rules: 188"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -23,7 +23,7 @@
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
-- **<!-- rule-count:total -->180<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->188<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
 - **28 scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.9
+      - uses: sattyamjjain/agent-audit-kit@v0.3.10
         with:
           fail-on: high
 ```
@@ -79,7 +79,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.9
+    rev: v0.3.10
     hooks:
       - id: agent-audit-kit
 ```
@@ -115,7 +115,7 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Transport Security** | 4 | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings |
 | **Legal Compliance** | 3 | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages |
 
-**<!-- rule-count:total -->180<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->188<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### Agent Platforms Scanned
 
@@ -279,15 +279,15 @@ Generate an SVG badge for your README: `agent-audit-kit score . --badge`
 <!-- owasp-coverage:start -->
 | ASI | Title | # rules |
 | --- | --- | --- |
-| **ASI01** | Goal Hijack | 8 |
-| **ASI02** | Tool Misuse | 20 |
-| **ASI03** | Memory Poisoning | 44 |
-| **ASI04** | Identity & Privilege Abuse | 30 |
-| **ASI05** | Cascading Failures | 25 |
+| **ASI01** | Goal Hijack | 9 |
+| **ASI02** | Tool Misuse | 22 |
+| **ASI03** | Memory Poisoning | 45 |
+| **ASI04** | Identity & Privilege Abuse | 31 |
+| **ASI05** | Cascading Failures | 27 |
 | **ASI06** | Unauthorized Capability Acquisition | 24 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 4 |
-| **ASI09** | Resource Abuse | 11 |
+| **ASI09** | Resource Abuse | 13 |
 | **ASI10** | Supply-Chain | 13 |
 <!-- owasp-coverage:end -->
 
@@ -325,7 +325,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->180<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->188<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **11 frameworks** | No | 0 | 0 |
