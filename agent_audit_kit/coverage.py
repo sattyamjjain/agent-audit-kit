@@ -11,8 +11,11 @@ covering AAK rule IDs.
 from __future__ import annotations
 
 import json
-from importlib import resources
+from pathlib import Path
 from typing import Any
+
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
 
 
 def load_manifest(source: str) -> list[dict[str, Any]]:
@@ -29,9 +32,7 @@ def load_manifest(source: str) -> list[dict[str, Any]]:
     """
     if source != "ox":
         raise ValueError(f"Unknown coverage source: {source}")
-    text = resources.files("agent_audit_kit.data").joinpath(
-        "ox-cve-manifest.json"
-    ).read_text(encoding="utf-8")
+    text = (_DATA_DIR / "ox-cve-manifest.json").read_text(encoding="utf-8")
     data = json.loads(text)
     return list(data.get("entries", []))
 
