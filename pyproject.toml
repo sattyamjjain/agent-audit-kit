@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-audit-kit"
-version = "0.3.8"
+version = "0.3.9"
 description = "Security scanner for MCP-connected AI agent pipelines"
 readme = "README.md"
 license = {text = "MIT"}
@@ -51,9 +51,6 @@ Issues = "https://github.com/sattyamjjain/agent-audit-kit/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_audit_kit"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"agent_audit_kit/data" = "agent_audit_kit/data"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
