@@ -68,6 +68,10 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_atlassian", "Atlassian MCP RCE chain (CVE-2026-27825/27826)", []),
     ("ipi_wild_corpus", "Wild IPI payload corpus (2026-04-24)", []),
     ("mcp_inspector_cve", "MCPJam Inspector vendored fork (CVE-2026-23744)", []),
+    ("project_deal_drift", "Project Deal economic-drift (Anthropic 2026-04-26)", []),
+    ("langgraph_toolnode", "LangGraph ToolNode positional-list regression (1.0.11)", []),
+    ("deepseek_v4_tool_injection", "DeepSeek V4 MoE-routed tool injection", []),
+    ("social_agent_hijack", "Social-agent auto-reply hijack (BHASIA 2026)", []),
 ]
 
 

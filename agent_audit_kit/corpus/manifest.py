@@ -34,6 +34,9 @@ class CorpusEntry:
     target_path: Path
     body_url: str
     sha256: str
+    source_url: str | None = None
+    license: str | None = None
+    fetched_at: str | None = None
 
 
 class CorpusVerificationError(Exception):
@@ -64,6 +67,9 @@ def load_manifest(url: str | None = None) -> list[CorpusEntry]:
             target_path=_DATA_DIR / target_filename,
             body_url=body_url,
             sha256=sha256,
+            source_url=raw.get("source_url"),
+            license=raw.get("license"),
+            fetched_at=raw.get("fetched_at"),
         ))
     return entries
 

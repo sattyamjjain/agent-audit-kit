@@ -1,0 +1,15 @@
+schema: pipelock/v2.3
+name: parity-policy
+rules:
+  allow: []
+  deny: []
+integrations:
+  git:
+    fail_on: critical
+  parity:
+    dimension: model
+    metric: price
+output:
+  format: json
+unsupported_block:
+  custom: "passed through as a comment"

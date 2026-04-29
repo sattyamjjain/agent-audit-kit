@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-04-27T11:00:58Z",
+  "last_updated": "2026-04-28T14:09:55Z",
   "aak_version": "0.3.8",
-  "rule_count": 175,
+  "rule_count": 180,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 7,
+      "rule_density": 8,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -42,6 +42,14 @@
           "severity": "medium",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
         },
         {
           "id": "AAK-MCPWN-001",
@@ -1086,7 +1094,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 23,
+      "rule_density": 24,
       "rules": [
         {
           "id": "AAK-CLAUDE-WIN-001",
@@ -1166,6 +1174,15 @@
           "cve_references": [],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-PROJECT-DEAL-DRIFT-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-07"
           ]
         },
         {
@@ -1391,7 +1408,7 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 9,
+      "rule_density": 11,
       "rules": [
         {
           "id": "AAK-HOOK-RCE-001",
@@ -1429,6 +1446,14 @@
           ]
         },
         {
+          "id": "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
+          ]
+        },
+        {
           "id": "AAK-LMDEPLOY-VL-SSRF-001",
           "severity": "high",
           "cve_references": [
@@ -1457,6 +1482,15 @@
           ],
           "aicm_references": [
             "LOG-13"
+          ]
+        },
+        {
+          "id": "AAK-TIKTOK-AGENT-HIJACK-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CCC-08",
+            "IAM-02"
           ]
         },
         {

@@ -965,6 +965,203 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             click.echo(text)
 
 
+# ---------------------------------------------------------------------------
+# v0.3.9 commands: coverage, pipelock import, inspect-ide, parity report
+# ---------------------------------------------------------------------------
+
+
+@cli.command("coverage")
+@click.option(
+    "--source",
+    type=click.Choice(["ox"]),
+    default="ox",
+    help="Coverage source to report on.",
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["json", "text", "badge"]),
+    default="text",
+)
+@click.option("--output", "-o", "output_file", type=click.Path(), default=None)
+def coverage_cmd(source: str, fmt: str, output_file: str | None) -> None:
+    """Report AAK's coverage of disclosed-CVE manifests (OX, etc.)."""
+    import json
+    from agent_audit_kit.coverage import load_manifest, summarize
+
+    if source != "ox":  # pragma: no cover — guarded by Click choice
+        click.echo(f"Unknown coverage source: {source}", err=True)
+        sys.exit(EXIT_ERROR)
+
+    entries = load_manifest("ox")
+    summary = summarize(entries)
+
+    if fmt == "json":
+        text = json.dumps(summary, indent=2, sort_keys=True)
+    elif fmt == "badge":
+        pct = summary["coverage_pct"]
+        colour = "green" if pct >= 90 else ("yellow" if pct >= 70 else "red")
+        text = json.dumps(
+            {
+                "schemaVersion": 1,
+                "label": "OX coverage",
+                "message": f"{pct}%",
+                "color": colour,
+            },
+            indent=2,
+        )
+    else:
+        lines = [
+            f"OX-disclosed CVE coverage: "
+            f"{summary['covered']}/{summary['total']} "
+            f"({summary['coverage_pct']}%)",
+            "",
+        ]
+        for entry in summary["entries"]:
+            mark = "✔" if entry["covered"] else "✘"
+            rules = ", ".join(entry["rules"]) or "—"
+            lines.append(f"  {mark} {entry['cve']}: {entry['title']} → {rules}")
+        text = "\n".join(lines) + "\n"
+
+    if output_file:
+        Path(output_file).write_text(text, encoding="utf-8")
+        click.echo(f"wrote {output_file}", err=True)
+    else:
+        click.echo(text)
+
+
+@cli.group("pipelock")
+def pipelock_cmd() -> None:
+    """Pipelock policy DSL bridge (translate to .agent-audit-kit.yml)."""
+
+
+@pipelock_cmd.command("import")
+@click.argument(
+    "policy_path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True),
+)
+@click.option("--output", "-o", "output_file", type=click.Path(), default=None)
+@click.option("--dry-run", is_flag=True, default=False)
+def pipelock_import_cmd(
+    policy_path: str, output_file: str | None, dry_run: bool
+) -> None:
+    """Translate a Pipelock v2.3 YAML policy → .agent-audit-kit.yml."""
+    from agent_audit_kit.translators.pipelock import translate
+
+    policy = Path(policy_path)
+    out_text = translate(policy)
+    if dry_run:
+        click.echo(out_text)
+        return
+    target = Path(output_file or ".agent-audit-kit.yml")
+    target.write_text(out_text, encoding="utf-8")
+    click.echo(f"wrote {target}", err=True)
+
+
+@cli.command("inspect-ide")
+@click.argument(
+    "path", default=".",
+    type=click.Path(exists=True, file_okay=True, dir_okay=True, resolve_path=True),
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["lsp", "json", "text"]),
+    default="text",
+    help="Output format. 'lsp' emits a single LSP-shape diagnostics array.",
+)
+@click.option(
+    "--serve",
+    is_flag=True,
+    default=False,
+    help="Run a minimal stdio LSP server (advertises diagnostics).",
+)
+def inspect_ide_cmd(path: str, fmt: str, serve: bool) -> None:
+    """Run AAK and emit IDE-shaped diagnostics (LSP / JSON / text)."""
+    if serve:
+        from agent_audit_kit.ide.lsp_diag import serve_stdio
+
+        serve_stdio(Path(path))
+        return
+
+    from agent_audit_kit.ide.lsp_diag import diagnostics_for
+
+    diags = diagnostics_for(Path(path))
+    if fmt == "lsp":
+        import json
+
+        click.echo(json.dumps(diags, indent=2))
+    elif fmt == "json":
+        import json
+
+        click.echo(json.dumps(diags, indent=2))
+    else:
+        if not diags:
+            click.echo("No findings.")
+            return
+        for d in diags:
+            sev = {1: "ERROR", 2: "WARN", 3: "INFO", 4: "HINT"}.get(
+                d.get("severity", 2), "WARN"
+            )
+            uri = d.get("uri", "<unknown>")
+            line = d.get("range", {}).get("start", {}).get("line", 0) + 1
+            click.echo(
+                f"[{sev}] {d.get('code', '?')} {uri}:{line} — {d.get('message', '')}"
+            )
+
+
+@cli.command("parity")
+@click.argument(
+    "subcommand", type=click.Choice(["report"]), default="report"
+)
+@click.option(
+    "--dimension", default="model", help="Bucket key (default: model)."
+)
+@click.option(
+    "--metric", default="price", help="Metric to compare (default: price)."
+)
+@click.option(
+    "--max-drift-pct",
+    type=float,
+    default=1.5,
+    help="Allowed per-bucket drift from overall mean (default 1.5%).",
+)
+@click.option("--window", default=None, help="Rolling window: e.g. 7d, 24h, 60m.")
+def parity_cmd(
+    subcommand: str,
+    dimension: str,
+    metric: str,
+    max_drift_pct: float,
+    window: str | None,
+) -> None:
+    """Report on @aak.parity.check invocations (Project-Deal-class drift)."""
+    import json
+
+    from agent_audit_kit.parity import report
+
+    window_seconds: float | None = None
+    if window:
+        unit = window[-1]
+        try:
+            n = float(window[:-1])
+        except ValueError:
+            click.echo(f"Invalid --window: {window}", err=True)
+            sys.exit(EXIT_ERROR)
+        window_seconds = n * {"d": 86400, "h": 3600, "m": 60, "s": 1}.get(unit, 1)
+
+    try:
+        out = report(
+            dimension=dimension,
+            metric=metric,
+            window_seconds=window_seconds,
+            max_drift_pct=max_drift_pct,
+        )
+    except Exception as exc:  # noqa: BLE001 — surface as exit code 1 with a message
+        click.echo(f"parity {subcommand}: {type(exc).__name__}: {exc}", err=True)
+        sys.exit(EXIT_FINDINGS)
+    click.echo(json.dumps(out, indent=2, default=str))
+
+
 # Backward compatibility: allow `agent-audit-kit .` without `scan` subcommand
 main = cli
 
