@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-03T15:53:37Z",
-  "aak_version": "0.3.12",
-  "rule_count": 190,
+  "last_updated": "2026-05-03T16:04:03Z",
+  "aak_version": "0.3.13",
+  "rule_count": 191,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -89,7 +89,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 24,
+      "rule_density": 25,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -110,6 +110,18 @@
             "AIS-07",
             "DSP-04",
             "IVS-09"
+          ]
+        },
+        {
+          "id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-7061"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IAM-05",
+            "STA-08"
           ]
         },
         {
@@ -1641,7 +1653,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 15,
+      "rule_density": 16,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -1670,6 +1682,18 @@
             "AIS-07",
             "DSP-04",
             "IVS-09"
+          ]
+        },
+        {
+          "id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-7061"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IAM-05",
+            "STA-08"
           ]
         },
         {

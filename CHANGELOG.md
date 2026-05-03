@@ -5,6 +5,78 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13] - 2026-05-03
+
+**Headline: backlog-triage release — 1 new CVE rule (191 total) +
+2 new product surfaces (`aak notify` Slack webhook + pre-commit
+one-liner installer).** Closes 13 backlog issues in one ship: 8 GFI
+trivials (#9, #10, #11, #13, #14, #16, #17, #18, plus #12 already
+shipped), the chatgpt-mcp CVE pin (#80), the pre-commit installer
+(#65), the Slack webhook (#66 minimum), 4 superseded umbrellas
+(#15, #21, #26, #64), and 8 duplicate CVE-bot tickets (#131-#138).
+
+### Added — Rule (1)
+
+- **AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001** (HIGH, CVSS 7.3) —
+  `Toowiredd/chatgpt-mcp-server <=0.1.0` OS command injection in
+  `src/services/docker.service.ts`. Package isn't on npm — consumers
+  install via `git+https://` or `github:Toowiredd/...` shorthand
+  in package.json. Pin-check fires whenever the package appears in
+  any npm manifest (every published version is vulnerable; no
+  upstream patch as of ship date). Architectural class is also
+  caught by `AAK-MCP-STDIO-CMD-INJ-002`. Closes #80.
+
+### Added — CLI surfaces
+
+- `aak notify [PATH]` — runs a scan and dispatches findings to the
+  sinks declared in `.aak-notify.yaml`. Slack `incoming-webhook`
+  ships in this release; PagerDuty + Linear are explicit
+  `NotImplementedError` stubs so consumers can build configs ahead
+  of v0.4.0. Supports `--dry-run` and `--config`. Closes #66.
+- `scripts/install-pre-commit.sh` — one-liner installer
+  (`curl -fsSL .../install-pre-commit.sh | bash`). Auto-detects
+  the latest GitHub Release tag, appends to existing
+  `.pre-commit-config.yaml` or creates a new one, runs
+  `pre-commit install`. Closes #65.
+
+### Added — CLI flags / docs / fixtures (#9, #10, #11, #13, #14, #16, #17, #18)
+
+- `aak <subcommand> --version` on every subcommand (21 decorators).
+- `aak scan --quiet/-q` suppresses header / summary / tip footer
+  on console-format output.
+- `aak discover --format json` emits a stable schema for
+  programmatic use (`{count, agents}`).
+- `aak score` ANSI-colors the grade (A/B green, C yellow, D/F red).
+- `.editorconfig` codifies repo conventions.
+- `docs/circleci.md` + `docs/azure-pipelines.md` mirror the GH
+  Actions integration guide.
+- `tests/test_supply_chain.py` — 4 boundary cases for
+  `_version_in_range` + the requirements-glob path.
+
+### New module
+
+- `agent_audit_kit/integrations/notify.py` — `SlackSink`,
+  `PagerDutySink` (stub), `LinearTicketSink` (stub),
+  `load_notify_config`, `run_notify`. Designed so consumers can
+  declare every sink they want today; only Slack actually posts.
+
+### Tests
+
+- 14 new tests: 4 chatgpt-mcp pin (`tests/test_v0_3_13_rules.py`),
+  10 notify sinks (`tests/test_integrations_notify.py`). Total
+  928 passing (was 914).
+
+### Triage closures (no code change)
+
+- `#15` "77 rules" doc — superseded (repo at 191).
+- `#21` v0.3.0 tracker umbrella — superseded.
+- `#26` v0.3.0 stretch umbrella — half-shipped, items re-filed.
+- `#64` Hosted aak.dev SARIF dashboard — wontfix in this repo
+  (spin off to `aak-dashboard` if ever pursued).
+- `#131-#138` — duplicates of CVEs already class-covered by
+  `AAK-MCP-STDIO-CMD-INJ-001/002/003/004` and triaged in the
+  morning v0.3.11/v0.3.12 batch. Watcher dedup follow-up logged.
+
 ## [0.3.12] - 2026-05-03
 
 > Note: v0.3.11 was tagged with a stale `pyproject.toml` (still

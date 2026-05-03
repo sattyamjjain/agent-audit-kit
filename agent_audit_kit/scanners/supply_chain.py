@@ -468,6 +468,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_astro_mcp_pin(project_root, scanned_files))
     findings.extend(_scan_astro_mcp_query_concat(project_root, scanned_files))
     findings.extend(_check_litellm_pin(project_root, scanned_files))
+    findings.extend(_check_chatgpt_mcp_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -858,6 +859,74 @@ _LITELLM_VERSION_RE = re.compile(
     r"(?<![\w-])litellm\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
     re.IGNORECASE,
 )
+
+
+# ---------------------------------------------------------------------------
+# AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001 — Toowiredd/chatgpt-mcp-server
+# <=0.1.0 (CVE-2026-7061, HIGH 7.3). OS command injection in
+# `src/services/docker.service.ts` of the MCP/HTTP component. Package
+# is NOT published to npm — consumers install via a git+https URL in
+# package.json. No upstream patch as of ship date; every version
+# <=0.1.0 is vulnerable. The architectural class is also caught by
+# AAK-MCP-STDIO-CMD-INJ-002 (TS taint sink); this pin-only rule is
+# the named-CVE companion that surfaces a discrete finding for
+# downstream consumers running pin-check mode and need an actionable
+# manifest fix (i.e., remove the dep until upstream ships a patch).
+# Closes #80.
+# ---------------------------------------------------------------------------
+
+_CHATGPT_MCP_PACKAGE_RE = re.compile(
+    r'"chatgpt-mcp-server"\s*:\s*"([^"]+)"',
+    re.IGNORECASE,
+)
+# git+https / git+ssh / GitHub shorthand pinned via package.json:
+# "chatgpt-mcp-server": "github:Toowiredd/chatgpt-mcp-server"
+# "chatgpt-mcp-server": "git+https://github.com/Toowiredd/chatgpt-mcp-server.git"
+_CHATGPT_MCP_GIT_RE = re.compile(
+    r'(?:github:|git\+https?://[^"\s]*)?Toowiredd/chatgpt-mcp-server',
+    re.IGNORECASE,
+)
+
+
+def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str) -> None:
+        findings.append(make_finding(
+            "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
+            rel,
+            f"chatgpt-mcp-server pinned at {raw!r} — CVE-2026-7061 "
+            "(HIGH 7.3) OS command injection in docker.service.ts; no "
+            "upstream patch released as of the AAK ship date.",
+        ))
+
+    candidates: list[Path] = []
+    for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "chatgpt-mcp-server" not in text and "Toowiredd/chatgpt-mcp-server" not in text:
+            continue
+        rel = str(path.relative_to(project_root))
+        # Try JSON-shape pin first (any value — including git URL — is vulnerable
+        # because the package has no published patched version).
+        m = _CHATGPT_MCP_PACKAGE_RE.search(text)
+        if m:
+            scanned_files.add(rel)
+            _fire(rel, m.group(1).strip())
+            continue
+        # Fall back to git URL / shorthand match in lockfiles.
+        m2 = _CHATGPT_MCP_GIT_RE.search(text)
+        if m2:
+            scanned_files.add(rel)
+            _fire(rel, m2.group(0).strip())
+    return findings
 
 
 def _check_litellm_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
