@@ -1,0 +1,1747 @@
+[
+  {
+    "slug": "chasekolozsy__ankichat",
+    "name": "ChaseKolozsy/AnkiChat/.mcp.json.backup",
+    "repo_url": "https://github.com/ChaseKolozsy/AnkiChat",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "atsentia__dinbutler",
+    "name": "atsentia/dinbutler/.mcp.json.sample",
+    "repo_url": "https://github.com/atsentia/dinbutler",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "bobmatnyc__ai-power-rankings",
+    "name": "bobmatnyc/ai-power-rankings/.kuzu-memory-backups/.mcp.json.backup_20251027_001408",
+    "repo_url": "https://github.com/bobmatnyc/ai-power-rankings",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "disler__quick-data-mcp",
+    "name": "disler/quick-data-mcp/quick-data-mcp/.mcp.json.sample",
+    "repo_url": "https://github.com/disler/quick-data-mcp",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "ellisapotheosis__project-nyra",
+    "name": "ellisapotheosis/Project-Nyra/docs/archive/backup-files/.mcp.json.backup-20260116-035516",
+    "repo_url": "https://github.com/ellisapotheosis/Project-Nyra",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "jharter1__hashi_homelab",
+    "name": "jharter1/hashi_homelab/.mcp.json.bkp",
+    "repo_url": "https://github.com/jharter1/hashi_homelab",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "johnhkchen__obsidian-knowledge-base",
+    "name": "johnhkchen/obsidian-knowledge-base/.mcp.json.template",
+    "repo_url": "https://github.com/johnhkchen/obsidian-knowledge-base",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "lizthedeveloper__superalignment-chatroom",
+    "name": "lizTheDeveloper/superalignment-chatroom/.claude/agents/mcp-configs/full.mcp.json.mac-backup",
+    "repo_url": "https://github.com/lizTheDeveloper/superalignment-chatroom",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "quazardous__sailing",
+    "name": "quazardous/sailing/.mcp.json-dist",
+    "repo_url": "https://github.com/quazardous/sailing",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "tofunori__ragdoc",
+    "name": "tofunori/Ragdoc",
+    "repo_url": "https://github.com/tofunori/Ragdoc",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "tonis2__blender-mcp",
+    "name": "tonis2/blender-mcp",
+    "repo_url": "https://github.com/tonis2/blender-mcp",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "undergroundrap__uefn-toolbelt",
+    "name": "undergroundrap/UEFN-TOOLBELT/.mcp.json.template",
+    "repo_url": "https://github.com/undergroundrap/UEFN-TOOLBELT",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "wtyler2505__multi-controller-app",
+    "name": "wtyler2505/multi-controller-app/.mcp.json.backup-clearthought",
+    "repo_url": "https://github.com/wtyler2505/multi-controller-app",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "josiahsiegel__planview-mcp",
+    "name": "JosiahSiegel/planview-mcp/.mcp.json.windows.example",
+    "repo_url": "https://github.com/JosiahSiegel/planview-mcp",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "bbfox0703__roslyncsmcp",
+    "name": "bbfox0703/RoslynCSMCP/.mcp.json.sample",
+    "repo_url": "https://github.com/bbfox0703/RoslynCSMCP",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "dg1an3__algt",
+    "name": "dg1an3/ALGT",
+    "repo_url": "https://github.com/dg1an3/ALGT",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "jarmentor__codebase-contextifier-9000",
+    "name": "jarmentor/codebase-contextifier-9000/.mcp.json.template",
+    "repo_url": "https://github.com/jarmentor/codebase-contextifier-9000",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "jyogi-web__megaro_chebuwarts",
+    "name": "jyogi-web/Megaro_ChebuWarts/.claude/.mcp.json.mac",
+    "repo_url": "https://github.com/jyogi-web/Megaro_ChebuWarts",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "jyogi-web__megaro_chebuwarts",
+    "name": "jyogi-web/Megaro_ChebuWarts/.claude/.mcp.json.windows",
+    "repo_url": "https://github.com/jyogi-web/Megaro_ChebuWarts",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "rfxlamia__centotype",
+    "name": "rfxlamia/centotype/.mcp.json.bak.1758902676",
+    "repo_url": "https://github.com/rfxlamia/centotype",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "yintzuyuan__glyphs-info-mcp",
+    "name": "yintzuyuan/glyphs-info-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/yintzuyuan/glyphs-info-mcp",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "abilityai__trinity",
+    "name": "Abilityai/trinity/.mcp.json.template",
+    "repo_url": "https://github.com/Abilityai/trinity",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "angkira__ninja-cli-mcp",
+    "name": "angkira/ninja-cli-mcp/.mcp.json.backup",
+    "repo_url": "https://github.com/angkira/ninja-cli-mcp",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "bmorri13__dividend_tracker",
+    "name": "bmorri13/dividend_tracker/frontend/.mcp.json-example",
+    "repo_url": "https://github.com/bmorri13/dividend_tracker",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "lizthedeveloper__ai_village",
+    "name": "lizTheDeveloper/ai_village/.mcp.json.disabled",
+    "repo_url": "https://github.com/lizTheDeveloper/ai_village",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "terrylica__trading-fitness",
+    "name": "terrylica/trading-fitness/.mcp.json.disabled",
+    "repo_url": "https://github.com/terrylica/trading-fitness",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "torealden__rlc-agent",
+    "name": "torealden/RLC-Agent/.mcp.json.template",
+    "repo_url": "https://github.com/torealden/RLC-Agent",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "ancient23__agent-base",
+    "name": "Ancient23/agent-base/.mcp.json.context7",
+    "repo_url": "https://github.com/Ancient23/agent-base",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "coorpacademy__claude-workshop",
+    "name": "CoorpAcademy/claude-workshop/.mcp.json.mongodb",
+    "repo_url": "https://github.com/CoorpAcademy/claude-workshop",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "l3yserepitech__elite-context-engineering",
+    "name": "L3yserEpitech/Elite-Context-Engineering/.mcp.json.firecrawl_4k",
+    "repo_url": "https://github.com/L3yserEpitech/Elite-Context-Engineering",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "medimindai__medplum_medimind",
+    "name": "MediMindAI/MedPlum_MediMind/.mcp.json.supabase-only",
+    "repo_url": "https://github.com/MediMindAI/MedPlum_MediMind",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "aaronsteers__privatebin-mcp",
+    "name": "aaronsteers/privatebin-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/aaronsteers/privatebin-mcp",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "dyoshikawa__smartphone-vibe-coding",
+    "name": "dyoshikawa/smartphone-vibe-coding",
+    "repo_url": "https://github.com/dyoshikawa/smartphone-vibe-coding",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "harusame0616__crowdsourcing-scraping",
+    "name": "harusame0616/crowdsourcing-scraping/.mcp.json.template",
+    "repo_url": "https://github.com/harusame0616/crowdsourcing-scraping",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "qut-dmrc__buttermilk",
+    "name": "qut-dmrc/buttermilk/.mcp.json.disabled",
+    "repo_url": "https://github.com/qut-dmrc/buttermilk",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "scottbarstow__electron_photo_app",
+    "name": "scottbarstow/electron_photo_app/.mcp.json.template",
+    "repo_url": "https://github.com/scottbarstow/electron_photo_app",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "fredjr__vertaai",
+    "name": "Fredjr/VertaAI/.mcp.json.template",
+    "repo_url": "https://github.com/Fredjr/VertaAI",
+    "grade": "B",
+    "score": 80,
+    "critical": 1,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "neo4j-partners__hands-on-lab-neo4j-and-microsoft",
+    "name": "neo4j-partners/hands-on-lab-neo4j-and-microsoft/Lab 5 - Aura Agents/.mcp.json.template",
+    "repo_url": "https://github.com/neo4j-partners/hands-on-lab-neo4j-and-microsoft",
+    "grade": "B",
+    "score": 80,
+    "critical": 1,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "kblack0610__binks-agent-orchestrator",
+    "name": "Kblack0610/binks-agent-orchestrator/.mcp.json.bak",
+    "repo_url": "https://github.com/Kblack0610/binks-agent-orchestrator",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "danielscholl-osdu__hostk8s",
+    "name": "danielscholl-osdu/hostk8s/.mcp.json.cluster",
+    "repo_url": "https://github.com/danielscholl-osdu/hostk8s",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "ethrdev__cognitive-memory",
+    "name": "ethrdev/cognitive-memory/.mcp.json.template",
+    "repo_url": "https://github.com/ethrdev/cognitive-memory",
+    "grade": "C",
+    "score": 75,
+    "critical": 1,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "kourtni__dotfiles",
+    "name": "kourtni/dotfiles/.mcp.json.template",
+    "repo_url": "https://github.com/kourtni/dotfiles",
+    "grade": "C",
+    "score": 75,
+    "critical": 0,
+    "high": 0,
+    "medium": 5,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 4,
+      "AAK-MCP-005": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "chattersorg__chatters",
+    "name": "chattersorg/chatters/.mcp.json.bak",
+    "repo_url": "https://github.com/chattersorg/chatters",
+    "grade": "C",
+    "score": 73,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "davidvojvodic__automation-site",
+    "name": "davidvojvodic/automation-site/.mcp.json.sample",
+    "repo_url": "https://github.com/davidvojvodic/automation-site",
+    "grade": "C",
+    "score": 73,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "disler__agentic-drop-zones",
+    "name": "disler/agentic-drop-zones/.mcp.json.sample",
+    "repo_url": "https://github.com/disler/agentic-drop-zones",
+    "grade": "C",
+    "score": 73,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "morlock52__newmedia",
+    "name": "Morlock52/newmedia/.mcp.json.minimal",
+    "repo_url": "https://github.com/Morlock52/newmedia",
+    "grade": "C",
+    "score": 71,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "morlock52__newmedia",
+    "name": "Morlock52/newmedia/.mcp.json.with-media",
+    "repo_url": "https://github.com/Morlock52/newmedia",
+    "grade": "C",
+    "score": 71,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "basalt-ai__cobalt",
+    "name": "basalt-ai/cobalt/packages/cobalt/templates/.mcp.json.template",
+    "repo_url": "https://github.com/basalt-ai/cobalt",
+    "grade": "C",
+    "score": 71,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "danmayer__coverband_rails_example",
+    "name": "danmayer/coverband_rails_example/.mcp.json~",
+    "repo_url": "https://github.com/danmayer/coverband_rails_example",
+    "grade": "C",
+    "score": 71,
+    "critical": 0,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "bxxf__todo-mcp-assignment",
+    "name": "bxxf/todo-mcp-assignment/.mcp.json.http.example",
+    "repo_url": "https://github.com/bxxf/todo-mcp-assignment",
+    "grade": "C",
+    "score": 70,
+    "critical": 1,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "richardjlyon__americas_tapestry",
+    "name": "richardjlyon/americas_tapestry/.mcp.json.linux",
+    "repo_url": "https://github.com/richardjlyon/americas_tapestry",
+    "grade": "C",
+    "score": 70,
+    "critical": 0,
+    "high": 1,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "richardjlyon__americas_tapestry",
+    "name": "richardjlyon/americas_tapestry/.mcp.json.macos",
+    "repo_url": "https://github.com/richardjlyon/americas_tapestry",
+    "grade": "C",
+    "score": 70,
+    "critical": 0,
+    "high": 1,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "gregberns__agent-architect",
+    "name": "gregberns/agent-architect/.mcp.json-template",
+    "repo_url": "https://github.com/gregberns/agent-architect",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "axiomantic__audiomancer",
+    "name": "axiomantic/audiomancer/src/audiomancer/templates/project/.mcp.json.template",
+    "repo_url": "https://github.com/axiomantic/audiomancer",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "cyl19970726__code3-workspace",
+    "name": "cyl19970726/Code3-Workspace/.mcp.json.tmp",
+    "repo_url": "https://github.com/cyl19970726/Code3-Workspace",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "nitrosolutions__10x-project",
+    "name": "nitrosolutions/10x-project",
+    "repo_url": "https://github.com/nitrosolutions/10x-project",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "talent-factory__examcraft",
+    "name": "talent-factory/examcraft/.mcp.json.template",
+    "repo_url": "https://github.com/talent-factory/examcraft",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "confenge__etp-express",
+    "name": "CONFENGE/etp-express/.mcp.json.backup",
+    "repo_url": "https://github.com/CONFENGE/etp-express",
+    "grade": "D",
+    "score": 65,
+    "critical": 0,
+    "high": 0,
+    "medium": 7,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 7
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "stallboy__claude-code-marketplace",
+    "name": "stallboy/claude-code-marketplace/.claude-plugin/.mcp.json.backup",
+    "repo_url": "https://github.com/stallboy/claude-code-marketplace",
+    "grade": "D",
+    "score": 65,
+    "critical": 1,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "danishi__arcadia",
+    "name": "danishi/arcadia/templates/.mcp.json.tmpl",
+    "repo_url": "https://github.com/danishi/arcadia",
+    "grade": "D",
+    "score": 63,
+    "critical": 1,
+    "high": 1,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "msadig__muckrack-data-sourcer",
+    "name": "msadig/muckrack-data-sourcer/.mcp.json.debug",
+    "repo_url": "https://github.com/msadig/muckrack-data-sourcer",
+    "grade": "F",
+    "score": 58,
+    "critical": 1,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "talkingmonkeyoz__claude-family",
+    "name": "TalkingMonkeyOz/claude-family/.mcp.json.template",
+    "repo_url": "https://github.com/TalkingMonkeyOz/claude-family",
+    "grade": "F",
+    "score": 55,
+    "critical": 0,
+    "high": 1,
+    "medium": 7,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 7,
+      "AAK-MCP-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "yanisurbis__bin",
+    "name": "yanisurbis/bin/.mcp.json.default",
+    "repo_url": "https://github.com/yanisurbis/bin",
+    "grade": "F",
+    "score": 51,
+    "critical": 1,
+    "high": 2,
+    "medium": 1,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "getsentry__spotlight",
+    "name": "getsentry/spotlight",
+    "repo_url": "https://github.com/getsentry/spotlight",
+    "grade": "F",
+    "score": 50,
+    "critical": 2,
+    "high": 1,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "riku-ganeko__demo_wave",
+    "name": "RIKU-GANEKO/demo_wave/.mcp.json.template",
+    "repo_url": "https://github.com/RIKU-GANEKO/demo_wave",
+    "grade": "F",
+    "score": 44,
+    "critical": 0,
+    "high": 4,
+    "medium": 2,
+    "low": 3,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "linus-mcmanamey__need_a_job",
+    "name": "linus-mcmanamey/need_a_job/.mcp.json.template",
+    "repo_url": "https://github.com/linus-mcmanamey/need_a_job",
+    "grade": "F",
+    "score": 25,
+    "critical": 0,
+    "high": 5,
+    "medium": 3,
+    "low": 5,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "abilityai__agent-ruby",
+    "name": "Abilityai/agent-ruby/.claude/agents/.mcp.json.template",
+    "repo_url": "https://github.com/Abilityai/agent-ruby",
+    "grade": "F",
+    "score": 23,
+    "critical": 0,
+    "high": 6,
+    "medium": 1,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 6,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "fbratten__from-blueprint-to-application",
+    "name": "fbratten/From-Blueprint-to-Application/.mcp.json.backup.20260306_223841",
+    "repo_url": "https://github.com/fbratten/From-Blueprint-to-Application",
+    "grade": "F",
+    "score": 15,
+    "critical": 0,
+    "high": 1,
+    "medium": 15,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 15
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "misasusma__claude-agentic-coding-template",
+    "name": "misasusma/claude-agentic-coding-template/.mcp.json.template",
+    "repo_url": "https://github.com/misasusma/claude-agentic-coding-template",
+    "grade": "F",
+    "score": 14,
+    "critical": 0,
+    "high": 6,
+    "medium": 4,
+    "low": 3,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "fbratten__from-blueprint-to-application",
+    "name": "fbratten/From-Blueprint-to-Application/.mcp.json.backup.20260312_035531",
+    "repo_url": "https://github.com/fbratten/From-Blueprint-to-Application",
+    "grade": "F",
+    "score": 10,
+    "critical": 0,
+    "high": 1,
+    "medium": 16,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 16
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "dnyoussef__context-cascade",
+    "name": "DNYoussef/context-cascade/.mcp.json.template",
+    "repo_url": "https://github.com/DNYoussef/context-cascade",
+    "grade": "F",
+    "score": 4,
+    "critical": 2,
+    "high": 3,
+    "medium": 4,
+    "low": 3,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 2,
+      "AAK-MCP-006": 2,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "rousseau-romain__round-timing",
+    "name": "rousseau-romain/round-timing/.mcp.json.template",
+    "repo_url": "https://github.com/rousseau-romain/round-timing",
+    "grade": "F",
+    "score": 3,
+    "critical": 0,
+    "high": 6,
+    "medium": 5,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "anyplatform__platform_workspace",
+    "name": "anyplatform/platform.workspace/files_to_deploy/all/.mcp.json.template",
+    "repo_url": "https://github.com/anyplatform/platform.workspace",
+    "grade": "F",
+    "score": 1,
+    "critical": 1,
+    "high": 5,
+    "medium": 5,
+    "low": 2,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 2,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "abilityai__agent-ruby",
+    "name": "Abilityai/agent-ruby/.mcp.json.template",
+    "repo_url": "https://github.com/Abilityai/agent-ruby",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 13,
+    "medium": 8,
+    "low": 13,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 8,
+      "AAK-MCP-007": 13,
+      "AAK-SUPPLY-001": 13
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "andrewaltimit__documentation",
+    "name": "AndrewAltimit/Documentation/.mcp.json.full",
+    "repo_url": "https://github.com/AndrewAltimit/Documentation",
+    "grade": "F",
+    "score": 0,
+    "critical": 8,
+    "high": 5,
+    "medium": 9,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 9,
+      "AAK-MCP-001": 4,
+      "AAK-MCP-009": 4,
+      "AAK-TRANSPORT-001": 4
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "dexploarer__claudius-skills",
+    "name": "Dexploarer/claudius-skills/intermediate-kit/.mcp.json.template",
+    "repo_url": "https://github.com/Dexploarer/claudius-skills",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 10,
+    "medium": 10,
+    "low": 10,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 10,
+      "AAK-MCP-007": 10,
+      "AAK-SUPPLY-001": 10
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "kensan196948g__itsm-system",
+    "name": "Kensan196948G/ITSM-System/config/mcp/.mcp.json.linux.example",
+    "repo_url": "https://github.com/Kensan196948G/ITSM-System",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 4,
+    "low": 5,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 2,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "kensan196948g__integrateditassetservicemanagement",
+    "name": "Kensan196948G/IntegratedITAssetServiceManagement/.mcp.json.bak.20260307-101037",
+    "repo_url": "https://github.com/Kensan196948G/IntegratedITAssetServiceManagement",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 6,
+    "medium": 7,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 6,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "mare-datum__arcasadeveloping-bgapp",
+    "name": "MARE-DATUM/arcasadeveloping-bgapp/.mcp.json.backup.20250918_182703",
+    "repo_url": "https://github.com/MARE-DATUM/arcasadeveloping-bgapp",
+    "grade": "F",
+    "score": 0,
+    "critical": 3,
+    "high": 18,
+    "medium": 27,
+    "low": 10,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 13,
+      "AAK-MCP-007": 10,
+      "AAK-MCP-003": 4,
+      "AAK-SECRET-008": 3,
+      "AAK-SECRET-004": 3,
+      "AAK-SUPPLY-001": 10,
+      "AAK-TRANSPORT-003": 14
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "russianroulette84__agentic_project",
+    "name": "RussianRoulette84/agentic_project/.mcp.json.sample",
+    "repo_url": "https://github.com/RussianRoulette84/agentic_project",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 4,
+    "low": 5,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 5,
+      "AAK-MCP-003": 2,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "tomahawkcm__modern-tco",
+    "name": "TomahawkCM/modern-tco/config-backups/.mcp.json.backup.20250924_110733",
+    "repo_url": "https://github.com/TomahawkCM/modern-tco",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 8,
+    "medium": 7,
+    "low": 8,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 8,
+      "AAK-SUPPLY-001": 8
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "xza85hrf__claude-code-agent-kit",
+    "name": "Xza85hrf/claude-code-agent-kit/.mcp.json.template",
+    "repo_url": "https://github.com/Xza85hrf/claude-code-agent-kit",
+    "grade": "F",
+    "score": 0,
+    "critical": 2,
+    "high": 7,
+    "medium": 6,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "aegntic__ae-co-system",
+    "name": "aegntic/ae-co-system/DAILYDOCO/.mcp.json.backup.scattered.20250605_024038",
+    "repo_url": "https://github.com/aegntic/ae-co-system",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 24,
+    "medium": 15,
+    "low": 23,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 15,
+      "AAK-MCP-007": 23,
+      "AAK-SUPPLY-001": 23
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "agisota___dotfiles",
+    "name": "agisota/.dotfiles/configs/claude/.mcp.json.backup.20260120-003442",
+    "repo_url": "https://github.com/agisota/.dotfiles",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 7,
+    "low": 7,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 7,
+      "AAK-MCP-007": 7,
+      "AAK-SUPPLY-001": 7
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "bennoloeffler__bassi",
+    "name": "bennoloeffler/bassi/.mcp.json.ALL",
+    "repo_url": "https://github.com/bennoloeffler/bassi",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 9,
+    "medium": 4,
+    "low": 9,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 9,
+      "AAK-SUPPLY-001": 9
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "diegofornalha__jira-ai-crewai-mcp",
+    "name": "diegofornalha/jira-ai-crewai-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/diegofornalha/jira-ai-crewai-mcp",
+    "grade": "F",
+    "score": 0,
+    "critical": 2,
+    "high": 22,
+    "medium": 6,
+    "low": 17,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 17,
+      "AAK-MCP-003": 4,
+      "AAK-MCP-001": 2,
+      "AAK-SUPPLY-001": 17,
+      "AAK-TRANSPORT-004": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "djehring__phc-conference-2026",
+    "name": "djehring/phc-conference-2026/.mcp.json.template",
+    "repo_url": "https://github.com/djehring/phc-conference-2026",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 4,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-003": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "golgoth31__sreportal",
+    "name": "golgoth31/sreportal/.mcp.json.template",
+    "repo_url": "https://github.com/golgoth31/sreportal",
+    "grade": "F",
+    "score": 0,
+    "critical": 3,
+    "high": 4,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-001": 3,
+      "AAK-MCP-009": 3,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "harrysayers7__claudelife",
+    "name": "harrysayers7/claudelife/.mcp.json.all-disabled",
+    "repo_url": "https://github.com/harrysayers7/claudelife",
+    "grade": "F",
+    "score": 0,
+    "critical": 3,
+    "high": 51,
+    "medium": 14,
+    "low": 14,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-003": 33,
+      "AAK-MCP-005": 13,
+      "AAK-MCP-007": 14,
+      "AAK-MCP-001": 3,
+      "AAK-MCP-009": 3,
+      "AAK-SUPPLY-001": 14,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "jasonkwak190__world-cup-platform",
+    "name": "jasonkwak190/world-cup-platform/.claude/.mcp.json.template",
+    "repo_url": "https://github.com/jasonkwak190/world-cup-platform",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 8,
+    "medium": 5,
+    "low": 5,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 5,
+      "AAK-MCP-007": 5,
+      "AAK-SUPPLY-001": 5
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "lesleslie__opera-cloud-mcp",
+    "name": "lesleslie/opera-cloud-mcp/.mcp.json.backup",
+    "repo_url": "https://github.com/lesleslie/opera-cloud-mcp",
+    "grade": "F",
+    "score": 0,
+    "critical": 4,
+    "high": 4,
+    "medium": 6,
+    "low": 0,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 4,
+      "AAK-MCP-009": 4,
+      "AAK-MCP-005": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "seungwonme___claude",
+    "name": "seungwonme/.claude/.mcp.json.backup",
+    "repo_url": "https://github.com/seungwonme/.claude",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 30,
+    "medium": 25,
+    "low": 21,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 24,
+      "AAK-MCP-007": 21,
+      "AAK-MCP-003": 7,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-006": 1,
+      "AAK-SUPPLY-001": 21
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "take566__mcp_server",
+    "name": "take566/mcp_server/.mcp.json.backup",
+    "repo_url": "https://github.com/take566/mcp_server",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 6,
+    "medium": 4,
+    "low": 6,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-001": 1,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  },
+  {
+    "slug": "tbuczen__larpilot",
+    "name": "tbuczen/LARPilot/.mcp.json.dist",
+    "repo_url": "https://github.com/tbuczen/LARPilot",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 10,
+    "medium": 7,
+    "low": 9,
+    "last_scanned": "2026-04-18T09:32:27.281088+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 9,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-SUPPLY-001": 9,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-04-18T12:15:06+00:00"
+  }
+]
