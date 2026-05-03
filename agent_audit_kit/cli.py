@@ -121,6 +121,7 @@ def cli(ctx: click.Context) -> None:
 
 
 @cli.command("scan")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option("--format", "output_format", type=click.Choice(["console", "json", "sarif"]), default="console", help="Output format.")
 @click.option("--severity", "min_severity", type=click.Choice(["critical", "high", "medium", "low", "info"]), default="low", help="Minimum severity to report.")
@@ -214,6 +215,13 @@ def cli(ctx: click.Context) -> None:
     default="auto",
     help="SARIF fingerprint mode. 'auto' (default) emits content-hash when source is co-located, else location-hash — matches GitHub Code Scanning's de-dup expectation. 'line-hash' forces the content-hash code path; 'disabled' emits none.",
 )
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    default=False,
+    help="With --format console, suppress header / summary / tips and only print findings (closes #13).",
+)
 def scan_cmd(
     path: str,
     output_format: str,
@@ -241,6 +249,7 @@ def scan_cmd(
     step_summary: bool,
     pr_summary_out: str | None,
     fingerprint_strategy: str,
+    quiet: bool,
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
@@ -279,6 +288,7 @@ def scan_cmd(
             step_summary=step_summary,
             pr_summary_out=pr_summary_out,
             fingerprint_strategy=fingerprint_strategy,
+            quiet=quiet,
         )
     except Exception as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -311,6 +321,7 @@ def _run_scan(
     advisories_dry_run: bool = False,
     step_summary: bool = True,
     pr_summary_out: str | None = None,
+    quiet: bool = False,
     fingerprint_strategy: str = "auto",
 ) -> None:
     """Core scan logic, separated for clean exit-code handling."""
@@ -439,7 +450,7 @@ def _run_scan(
             fingerprint_strategy=fingerprint_strategy,
         )
     else:
-        output = console.format_results(result, severity, show_score=show_score)
+        output = console.format_results(result, severity, show_score=show_score, quiet=quiet)
 
     if output_file:
         Path(output_file).write_text(output, encoding="utf-8")
@@ -500,12 +511,33 @@ def _run_scan(
 
 
 @cli.command("discover")
+@click.version_option(version=__version__)
 @click.option("--verbose", "-v", is_flag=True, default=False)
-def discover_cmd(verbose: bool) -> None:
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["console", "json"]),
+    default="console",
+    help="Output format. JSON emits a stable schema for programmatic use.",
+)
+def discover_cmd(verbose: bool, output_format: str) -> None:
     """Discover all AI agent configurations on this machine."""
+    from dataclasses import asdict
+    import json as _json
+
     from agent_audit_kit.discovery import discover_agents
 
     agents = discover_agents(verbose=verbose)
+
+    if output_format == "json":
+        # Stable schema: {"count": int, "agents": [{...DiscoveredAgent}]}
+        payload = {
+            "count": len(agents),
+            "agents": [asdict(a) for a in agents],
+        }
+        click.echo(_json.dumps(payload, indent=2, default=str))
+        return
+
     if not agents:
         click.echo("No AI agent configurations found.")
         return
@@ -520,6 +552,7 @@ def discover_cmd(verbose: bool) -> None:
 
 
 @cli.command("pin")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def pin_cmd(path: str) -> None:
     """Pin current MCP tool definitions for rug pull detection."""
@@ -531,6 +564,7 @@ def pin_cmd(path: str) -> None:
 
 
 @cli.command("verify")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def verify_cmd(path: str) -> None:
     """Verify MCP tool definitions against pinned hashes."""
@@ -547,6 +581,7 @@ def verify_cmd(path: str) -> None:
 
 
 @cli.command("fix")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option("--dry-run", is_flag=True, default=False, help="Preview fixes without applying.")
 @click.option(
@@ -578,6 +613,7 @@ def fix_cmd(path: str, dry_run: bool, cve_only: bool) -> None:
 
 
 @cli.command("score")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=True, dir_okay=True, resolve_path=True))
 @click.option("--badge", is_flag=True, default=False, help="Generate SVG badge (project-score mode only).")
 @click.option("--aivss", is_flag=True, default=False, help="Annotate a SARIF file with AIVSS v0.8 scores.")
@@ -618,7 +654,18 @@ def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> N
         sys.exit(EXIT_ERROR)
     result = run_scan(project_root=target)
     compute_score(result)
-    click.echo(f"\nSecurity Score: {result.score}/100  Grade: {result.grade}\n")
+    grade = result.grade or "F"
+    # Closes #14: ANSI-color the grade per band.
+    grade_color = {
+        "A": "green",
+        "B": "green",
+        "C": "yellow",
+        "D": "red",
+        "F": "red",
+    }.get(grade.upper(), "white")
+    score_text = click.style(f"{result.score}/100", bold=True)
+    grade_text = click.style(grade, fg=grade_color, bold=True)
+    click.echo(f"\nSecurity Score: {score_text}  Grade: {grade_text}\n")
     if badge:
         svg = generate_badge(result.score or 0, result.grade or "F")
         if output_file:
@@ -629,6 +676,7 @@ def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> N
 
 
 @cli.command("update")
+@click.version_option(version=__version__)
 def update_cmd() -> None:
     """Update the vulnerability database."""
     from agent_audit_kit.vuln_db import update_database
@@ -641,6 +689,7 @@ def update_cmd() -> None:
 
 
 @cli.command("proxy")
+@click.version_option(version=__version__)
 @click.option("--port", default=8765, help="Port to listen on.")
 @click.option("--target", required=True, help="Target MCP server URL to proxy.")
 def proxy_cmd(port: int, target: str) -> None:
@@ -653,6 +702,7 @@ def proxy_cmd(port: int, target: str) -> None:
 
 
 @cli.command("kill")
+@click.version_option(version=__version__)
 def kill_cmd() -> None:
     """Terminate any running MCP proxy connections."""
     import os
@@ -732,6 +782,7 @@ def corpus_update_cmd(
 
 
 @cli.command("diff")
+@click.version_option(version=__version__)
 @click.option(
     "--baseline", "baseline_path",
     type=click.Path(exists=True, file_okay=True, dir_okay=False),
@@ -788,6 +839,7 @@ def diff_cmd(
 
 
 @cli.command("suggest")
+@click.version_option(version=__version__)
 @click.argument("sarif_path", type=click.Path(exists=True, file_okay=True, dir_okay=False))
 @click.option(
     "--pr", "pr_mode", is_flag=True, default=False,
@@ -824,6 +876,7 @@ def suggest_cmd(
 
 
 @cli.command("watch")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option("--interval", "interval_seconds", type=int, default=300,
               help="Seconds between checks (default 300 = 5 minutes).")
@@ -849,6 +902,7 @@ def watch_cmd(path: str, interval_seconds: int, webhook_url: str | None, once: b
 
 
 @cli.command("install-precommit")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def install_precommit_cmd(path: str) -> None:
     """Add an agent-audit-kit entry to the project's .pre-commit-config.yaml."""
@@ -876,6 +930,7 @@ def install_precommit_cmd(path: str) -> None:
 
 
 @cli.command("export-rules")
+@click.version_option(version=__version__)
 @click.option("--out", "-o", "output_file", type=click.Path(), required=True,
               help="Path to write the signable rule bundle JSON.")
 def export_rules_cmd(output_file: str) -> None:
@@ -888,6 +943,7 @@ def export_rules_cmd(output_file: str) -> None:
 
 
 @cli.command("verify-bundle")
+@click.version_option(version=__version__)
 @click.argument("bundle", type=click.Path(exists=True, dir_okay=False))
 @click.option("--signature", "-s", "sig_path", type=click.Path(exists=True, dir_okay=False),
               default=None, help="Sigstore signature bundle.")
@@ -902,6 +958,7 @@ def verify_bundle_cmd(bundle: str, sig_path: str | None) -> None:
 
 
 @cli.command("sbom")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option(
     "--format",
@@ -945,6 +1002,7 @@ def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
 
 
 @cli.command("report")
+@click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 @click.option(
     "--framework",
@@ -1001,6 +1059,7 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
 
 
 @cli.command("coverage")
+@click.version_option(version=__version__)
 @click.option(
     "--source",
     type=click.Choice(["ox", "prisma-airs"]),
@@ -1125,6 +1184,7 @@ def pipelock_import_cmd(
 
 
 @cli.command("inspect-ide")
+@click.version_option(version=__version__)
 @click.argument(
     "path", default=".",
     type=click.Path(exists=True, file_okay=True, dir_okay=True, resolve_path=True),
@@ -1177,6 +1237,7 @@ def inspect_ide_cmd(path: str, fmt: str, serve: bool) -> None:
 
 
 @cli.command("parity")
+@click.version_option(version=__version__)
 @click.argument(
     "subcommand", type=click.Choice(["report"]), default="report"
 )
@@ -1234,6 +1295,7 @@ def parity_cmd(
 
 
 @cli.command("watch-cve")
+@click.version_option(version=__version__)
 @click.option(
     "--feeds",
     default="ox,cert-cc,thaicert,ironplate",

@@ -162,6 +162,54 @@ def test_python_requirements_with_extras(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Closes #18: targeted boundary coverage for _scan_python_deps + _scan_rust_deps.
+# ---------------------------------------------------------------------------
+
+
+def test_python_requirements_dev_files_picked_up(tmp_path: Path) -> None:
+    """`requirements*.txt` glob should also catch requirements-dev.txt
+    and requirements-test.txt, not just requirements.txt."""
+    (tmp_path / "requirements.txt").write_text("requests==2.31.0\n")
+    (tmp_path / "requirements-dev.txt").write_text("openclaw==2.0.0\n")
+    (tmp_path / "requirements-test.txt").write_text("flask==3.0.0\n")
+    findings, scanned = scan(tmp_path)
+    supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
+    assert any(f.file_path == "requirements-dev.txt" for f in supply002), (
+        "Vulnerable pin in requirements-dev.txt must be detected via glob"
+    )
+    assert "requirements-dev.txt" in scanned
+    assert "requirements-test.txt" in scanned
+
+
+def test_version_in_range_boundary_below() -> None:
+    """A version exactly at the lower bound of the affected range
+    must be flagged; one tick below must not."""
+    affected = ">=1.7.0 <1.7.4"
+    assert _version_in_range("1.7.0", affected), "1.7.0 is the lower bound — must trip"
+    assert _version_in_range("1.7.3", affected), "1.7.3 is inside the range — must trip"
+    assert not _version_in_range("1.6.99", affected), "1.6.99 is below — must pass"
+
+
+def test_version_in_range_boundary_above() -> None:
+    """A version at or above the upper bound must NOT be flagged."""
+    affected = ">=1.7.0 <1.7.4"
+    assert not _version_in_range("1.7.4", affected), "1.7.4 is the patched version — must pass"
+    assert not _version_in_range("1.8.0", affected), "1.8.0 is well above — must pass"
+    assert not _version_in_range("2.0.0", affected), "2.0.0 is well above — must pass"
+
+
+def test_python_version_range_lower_bound_trips(tmp_path: Path) -> None:
+    """End-to-end version-range check: pin exactly at the lower bound
+    of an affected range must produce AAK-SUPPLY-002."""
+    # axios >=1.7.0 <1.7.4 is the seeded range in KNOWN_VULNERABLE_PACKAGES
+    # but axios is npm-only. Use openclaw which is in python's table.
+    (tmp_path / "requirements.txt").write_text("openclaw==1.5.0\n")  # below patched 2.1.0
+    findings, _ = scan(tmp_path)
+    supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
+    assert any("openclaw" in f.evidence and "1.5.0" in f.evidence for f in supply002)
+
+
+# ---------------------------------------------------------------------------
 # Rust dependency scanning (_scan_rust_deps)
 # ---------------------------------------------------------------------------
 
