@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-audit-kit"
-version = "0.3.10"
+version = "0.3.12"
 description = "Security scanner for MCP-connected AI agent pipelines"
 readme = "README.md"
 license = {text = "MIT"}

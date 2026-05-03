@@ -8,7 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
-## Shipped in v0.3.11 (2026-05-03)
+## Shipped in v0.3.12 (2026-05-03)
+
+> v0.3.11 was tagged but never published — the original tag carried a
+> stale `pyproject.toml` so PyPI rejected the duplicate `0.3.10` wheel
+> upload. The same content ships as v0.3.12 with a corrected manifest;
+> v0.3.11 stays on the tags page as a permanent failed-release marker.
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
 |---|---|---|---|---|

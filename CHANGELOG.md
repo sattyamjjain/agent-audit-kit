@@ -5,7 +5,15 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.11] - 2026-05-03
+## [0.3.12] - 2026-05-03
+
+> Note: v0.3.11 was tagged with a stale `pyproject.toml` (still
+> reading `0.3.10`) and so the PyPI publish job rejected the
+> `0.3.10` wheel as a duplicate; the GitHub Release was skipped.
+> The same content ships as v0.3.12 with a corrected manifest. The
+> v0.3.11 tag is retained as a permanent failed-release marker;
+> it has no PyPI artefact, no GitHub Release, and no `aak`
+> consumer should ever see it on the index.
 
 **Headline: 2 new CVE rules (190 total) + README scanner-count drift
 fix — astro-mcp-server CVE-2026-7591 SQLi (pin + TS/JS source
