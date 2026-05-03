@@ -12,7 +12,9 @@ on:
       - rules.json
       - agent_audit_kit/rules/**
       - agent_audit_kit/bundle.py
+      - agent_audit_kit/scanners/**
       - scripts/sync_rule_count.py
+      - scripts/sync_scanner_count.py
   workflow_dispatch: {}
 
 permissions:
@@ -39,6 +41,9 @@ jobs:
       - name: Regenerate bundle + sync surfaces
         id: sync
         run: python scripts/sync_rule_count.py --regenerate
+
+      - name: Sync scanner-module count
+        run: python scripts/sync_scanner_count.py
 
       - name: Check for drift
         id: diff

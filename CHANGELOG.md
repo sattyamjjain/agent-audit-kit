@@ -5,6 +5,78 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11] - 2026-05-03
+
+**Headline: 2 new CVE rules (190 total) + README scanner-count drift
+fix — astro-mcp-server CVE-2026-7591 SQLi (pin + TS/JS source
+detector), LiteLLM CVE-2026-30623 pin floor (auto-fix-wired), and
+`scripts/sync_scanner_count.py` to keep README's `<!-- scanner-count
+-->` anchor in lockstep with `agent_audit_kit/scanners/`.**
+
+This release closes the public 48-hour CVE-to-rule SLA on two fresh
+disclosures: CVE-2026-7591 against TimBroddin/astro-mcp-server (NVD
+2026-05-01, no upstream patch released yet — every published version
+is vulnerable) and CVE-2026-30623 against BerriAI/litellm (patched in
+v1.83.7 on 2026-04-30). It also fixes a long-standing README claim
+("28 scanner modules") that drifted past the actual filesystem count
+of 57 detectors over twelve minor revs.
+
+### Added — Rules (2)
+
+- **AAK-ASTROMCP-SQLI-CVE-2026-7591-001** (HIGH) — TimBroddin/
+  astro-mcp-server SQL injection in `src/index.ts` MCP-tool query
+  construction via `request.params.arguments`. Two detector arms:
+  pin-check on `package.json` / `package-lock.json` / `yarn.lock` /
+  `pnpm-lock.yaml` fires whenever the package is present (every
+  published version <=1.1.1 is vulnerable, no patch as of ship date),
+  and a TS/JS source detector fires when files importing the package
+  build queries via string concatenation or untagged template
+  literals. Tagged-template SQL helpers (`drizzle-orm`,
+  `postgres-js`, `sql-template-tag`) escape interpolations safely
+  and are intentionally not matched. CVE anchor: NVD 2026-05-01.
+- **AAK-LITELLM-CVE-2026-30623-PIN-001** (HIGH, auto-fixable) —
+  `litellm` pinned at <1.83.7 in any Python manifest
+  (`requirements*.txt`, `pyproject.toml`, `Pipfile*`, `poetry.lock`,
+  `uv.lock`). Complements `AAK-MCP-STDIO-CMD-INJ-001` (which catches
+  the source-side architectural shape) by surfacing a discrete
+  finding for consumers running pin-check mode. Wired into
+  `aak fix --cve` so the auto-fixer rewrites a `requirements*.txt`
+  pin in place. Patch anchor: BerriAI/litellm v1.83.7 on 2026-04-30.
+
+### Changed
+
+- README "28 scanner modules" prose → `<!-- scanner-count:total
+  -->NN<!-- /scanner-count --> scanner modules` anchor, kept in
+  lockstep with the filesystem count via
+  `scripts/sync_scanner_count.py`. Same posture as
+  `sync_rule_count.py`: pre-commit hook blocks human drift; the
+  existing `sync-rule-count.yml` workflow auto-runs
+  `sync_scanner_count.py` after relevant pushes and commits the
+  bumped files back.
+- `agent_audit_kit/__init__.py` — added `SCANNER_COUNT` constant
+  alongside `RULE_COUNT`.
+
+### Tests
+
+- 11 new tests: 6 cover the astro-mcp pin + source matrix
+  (vulnerable pin fires, concat-source fires, parameterized passes,
+  tagged-template passes, no-import-scope-gate passes, pin+source
+  side-by-side); 4 cover the LiteLLM pin floor (vulnerable fires,
+  safe-pin passes, floor-pin passes, `fix --cve` codemod bumps the
+  pin in place); 1 guards the README scanner-count anchor against
+  filesystem drift.
+
+### Carry list — for next release
+
+- Four MCP-server CVEs from the 2026-05-01 OX/BackBox roundup
+  (DocsGPT, GPT-Researcher, Agent-Zero, LettaAI) need their own
+  pin-check + source pattern + fixture sets — deferred from today
+  because each is independently >S effort.
+- The 2026-05-02 plan's deferred P0 list (Flowise CVE-2025-59528,
+  Cursor CVE-2026-26268, OpenClaw CVE-2026-32922 escalation variant,
+  LMDeploy CVE-2026-33626) re-evaluates against fresh primary sources
+  in the next prompt rather than carrying over silently.
+
 ## [0.3.10] - 2026-04-29
 
 **Headline: 8 new rules (188 total), 4 new product surfaces — CrewAI

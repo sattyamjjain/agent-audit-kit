@@ -117,6 +117,8 @@ def _apply_fix(
         return _fix_env_gitignore(project_root, dry_run)
     elif rule_id in ("AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"):
         return _fix_langchain_version(full_path, rule_id, dry_run)
+    elif rule_id == "AAK-LITELLM-CVE-2026-30623-PIN-001":
+        return _fix_litellm_version(full_path, dry_run)
     return None
 
 
@@ -127,6 +129,7 @@ def _apply_fix(
 _CVE_FIXABLE_RULES: frozenset[str] = frozenset({
     "AAK-LANGCHAIN-001",  # CVE-2026-34070 — bump langchain-core >=1.2.22
     "AAK-LANGCHAIN-003",  # CVE-2025-68664 — bump langchain >=0.3.14
+    "AAK-LITELLM-CVE-2026-30623-PIN-001",  # CVE-2026-30623 — bump litellm >=1.83.7
 })
 
 _LANGCHAIN_MIN_VERSIONS = {
@@ -224,6 +227,49 @@ def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction
         rule_id,
         str(path),
         f"{path.name} is not a supported manifest for auto-bump",
+        False,
+    )
+
+
+def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
+    """Bump a vulnerable litellm pin to 1.83.7 (CVE-2026-30623).
+
+    Same posture as `_fix_langchain_version`: rewrite line-based
+    requirements*.txt manifests in place; refuse to touch lockfiles
+    or pyproject.toml because their locking semantics make a naive
+    text bump unsafe.
+    """
+    import re as _re
+
+    rule_id = "AAK-LITELLM-CVE-2026-30623-PIN-001"
+    min_version = "1.83.7"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return FixAction(rule_id, str(path), "Unable to read file", False)
+
+    if path.name.endswith(".txt"):
+        pin_re = _re.compile(
+            r"^(\s*)(litellm)\s*(?:==|>=|<=|<|>|~=|!=)?\s*[0-9][0-9a-zA-Z.\-_]*",
+            _re.MULTILINE | _re.IGNORECASE,
+        )
+        new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
+        if count == 0:
+            return FixAction(rule_id, str(path), "No matching litellm pin", False)
+        if not dry_run:
+            path.write_text(new_text, encoding="utf-8")
+        return FixAction(
+            rule_id,
+            str(path),
+            f"Bumped {count} litellm pin(s) to >={min_version}",
+            not dry_run,
+        )
+
+    return FixAction(
+        rule_id,
+        str(path),
+        f"{path.name} is not a supported manifest for auto-bump "
+        "(only requirements*.txt is line-safe to rewrite)",
         False,
     )
 

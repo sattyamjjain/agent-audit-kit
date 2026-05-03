@@ -465,6 +465,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_doris_mcp_pin(project_root, scanned_files))
     findings.extend(_check_excel_mcp_pin(project_root, scanned_files))
     findings.extend(_check_azure_mcp_auth(project_root, scanned_files))
+    findings.extend(_check_astro_mcp_pin(project_root, scanned_files))
+    findings.extend(_scan_astro_mcp_query_concat(project_root, scanned_files))
+    findings.extend(_check_litellm_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -700,4 +703,190 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
                         "AAK-SUPPLY-006", rel_path,
                         f"Server '{server_name}' uses {pkg_name}@{version} — {vuln_info['description']}",
                     ))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-ASTROMCP-SQLI-CVE-2026-7591-001 — astro-mcp-server <= 1.1.1.
+# CVE-2026-7591 (NVD 2026-05-01): SQL injection in src/index.ts via
+# request.params.arguments at the MCP-tool query-construction path.
+# Latest npm publish (TimBroddin/astro-mcp-server) is 1.1.1 — the same
+# version flagged as the vulnerable ceiling — so no upstream patch
+# exists yet; pin-check fires whenever the package is present at any
+# version. The TS / JS source detector fires when files importing the
+# package build queries via string concatenation or untagged template
+# literals; tagged-template SQL helpers (sql/drizzle/prisma/postgres-js)
+# encode interpolation safely and are intentionally not matched.
+# ---------------------------------------------------------------------------
+
+# `None` means "no fix released yet — every version is vulnerable".
+_ASTRO_MCP_PATCHED: tuple[int, int, int] | None = None
+_ASTRO_MCP_PACKAGE_JSON_RE = re.compile(
+    r'"astro-mcp-server"\s*:\s*"([~^>=<\s]*[0-9][\w.\-]*)"',
+    re.IGNORECASE,
+)
+# yarn.lock / pnpm-lock.yaml / package-lock.json shape:
+#   "astro-mcp-server@1.1.1" or astro-mcp-server@^1.1.0:
+_ASTRO_MCP_LOCKLINE_RE = re.compile(
+    r'\bastro-mcp-server@([~^>=<\s]*[0-9][\w.\-]*)',
+    re.IGNORECASE,
+)
+
+
+def _check_astro_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+            rel,
+            f"astro-mcp-server pinned at {raw!r} — CVE-2026-7591 SQL "
+            "injection (NVD 2026-05-01); no upstream patch published "
+            "as of the AAK ship date — every version <=1.1.1 is "
+            "vulnerable.",
+        ))
+
+    candidates: list[Path] = []
+    for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "astro-mcp-server" not in text:
+            continue
+        rel = str(path.relative_to(project_root))
+        m = _ASTRO_MCP_PACKAGE_JSON_RE.search(text)
+        if m:
+            version = _semver3(m.group(1))
+            if _ASTRO_MCP_PATCHED is None or version is None or version < _ASTRO_MCP_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, m.group(1).strip())
+                continue
+        m2 = _ASTRO_MCP_LOCKLINE_RE.search(text)
+        if m2:
+            version = _semver3(m2.group(1))
+            if _ASTRO_MCP_PATCHED is None or version is None or version < _ASTRO_MCP_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, m2.group(1).strip())
+    return findings
+
+
+_ASTRO_MCP_IMPORT_RE = re.compile(
+    r"""(?x)
+    (?:
+        \bfrom\s+['"]astro-mcp-server['"]
+      | \bimport\s+['"]astro-mcp-server['"]
+      | \brequire\(\s*['"]astro-mcp-server['"]\s*\)
+    )
+    """,
+)
+# Concatenation: db.query("SELECT ... " + x) or
+# untagged template literal: db.query(`SELECT ... ${x}`).
+# Tagged template form (sql`...`, drizzle`...`) is intentionally NOT
+# matched because it escapes interpolations safely.
+_ASTRO_MCP_CONCAT_RE = re.compile(
+    r"""(?xs)
+    \b(?:db|client|conn|connection|pool|cursor|database|sqlite|knex)
+    \.(?:query|execute|run|all|get|exec|prepare)\s*\(\s*
+    (?:
+        ['"][^'"]*\b(?:select|insert|update|delete|create|drop|alter)\b[^'"]*['"]\s*\+\s*\w+
+      | `[^`]*\b(?:select|insert|update|delete|create|drop|alter)\b[^`]*\$\{\s*[^}]+\s*\}[^`]*`
+    )
+    """,
+    re.IGNORECASE,
+)
+
+
+def _scan_astro_mcp_query_concat(
+    project_root: Path, scanned_files: set[str]
+) -> list[Finding]:
+    findings: list[Finding] = []
+    skip_dirs = {"node_modules", ".git", "dist", "build", ".next", "coverage"}
+    suffixes = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
+    for path in project_root.rglob("*"):
+        if not path.is_file():
+            continue
+        if any(part in skip_dirs for part in path.parts):
+            continue
+        if path.suffix not in suffixes:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if len(text) > 1_000_000:
+            continue
+        if not _ASTRO_MCP_IMPORT_RE.search(text):
+            continue
+        rel = str(path.relative_to(project_root))
+        for m in _ASTRO_MCP_CONCAT_RE.finditer(text):
+            scanned_files.add(rel)
+            line_no = text.count("\n", 0, m.start()) + 1
+            evidence = m.group(0).replace("\n", " ").strip()
+            if len(evidence) > 100:
+                evidence = evidence[:97] + "..."
+            findings.append(make_finding(
+                "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+                rel,
+                f"Unsafe SQL construction in astro-mcp-server context "
+                f"(CVE-2026-7591): {evidence}",
+                line_number=line_no,
+            ))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-LITELLM-CVE-2026-30623-PIN-001 — litellm < 1.83.7 (CVE-2026-30623).
+# BerriAI/litellm published v1.83.7 on 2026-04-30 with the patch. This
+# pin-only rule complements AAK-MCP-STDIO-CMD-INJ-001 (which catches the
+# source-side shape) by surfacing a discrete finding when the manifest
+# pins a pre-patch version, even if the source uses the SDK safely.
+# Wired into `aak fix --cve` so the auto-fixer can rewrite the manifest.
+# ---------------------------------------------------------------------------
+
+_LITELLM_PATCHED = (1, 83, 7)
+_LITELLM_VERSION_RE = re.compile(
+    r"(?<![\w-])litellm\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _check_litellm_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str) -> None:
+        findings.append(make_finding(
+            "AAK-LITELLM-CVE-2026-30623-PIN-001", rel,
+            f"litellm pinned at {raw!r} — CVE-2026-30623 patched in "
+            "1.83.7 (BerriAI/litellm 2026-04-30).",
+        ))
+
+    candidates: list[Path] = []
+    candidates.extend(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for m in _LITELLM_VERSION_RE.finditer(text):
+            version = _semver3(m.group(1))
+            if version is None or version < _LITELLM_PATCHED:
+                rel = str(path.relative_to(project_root))
+                scanned_files.add(rel)
+                _fire(rel, m.group(1))
+                break  # one finding per file is enough
     return findings
