@@ -64,13 +64,27 @@ def format_results(
     result: ScanResult,
     min_severity: Severity = Severity.LOW,
     show_score: bool = False,
+    quiet: bool = False,
 ) -> str:
+    """Render a console-format report.
+
+    Args:
+        result: Completed ScanResult.
+        min_severity: Lowest severity to surface.
+        show_score: Append the AAK letter-grade score line.
+        quiet: When True, suppress the header / summary band / footer
+            tips and emit only the findings themselves (or a single
+            "no findings" line when nothing fired). Closes #13.
+    """
     filtered = result.findings_at_or_above(min_severity)
     lines: list[str] = []
 
-    lines.append(f"\n{BOLD}\u2501\u2501\u2501 AgentAuditKit Scan Results \u2501\u2501\u2501{RESET}\n")
+    if not quiet:
+        lines.append(f"\n{BOLD}\u2501\u2501\u2501 AgentAuditKit Scan Results \u2501\u2501\u2501{RESET}\n")
 
     if not filtered:
+        if quiet:
+            return ""
         lines.append(f"  \u2705 No findings at or above {min_severity.value} severity.\n")
     else:
         severity_order = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
@@ -87,6 +101,9 @@ def format_results(
                 lines.append(f"  {DIM}{file_path}{RESET}")
                 for finding in file_findings:
                     lines.append(_format_finding(finding, color))
+
+    if quiet:
+        return "\n".join(lines)
 
     lines.append(f"{BOLD}\u2501\u2501\u2501 Summary \u2501\u2501\u2501{RESET}\n")
     summary_parts = []

@@ -1,0 +1,25 @@
+# EditorConfig — https://editorconfig.org
+# Closes #17. Mirrors the existing repo conventions: 4-space indent for
+# Python source, 2-space indent for YAML / JSON / TOML / Markdown, UTF-8
+# encoding, LF line endings, trim trailing whitespace, final newline.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.py]
+indent_size = 4
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2
+
+[*.md]
+indent_size = 2
+trim_trailing_whitespace = false  # markdown line breaks need two trailing spaces
+
+[Makefile]
+indent_style = tab
