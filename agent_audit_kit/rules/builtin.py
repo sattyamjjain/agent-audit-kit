@@ -83,6 +83,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SPLUNK-TOKLOG-001": ["DSP-17", "LOG-06"],
     "AAK-GHA-IMMUTABLE-001": ["STA-02", "CCC-08"],
     "AAK-EXCEL-MCP-001": ["AIS-07", "IVS-04"],
+    "AAK-ASTROMCP-SQLI-CVE-2026-7591-001": ["AIS-07", "DSP-04", "IVS-09"],
+    "AAK-LITELLM-CVE-2026-30623-PIN-001": ["STA-08", "AIS-08"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3863,6 +3865,66 @@ _r(
     "`status: catalog-private` are not publicly disclosed and "
     "intentionally absent from AAK coverage.",
     sarif_name="PrismaAirsCoverageManifest",
+)
+
+_r(
+    "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+    "astro-mcp-server SQL injection (CVE-2026-7591, npm <=1.1.1)",
+    "TimBroddin/astro-mcp-server <=1.1.1 builds SQL queries from "
+    "`request.params.arguments` via string concatenation in "
+    "`src/index.ts` (the MCP-tool query-construction path). "
+    "CVE-2026-7591 (NVD 2026-05-01, CWE-89): no upstream patch "
+    "released as of the AAK ship date — the latest npm publish "
+    "(1.1.1) is the same version flagged as the vulnerable ceiling. "
+    "Two detector arms: a pin-check on package.json / package-lock "
+    "/ yarn.lock / pnpm-lock fires whenever the package is present "
+    "(because every published version is vulnerable), and a TS / JS "
+    "source detector fires when files importing the package build "
+    "queries via string concatenation or untagged template "
+    "literals. Tagged-template SQL helpers (`sql\\`...\\``, drizzle, "
+    "prisma, postgres-js) escape interpolations safely and are "
+    "intentionally not matched.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin away from astro-mcp-server until a fixed release is "
+    "published (track upstream at "
+    "https://github.com/TimBroddin/astro-mcp-server). For the "
+    "source shape, switch to a parameterized-query API (e.g., "
+    "`db.query(sql, [param])`, `cursor.execute(sql, params)`) or "
+    "wrap interpolations in a tagged-template SQL helper such as "
+    "`drizzle-orm`, `postgres-js`, or `sql-template-tag` — those "
+    "escape values safely and AAK ignores them.",
+    sarif_name="AstroMcpSqlInjection",
+    cve_references=["CVE-2026-7591"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP01:2025"],
+    incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-LITELLM-CVE-2026-30623-PIN-001",
+    "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)",
+    "A Python manifest (`requirements*.txt`, `pyproject.toml`, "
+    "`Pipfile*`, `poetry.lock`, `uv.lock`) pins `litellm` at a "
+    "version below 1.83.7. BerriAI/litellm shipped the CVE-2026-30623 "
+    "fix in v1.83.7 on 2026-04-30. AAK-MCP-STDIO-CMD-INJ-001 already "
+    "covers the source-side architectural shape; this pin-only rule "
+    "complements it by surfacing a discrete finding for consumers "
+    "who run pin-check mode and need an actionable manifest fix. "
+    "Wired into `aak fix --cve` so the auto-fixer can rewrite "
+    "requirements*.txt entries to `litellm>=1.83.7`.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Bump `litellm` to >= 1.83.7. `aak fix --cve` rewrites a "
+    "requirements*.txt pin in place; `pyproject.toml` / lockfile "
+    "edits should go through the project's normal dependency-update "
+    "workflow.",
+    sarif_name="LitellmCveStaleVersion",
+    cve_references=["CVE-2026-30623"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    incident_references=["BERRIAI-LITELLM-2026-04-30"],
+    auto_fixable=True,
 )
 
 _r(

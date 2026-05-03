@@ -15,6 +15,12 @@ repos:
         language: system
         pass_filenames: false
         files: "^(rules\\.json|README\\.md|action\\.yml|agent_audit_kit/rules/|agent_audit_kit/__init__\\.py$)"
+      - id: aak-sync-scanner-count
+        name: AAK — scanner-module count in lockstep with agent_audit_kit/scanners/
+        entry: python scripts/sync_scanner_count.py --check
+        language: system
+        pass_filenames: false
+        files: "^(README\\.md|agent_audit_kit/scanners/|agent_audit_kit/__init__\\.py$|scripts/sync_scanner_count\\.py$)"
 
   # ---------------------------------------------------------------------
   # Upstream lint / format.

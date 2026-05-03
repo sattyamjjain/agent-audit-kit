@@ -434,6 +434,36 @@
       "title": "MCP server built on the upstream SDK without STDIO sanitizer"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-04",
+        "IVS-09"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-7591"
+      ],
+      "description": "TimBroddin/astro-mcp-server <=1.1.1 builds SQL queries from `request.params.arguments` via string concatenation in `src/index.ts` (the MCP-tool query-construction path). CVE-2026-7591 (NVD 2026-05-01, CWE-89): no upstream patch released as of the AAK ship date \u2014 the latest npm publish (1.1.1) is the same version flagged as the vulnerable ceiling. Two detector arms: a pin-check on package.json / package-lock / yarn.lock / pnpm-lock fires whenever the package is present (because every published version is vulnerable), and a TS / JS source detector fires when files importing the package build queries via string concatenation or untagged template literals. Tagged-template SQL helpers (`sql\\`...\\``, drizzle, prisma, postgres-js) escape interpolations safely and are intentionally not matched.",
+      "incident_references": [
+        "NVD-CVE-2026-7591",
+        "VULDB-360544"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Pin away from astro-mcp-server until a fixed release is published (track upstream at https://github.com/TimBroddin/astro-mcp-server). For the source shape, switch to a parameterized-query API (e.g., `db.query(sql, [param])`, `cursor.execute(sql, params)`) or wrap interpolations in a tagged-template SQL helper such as `drizzle-orm`, `postgres-js`, or `sql-template-tag` \u2014 those escape values safely and AAK ignores them.",
+      "rule_id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+      "sarif_name": "AstroMcpSqlInjection",
+      "severity": "high",
+      "title": "astro-mcp-server SQL injection (CVE-2026-7591, npm <=1.1.1)"
+    },
+    {
       "adversa_references": [
         "ADV-AUTH-01"
       ],
@@ -1591,6 +1621,35 @@
       "sarif_name": "DmcaFlaggedPackage",
       "severity": "critical",
       "title": "DMCA-flagged package detected"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "STA-08",
+        "AIS-08"
+      ],
+      "auto_fixable": true,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-30623"
+      ],
+      "description": "A Python manifest (`requirements*.txt`, `pyproject.toml`, `Pipfile*`, `poetry.lock`, `uv.lock`) pins `litellm` at a version below 1.83.7. BerriAI/litellm shipped the CVE-2026-30623 fix in v1.83.7 on 2026-04-30. AAK-MCP-STDIO-CMD-INJ-001 already covers the source-side architectural shape; this pin-only rule complements it by surfacing a discrete finding for consumers who run pin-check mode and need an actionable manifest fix. Wired into `aak fix --cve` so the auto-fixer can rewrite requirements*.txt entries to `litellm>=1.83.7`.",
+      "incident_references": [
+        "BERRIAI-LITELLM-2026-04-30"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025",
+        "MCP05:2025"
+      ],
+      "remediation": "Bump `litellm` to >= 1.83.7. `aak fix --cve` rewrites a requirements*.txt pin in place; `pyproject.toml` / lockfile edits should go through the project's normal dependency-update workflow.",
+      "rule_id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
+      "sarif_name": "LitellmCveStaleVersion",
+      "severity": "high",
+      "title": "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)"
     },
     {
       "adversa_references": [

@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-04-29T08:27:41Z",
+  "last_updated": "2026-05-03T12:02:04Z",
   "aak_version": "0.3.10",
-  "rule_count": 188,
+  "rule_count": 190,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -89,7 +89,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 22,
+      "rule_density": 24,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -98,6 +98,18 @@
           "aicm_references": [
             "AIS-07",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-7591"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "IVS-09"
           ]
         },
         {
@@ -158,6 +170,17 @@
           ],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-30623"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "STA-08"
           ]
         },
         {
@@ -1618,7 +1641,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 13,
+      "rule_density": 15,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -1635,6 +1658,18 @@
           "aicm_references": [
             "AIS-07",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-7591"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "IVS-09"
           ]
         },
         {
@@ -1658,6 +1693,17 @@
           "aicm_references": [
             "CCC-08",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-30623"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "STA-08"
           ]
         },
         {

@@ -1,5 +1,5 @@
 name: 'AgentAuditKit MCP Security Scan'
-description: 'AgentAuditKit — MCP Security Scan (188 rules, OWASP Agentic Top 10 + MCP Top 10)'
+description: 'AgentAuditKit — MCP Security Scan (190 rules, OWASP Agentic Top 10 + MCP Top 10)'
 author: 'sattyamjjain'
 
 branding:

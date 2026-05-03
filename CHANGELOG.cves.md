@@ -8,6 +8,13 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.11 (2026-05-03)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-7591 | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-7591) — TimBroddin/astro-mcp-server <=1.1.1 SQL injection in MCP-tool query construction (no upstream patch as of ship date) | **AAK-ASTROMCP-SQLI-CVE-2026-7591-001** (pin + TS/JS source detector) | 2026-05-03 | <48h on NVD (disclosed 2026-05-01) |
+| CVE-2026-30623 | [BerriAI/litellm](https://github.com/BerriAI/litellm/releases) — patched in v1.83.7 (2026-04-30); already class-covered by `AAK-MCP-STDIO-CMD-INJ-001` | **AAK-LITELLM-CVE-2026-30623-PIN-001** (auto-fixable pin floor) | 2026-05-03 | <72h on BerriAI release |
+
 ## Shipped in v0.3.8 (2026-04-27)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
