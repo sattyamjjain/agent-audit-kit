@@ -168,7 +168,7 @@ jobs:
           agent-audit-kit sbom . --format spdx      --output sbom.spdx.json
 
       - name: Sigstore keyless sign
-        uses: sigstore/gh-action-sigstore-python@v3.0.0
+        uses: sigstore/gh-action-sigstore-python@v3.3.0
         with:
           inputs: |
             rules.json
