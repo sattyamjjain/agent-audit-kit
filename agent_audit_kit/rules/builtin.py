@@ -85,6 +85,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-EXCEL-MCP-001": ["AIS-07", "IVS-04"],
     "AAK-ASTROMCP-SQLI-CVE-2026-7591-001": ["AIS-07", "DSP-04", "IVS-09"],
     "AAK-LITELLM-CVE-2026-30623-PIN-001": ["STA-08", "AIS-08"],
+    "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3899,6 +3900,33 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
+    "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git <=0.1.0)",
+    "Toowiredd/chatgpt-mcp-server <=0.1.0 has an OS command injection "
+    "in `src/services/docker.service.ts` (the MCP/HTTP path). "
+    "CVE-2026-7061 (NVD, CVSS 7.3): the package is NOT published to "
+    "npm — consumers install via a `git+https://` URL or GitHub "
+    "shorthand in package.json. No upstream patch as of the AAK ship "
+    "date; every version <=0.1.0 is vulnerable. The architectural "
+    "class is also caught by AAK-MCP-STDIO-CMD-INJ-002 (TS-side "
+    "stdio cmd-injection taint sink); this pin-only rule is the "
+    "named-CVE companion that surfaces a discrete finding for "
+    "consumers running pin-check mode and want an actionable "
+    "manifest fix.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin away from chatgpt-mcp-server until an upstream patch ships "
+    "(track at https://github.com/Toowiredd/chatgpt-mcp-server). For "
+    "the runtime shape, AAK-MCP-STDIO-CMD-INJ-002 already fires on "
+    "any TS file that constructs a stdio command from network input.",
+    sarif_name="ChatGptMcpCmdInjection",
+    cve_references=["CVE-2026-7061"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    incident_references=["NVD-CVE-2026-7061"],
 )
 
 _r(

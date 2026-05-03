@@ -901,6 +901,67 @@ def watch_cmd(path: str, interval_seconds: int, webhook_url: str | None, once: b
     )
 
 
+@cli.command("notify")
+@click.version_option(version=__version__)
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+@click.option(
+    "--config",
+    "config_path",
+    type=click.Path(),
+    default=None,
+    help="Path to .aak-notify.yaml. Default: <path>/.aak-notify.yaml.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Run a scan and print which sinks would have been notified, without making network calls.",
+)
+def notify_cmd(path: str, config_path: str | None, dry_run: bool) -> None:
+    """Run a scan and dispatch findings to configured notification sinks
+    (Slack today; PagerDuty / Linear stubs in v0.4.0). Closes #66."""
+    from agent_audit_kit.integrations import (
+        load_notify_config,
+        run_notify,
+    )
+
+    project_root = Path(path)
+    cfg_path = Path(config_path) if config_path else project_root / ".aak-notify.yaml"
+
+    if not cfg_path.is_file():
+        click.echo(
+            f"notify: no config at {cfg_path}; create one to wire up sinks.",
+            err=True,
+        )
+        sys.exit(EXIT_ERROR)
+
+    cfg = load_notify_config(cfg_path)
+    if not cfg.sinks:
+        click.echo("notify: config has no sinks configured.", err=True)
+        sys.exit(EXIT_ERROR)
+
+    result = run_scan(project_root=project_root)
+
+    if dry_run:
+        for sink in cfg.sinks:
+            gated = [
+                f for f in result.findings
+                if f.severity.value >= sink.min_severity.value
+            ]
+            click.echo(
+                f"  [dry-run] {sink.kind}: would post {len(gated)} finding(s) "
+                f"at or above {sink.min_severity.name}",
+            )
+        return
+
+    sent = run_notify(result, cfg)
+    for kind, count in sent.items():
+        if count == -1:
+            click.echo(f"  {kind}: STUB (NotImplementedError) — not yet shipped")
+        else:
+            click.echo(f"  {kind}: posted {count} finding(s)")
+
+
 @cli.command("install-precommit")
 @click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))

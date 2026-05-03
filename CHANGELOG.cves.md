@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.13 (2026-05-03)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-7061 | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-7061) — Toowiredd/chatgpt-mcp-server <=0.1.0 OS command injection in docker.service.ts (HIGH 7.3); package is GitHub-only, no npm publish, no upstream patch as of ship date | **AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001** (pin-check on git+https / github: shorthand in package.json + companion class detector AAK-MCP-STDIO-CMD-INJ-002) | 2026-05-03 | targeted follow-up: closes the longest-open backlog item |
+
 ## Shipped in v0.3.12 (2026-05-03)
 
 > v0.3.11 was tagged but never published — the original tag carried a

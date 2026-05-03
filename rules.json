@@ -522,6 +522,35 @@
       "title": "Azure MCP server published without auth middleware on /mcp routes"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-08",
+        "IAM-05",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-7061"
+      ],
+      "description": "Toowiredd/chatgpt-mcp-server <=0.1.0 has an OS command injection in `src/services/docker.service.ts` (the MCP/HTTP path). CVE-2026-7061 (NVD, CVSS 7.3): the package is NOT published to npm \u2014 consumers install via a `git+https://` URL or GitHub shorthand in package.json. No upstream patch as of the AAK ship date; every version <=0.1.0 is vulnerable. The architectural class is also caught by AAK-MCP-STDIO-CMD-INJ-002 (TS-side stdio cmd-injection taint sink); this pin-only rule is the named-CVE companion that surfaces a discrete finding for consumers running pin-check mode and want an actionable manifest fix.",
+      "incident_references": [
+        "NVD-CVE-2026-7061"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Pin away from chatgpt-mcp-server until an upstream patch ships (track at https://github.com/Toowiredd/chatgpt-mcp-server). For the runtime shape, AAK-MCP-STDIO-CMD-INJ-002 already fires on any TS file that constructs a stdio command from network input.",
+      "rule_id": "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001",
+      "sarif_name": "ChatGptMcpCmdInjection",
+      "severity": "high",
+      "title": "chatgpt-mcp-server OS command injection (CVE-2026-7061, npm/git <=0.1.0)"
+    },
+    {
       "adversa_references": [
         "ADV-PATH-01"
       ],
