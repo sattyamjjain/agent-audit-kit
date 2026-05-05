@@ -8,6 +8,13 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.14 (2026-05-05)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| OX-MCP-2026-05-01 (incident class) | [OX Security blog](https://www.ox.security/blog/mcp-supply-chain-advisory-rce-vulnerabilities-across-the-ai-ecosystem/) + [BackBox news](https://news.backbox.org/2026/05/01/200000-mcp-servers-expose-a-command-execution-flaw-that-anthropic-calls-a-feature/) — DocsGPT / GPT-Researcher / Agent-Zero / LettaAI / LiteLLM / LangFlow / Flowise / Bisheng / Langchain-Chatchat MCP-server cluster (transport-flip MITM into stdio cmd-injection class) | **AAK-DOCSGPT-MCP-STDIO-MITM-001** (NEW: product-named pin row + server-config transport-flip detector for DocsGPT) — *secondary class coverage* via existing `AAK-MCP-STDIO-CMD-INJ-001/002/003/004` + `AAK-STDIO-001` (shipped v0.3.6, 2026-04-26) covers GPT-Researcher / Agent-Zero / LettaAI / Flowise / Bisheng / Langchain-Chatchat receiver shapes | 2026-05-05 | <96h on the 2026-05-01 disclosure for the **product-named** row (class coverage was already in place pre-disclosure) |
+| CVE-2026-26015 | Same OX writeup — DocsGPT-specific entry in the OX MCP-STDIO family table | **AAK-DOCSGPT-MCP-STDIO-MITM-001** (NEW: pin <0.6.4 on npm/git+https + .mcp.json transport-flip detector) | 2026-05-05 | targeted follow-up: closes the CHANGELOG v0.3.12 carry-list 'OX/BackBox roundup' deferral |
+
 ## Shipped in v0.3.13 (2026-05-03)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

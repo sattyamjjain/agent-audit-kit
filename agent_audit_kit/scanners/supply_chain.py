@@ -469,6 +469,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_scan_astro_mcp_query_concat(project_root, scanned_files))
     findings.extend(_check_litellm_pin(project_root, scanned_files))
     findings.extend(_check_chatgpt_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_docsgpt_mcp_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -926,6 +927,130 @@ def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         if m2:
             scanned_files.add(rel)
             _fire(rel, m2.group(0).strip())
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-DOCSGPT-MCP-STDIO-MITM-001 — arc53/DocsGPT MCP-server STDIO
+# command-injection via transport-flip MITM (OX 2026-05-01 disclosure;
+# CVE-2026-26015 in the OX MCP-STDIO family).
+#
+# Two detector arms:
+#   1) pin-check on the npm `docsgpt` package + GitHub `arc53/DocsGPT`
+#      git refs in package.json / lockfiles + `pip install`-style
+#      pyproject.toml / requirements*.txt (DocsGPT is published on
+#      both registries — npm latest was vulnerable until vendor fix).
+#   2) Source detector → see scanners/docsgpt_transport_flip.py for
+#      the server-config arm (`transports: ["sse"]` configs that don't
+#      reject `transport=stdio` overrides post-handshake).
+#
+# Architectural class is already covered by AAK-MCP-STDIO-CMD-INJ-001/
+# 002/003/004 + AAK-STDIO-001 (ships in v0.3.6, see _OX_MCP_STDIO_CVES);
+# this rule adds the product-named pin row consumers expect when
+# grepping CHANGELOG.cves.md for "DocsGPT".
+# Closes the OX MCP 2026-05-01 batch carry-list item from v0.3.12.
+# ---------------------------------------------------------------------------
+
+# DocsGPT npm latest at OX-disclosure time was 0.6.3; vendor fix lands
+# in 0.6.4+. We pin-fire below the patched floor; if the package isn't
+# present at all we silently pass.
+_DOCSGPT_PATCHED: tuple[int, int, int] = (0, 6, 4)
+_DOCSGPT_PACKAGE_JSON_RE = re.compile(
+    r'"docsgpt(?:-mcp)?"\s*:\s*"([^"]+)"',
+    re.IGNORECASE,
+)
+_DOCSGPT_LOCKLINE_RE = re.compile(
+    r'\bdocsgpt(?:-mcp)?@([~^>=<\s]*[0-9][\w.\-]*)',
+    re.IGNORECASE,
+)
+_DOCSGPT_GIT_RE = re.compile(
+    r'(?:github:|git\+https?://[^"\s]*)?arc53/DocsGPT',
+    re.IGNORECASE,
+)
+_DOCSGPT_PYTHON_RE = re.compile(
+    r"\bdocsgpt(?:-mcp)?\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-DOCSGPT-MCP-STDIO-MITM-001",
+            rel,
+            f"docsgpt pinned at {raw!r} — OX MCP 2026-05-01 disclosure "
+            f"(CVE-2026-26015 family); patched in >=0.6.4. Class also "
+            f"covered by AAK-MCP-STDIO-CMD-INJ-001..004.",
+        ))
+
+    # npm manifests
+    for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+        p = project_root / name
+        if not p.is_file():
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "docsgpt" not in text.lower() and "arc53/DocsGPT" not in text:
+            continue
+        rel = str(p.relative_to(project_root))
+        # Git-URL / GitHub-shorthand wins first — every git ref to
+        # arc53/DocsGPT is unpatched until the user explicitly tracks
+        # a tagged release post-0.6.4.
+        m3 = _DOCSGPT_GIT_RE.search(text)
+        if m3:
+            scanned_files.add(rel)
+            _fire(rel, m3.group(0).strip())
+            continue
+        m = _DOCSGPT_PACKAGE_JSON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            # Strip any leading semver-range operator (^, ~, >=, etc.)
+            # before parsing so safe pins like "^0.6.4" don't fail the
+            # _semver3 regex and false-fire.
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+                continue
+        m2 = _DOCSGPT_LOCKLINE_RE.search(text)
+        if m2:
+            raw = m2.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+
+    # Python manifests (DocsGPT ships an MCP server bridge as a Python pkg too)
+    candidates: list[Path] = list(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "docsgpt" not in text.lower():
+            continue
+        rel = str(path.relative_to(project_root))
+        m = _DOCSGPT_PYTHON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            version = _semver3(raw)
+            if version is None or version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
     return findings
 
 

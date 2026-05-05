@@ -5,6 +5,75 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2026-05-05
+
+**Headline: 1 new CVE rule (192 total) + roadmap doc closing the
+2026-05-01 OX/BackBox MCP-server batch — DocsGPT pin (<0.6.4 on
+npm/git+https) + DocsGPT MCP-config transport-flip MITM detector.**
+
+This release ships the DocsGPT entry from the OX MCP 2026-05-01
+disclosure cluster (CVE-2026-26015 family) as a named product row
+alongside the existing class-coverage from v0.3.6's
+`AAK-MCP-STDIO-CMD-INJ-001..004` + `AAK-STDIO-001`. The other three
+products in the carry-list (GPT-Researcher, Agent-Zero, LettaAI)
+are queued for v0.3.15 / v0.3.16 per `docs/roadmap/ox-mcp-2026-05-01-batch.md`.
+
+### Added — Rule (1)
+
+- **AAK-DOCSGPT-MCP-STDIO-MITM-001** (HIGH, CVE-2026-26015) — Two
+  detector arms. **Pin arm**: fires on `docsgpt` < 0.6.4 in npm
+  (`package.json` / `package-lock.json` / `yarn.lock` /
+  `pnpm-lock.yaml`), on `arc53/DocsGPT` git+https / `github:` shorthand
+  pins, and on `docsgpt(-mcp)` < 0.6.4 in Python manifests
+  (`requirements*.txt` / `pyproject.toml` / `Pipfile*` / `poetry.lock`
+  / `uv.lock`). **Transport-flip arm**: new
+  `agent_audit_kit/scanners/docsgpt_transport_flip.py` fires when a
+  DocsGPT-named MCP config (`.mcp.json` / `mcp.json` /
+  `docsgpt.config.json` / `.docsgpt/*.json` / `configs/*.json`)
+  declares an SSE/HTTP transport but permits a post-handshake
+  `transport=stdio` override. Configs that explicitly set
+  `deny_stdio_transport: true` or `allowed_transports: ["sse"]`
+  short-circuit the rule. Class architectural shape is also covered
+  by `AAK-MCP-STDIO-CMD-INJ-001..004` + `AAK-STDIO-001`.
+
+### Added — Roadmap
+
+- `docs/roadmap/ox-mcp-2026-05-01-batch.md` — design doc converting
+  the OX MCP 2026-05-01 carry-list into 4 named issues with a
+  dependency graph (pin → source → fix → test). Sets the v0.3.15 /
+  v0.3.16 ramp for GPT-Researcher / Agent-Zero / LettaAI plus a
+  cross-cutting transport-flip-resistance generalization.
+
+### Changed
+
+- README "Why This Exists" → appends one-sentence cite of the
+  2026-05-01 OX/BackBox 10+-CVE disclosure batch, naming the 9
+  affected products and the existing umbrella `AAK-MCP-STDIO-CMD-INJ-*`
+  rules that catch the receiver-side architectural class.
+- `CHANGELOG.cves.md` — appends the OX-MCP-2026-05-01 incident-class
+  row + the CVE-2026-26015 DocsGPT row.
+
+### Tests
+
+- 7 new tests (`tests/test_v0_3_14_rules.py`): 3 pin-arm cases (npm
+  vulnerable, git+https vulnerable, npm safe-pin passes), 4
+  transport-flip cases (unsafe fires, explicit-reject passes,
+  no-override passes, scope-gate without DocsGPT hint passes).
+  Total 935 passing (was 928).
+
+### Triage closures (no code change)
+
+- 13 duplicate CVE-bot tickets closed (#141–#153) — single-author
+  MCP server CVEs already class-covered by
+  `AAK-MCP-STDIO-CMD-INJ-001..004` + `AAK-STDIO-001`. Watcher dedup
+  fix re-flagged for v0.3.15.
+- 4 tickets closed with v0.3.15 deferral: #154/#155/#156 (n8n MCP
+  OAuth open-redirect, CVE-2026-42230/42235/42236 — class-covered
+  by `AAK-OAUTH-*` family; named pin-floor for `n8n` <
+  1.123.32/2.17.4/2.18.1 queued); #157 (Anthropic Claude TS SDK
+  `BetaLocalFilesystemMemoryTool` permissive umask, CVE-2026-41686
+  — pin-floor for `@anthropic-ai/sdk` <0.91.1 queued).
+
 ## [0.3.13] - 2026-05-03
 
 **Headline: backlog-triage release — 1 new CVE rule (191 total) +

@@ -75,6 +75,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("crewai_rce_chain", "CrewAI four-CVE chain (CERT/CC VU#221883)", []),
     ("langchain_prompt_loader", "LangChain load_prompt path traversal (CVE-2026-34070)", []),
     ("openclaw_privesc", "OpenClaw missing-role privesc (provisional)", []),
+    ("docsgpt_transport_flip", "DocsGPT MCP transport-flip MITM (OX-MCP-2026-05-01)", []),
 ]
 
 

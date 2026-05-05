@@ -17,6 +17,7 @@ targets. This file declares derivation + license per fixture set.
 | `cves/cve-2026-7591-astro-mcp/`   | TimBroddin/astro-mcp-server import + query-construction shape | MIT (TimBroddin/astro-mcp-server) | Hand-written reproductions of the unsafe / safe SQL-call shapes only; no upstream code copied verbatim. CVE-2026-7591 anchor: NVD 2026-05-01. |
 | `cves/cve-2026-30623-litellm/`    | BerriAI/litellm pyproject pin shape | MIT (BerriAI/litellm) | Pin-floor manifests only (no source). v1.83.7 fix anchor: BerriAI/litellm release 2026-04-30. |
 | `cves/cve-2026-7061-chatgpt-mcp/` | Toowiredd/chatgpt-mcp-server package.json pin shape | MIT (Toowiredd/chatgpt-mcp-server) | Pin-only manifests (git+https + github: shorthand variants). CVE-2026-7061 anchor: NVD; no upstream patch as of ship date. |
+| `cves/cve-2026-26015-docsgpt/`    | arc53/DocsGPT package.json + .mcp.json transport-flip shape | MIT (arc53/DocsGPT) | Pin manifests (npm + git+https variants) + .mcp.json server configs illustrating transport=stdio override paths. CVE-2026-26015 anchor: OX MCP 2026-05-01 disclosure. |
 
 If you redistribute these fixtures (e.g. as part of an AAK fork), please
 preserve this attribution table and the upstream project's own license

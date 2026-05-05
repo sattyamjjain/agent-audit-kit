@@ -86,6 +86,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-ASTROMCP-SQLI-CVE-2026-7591-001": ["AIS-07", "DSP-04", "IVS-09"],
     "AAK-LITELLM-CVE-2026-30623-PIN-001": ["STA-08", "AIS-08"],
     "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001": ["AIS-08", "IAM-05", "STA-08"],
+    "AAK-DOCSGPT-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3900,6 +3901,38 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-DOCSGPT-MCP-STDIO-MITM-001",
+    "DocsGPT MCP transport-flip MITM (OX 2026-05-01, CVE-2026-26015 family)",
+    "Two-arm detector for the OX MCP 2026-05-01 disclosure batch. "
+    "Arm 1 — pin-check on the npm `docsgpt` / `docsgpt-mcp` package, "
+    "GitHub `arc53/DocsGPT` git refs in package.json / lockfiles, and "
+    "the same package in `pyproject.toml` / `requirements*.txt`. Fires "
+    "for any pin below the patched 0.6.4 floor. Arm 2 — server-config "
+    "scanner that fires when a DocsGPT MCP config declares a safe "
+    "transport (`sse` / `http` / `https`) but permits a post-handshake "
+    "`transport=stdio` override (the MITM transport-flip path the "
+    "disclosure traced through CVE-2026-26015). The architectural "
+    "receiver-side class is already covered by AAK-MCP-STDIO-CMD-INJ-"
+    "001/002/003/004 + AAK-STDIO-001 (shipped v0.3.6); this rule adds "
+    "the product-named pin row consumers expect when grepping "
+    "CHANGELOG.cves.md for 'DocsGPT' plus the transport-flip-resistance "
+    "check the receiver-side rules don't catch.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin DocsGPT >=0.6.4 (vendor fix from the OX 2026-05-01 batch). For "
+    "the server-config arm, set `\"deny_stdio_transport\": true` (or "
+    "`\"allowed_transports\": [\"sse\"]`) so a MITM cannot flip the "
+    "transport mid-session. The receiver-side class detectors "
+    "(AAK-MCP-STDIO-CMD-INJ-*) catch the downstream cmd-injection if "
+    "the flip succeeds; this rule prevents the flip in the first place.",
+    sarif_name="DocsGptMcpTransportFlip",
+    cve_references=["CVE-2026-26015"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    incident_references=["OX-MCP-2026-05-01"],
 )
 
 _r(
