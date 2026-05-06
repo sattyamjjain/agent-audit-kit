@@ -87,6 +87,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-LITELLM-CVE-2026-30623-PIN-001": ["STA-08", "AIS-08"],
     "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-DOCSGPT-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
+    "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3901,6 +3902,40 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001",
+    "GPT-Researcher MCP transport-flip MITM (OX 2026-05-01, CVE-2025-65720)",
+    "Phase 2 sibling of AAK-DOCSGPT-MCP-STDIO-MITM-001 (v0.3.14). "
+    "Two-arm detector for assafelovic/gpt-researcher under the OX MCP "
+    "2026-05-01 disclosure batch. Arm 1 — pin-check on the PyPI "
+    "`gpt-researcher` / `gpt-researcher-mcp` packages (primary surface), "
+    "plus npm + GitHub `assafelovic/gpt-researcher` git refs. Latest "
+    "PyPI release is 0.14.8 (2026-03-13), pre-disclosure — vendor has "
+    "not shipped a post-disclosure fix as of the AAK ship date, so the "
+    "rule fires for any pinned version (same `patched_in: None` posture "
+    "as astro-mcp / chatgpt-mcp). Arm 2 — server-config scanner "
+    "`gpt_researcher_transport_flip.py` that fires when a "
+    "GPT-Researcher-named MCP config declares an SSE/HTTP transport but "
+    "permits a post-handshake `transport=stdio` override (the MITM "
+    "transport-flip path). Configs that explicitly set "
+    "`deny_stdio_transport: true` or `allowed_transports: [\"sse\"]` "
+    "short-circuit the rule. Architectural receiver-side class is "
+    "covered by AAK-MCP-STDIO-CMD-INJ-001 (Python).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin `gpt-researcher` away from any pre-disclosure version when "
+    "vendor ships a post-2026-05-01 fix (track at "
+    "https://github.com/assafelovic/gpt-researcher). For the "
+    "server-config arm, set `\"deny_stdio_transport\": true` (or "
+    "`\"allowed_transports\": [\"sse\"]`) to prevent MITM transport-flip "
+    "into the stdio cmd-injection class.",
+    sarif_name="GptResearcherMcpTransportFlip",
+    cve_references=["CVE-2025-65720"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    incident_references=["OX-MCP-2026-05-01"],
 )
 
 _r(

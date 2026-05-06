@@ -470,6 +470,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_litellm_pin(project_root, scanned_files))
     findings.extend(_check_chatgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_docsgpt_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_gpt_researcher_mcp_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -1049,6 +1050,119 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             raw = m.group(1).strip()
             version = _semver3(raw)
             if version is None or version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-GPTRESEARCHER-MCP-STDIO-MITM-001 — assafelovic/gpt-researcher (CVE-
+# 2025-65720, OX 2026-05-01 disclosure batch). Python-first project; npm
+# / git refs also valid surfaces. Latest PyPI release at the time of
+# the disclosure is 0.14.8 (2026-03-13), pre-disclosure — vendor has
+# not shipped a post-disclosure fix as of the AAK ship date. Same
+# `patched_in: None` posture as astro-mcp / chatgpt-mcp.
+#
+# Pairs with `agent_audit_kit/scanners/gpt_researcher_transport_flip.py`
+# for the config-side transport-flip detection arm. The architectural
+# class is already covered by AAK-MCP-STDIO-CMD-INJ-001 (Python).
+# Closes Phase 2 / row GPT-Researcher of the OX MCP 2026-05-01 batch
+# (issue #159).
+# ---------------------------------------------------------------------------
+
+# `None` means "no fix released yet — every published version is in scope".
+_GPT_RESEARCHER_PATCHED: tuple[int, int, int] | None = None
+_GPT_RESEARCHER_PACKAGE_JSON_RE = re.compile(
+    r'"gpt-researcher(?:-mcp)?"\s*:\s*"([^"]+)"',
+    re.IGNORECASE,
+)
+_GPT_RESEARCHER_LOCKLINE_RE = re.compile(
+    r'\bgpt-researcher(?:-mcp)?@([~^>=<\s]*[0-9][\w.\-]*)',
+    re.IGNORECASE,
+)
+_GPT_RESEARCHER_GIT_RE = re.compile(
+    r'(?:github:|git\+https?://[^"\s]*)?assafelovic/gpt-researcher',
+    re.IGNORECASE,
+)
+_GPT_RESEARCHER_PYTHON_RE = re.compile(
+    r"\bgpt[-_]researcher(?:-mcp)?\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001",
+            rel,
+            f"gpt-researcher pinned at {raw!r} — OX MCP 2026-05-01 "
+            f"disclosure (CVE-2025-65720); no upstream patch published "
+            f"as of the AAK ship date. Class also covered by "
+            f"AAK-MCP-STDIO-CMD-INJ-001.",
+        ))
+
+    # Python manifests — primary surface (gpt-researcher is on PyPI).
+    candidates: list[Path] = list(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "gpt-researcher" not in text.lower() and "gpt_researcher" not in text.lower():
+            continue
+        rel = str(path.relative_to(project_root))
+        m = _GPT_RESEARCHER_PYTHON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if _GPT_RESEARCHER_PATCHED is None or (version is not None and version < _GPT_RESEARCHER_PATCHED):
+                scanned_files.add(rel)
+                _fire(rel, raw)
+
+    # npm manifests (less common but valid — gpt-researcher-mcp wrapper)
+    for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+        p = project_root / name
+        if not p.is_file():
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        low = text.lower()
+        if "gpt-researcher" not in low and "assafelovic/gpt-researcher" not in text:
+            continue
+        rel = str(p.relative_to(project_root))
+        m3 = _GPT_RESEARCHER_GIT_RE.search(text)
+        if m3:
+            scanned_files.add(rel)
+            _fire(rel, m3.group(0).strip())
+            continue
+        m = _GPT_RESEARCHER_PACKAGE_JSON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if _GPT_RESEARCHER_PATCHED is None or (version is not None and version < _GPT_RESEARCHER_PATCHED):
+                scanned_files.add(rel)
+                _fire(rel, raw)
+                continue
+        m2 = _GPT_RESEARCHER_LOCKLINE_RE.search(text)
+        if m2:
+            raw = m2.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if _GPT_RESEARCHER_PATCHED is None or (version is not None and version < _GPT_RESEARCHER_PATCHED):
                 scanned_files.add(rel)
                 _fire(rel, raw)
     return findings

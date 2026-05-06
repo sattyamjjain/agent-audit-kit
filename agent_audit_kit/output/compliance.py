@@ -57,6 +57,31 @@ FRAMEWORKS = {
             "MANAGE 4.1 - Incident Response": ["ASI08", "ASI10"],
         },
     },
+    "mcp-2026-roadmap": {
+        # MCP 2026 Roadmap (May 2026) — adds transport-hardening +
+        # signed-tools requirements that are stricter than the live
+        # MCP spec our existing 4 STDIO rules assume. Lite scope: maps
+        # the Roadmap's named requirements onto the AAK rules that
+        # already cover them, so consumers can run
+        # `aak scan --compliance mcp-2026-roadmap` and see whether they
+        # would pass the Roadmap conformance bar today. AISI Cyber
+        # Eval 2026-05-01 cites MCP transport hardening as an axis;
+        # this surface seeds the data-shape for the v0.3.16 CSA
+        # Agentic Trust full-conformance work.
+        "name": "MCP 2026 Roadmap",
+        "controls": {
+            # Transport-flip resistance — the central hardening item.
+            "Transport Hardening (no stdio override)": ["ASI02", "ASI05", "ASI10"],
+            # Tool provenance / signed-tools checks.
+            "Tool Provenance / Signed Tools": ["ASI04", "ASI05"],
+            # Protocol-version pinning (manifest discipline).
+            "Protocol Version Pinning": ["ASI03", "ASI04"],
+            # Authenticated MCP endpoints, deprecate unauth STDIO.
+            "Authenticated Endpoints (STDIO deprecation)": ["ASI03", "ASI05", "ASI10"],
+            # Marketplace/source provenance for installed servers.
+            "Marketplace Source Provenance": ["ASI04", "ASI06"],
+        },
+    },
 }
 
 

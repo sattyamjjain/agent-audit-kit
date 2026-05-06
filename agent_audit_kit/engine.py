@@ -76,6 +76,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("langchain_prompt_loader", "LangChain load_prompt path traversal (CVE-2026-34070)", []),
     ("openclaw_privesc", "OpenClaw missing-role privesc (provisional)", []),
     ("docsgpt_transport_flip", "DocsGPT MCP transport-flip MITM (OX-MCP-2026-05-01)", []),
+    ("gpt_researcher_transport_flip", "GPT-Researcher MCP transport-flip MITM (OX-MCP-2026-05-01)", []),
 ]
 
 

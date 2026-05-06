@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.15 (2026-05-06)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2025-65720 (OX-MCP-2026-05-01 batch, sibling of v0.3.14 DocsGPT row) | [OX Security blog](https://www.ox.security/blog/mcp-supply-chain-advisory-rce-vulnerabilities-across-the-ai-ecosystem/) — `assafelovic/gpt-researcher` MCP STDIO cmd-injection (transport-flip MITM); latest PyPI 0.14.8 (2026-03-13) predates disclosure, no upstream patch as of ship date | **AAK-GPTRESEARCHER-MCP-STDIO-MITM-001** (NEW: PyPI / npm / git pin + `gpt_researcher_transport_flip.py` config detector) — *secondary class coverage* via existing `AAK-MCP-STDIO-CMD-INJ-001` (Python receiver shape) | 2026-05-06 | targeted follow-up: closes Phase 2 row of the OX MCP 2026-05-01 batch (issue [#159](https://github.com/sattyamjjain/agent-audit-kit/issues/159)) |
+
 ## Shipped in v0.3.14 (2026-05-05)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

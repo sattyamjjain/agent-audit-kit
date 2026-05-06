@@ -5,6 +5,80 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2026-05-06
+
+**Headline: Phase 2 of OX MCP 2026-05-01 batch — GPT-Researcher pin
++ transport-flip detector (193 rules total) + new MCP 2026 Roadmap
+conformance value for `aak scan --compliance`.**
+
+### Added — Rule (1)
+
+- **AAK-GPTRESEARCHER-MCP-STDIO-MITM-001** (HIGH, CVE-2025-65720) —
+  Phase 2 sibling of v0.3.14's DocsGPT rule. Pin arm fires on
+  `gpt-researcher` / `gpt-researcher-mcp` in PyPI manifests
+  (`requirements*.txt` / `pyproject.toml` / `Pipfile*` / `poetry.lock`
+  / `uv.lock`), npm (`package.json` + 3 lockfile shapes), and
+  `assafelovic/gpt-researcher` git+https / `github:` shorthand pins.
+  Latest PyPI release (0.14.8, 2026-03-13) predates the OX
+  2026-05-01 disclosure → no upstream patch yet → `patched_in: None`
+  posture (every published version fires). Transport-flip arm: new
+  `agent_audit_kit/scanners/gpt_researcher_transport_flip.py` mirrors
+  the v0.3.14 `docsgpt_transport_flip.py` shape against
+  `gpt-researcher`-named MCP configs. Configs with explicit
+  `deny_stdio_transport: true` or `allowed_transports: ["sse"]`
+  short-circuit the rule. Architectural class is also covered by
+  `AAK-MCP-STDIO-CMD-INJ-001` (Python receiver). Closes [#159](https://github.com/sattyamjjain/agent-audit-kit/issues/159).
+
+### Added — Compliance framework (1)
+
+- **MCP 2026 Roadmap** (`--compliance mcp-2026-roadmap`) — 5 controls
+  derived from the May 2026 Roadmap publication: Transport Hardening
+  (no stdio override), Tool Provenance / Signed Tools, Protocol
+  Version Pinning, Authenticated Endpoints (STDIO deprecation),
+  Marketplace Source Provenance. Maps onto existing AAK rules via the
+  same OWASP Agentic ASI codes the other 5 frameworks use. Bumps the
+  README "compliance frameworks" claim from 11 to **12**. Lite scope
+  per the 2026-05-06 daily plan; the full CSA Agentic Trust
+  conformance surface (deferred yesterday as A3) seeds off this
+  data-shape and ships in v0.3.16+.
+
+### Changed
+
+- README "Compliance Frameworks" anchor — increments framework count
+  per the `_FRAMEWORK_COUNT_RE` regression pattern.
+- `CHANGELOG.cves.md` — appends CVE-2025-65720 row under the
+  OX-MCP-2026-05-01 incident-class header that v0.3.14 created.
+
+### Tests
+
+- 8 new tests (`tests/test_v0_3_15_rules.py`): 3 pin-arm cases (PyPI
+  vulnerable, git+https vulnerable, no-manifest passes), 3
+  transport-flip cases (unsafe fires, explicit-reject passes,
+  scope-gate without GPT-Researcher hint passes), 2 compliance
+  framework cases (registered + report renders). Total 943 passing
+  (was 935).
+
+### Triage closures (no code change)
+
+- 17 duplicate CVE-bot tickets closed (#164–#180) — single-author
+  MCP server CVEs class-covered by existing umbrella rules. Watcher
+  dedup fix tracked at #163.
+- 1 ticket (#181 Claude Code folder-trust via git worktree commondir,
+  CVE-2026-40068) closed with explicit v0.3.16 deferral — vendor
+  patched in `claude-code` 2.1.83; named pin-floor rule
+  `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` queued.
+
+### Deferred
+
+- **A3** (CSA Agentic Trust full conformance surface) — deferred to
+  2026-05-07 pending Anthropic+PE-JV / OpenAI-Deployment-Co
+  procurement-spec follow-up. The MCP 2026 Roadmap data-shape shipped
+  here is the seed.
+- **Phase 2 row Agent-Zero (CVE-2026-30624)** — queued for v0.3.16
+  per per-rule quality-bar discipline (issue [#160](https://github.com/sattyamjjain/agent-audit-kit/issues/160)).
+- **Phase 3 row LettaAI** + transport-flip generalization — queued
+  for v0.3.16+ (issues [#161](https://github.com/sattyamjjain/agent-audit-kit/issues/161), [#162](https://github.com/sattyamjjain/agent-audit-kit/issues/162)).
+
 ## [0.3.14] - 2026-05-05
 
 **Headline: 1 new CVE rule (192 total) + roadmap doc closing the
