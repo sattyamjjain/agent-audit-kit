@@ -88,6 +88,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-DOCSGPT-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
+    "AAK-CLAUDECODE-CVE-2026-40068-PIN-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3902,6 +3903,31 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
+    "Anthropic Claude Code folder-trust bypass (CVE-2026-40068, npm <2.1.83)",
+    "Claude Code 2.1.63 → before 2.1.83 derives folder-trust from the "
+    "git worktree `commondir` file without validating its contents. A "
+    "malicious repo with a crafted `commondir` pointing to a previously-"
+    "trusted path silently bypasses the trust prompt — every subsequent "
+    "agent run executes inside that fake-trusted scope. Patched in "
+    "2.1.83 (released 2026-05-04). This pin-only rule fires on the "
+    "scoped npm package `@anthropic-ai/claude-code` < 2.1.83 in any "
+    "consumer manifest. Pre-allocated rule-name from the v0.3.15 "
+    "triage of issue #181; ships in v0.3.16.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Bump `@anthropic-ai/claude-code` to >=2.1.83 in any npm "
+    "manifest pinning Claude Code. The rule fires only on the pin "
+    "shape; runtime detection of crafted commondir attacks against "
+    "an unpinned global install is out of scope (vendor's prompt "
+    "fix is the right fix once 2.1.83+ is installed).",
+    sarif_name="ClaudeCodeFolderTrustBypass",
+    cve_references=["CVE-2026-40068"],
+    owasp_agentic_references=["ASI03", "ASI10"],
+    incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
 )
 
 _r(

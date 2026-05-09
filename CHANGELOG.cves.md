@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.16 (2026-05-09)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-40068 | Anthropic Claude Code 2.1.x folder-trust determination uses git worktree `commondir` without validation; crafted commondir bypasses trust prompt. Vendor patched in 2.1.83 (2026-05-04). Pre-allocated rule-name from v0.3.15 triage of [#181](https://github.com/sattyamjjain/agent-audit-kit/issues/181). | **AAK-CLAUDECODE-CVE-2026-40068-PIN-001** (NEW: pin <2.1.83 on the scoped npm package `@anthropic-ai/claude-code`) — closes the v0.3.15 deferral lane | 2026-05-09 | targeted follow-up: 5 days from v0.3.15 deferral to ship |
+
 ## Shipped in v0.3.15 (2026-05-06)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

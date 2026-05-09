@@ -5,6 +5,87 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2026-05-09
+
+**Headline: 1 new CVE rule (194 total) closing the v0.3.15 triage
+deferral on Claude Code folder-trust bypass + GitHub repo
+description drift fix + adjudicator-pattern architectural note.**
+
+This release closes the highest-leverage public-marketing-surface
+drift the kit has carried since launch (the GitHub repo `description`
+field was pinned at "77 rules, 13 scanners" while live RULE_COUNT
+was 193) and ships the pre-allocated CLAUDECODE pin rule that v0.3.15
+queued.
+
+### Added — Rule (1)
+
+- **AAK-CLAUDECODE-CVE-2026-40068-PIN-001** (HIGH, CVE-2026-40068) —
+  Anthropic Claude Code folder-trust bypass via crafted git worktree
+  `commondir` file. Pin-arm only (Claude Code is a binary product, not
+  a code shape we statically scan); fires on the scoped npm package
+  `@anthropic-ai/claude-code` < 2.1.83 in `package.json` /
+  `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml`. Vendor
+  patched in 2.1.83 (2026-05-04). Closes the v0.3.15 deferral on
+  [#181](https://github.com/sattyamjjain/agent-audit-kit/issues/181).
+
+### Added — Architectural note
+
+- `docs/notes/adjudicator-pattern.md` — short write-up of AAK's
+  multi-arm adjudicator pattern (pin + source/config + explicit-
+  reject short-circuit + adjudicator log), cross-referenced to
+  Mozilla's published Firefox-hardening triage flow as an external
+  precedent and to arXiv 2605.03378 as the runtime-side complement.
+  Closes the procurement-reviewer question "is this a single-shot
+  regex scanner or a real adjudicator?" with a one-page answer and
+  external citations. README "Why This Exists" appends a one-line
+  link to the note.
+
+### Changed
+
+- **GitHub repo `description` field re-PATCHED** from the stale "77
+  rules, 13 scanners…" to the live spec sentence: *"Static scanner
+  for MCP-connected AI agent pipelines — 193 rules across 11
+  categories, 12 compliance frameworks, OWASP Agentic 10/10 + MCP
+  10/10, GitHub Action, SARIF, 48h CVE-to-rule SLA."* This was the
+  largest single marketing-surface drift on the kit (procurement
+  reviewers paste this into their first email) and was not wired
+  into `_RULE_COUNT_RE` / sync scripts.
+- `docs/RELEASING.md` (NEW) — codifies the release ritual including
+  the post-tag `gh repo edit --description` step so v0.3.17+ doesn't
+  re-drift. The description-field is a one-time-set field unless
+  re-PATCHed every release.
+- `CHANGELOG.cves.md` ledger appends a new ANTHROPIC-CLAUDECODE-
+  2026-05-06 incident-class header + the CVE-2026-40068 row.
+
+### Tests
+
+- 3 new tests in `tests/test_v0_3_16_rules.py` (vulnerable pin
+  fires, safe pin passes, no-dep passes). Total 946 passing
+  (was 943).
+
+### Triage (no code change)
+
+- 19 dup CVE-bot tickets closed (#183-#190, #192-#199, #202-#205) —
+  class-coverage citations.
+- 2 PraisonAI CRITICALs (#200 CVE-2026-41497 CVSS 9.8 + #201
+  CVE-2026-44336 CVSS 9.6) closed with **v0.3.17 deferral**:
+  rule-names pre-allocated as `AAK-PRAISONAI-CVE-2026-41497-PIN-001`
+  + `AAK-PRAISONAI-CVE-2026-44336-PIN-001`. Class detection covers
+  CVE-2026-41497 via `AAK-MCP-STDIO-CMD-INJ-001` but the named pin
+  row is missing; CVE-2026-44336 (default-registered file-handling
+  tools without sandbox) is a new shape and needs a companion source
+  detector.
+- #181 closed by ship.
+
+### Deferred
+
+- A3 CSA Agentic Trust full conformance (carry from v0.3.15) — still
+  contingent on Anthropic+PE-JV / OpenAI-Deployment-Co procurement-
+  spec follow-up. None today.
+- Phase 2 row Agent-Zero (#160), Phase 3 LettaAI + transport-flip
+  generalization (#161, #162) — v0.3.17+.
+- Watcher dedup fix (#163) — v0.3.17.
+
 ## [0.3.15] - 2026-05-06
 
 **Headline: Phase 2 of OX MCP 2026-05-01 batch — GPT-Researcher pin

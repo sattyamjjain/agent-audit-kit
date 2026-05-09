@@ -471,6 +471,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_chatgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_docsgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_gpt_researcher_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_claudecode_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -1050,6 +1051,80 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             raw = m.group(1).strip()
             version = _semver3(raw)
             if version is None or version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-CLAUDECODE-CVE-2026-40068-PIN-001 — Anthropic Claude Code <2.1.83
+# (CVE-2026-40068, HIGH). Folder-trust determination uses the git
+# worktree `commondir` file without validating its contents — a
+# malicious repo with a crafted `commondir` pointing to a previously-
+# trusted path bypasses the trust prompt. Vendor patched in 2.1.83;
+# named pin row was pre-allocated in the v0.3.15 triage of #181.
+# Pin-arm only — Claude Code is a binary product, not a source shape
+# we statically scan. Closes the v0.3.15 deferral.
+# ---------------------------------------------------------------------------
+
+_CLAUDECODE_PATCHED = (2, 1, 83)
+# Scoped npm package name. Both the JSON-shape (package.json /
+# package-lock.json `packages` map keys) and the lockfile-line shape
+# (yarn.lock / pnpm-lock.yaml) handle the `@anthropic-ai/claude-code`
+# slug — including the lockfile-key form `node_modules/@anthropic-ai/
+# claude-code`.
+_CLAUDECODE_PACKAGE_JSON_RE = re.compile(
+    r'"@anthropic-ai/claude-code"\s*:\s*"([^"]+)"',
+    re.IGNORECASE,
+)
+_CLAUDECODE_LOCKLINE_RE = re.compile(
+    r'@anthropic-ai/claude-code@([~^>=<\s]*[0-9][\w.\-]*)',
+    re.IGNORECASE,
+)
+
+
+def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
+            rel,
+            f"@anthropic-ai/claude-code pinned at {raw!r} — CVE-2026-40068 "
+            f"folder-trust bypass via git worktree commondir; patched in "
+            f"2.1.83.",
+        ))
+
+    for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
+        p = project_root / name
+        if not p.is_file():
+            continue
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "@anthropic-ai/claude-code" not in text:
+            continue
+        rel = str(p.relative_to(project_root))
+        m = _CLAUDECODE_PACKAGE_JSON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _CLAUDECODE_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+                continue
+        m2 = _CLAUDECODE_LOCKLINE_RE.search(text)
+        if m2:
+            raw = m2.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _CLAUDECODE_PATCHED:
                 scanned_files.add(rel)
                 _fire(rel, raw)
     return findings

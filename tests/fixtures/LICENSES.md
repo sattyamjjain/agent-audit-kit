@@ -19,6 +19,7 @@ targets. This file declares derivation + license per fixture set.
 | `cves/cve-2026-7061-chatgpt-mcp/` | Toowiredd/chatgpt-mcp-server package.json pin shape | MIT (Toowiredd/chatgpt-mcp-server) | Pin-only manifests (git+https + github: shorthand variants). CVE-2026-7061 anchor: NVD; no upstream patch as of ship date. |
 | `cves/cve-2026-26015-docsgpt/`    | arc53/DocsGPT package.json + .mcp.json transport-flip shape | MIT (arc53/DocsGPT) | Pin manifests (npm + git+https variants) + .mcp.json server configs illustrating transport=stdio override paths. CVE-2026-26015 anchor: OX MCP 2026-05-01 disclosure. |
 | `cves/cve-2025-65720-gpt-researcher/` | assafelovic/gpt-researcher requirements.txt + package.json + .mcp.json shapes | MIT (assafelovic/gpt-researcher) | Pin manifests (PyPI requirements + git+https variants) + .mcp.json server configs. CVE-2025-65720 anchor: OX MCP 2026-05-01 disclosure batch. |
+| `cves/cve-2026-40068-claudecode/` | Anthropic Claude Code package.json scoped-pin shape | MIT (Anthropic Claude Code documentation; pin-only fixtures contain no upstream code) | Two pin manifests (`@anthropic-ai/claude-code` ^2.1.81 vulnerable + ^2.1.83 safe). CVE-2026-40068 anchor: vendor patched in 2.1.83 on 2026-05-04. |
 
 If you redistribute these fixtures (e.g. as part of an AAK fork), please
 preserve this attribution table and the upstream project's own license

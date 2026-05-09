@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-06T04:40:53Z",
-  "aak_version": "0.3.15",
-  "rule_count": 193,
+  "last_updated": "2026-05-09T06:38:35Z",
+  "aak_version": "0.3.16",
+  "rule_count": 194,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -403,7 +403,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 45,
+      "rule_density": 46,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -419,6 +419,18 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-40068"
+          ],
+          "aicm_references": [
+            "IAM-02",
+            "IAM-16",
+            "STA-08"
           ]
         },
         {
@@ -1679,7 +1691,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 18,
+      "rule_density": 19,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -1719,6 +1731,18 @@
           "aicm_references": [
             "AIS-08",
             "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-40068"
+          ],
+          "aicm_references": [
+            "IAM-02",
+            "IAM-16",
             "STA-08"
           ]
         },

@@ -579,6 +579,33 @@
     {
       "adversa_references": [],
       "aicm_references": [
+        "IAM-02",
+        "IAM-16",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-40068"
+      ],
+      "description": "Claude Code 2.1.63 \u2192 before 2.1.83 derives folder-trust from the git worktree `commondir` file without validating its contents. A malicious repo with a crafted `commondir` pointing to a previously-trusted path silently bypasses the trust prompt \u2014 every subsequent agent run executes inside that fake-trusted scope. Patched in 2.1.83 (released 2026-05-04). This pin-only rule fires on the scoped npm package `@anthropic-ai/claude-code` < 2.1.83 in any consumer manifest. Pre-allocated rule-name from the v0.3.15 triage of issue #181; ships in v0.3.16.",
+      "incident_references": [
+        "ANTHROPIC-CLAUDECODE-2026-05-06"
+      ],
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Bump `@anthropic-ai/claude-code` to >=2.1.83 in any npm manifest pinning Claude Code. The rule fires only on the pin shape; runtime detection of crafted commondir attacks against an unpinned global install is out of scope (vendor's prompt fix is the right fix once 2.1.83+ is installed).",
+      "rule_id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
+      "sarif_name": "ClaudeCodeFolderTrustBypass",
+      "severity": "high",
+      "title": "Anthropic Claude Code folder-trust bypass (CVE-2026-40068, npm <2.1.83)"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
         "AIS-07",
         "STA-08"
       ],
