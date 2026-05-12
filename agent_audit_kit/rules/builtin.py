@@ -89,6 +89,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-DOCSGPT-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001": ["IAM-02", "IAM-16", "STA-08"],
+    "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3903,6 +3904,33 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+    "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI <1.39.4)",
+    "Microsoft Semantic Kernel Python SDK <1.39.4 has a remote code "
+    "execution vulnerability in the `InMemoryVectorStore` filter "
+    "functionality — CVE-2026-26030 (CVSS 9.9 CRITICAL). Patched in "
+    "`python-1.39.4`. This pin-only rule fires on the PyPI package "
+    "`semantic-kernel` < 1.39.4 in any Python manifest "
+    "(`requirements*.txt` / `pyproject.toml` / `Pipfile*` / "
+    "`poetry.lock` / `uv.lock`). A companion .NET-side disclosure "
+    "(file-write in SessionsPythonPlugin, patched in the .NET 1.71.0 "
+    "release) is intentionally **out of scope** — AAK does not "
+    "currently scan NuGet manifests; only the Python pin shape is "
+    "actionable here. Disclosed by MSRC on 2026-05-07.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Bump `semantic-kernel` to >= 1.39.4 in any Python manifest "
+    "pinning Semantic Kernel. The rule fires only on the pin shape; "
+    "a source detector for unsafe `InMemoryVectorStore(filter=...)` "
+    "constructions is queued for v0.3.18 once the upstream filter "
+    "API surface stabilises post-patch.",
+    sarif_name="SemanticKernelInMemoryVectorStoreFilterRce",
+    cve_references=["CVE-2026-26030"],
+    owasp_agentic_references=["ASI02", "ASI05", "ASI10"],
+    incident_references=["MSRC-2026-05-07"],
 )
 
 _r(

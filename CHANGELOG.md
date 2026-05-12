@@ -5,6 +5,57 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.17] - 2026-05-10
+
+**Headline: 1 new CRITICAL rule (195 total) — Microsoft Semantic Kernel
+Python SDK pin-floor for CVE-2026-26030 (CVSS 9.9, MSRC 2026-05-07).**
+
+This release ships within 72 hours of the MSRC disclosure (within
+the 48h SLA for the actionable Python arm). The companion .NET CVE
+(CVE-2026-25592, file-write in SessionsPythonPlugin) is out of scope
+— AAK doesn't currently scan NuGet manifests.
+
+### Added — Rule (1)
+
+- **AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001**
+  (CRITICAL, CVE-2026-26030, CVSS 9.9) — Microsoft Semantic Kernel
+  Python SDK <1.39.4 RCE in `InMemoryVectorStore` filter
+  functionality. Pin-arm only. Fires on `semantic-kernel` < 1.39.4
+  in any Python manifest (`requirements*.txt` / `pyproject.toml` /
+  `Pipfile*` / `poetry.lock` / `uv.lock`). Patched upstream in
+  `python-1.39.4`.
+
+### Changed
+
+- `CHANGELOG.cves.md` ledger appends MSRC-2026-05-07 row + the
+  CVE-2026-26030 entry.
+
+### Tests
+
+- 4 new tests in `tests/test_v0_3_17_rules.py` (vulnerable pin fires
+  CRITICAL, exact-patched pin passes, floor pin passes, no-dep
+  passes). Total 952 passing (was 948).
+
+### Triage (no code change)
+
+- 8 dup CVE-bot tickets closed (#207, #208, #211–#214 class-coverage
+  re-fires; #209 + #210 PraisonAI re-fires deferred to v0.3.18 with
+  rule-names already pre-allocated yesterday).
+
+### Deferred
+
+- CVE-2026-25592 (.NET SDK SessionsPythonPlugin file-write,
+  patched .NET 1.71.0) — out of scope for AAK's current ecosystem
+  (no NuGet scanner). Track for v0.4.x roadmap if NuGet scanning
+  ever lands.
+- Source detector for unsafe `InMemoryVectorStore(filter=...)`
+  shape — v0.3.18 candidate once SK API surface stabilises post-
+  patch.
+- PraisonAI CRITICALs (#200, #201 from v0.3.16; re-fired as #209,
+  #210 today) — `AAK-PRAISONAI-CVE-2026-41497-PIN-001` +
+  `AAK-PRAISONAI-CVE-2026-44336-PIN-001` carry to v0.3.18.
+- Watcher dedup fix (#163) — v0.3.18.
+
 ## [0.3.16] - 2026-05-09
 
 **Headline: 1 new CVE rule (194 total) closing the v0.3.15 triage

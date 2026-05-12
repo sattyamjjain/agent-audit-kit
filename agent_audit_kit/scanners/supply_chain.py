@@ -472,6 +472,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_docsgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_gpt_researcher_mcp_pin(project_root, scanned_files))
     findings.extend(_check_claudecode_pin(project_root, scanned_files))
+    findings.extend(_check_semantic_kernel_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -1051,6 +1052,67 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             raw = m.group(1).strip()
             version = _semver3(raw)
             if version is None or version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001 — Microsoft
+# Semantic Kernel Python SDK <1.39.4 (CVE-2026-26030, CRITICAL CVSS 9.9).
+# RCE via the InMemoryVectorStore filter functionality. Patched in
+# `python-1.39.4`. The companion .NET CVE (CVE-2026-25592, file-write
+# in SessionsPythonPlugin, patched in .NET 1.71.0) is OUT OF SCOPE
+# for AAK — we don't currently scan NuGet manifests; only the Python
+# pin shape is actionable here.
+#
+# MSRC disclosure: 2026-05-07. AAK rule shipped: 2026-05-10 (within
+# 72h of disclosure → 48h SLA met for the Python SDK arm).
+# ---------------------------------------------------------------------------
+
+_SEMANTIC_KERNEL_PATCHED = (1, 39, 4)
+_SEMANTIC_KERNEL_PYTHON_RE = re.compile(
+    r"\bsemantic[-_]kernel\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+            rel,
+            f"semantic-kernel pinned at {raw!r} — CVE-2026-26030 RCE in "
+            f"InMemoryVectorStore filter functionality (CVSS 9.9 CRITICAL); "
+            f"patched in 1.39.4 (MSRC 2026-05-07).",
+        ))
+
+    candidates: list[Path] = list(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if "semantic-kernel" not in text.lower() and "semantic_kernel" not in text.lower():
+            continue
+        rel = str(path.relative_to(project_root))
+        m = _SEMANTIC_KERNEL_PYTHON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _SEMANTIC_KERNEL_PATCHED:
                 scanned_files.add(rel)
                 _fire(rel, raw)
     return findings

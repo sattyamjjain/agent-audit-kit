@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-09T06:38:35Z",
-  "aak_version": "0.3.16",
-  "rule_count": 194,
+  "last_updated": "2026-05-10T04:17:58Z",
+  "aak_version": "0.3.17",
+  "rule_count": 195,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -89,7 +89,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 27,
+      "rule_density": 28,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -345,6 +345,18 @@
           ],
           "aicm_references": [
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-26030"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {
@@ -1037,7 +1049,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 27,
+      "rule_density": 28,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1199,6 +1211,18 @@
           "severity": "medium",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-26030"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-TAINT-001",
@@ -1691,7 +1715,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 19,
+      "rule_density": 20,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -1896,6 +1920,18 @@
           "aicm_references": [
             "AIS-08",
             "IAM-05"
+          ]
+        },
+        {
+          "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-26030"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {

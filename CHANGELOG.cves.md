@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.17 (2026-05-10)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-26030 | [MSRC 2026-05-07](https://www.microsoft.com/en-us/security/blog/2026/05/07/prompts-become-shells-rce-vulnerabilities-ai-agent-frameworks/) — Microsoft Semantic Kernel **Python SDK** <1.39.4 RCE in `InMemoryVectorStore` filter functionality (CVSS 9.9 CRITICAL); patched in `python-1.39.4` | **AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001** (NEW: PyPI pin-floor) — companion CVE-2026-25592 (.NET SessionsPythonPlugin file-write) is out of scope, AAK doesn't scan NuGet | 2026-05-10 | <72h on MSRC disclosure (within 48h SLA for the actionable Python SDK arm) |
+
 ## Shipped in v0.3.16 (2026-05-09)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

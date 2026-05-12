@@ -3572,6 +3572,34 @@
       "title": "Google Cloud service account key file"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-08",
+        "STA-08",
+        "IVS-04"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-26030"
+      ],
+      "description": "Microsoft Semantic Kernel Python SDK <1.39.4 has a remote code execution vulnerability in the `InMemoryVectorStore` filter functionality \u2014 CVE-2026-26030 (CVSS 9.9 CRITICAL). Patched in `python-1.39.4`. This pin-only rule fires on the PyPI package `semantic-kernel` < 1.39.4 in any Python manifest (`requirements*.txt` / `pyproject.toml` / `Pipfile*` / `poetry.lock` / `uv.lock`). The companion .NET CVE (CVE-2026-25592, Arbitrary File Write in SessionsPythonPlugin, patched in .NET 1.71.0) is **out of scope** \u2014 AAK does not currently scan NuGet manifests; only the Python pin shape is actionable. Disclosed by MSRC on 2026-05-07.",
+      "incident_references": [
+        "MSRC-2026-05-07"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI05",
+        "ASI10"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Bump `semantic-kernel` to >= 1.39.4 in any Python manifest pinning Semantic Kernel. The rule fires only on the pin shape; a source detector for unsafe `InMemoryVectorStore(filter=...)` constructions is queued for v0.3.18 once the upstream filter API surface stabilises post-patch.",
+      "rule_id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
+      "sarif_name": "SemanticKernelInMemoryVectorStoreFilterRce",
+      "severity": "critical",
+      "title": "Microsoft Semantic Kernel InMemoryVectorStore filter RCE (CVE-2026-26030, PyPI <1.39.4)"
+    },
+    {
       "adversa_references": [
         "ADV-SKILL-01"
       ],
