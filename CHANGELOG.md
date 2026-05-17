@@ -5,6 +5,56 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18] - 2026-05-17
+
+**Headline: 1 new CRITICAL rule (196 total) — MCP Calculate Server
+pin for CVE-2026-44717 (CVSS 9.8, NVD 2026-05-15).** Ships within
+the 48h CVE-to-rule SLA window.
+
+### Added — Rule (1)
+
+- **AAK-MCPCALC-CVE-2026-44717-PIN-001** (CRITICAL, CVE-2026-44717,
+  CVSS 9.8) — PyPI `mcp-calculate-server` <0.1.1 routes MCP tool
+  input through `eval()` (SymPy-backed, no `local_dict`/`global_dict`
+  pinning), reaching host RCE from any attacker-controlled tool
+  argument. Pin-arm fires on the package in any Python manifest
+  (`requirements*.txt`, `pyproject.toml`, `Pipfile*`, `poetry.lock`,
+  `uv.lock`). Patched upstream in 0.1.1 (latest at ship: 1.0.0).
+
+### Tests
+
+- 4 new tests (`tests/test_v0_3_18_rules.py`): vulnerable pin fires
+  CRITICAL, exact-patched pin passes, floor pin passes, no-dep
+  passes.
+
+### Triage (no code change)
+
+- 28 sla-48h tickets closed across 2026-05-16 + 2026-05-17 batches
+  (#232–#260) — class-coverage citations against AAK-STDIO-001 +
+  AAK-MCP-STDIO-CMD-INJ family, AAK-OAUTH-*, AAK-SSRF-* family,
+  AAK-GHA-IMMUTABLE-001. Watcher dedup (#163) is the underlying
+  bug causing the daily re-fire pattern.
+- #253 (CVE-2026-44717 itself) closed by ship.
+
+### Process notes
+
+- v0.3.17 (Semantic Kernel CVE-2026-26030) was an orphan release
+  from 2026-05-10 — code on `main` since then but the release tag
+  was blocked at the CVE-gate by accumulated sla-48h backlog. Tag
+  pushed and full release pipeline ran green on 2026-05-17. PyPI
+  + GitHub Release + GHCR + Sigstore SBOM all live for both
+  v0.3.17 and v0.3.18.
+
+### Deferred
+
+- Source-detector for unsafe-`eval()` inside `@mcp.tool` handlers
+  (would generalize the named pin rule to any MCP server with the
+  same shape) — v0.3.19 candidate.
+- Watcher dedup fix (#163) — v0.3.19. Closed-issue lookup needs to
+  participate in the cve-watcher's diff so the same CVE ID doesn't
+  re-fire daily.
+- PraisonAI CRITICALs (CVE-2026-41497 + CVE-2026-44336) — v0.3.19+.
+
 ## [0.3.17] - 2026-05-10
 
 **Headline: 1 new CRITICAL rule (195 total) — Microsoft Semantic Kernel

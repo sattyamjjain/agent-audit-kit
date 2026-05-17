@@ -90,6 +90,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001": ["AIS-08", "IAM-05", "STA-08", "IVS-04"],
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
+    "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3904,6 +3905,36 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-MCPCALC-CVE-2026-44717-PIN-001",
+    "MCP Calculate Server eval() RCE (CVE-2026-44717, PyPI <0.1.1)",
+    "The PyPI package `mcp-calculate-server` <0.1.1 has a remote code "
+    "execution vulnerability in its MCP tool handler — the math "
+    "expression is routed through `eval()` (SymPy-backed without "
+    "`local_dict` / `global_dict` namespace pinning), so an attacker "
+    "controlling the tool input reaches host RCE. CVE-2026-44717 "
+    "(CVSS 9.8 CRITICAL, NVD 2026-05-15). Patched in 0.1.1 (latest "
+    "at AAK ship time: 1.0.0). This pin-only rule fires on the "
+    "package in any Python manifest (`requirements*.txt`, "
+    "`pyproject.toml`, `Pipfile*`, `poetry.lock`, `uv.lock`). A "
+    "broader source-detector for the unsafe-`eval()` shape inside "
+    "any `@tool` / `@mcp.tool()` decorated handler is queued for "
+    "v0.3.19+ — it would catch single-author MCP servers with the "
+    "same shape, not just this product.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Bump `mcp-calculate-server` to >= 0.1.1 (or the latest 1.x). "
+    "If you maintain a similar MCP server, replace `eval()` with "
+    "`ast.literal_eval` for plain numerics, or SymPy "
+    "`parse_expr(expr, local_dict={}, global_dict={}, evaluate=True)` "
+    "with explicit allow-listed symbol tables.",
+    sarif_name="McpCalculateServerEvalRce",
+    cve_references=["CVE-2026-44717"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI05"],
+    incident_references=["NVD-CVE-2026-44717"],
 )
 
 _r(

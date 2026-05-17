@@ -473,6 +473,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_gpt_researcher_mcp_pin(project_root, scanned_files))
     findings.extend(_check_claudecode_pin(project_root, scanned_files))
     findings.extend(_check_semantic_kernel_pin(project_root, scanned_files))
+    findings.extend(_check_mcp_calculate_server_pin(project_root, scanned_files))
     return findings, scanned_files
 
 
@@ -1052,6 +1053,67 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             raw = m.group(1).strip()
             version = _semver3(raw)
             if version is None or version < _DOCSGPT_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, raw)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCPCALC-CVE-2026-44717-PIN-001 — MCP Calculate Server <0.1.1
+# (CVE-2026-44717, CRITICAL CVSS 9.8). Tool handler routes
+# user-supplied math expressions through `eval()` (SymPy-backed
+# without `local_dict`/`global_dict` pinning), reaching RCE.
+# Patched in 0.1.1 (latest at AAK ship time: 1.0.0). Pin-only arm;
+# a source-detector for `eval()` inside MCP `@tool` handlers
+# generally is queued for v0.3.19 (would catch any single-author
+# MCP server with the same shape, not just this one).
+# Disclosed by NVD on 2026-05-15.
+# ---------------------------------------------------------------------------
+
+_MCP_CALC_PATCHED = (0, 1, 1)
+_MCP_CALC_PYTHON_RE = re.compile(
+    r"\bmcp[-_]calculate[-_]server\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    re.IGNORECASE,
+)
+
+
+def _check_mcp_calculate_server_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    seen: set[str] = set()
+
+    def _fire(rel: str, raw: str) -> None:
+        if rel in seen:
+            return
+        seen.add(rel)
+        findings.append(make_finding(
+            "AAK-MCPCALC-CVE-2026-44717-PIN-001",
+            rel,
+            f"mcp-calculate-server pinned at {raw!r} — CVE-2026-44717 "
+            f"eval() RCE in MCP tool handler (CVSS 9.8 CRITICAL); "
+            f"patched in 0.1.1 (NVD 2026-05-15).",
+        ))
+
+    candidates: list[Path] = list(project_root.glob("requirements*.txt"))
+    for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        low = text.lower()
+        if "mcp-calculate-server" not in low and "mcp_calculate_server" not in low:
+            continue
+        rel = str(path.relative_to(project_root))
+        m = _MCP_CALC_PYTHON_RE.search(text)
+        if m:
+            raw = m.group(1).strip()
+            stripped = re.sub(r"^[~^>=<\s]+", "", raw)
+            version = _semver3(stripped)
+            if version is not None and version < _MCP_CALC_PATCHED:
                 scanned_files.add(rel)
                 _fire(rel, raw)
     return findings

@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.18 (2026-05-17)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-44717 | [NVD 2026-05-15](https://nvd.nist.gov/vuln/detail/CVE-2026-44717) — `mcp-calculate-server` <0.1.1 routes MCP tool input through `eval()` (SymPy-backed, no `local_dict` pinning), CVSS 9.8 CRITICAL; patched in 0.1.1 (latest at ship: 1.0.0) | **AAK-MCPCALC-CVE-2026-44717-PIN-001** (NEW: PyPI pin-floor; broader source-detector for unsafe-eval in any `@mcp.tool` handler queued for v0.3.19) | 2026-05-17 | <48h on NVD disclosure (within SLA) |
+
 ## Shipped in v0.3.17 (2026-05-10)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

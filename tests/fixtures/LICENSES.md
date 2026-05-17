@@ -21,6 +21,7 @@ targets. This file declares derivation + license per fixture set.
 | `cves/cve-2025-65720-gpt-researcher/` | assafelovic/gpt-researcher requirements.txt + package.json + .mcp.json shapes | MIT (assafelovic/gpt-researcher) | Pin manifests (PyPI requirements + git+https variants) + .mcp.json server configs. CVE-2025-65720 anchor: OX MCP 2026-05-01 disclosure batch. |
 | `cves/cve-2026-40068-claudecode/` | Anthropic Claude Code package.json scoped-pin shape | MIT (Anthropic Claude Code documentation; pin-only fixtures contain no upstream code) | Two pin manifests (`@anthropic-ai/claude-code` ^2.1.81 vulnerable + ^2.1.83 safe). CVE-2026-40068 anchor: vendor patched in 2.1.83 on 2026-05-04. |
 | `cves/cve-2026-26030-semantic-kernel/` | Microsoft Semantic Kernel Python SDK requirements.txt pin shape | MIT (Microsoft Semantic Kernel Python; pin-only fixtures contain no upstream code) | Three pin manifests (1.39.3 vulnerable + 1.39.4 safe + `>=1.39.4,<2.0` floor). CVE-2026-26030 anchor: MSRC 2026-05-07 disclosure, patched in `python-1.39.4`. |
+| `cves/cve-2026-44717-mcp-calculate-server/` | mcp-calculate-server requirements.txt pin shape | MIT (mcp-calculate-server; pin-only fixtures contain no upstream code) | Three pin manifests (0.1.0 vulnerable + 0.1.1 safe + `>=0.1.1` floor). CVE-2026-44717 anchor: NVD 2026-05-15, patched in 0.1.1. |
 
 If you redistribute these fixtures (e.g. as part of an AAK fork), please
 preserve this attribution table and the upstream project's own license
