@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: Smelly API (Hermes-style)
+  version: "0.1.0"
+paths:
+  # LAZY: short description
+  /a:
+    get:
+      description: short
+      responses:
+        '200': { description: OK }
+  # BLOATED: >12 parameters
+  /b:
+    get:
+      description: A bloated operation with way too many query parameters for an agent to reliably populate.
+      parameters:
+        - { name: p1,  in: query, schema: { type: string } }
+        - { name: p2,  in: query, schema: { type: string } }
+        - { name: p3,  in: query, schema: { type: string } }
+        - { name: p4,  in: query, schema: { type: string } }
+        - { name: p5,  in: query, schema: { type: string } }
+        - { name: p6,  in: query, schema: { type: string } }
+        - { name: p7,  in: query, schema: { type: string } }
+        - { name: p8,  in: query, schema: { type: string } }
+        - { name: p9,  in: query, schema: { type: string } }
+        - { name: p10, in: query, schema: { type: string } }
+        - { name: p11, in: query, schema: { type: string } }
+        - { name: p12, in: query, schema: { type: string } }
+        - { name: p13, in: query, schema: { type: string } }
+      responses:
+        '200': { description: OK }
+  # TANGLED: POST on a /get/... path
+  /get/c:
+    post:
+      description: Tangled — POST on a path segment named /get/ contradicts conventions.
+      responses:
+        '200': { description: OK }
+  # TANGLED: >4 methods on same path
+  /d:
+    get:
+      description: A semantically-rich endpoint that supports many methods which agents cannot disambiguate cleanly.
+      responses: { '200': { description: OK } }
+    post:
+      description: A semantically-rich endpoint that supports many methods which agents cannot disambiguate cleanly.
+      responses: { '200': { description: OK } }
+    put:
+      description: A semantically-rich endpoint that supports many methods which agents cannot disambiguate cleanly.
+      responses: { '200': { description: OK } }
+    patch:
+      description: A semantically-rich endpoint that supports many methods which agents cannot disambiguate cleanly.
+      responses: { '200': { description: OK } }
+    delete:
+      description: A semantically-rich endpoint that supports many methods which agents cannot disambiguate cleanly.
+      responses: { '200': { description: OK } }

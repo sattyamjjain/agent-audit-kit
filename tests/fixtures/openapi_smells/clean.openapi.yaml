@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Clean API
+  version: "0.1.0"
+paths:
+  /users/{id}:
+    get:
+      description: Fetch a single user record by primary-key identifier. Returns 404 if missing.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: User record }
+        '404': { description: Not found }
+  /users:
+    post:
+      description: Create a new user record with the provided email and display name fields.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:        { type: string }
+                display_name: { type: string }
+      responses:
+        '201': { description: Created }

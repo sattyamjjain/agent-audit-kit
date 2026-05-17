@@ -8,6 +8,13 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.19 (2026-05-17)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-44717 (architectural class) | Source-side generalization of yesterday's `mcp-calculate-server` pin to any MCP server with the same shape | **AAK-MCP-TOOL-UNSAFE-EVAL-001** (NEW: Python AST detector for `eval()`/`exec()` in `@mcp.tool` handlers) | 2026-05-17 | same-day as v0.3.18 named-pin row |
+| arXiv:2605.14312 — Hermes (EASE 2026) | OpenAPI-to-MCP migration smell taxonomy (2,450 smells / 600 endpoints) | **AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001** + **AAK-MCP-OPENAPI-BLOATED-PARAMS-001** + **AAK-MCP-OPENAPI-TANGLED-METHODS-001** (NEW: 3-rule smell category + new scanner module + auto-detect of `openapi.{yaml,json}` in project tree) | 2026-05-17 | Hermes paper is the primary incident anchor; non-CVE academic research-driven category |
+
 ## Shipped in v0.3.18 (2026-05-17)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

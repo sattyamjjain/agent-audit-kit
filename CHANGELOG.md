@@ -5,6 +5,79 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.19] - 2026-05-17
+
+**Headline: 4 new rules (200 total) — source-side generalization of
+yesterday's CVE-2026-44717 pin + new MCP-OPENAPI smell category
+anchored to Hermes paper (arXiv:2605.14312, EASE 2026).**
+
+Third release today, on top of v0.3.17 (orphan recovery) and v0.3.18
+(MCP Calc CVE-2026-44717 pin). This release ships the
+complementary source-side detector that v0.3.18's CHANGELOG
+explicitly queued.
+
+### Added — Rule 1 of 4: source-side @mcp.tool unsafe eval
+
+- **AAK-MCP-TOOL-UNSAFE-EVAL-001** (CRITICAL) — AST detector that
+  fires on any Python function decorated with `@mcp.tool` /
+  `@server.tool` / `@app.tool` / `@fastmcp.tool` / `@tool` whose
+  body contains an `eval()` / `exec()` / `compile()` / `__import__()`
+  / unsafe `parse_expr()` call with an argument bound to the
+  function's parameter set. Generalizes v0.3.18's named-product
+  pin `AAK-MCPCALC-CVE-2026-44717-PIN-001` to the architectural
+  class. New scanner module
+  `agent_audit_kit/scanners/mcp_tool_unsafe_eval.py`.
+
+### Added — Rules 2/3/4 of 4: MCP-OPENAPI smell category (Hermes)
+
+- **AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001** (MEDIUM) — operation
+  with missing or sub-40-character `description`.
+- **AAK-MCP-OPENAPI-BLOATED-PARAMS-001** (LOW) — operation with
+  >12 parameters or >24 requestBody properties.
+- **AAK-MCP-OPENAPI-TANGLED-METHODS-001** (MEDIUM) — path with >4
+  HTTP methods OR method-name vs. path-segment verb contradiction
+  (POST /get/..., GET /create/..., etc.).
+
+  Per Hermes (arXiv:2605.14312, EASE 2026 — 2,450 smells across 600
+  endpoints) these are the three primary failure shapes that break
+  agent tool-selection accuracy when an OpenAPI 3.x spec is
+  auto-converted to MCP tools.
+
+  New scanner module `agent_audit_kit/scanners/openapi_smells.py`.
+  Auto-detects `openapi.{yaml,yml,json}` / `swagger.{yaml,yml,json}` /
+  `*.openapi.*` at project root or in `api/` / `openapi/` / `spec/` /
+  `docs/api/` subdirs. Skips files that don't parse as YAML/JSON
+  with a top-level `openapi:` or `swagger:` field.
+
+### Declined — Suggestion 2 from 2026-05-17 daily prompt
+
+The proposed `AAK-MCP-067` for CVE-2026-33032 (nginx-ui) is a
+verified duplicate. CVE-2026-33032 is already covered by multiple
+rules in `agent_audit_kit/rules/builtin.py` including the `AAK-MCPwn-*`
+middleware-asymmetry family. The doc's proposed rule also
+misdescribes the CVE pattern — NVD says the bypass is an
+unauthenticated `/mcp_message` endpoint paired with an authed
+`/mcp` endpoint, not 0.0.0.0 binding without auth. Decline.
+
+### Tests
+
+- 7 new tests in `tests/test_v0_3_19_rules.py` — 3 for the eval AST
+  detector (positive eval+exec, safe ast.literal_eval, no-decorator
+  passes); 4 for OpenAPI smells (smelly fires all 3, clean passes,
+  no-spec passes, verb-method-conflict isolation).
+- Total **963 passing** (was 956 at v0.3.18 baseline, +7).
+
+### Triage (no code change)
+
+- 2 sla-48h tickets closed earlier today (#262 + #263) — class-
+  covered by AAK-OAUTH-* + AAK-SSRF-* family.
+
+### Deferred
+
+- Watcher dedup fix (#163) — v0.3.20.
+- PraisonAI CRITICAL pin pair (CVE-2026-41497 + CVE-2026-44336) —
+  v0.3.20.
+
 ## [0.3.18] - 2026-05-17
 
 **Headline: 1 new CRITICAL rule (196 total) — MCP Calculate Server

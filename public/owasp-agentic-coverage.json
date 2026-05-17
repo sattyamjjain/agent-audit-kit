@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-17T04:19:30Z",
-  "aak_version": "0.3.18",
-  "rule_count": 196,
+  "last_updated": "2026-05-17T07:18:07Z",
+  "aak_version": "0.3.19",
+  "rule_count": 200,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -89,7 +89,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 29,
+      "rule_density": 30,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -334,6 +334,17 @@
           "aicm_references": [
             "AIS-08",
             "IAM-05"
+          ]
+        },
+        {
+          "id": "AAK-MCP-TOOL-UNSAFE-EVAL-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-44717"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
           ]
         },
         {
@@ -1061,7 +1072,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 29,
+      "rule_density": 30,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1203,6 +1214,17 @@
           "severity": "medium",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TOOL-UNSAFE-EVAL-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-44717"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
+          ]
         },
         {
           "id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",

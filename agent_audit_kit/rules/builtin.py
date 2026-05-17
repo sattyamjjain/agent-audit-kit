@@ -91,6 +91,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
+    "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
+    "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001": ["AIS-07"],
+    "AAK-MCP-OPENAPI-BLOATED-PARAMS-001": ["AIS-07"],
+    "AAK-MCP-OPENAPI-TANGLED-METHODS-001": ["AIS-07"],
     "AAK-NEXT-AI-DRAW-001": ["LOG-13"],
     "AAK-LANGCHAIN-SSRF-REDIR-001": ["IVS-04", "AIS-08"],
     "AAK-SSRF-TOCTOU-001": ["IVS-04", "AIS-08"],
@@ -3905,6 +3909,100 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-MCP-TOOL-UNSAFE-EVAL-001",
+    "Unsafe eval()/exec()/compile() inside @mcp.tool handler (CVE-2026-44717 class)",
+    "An MCP tool handler routes a tool-parameter value through "
+    "`eval()`, `exec()`, `compile()`, `__import__()`, or SymPy "
+    "`parse_expr()` without `local_dict`/`global_dict` pinning. "
+    "This is the architectural class behind CVE-2026-44717 "
+    "(mcp-calculate-server, v0.3.18 named-pin row "
+    "`AAK-MCPCALC-CVE-2026-44717-PIN-001`) and generalizes to any "
+    "single-author MCP server with the same shape — independent "
+    "of upstream package identity. The Python AST visitor matches "
+    "functions decorated with `@mcp.tool` / `@server.tool` / "
+    "`@app.tool` / `@fastmcp.tool` / `@tool` whose body contains "
+    "an `eval` / `exec` / `compile` / `__import__` / unsafe "
+    "`parse_expr` call with an argument bound to the function's "
+    "parameter set.",
+    Severity.CRITICAL,
+    Category.TOOL_POISONING,
+    "Replace `eval(expr)` with `ast.literal_eval(expr)` for "
+    "trusted-literal inputs, or with SymPy "
+    "`parse_expr(expr, local_dict={}, global_dict={}, evaluate=True)` "
+    "plus a strict symbol allow-list for math. Validate input "
+    "length + char-set before evaluation. The `mcp-calculate-server` "
+    "0.1.1 fix is one canonical example of the safer shape.",
+    sarif_name="McpToolUnsafeEvalSourceShape",
+    cve_references=["CVE-2026-44717"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI05"],
+    incident_references=["NVD-CVE-2026-44717"],
+)
+
+_r(
+    "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001",
+    "OpenAPI operation with missing or sub-40-char description (Hermes LAZY)",
+    "An OpenAPI 3.x operation has a missing or sub-40-character "
+    "`description` field. Per Hermes (arXiv:2605.14312, EASE 2026), "
+    "this is the most common smell in MCP-on-REST migrations — "
+    "agents over-rely on operation descriptions to disambiguate "
+    "tool choice, and sparse descriptions cause silent mis-routing. "
+    "Hermes' large-scale evaluation found this smell across "
+    "essentially every analyzed operation in the 600-endpoint "
+    "corpus, with 2,450 smells total across the 3 classes "
+    "(LAZY / BLOATED / TANGLED).",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Author a >=40-character description that names the operation's "
+    "purpose, expected input shape, and side-effecting class. "
+    "Agent tool-selection accuracy improves materially when "
+    "descriptions disambiguate similar-looking operations.",
+    sarif_name="OpenApiLazyDescription",
+    incident_references=["ARXIV-2605.14312"],
+)
+
+_r(
+    "AAK-MCP-OPENAPI-BLOATED-PARAMS-001",
+    "OpenAPI operation with >12 parameters or >24 request-body properties (Hermes BLOATED)",
+    "An OpenAPI 3.x operation declares more than 12 `parameters` "
+    "or more than 24 `requestBody` schema properties. Per Hermes "
+    "(arXiv:2605.14312), bloated operations exceed the working-"
+    "memory budget of mainstream LLM tool-callers (typical "
+    "context budget per tool: 8-12 fields) and cause partial-"
+    "argument hallucination or skipped operations. Affects MCP "
+    "servers that auto-generate tools from a CRUD REST API.",
+    Severity.LOW,
+    Category.TOOL_POISONING,
+    "Decompose the operation into smaller MCP tools, each owning "
+    "<=12 parameters, OR split the request body into nested "
+    "sub-operations. If the breadth is required, expose a "
+    "structured-output schema that the agent can consult before "
+    "the call.",
+    sarif_name="OpenApiBloatedParameters",
+    incident_references=["ARXIV-2605.14312"],
+)
+
+_r(
+    "AAK-MCP-OPENAPI-TANGLED-METHODS-001",
+    "OpenAPI path serving >4 HTTP methods or method-name/path semantic contradiction (Hermes TANGLED)",
+    "An OpenAPI 3.x path operates as >4 HTTP methods (e.g. GET + "
+    "POST + PUT + PATCH + DELETE all on the same path), OR the "
+    "HTTP method contradicts the path segment (e.g. POST /get/... "
+    "or GET /create/...). Per Hermes (arXiv:2605.14312), tangled "
+    "path-and-method semantics confuse agents that infer operation "
+    "intent from the path string. Side-effect-misclassification "
+    "is the realized failure mode.",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Split the tangled path into >=2 disjoint paths, each owning "
+    "<=4 methods with method-name and path-segment in semantic "
+    "agreement. Reserve verbs (`/get/...`, `/create/...`) for "
+    "their corresponding HTTP methods only.",
+    sarif_name="OpenApiTangledMethodsAndPaths",
+    incident_references=["ARXIV-2605.14312"],
 )
 
 _r(
