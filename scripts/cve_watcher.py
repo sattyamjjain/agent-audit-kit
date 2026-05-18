@@ -75,34 +75,58 @@ def _save_state(state_path: Path, state: dict) -> None:
     state_path.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
 
 
-def _open_issue_cves(owner_repo: str | None, token: str | None) -> set[str]:
+def _all_issue_cves(owner_repo: str | None, token: str | None) -> set[str]:
+    """Return CVE IDs across **all** cve-response issues (open + closed).
+
+    Fixes the v0.3.x daily re-fire pattern (tracking #163): the prior
+    implementation queried only `state=open`, so a CVE closed with a
+    class-coverage citation was forgotten and re-filed on the next
+    watcher cycle. Now closed issues participate in dedup too, with
+    pagination so the lookup remains complete as the closed-issue
+    backlog grows past 100 entries.
+
+    The state file (`filed_cves`) is still the durable primary source;
+    this lookup is the fallback when the state file is missing (CI
+    artifact lost, repo re-clone, etc.).
+    """
     if not owner_repo or not token:
         return set()
-    url = (
-        f"https://api.github.com/repos/{owner_repo}/issues"
-        "?state=open&labels=cve-response&per_page=100"
-    )
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "agent-audit-kit cve-watcher",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            issues = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError) as exc:
-        sys.stderr.write(f"cve-watcher: open-issue check failed: {exc}\n")
-        return set()
     out: set[str] = set()
-    for issue in issues or []:
-        title = issue.get("title") or ""
-        body = issue.get("body") or ""
-        for m in _CVE_RE.findall(f"{title}\n{body}"):
-            out.add(m)
+    page = 1
+    while page <= 20:  # hard cap — 20 pages × 100 = 2000 issues
+        url = (
+            f"https://api.github.com/repos/{owner_repo}/issues"
+            f"?state=all&labels=cve-response&per_page=100&page={page}"
+        )
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "agent-audit-kit cve-watcher",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                issues = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, OSError) as exc:
+            sys.stderr.write(f"cve-watcher: all-issue check failed (page {page}): {exc}\n")
+            return out
+        if not issues:
+            break
+        for issue in issues:
+            title = issue.get("title") or ""
+            body = issue.get("body") or ""
+            for m in _CVE_RE.findall(f"{title}\n{body}"):
+                out.add(m)
+        if len(issues) < 100:
+            break
+        page += 1
     return out
+
+
+# Back-compat alias — the old name is still referenced in some tests.
+_open_issue_cves = _all_issue_cves
 
 
 def _fetch(keyword: str, window_hours: int = 48) -> list[dict]:
@@ -174,8 +198,11 @@ def collect_new_cves(
     tracked = _already_tracked()
     state = _load_state(state_path)
     filed = set(state.get("filed_cves", []))
-    open_issue_cves = _open_issue_cves(owner_repo, github_token)
-    suppressed = tracked | filed | open_issue_cves
+    # As of v0.3.20 (#163 fix): query state=all so closed issues — including
+    # those closed with class-coverage citations — also participate in dedup.
+    # Pre-fix only `state=open` was checked, causing daily re-fires.
+    all_issue_cves = _all_issue_cves(owner_repo, github_token)
+    suppressed = tracked | filed | all_issue_cves
 
     seen: set[str] = set()
     results: list[dict] = []

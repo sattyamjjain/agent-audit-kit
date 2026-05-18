@@ -8,6 +8,13 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.20 (2026-05-18)
+
+| CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| arXiv:2605.10067 — Metis (ICML 2026) | Inference-time policy optimization within adversarial POMDP — closed-loop reasoning trajectories with refusal-feedback / scoring-string semantic gradient | **AAK-METIS-REFUSAL-REFEED-001** + **AAK-METIS-SCORING-SINK-001** (NEW: two research-grade MEDIUM rules; 3 speculative shapes from the original prompt deferred to v0.3.21+ pending defensive-side follow-up) | 2026-05-18 | Metis paper anchor — non-CVE academic; research-grade tier |
+| Issue #163 (internal) — cve-watcher dedup bug | The cve-watcher's `state=open`-only issue lookup caused the same CVE IDs to re-fire as new tickets on each daily cycle (28+ dup closures across 2026-05-13 → 2026-05-18). | **cve-watcher fix** (not a rule — `scripts/cve_watcher.py:_open_issue_cves` renamed to `_all_issue_cves` and now queries `state=all` with pagination; closed-issue regression test added) | 2026-05-18 | 5+ days from first observation to fix |
+
 ## Shipped in v0.3.19 (2026-05-17)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |

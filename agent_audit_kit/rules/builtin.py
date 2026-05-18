@@ -92,6 +92,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
+    "AAK-METIS-REFUSAL-REFEED-001": ["AIS-07", "AIS-12"],
+    "AAK-METIS-SCORING-SINK-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001": ["AIS-07"],
     "AAK-MCP-OPENAPI-BLOATED-PARAMS-001": ["AIS-07"],
     "AAK-MCP-OPENAPI-TANGLED-METHODS-001": ["AIS-07"],
@@ -3909,6 +3911,56 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-METIS-REFUSAL-REFEED-001",
+    "Refusal text re-fed into prompt without policy mediation (Metis, research-grade)",
+    "A function consumes an LLM-refusal signal (parameter name or local "
+    "variable matches `refusal`/`rejected`/`denied`/`decline`/`handle_refusal`) "
+    "and either (a) returns the refusal value or (b) passes it as an "
+    "argument to a prompt-sink call (`format` / `append` / `add_message` / "
+    "`build_prompt` / etc.) without first re-categorizing it into an "
+    "opaque token. Per *Metis: Learning to Jailbreak LLMs via "
+    "Self-Evolving Metacognitive Policy Optimization* (arXiv:2605.10067, "
+    "ICML 2026), structured refusal feedback used as a semantic gradient "
+    "is the exploited surface. **Research-grade — MEDIUM severity reflects "
+    "non-trivial false-positive risk; treat as a code-review prompt, not "
+    "an automatic block.**",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Wrap the refusal value in a policy-mediated transformation before "
+    "re-use: discretize into a fixed enum (e.g., `RefusalKind.POLICY` / "
+    "`RefusalKind.SAFETY`), rate-limit retries, strip free-text content. "
+    "Never echo a verbatim refusal sentence into the next prompt — that "
+    "is the closed-loop reasoning gradient Metis exploits.",
+    sarif_name="MetisRefusalRefeed",
+    owasp_agentic_references=["ASI01", "ASI02"],
+    incident_references=["ARXIV-2605.10067"],
+)
+
+_r(
+    "AAK-METIS-SCORING-SINK-001",
+    "Scoring / judge value flows into prompt-sink call (Metis, research-grade)",
+    "A function consumes a scoring / judge signal (parameter or local "
+    "variable matches `score`/`scoring`/`judge`/`reward`/`rating`/"
+    "`critique`) and passes it into a prompt-sink call (`format` / "
+    "`append` / `add_message` / `build_prompt` / etc.) without "
+    "discretizing the signal first. Per Metis (arXiv:2605.10067), "
+    "numeric or verbose scoring strings are exactly the semantic "
+    "gradient an adversary uses to refine its policy across "
+    "closed-loop reasoning iterations. **Research-grade — MEDIUM "
+    "severity reflects non-trivial false-positive risk.**",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Discretize scoring signals into an opaque bucket (e.g., PASS / "
+    "FAIL / PARTIAL) before re-injecting. If a numeric score must be "
+    "exposed, cap it (e.g., 0-3 ordinal) and avoid free-text critiques. "
+    "Per Metis: any verbose feedback string is fuel for the metacognitive "
+    "policy refinement the paper demonstrates.",
+    sarif_name="MetisScoringSink",
+    owasp_agentic_references=["ASI01", "ASI02"],
+    incident_references=["ARXIV-2605.10067"],
 )
 
 _r(

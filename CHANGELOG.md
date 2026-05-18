@@ -5,6 +5,81 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.20] - 2026-05-18
+
+**Headline: 2 new research-grade rules (202 total) — Metis POMDP
+closed-loop reasoning detectors anchored to arXiv:2605.10067 (ICML
+2026) — plus the cve-watcher dedup fix (#163) ending 5+ days of
+daily ticket re-fires.**
+
+### Fixed — cve-watcher daily-re-fire bug (#163)
+
+The `scripts/cve_watcher.py` `_open_issue_cves` helper only checked
+`state=open&labels=cve-response`, so a CVE closed with a class-
+coverage citation was forgotten and re-filed on the next watcher
+cycle. Renamed to `_all_issue_cves` and changed to `state=all` with
+pagination (hard cap at 20 pages = 2000 issues). Back-compat alias
+preserved. Regression test in `tests/test_cve_watcher_dedup.py`:
+`test_closed_issue_title_suppresses` explicitly asserts a previously-
+closed CVE ID is not re-filed.
+
+Impact: ends the 28-ticket daily re-fire pattern observed across
+2026-05-13 → 2026-05-18.
+
+### Added — Rules (2, research-grade)
+
+- **AAK-METIS-REFUSAL-REFEED-001** (MEDIUM) — Python AST detector
+  for a function that consumes an LLM-refusal signal and either
+  returns it or passes it to a prompt-sink call (`format` /
+  `append` / `add_message` / `build_prompt` / etc.) without
+  policy-mediated transformation. Per Metis (arXiv:2605.10067),
+  structured refusal feedback used as a semantic gradient is the
+  exploited surface.
+- **AAK-METIS-SCORING-SINK-001** (MEDIUM) — same shape applied to
+  scoring / judge / reward / critique signals.
+
+**Research-grade tier:** both rules are MEDIUM (not HIGH/CRITICAL)
+because the Metis paper is an offensive jailbreak paper, not a
+defensive SAST prescription — the proposed rules catch code shapes
+the paper shows are exploitable, but don't prove RCE on any specific
+tool call. Treat as code-review prompts, not automatic blockers.
+
+New scanner module: `agent_audit_kit/scanners/metis_pomdp.py`.
+
+### Deferred — Suggestion 2 (Microsoft AGT exporter)
+
+The Microsoft Agent Governance Toolkit evidence-JSON exporter was
+proposed in today's daily prompt. **Declined for v0.3.20** because
+the actual evidence-JSON schema is NOT documented in the MS repo's
+README — building today would mean guessing the schema. Tracking
+issue [#267](https://github.com/sattyamjjain/agent-audit-kit/issues/267)
+queues the work for v0.3.21+ pending schema verification.
+
+### Deferred — Metis rules 3-5
+
+The 2026-05-18 prompt proposed 5 Metis rules. Three were deferred:
+"self-evolving prompt mutation without rate-limit", "structured-
+feedback echoing into system prompt", "closed-loop reasoning chain
+without circuit-breaker." Each needs more concrete code-shape
+specification than the Metis paper itself provides (it's an
+offensive paper). Will revisit when a defensive-side follow-up
+paper or empirical study lands.
+
+### Tests
+
+- 4 new tests in `tests/test_v0_3_20_rules.py` (Metis: 3 positive,
+  1 early-exit-clean).
+- 1 new regression test in `tests/test_cve_watcher_dedup.py`
+  (`test_closed_issue_title_suppresses` — direct guard against #163).
+- Total **968 passing** (was 963 at v0.3.19 baseline, +5).
+
+### Triage (no code change)
+
+- 2 sla-48h tickets closed earlier today (#265 + #266) — class-
+  covered re-fires. **These would have been auto-suppressed by the
+  v0.3.20 watcher fix** had it shipped yesterday — they were the
+  last re-fires before the fix lands.
+
 ## [0.3.19] - 2026-05-17
 
 **Headline: 4 new rules (200 total) — source-side generalization of

@@ -79,6 +79,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("gpt_researcher_transport_flip", "GPT-Researcher MCP transport-flip MITM (OX-MCP-2026-05-01)", []),
     ("mcp_tool_unsafe_eval", "Unsafe eval/exec inside @mcp.tool handler (CVE-2026-44717 class)", []),
     ("openapi_smells", "OpenAPI smells for MCP-on-REST (Hermes paper, arXiv:2605.14312)", []),
+    ("metis_pomdp", "Metis POMDP closed-loop reasoning defense (arXiv:2605.10067)", []),
 ]
 
 

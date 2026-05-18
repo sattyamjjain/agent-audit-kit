@@ -2845,6 +2845,54 @@
       "title": "MCP route twin-asymmetry: auth middleware missing on sibling route (MCPwn, CVE-2026-33032)"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07",
+        "AIS-12"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A function consumes an LLM-refusal signal (parameter name or local variable matches `refusal`/`rejected`/`denied`/`decline`/`handle_refusal`) and either (a) returns the refusal value or (b) passes it as an argument to a prompt-sink call (`format` / `append` / `add_message` / `build_prompt` / etc.) without first re-categorizing it into an opaque token. Per *Metis: Learning to Jailbreak LLMs via Self-Evolving Metacognitive Policy Optimization* (arXiv:2605.10067, ICML 2026), structured refusal feedback used as a semantic gradient is the exploited surface. **Research-grade \u2014 MEDIUM severity reflects non-trivial false-positive risk; treat as a code-review prompt, not an automatic block.**",
+      "incident_references": [
+        "ARXIV-2605.10067"
+      ],
+      "owasp_agentic_references": [
+        "ASI01",
+        "ASI02"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Wrap the refusal value in a policy-mediated transformation before re-use: discretize into a fixed enum (e.g., `RefusalKind.POLICY` / `RefusalKind.SAFETY`), rate-limit retries, strip free-text content. Never echo a verbatim refusal sentence into the next prompt \u2014 that is the closed-loop reasoning gradient Metis exploits.",
+      "rule_id": "AAK-METIS-REFUSAL-REFEED-001",
+      "sarif_name": "MetisRefusalRefeed",
+      "severity": "medium",
+      "title": "Refusal text re-fed into prompt without policy mediation (Metis, research-grade)"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07",
+        "AIS-12"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A function consumes a scoring / judge signal (parameter or local variable matches `score`/`scoring`/`judge`/`reward`/`rating`/`critique`) and passes it into a prompt-sink call (`format` / `append` / `add_message` / `build_prompt` / etc.) without discretizing the signal first. Per Metis (arXiv:2605.10067), numeric or verbose scoring strings are exactly the semantic gradient an adversary uses to refine its policy across closed-loop reasoning iterations. **Research-grade \u2014 MEDIUM severity reflects non-trivial false-positive risk.**",
+      "incident_references": [
+        "ARXIV-2605.10067"
+      ],
+      "owasp_agentic_references": [
+        "ASI01",
+        "ASI02"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Discretize scoring signals into an opaque bucket (e.g., PASS / FAIL / PARTIAL) before re-injecting. If a numeric score must be exposed, cap it (e.g., 0-3 ordinal) and avoid free-text critiques. Per Metis: any verbose feedback string is fuel for the metacognitive policy refinement the paper demonstrates.",
+      "rule_id": "AAK-METIS-SCORING-SINK-001",
+      "sarif_name": "MetisScoringSink",
+      "severity": "medium",
+      "title": "Scoring / judge value flows into prompt-sink call (Metis, research-grade)"
+    },
+    {
       "adversa_references": [
         "ADV-SUPPLY-08"
       ],

@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-17T07:18:07Z",
-  "aak_version": "0.3.19",
-  "rule_count": 200,
+  "last_updated": "2026-05-18T17:56:28Z",
+  "aak_version": "0.3.20",
+  "rule_count": 202,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 9,
+      "rule_density": 11,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -77,6 +77,24 @@
           ]
         },
         {
+          "id": "AAK-METIS-REFUSAL-REFEED-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "AIS-12"
+          ]
+        },
+        {
+          "id": "AAK-METIS-SCORING-SINK-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "AIS-12"
+          ]
+        },
+        {
           "id": "AAK-SKILL-005",
           "severity": "high",
           "cve_references": [],
@@ -89,7 +107,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 30,
+      "rule_density": 32,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -368,6 +386,24 @@
           ],
           "aicm_references": [
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-METIS-REFUSAL-REFEED-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "AIS-12"
+          ]
+        },
+        {
+          "id": "AAK-METIS-SCORING-SINK-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07",
+            "AIS-12"
           ]
         },
         {

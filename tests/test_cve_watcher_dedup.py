@@ -120,6 +120,14 @@ def test_three_calls_produce_one_file_event(tmp_path: Path) -> None:
 
 def test_open_issue_title_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
+    # v0.3.20 (#163 fix): the helper was renamed `_open_issue_cves` →
+    # `_all_issue_cves` to reflect that closed issues also participate
+    # in dedup. Test patches both names for back-compat insurance.
+    monkeypatch.setattr(
+        module,
+        "_all_issue_cves",
+        lambda *a, **kw: {"CVE-2026-39861"},
+    )
     monkeypatch.setattr(
         module,
         "_open_issue_cves",
@@ -135,6 +143,30 @@ def test_open_issue_title_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyP
         fetcher=lambda _kw: [_vuln("CVE-2026-39861")],
     )
     assert results == []
+
+
+def test_closed_issue_title_suppresses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression for v0.3.20 (#163): a CVE that was *previously closed*
+    (with a class-coverage citation, no rule shipped) must not re-fire."""
+    module = _load_module()
+    monkeypatch.setattr(
+        module,
+        "_all_issue_cves",
+        lambda *a, **kw: {"CVE-2026-CLOSED-DUP"},  # simulating closed-issue lookup
+    )
+    state = tmp_path / "state.json"
+    changelog = tmp_path / "CHANGELOG.cves.md"
+    results, _ = module.collect_new_cves(
+        changelog_path=changelog,
+        state_path=state,
+        github_token="fake-token",
+        owner_repo="acme/repo",
+        fetcher=lambda _kw: [_vuln("CVE-2026-CLOSED-DUP")],
+    )
+    assert results == [], (
+        "CVE-2026-CLOSED-DUP was previously closed — must not be re-filed by "
+        "the watcher (this is the #163 daily-re-fire bug)"
+    )
 
 
 def test_new_cve_passes_all_layers(tmp_path: Path) -> None:
