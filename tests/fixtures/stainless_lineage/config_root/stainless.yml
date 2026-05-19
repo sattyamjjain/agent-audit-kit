@@ -1,0 +1,6 @@
+openapi:
+  spec: openapi.yaml
+
+targets:
+  - python
+  - typescript

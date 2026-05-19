@@ -80,6 +80,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_tool_unsafe_eval", "Unsafe eval/exec inside @mcp.tool handler (CVE-2026-44717 class)", []),
     ("openapi_smells", "OpenAPI smells for MCP-on-REST (Hermes paper, arXiv:2605.14312)", []),
     ("metis_pomdp", "Metis POMDP closed-loop reasoning defense (arXiv:2605.10067)", []),
+    ("stainless_lineage", "Stainless-generator provenance (Anthropic acquisition 2026-05-18)", []),
 ]
 
 

@@ -2489,6 +2489,27 @@
       "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "STA-02",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "The source tree contains a Stainless auto-generation marker \u2014 either the in-file banner `File generated from our OpenAPI spec by Stainless.` (verified verbatim against github.com/anthropics/anthropic-sdk-python on 2026-05-19) or a `stainless.yml` / `.stainless/` config-as-code shape at the project root. Stainless is the API-spec-to-SDK / CLI / MCP-server generator [Anthropic acquired on 2026-05-18](https://www.anthropic.com/news/anthropic-acquires-stainless). This rule is **provenance, not vulnerability** \u2014 severity INFO. It surfaces the generator lineage so procurement teams and SBOM tooling can answer 'which of our MCP servers / SDKs are generator-produced vs hand-authored.' The Anthropic announcement makes **no** mention of winding down the generator or of pre-vs-post-acquisition default differences; AAK does not fabricate either claim. If a future CVE class lands against a specific Stainless generator version, this rule will be re-targeted to fire only on the affected lineage.",
+      "incident_references": [
+        "ANTHROPIC-STAINLESS-2026-05-18"
+      ],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "No action required for the rule fire itself \u2014 this is a lineage data point. For SBOM / supply-chain attestation, record the Stainless lineage alongside the package's own version metadata. If you'd prefer to suppress the rule in your project, add the rule ID to your `aak ignore` config \u2014 `INFO` rules are silent by default in `aak scan` unless `--severity info` is passed.",
+      "rule_id": "AAK-MCP-LINEAGE-STAINLESS-001",
+      "sarif_name": "StainlessLineageProvenance",
+      "severity": "info",
+      "title": "Stainless-generator provenance / lineage (informational)"
+    },
+    {
       "adversa_references": [
         "ADV-SUPPLY-03"
       ],

@@ -93,6 +93,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
     "AAK-METIS-REFUSAL-REFEED-001": ["AIS-07", "AIS-12"],
+    "AAK-MCP-LINEAGE-STAINLESS-001": ["STA-02", "STA-08"],
     "AAK-METIS-SCORING-SINK-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001": ["AIS-07"],
     "AAK-MCP-OPENAPI-BLOATED-PARAMS-001": ["AIS-07"],
@@ -3911,6 +3912,38 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-MCP-LINEAGE-STAINLESS-001",
+    "Stainless-generator provenance / lineage (informational)",
+    "The source tree contains a Stainless auto-generation marker — "
+    "either the in-file banner `File generated from our OpenAPI spec "
+    "by Stainless.` (verified verbatim against "
+    "github.com/anthropics/anthropic-sdk-python on 2026-05-19) or a "
+    "`stainless.yml` / `.stainless/` config-as-code shape at the "
+    "project root. Stainless is the API-spec-to-SDK / CLI / MCP-"
+    "server generator [Anthropic acquired on 2026-05-18]"
+    "(https://www.anthropic.com/news/anthropic-acquires-stainless). "
+    "This rule is **provenance, not vulnerability** — severity INFO. "
+    "It surfaces the generator lineage so procurement teams and "
+    "SBOM tooling can answer 'which of our MCP servers / SDKs are "
+    "generator-produced vs hand-authored.' The Anthropic announcement "
+    "makes **no** mention of winding down the generator or of "
+    "pre-vs-post-acquisition default differences; AAK does not "
+    "fabricate either claim. If a future CVE class lands against a "
+    "specific Stainless generator version, this rule will be "
+    "re-targeted to fire only on the affected lineage.",
+    Severity.INFO,
+    Category.SUPPLY_CHAIN,
+    "No action required for the rule fire itself — this is a lineage "
+    "data point. For SBOM / supply-chain attestation, record the "
+    "Stainless lineage alongside the package's own version metadata. "
+    "If you'd prefer to suppress the rule in your project, add the "
+    "rule ID to your `aak ignore` config — `INFO` rules are silent "
+    "by default in `aak scan` unless `--severity info` is passed.",
+    sarif_name="StainlessLineageProvenance",
+    incident_references=["ANTHROPIC-STAINLESS-2026-05-18"],
 )
 
 _r(

@@ -8,6 +8,13 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.21 (2026-05-19)
+
+| Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| Anthropic acquires Stainless (2026-05-18) | [anthropic.com/news/anthropic-acquires-stainless](https://www.anthropic.com/news/anthropic-acquires-stainless) — Stainless is the API-spec-to-SDK / CLI / MCP-server generator, now under Anthropic stewardship | **AAK-MCP-LINEAGE-STAINLESS-001** (NEW: provenance / lineage detector, INFO severity — banner-regex + config-as-code detection. **Provenance only**: announcement makes no claim of bifurcated default-posture, AAK doesn't either) | 2026-05-19 | <24h on the acquisition announcement |
+| CVE-2026-47090 + CVE-2026-47092 (Claude HUD) | [NVD CVE-2026-47090](https://nvd.nist.gov/vuln/detail/CVE-2026-47090) — OSC 8 hyperlink injection (MEDIUM); [NVD CVE-2026-47092](https://nvd.nist.gov/vuln/detail/CVE-2026-47092) — `COMSPEC` command injection (HIGH) | **No named pin shipped** — Claude HUD has no published npm/PyPI surface; pin-floor SAST rule has no manifest to match. Runtime shapes are already covered by `AAK-LOG-INJECTION-001` (OSC 8 terminal escapes) + `AAK-MCP-STDIO-CMD-INJ-001..004` (env-var-controlled subprocess) | 2026-05-19 (triage closure) | honest triage — class-covered for runtime shape; no pin possible without public package |
+
 ## Shipped in v0.3.20 (2026-05-18)
 
 | CVE / Incident | Advisory | AAK rule(s) | Shipped | Latency |
