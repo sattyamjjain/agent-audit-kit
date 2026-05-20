@@ -144,3 +144,46 @@ def test_scanner_count_check_mode_passes_on_clean_tree() -> None:
     assert rc == 0
     rc = sync.main(["--check"])
     assert rc == 0
+
+
+# ---------------------------------------------------------------------------
+# v0.3.23 per-category anchor regression (#README sync drift fix)
+# The "What It Scans" table was undercount by 81 rules at v0.3.22 ship
+# time because each category cell was bare text, not an anchor. As of
+# v0.3.23 every cell carries a `<!-- category-count:CATEGORY_NAME -->`
+# anchor that `sync_rule_count.py` rewrites in lockstep with the registry.
+# ---------------------------------------------------------------------------
+
+
+def test_readme_per_category_anchors_match_registry() -> None:
+    """Every `<!-- category-count:NAME -->` anchor in README must match
+    the live `len([r for r in RULES if r.category.name == NAME])`."""
+    from collections import Counter
+    from agent_audit_kit.rules.builtin import RULES
+
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    # `[A-Z0-9_]+` — digits are load-bearing so `A2A_PROTOCOL` is matched.
+    pattern = re.compile(
+        r"<!--\s*category-count:([A-Z0-9_]+)\s*-->(\d+)<!--\s*/category-count\s*-->",
+    )
+    matches = pattern.findall(readme)
+    assert matches, (
+        "README has no `<!-- category-count:NAME -->NN<!-- /category-count -->` "
+        "anchors. Run `python scripts/sync_rule_count.py` after re-adding the "
+        '"What It Scans" table or accept the v0.3.23 schema.'
+    )
+    live_counts = Counter(r.category.name for r in RULES.values())
+    for cat_name, claimed_str in matches:
+        claimed = int(claimed_str)
+        actual = live_counts.get(cat_name, 0)
+        assert claimed == actual, (
+            f"README category-count anchor for `{cat_name}` reports "
+            f"{claimed}, registry has {actual}. "
+            "Run `python scripts/sync_rule_count.py` and commit."
+        )
+    # Sum of per-category anchors must match the total RULE_COUNT.
+    anchor_sum = sum(int(c) for _, c in matches)
+    assert anchor_sum == sum(live_counts.values()), (
+        f"Per-category anchors sum to {anchor_sum} but live registry has "
+        f"{sum(live_counts.values())}. Run `python scripts/sync_rule_count.py`."
+    )

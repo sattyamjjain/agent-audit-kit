@@ -45,10 +45,27 @@ _README_ANCHOR_RE = re.compile(
     r"(<!--\s*rule-count:total\s*-->)(.*?)(<!--\s*/rule-count\s*-->)",
     re.DOTALL,
 )
+# Per-category anchors added v0.3.23 to fix the "What It Scans" table
+# drifting independently of the total badge (the table sum was 81 rules
+# under-counted before the anchors landed). Each anchor matches the
+# Category enum name verbatim — e.g. `<!-- category-count:SUPPLY_CHAIN -->`.
+# NOTE: must include `0-9` — `A2A_PROTOCOL` would otherwise be silently
+# skipped, which is exactly the bug the v0.3.23 regression test caught.
+_README_CATEGORY_ANCHOR_RE = re.compile(
+    r"(<!--\s*category-count:([A-Z0-9_]+)\s*-->)(.*?)(<!--\s*/category-count\s*-->)",
+    re.DOTALL,
+)
 _INIT_CONSTANT_RE = re.compile(
     r"^(RULE_COUNT\s*[:=]\s*)\d+(.*)$",
     re.MULTILINE,
 )
+
+
+def _category_counts() -> dict[str, int]:
+    """Group the live rule registry by Category.name → count."""
+    from collections import Counter
+    from agent_audit_kit.rules.builtin import RULES
+    return {cat.name: n for cat, n in Counter(r.category for r in RULES.values()).items()}
 
 
 def _load_rule_count(bundle: pathlib.Path, regenerate: bool) -> int:
@@ -67,6 +84,7 @@ def _load_rule_count(bundle: pathlib.Path, regenerate: bool) -> int:
 
 def _update_readme(count: int, *, check: bool) -> bool:
     """Rewrite the badge URL + every `<!-- rule-count:total -->...<!-- /rule-count -->`
+    anchor + every `<!-- category-count:NAME -->...<!-- /category-count -->`
     anchor. Also keep the shields alt-text in lockstep with the badge."""
     readme = REPO_ROOT / "README.md"
     text = readme.read_text(encoding="utf-8")
@@ -74,10 +92,27 @@ def _update_readme(count: int, *, check: bool) -> bool:
     text = _README_BADGE_RE.sub(rf"\g<1>{count}\g<2>", text)
     text = re.sub(r"alt=\"Rules:\s*\d+\"", f'alt="Rules: {count}"', text)
 
-    def _sub_anchor(match: re.Match) -> str:
+    def _sub_total_anchor(match: re.Match) -> str:
         return f"{match.group(1)}{count}{match.group(3)}"
 
-    text = _README_ANCHOR_RE.sub(_sub_anchor, text)
+    text = _README_ANCHOR_RE.sub(_sub_total_anchor, text)
+
+    # Per-category anchors — fail loudly if the README references a
+    # Category name the registry doesn't have. That catches typos and
+    # stops the table from claiming a category that no longer exists.
+    cat_counts = _category_counts()
+
+    def _sub_category_anchor(match: re.Match) -> str:
+        cat_name = match.group(2)
+        if cat_name not in cat_counts:
+            raise SystemExit(
+                f"sync_rule_count: README references unknown category "
+                f"`{cat_name}` — valid Category enum names: "
+                f"{sorted(cat_counts.keys())}"
+            )
+        return f"{match.group(1)}{cat_counts[cat_name]}{match.group(4)}"
+
+    text = _README_CATEGORY_ANCHOR_RE.sub(_sub_category_anchor, text)
     if text == original:
         return False
     if check:

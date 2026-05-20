@@ -5,6 +5,53 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.23] - 2026-05-20
+
+**Headline: README per-category anchor sync — closes the 81-rule
+undercount the "What It Scans" table was carrying against the live
+registry (no rule changes; docs + sync-script + regression test).**
+
+### Fixed — Documentation drift (docs-only)
+
+- **README "What It Scans" table** — at v0.3.22 ship the table summed
+  to **124 rules** vs the registry's 205 (badge + `RULE_COUNT` were
+  correct; only the per-category cells drifted). Every category cell
+  was undercount; Supply Chain alone was off by +28. Each of the 11
+  category rows now carries an HTML anchor in the form
+  `<!-- category-count:CATEGORY_NAME -->NN<!-- /category-count -->`
+  (matching the live `Category` enum name verbatim), and the prose
+  has been refreshed to mention every rule shipped through this week
+  (Tasks-primitive leakage, OAuth 2.1 DPoP, OX MCP-STDIO command
+  injection, `apache-doris-mcp-server`, `excel-mcp-server`, MCP
+  Calculate Server, Project Deal economic-drift, Metis POMDP,
+  SkillsVote attribution, Code-as-Harness, MCP Inspector vendored
+  fork, DNS-rebinding, transport-flip MITM, etc.).
+
+### Added — Tooling
+
+- **`scripts/sync_rule_count.py`** now also rewrites every
+  `<!-- category-count:NAME -->NN<!-- /category-count -->` anchor in
+  README in lockstep with the registry, and exits 1 with a typo guard
+  if the README references a `Category` enum name the registry does
+  not have. Regex character class is `[A-Z0-9_]+` so `A2A_PROTOCOL`
+  matches (the digit was load-bearing — the regression test below
+  caught a silent skip).
+
+- **`tests/test_repo_metadata_sync.py::test_readme_per_category_anchors_match_registry`** —
+  new regression test that locks every per-category anchor to
+  `Counter(r.category.name for r in RULES.values())` and asserts the
+  sum matches the live total. Future drift will fail CI rather than
+  ship undetected.
+
+### Why this is a separate release
+
+The v0.3.22 release notes already shipped — the table drift is
+docs-only, but it materially understates how much surface the
+scanner covers (124 vs 205). Re-tagging today fixes the public
+README without rewriting v0.3.22 history.
+
+---
+
 ## [0.3.22] - 2026-05-20
 
 **Headline: 2 new research-grade MEDIUM rules (205 total) anchored
