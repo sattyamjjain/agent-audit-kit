@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-19T10:38:45Z",
-  "aak_version": "0.3.21",
-  "rule_count": 203,
+  "last_updated": "2026-05-20T14:00:01Z",
+  "aak_version": "0.3.22",
+  "rule_count": 205,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -828,8 +828,17 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 31,
+      "rule_density": 33,
       "rules": [
+        {
+          "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-04",
+            "IAM-05"
+          ]
+        },
         {
           "id": "AAK-AZURE-MCP-001",
           "severity": "high",
@@ -1020,6 +1029,15 @@
           "cve_references": [],
           "aicm_references": [
             "STA-10"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-12",
+            "LOG-06"
           ]
         },
         {
@@ -1351,8 +1369,17 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 24,
+      "rule_density": 25,
       "rules": [
+        {
+          "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-04",
+            "IAM-05"
+          ]
+        },
         {
           "id": "AAK-CLAUDE-WIN-001",
           "severity": "high",
@@ -1665,7 +1692,7 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 13,
+      "rule_density": 14,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1764,6 +1791,15 @@
           ],
           "aicm_references": [
             "LOG-13"
+          ]
+        },
+        {
+          "id": "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-12",
+            "LOG-06"
           ]
         },
         {

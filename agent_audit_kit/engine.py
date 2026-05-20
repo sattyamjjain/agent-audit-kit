@@ -81,6 +81,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("openapi_smells", "OpenAPI smells for MCP-on-REST (Hermes paper, arXiv:2605.14312)", []),
     ("metis_pomdp", "Metis POMDP closed-loop reasoning defense (arXiv:2605.10067)", []),
     ("stainless_lineage", "Stainless-generator provenance (Anthropic acquisition 2026-05-18)", []),
+    ("skill_lifecycle_attribution", "Skill lifecycle outcome-attribution (SkillsVote, arXiv:2605.18401)", []),
+    ("agent_harness_shared_state", "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)", []),
 ]
 
 

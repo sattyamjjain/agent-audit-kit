@@ -8,6 +8,14 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.22 (2026-05-20)
+
+| Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| arXiv:2605.18401 — SkillsVote (Liu et al., Memtensor, 2026-05-18) | Lifecycle governance for Agent Skills — evidence-gated update loop depends on per-execution outcome attribution | **AAK-SKILL-LIFECYCLE-ATTRIBUTION-001** (NEW: MEDIUM, research-grade — Python AST detector for @skill execute() functions that mutate persistent state but emit no outcome-attribution call. **Honest scope**: invented YAML schemas from the prompt — `requires_search`, `depends_on` — were NOT shipped; paper doesn't define them) | 2026-05-20 | <72h on paper anchor |
+| arXiv:2605.18747 — Code as Agent Harness (Ning et al., 42 authors, 2026-05-18) | Survey of 110+ papers + 23 systems naming "consistent shared state across multiple agents" as an explicit open challenge | **AAK-AGENT-HARNESS-SHARED-STATE-001** (NEW: MEDIUM, research-grade — Python AST detector for >=2 Agent/Worker/Harness classes mutating a module-level mutable container without a lock primitive visible in scope) | 2026-05-20 | <72h on paper anchor |
+| CVE-2026-2611 (MLflow 3.9.0 origin-validation bypass) | NVD CVE-2026-2611 — `/ajax-api` CSRF via cross-origin requests | **No named rule shipped** — class-covered by `AAK-TRUST-001..005` (origin / CORS allowlist) + `AAK-OAUTH-001..005`. Pin-floor `mlflow<3.9.1` named-row queued for v0.3.23+ if a fresh CVE warrants | 2026-05-20 (triage closure) | class-coverage |
+
 ## Shipped in v0.3.21 (2026-05-19)
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |

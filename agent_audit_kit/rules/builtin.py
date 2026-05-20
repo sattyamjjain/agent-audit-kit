@@ -94,6 +94,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
     "AAK-METIS-REFUSAL-REFEED-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-LINEAGE-STAINLESS-001": ["STA-02", "STA-08"],
+    "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001": ["LOG-06", "AIS-12"],
+    "AAK-AGENT-HARNESS-SHARED-STATE-001": ["AIS-04", "IAM-05"],
     "AAK-METIS-SCORING-SINK-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001": ["AIS-07"],
     "AAK-MCP-OPENAPI-BLOATED-PARAMS-001": ["AIS-07"],
@@ -3912,6 +3914,59 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+)
+
+_r(
+    "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001",
+    "Skill execute mutates state without outcome-attribution record (SkillsVote arXiv:2605.18401, research-grade)",
+    "A Skill execute / run function mutates persistent state (file "
+    "write, DB commit, side-effecting HTTP verb) without emitting an "
+    "outcome-attribution call (`record_outcome` / `log_outcome` / "
+    "`attribute_*` / etc.) in the same function body. Per *SkillsVote: "
+    "Lifecycle Governance of Agent Skills* (Liu et al., arXiv:2605.18401, "
+    "2026-05-18), the evidence-gated update loop depends on per-execution "
+    "attribution; missing attribution silently degrades repeat "
+    "invocations. **Research-grade** — MEDIUM reflects non-trivial "
+    "false-positive risk (per-project attribution-call naming varies; "
+    "the paper does not prescribe a specific schema).",
+    Severity.MEDIUM,
+    Category.TOOL_POISONING,
+    "Emit a structured outcome record at the end of the skill's execute "
+    "function: e.g., `record_outcome(skill_id=..., outcome='success'|"
+    "'failure', signals={...})`. The schema can be project-local — "
+    "SkillsVote does not prescribe a specific format — but the call "
+    "must be present in the same function body so the evidence-gated "
+    "update loop can consume it.",
+    sarif_name="SkillLifecycleAttributionMissing",
+    owasp_agentic_references=["ASI04", "ASI09"],
+    incident_references=["ARXIV-2605.18401"],
+)
+
+_r(
+    "AAK-AGENT-HARNESS-SHARED-STATE-001",
+    "Multi-agent shared state mutated by >=2 agents without a lock primitive (Code-as-Harness, research-grade)",
+    "A module-level mutable object (`dict` / `list` / `set` / "
+    "comprehension result) is mutated by methods of >=2 distinct "
+    "Agent / Worker / Harness classes without a lock primitive "
+    "(`threading.Lock` / `asyncio.Lock` / etc.) visible in any of "
+    "the mutating function bodies. Per *Code as Agent Harness* "
+    "(Ning et al., arXiv:2605.18747, 2026-05-18 — survey of 110+ "
+    "papers + 23 systems), 'consistent shared state across multiple "
+    "agents' is named as an explicit open challenge. **Research-grade** "
+    "— MEDIUM reflects expected false-positive rate when serialization "
+    "is enforced by an external coordinator (database transaction, "
+    "message queue) the AST scanner can't see.",
+    Severity.MEDIUM,
+    Category.A2A_PROTOCOL,
+    "Guard every mutation against the shared symbol with a lock "
+    "primitive (`threading.Lock` / `asyncio.Lock` / "
+    "`multiprocessing.Lock`). If serialization is enforced by an "
+    "external coordinator (database transaction, message queue), add "
+    "a `# noqa: AAK-AGENT-HARNESS-SHARED-STATE-001` comment with the "
+    "coordinator name to suppress.",
+    sarif_name="MultiAgentSharedStateNoLock",
+    owasp_agentic_references=["ASI04", "ASI06"],
+    incident_references=["ARXIV-2605.18747"],
 )
 
 _r(

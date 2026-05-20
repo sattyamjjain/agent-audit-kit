@@ -406,6 +406,30 @@
       "title": "Agent instruction file contains hidden content"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-04",
+        "IAM-05"
+      ],
+      "auto_fixable": false,
+      "category": "a2a-protocol",
+      "cve_references": [],
+      "description": "A module-level mutable object (`dict` / `list` / `set` / comprehension result) is mutated by methods of >=2 distinct Agent / Worker / Harness classes without a lock primitive (`threading.Lock` / `asyncio.Lock` / etc.) visible in any of the mutating function bodies. Per *Code as Agent Harness* (Ning et al., arXiv:2605.18747, 2026-05-18 \u2014 survey of 110+ papers + 23 systems), 'consistent shared state across multiple agents' is named as an explicit open challenge. **Research-grade** \u2014 MEDIUM reflects expected false-positive rate when serialization is enforced by an external coordinator (database transaction, message queue) the AST scanner can't see.",
+      "incident_references": [
+        "ARXIV-2605.18747"
+      ],
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI06"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Guard every mutation against the shared symbol with a lock primitive (`threading.Lock` / `asyncio.Lock` / `multiprocessing.Lock`). If serialization is enforced by an external coordinator (database transaction, message queue), add a `# noqa: AAK-AGENT-HARNESS-SHARED-STATE-001` comment with the coordinator name to suppress.",
+      "rule_id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
+      "sarif_name": "MultiAgentSharedStateNoLock",
+      "severity": "medium",
+      "title": "Multi-agent shared state mutated by >=2 agents without a lock primitive (Code-as-Harness, research-grade)"
+    },
+    {
       "adversa_references": [
         "ADV-INJECT-01"
       ],
@@ -3906,6 +3930,30 @@
       "sarif_name": "SkillFrontmatterInjection",
       "severity": "high",
       "title": "SKILL.md frontmatter contains prompt-injection triggers"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "LOG-06",
+        "AIS-12"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "A Skill execute / run function mutates persistent state (file write, DB commit, side-effecting HTTP verb) without emitting an outcome-attribution call (`record_outcome` / `log_outcome` / `attribute_*` / etc.) in the same function body. Per *SkillsVote: Lifecycle Governance of Agent Skills* (Liu et al., arXiv:2605.18401, 2026-05-18), the evidence-gated update loop depends on per-execution attribution; missing attribution silently degrades repeat invocations. **Research-grade** \u2014 MEDIUM reflects non-trivial false-positive risk (per-project attribution-call naming varies; the paper does not prescribe a specific schema).",
+      "incident_references": [
+        "ARXIV-2605.18401"
+      ],
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI09"
+      ],
+      "owasp_mcp_references": [],
+      "remediation": "Emit a structured outcome record at the end of the skill's execute function: e.g., `record_outcome(skill_id=..., outcome='success'|'failure', signals={...})`. The schema can be project-local \u2014 SkillsVote does not prescribe a specific format \u2014 but the call must be present in the same function body so the evidence-gated update loop can consume it.",
+      "rule_id": "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001",
+      "sarif_name": "SkillLifecycleAttributionMissing",
+      "severity": "medium",
+      "title": "Skill execute mutates state without outcome-attribution record (SkillsVote arXiv:2605.18401, research-grade)"
     },
     {
       "adversa_references": [

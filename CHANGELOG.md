@@ -5,6 +5,88 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.22] - 2026-05-20
+
+**Headline: 2 new research-grade MEDIUM rules (205 total) anchored
+to two arXiv papers verified 2026-05-18 — SkillsVote lifecycle
+attribution + Code-as-Harness multi-agent shared-state.**
+
+### Added — Rules (2, research-grade)
+
+- **AAK-SKILL-LIFECYCLE-ATTRIBUTION-001** (MEDIUM) — Python AST
+  detector for `@skill` / `@register_skill` / etc. decorated
+  functions (or `execute` / `run_skill` / `invoke_skill` functions
+  in a `skill` / `skills` / `agent-skills` directory) that mutate
+  persistent state (file write, DB commit, side-effecting HTTP
+  verb) without emitting an outcome-attribution call
+  (`record_outcome` / `log_outcome` / `attribute_*` / etc.). Per
+  *SkillsVote: Lifecycle Governance of Agent Skills* (Liu et al.,
+  arXiv:2605.18401, 2026-05-18), the evidence-gated update loop
+  depends on per-execution attribution; missing attribution
+  silently degrades repeat invocations.
+
+  New scanner: `agent_audit_kit/scanners/skill_lifecycle_attribution.py`.
+
+- **AAK-AGENT-HARNESS-SHARED-STATE-001** (MEDIUM) — Python AST
+  detector for module-level mutable objects (`dict` / `list` /
+  `set`) mutated by methods of ≥2 distinct Agent / Worker /
+  Harness classes without a lock primitive (`threading.Lock` /
+  `asyncio.Lock` / etc.) visible in any of the mutating function
+  bodies. Per *Code as Agent Harness* (Ning et al.,
+  arXiv:2605.18747, 2026-05-18 — survey of 110+ papers + 23
+  systems), "consistent shared state across multiple agents" is
+  named as an explicit open challenge for harness engineering.
+
+  New scanner: `agent_audit_kit/scanners/agent_harness_shared_state.py`.
+
+**Both rules MEDIUM (research-grade tier)** because the source
+papers identify the failure shape but do not prescribe specific
+code patterns. Rules catch the most concrete extrapolations:
+attribution-call presence (SkillsVote) and lock-hint presence
+(Code-as-Harness). False positives are expected when projects use
+project-local naming for outcome records or external coordinators
+(database transaction, message queue) for serialization.
+
+### Declined — invented YAML schemas
+
+The 2026-05-20 daily prompt proposed `requires_search: true` and
+`depends_on` YAML frontmatter checks anchored to SkillsVote. **Both
+field names are invented** — the paper does not define them.
+Declined to ship; tracking issue can be filed if a future paper
+prescribes an actual schema.
+
+### Triage closures (no rule shipped)
+
+- **#272 CVE-2026-2611** (MLflow 3.9.0 `/ajax-api` origin-validation
+  bypass) — class-covered by `AAK-TRUST-001..005` (origin / CORS /
+  allowlist) + `AAK-OAUTH-001..005`. Named pin-floor on `mlflow<3.9.1`
+  is a v0.3.23+ candidate if a fresh CVE warrants.
+
+### Tests
+
+- 6 new tests in `tests/test_v0_3_22_rules.py`: 3 SkillsVote
+  (unsafe fires, safe with `record_outcome` passes, no-decorator-
+  outside-skills-path passes); 3 Code-as-Harness (unsafe multi-
+  agent fires, safe-with-lock passes, single-agent-no-fire). Total
+  **980 passing** (was 974 at v0.3.21 baseline, +6).
+
+### Two scanner bugs caught + fixed pre-commit
+
+- Skill scanner path-detection was too permissive (any-substring
+  match on "skill" → false-positive on pytest tmp_path directories
+  named `test_skill_*`). Tightened to exact-segment match against
+  `{skill, skills, agent-skills, .skills, skill-pack}`.
+- Harness scanner missed `ast.AnnAssign` form (`_SHARED: dict = {}`)
+  — only walked `ast.Assign`. Added AnnAssign handling so typed-
+  annotation module-level mutables are detected.
+- Harness lock-hint matching was case-sensitive (`_LOCK` ≠ `_lock`
+  hint). Switched to case-insensitive comparison.
+
+### Deferred
+
+- Microsoft AGT exporter (#267) — still pending schema verification.
+- Metis rules 3-5 — still pending defensive-side follow-up paper.
+
 ## [0.3.21] - 2026-05-19
 
 **Headline: 1 new INFO rule (203 total) — Stainless-generator
