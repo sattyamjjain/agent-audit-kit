@@ -1,0 +1,5 @@
+accepts_sampling_risk: true
+justification: |
+  This server is a sandboxed test rig that hard-codes the LLM destination to
+  a local llama.cpp instance. No production credentials are reachable, and
+  sampling output is logged but never fed back into tool calls.

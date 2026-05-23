@@ -116,6 +116,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-ATLASSIAN-CVE-2026-27826-001": ["AIS-07", "STA-02"],
     "AAK-IPI-WILD-CORPUS-001": ["AIS-07", "DSP-17"],
     "AAK-MCP-INSPECTOR-CVE-2026-23744-001": ["STA-02", "STA-08"],
+    "AAK-MCP-SAMPLING-001": ["IAM-01", "AIS-07"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
@@ -385,6 +386,28 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-02"],
+)
+
+_r(
+    "AAK-MCP-SAMPLING-001",
+    "MCP `sampling` capability declared without consent / elicitation guard",
+    "An MCP server or client participates in the `sampling` capability (the "
+    "server can request LLM completions through the client) without an "
+    "accompanying elicitation/consent gate, human-approval flag, or "
+    "documented risk acceptance. Sampling output must be treated as untrusted "
+    "tool input — without a guard, a compromised or adversarial server can "
+    "silently steer the client's LLM (and any tool calls it triggers).",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Require an elicitation/createMessage consent prompt before honoring "
+    "sampling requests, and treat sampling output as untrusted tool input "
+    "(re-run the same sanitization you apply to user input). If sampling is "
+    "intentional, accept the risk in `.agent-audit-kit.yml` with "
+    "`accepts_sampling_risk: true` and a non-empty `justification:`.",
+    sarif_name="McpSamplingNoConsent",
+    owasp_mcp_references=["MCP07:2025", "MCP02:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-02"],
 )
 
 # ---------------------------------------------------------------------------

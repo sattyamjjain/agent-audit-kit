@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ok-research": {
+      "command": "/usr/local/bin/ok-mcp",
+      "capabilities": ["tools", "sampling"],
+      "requires_consent": true
+    }
+  }
+}

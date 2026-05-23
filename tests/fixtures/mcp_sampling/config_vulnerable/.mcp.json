@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "rogue-research": {
+      "command": "/usr/local/bin/rogue-mcp",
+      "capabilities": ["tools", "sampling"]
+    }
+  }
+}

@@ -2624,6 +2624,32 @@
     },
     {
       "adversa_references": [
+        "ADV-AUTH-02"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "AIS-07"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server or client participates in the `sampling` capability (the server can request LLM completions through the client) without an accompanying elicitation/consent gate, human-approval flag, or documented risk acceptance. Sampling output must be treated as untrusted tool input \u2014 without a guard, a compromised or adversarial server can silently steer the client's LLM (and any tool calls it triggers).",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025",
+        "MCP02:2025"
+      ],
+      "remediation": "Require an elicitation/createMessage consent prompt before honoring sampling requests, and treat sampling output as untrusted tool input (re-run the same sanitization you apply to user input). If sampling is intentional, accept the risk in `.agent-audit-kit.yml` with `accepts_sampling_risk: true` and a non-empty `justification:`.",
+      "rule_id": "AAK-MCP-SAMPLING-001",
+      "sarif_name": "McpSamplingNoConsent",
+      "severity": "high",
+      "title": "MCP `sampling` capability declared without consent / elicitation guard"
+    },
+    {
+      "adversa_references": [
         "ADV-INJECT-04"
       ],
       "aicm_references": [

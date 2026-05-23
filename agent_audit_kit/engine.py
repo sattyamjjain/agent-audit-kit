@@ -83,6 +83,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("stainless_lineage", "Stainless-generator provenance (Anthropic acquisition 2026-05-18)", []),
     ("skill_lifecycle_attribution", "Skill lifecycle outcome-attribution (SkillsVote, arXiv:2605.18401)", []),
     ("agent_harness_shared_state", "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)", []),
+    ("mcp_sampling_capability", "MCP `sampling` capability consent guard (MCP07:2025)", []),
 ]
 
 

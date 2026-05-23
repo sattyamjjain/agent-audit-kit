@@ -5,6 +5,45 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.24] - 2026-05-23
+
+**Headline: New rule `AAK-MCP-SAMPLING-001` — flags MCP servers / clients
+that wire up the `sampling` capability (MCP 2025-06-18 §6.3) without an
+`elicitation/create` consent prompt or human-approval flag.**
+
+### Added — MCP Configuration
+
+- **`AAK-MCP-SAMPLING-001`** (HIGH, Category.MCP_CONFIG) — fires when ALL
+  hold: (1) a manifest declares an MCP SDK (Python / TS / Java / Rust),
+  (2) a repo file participates in the `sampling` capability (declares
+  `capabilities.sampling`, calls `sampling/createMessage` /
+  `create_message`, installs a `CreateMessageRequestSchema` handler, or
+  imports `SamplingCapability`), (3) no consent / elicitation marker is
+  present (`elicitation/create`, `ElicitRequestSchema`, `elicit_*`,
+  `requires_consent`, `human_in_the_loop`, `confirmSampling`, etc.),
+  (4) `.agent-audit-kit.yml` does NOT carry
+  `accepts_sampling_risk: true` with a non-empty `justification:`. Also
+  fires when an MCP config file (`.mcp.json` family) lists `"sampling"`
+  in a per-server `capabilities` block without a sibling
+  `requires_consent` / `human_in_the_loop` flag (catches host-side
+  allow-listing). Maps to OWASP MCP07:2025 + MCP02:2025, ASI03, AICM
+  IAM-01 / AIS-07.
+
+- **`agent_audit_kit/scanners/mcp_sampling_capability.py`** — new
+  scanner module wired into the `_OPTIONAL_SCANNERS` registry. Reuses
+  the `_declares_sdk` predicate pattern from `mcp_sdk_hardening.py`.
+  10-case test matrix in `tests/test_mcp_sampling_capability.py`:
+  Python/TS vulnerable, Python elicit-gated, documented-risk opt-out,
+  `.mcp.json` declared / `requires_consent` gated, SDK-absent silence,
+  SDK-present-sampling-absent silence, prose-mention silence, and
+  OWASP-mapping assertion.
+
+### Changed — Counts
+
+- Bundle ships 206 rules (was 205). `MCP_CONFIG` category row in
+  README "What It Scans" goes 38 → 39 via the per-category anchor;
+  shields.io badge auto-rewritten by `sync_rule_count.py`.
+
 ## [0.3.23] - 2026-05-20
 
 **Headline: README per-category anchor sync — closes the 81-rule

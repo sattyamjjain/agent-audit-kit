@@ -1,0 +1,7 @@
+{
+  "name": "vuln-sampling-ts",
+  "version": "0.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}
