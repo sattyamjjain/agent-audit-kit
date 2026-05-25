@@ -117,6 +117,11 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-IPI-WILD-CORPUS-001": ["AIS-07", "DSP-17"],
     "AAK-MCP-INSPECTOR-CVE-2026-23744-001": ["STA-02", "STA-08"],
     "AAK-MCP-SAMPLING-001": ["IAM-01", "AIS-07"],
+    # ---- v0.3.25 (2026-05-25): 2026-07-28 stateless-MCP migration -----
+    "AAK-MCP-STATELESS-001": ["IAM-01", "AIS-08"],
+    "AAK-MCP-STATELESS-002": ["AIS-07", "AIS-08"],
+    "AAK-MCP-STATELESS-003": ["IVS-04", "BCR-04"],
+    "AAK-MCP-STATELESS-004": ["AIS-07"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
@@ -408,6 +413,111 @@ _r(
     owasp_mcp_references=["MCP07:2025", "MCP02:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-02"],
+)
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-STATELESS-001..004 — 2026-07-28 stateless-MCP migration
+#
+# The MCP 2026-07-28 spec release candidate (locked 2026-05-21) makes the
+# protocol stateless by default: the `Mcp-Session-Id` header and the
+# protocol-level session are removed (SEP-1442), and the experimental
+# `tasks/list` method is removed because it can't be scoped safely without
+# sessions (SEP-1359). Server/client code that assumes the pre-RC stateful
+# protocol — relies on `Mcp-Session-Id`, dispatches `tasks/list`, requires
+# sticky routing or a shared session store, or skips client-side caching of
+# `tools/list` while holding per-session server state — will silently break
+# after 2026-07-28 once the final spec lands. These four rules surface the
+# migration surface so it can be fixed before the cutover.
+#
+# Sources:
+#   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+#   https://blog.modelcontextprotocol.io/posts/2025-12-19-mcp-transport-future/
+#   https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1442
+#   https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1359
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-STATELESS-001",
+    "Reliance on `Mcp-Session-Id` header / protocol-level session id",
+    "Server or client code reads, writes, asserts, or constants the "
+    "`Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate "
+    "(SEP-1442) makes the protocol stateless and removes the "
+    "`Mcp-Session-Id` header along with the protocol-level session. After "
+    "the final spec lands on 2026-07-28, code that depends on this header "
+    "(or on the session it represented) will silently break: any MCP "
+    "request can land on any server instance, and sticky routing / shared "
+    "session stores at the protocol layer are no longer guaranteed.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Migrate to the 2026-07-28 stateless transport: route on the "
+    "`Mcp-Method` header instead of `Mcp-Session-Id`, drop the "
+    "per-connection session id, and treat each request as independently "
+    "addressable. If per-server state is genuinely required, persist it "
+    "behind an out-of-band identity (auth subject, OAuth `sub`, tool "
+    "argument) rather than the removed session header.",
+    sarif_name="McpSessionIdReliance",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
+_r(
+    "AAK-MCP-STATELESS-002",
+    "Use of removed `tasks/list` method",
+    "Server or client code dispatches, handles, or names the `tasks/list` "
+    "JSON-RPC method. The MCP 2026-07-28 spec release candidate removes "
+    "`tasks/list` outright because it cannot be scoped safely without the "
+    "protocol-level session. Tasks moves out of the core specification into "
+    "the new Extensions framework; the stateful list surface has no "
+    "stateless successor.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Stop calling and handling `tasks/list`. If your application needs an "
+    "enumeration of in-flight work, model it as an extension primitive "
+    "scoped to an authenticated identity, or store task identifiers "
+    "client-side and re-query them with `tasks/get` style point lookups.",
+    sarif_name="McpTasksListRemoved",
+    owasp_mcp_references=["MCP07:2025"],
+)
+
+_r(
+    "AAK-MCP-STATELESS-003",
+    "Sticky-session / shared-store dependency in MCP deployment",
+    "An MCP server's deployment manifest requires sticky routing (nginx "
+    "`ip_hash`, Kubernetes `sessionAffinity: ClientIP`, Traefik / ALB "
+    "sticky cookies) or its handler code reads a shared session store "
+    "keyed by a per-connection id used across requests. The 2026-07-28 "
+    "stateless transport guarantees that any MCP request can land on any "
+    "server instance — sticky routing and gateway deep-packet-inspection "
+    "to keep a client pinned to one pod stop being safe assumptions.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Remove sticky-session affinity from the gateway and Kubernetes "
+    "service. Move per-request state into an external store keyed on an "
+    "out-of-band identity (auth subject) rather than a per-connection "
+    "session id. Re-test horizontal scaling without affinity before the "
+    "2026-07-28 cutover.",
+    sarif_name="McpStickySessionDependency",
+    owasp_mcp_references=["MCP07:2025"],
+)
+
+_r(
+    "AAK-MCP-STATELESS-004",
+    "MCP client never caches `tools/list` and depends on per-session state",
+    "Client code calls `tools/list` (or the SDK alias `list_tools`) inside "
+    "a hot path / per-request loop with no caching marker (no `lru_cache`, "
+    "TTL cache, dict memoization, or `cached_*` helper) nearby. Combined "
+    "with reliance on per-session server state, this pattern multiplies "
+    "round-trips and breaks when the 2026-07-28 stateless transport lets "
+    "successive requests hit different server instances with different "
+    "tool catalogs.",
+    Severity.LOW,
+    Category.MCP_CONFIG,
+    "Cache the `tools/list` response client-side with an explicit TTL "
+    "(`ttlMs`) and refresh it on cache miss or on a server-pushed "
+    "`notifications/tools/list_changed`. Treat tool discovery as a hint "
+    "that may differ between instances under the stateless transport.",
+    sarif_name="McpClientNoToolsListCache",
+    owasp_mcp_references=["MCP07:2025"],
 )
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,7 @@
+{
+  "name": "vulnerable-ts-session",
+  "version": "1.0.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

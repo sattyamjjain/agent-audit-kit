@@ -1,0 +1,14 @@
+# Vulnerable: K8s Service requires ClientIP affinity for the MCP backend.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-server
+  labels:
+    app: modelcontextprotocol
+spec:
+  selector:
+    app: mcp-server
+  ports:
+    - port: 443
+      targetPort: 8080
+  sessionAffinity: ClientIP

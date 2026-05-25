@@ -2649,6 +2649,91 @@
       "title": "MCP `sampling` capability declared without consent / elicitation guard"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "IAM-01",
+        "AIS-08"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "Server or client code reads, writes, asserts, or constants the `Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate (SEP-1442) makes the protocol stateless and removes the `Mcp-Session-Id` header along with the protocol-level session. After the final spec lands on 2026-07-28, code that depends on this header (or on the session it represented) will silently break: any MCP request can land on any server instance, and sticky routing / shared session stores at the protocol layer are no longer guaranteed.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Migrate to the 2026-07-28 stateless transport: route on the `Mcp-Method` header instead of `Mcp-Session-Id`, drop the per-connection session id, and treat each request as independently addressable. If per-server state is genuinely required, persist it behind an out-of-band identity (auth subject, OAuth `sub`, tool argument) rather than the removed session header.",
+      "rule_id": "AAK-MCP-STATELESS-001",
+      "sarif_name": "McpSessionIdReliance",
+      "severity": "high",
+      "title": "Reliance on `Mcp-Session-Id` header / protocol-level session id"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07",
+        "AIS-08"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "Server or client code dispatches, handles, or names the `tasks/list` JSON-RPC method. The MCP 2026-07-28 spec release candidate removes `tasks/list` outright because it cannot be scoped safely without the protocol-level session. Tasks moves out of the core specification into the new Extensions framework; the stateful list surface has no stateless successor.",
+      "incident_references": [],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Stop calling and handling `tasks/list`. If your application needs an enumeration of in-flight work, model it as an extension primitive scoped to an authenticated identity, or store task identifiers client-side and re-query them with `tasks/get` style point lookups.",
+      "rule_id": "AAK-MCP-STATELESS-002",
+      "sarif_name": "McpTasksListRemoved",
+      "severity": "high",
+      "title": "Use of removed `tasks/list` method"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "IVS-04",
+        "BCR-04"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server's deployment manifest requires sticky routing (nginx `ip_hash`, Kubernetes `sessionAffinity: ClientIP`, Traefik / ALB sticky cookies) or its handler code reads a shared session store keyed by a per-connection id used across requests. The 2026-07-28 stateless transport guarantees that any MCP request can land on any server instance \u2014 sticky routing and gateway deep-packet-inspection to keep a client pinned to one pod stop being safe assumptions.",
+      "incident_references": [],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Remove sticky-session affinity from the gateway and Kubernetes service. Move per-request state into an external store keyed on an out-of-band identity (auth subject) rather than a per-connection session id. Re-test horizontal scaling without affinity before the 2026-07-28 cutover.",
+      "rule_id": "AAK-MCP-STATELESS-003",
+      "sarif_name": "McpStickySessionDependency",
+      "severity": "medium",
+      "title": "Sticky-session / shared-store dependency in MCP deployment"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "Client code calls `tools/list` (or the SDK alias `list_tools`) inside a hot path / per-request loop with no caching marker (no `lru_cache`, TTL cache, dict memoization, or `cached_*` helper) nearby. Combined with reliance on per-session server state, this pattern multiplies round-trips and breaks when the 2026-07-28 stateless transport lets successive requests hit different server instances with different tool catalogs.",
+      "incident_references": [],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Cache the `tools/list` response client-side with an explicit TTL (`ttlMs`) and refresh it on cache miss or on a server-pushed `notifications/tools/list_changed`. Treat tool discovery as a hint that may differ between instances under the stateless transport.",
+      "rule_id": "AAK-MCP-STATELESS-004",
+      "sarif_name": "McpClientNoToolsListCache",
+      "severity": "low",
+      "title": "MCP client never caches `tools/list` and depends on per-session state"
+    },
+    {
       "adversa_references": [
         "ADV-INJECT-04"
       ],

@@ -1,0 +1,2 @@
+accepts_stateless_migration_risk: true
+justification: "Internal migration tracker — server is being retired before the 2026-07-28 cutover; ticket OPS-1842."

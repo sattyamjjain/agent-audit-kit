@@ -84,6 +84,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("skill_lifecycle_attribution", "Skill lifecycle outcome-attribution (SkillsVote, arXiv:2605.18401)", []),
     ("agent_harness_shared_state", "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)", []),
     ("mcp_sampling_capability", "MCP `sampling` capability consent guard (MCP07:2025)", []),
+    ("mcp_stateless_migration", "MCP 2026-07-28 stateless-migration smells (SEP-1442/1359)", []),
 ]
 
 

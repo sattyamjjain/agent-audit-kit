@@ -22,7 +22,7 @@ jobs:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.24
+    rev: v0.3.25
     hooks:
       - id: agent-audit-kit
       # Or strict mode:

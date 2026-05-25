@@ -5,6 +5,86 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.25] - 2026-05-25
+
+**Headline: New rule family `AAK-MCP-STATELESS-001..004` — flags MCP
+server / client code that assumes the pre-2026-07-28 stateful protocol.
+The 2026-07-28 spec release candidate (locked 2026-05-21) makes the
+protocol stateless by default: the `Mcp-Session-Id` header and the
+protocol-level session are removed (SEP-1442), and the experimental
+`tasks/list` method is removed because it can't be scoped safely without
+sessions (SEP-1359). Code relying on the pre-RC shape will silently
+break once the final spec lands on 2026-07-28.**
+
+Sources:
+
+- <https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/>
+- <https://blog.modelcontextprotocol.io/posts/2025-12-19-mcp-transport-future/>
+- <https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1442> — SEP-1442 (stateless by default)
+- <https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1359> — SEP-1359 (protocol-level sessions removed)
+
+### Added — MCP Configuration
+
+- **`AAK-MCP-STATELESS-001`** (HIGH) — fires when source code under a
+  declared MCP SDK reads, writes, or constants the `Mcp-Session-Id`
+  header (or the snake-case Python variant `MCP_SESSION_ID`). After the
+  2026-07-28 cutover the header and the session it represented are
+  gone; any request can land on any server instance, so sticky routing
+  + shared session stores at the protocol layer are no longer
+  guaranteed. Fix hint: route on the new `Mcp-Method` header, persist
+  per-server state behind an out-of-band identity (auth subject, OAuth
+  `sub`, tool argument). Maps to OWASP MCP07:2025, ASI03, AICM IAM-01 /
+  AIS-08.
+- **`AAK-MCP-STATELESS-002`** (HIGH) — fires when code dispatches or
+  handles the removed `tasks/list` JSON-RPC method (`"tasks/list"`
+  literal, `tasks.list(...)` / `tasks_list(...)` SDK alias). Tasks moves
+  out of the core specification into the new Extensions framework; the
+  stateful list surface has no stateless successor. Maps to OWASP
+  MCP07:2025, AICM AIS-07 / AIS-08.
+- **`AAK-MCP-STATELESS-003`** (MEDIUM) — fires on infrastructure
+  manifests that require sticky routing for an MCP backend (nginx
+  `ip_hash` / `sticky`, Kubernetes `sessionAffinity: ClientIP`, Traefik
+  / ALB sticky cookies) OR on handler code that reads a shared session
+  store keyed on a per-connection id used across requests
+  (`session_store[session_id]` and friends). Infra-side findings fire
+  when either the project declares an MCP SDK or the manifest itself
+  mentions MCP; code-side findings are gated on the SDK. Maps to
+  OWASP MCP07:2025, AICM IVS-04 / BCR-04.
+- **`AAK-MCP-STATELESS-004`** (LOW, advisory) — fires when a client
+  file calls `tools/list` / `list_tools` at least twice in the same
+  file with no caching marker nearby (`lru_cache`, `TTLCache`,
+  `cached_property`, `cachetools`, `tools_list_cache`, `cached_tools`,
+  `memoize`, `functools.cache`, `ttlMs` / `ttl_ms` / `ttlSeconds`) AND
+  the file references per-session state. Stateless transport may serve
+  a different instance per request — un-cached repeated discovery
+  multiplies round-trips and may surface a different tool catalog each
+  time. Maps to OWASP MCP07:2025, AICM AIS-07.
+
+- **`agent_audit_kit/scanners/mcp_stateless_migration.py`** — new
+  scanner module wired into the `_OPTIONAL_SCANNERS` registry. Reuses
+  the `_declares_sdk` predicate pattern from `mcp_sampling_capability`.
+  16-case test matrix in `tests/test_mcp_stateless_migration.py`:
+  positive + negative for each sub-detector, plus the cross-cutting
+  `.agent-audit-kit.yml accepts_stateless_migration_risk: true`
+  opt-out, a clean stateless-server fixture, an OWASP-mapping
+  assertion, and an engine-wiring guard.
+
+### Changed — Counts
+
+- Bundle ships 210 rules (was 206). `MCP_CONFIG` category row in
+  README "What It Scans" goes 39 → 43 via the per-category anchor;
+  shields.io badge auto-rewritten by `sync_rule_count.py`.
+
+### Suppression
+
+- New `.agent-audit-kit.yml` opt-out key:
+  ```yaml
+  accepts_stateless_migration_risk: true
+  justification: "describe why your project intentionally lives on the pre-2026-07-28 stateful transport"
+  ```
+  Suppresses every `AAK-MCP-STATELESS-*` finding for projects that are
+  knowingly retiring before the cutover.
+
 ## [0.3.24] - 2026-05-23
 
 **Headline: New rule `AAK-MCP-SAMPLING-001` — flags MCP servers / clients
