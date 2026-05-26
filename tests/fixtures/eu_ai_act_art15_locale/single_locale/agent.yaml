@@ -1,0 +1,6 @@
+# Negative fixture: single-locale agent — rule must NOT fire.
+name: support-bot
+role: assistant
+user_facing: true
+locales: [en]
+default_locale: en

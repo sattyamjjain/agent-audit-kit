@@ -5,6 +5,109 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.26] - 2026-05-26
+
+**Headline: New advisory rule `AAK-EU-AI-ACT-ART15-LOCALE-001` — flags
+multilingual user-facing agent configs that lack per-locale eval / test
+coverage, surfacing the gap as auditor-ready evidence under EU AI Act
+Article 15 (Accuracy, Robustness & Cybersecurity). The `eu-ai-act`
+compliance report grows a dedicated *Article 15 — Accuracy, Robustness
+& Cybersecurity (evidence)* subsection beneath the existing Art. 15
+PASS/FAIL row, with two stable line items: `multilingual-locale-declared`
+and `multilingual-eval-coverage`.**
+
+Citations:
+
+- Regulation (EU) 2024/1689 — high-risk-system provisions become binding
+  **2026-08-02**. Article 15: "high-risk AI systems shall be designed
+  and developed in such a way that they achieve an appropriate level of
+  accuracy, robustness and cybersecurity, and that they perform
+  consistently in those respects throughout their lifecycle."
+  <https://artificialintelligenceact.eu/article/15/>
+- Ford et al. 2026, "Same Model, Different Weakness: How Language and
+  Modality Reshape the Jailbreak Attack Surface in Frontier MLLMs",
+  arXiv:**2605.23157** — 363-prompt red-team across 4 frontier MLLMs in
+  US English and Mexican Spanish; safety rankings invert between
+  languages and "treating language and modality as independent
+  dimensions in safety frameworks misses critical vulnerabilities in
+  globally deployed systems". This is the empirical motivation for
+  tracking per-locale eval coverage as Art. 15 evidence.
+  <https://arxiv.org/abs/2605.23157>
+
+### Added — Legal Compliance
+
+- **`AAK-EU-AI-ACT-ART15-LOCALE-001`** (INFO / advisory,
+  Category.LEGAL_COMPLIANCE) — fires when all hold: (1) a repo agent /
+  safety / eval config (`agent.yaml`, `agents.yaml`, `crew.yaml`,
+  `manifest.yaml`, `safety.yaml`, `eval.yaml`, …) declares ≥ 2 locales
+  via `locales:` / `languages:` / `supported_languages:` / individual
+  `locale:` keys (ISO-639-1 with optional BCP-47 region suffix
+  collapsed); (2) the same config marks the agent user-facing —
+  explicit `user_facing: true`, `surface:` containing
+  `end-user`/`user-facing`/`public`, or role string in
+  `{assistant, chatbot, support, agent, concierge, helper, advisor,
+  tutor, companion}`; (3) the union of locale codes derived from
+  `evals/`, `eval/`, `evaluation/`, `evaluations/`, `fixtures/`,
+  `scenarios/`, `i18n/`, `locales/`, `test_data/`, `testdata/`, or
+  `benchmarks/` paths covers fewer than two of the declared locales.
+  The rule **carries no OWASP-Agentic ASI tag** — it surfaces through
+  the dedicated `compliance.py` Art. 15 evidence subsection rather than
+  the ASI-driven PASS/FAIL summary, so a single coverage gap does not
+  flip the Art. 15 control to FAIL.
+
+- **`agent_audit_kit/scanners/eu_ai_act_art15_locale.py`** — new
+  scanner module wired into `_OPTIONAL_SCANNERS`. 12-case test matrix
+  in `tests/test_eu_ai_act_art15_locale.py`: rule registration shape,
+  scanner-engine wiring, positive (multilingual + en-only eval),
+  negative (multilingual + multi-locale eval coverage, single-locale
+  agent, internal/non-user-facing multilingual agent, no-config repo),
+  documented-risk opt-out, report subsection renders both with and
+  without findings, advisory finding does NOT flip the Art. 15 control
+  to FAIL, subsection appears only under `--compliance eu-ai-act`.
+
+### Changed — Compliance report
+
+- `agent_audit_kit/output/compliance.py` — the eu-ai-act framework now
+  emits an *Article 15 — Accuracy, Robustness & Cybersecurity
+  (evidence)* sub-block under its Art. 15 control row only. Default
+  lines on a clean scan:
+
+  ```
+  Article 15 — Accuracy, Robustness & Cybersecurity (evidence)
+    multilingual-locale-declared: n/a (no multilingual user-facing agent config detected)
+    multilingual-eval-coverage: evidenced or not applicable (no Art. 15 locale-coverage finding)
+  ```
+
+  On a positive finding:
+
+  ```
+  Article 15 — Accuracy, Robustness & Cybersecurity (evidence)
+    multilingual-locale-declared: 3 locale(s) (de, en, fr)
+    multilingual-eval-coverage: not evidenced — covered=[en], 1 finding(s) (AAK-EU-AI-ACT-ART15-LOCALE-001)
+  ```
+
+  Other frameworks (`soc2`, `iso27001`, `hipaa`, `nist-ai-rmf`,
+  `mcp-2026-roadmap`) are unchanged — the subsection is keyed on
+  `framework_key == "eu-ai-act"` and the control label starting with
+  `Art. 15`.
+
+### Suppression
+
+- New `.agent-audit-kit.yml` opt-out key:
+  ```yaml
+  accepts_locale_coverage_gap: true
+  justification: "describe why per-locale eval is intentionally absent"
+  ```
+  Suppresses `AAK-EU-AI-ACT-ART15-LOCALE-001` for projects whose
+  per-locale eval lives outside the scanned tree.
+
+### Changed — Counts
+
+- Bundle ships 211 rules (was 210); LEGAL_COMPLIANCE category row in
+  README "What It Scans" goes 11 → 12 via the per-category anchor.
+  Scanner count 67 → 68. Shields.io badge auto-rewritten by
+  `sync_rule_count.py` / `sync_scanner_count.py`.
+
 ## [0.3.25] - 2026-05-25
 
 **Headline: New rule family `AAK-MCP-STATELESS-001..004` — flags MCP

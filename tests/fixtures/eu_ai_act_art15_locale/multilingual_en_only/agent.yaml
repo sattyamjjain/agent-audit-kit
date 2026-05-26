@@ -1,0 +1,6 @@
+# Positive fixture: multilingual user-facing agent with English-only eval.
+name: support-bot
+role: assistant
+user_facing: true
+locales: [en, fr, de, es]
+default_locale: en

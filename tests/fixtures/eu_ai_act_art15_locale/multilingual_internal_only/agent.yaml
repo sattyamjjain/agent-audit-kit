@@ -1,0 +1,7 @@
+# Negative fixture: multilingual but internal/batch — not user-facing.
+name: batch-translator
+role: pipeline
+user_facing: false
+surface: internal
+locales: [en, fr, de]
+default_locale: en

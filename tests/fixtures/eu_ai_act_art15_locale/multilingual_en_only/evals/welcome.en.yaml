@@ -1,0 +1,5 @@
+scenario: welcome
+language: en
+prompts:
+  - Hello, how can you help me today?
+  - What can you do?

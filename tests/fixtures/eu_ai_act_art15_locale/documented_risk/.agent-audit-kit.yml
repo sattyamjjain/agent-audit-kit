@@ -1,0 +1,2 @@
+accepts_locale_coverage_gap: true
+justification: "Per-locale eval lives in the closed-source compliance repo; tracked in EUAI-1842."

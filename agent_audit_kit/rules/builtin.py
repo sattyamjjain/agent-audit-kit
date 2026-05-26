@@ -2596,6 +2596,57 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# AAK-EU-AI-ACT-ART15-LOCALE-001 — EU AI Act Article 15 multilingual-eval
+# coverage evidence (advisory, drives the eu-ai-act report subsection).
+#
+# Article 15 of Regulation (EU) 2024/1689 requires high-risk AI systems to
+# achieve an "appropriate level of accuracy, robustness and cybersecurity
+# throughout their lifecycle" — robustness explicitly covering "errors,
+# faults or inconsistencies that may occur within the system or the
+# environment in which the system operates". The Article-15 obligations
+# become binding for high-risk AI systems on 2026-08-02 under the staged
+# Regulation timetable.
+#
+# Cross-lingual robustness is a documented blind spot in current safety
+# stacks: Ford et al. 2026 (arXiv:2605.23157) "Same Model, Different
+# Weakness" — 363-prompt red-team across 4 frontier MLLMs in US English
+# and Mexican Spanish — find that "treating language and modality as
+# independent dimensions in safety frameworks misses critical
+# vulnerabilities in globally deployed systems", with safety rankings
+# inverting between languages.
+#
+# This rule is advisory-only (INFO severity) and intentionally carries no
+# ASI tag — it surfaces through the dedicated Article-15 evidence
+# subsection in `compliance.py` rather than through the
+# OWASP-Agentic-driven PASS/FAIL summary, so a single locale-coverage gap
+# does not flip an entire control to FAIL. The auditor reading the
+# compliance report sees the evidence; the security-score path is
+# unaffected.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-EU-AI-ACT-ART15-LOCALE-001",
+    "Multilingual user-facing agent lacks per-locale eval coverage",
+    "An agent config declares two or more locales (or `multilingual: true`) "
+    "for a user-facing surface, but the repository's eval / test fixtures "
+    "reference only a single language. Cross-lingual robustness is a "
+    "required-evidence axis under EU AI Act Article 15 (binding for "
+    "high-risk systems on 2026-08-02), and Ford et al. 2026 "
+    "(arXiv:2605.23157) document that single-language safety eval misses "
+    "language-specific jailbreak / refusal-regression vectors that scale "
+    "non-uniformly across languages.",
+    Severity.INFO,
+    Category.LEGAL_COMPLIANCE,
+    "Add per-locale eval fixtures matching the declared locale set (one "
+    "scenario file per language, or a parametrized eval matrix), or "
+    "narrow the agent config's declared locales to the set you can "
+    "evidence. The EU AI Act Article 15 evidence pack must show "
+    "robustness testing across each user-facing language.",
+    sarif_name="EuAiActArt15LocaleCoverage",
+)
+
+
+# ---------------------------------------------------------------------------
 # Ox MCP STDIO architectural supply-chain class (AAK-STDIO-001)
 #
 # April 16 2026 Ox Security disclosure chained 10 CVEs across 200K+

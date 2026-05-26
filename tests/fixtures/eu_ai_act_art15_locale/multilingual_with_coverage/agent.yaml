@@ -1,0 +1,6 @@
+# Negative fixture: multilingual user-facing agent WITH per-locale eval coverage.
+name: support-bot
+role: assistant
+user_facing: true
+locales: [en, fr, de]
+default_locale: en

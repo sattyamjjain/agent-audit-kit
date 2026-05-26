@@ -1,0 +1,6 @@
+# Suppression fixture: would fire but is opted out via .agent-audit-kit.yml.
+name: support-bot
+role: assistant
+user_facing: true
+locales: [en, fr, de]
+default_locale: en

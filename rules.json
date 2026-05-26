@@ -904,6 +904,22 @@
       "title": "apache-doris-mcp-server < 0.6.1 SQL injection"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "legal-compliance",
+      "cve_references": [],
+      "description": "An agent config declares two or more locales (or `multilingual: true`) for a user-facing surface, but the repository's eval / test fixtures reference only a single language. Cross-lingual robustness is a required-evidence axis under EU AI Act Article 15 (binding for high-risk systems on 2026-08-02), and Ford et al. 2026 (arXiv:2605.23157) document that single-language safety eval misses language-specific jailbreak / refusal-regression vectors that scale non-uniformly across languages.",
+      "incident_references": [],
+      "owasp_agentic_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Add per-locale eval fixtures matching the declared locale set (one scenario file per language, or a parametrized eval matrix), or narrow the agent config's declared locales to the set you can evidence. The EU AI Act Article 15 evidence pack must show robustness testing across each user-facing language.",
+      "rule_id": "AAK-EU-AI-ACT-ART15-LOCALE-001",
+      "sarif_name": "EuAiActArt15LocaleCoverage",
+      "severity": "info",
+      "title": "Multilingual user-facing agent lacks per-locale eval coverage"
+    },
+    {
       "adversa_references": [
         "ADV-INJECT-03"
       ],

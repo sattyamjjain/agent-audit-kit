@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from agent_audit_kit.models import ScanResult, Severity
 from agent_audit_kit.rules.builtin import RULES
 
@@ -92,6 +94,80 @@ def _get_rules_for_asi(asi_code: str) -> list[str]:
     ]
 
 
+# ---------------------------------------------------------------------------
+# EU AI Act Article 15 evidence subsection
+#
+# Article 15 of Regulation (EU) 2024/1689 (binding for high-risk AI systems
+# on 2026-08-02) requires "an appropriate level of accuracy, robustness and
+# cybersecurity throughout the lifecycle". The default control row above
+# only summarises PASS/FAIL via OWASP-Agentic ASI mapping; this subsection
+# adds itemised evidence lines that auditors expect to see in an Article-15
+# evidence pack — currently:
+#
+#   - multilingual-locale-declared: which locales an agent claims to serve
+#   - multilingual-eval-coverage:   whether per-locale eval fixtures exist
+#
+# Driven directly off `AAK-EU-AI-ACT-ART15-LOCALE-001` findings (advisory /
+# INFO severity, no ASI tag) so a single coverage gap does NOT flip the
+# Art. 15 control to FAIL through the OWASP-Agentic mapping.
+# ---------------------------------------------------------------------------
+
+_ART15_LOCALE_RULE = "AAK-EU-AI-ACT-ART15-LOCALE-001"
+_DECLARED_RE = re.compile(r"locales=\[([^\]]*)\]")
+_COVERED_RE = re.compile(r"fixtures cover locales=\[([^\]]*)\]")
+
+
+def _art15_locale_subsection(result: ScanResult) -> list[str]:
+    """Emit Article-15 evidence sub-items beneath the Art. 15 control row.
+
+    Two stable line items are emitted on every eu-ai-act report (so the
+    evidence shape stays deterministic for auditors), with the values
+    derived from `AAK-EU-AI-ACT-ART15-LOCALE-001` findings when present.
+    """
+    findings = [f for f in result.findings if f.rule_id == _ART15_LOCALE_RULE]
+    lines: list[str] = []
+    lines.append("    Article 15 — Accuracy, Robustness & Cybersecurity (evidence)")
+
+    if findings:
+        # Aggregate across every agent config that fired.
+        all_declared: set[str] = set()
+        all_covered: set[str] = set()
+        for f in findings:
+            md = _DECLARED_RE.search(f.evidence or "")
+            mc = _COVERED_RE.search(f.evidence or "")
+            if md:
+                all_declared.update(
+                    t.strip() for t in md.group(1).split(",") if t.strip()
+                )
+            if mc:
+                covered_raw = mc.group(1).strip()
+                if covered_raw and covered_raw != "none":
+                    all_covered.update(
+                        t.strip() for t in covered_raw.split(",") if t.strip()
+                    )
+        declared_str = ", ".join(sorted(all_declared)) or "n/a"
+        covered_str = ", ".join(sorted(all_covered)) if all_covered else "none"
+        lines.append(
+            f"      multilingual-locale-declared: "
+            f"{len(all_declared)} locale(s) ({declared_str})"
+        )
+        lines.append(
+            f"      multilingual-eval-coverage: not evidenced — "
+            f"covered=[{covered_str}], "
+            f"{len(findings)} finding(s) ({_ART15_LOCALE_RULE})"
+        )
+    else:
+        lines.append(
+            "      multilingual-locale-declared: n/a "
+            "(no multilingual user-facing agent config detected)"
+        )
+        lines.append(
+            "      multilingual-eval-coverage: evidenced "
+            "or not applicable (no Art. 15 locale-coverage finding)"
+        )
+    return lines
+
+
 def format_results(result: ScanResult, framework_key: str) -> str:
     framework = FRAMEWORKS.get(framework_key)
     if not framework:
@@ -127,6 +203,8 @@ def format_results(result: ScanResult, framework_key: str) -> str:
         lines.append(f"  {control}")
         lines.append(f"    Status: {status}")
         lines.append(f"    Mapped rules: {len(mapped_rules)} ({', '.join(mapped_rules[:4])}{'...' if len(mapped_rules) > 4 else ''})")
+        if framework_key == "eu-ai-act" and control.startswith("Art. 15"):
+            lines.extend(_art15_locale_subsection(result))
         lines.append("")
 
     pct = 100 * controls_met // controls_total if controls_total else 0
