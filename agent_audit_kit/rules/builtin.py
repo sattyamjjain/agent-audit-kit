@@ -394,6 +394,25 @@ _r(
 )
 
 _r(
+    "AAK-MCP-ATTEST-001",
+    "MCP server admitted without attestation",
+    "An MCP server entry in the agent/host config is dispatched without any of: a referenced "
+    "signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a "
+    "pinned trust root. Deny-by-default server admission is unenforced, so the server's "
+    "self-declared tool list is implicitly trusted at dispatch time.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed "
+    "clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` "
+    "in the host config that the host verifies before any tool dispatch. See Metere 2026, "
+    "arXiv:2605.24248 — wire format, verification algorithm, and RFC-2119 conformance vectors.",
+    sarif_name="McpServerUnattested",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    incident_references=["arXiv:2605.24248"],
+)
+
+_r(
     "AAK-MCP-SAMPLING-001",
     "MCP `sampling` capability declared without consent / elicitation guard",
     "An MCP server or client participates in the `sampling` capability (the "

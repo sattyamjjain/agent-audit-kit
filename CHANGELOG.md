@@ -5,6 +5,70 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.27] - 2026-05-28
+
+**Headline: New advisory rule `AAK-MCP-ATTEST-001` — flags MCP server
+entries in the agent/host config that are dispatched without any of: a
+referenced signed clearance assertion, a `/.well-known/mcp-clearance`
+(or configured) URI, or a pinned trust root. Surfaces the
+deny-by-default server-admission gap from Metere 2026 (arXiv:2605.24248,
+"Attested Tool-Server Admission") as a static finding so MCP hosts can
+adopt the proposed addendum incrementally — an unattested config keeps
+working but is now visible in SARIF, the OWASP MCP Top 10 mapping
+(MCP07:2025), and the EU AI Act Art. 15 / SOC 2 compliance surface
+(via ASI03 + ASI04).**
+
+Citations:
+
+- Metere 2026, "Attested Tool-Server Admission: A Security Extension to
+  the Model Context Protocol", **arXiv:2605.24248** — small,
+  offline-signed clearance assertion at a well-known URI, pinned trust
+  root verification before tool dispatch, deny-by-default per-server
+  tool allowlist, flavor-gated enforcement mode, RFC-2119 normative
+  schema + machine-checkable conformance vectors. An unextended host
+  ignores the well-known document and behaves exactly as today, so the
+  static evidence we look for is the host's *opt-in*:
+  per-server attestation field, `MCP-Clearance` header, named
+  `.well-known/mcp-clearance` URI, or host-level pinned `trust_root`.
+
+### Added
+
+- **`AAK-MCP-ATTEST-001`** *(MCP Configuration; advisory / medium)* —
+  fires once per dispatched-but-unattested MCP server entry. Suppressed
+  by any one of:
+  - Per-server `attestation` / `clearance` / `clearance_url` /
+    `clearance_uri` / `clearance_document` / `mcp_clearance` field, or
+    aliased per-server `trust_root` / `trust_anchor` /
+    `pinned_trust_root`.
+  - An `MCP-Clearance` / `MCP-Attestation` / `X-MCP-Clearance` header
+    on the server entry (transport-level carrier).
+  - The well-known URI `.well-known/mcp-clearance` named anywhere in
+    the server entry.
+  - A host-level pinned `trust_root` / `trust_anchor` /
+    `trusted_roots` / `mcp_clearance_trust_root` /
+    `attestation_trust_root` (one pin covers every server in the file).
+  - Stub server entries without `url` or `command` are skipped (other
+    rules already catch those).
+- SARIF: emitted with `security-severity` and
+  `primaryLocationFingerprint`, consistent with sibling `AAK-MCP-*`
+  rules. Listed in the OWASP MCP Top 10 cross-reference under
+  **MCP07:2025**.
+- Compliance: lands under EU AI Act **Article 15** (Robustness &
+  Security), SOC 2 **CC6.1 / CC6.3 / CC6.7**, ISO 27001 **A.8.24 /
+  A.5.23**, HIPAA **164.312(d)** automatically via the
+  `ASI03` + `ASI04` OWASP-Agentic mapping, with no `compliance.py`
+  schema change.
+
+### Changed
+
+- `tests/fixtures/clean_mcp.json` — added a host-level `trust_root` so
+  the long-standing "clean MCP config produces zero findings"
+  invariant survives `AAK-MCP-ATTEST-001`'s introduction.
+- README: per-category description for *MCP Configuration* extends
+  with the deny-by-default attested-admission item; `<!-- rule-count
+  -->` anchors auto-sync to **212** rules, MCP Configuration category
+  count to **44**.
+
 ## [0.3.26] - 2026-05-26
 
 **Headline: New advisory rule `AAK-EU-AI-ACT-ART15-LOCALE-001` — flags

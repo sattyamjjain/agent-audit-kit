@@ -247,6 +247,11 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
             if isinstance(server_cfg, dict):
                 findings.extend(_check_server(server_name, server_cfg, rel_path, raw_text))
 
+        # AAK-MCP-ATTEST-001: Servers admitted without attestation
+        # (no signed clearance / well-known URI / pinned trust root).
+        # Reference: Metere 2026, arXiv:2605.24248 — Attested Tool-Server Admission.
+        findings.extend(_check_attestation(data, servers, rel_path, raw_text))
+
         # AAK-WINDSURF-001: Windsurf-specific hardening (CVE-2026-30615)
         if _is_windsurf_config(config_path):
             findings.extend(_check_windsurf_registration(data, servers, config_path, rel_path, raw_text))
@@ -325,3 +330,151 @@ def _check_windsurf_registration(
             ))
 
     return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-ATTEST-001 — Attested Tool-Server Admission (arXiv:2605.24248)
+# ---------------------------------------------------------------------------
+# Metere 2026 proposes a small, offline-signed *clearance* assertion that an
+# MCP server publishes at a well-known URI and a host verifies against a
+# *pinned trust root* before any tool dispatch. An unextended host ignores
+# the well-known document and behaves exactly as today — so the static
+# evidence we look for is the host's own opt-in: per-server attestation
+# fields, header carriers, a well-known clearance URI, or a host-level
+# trust root.
+#
+# Server entries that do not dispatch (no `url` and no `command`) are
+# skipped to avoid noise on stub / disabled entries that other rules
+# already catch.
+
+_SERVER_ATTEST_KEYS: frozenset[str] = frozenset({
+    "attestation",
+    "clearance",
+    "clearance_url",
+    "clearance_uri",
+    "clearance_document",
+    "clearancedocument",
+    "mcp_clearance",
+    "wellknown_clearance",
+    "well_known_clearance",
+    # A pinned trust root may also be carried per-server.
+    "trust_root",
+    "trustroot",
+    "trust_anchor",
+    "pinned_trust_root",
+})
+
+_HOST_ATTEST_KEYS: frozenset[str] = frozenset({
+    "trust_root",
+    "trustroot",
+    "trust_anchor",
+    "trustanchor",
+    "pinned_trust_root",
+    "trusted_roots",
+    "trustedroots",
+    "mcp_clearance_trust_root",
+    "attestation_trust_root",
+})
+
+_HEADER_ATTEST_TOKENS: tuple[str, ...] = (
+    "mcp-clearance",
+    "mcp-attestation",
+    "x-mcp-clearance",
+)
+
+_WELL_KNOWN_TOKEN: str = ".well-known/mcp-clearance"
+
+
+def _normalize_key(key: Any) -> str:
+    return str(key).strip().lower().replace("-", "_")
+
+
+def _host_has_attestation(data: Any) -> bool:
+    """True iff the host config declares a pinned trust root or well-known URI."""
+    if not isinstance(data, dict):
+        return False
+    for key in data.keys():
+        if _normalize_key(key) in _HOST_ATTEST_KEYS:
+            return True
+    # Some hosts carry the well-known URI as a top-level setting.
+    try:
+        host_blob = json.dumps(data, default=str).lower()
+    except (TypeError, ValueError):
+        return False
+    return _WELL_KNOWN_TOKEN in host_blob
+
+
+def _server_has_attestation(server_cfg: Any) -> bool:
+    """True iff the server entry references a clearance assertion or trust root."""
+    if not isinstance(server_cfg, dict):
+        return False
+    for key in server_cfg.keys():
+        if _normalize_key(key) in _SERVER_ATTEST_KEYS:
+            return True
+    # Header carriers (transport-level attestation).
+    headers = server_cfg.get("headers", {})
+    if isinstance(headers, dict):
+        for hk in headers.keys():
+            hkl = str(hk).lower()
+            if any(tok in hkl for tok in _HEADER_ATTEST_TOKENS):
+                return True
+    # Well-known URI named anywhere in the server entry.
+    try:
+        server_blob = json.dumps(server_cfg, default=str).lower()
+    except (TypeError, ValueError):
+        return False
+    return _WELL_KNOWN_TOKEN in server_blob
+
+
+def _server_dispatches(server_cfg: Any) -> bool:
+    """True iff the entry actually drives a remote URL or local command."""
+    if not isinstance(server_cfg, dict):
+        return False
+    return bool(server_cfg.get("url") or server_cfg.get("command"))
+
+
+def _check_attestation(
+    data: Any,
+    servers: Any,
+    rel_path: str,
+    raw_text: str,
+) -> list[Finding]:
+    """Flag dispatched servers admitted without any attestation evidence.
+
+    A server is considered attested when ANY of the following is present:
+
+    - The server entry carries an `attestation`/`clearance`/`clearance_url`
+      field, an `MCP-Clearance` (or `MCP-Attestation`) header, or names the
+      `/.well-known/mcp-clearance` URI anywhere in its entry.
+    - The host config carries a pinned `trust_root` (or alias) the host
+      verifies before tool dispatch.
+
+    Args:
+        data: Parsed host config (the top-level dict of the MCP config file).
+        servers: The `mcpServers` map within `data`.
+        rel_path: Config path relative to the project root (for the finding).
+        raw_text: Raw config text (for line-number lookup).
+
+    Returns:
+        One `Finding` per dispatched-but-unattested server entry. An empty
+        list if the host pins a trust root (which covers all servers) or if
+        no servers dispatch.
+    """
+    if not isinstance(servers, dict) or not servers:
+        return []
+    if _host_has_attestation(data):
+        return []
+    out: list[Finding] = []
+    for server_name, server_cfg in servers.items():
+        if not _server_dispatches(server_cfg):
+            continue
+        if _server_has_attestation(server_cfg):
+            continue
+        out.append(_make_finding(
+            "AAK-MCP-ATTEST-001", rel_path,
+            f"Server '{server_name}' admitted without attestation "
+            f"(no signed clearance / pinned trust root) "
+            f"— deny-by-default server admission unenforced",
+            _find_line_number(raw_text, f'"{server_name}"'),
+        ))
+    return out

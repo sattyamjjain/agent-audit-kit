@@ -2473,6 +2473,29 @@
       "title": "mcp-atlassian Jira/Confluence content reaches file-write sink"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time.",
+      "incident_references": [
+        "arXiv:2605.24248"
+      ],
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors.",
+      "rule_id": "AAK-MCP-ATTEST-001",
+      "sarif_name": "McpServerUnattested",
+      "severity": "medium",
+      "title": "MCP server admitted without attestation"
+    },
+    {
       "adversa_references": [
         "ADV-CHAIN-02"
       ],

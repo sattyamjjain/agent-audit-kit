@@ -1,4 +1,5 @@
 {
+  "trust_root": "/etc/mcp/trust-root.pem",
   "mcpServers": {
     "filesystem": {
       "command": "node",
