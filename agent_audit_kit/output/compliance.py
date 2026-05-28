@@ -59,6 +59,32 @@ FRAMEWORKS = {
             "MANAGE 4.1 - Incident Response": ["ASI08", "ASI10"],
         },
     },
+    "iso42001": {
+        # ISO/IEC 42001:2023 — Information technology — Artificial intelligence
+        # — Management system. Closes the gap between the `--framework
+        # iso42001` choice already exposed in cli.py / pdf_report.py and the
+        # runtime FRAMEWORKS table that drives the text/console compliance
+        # report. Controls are taken from Annex A (normative) and clauses
+        # 6/8 of the body. ASI-token mapping mirrors what pdf_report.py uses
+        # at the category level: A.6.2.x covers MCP / trust-boundary
+        # operational surface, A.8.x covers data quality + AI inputs, A.10
+        # covers third-party/supply-chain, A.5 covers leadership.
+        "name": "ISO/IEC 42001:2023 — AI Management System",
+        "controls": {
+            "Clause 6.1.2 — AI risk assessment": ["ASI01", "ASI02", "ASI05", "ASI08"],
+            "Clause 6.1.3 — AI risk treatment": ["ASI04", "ASI10"],
+            "Clause 8.2 — AI system risk assessment": ["ASI02", "ASI05", "ASI08"],
+            "Clause 8.3 — AI system impact assessment": ["ASI05", "ASI09"],
+            "A.5.1 — Leadership & governance": ["ASI01", "ASI09"],
+            "A.6.2.3 — AI system operational controls": ["ASI02", "ASI05"],
+            "A.6.2.4 — AI system boundaries": ["ASI02", "ASI05"],
+            "A.6.2.6 — AI verification": ["ASI04", "ASI05"],
+            "A.7.4 — Data handling": ["ASI06"],
+            "A.8.2 — Data for AI": ["ASI02", "ASI06"],
+            "A.8.3 — Data quality & integrity": ["ASI04", "ASI06"],
+            "A.10.1 — Supplier AI agreements": ["ASI03", "ASI04"],
+        },
+    },
     "mcp-2026-roadmap": {
         # MCP 2026 Roadmap (May 2026) — adds transport-hardening +
         # signed-tools requirements that are stricter than the live

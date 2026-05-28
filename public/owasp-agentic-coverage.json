@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-05-28T05:03:17Z",
+  "last_updated": "2026-05-28T07:09:29Z",
   "aak_version": "0.3.27",
-  "rule_count": 212,
+  "rule_count": 215,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -107,7 +107,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 32,
+      "rule_density": 33,
       "rules": [
         {
           "id": "AAK-ANTHROPIC-SDK-001",
@@ -366,6 +366,12 @@
           ]
         },
         {
+          "id": "AAK-MCP-TUNNEL-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
           "severity": "critical",
           "cve_references": [
@@ -474,7 +480,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 49,
+      "rule_density": 51,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -650,6 +656,18 @@
             "AIS-08",
             "IAM-01"
           ]
+        },
+        {
+          "id": "AAK-MCP-TUNNEL-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TUNNEL-003",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-OAUTH-001",
@@ -1156,7 +1174,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 30,
+      "rule_density": 31,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1311,6 +1329,12 @@
           ]
         },
         {
+          "id": "AAK-MCP-TUNNEL-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
           "severity": "critical",
           "cve_references": [
@@ -1399,7 +1423,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 25,
+      "rule_density": 26,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1438,6 +1462,12 @@
         },
         {
           "id": "AAK-MCP-015",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TUNNEL-003",
           "severity": "critical",
           "cve_references": [],
           "aicm_references": []

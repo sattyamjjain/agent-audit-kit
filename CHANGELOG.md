@@ -5,6 +5,96 @@ All notable changes to AgentAuditKit are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**Headline: New rule pack `AAK-MCP-TUNNEL-001..003` (3 rules) for the
+Anthropic MCP Tunnels research preview (launched 2026-05-19). Every
+detection pattern is grounded in the official proxy-config schema at
+`platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference` —
+field names taken verbatim from the reference table — so the rules
+catch real misconfigurations rather than invented schema shapes. Also
+adds `iso42001` (ISO/IEC 42001:2023 AI Management System) as a
+first-class entry in `FRAMEWORKS`, closing a long-standing gap where
+the `--framework iso42001` CLI choice existed but its runtime crosswalk
+did not.**
+
+Citations:
+
+- **Anthropic MCP Tunnels** (research preview, 2026-05-19, Code with
+  Claude London) — cloudflared agent makes a single outbound
+  connection to the Anthropic tunnel edge; an Anthropic-side proxy
+  terminates inner TLS, validates upstream IPs, and routes by
+  hostname. Customer holds the tunnel token and server TLS private
+  key as high-value secrets.
+  <https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview>
+  <https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference>
+  <https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security>
+- The New Stack — *"Anthropic debuts MCP tunnels and self-hosted
+  sandboxes to lock down AI agent infrastructure"*, 2026-05.
+- InfoQ — *"Anthropic Introduces MCP Tunnels for Private Agent Access
+  to Internal Systems"*, 2026-05.
+
+### Added
+
+- **`AAK-MCP-TUNNEL-001`** *(MCP Configuration; CRITICAL; CWE-918)* —
+  MCP Tunnels gateway proxy has `upstream.disable_ip_validation: true`
+  OR an `upstream.allowed_ips` CIDR that covers the public internet
+  (`0.0.0.0/0`, `::/0`, or an IPv4 prefix ≤ `/7`). The reference page
+  calls `upstream.allowed_ips` the proxy's *"primary SSRF defense"*;
+  disabling or widening it lets a malicious upstream-side process
+  reach arbitrary hosts the proxy can route to.
+- **`AAK-MCP-TUNNEL-002`** *(MCP Configuration; HIGH; CWE-295)* — an
+  `https://` upstream is declared under `routes:` but neither
+  `upstream.tls.ca_file` nor `upstream.tls.include_system_cas: true`
+  is set. Quoting the reference: *"otherwise the proxy has no trust
+  anchor for the upstream certificate."*
+- **`AAK-MCP-TUNNEL-003`** *(MCP Configuration; CRITICAL; CWE-798)* —
+  tunnel token or server TLS private key is checked into the repo or
+  pinned as a literal value in a CI workflow. Triggers on literal
+  `MCP_TUNNEL_TOKEN` / `TUNNEL_TOKEN` / `ANTHROPIC_TUNNEL_TOKEN` /
+  `TUNNELS_API_TOKEN` / `ANTHROPIC_IDENTITY_TOKEN` env values in
+  `.github/workflows/*.yml`, `.gitlab-ci.yml`, `azure-pipelines.yml`,
+  `.circleci/config.yml`; PEM private keys committed under
+  MCP-Tunnels paths (`mcp-tunnel/`, `mcp-gateway/`, `mcp-tunnels/`,
+  etc.); and `kind: Secret` manifests named `mcp-tunnel` /
+  `mcp-tunnel-token` / `mcp-tunnel-cert` carrying inline `data:`
+  values. Suppresses on `${{ secrets.NAME }}` / `secrets.NAME` /
+  `env.NAME` references and on empty placeholder Secrets.
+- **`iso42001`** framework entry in `agent_audit_kit/output/compliance.py`
+  `FRAMEWORKS`. Maps ISO/IEC 42001:2023 clauses 6.1.2 / 6.1.3 / 8.2 /
+  8.3 and Annex A controls (A.5.1, A.6.2.3, A.6.2.4, A.6.2.6, A.7.4,
+  A.8.2, A.8.3, A.10.1) to OWASP-Agentic ASI tokens, so existing rules
+  with `owasp_agentic_references` automatically land under the right
+  clauses. The `--framework iso42001` CLI choice and the PDF report's
+  category mapping pre-existed; the runtime crosswalk was missing.
+
+### Changed
+
+- **`agent_audit_kit/scanners/mcp_tunnel.py`** is a new scanner module
+  (PyYAML-parsed). Registered via `_OPTIONAL_SCANNERS` so missing
+  PyYAML degrades gracefully rather than breaking scans.
+- **Compliance surface**: every TUNNEL rule carries
+  `owasp_agentic_references` between `ASI02..ASI06`, so findings auto-land
+  under EU AI Act **Article 15** (Robustness & Security), SOC 2
+  **CC6.1 / CC6.3 / CC6.7**, ISO 27001 **A.8.24 / A.5.23**, HIPAA
+  **164.312(d)**, and the new ISO 42001 clauses without any
+  per-framework rewiring.
+- **README**: `<!-- rule-count -->` anchors auto-sync to **215** rules,
+  MCP Configuration category count to **47**, scanner count to **69**.
+  Category description extends with the MCP Tunnels gateway items.
+
+### Notes
+
+- No version bump in this changeset. Release cadence + tag/PyPI/GHCR/
+  Sigstore is intentionally a separate flow.
+- The MCP Tunnels feature is in *research preview*. Anthropic's docs
+  state: *"They are provided 'as-is' without any uptime, support, or
+  continuity commitment, and they depend on a third-party network
+  provider (Cloudflare) that makes no availability commitment for the
+  underlying transport. Anthropic may modify or discontinue MCP
+  tunnels at any time."* The rule pack will need a refresh whenever
+  the proxy config schema changes upstream.
+
 ## [0.3.27] - 2026-05-28
 
 **Headline: New advisory rule `AAK-MCP-ATTEST-001` — flags MCP server

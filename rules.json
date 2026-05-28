@@ -2955,6 +2955,80 @@
     },
     {
       "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP Tunnels gateway-proxy config (`/etc/mcp-gateway/config.yaml` or the Helm `gateway.config.*` ConfigMap) either sets `upstream.disable_ip_validation: true` or names an `upstream.allowed_ips` CIDR that covers the public internet (0.0.0.0/0, ::/0, or a /0\u2013/7 IPv4 prefix). The reference page calls `upstream.allowed_ips` the proxy's primary SSRF defense; disabling it lets a malicious upstream-side process reach arbitrary hosts the proxy can route to.",
+      "incident_references": [
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
+      ],
+      "owasp_agentic_references": [
+        "ASI02",
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP06:2025"
+      ],
+      "remediation": "Set `upstream.allowed_ips` to the smallest CIDR ranges that cover your MCP servers (the reference's default is the RFC1918 private space). Remove `disable_ip_validation: true`. See https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security (`Restrict upstream.allowed_ips`).",
+      "rule_id": "AAK-MCP-TUNNEL-001",
+      "sarif_name": "McpTunnelSsrfDefenseDisabled",
+      "severity": "critical",
+      "title": "MCP Tunnels proxy: SSRF defense disabled or bypassed"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An MCP Tunnels gateway-proxy config declares one or more `https://` upstreams under `routes:` but sets neither `upstream.tls.ca_file` nor `upstream.tls.include_system_cas: true`. Quoting the reference: \"otherwise the proxy has no trust anchor for the upstream certificate.\" Without a trust anchor the proxy will fail closed at best or accept a man-in-the-middle's certificate at worst, depending on the proxy build.",
+      "incident_references": [
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
+      ],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Add `upstream.tls.ca_file: <path>` pointing at a CA bundle that issued the upstream certificates, OR set `upstream.tls.include_system_cas: true` to trust the system CA bundle. See https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference#proxy-configuration.",
+      "rule_id": "AAK-MCP-TUNNEL-002",
+      "sarif_name": "McpTunnelUpstreamNoTrustAnchor",
+      "severity": "high",
+      "title": "MCP Tunnels proxy: HTTPS upstream without trust anchor"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "A tunnel token or server TLS private key is checked into the repository or pinned as a literal value in a CI workflow. Per the MCP Tunnels overview, \"if an attacker obtains your tunnel token AND one of your TLS private keys, they could impersonate your proxy and read MCP request payloads \u2014 treat both as high-value secrets.\" Triggers on literal tunnel-token env vars in CI, PEM private keys committed under MCP-Tunnels paths, and Kubernetes Secret manifests named `mcp-tunnel` / `mcp-tunnel-token` / `mcp-tunnel-cert` carrying inline `data:` values.",
+      "incident_references": [
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security"
+      ],
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP02:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Move tunnel tokens and server-cert material into a secrets manager (GitHub Actions secrets, Vault, sealed-secrets, External Secrets Operator, vault-secrets-operator). For the setup CLI, use Workload Identity Federation (`ANTHROPIC_IDENTITY_TOKEN_FILE`) instead of a literal token. See https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security (`Protect credentials at rest`, `Rotate credentials`).",
+      "rule_id": "AAK-MCP-TUNNEL-003",
+      "sarif_name": "McpTunnelCredentialHardcoded",
+      "severity": "critical",
+      "title": "MCP Tunnels: tunnel credentials hardcoded in repo / CI"
+    },
+    {
+      "adversa_references": [],
       "aicm_references": [
         "AIS-08",
         "STA-08",

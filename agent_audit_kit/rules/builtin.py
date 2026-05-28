@@ -412,6 +412,92 @@ _r(
     incident_references=["arXiv:2605.24248"],
 )
 
+# ---------------------------------------------------------------------------
+# Anthropic MCP Tunnels (research preview, launched 2026-05-19)
+# Docs: https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/{overview,reference,security}
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-TUNNEL-001",
+    "MCP Tunnels proxy: SSRF defense disabled or bypassed",
+    "An MCP Tunnels gateway-proxy config (`/etc/mcp-gateway/config.yaml` or "
+    "the Helm `gateway.config.*` ConfigMap) either sets "
+    "`upstream.disable_ip_validation: true` or names an `upstream.allowed_ips` "
+    "CIDR that covers the public internet (0.0.0.0/0, ::/0, or a /0–/7 IPv4 "
+    "prefix). The reference page calls `upstream.allowed_ips` the proxy's "
+    "primary SSRF defense; disabling it lets a malicious upstream-side process "
+    "reach arbitrary hosts the proxy can route to.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Set `upstream.allowed_ips` to the smallest CIDR ranges that cover your "
+    "MCP servers (the reference's default is the RFC1918 private space). "
+    "Remove `disable_ip_validation: true`. See "
+    "https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security "
+    "(`Restrict upstream.allowed_ips`).",
+    sarif_name="McpTunnelSsrfDefenseDisabled",
+    owasp_mcp_references=["MCP04:2025", "MCP06:2025"],
+    owasp_agentic_references=["ASI02", "ASI05"],
+    incident_references=[
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
+    ],
+)
+
+_r(
+    "AAK-MCP-TUNNEL-002",
+    "MCP Tunnels proxy: HTTPS upstream without trust anchor",
+    "An MCP Tunnels gateway-proxy config declares one or more `https://` "
+    "upstreams under `routes:` but sets neither `upstream.tls.ca_file` nor "
+    "`upstream.tls.include_system_cas: true`. Quoting the reference: "
+    "\"otherwise the proxy has no trust anchor for the upstream certificate.\" "
+    "Without a trust anchor the proxy will fail closed at best or accept a "
+    "man-in-the-middle's certificate at worst, depending on the proxy build.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Add `upstream.tls.ca_file: <path>` pointing at a CA bundle that issued "
+    "the upstream certificates, OR set "
+    "`upstream.tls.include_system_cas: true` to trust the system CA bundle. "
+    "See https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference#proxy-configuration.",
+    sarif_name="McpTunnelUpstreamNoTrustAnchor",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    incident_references=[
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
+    ],
+)
+
+_r(
+    "AAK-MCP-TUNNEL-003",
+    "MCP Tunnels: tunnel credentials hardcoded in repo / CI",
+    "A tunnel token or server TLS private key is checked into the repository "
+    "or pinned as a literal value in a CI workflow. Per the MCP Tunnels "
+    "overview, \"if an attacker obtains your tunnel token AND one of your "
+    "TLS private keys, they could impersonate your proxy and read MCP "
+    "request payloads — treat both as high-value secrets.\" Triggers on "
+    "literal tunnel-token env vars in CI, PEM private keys committed under "
+    "MCP-Tunnels paths, and Kubernetes Secret manifests named "
+    "`mcp-tunnel` / `mcp-tunnel-token` / `mcp-tunnel-cert` carrying inline "
+    "`data:` values.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Move tunnel tokens and server-cert material into a secrets manager "
+    "(GitHub Actions secrets, Vault, sealed-secrets, External Secrets "
+    "Operator, vault-secrets-operator). For the setup CLI, use Workload "
+    "Identity Federation (`ANTHROPIC_IDENTITY_TOKEN_FILE`) instead of a "
+    "literal token. See "
+    "https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security "
+    "(`Protect credentials at rest`, `Rotate credentials`).",
+    sarif_name="McpTunnelCredentialHardcoded",
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI06"],
+    incident_references=[
+        "Anthropic MCP Tunnels 2026-05-19",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
+        "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security",
+    ],
+)
+
 _r(
     "AAK-MCP-SAMPLING-001",
     "MCP `sampling` capability declared without consent / elicitation guard",
