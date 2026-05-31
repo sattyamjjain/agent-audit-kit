@@ -29,6 +29,7 @@ _FRAMEWORK_TITLES = {
     "iso42001": "ISO/IEC 42001:2023 — AI Management System",
     "hipaa": "HIPAA Security Rule — Technical Safeguards",
     "nist-ai-rmf": "NIST AI RMF 1.0 — GOVERN, MAP, MEASURE, MANAGE",
+    "nsa-mcp-csi-2026": "NSA MCP Security CSI — U/OO/6030316-26 (May 2026)",
     "singapore-agentic": "Singapore Agentic AI Governance Framework (Jan 2026)",
     "india-dpdp": "India Digital Personal Data Protection Act 2023",
     "alabama-dppa": "Alabama Personal Data Protection Act (HB 351, 2026)",
@@ -127,6 +128,25 @@ _CATEGORY_TO_CONTROL = {
         "transport-security": "A.6.2.3 AI system operational controls",
         "a2a-protocol": "A.10.1 Supplier AI agreements",
         "legal-compliance": "A.5.1 Leadership & governance",
+    },
+    # NSA AISC Cybersecurity Information Sheet — U/OO/6030316-26 / PP-26-1834.
+    # Category → recommendation section heading (verbatim from the CSI body,
+    # pp.10-14). Verified against the source PDF (Wayback snapshot
+    # 20260520161722). Used by the PDF / text report's "Findings by control"
+    # grouping; the full per-control rule mapping lives in
+    # agent_audit_kit/output/compliance.py:FRAMEWORKS["nsa-mcp-csi-2026"].
+    "nsa-mcp-csi-2026": {
+        "mcp-config": "Scan local network for open or vulnerable MCP servers (p.14)",
+        "hook-injection": "Constrain and sandbox tool execution (p.11)",
+        "trust-boundary": "Design for boundaries (p.10)",
+        "secret-exposure": "Sign and verify MCP messages (p.12)",
+        "supply-chain": "Choose supported MCP projects when possible (p.10)",
+        "agent-config": "Instrument for logging and detection (p.13)",
+        "tool-poisoning": "Filter and monitor output pipelines and chained execution (p.12)",
+        "taint-analysis": "Validate parameters (p.11)",
+        "transport-security": "Sign and verify MCP messages (p.12)",
+        "a2a-protocol": "Design for boundaries (p.10)",
+        "legal-compliance": "Track and patch MCP related vulnerabilities (p.13)",
     },
     "singapore-agentic": {
         "mcp-config": "Pillar 3 — Safe & Secure Deployment",

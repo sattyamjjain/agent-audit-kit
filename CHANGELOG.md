@@ -67,6 +67,47 @@ Citations:
   with `owasp_agentic_references` automatically land under the right
   clauses. The `--framework iso42001` CLI choice and the PDF report's
   category mapping pre-existed; the runtime crosswalk was missing.
+- **`nsa-mcp-csi-2026`** framework entry mapping the **NSA AISC
+  Cybersecurity Information Sheet** "Model Context Protocol (MCP):
+  Security Design Considerations for AI-Driven Automation"
+  (**U/OO/6030316-26 | PP-26-1834, May 2026 Ver. 1.0**, published
+  2026-05-20). The CSI body is prose with 9 named recommendation
+  sections (pp.10-14); each is mapped here to the **exact AAK rule IDs
+  that evidence it** (102 unique rule citations across the 9
+  recommendations) AND a fan-out set of OWASP-Agentic ASI tokens so
+  future rule additions auto-light the relevant control. This is a
+  *mapping over existing rules* — no new scanner, no new rule IDs.
+  Wired into `--framework nsa-mcp-csi-2026` (`report` command) and
+  `--compliance nsa-mcp-csi-2026` (`scan` command); registered in
+  `pdf_report._FRAMEWORK_TITLES` and `_CATEGORY_TO_CONTROL` for the
+  PDF / text-report's `Findings by control` grouping. The 9 mapped
+  recommendations, verbatim from the CSI:
+    1. *Choose supported MCP projects when possible* (p.10)
+    2. *Design for boundaries* (p.10)
+    3. *Validate parameters* (p.11)
+    4. *Constrain and sandbox tool execution* (p.11)
+    5. *Sign and verify MCP messages* (p.12)
+    6. *Filter and monitor output pipelines and chained execution* (p.12)
+    7. *Instrument for logging and detection* (p.13)
+    8. *Track and patch MCP related vulnerabilities* (p.13)
+    9. *Scan local network for open or vulnerable MCP servers* (p.14)
+  Source citation block at the head of every NSA CSI report includes
+  the verbatim doc ID, title, publisher, publication date, and PDF
+  URL so output is independently auditable. Primary source: NSA
+  <https://www.nsa.gov/Portals/75/documents/Cybersecurity/CSI_MCP_SECURITY.pdf>,
+  press release
+  <https://www.nsa.gov/Press-Room/Press-Releases-Statements/Press-Release-View/Article/4496698/>.
+- **Schema extension** to `agent_audit_kit/output/compliance.py`: the
+  per-control value in `FRAMEWORKS[*]["controls"]` now accepts either
+  the legacy `list[str]` of ASI tokens (existing 7 frameworks
+  unchanged) OR a `dict` with `rule_ids` (curated direct mapping) +
+  optional `also_covers_asi` (ASI fan-out). New `_resolve_control_rules`
+  helper dispatches on the value type. Existing frameworks need no
+  change.
+- Optional **`source` block** on a framework entry; when present,
+  `format_results` emits a verbatim citation header (doc ID, title,
+  publisher, date, URL). Other frameworks can opt in by adding the
+  block; the NSA CSI entry is the first user.
 
 ### Changed
 

@@ -162,7 +162,7 @@ def cli(ctx: click.Context) -> None:
 @click.option("--verbose", "-v", is_flag=True, default=False, help="Show detailed scan progress.")
 @click.option("--score", "show_score", is_flag=True, default=False, help="Show security score and grade.")
 @click.option("--owasp-report", is_flag=True, default=False, help="Show OWASP coverage matrix.")
-@click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf, aicm (CSA AI Controls Matrix, CSV output), mcp-2026-roadmap (MCP 2026 Roadmap conformance).")
+@click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, iso42001, hipaa, nist-ai-rmf, nsa-mcp-csi-2026 (NSA AISC MCP Security CSI, U/OO/6030316-26), aicm (CSA AI Controls Matrix, CSV output), mcp-2026-roadmap (MCP 2026 Roadmap conformance).")
 @click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify if detected secrets are live (makes network calls).")
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
 @click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
@@ -1076,6 +1076,7 @@ def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
         "iso42001",
         "hipaa",
         "nist-ai-rmf",
+        "nsa-mcp-csi-2026",
         "singapore-agentic",
         "india-dpdp",
         "alabama-dppa",
