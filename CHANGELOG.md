@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — MCP tool-poisoning now scans per-parameter descriptions
+
+The tool-poisoning scanner (`agent_audit_kit/scanners/tool_poisoning.py`)
+now feeds the existing `AAK-POISON-001..006` detectors with **every
+per-parameter description** under a tool's input schema, not just the
+tool's top-level `description` and the schema-level `inputSchema.description`.
+`_extract_tool_descriptions` recursively walks
+`inputSchema.properties.<param>.description` (plus `input_schema` and the
+OpenAI `parameters` container), descending through nested object
+properties, array `items`, and `anyOf`/`allOf`/`oneOf` combinators (depth
+cap 6). This closes the indirect-prompt-injection-in-tool-metadata gap
+where instruction text hides in a single argument's docstring rather than
+the tool description. Findings are labelled `…/param:<dotted.path>` so they
+point at the exact poisoned parameter.
+
+**No new rule ID** — this is a coverage extension to the existing
+`AAK-POISON-*` family. Rule count, scanner count, and category counts are
+unchanged.
+
+**Anti-duplicate result: `[REFRAMED — extends AAK-POISON-001..006 via
+per-parameter sub-detector]`.** A prompt proposed a new MCP tool-poisoning
+rule anchored to **CVE-2026-44338**. Declined as a new rule for two
+reasons:
+
+1. **Tool-poisoning shape already covered.** Indirect prompt injection via
+   tool description/metadata is detected by `AAK-POISON-001` (invisible
+   Unicode), `-002` (prompt-injection / role-switching markers), `-003`
+   (cross-tool chaining), `-004` (encoded content), `-005` (length),
+   `-006` (URL/path), plus `AAK-MCP-FHI-001` (imperative-override
+   language). The only genuine gap was *parameter-level* descriptions,
+   addressed by this extension rather than a duplicate rule.
+2. **CVE mis-classification.** Per NVD, **CVE-2026-44338** is *PraisonAI*
+   shipping a legacy Flask API server with **authentication disabled by
+   default** (CWE-306 / CWE-668 / CWE-1188, CVSS 7.3, published
+   2026-05-08) — an **auth-bypass**, not tool-metadata poisoning. Citing
+   it on an `AAK-POISON-*` finding would encode a false CVE-to-attack
+   mapping, so the CVE is **not** referenced by this change. (PraisonAI's
+   Flask auth-bypass is a separate, currently-uncovered gap that would
+   belong to the auth-bypass family — e.g. `AAK-MCP-SERVER-AUTH-*` — if
+   pursued later; it was out of scope for this tool-poisoning request.)
+   Source: <https://nvd.nist.gov/vuln/detail/CVE-2026-44338>.
+
+**Tests:** 5 new in `tests/test_tool_poisoning.py` — poisoned single
+param caught (with `param:<name>` evidence), nested-object param caught,
+array-item param caught, OpenAI `parameters` container walked, and a
+benign manifest with ordinary parameter docstrings producing **zero**
+findings (false-positive guard).
+
 **Headline: New rule pack `AAK-MCP-TUNNEL-001..003` (3 rules) for the
 Anthropic MCP Tunnels research preview (launched 2026-05-19). Every
 detection pattern is grounded in the official proxy-config schema at

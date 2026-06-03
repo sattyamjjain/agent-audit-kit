@@ -101,11 +101,82 @@ def _has_invisible_unicode(text: str) -> list[tuple[str, int]]:
     return hits
 
 
+# JSON-Schema containers that may hold a tool's parameter definitions.
+# `inputSchema` is the MCP spec field; `input_schema` (snake) and
+# `parameters` (OpenAI function-calling style) appear in real-world
+# configs fed to MCP bridges, so we accept all three.
+_PARAM_SCHEMA_KEYS: tuple[str, ...] = ("inputSchema", "input_schema", "parameters")
+
+# Depth cap for the recursive parameter walk. Nested object parameters
+# (`properties.<p>.properties.<q>...`) are where a sophisticated poisoner
+# hides instruction text, but we bound the descent so a pathological or
+# deeply-nested schema can't spin.
+_MAX_PARAM_DEPTH = 6
+
+
+def _iter_param_descriptions(
+    schema: Any,
+    path: str,
+    depth: int = 0,
+) -> list[tuple[str, str]]:
+    """Yield (param_path, description) for every property description in a schema.
+
+    Descends through JSON-Schema ``properties`` (object params), ``items``
+    (array element schemas), and the ``anyOf``/``allOf``/``oneOf``
+    combinators, capped at ``_MAX_PARAM_DEPTH``. Each property's own
+    ``description`` string is collected, labelled by its dotted parameter
+    path so a finding points at the exact parameter.
+
+    Args:
+        schema: A JSON-Schema fragment (dict) or nested structure.
+        path: Dotted parameter path accumulated so far (e.g. ``filters.tag``).
+        depth: Current recursion depth.
+
+    Returns:
+        List of (param_path, description) tuples for non-empty descriptions.
+    """
+    out: list[tuple[str, str]] = []
+    if depth > _MAX_PARAM_DEPTH or not isinstance(schema, dict):
+        return out
+
+    props = schema.get("properties")
+    if isinstance(props, dict):
+        for prop_name, prop_schema in props.items():
+            if not isinstance(prop_schema, dict):
+                continue
+            child_path = f"{path}.{prop_name}" if path else str(prop_name)
+            desc = prop_schema.get("description")
+            if isinstance(desc, str) and desc:
+                out.append((child_path, desc))
+            # Recurse into nested object / array / combinator schemas.
+            out.extend(_iter_param_descriptions(prop_schema, child_path, depth + 1))
+
+    # Array element schemas.
+    items = schema.get("items")
+    if isinstance(items, dict):
+        out.extend(_iter_param_descriptions(items, f"{path}[]", depth + 1))
+
+    # Schema combinators.
+    for combinator in ("anyOf", "allOf", "oneOf"):
+        branches = schema.get(combinator)
+        if isinstance(branches, list):
+            for i, branch in enumerate(branches):
+                out.extend(
+                    _iter_param_descriptions(branch, f"{path}<{combinator}[{i}]>", depth + 1)
+                )
+
+    return out
+
+
 def _extract_tool_descriptions(data: dict[str, Any]) -> list[tuple[str, str, str]]:
     """Extract (server_name, tool_name, description) triples from MCP config.
 
     Handles several config shapes:
       - mcpServers.<name>.tools[].{name, description}
+      - mcpServers.<name>.tools[].inputSchema.description (schema-level)
+      - mcpServers.<name>.tools[].inputSchema.properties.<param>.description
+        (per-parameter — recursive; the indirect-prompt-injection-in-tool-
+        metadata gap where instruction text hides in one arg's docstring)
       - mcpServers.<name>.toolDescriptions.<toolName>
       - mcpServers.<name>.tools[]  (string items treated as name+description)
     """
@@ -127,12 +198,23 @@ def _extract_tool_descriptions(data: dict[str, Any]) -> list[tuple[str, str, str
                     t_desc = tool.get("description", "")
                     if isinstance(t_desc, str) and t_desc:
                         results.append((server_name, str(t_name), t_desc))
-                    # Also check inputSchema.description
-                    input_schema = tool.get("inputSchema", {})
-                    if isinstance(input_schema, dict):
+                    # Schema-level description + every per-parameter
+                    # description nested under the tool's input schema.
+                    for schema_key in _PARAM_SCHEMA_KEYS:
+                        input_schema = tool.get(schema_key)
+                        if not isinstance(input_schema, dict):
+                            continue
                         schema_desc = input_schema.get("description", "")
                         if isinstance(schema_desc, str) and schema_desc:
-                            results.append((server_name, f"{t_name}/inputSchema", schema_desc))
+                            results.append(
+                                (server_name, f"{t_name}/{schema_key}", schema_desc)
+                            )
+                        for param_path, param_desc in _iter_param_descriptions(
+                            input_schema, ""
+                        ):
+                            results.append(
+                                (server_name, f"{t_name}/param:{param_path}", param_desc)
+                            )
 
         # Shape 2: toolDescriptions map
         tool_descriptions = server_cfg.get("toolDescriptions", {})
