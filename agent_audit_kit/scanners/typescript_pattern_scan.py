@@ -59,6 +59,36 @@ _DANGEROUS_SINKS: list[tuple[re.Pattern[str], str, str]] = [
         "AAK-TAINT-003",
         "fs write call detected in MCP server file",
     ),
+    # AAK-TAINT-005: raw / interpolated SQL execution sink.
+    #
+    # Parity with the Python taint engine (cursor/connection/session.execute)
+    # and the Rust scanner (sql!/query! with format!). The OX Security MCP
+    # disclosure class includes Node/TS MCP servers with SQL injection
+    # (e.g. astro-mcp-server, CVE-2026-7591), so the TS/JS scanner must
+    # flag the same shape: SQL built by string interpolation/concatenation
+    # reaching a query/execute call, plus the explicitly-unsafe raw APIs.
+    #
+    # Tight by design to avoid flagging parameterized queries
+    # (`db.query("SELECT ... WHERE id = $1", [id])`), which use placeholder
+    # args, not template interpolation. Matches:
+    #   - Prisma  $queryRawUnsafe(...) / $executeRawUnsafe(...)
+    #   - knex    .raw(`...${...}...`)  (raw SQL with interpolation)
+    #   - any     .query(`...${...}`) / .execute(`...${...}`)  (interpolated)
+    #   - any     .query("..." + x) / .execute('...' + x)      (concatenated)
+    (
+        re.compile(
+            # Prisma explicitly-unsafe raw APIs
+            r"\$(?:query|execute)RawUnsafe\s*\("
+            # knex / driver .raw() with an interpolated template literal
+            r"|\.\s*raw\s*\(\s*`[^`]*\$\{"
+            # .query()/.execute() with an interpolated template literal
+            r"|\.\s*(?:query|execute)\s*\(\s*`[^`]*\$\{"
+            # .query()/.execute() with string concatenation
+            r"|\.\s*(?:query|execute)\s*\(\s*['\"][^'\"]*['\"]\s*\+"
+        ),
+        "AAK-TAINT-005",
+        "raw/interpolated SQL execution sink detected in MCP server file",
+    ),
 ]
 
 

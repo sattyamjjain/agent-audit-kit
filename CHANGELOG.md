@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — TS/JS taint scanner now covers SQL-injection sinks (AAK-TAINT-005 parity)
+
+The TypeScript/JavaScript pattern scanner
+(`agent_audit_kit/scanners/typescript_pattern_scan.py`) now flags raw /
+interpolated SQL execution sinks under the existing **`AAK-TAINT-005`**
+rule ("Tool parameter flows to SQL query"), closing a language-parity gap:
+the Python taint engine (`cursor`/`connection`/`session.execute`) and the
+Rust scanner (`sql!`/`query!` with `format!`) already implemented
+`AAK-TAINT-005`, but the TS/JS scanner omitted it — despite its own module
+docstring claiming "SQL template" coverage.
+
+New sink matches (low false-positive by design — parameterized queries with
+placeholder args are **not** flagged):
+
+- Prisma `$queryRawUnsafe(...)` / `$executeRawUnsafe(...)` (explicitly-unsafe APIs)
+- `knex` / driver `.raw(` + interpolated template literal
+- `.query(...)` / `.execute(...)` with `${...}` template-literal interpolation
+- `.query(...)` / `.execute(...)` with string concatenation
+
+**No new rule ID, no version bump** — this extends an existing rule and an
+existing scanner. Rule / scanner / category counts unchanged.
+
+**Anti-duplicate result: `[DROP new rule — class already covered;
+REFRAMED to the one real gap: TS/JS SQL-sink parity for AAK-TAINT-005]`.**
+
+A prompt asked to add an "MCP-SDK / MCP-server RCE + tool-poisoning"
+detector for the OX Security April-2026 disclosure. The class is already
+covered end-to-end, so a new rule would duplicate:
+
+- `AAK-STDIO-001` (CRITICAL, **OX-MCP-2026-04-15**) — taint to `subprocess` /
+  `os.system` / `os.popen` / `eval` / `exec`.
+- `AAK-MCP-STDIO-CMD-INJ-001..004` (CRITICAL, **OX-MCP-2026-04-25**) —
+  network-controlled input to Stdio params (Python / TS / Java / Rust).
+- `AAK-ANTHROPIC-SDK-001` (HIGH, **OX-MCP-2026-04-15**) — upstream SDK
+  STDIO transport without an argv sanitizer.
+- `AAK-MCP-TOOL-UNSAFE-EVAL-001` — `eval`/`exec`/`compile` inside an
+  `@mcp.tool` handler.
+- `AAK-TAINT-005` (Python + Rust) — SQL sink; plus named SQLi pins
+  `AAK-DORIS-001` and `AAK-ASTROMCP-SQLI-CVE-2026-7591-001`.
+
+The request's secondary ask — "flag MCP SDK versions pinned below the
+patched release for the disclosed RCE" — rests on a false premise: the OX
+2026-04-15 STDIO/RCE class has **no patched SDK release** (Anthropic
+declined to CVE it; sanitization is the developer's responsibility), which
+is why `AAK-ANTHROPIC-SDK-001` is a sanitizer-presence check rather than a
+version pin. (A parameterized, updatable SDK version-floor check already
+exists for a *different* class — `AAK-DNS-REBIND-002`, the DNS-rebinding
+fix.) No fabricated CVE was introduced; the work is labelled to the **OX
+Security MCP-SDK disclosure class** only.
+
+The single genuine gap was TS/JS SQL-sink parity, addressed here by
+extending `AAK-TAINT-005` rather than adding a duplicate rule.
+
+**Tests:** 7 new in `tests/test_typescript_pattern_scan_sql.py` (the TS
+pattern scanner previously had no dedicated test) — interpolated-template
+SQL caught, string-concatenated SQL caught, Prisma `$queryRawUnsafe`
+caught, `knex.raw` interpolation caught, parameterized query passes,
+static parameter-free query passes, non-MCP file not scanned.
+
 ### Changed — MCP tool-poisoning now scans per-parameter descriptions
 
 The tool-poisoning scanner (`agent_audit_kit/scanners/tool_poisoning.py`)
