@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — NSA MCP Security CSI mapping: coverage-gap audit (17 rules added)
+
+A gap audit of the `nsa-mcp-csi-2026` compliance mapping (originally added in
+PR #294) found rules that plainly evidence an existing CSI recommendation but
+were never cited — and, in three cases, carry **no OWASP-Agentic ASI tag**, so
+the `also_covers_asi` fan-out could never reach them. **17 rules** are now
+explicitly mapped across 8 of the 9 CSI recommendation sections:
+
+- **Constrain and sandbox tool execution (p.11)** — `AAK-HOOK-RCE-002`,
+  `AAK-HOOK-RCE-003` (the same family as the already-cited `-001`), and generic
+  egress SSRF `AAK-SSRF-001` / `-004` / `-005` (the v1 map cited only
+  vendor-specific SSRF).
+- **Scan local network for open/vulnerable MCP servers (p.14)** —
+  `AAK-SSRF-002` (loopback reach), `AAK-SSRF-003` (cloud-metadata reach).
+- **Validate parameters (p.11)** — `AAK-MCP-015` (path traversal in MCP
+  resource handler), `AAK-LANGCHAIN-001` / `-002` (`load_prompt` path traversal).
+- **Design for boundaries (p.10)** — `AAK-A2A-009` (unbounded delegation).
+- **Sign and verify MCP messages (p.12)** — `AAK-A2A-004` (plaintext HTTP).
+- **Instrument for logging and detection (p.13)** — `AAK-AGENT-004`.
+- **Filter and monitor output pipelines (p.12)** — `AAK-AGENT-005`.
+- **Track and patch MCP related vulnerabilities (p.13)** — `AAK-MCPFRAME-001`,
+  `AAK-MCP-STATELESS-002` (ASI-less), `AAK-CLAUDE-WIN-001`.
+
+Explicit NSA-cited rules went **94 → 111**. Thirteen rules remain deliberately
+unmapped (internal sentinel, info-only coverage manifests, privacy-policy-doc,
+frontend-DoS, pricing, and EU-locale-eval rules) — mapping them would fabricate
+coverage; a new `test_deliberate_exclusions_stay_out_of_scope` test documents
+and guards that decision. NSA test suite **25 → 43**.
+
+**No new rule ID, no new framework, no version bump** — this only enriches an
+existing framework's rule-to-control map.
+
 ### Changed — TS/JS taint scanner now covers SQL-injection sinks (AAK-TAINT-005 parity)
 
 The TypeScript/JavaScript pattern scanner

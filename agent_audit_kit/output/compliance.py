@@ -132,7 +132,8 @@ FRAMEWORKS = {
                     "AAK-TRUST-001", "AAK-TRUST-002", "AAK-TRUST-003",
                     "AAK-TRUST-004", "AAK-TRUST-005", "AAK-TRUST-006",
                     "AAK-TRUST-007",
-                    "AAK-A2A-001", "AAK-A2A-002", "AAK-A2A-008", "AAK-A2A-010",
+                    "AAK-A2A-001", "AAK-A2A-002", "AAK-A2A-008",
+                    "AAK-A2A-009", "AAK-A2A-010",
                     "AAK-MCP-ATTEST-001", "AAK-MCP-TUNNEL-001",
                     "AAK-MCP-TUNNEL-002", "AAK-MCP-010",
                 ],
@@ -143,6 +144,8 @@ FRAMEWORKS = {
                     "AAK-POISON-002", "AAK-MCP-FHI-001",
                     "AAK-IPI-WILD-CORPUS-001", "AAK-PRTITLE-IPI-001",
                     "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001",
+                    "AAK-LANGCHAIN-001", "AAK-LANGCHAIN-002",
+                    "AAK-MCP-015",
                     "AAK-A2A-003", "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001",
                 ],
                 "also_covers_asi": ["ASI02", "ASI05"],
@@ -153,14 +156,17 @@ FRAMEWORKS = {
                     "AAK-MCP-STDIO-CMD-INJ-001", "AAK-MCP-STDIO-CMD-INJ-002",
                     "AAK-MCP-STDIO-CMD-INJ-003", "AAK-MCP-STDIO-CMD-INJ-004",
                     "AAK-MCP-TOOL-UNSAFE-EVAL-001", "AAK-MCP-010",
-                    "AAK-HOOK-RCE-001",
+                    "AAK-HOOK-RCE-001", "AAK-HOOK-RCE-002", "AAK-HOOK-RCE-003",
+                    # Egress sandboxing of tool execution: a tool that can
+                    # reach arbitrary outbound hosts is not sandboxed.
+                    "AAK-SSRF-001", "AAK-SSRF-004", "AAK-SSRF-005",
                 ],
                 "also_covers_asi": ["ASI02", "ASI05"],
             },
             "Sign and verify MCP messages (p.12)": {
                 "rule_ids": [
                     "AAK-MCP-ATTEST-001",
-                    "AAK-A2A-005", "AAK-A2A-006", "AAK-A2A-011",
+                    "AAK-A2A-004", "AAK-A2A-005", "AAK-A2A-006", "AAK-A2A-011",
                     "AAK-WINDSURF-001", "AAK-MCP-LINEAGE-STAINLESS-001",
                     "AAK-MCP-TUNNEL-003",
                 ],
@@ -179,6 +185,9 @@ FRAMEWORKS = {
                     "AAK-SKILL-004", "AAK-SKILL-005",
                     "AAK-METIS-REFUSAL-REFEED-001",
                     "AAK-METIS-SCORING-SINK-001",
+                    # Hidden content in an instruction file is a chained-
+                    # execution injection vector that output filtering catches.
+                    "AAK-AGENT-005",
                 ],
                 "also_covers_asi": ["ASI05"],
             },
@@ -188,6 +197,7 @@ FRAMEWORKS = {
                     "AAK-SPLUNK-TOKLOG-001",
                     "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
                     "AAK-AGENT-001", "AAK-AGENT-002", "AAK-AGENT-003",
+                    "AAK-AGENT-004",
                     "AAK-WINDSURF-001",
                 ],
                 "also_covers_asi": ["ASI08", "ASI10"],
@@ -211,6 +221,12 @@ FRAMEWORKS = {
                     "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
                     "AAK-LANGCHAIN-SSRF-REDIR-001",
                     "AAK-LMDEPLOY-VL-SSRF-001",
+                    # MCP-stack CVE/patch hygiene: framework DoS, a removed
+                    # protocol method still in use, and the Claude Code
+                    # managed-settings path-trust CVE.
+                    "AAK-MCPFRAME-001",
+                    "AAK-MCP-STATELESS-002",
+                    "AAK-CLAUDE-WIN-001",
                 ],
                 "also_covers_asi": ["ASI04"],
             },
@@ -221,6 +237,10 @@ FRAMEWORKS = {
                     "AAK-MCP-009",
                     "AAK-MCPWN-001",
                     "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
+                    # Lateral-movement reach: a tool that can hit loopback or
+                    # the cloud-metadata endpoint is the SSRF-to-internal class
+                    # this recommendation warns about.
+                    "AAK-SSRF-002", "AAK-SSRF-003",
                 ],
                 "also_covers_asi": ["ASI03", "ASI04"],
             },

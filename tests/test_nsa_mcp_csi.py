@@ -242,3 +242,87 @@ def test_legacy_framework_still_resolves(legacy_fw: str) -> None:
         # (e.g. very narrow ASI tokens with no live rules) may legitimately
         # be empty. We just assert that resolution doesn't crash.
         assert isinstance(rules, list)
+
+
+# ---------------------------------------------------------------------------
+# Coverage-gap closures (audit of the v1 mapping)
+#
+# The initial mapping (PR #294) omitted several rules that plainly evidence a
+# CSI recommendation, while the OWASP-Agentic `also_covers_asi` fan-out could
+# not reach the ASI-less ones (e.g. AAK-MCP-STATELESS-002 carries no ASI tag).
+# A gap audit added them explicitly. These tests pin those closures so a
+# future rule rename or mapping edit cannot silently re-open the gap.
+# ---------------------------------------------------------------------------
+
+
+def _cited_in(control_substr: str) -> set[str]:
+    """Return the explicitly-cited rule_ids for the control whose heading
+    contains `control_substr`."""
+    for ctrl, val in FRAMEWORKS[FRAMEWORK_KEY]["controls"].items():
+        if control_substr in ctrl and isinstance(val, dict):
+            return set(val.get("rule_ids", []))
+    raise AssertionError(f"no control heading contains {control_substr!r}")
+
+
+@pytest.mark.parametrize("rule_id, control_substr", [
+    # Generic SSRF family — the v1 map cited only vendor-specific SSRF.
+    ("AAK-SSRF-001", "Constrain and sandbox tool execution"),
+    ("AAK-SSRF-004", "Constrain and sandbox tool execution"),
+    ("AAK-SSRF-005", "Constrain and sandbox tool execution"),
+    ("AAK-SSRF-002", "Scan local network"),   # loopback reach
+    ("AAK-SSRF-003", "Scan local network"),   # cloud-metadata reach
+    # HOOK-RCE family — v1 cited only -001 of the same family/section.
+    ("AAK-HOOK-RCE-002", "Constrain and sandbox tool execution"),
+    ("AAK-HOOK-RCE-003", "Constrain and sandbox tool execution"),
+    # Path-traversal / input-validation in the MCP server itself.
+    ("AAK-MCP-015", "Validate parameters"),
+    ("AAK-LANGCHAIN-001", "Validate parameters"),
+    ("AAK-LANGCHAIN-002", "Validate parameters"),
+    # Boundary / transport.
+    ("AAK-A2A-009", "Design for boundaries"),
+    ("AAK-A2A-004", "Sign and verify MCP messages"),
+    # Detection / logging hygiene.
+    ("AAK-AGENT-004", "Instrument for logging and detection"),
+    ("AAK-AGENT-005", "Filter and monitor output pipelines"),
+    # MCP-stack patch hygiene — incl. the ASI-less STATELESS rule that the
+    # fan-out can never reach.
+    ("AAK-MCPFRAME-001", "Track and patch MCP related vulnerabilities"),
+    ("AAK-MCP-STATELESS-002", "Track and patch MCP related vulnerabilities"),
+    ("AAK-CLAUDE-WIN-001", "Track and patch MCP related vulnerabilities"),
+])
+def test_gap_closure_rule_is_mapped(rule_id: str, control_substr: str) -> None:
+    """Each audited gap rule must be explicitly cited under its control and
+    must exist in the live registry."""
+    assert rule_id in RULES, f"{rule_id} missing from RULES registry"
+    assert rule_id in _cited_in(control_substr), (
+        f"{rule_id} not explicitly cited under a control matching "
+        f"{control_substr!r} — coverage gap re-opened"
+    )
+
+
+def test_deliberate_exclusions_stay_out_of_scope() -> None:
+    """These rules are intentionally NOT mapped to the NSA MCP CSI: they are
+    either internal sentinels, info-only coverage manifests, or controls
+    outside MCP security scope (privacy-policy docs, frontend DoS, pricing,
+    EU-locale eval). Mapping them would fabricate coverage. This test
+    documents the decision and guards against an over-broad future edit.
+    """
+    out_of_scope = {
+        "AAK-INTERNAL-SCANNER-FAIL",
+        "AAK-EU-AI-ACT-ART15-LOCALE-001",
+        "AAK-OX-COVERAGE-MANIFEST-001",
+        "AAK-PRISMA-AIRS-COVERAGE-001",
+        "AAK-STATE-PRIVACY-001",
+        "AAK-STATE-PRIVACY-002",
+        "AAK-STATE-PRIVACY-003",
+        "AAK-NEXT-AI-DRAW-001",
+        "AAK-PROJECT-DEAL-DRIFT-001",
+    }
+    cited: set[str] = set()
+    for val in FRAMEWORKS[FRAMEWORK_KEY]["controls"].values():
+        if isinstance(val, dict):
+            cited.update(val.get("rule_ids", []))
+    leaked = out_of_scope & cited
+    assert not leaked, (
+        f"out-of-scope rules were mapped into the NSA CSI framework: {leaked}"
+    )
