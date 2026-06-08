@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-SANDBOX-SELFDISABLE-001: LLM-settable sandbox-disable parameter (CVE-2026-42074 class)
+
+New **CRITICAL** rule + scanner (`scanners/sandbox_self_disable.py`) flagging
+tool/function JSON schemas and MCP tool descriptors that expose a parameter
+whose name disables or weakens sandboxing/isolation
+(`dangerouslyDisableSandbox`, `disable_sandbox`, `no_sandbox`, `allow_unsafe`,
+`skip_isolation`, …) inside the model-facing `properties` — i.e. a flag the
+LLM, an untrusted principal, can set in any `tool_use` response to turn off the
+sandbox that contains tool execution.
+
+This is the [CVE-2026-42074](https://nvd.nist.gov/vuln/detail/CVE-2026-42074)
+class: **OpenClaude < 0.5.1** shipped `dangerouslyDisableSandbox` as part of
+the BashTool input schema (CWE-284 / CWE-306, CVSS 9.8). Maps to
+**MCP06:2025** (Privilege Escalation), **ASI06** (Unauthorized Capability
+Acquisition) + **ASI04** (Identity & Privilege Abuse).
+
+- Scans JSON-Schema `properties` under the standard tool-schema containers
+  (`inputSchema` / `input_schema` / `parameters`) plus bare schema files;
+  recurses nested object/array/`anyOf` params. Matches on the parameter
+  **name**, not description text (that remains tool-poisoning's job).
+- **Allowlist (pass with note):** a sandbox-control flag declared not
+  LLM-settable — `readOnly: true`, `"x-aak-sandbox-control": "ops-only"`
+  (also `operator-only` / `server-only`), or `"x-llm-settable": false` — is
+  suppressed, since it is asserted to be host-set, not request-set.
+
+Rule count **215 → 216**; scanner modules **69 → 70**; Trust-Boundary category
+**10 → 11**. Version **0.3.27 → 0.3.28**.
+
 ### Changed — NSA MCP Security CSI mapping: coverage-gap audit (17 rules added)
 
 A gap audit of the `nsa-mcp-csi-2026` compliance mapping (originally added in

@@ -4657,6 +4657,37 @@ _r(
     incident_references=["IRONPLATE-2026-04-07"],
 )
 
+_r(
+    "AAK-MCP-SANDBOX-SELFDISABLE-001",
+    "Tool schema exposes an LLM-settable sandbox/isolation-disable parameter",
+    "A tool/function JSON schema or MCP tool descriptor declares a parameter "
+    "whose name disables or weakens sandboxing/isolation (e.g. "
+    "`dangerouslyDisableSandbox`, `disable_sandbox`, `no_sandbox`, "
+    "`allow_unsafe`, `skip_isolation`) inside the schema's `properties` — "
+    "meaning the LLM, an untrusted principal, can set it in any tool_use "
+    "response and turn off the very sandbox that contains tool execution. "
+    "This is the CVE-2026-42074 class (OpenClaude < 0.5.1 exposed "
+    "`dangerouslyDisableSandbox` in the BashTool input schema; CWE-284 / "
+    "CWE-306, CVSS 9.8). A parameter that is genuinely operator-only must "
+    "not live in the model-facing input schema; mark it `readOnly: true` or "
+    "annotate it `\"x-aak-sandbox-control\": \"ops-only\"` (or "
+    "`\"x-llm-settable\": false`) to assert it is set server-side, which "
+    "suppresses this finding.",
+    Severity.CRITICAL,
+    Category.TRUST_BOUNDARY,
+    "Remove the sandbox/isolation-disable parameter from the model-facing "
+    "tool input schema entirely. If a privileged escape hatch is required, "
+    "gate it server-side behind an operator credential — never let it be "
+    "populated from a tool_use argument. If the flag is legitimately set "
+    "only by the host (never the model), mark the property `readOnly: true` "
+    "or annotate it `\"x-aak-sandbox-control\": \"ops-only\"` to document "
+    "that it is not LLM-settable.",
+    sarif_name="ToolSchemaSandboxSelfDisable",
+    cve_references=["CVE-2026-42074"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI06", "ASI04"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

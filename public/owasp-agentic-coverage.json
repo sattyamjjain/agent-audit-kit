@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-05T08:13:23Z",
-  "aak_version": "0.3.27",
-  "rule_count": 215,
+  "last_updated": "2026-06-08T17:58:05Z",
+  "aak_version": "0.3.28",
+  "rule_count": 216,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -870,7 +870,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 34,
+      "rule_density": 35,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1044,6 +1044,14 @@
             "AIS-12",
             "CCC-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-SANDBOX-SELFDISABLE-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-42074"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-NEO4J-001",
@@ -1423,7 +1431,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 26,
+      "rule_density": 27,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1464,6 +1472,14 @@
           "id": "AAK-MCP-015",
           "severity": "critical",
           "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-SANDBOX-SELFDISABLE-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-42074"
+          ],
           "aicm_references": []
         },
         {

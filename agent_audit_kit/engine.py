@@ -87,6 +87,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_stateless_migration", "MCP 2026-07-28 stateless-migration smells (SEP-1442/1359)", []),
     ("eu_ai_act_art15_locale", "EU AI Act Art. 15 multilingual-eval coverage (advisory)", []),
     ("mcp_tunnel", "MCP Tunnels gateway config + credential exposure (Anthropic 2026-05-19 research preview)", []),
+    ("sandbox_self_disable", "Tool-schema sandbox self-disable parameter (CVE-2026-42074)", []),
 ]
 
 
