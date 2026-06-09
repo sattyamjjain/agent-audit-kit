@@ -88,6 +88,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("eu_ai_act_art15_locale", "EU AI Act Art. 15 multilingual-eval coverage (advisory)", []),
     ("mcp_tunnel", "MCP Tunnels gateway config + credential exposure (Anthropic 2026-05-19 research preview)", []),
     ("sandbox_self_disable", "Tool-schema sandbox self-disable parameter (CVE-2026-42074)", []),
+    ("shared_resource_authz", "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)", []),
 ]
 
 

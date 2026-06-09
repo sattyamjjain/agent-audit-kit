@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-08T17:58:05Z",
-  "aak_version": "0.3.28",
-  "rule_count": 216,
+  "last_updated": "2026-06-09T17:21:30Z",
+  "aak_version": "0.3.29",
+  "rule_count": 217,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -107,8 +107,16 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 33,
+      "rule_density": 34,
       "rules": [
+        {
+          "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-44654"
+          ],
+          "aicm_references": []
+        },
         {
           "id": "AAK-ANTHROPIC-SDK-001",
           "severity": "high",
@@ -870,7 +878,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 35,
+      "rule_density": 36,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -880,6 +888,14 @@
             "AIS-04",
             "IAM-05"
           ]
+        },
+        {
+          "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-44654"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-AZURE-MCP-001",

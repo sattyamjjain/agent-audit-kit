@@ -4688,6 +4688,38 @@ _r(
     owasp_agentic_references=["ASI06", "ASI04"],
 )
 
+_r(
+    "AAK-AGENT-SHARED-RES-AUTHZ-001",
+    "Mutating tool on a shared/multi-agent resource lacks a per-actor "
+    "authorization parameter",
+    "A tool/function/MCP descriptor exposes a mutating operation "
+    "(delete / remove / edit / update / overwrite / move) on a file, record, "
+    "or resource that is reachable in a shared or multi-agent context, yet its "
+    "input schema carries no owner / actor / authorization / permission field. "
+    "Any agent that can call the tool can therefore mutate another principal's "
+    "resource — there is nothing in the call surface that scopes the action to "
+    "the caller. This is the CVE-2026-44654 broken-access-control class "
+    "(LibreChat <= 0.8.3: a shared-agent editor could delete file records via "
+    "`DELETE /api/files` that the owner had reused across multiple agents; "
+    "CWE-863 Incorrect Authorization, CVSS 8.1). The shared context is "
+    "inferred from a multi-agent config (an `agents` collection with >1 "
+    "member, or a `shared` / `scope: shared|workspace|team` marker) or from "
+    "shared-resource language in the tool's own name/description.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Add and enforce a per-actor authorization parameter (e.g. `owner_id`, "
+    "`actor`, `on_behalf_of`, `authorization`) and check it server-side so a "
+    "tool call can only mutate resources the calling principal owns. Do not "
+    "rely on the agent to self-restrict. If the resource is genuinely global "
+    "and every agent is authorized to mutate it, annotate the tool "
+    "`\"x-aak-shared-authz\": \"global-ok\"` to document the decision and "
+    "suppress this finding.",
+    sarif_name="SharedResourceMissingActorAuthz",
+    cve_references=["CVE-2026-44654"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI04", "ASI02"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

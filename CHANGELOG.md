@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-AGENT-SHARED-RES-AUTHZ-001: shared-resource mutating op without per-actor authz (CVE-2026-44654 class)
+
+New **HIGH** rule + scanner (`scanners/shared_resource_authz.py`) flagging
+tool/function/MCP descriptors that expose a **mutating** operation
+(delete / remove / edit / update / overwrite / move) on a file/record/resource
+reachable in a **shared or multi-agent** context, when the input schema carries
+**no per-actor authorization field** (owner / actor / authorization /
+permission / `on_behalf_of` / …). Any agent that can call the tool could then
+mutate another principal's resource.
+
+This is the [CVE-2026-44654](https://nvd.nist.gov/vuln/detail/CVE-2026-44654)
+broken-access-control class: **LibreChat <= 0.8.3** let a shared-agent editor
+delete file records via `DELETE /api/files` that the owner had reused across
+multiple agents (CWE-863 Incorrect Authorization, CVSS 8.1). Maps to
+**MCP06:2025** (Privilege Escalation), **ASI04** (Identity & Privilege Abuse) +
+**ASI02** (Tool Misuse).
+
+- Requires **three** signals to fire (low false-positive by design): a mutate
+  **verb _and_ a resource noun** in the tool name/description; a **shared
+  context** — inferred from a multi-agent config (an `agents` collection with
+  >1 member, or a `shared` / `scope: shared|workspace|team|org` marker) or from
+  shared-resource language in the tool's own name/description; **and** the
+  absence of any owner/actor/authorization property in the schema.
+- **Opt-out:** a tool annotated `"x-aak-shared-authz": "global-ok"` (the
+  resource is intentionally global to all agents) is suppressed.
+
+Rule count **216 → 217**; scanner modules **70 → 71**; Trust-Boundary category
+**11 → 12**. Version **0.3.28 → 0.3.29**.
+
 ### Added — AAK-MCP-SANDBOX-SELFDISABLE-001: LLM-settable sandbox-disable parameter (CVE-2026-42074 class)
 
 New **CRITICAL** rule + scanner (`scanners/sandbox_self_disable.py`) flagging
