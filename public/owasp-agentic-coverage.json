@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-09T17:21:30Z",
-  "aak_version": "0.3.29",
-  "rule_count": 217,
+  "last_updated": "2026-06-11T16:02:13Z",
+  "aak_version": "0.3.30",
+  "rule_count": 218,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -107,7 +107,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 34,
+      "rule_density": 35,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -361,6 +361,14 @@
             "AIS-08",
             "IAM-05"
           ]
+        },
+        {
+          "id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-40933"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-TOOL-UNSAFE-EVAL-001",
@@ -1198,7 +1206,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 31,
+      "rule_density": 32,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1339,6 +1347,14 @@
           "id": "AAK-MCP-018",
           "severity": "medium",
           "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-40933"
+          ],
           "aicm_references": []
         },
         {

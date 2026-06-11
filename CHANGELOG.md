@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-STDIO-LAUNCHER-INJECT-001: MCP stdio launcher injection (CVE-2026-40933 class)
+
+New **HIGH** rule + scanner (`scanners/mcp_stdio_launcher.py`) flagging MCP
+**stdio** server definitions (`command` + `args` in a `mcpServers` / `servers`
+block) that either launch a shell-style interpreter (`npx`, `node`, `bash`,
+`sh`, `python`) with a code-execution flag (`-c`, `-e`, `--eval`), or pass a
+non-pinned interpolation token (`${...}` embedded in a larger string,
+`{{...}}`, `%s`) in argv.
+
+This is the [CVE-2026-40933](https://nvd.nist.gov/vuln/detail/CVE-2026-40933)
+class: **Flowise < 3.1.0** unsafely serialised stdio commands in its MCP
+adapter, so an authenticated actor could register a stdio server whose
+allowlisted launcher (`npx`) was combined with `-c` to run arbitrary OS
+commands (CWE-78, CVSS 9.9). Maps to **MCP04:2025** (Command Injection),
+**ASI05** + **ASI02**.
+
+**Why this is not a duplicate** of existing STDIO coverage:
+- `AAK-MCP-002` inspects only the `command` *string* for `sh -c`/`bash -c`
+  wrappers and shell metacharacters — it never examines `args`, so the
+  canonical split form `{"command":"npx","args":["-c","…"]}` was missed.
+- `AAK-MCP-STDIO-CMD-INJ-001..004` are source-code taint analyzers
+  (`StdioServerParameters(command=tainted)`), not `.mcp.json` config detectors.
+- `AAK-FLOWISE-001` is Flowise-package/`.flowise`-config specific.
+
+This rule is the config-level detector that closes that gap. A **standalone**
+env reference (`${VAR}`) is treated as pinned and does not fire; HTTP/SSE MCP
+servers (a `url` with no `command`) are out of scope.
+
+Rule count **217 → 218**; scanner modules **71 → 72**; MCP-Configuration
+category **47 → 48**. Version **0.3.29 → 0.3.30**.
+
 ### Added — AAK-AGENT-SHARED-RES-AUTHZ-001: shared-resource mutating op without per-actor authz (CVE-2026-44654 class)
 
 New **HIGH** rule + scanner (`scanners/shared_resource_authz.py`) flagging

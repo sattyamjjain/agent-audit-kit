@@ -4720,6 +4720,44 @@ _r(
     owasp_agentic_references=["ASI04", "ASI02"],
 )
 
+_r(
+    "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+    "MCP stdio server launches a shell-style interpreter with an exec flag "
+    "or interpolated args",
+    "An MCP stdio server definition (`command` + `args` in a `.mcp.json` / "
+    "`mcpServers` block) launches a shell-style interpreter "
+    "(`npx`, `node`, `bash`, `sh`, `python`) with a code-execution flag "
+    "(`-c`, `-e`, `--eval`), or passes an arg carrying a template / "
+    "interpolation token (`${...}` embedded in a larger string, `{{...}}`, "
+    "`%s`) that is not a pinned static literal. Either shape turns the "
+    "launched process into an arbitrary-code sink the moment the value is "
+    "attacker- or model-influenced. This is the CVE-2026-40933 class "
+    "(Flowise < 3.1.0 unsafely serialised stdio commands in its MCP adapter "
+    "— an authenticated actor could register an stdio server whose "
+    "allowlisted launcher, e.g. `npx`, was combined with `-c` to run "
+    "arbitrary OS commands; CWE-78, CVSS 9.9). Distinct from AAK-MCP-002 "
+    "(which inspects only the `command` string for `sh -c`/`bash -c` "
+    "wrappers and shell metacharacters, never `args`) and from the "
+    "source-code taint rules AAK-MCP-STDIO-CMD-INJ-001..004 (which model "
+    "`StdioServerParameters(command=tainted)` in Python/TS/Java/Rust). A "
+    "standalone env reference (`${VAR}`) is treated as pinned and does not "
+    "fire.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Do not launch interpreters with `-c`/`-e`/`--eval` from an MCP stdio "
+    "definition. Pin `command` to a concrete server executable and pass only "
+    "static, literal `args` (e.g. `[\"--port\", \"8080\"]`). If a value must "
+    "vary, use a standalone env reference (`${VAR}`) resolved by the host — "
+    "never interpolate model- or request-derived strings into the argv. "
+    "Enforce a strict argv allowlist server-side. See AAK-MCP-002 and "
+    "AAK-FLOWISE-001 for related angles on the same RCE class.",
+    sarif_name="McpStdioLauncherInjection",
+    cve_references=["CVE-2026-40933"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI02"],
+    adversa_references=["ADV-INJECT-01"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
