@@ -4055,7 +4055,9 @@ _r(
     "`CodeInterpreterTool(unsafe_mode=True)` drops into a host Python "
     "interpreter where ctypes / os.system are reachable. CVE-2026-2275 "
     "is the canonical sandbox-escape primitive in the CrewAI 0.x chain "
-    "(ThaiCERT 2026-04-02 / CERT/CC VU#221883).",
+    "(ThaiCERT 2026-04-02 / CERT/CC VU#221883; CWE-749, CVSS 9.6 "
+    "CRITICAL per NVD — the Docker-unreachable fallback to SandboxPython "
+    "enables RCE via arbitrary C function calling).",
     Severity.CRITICAL,
     Category.AGENT_CONFIG,
     "Set `unsafe_mode=False` on every CodeInterpreterTool invocation. "
@@ -4075,9 +4077,9 @@ _r(
     "CrewAI JSON loader path traversal",
     "`JSONSearchTool(file_path=...)` / `JSONLoader(path=...)` accepts "
     "an attacker-influenceable path without anchoring to a project "
-    "root. CVE-2026-2285: untrusted JSON-loader path lets the agent "
-    "read arbitrary files (chained with the other three CVEs into "
-    "host RCE).",
+    "root. CVE-2026-2285 (arbitrary local file read, CVSS 7.5 HIGH per "
+    "NVD): untrusted JSON-loader path lets the agent read arbitrary "
+    "files (chained with the other three CVEs into host RCE).",
     Severity.HIGH,
     Category.TOOL_POISONING,
     "Anchor every JSON-loader path with "
@@ -4095,9 +4097,10 @@ _r(
     "CrewAI RagTool / WebsiteSearchTool SSRF",
     "`RagTool(url=...)` / `WebsiteSearchTool(url=...)` accepts a "
     "non-constant URL reachable from an untrusted source without an "
-    "allow-list / private-network guard. CVE-2026-2286: cloud-metadata "
-    "or loopback SSRF feeds back into the agent tool-use loop.",
-    Severity.HIGH,
+    "allow-list / private-network guard. CVE-2026-2286 (CWE-918, "
+    "CVSS 9.8 CRITICAL per NVD): cloud-metadata or loopback SSRF feeds "
+    "back into the agent tool-use loop.",
+    Severity.CRITICAL,
     Category.TRANSPORT_SECURITY,
     "Wrap every RAG / website URL with "
     "`agent_audit_kit.sanitizers.crewai.validate_rag_url(url, "
@@ -4117,8 +4120,9 @@ _r(
     "liveness check (`docker_required=True` is unset and "
     "`require_docker_liveness(client)` is not called). A dead Docker "
     "daemon silently falls back to the host Python interpreter, "
-    "completing the chain to host RCE (CVE-2026-2287).",
-    Severity.HIGH,
+    "completing the chain to host RCE (CVE-2026-2287, CWE-94, "
+    "CVSS 9.8 CRITICAL per NVD).",
+    Severity.CRITICAL,
     Category.AGENT_CONFIG,
     "Either set `docker_required=True` on CodeInterpreterTool or "
     "call `agent_audit_kit.sanitizers.crewai.require_docker_liveness("

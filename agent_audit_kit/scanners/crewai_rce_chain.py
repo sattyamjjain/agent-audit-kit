@@ -33,12 +33,39 @@ _CREWAI_IMPORT_RE = re.compile(
     r"""
     (?:
         from\s+crewai(?:\.\w+)*\s+import\b
-      | import\s+crewai\b
+      | import\s+crewai(?:_tools)?\b
       | from\s+crewai_tools\s+import\b
     )
     """,
     re.VERBOSE,
 )
+
+# Canonical CrewAI tool callees the chain rules key on.
+_CREWAI_TOOL_NAMES = frozenset({
+    "CodeInterpreterTool", "JSONSearchTool", "JSONLoader",
+    "RagTool", "WebsiteSearchTool",
+})
+
+
+def _build_alias_map(tree: ast.AST) -> dict[str, str]:
+    """Map local alias -> canonical CrewAI tool name.
+
+    Covers `from crewai_tools import CodeInterpreterTool as CIT` and
+    `import crewai_tools as ct` (the latter resolves attribute access
+    `ct.CodeInterpreterTool`, which already lands on `.attr`). Only
+    aliases of the canonical tool names are tracked, so unrelated
+    `as` imports are ignored.
+    """
+    alias_map: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            if not (mod == "crewai" or mod.startswith("crewai")):
+                continue
+            for alias in node.names:
+                if alias.name in _CREWAI_TOOL_NAMES and alias.asname:
+                    alias_map[alias.asname] = alias.name
+    return alias_map
 
 # Per-CVE sanitiser detectors. Presence in the same function body
 # suppresses the corresponding finding.
@@ -88,6 +115,19 @@ def _kw_value(call: ast.Call, name: str) -> ast.AST | None:
     return None
 
 
+def _arg_value(call: ast.Call, names: tuple[str, ...], pos: int = 0) -> ast.AST | None:
+    """Return the keyword value for any of ``names``, else the ``pos``-th
+    positional argument. Lets the rule catch both
+    ``RagTool(url=user_url)`` and ``RagTool(user_url)``."""
+    for name in names:
+        val = _kw_value(call, name)
+        if val is not None:
+            return val
+    if len(call.args) > pos and not isinstance(call.args[pos], ast.Starred):
+        return call.args[pos]
+    return None
+
+
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     if not _CREWAI_IMPORT_RE.search(text):
         return []
@@ -97,6 +137,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
         return []
 
     rel = str(path.relative_to(project_root))
+    alias_map = _build_alias_map(tree)
     findings: list[Finding] = []
     fired: set[str] = set()  # which CVE-shapes fired in this file
 
@@ -109,7 +150,8 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             if isinstance(call.func, ast.Attribute):
                 return call.func.attr
             if isinstance(call.func, ast.Name):
-                return call.func.id
+                # Resolve `from crewai_tools import X as Y; Y(...)` aliases.
+                return alias_map.get(call.func.id, call.func.id)
             return ""
 
         def _enclosing_function_body(self, call: ast.Call) -> str:
@@ -148,7 +190,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
 
             # ---- CVE-2026-2285 — JSON loader / search path traversal
             if callee in {"JSONSearchTool", "JSONLoader"}:
-                path_arg = _kw_value(call, "file_path") or _kw_value(call, "path")
+                path_arg = _arg_value(call, ("file_path", "path", "json_path"))
                 if path_arg is not None and not isinstance(path_arg, ast.Constant):
                     if not _GUARD_JSON_RE.search(body):
                         if _TAINT_HINTS_RE.search(body):
@@ -166,7 +208,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
 
             # ---- CVE-2026-2286 — RAG / WebsiteSearch SSRF
             if callee in {"RagTool", "WebsiteSearchTool"}:
-                url_arg = _kw_value(call, "url") or _kw_value(call, "website")
+                url_arg = _arg_value(call, ("url", "website", "web_url"))
                 if url_arg is not None and not isinstance(url_arg, ast.Constant):
                     if not _GUARD_RAG_RE.search(body):
                         if _TAINT_HINTS_RE.search(body):

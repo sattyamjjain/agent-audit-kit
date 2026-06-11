@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — CrewAI chain: NVD severity reconciliation + evasion-gap closures
+
+Audit of the existing CrewAI four-CVE chain rules (CVE-2026-2275/2285/2286/2287,
+CERT/CC VU#221883) against NVD, plus an evasion-gap pass on
+`scanners/crewai_rce_chain.py`. No new rule IDs — this corrects and hardens the
+existing coverage.
+
+- **Severity reconciliation (NVD CVSS):** `AAK-CREWAI-CVE-2026-2286-001` (RAG
+  SSRF, CWE-918) and `AAK-CREWAI-CVE-2026-2287-001` (Docker-liveness fallback,
+  CWE-94) are both **CVSS 9.8 CRITICAL** per NVD — bumped **HIGH → CRITICAL**
+  (they were under-rated, which understated the score penalty and skipped
+  `--fail-on critical` gates). `-2275-001` (CWE-749, 9.6) and `-2285-001`
+  (7.5) confirmed already correct; descriptions enriched with the verified
+  CWE/CVSS.
+- **Evasion-gap closures** in the scanner (all with false-positive guards):
+  - **Positional tool args** — `RagTool(user_url)` / `JSONSearchTool(user_path)`
+    are now detected, not just the `url=`/`file_path=` keyword forms.
+  - **Aliased tool imports** — `from crewai_tools import CodeInterpreterTool as
+    CIT; CIT(unsafe_mode=True)` now resolves via an import-alias map.
+  - **Import gate** — `import crewai_tools` (plain form) now passes the gate
+    (previously only `from crewai_tools import …` did).
+
+A static-literal positional arg and a no-crewai-import file still pass (FP
+guards). Version **0.3.30 → 0.3.31**; rule/scanner counts unchanged.
+
 ### Added — AAK-MCP-STDIO-LAUNCHER-INJECT-001: MCP stdio launcher injection (CVE-2026-40933 class)
 
 New **HIGH** rule + scanner (`scanners/mcp_stdio_launcher.py`) flagging MCP

@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-11T16:02:13Z",
-  "aak_version": "0.3.30",
+  "last_updated": "2026-06-11T16:25:07Z",
+  "aak_version": "0.3.31",
   "rule_count": 218,
   "coverage": [
     {
@@ -929,7 +929,7 @@
         },
         {
           "id": "AAK-CREWAI-CVE-2026-2286-001",
-          "severity": "high",
+          "severity": "critical",
           "cve_references": [
             "CVE-2026-2286"
           ],
@@ -1818,7 +1818,7 @@
         },
         {
           "id": "AAK-CREWAI-CVE-2026-2287-001",
-          "severity": "high",
+          "severity": "critical",
           "cve_references": [
             "CVE-2026-2287"
           ],
