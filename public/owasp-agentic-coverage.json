@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-13T13:35:47Z",
-  "aak_version": "0.3.33",
-  "rule_count": 220,
+  "last_updated": "2026-06-13T13:50:40Z",
+  "aak_version": "0.3.34",
+  "rule_count": 221,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -504,7 +504,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 52,
+      "rule_density": 53,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -668,6 +668,16 @@
           "severity": "critical",
           "cve_references": [
             "CVE-2026-32625"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-HTTP-NOAUTH-SERVER-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-44830",
+            "CVE-2026-44895",
+            "CVE-2026-50287"
           ],
           "aicm_references": []
         },

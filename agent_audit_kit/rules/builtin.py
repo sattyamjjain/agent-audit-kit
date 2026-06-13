@@ -4827,6 +4827,38 @@ _r(
     owasp_agentic_references=["ASI03"],
 )
 
+_r(
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001",
+    "Published MCP HTTP/SSE server exposes an unauthenticated network-bound "
+    "endpoint",
+    "A repository publishes an MCP server over HTTP / SSE / Streamable-HTTP "
+    "(an `/mcp` route handler, or an `SSEServerTransport` / "
+    "`StreamableHTTPServerTransport` / `--http` setup) with no inbound "
+    "authentication marker on the handler, while also binding to all "
+    "interfaces (`0.0.0.0` / `::`) or serving a wildcard "
+    "`Access-Control-Allow-Origin: *`. The result is a mutation-capable RPC "
+    "endpoint, backed by the operator's own tokens, reachable without "
+    "credentials by any network (or, with wildcard CORS, any cross-origin "
+    "browser) peer. This is a recurring 2026 class: GitLab MCP Server "
+    "(CVE-2026-44895), Nocturne Memory (CVE-2026-44830), and AgenticMail "
+    "(CVE-2026-50287) all shipped auth-less HTTP/SSE MCP transports on "
+    "`0.0.0.0` with wildcard CORS. Generalises the Azure-only "
+    "`AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP server (the Azure "
+    "rule still owns Azure-MCP repos; this rule defers to it there).",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Require an inbound credential on every `/mcp` route / SSE handler "
+    "(bearer/JWT/mTLS/API-key middleware) and fail closed when the "
+    "credential is unset — never bypass auth when an `API_TOKEN` env var is "
+    "empty. Bind the listener to `127.0.0.1` (or behind an authenticating "
+    "reverse proxy) instead of `0.0.0.0`, and replace wildcard CORS with an "
+    "explicit origin allowlist (see AAK's wildcard-CORS rule).",
+    sarif_name="McpHttpServerNoAuth",
+    cve_references=["CVE-2026-44895", "CVE-2026-44830", "CVE-2026-50287"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

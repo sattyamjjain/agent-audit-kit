@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-HTTP-NOAUTH-SERVER-001: unauthenticated MCP HTTP/SSE server (2026 no-auth-transport class)
+
+CVE-response backlog item. New **HIGH** rule + scanner
+(`scanners/mcp_http_noauth_server.py`) flagging a repo that publishes an MCP
+server over HTTP/SSE/Streamable-HTTP with **no inbound auth** while binding to
+`0.0.0.0`/`::` or serving wildcard CORS — a mutation-capable, token-backed RPC
+endpoint reachable without credentials.
+
+Generalises the Azure-only `AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP
+server (defers on Azure-MCP repos to avoid double-firing). Also detects the
+auth-bypass-when-token-unset variant. Covers a recurring 2026 shape: **GitLab
+MCP Server (CVE-2026-44895)**, **Nocturne Memory (CVE-2026-44830)**,
+**AgenticMail (CVE-2026-50287)**. Maps to **MCP07:2025** (Insufficient Auth),
+**ASI03**. FP guards: authenticated handler, `127.0.0.1` bind, stdio server,
+and Azure repos all pass.
+
+### CVE-response backlog triage (23 issues closed)
+
+Worked the full open `sla-48h` backlog. One genuine generalizable gap became a
+rule (above, closing the GitLab/Nocturne/AgenticMail no-auth cluster); the rest
+were dispositioned by verified triage — **no fabricated rules**:
+
+- **Already covered by an existing rule/class** (closed with references):
+  path traversal in MCP resource handlers → `AAK-MCP-015` (CVE-2026-9467);
+  wildcard-CORS / DNS-rebind SSE → CORS-wildcard rule + `AAK-DNS-REBIND-*`
+  (CVE-2026-9739); SSRF in MCP tool handlers → `AAK-SSRF-001..005`
+  (CVE-2026-10280, CVE-2026-47250); LangChain deserialize / prompt-pull →
+  `AAK-LANGCHAIN-001..003` + `AAK-LANGCHAIN-PROMPT-LOADER-PATH-001`
+  (CVE-2026-44843, CVE-2026-45134).
+- **OpenClaw runtime authz bugs** → tracked via the `AAK-OPENCLAW-PRIVESC-001`
+  advisory; upgrade OpenClaw (CVE-2026-35674, -53814, -53818, -53820).
+- **Out of static scope / vendor-runtime** (upgrade advisory, no scannable
+  user-code pattern): Linux-kernel dm-ioctl (CVE-2026-46294, not MCP),
+  Spring-AI/Java path-traversal & DCR-SSRF (CVE-2026-41863, -45609),
+  n8n telemetry + multi-tenant fallback (CVE-2026-45582, -45707),
+  OpenClaude OAuth-state logic bug (CVE-2026-42073), Roslyn .NET DLL load
+  (CVE-2026-45555), LibreChat viewer-secret-exposure & IDOR-spread
+  (CVE-2026-44653, CVE-2026-31942), claude-code-cache-fix statusline
+  (CVE-2026-45136), mcp-google-workspace (CVE-2026-10277).
+- **CVE-2026-44450** (Lumiverse args-injection, 9.9) closed earlier as covered
+  by `AAK-MCP-STDIO-CMD-INJ-002` + `AAK-MCP-STDIO-LAUNCHER-INJECT-001`.
+
+Rule count **220 → 221**; scanner modules **74 → 75**. Version **0.3.33 →
+0.3.34**.
+
 ### Added — AAK-MCP-ENV-PLACEHOLDER-EXFIL-001: ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)
 
 CVE-response cycle item (closes #300). New **CRITICAL** rule + scanner
