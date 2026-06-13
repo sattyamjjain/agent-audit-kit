@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-11T16:25:07Z",
-  "aak_version": "0.3.31",
-  "rule_count": 218,
+  "last_updated": "2026-06-13T13:21:02Z",
+  "aak_version": "0.3.32",
+  "rule_count": 219,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -107,7 +107,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 35,
+      "rule_density": 36,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -380,6 +380,14 @@
             "AIS-08",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-46519"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-TUNNEL-001",
@@ -886,7 +894,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 36,
+      "rule_density": 37,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1074,6 +1082,14 @@
           "severity": "critical",
           "cve_references": [
             "CVE-2026-42074"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-46519"
           ],
           "aicm_references": []
         },

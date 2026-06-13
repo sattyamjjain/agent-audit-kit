@@ -90,6 +90,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("sandbox_self_disable", "Tool-schema sandbox self-disable parameter (CVE-2026-42074)", []),
     ("shared_resource_authz", "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)", []),
     ("mcp_stdio_launcher", "MCP stdio launcher-injection config (CVE-2026-40933)", []),
+    ("mcp_toolgate_asymmetry", "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)", []),
 ]
 
 

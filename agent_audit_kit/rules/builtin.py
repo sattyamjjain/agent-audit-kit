@@ -4762,6 +4762,39 @@ _r(
     adversa_references=["ADV-INJECT-01"],
 )
 
+_r(
+    "AAK-MCP-TOOLGATE-ASYMMETRY-001",
+    "MCP tool gate enforced in tools/list but not tools/call",
+    "An MCP server gates tools by an allowlist / read-only / "
+    "non-destructive control (e.g. `ALLOWED_TOOLS`, "
+    "`ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`, a `*READONLY*` / "
+    "`*NON_DESTRUCTIVE*` env var or config) and applies that check in the "
+    "tool-discovery handler (`tools/list` / `list_tools` / "
+    "`ListToolsRequestSchema`) but NOT in the execution handler "
+    "(`tools/call` / `call_tool` / `CallToolRequestSchema`). A client that "
+    "skips discovery and calls a hidden tool name directly bypasses the "
+    "control entirely — the gate is cosmetic. This is the CVE-2026-46519 "
+    "class (mcp-server-kubernetes < 3.6.0 documented three env vars as "
+    "access controls but enforced them only at the discovery layer; "
+    "CWE-863 Incorrect Authorization, CVSS 8.8). This is an "
+    "enforcement-layer asymmetry — distinct from AAK-MCPWN-001, which is a "
+    "transport-middleware route asymmetry (`/mcp_message` vs `/mcp`). Do "
+    "not conflate the two.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Enforce the same allowlist / read-only / non-destructive check inside "
+    "the `tools/call` (execution) handler, not only in `tools/list` "
+    "(discovery). Authorization must gate the action, not just its "
+    "visibility — a denied tool must raise in the call path even when the "
+    "client never listed it. Centralise the check (e.g. a shared "
+    "`assert_tool_allowed(name)` called at the top of the call handler) so "
+    "discovery and execution cannot drift apart.",
+    sarif_name="McpToolGateAsymmetry",
+    cve_references=["CVE-2026-46519"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI04", "ASI02"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

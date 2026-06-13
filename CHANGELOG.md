@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-TOOLGATE-ASYMMETRY-001: tools/list-vs-tools/call enforcement asymmetry (CVE-2026-46519)
+
+CVE-response cycle item. New **HIGH** rule + scanner
+(`scanners/mcp_toolgate_asymmetry.py`) flagging an MCP server that gates tools
+by an allowlist / read-only / non-destructive control (e.g. `ALLOWED_TOOLS`,
+`ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`, a `*READONLY*` / `*NON_DESTRUCTIVE*` env
+var) and applies that check in the **discovery** handler (`tools/list` /
+`list_tools` / `ListToolsRequestSchema`) but NOT in the **execution** handler
+(`tools/call` / `call_tool` / `CallToolRequestSchema`). A client that calls a
+hidden tool name directly bypasses the gate.
+
+This is the [CVE-2026-46519](https://nvd.nist.gov/vuln/detail/CVE-2026-46519)
+class: **mcp-server-kubernetes < 3.6.0** documented three env vars as access
+controls but enforced them only at the discovery layer (CWE-863 Incorrect
+Authorization, CVSS 8.8). Maps to **MCP06:2025** (Privilege Escalation),
+**ASI04** + **ASI02**.
+
+- **Python** is analysed with stdlib `ast` (precise per-handler bodies, so
+  comments cannot mask the gate); **TS/JS** uses region-sliced regex with
+  comment-stripping (a `// TODO: add readOnly check` comment can't create a
+  false negative).
+- This is an **enforcement-layer asymmetry** — explicitly distinct from
+  `AAK-MCPWN-001` (transport-middleware *route* asymmetry, `/mcp_message` vs
+  `/mcp`, CVE-2026-33032) and from the stateless-migration smells. Not
+  collapsed.
+- FP guards: gate-in-both-handlers passes; no-gate-anywhere passes;
+  discovery-only (no call handler) passes.
+
+Rule count **218 → 219**; scanner modules **72 → 73**; MCP-Configuration
+category **48 → 49**. Version **0.3.31 → 0.3.32**.
+
 ### Changed — CrewAI chain: NVD severity reconciliation + evasion-gap closures
 
 Audit of the existing CrewAI four-CVE chain rules (CVE-2026-2275/2285/2286/2287,
