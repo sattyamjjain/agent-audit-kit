@@ -64,7 +64,12 @@ jobs:
           # - agent_audit_kit/data      threat-corpus data files — payload
           #                             regexes / FHI suffix tokens are
           #                             literally the patterns rules match.
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data'
+          # - agent_audit_kit/scanners/mcp_env_placeholder_exfil.py
+          #                             scanner whose docstring + MCP-context
+          #                             gate regex embed the ${VAR}/process.env
+          #                             sink it detects — self-FP on
+          #                             AAK-MCP-ENV-PLACEHOLDER-EXFIL-001.
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py'
           comment-on-pr: 'true'
           fingerprint-strategy: 'auto'
 
@@ -81,7 +86,7 @@ jobs:
           fail-on: 'critical'
           format: 'sarif'
           upload-sarif: 'false'  # avoid double-upload colliding with default-scan
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data'
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py'
           preset: 'mcp-ox-2026-04'
           comment-on-pr: 'false'  # default-scan already posts the sticky comment
           fingerprint-strategy: 'auto'
