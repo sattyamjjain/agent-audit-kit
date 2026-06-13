@@ -10,7 +10,7 @@ file an issue and we will correct it within 48 hours.
 
 | | agent-audit-kit | Microsoft AGT | Snyk Agent Scan (ex Invariant) | Semgrep Multimodal SAST | Lakera Guard |
 |---|---|---|---|---|---|
-| License | Apache 2.0 | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
+| License | MIT | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
 | Scope | Static scanner + compliance evidence | Runtime governance (policy engine + mesh) | Static + runtime (post-acquisition) | Multimodal SAST | Runtime guardrail |
 | Account / cloud required | No | No (but Azure-native paths) | Yes | Optional | Yes |
 | Cloud round-trip | No | No | Yes (findings leave your repo) | Optional | Yes |
@@ -18,7 +18,7 @@ file an issue and we will correct it within 48 hours.
 | Regional / US-state compliance | Yes (India DPDP, Singapore, Alabama, Tennessee) | No | No | No | No |
 | Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No (proprietary) | No | No |
 | Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No (multi-model analysis) | Partial | No |
-| Public 48h CVE-to-rule SLA | **Yes** (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
+| Public CVE-to-rule ledger | **Yes** (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
 | MCP Security Index / leaderboard | **Yes** (weekly, 500+ servers) | No | No | No | No |
 | Pin + drift verification of tool surface | **Yes** | Yes (via Agent Runtime rings) | No | No | No |
 | OWASP Agentic Top 10 coverage | 10/10 | 10/10 | Partial | Partial | Partial |
@@ -49,7 +49,7 @@ different layer:
 Use both: `agent-audit-kit` tells an auditor your design is sound;
 Microsoft AGT tells them your runtime actually behaved. Differentiation
 is the compliance-evidence PDF stack (EU/US state-by-state), the
-**48h CVE-to-rule SLA** with a public ledger, the signed rule bundle,
+**public CVE-to-rule ledger**, the signed rule bundle,
 and the MCP Security Index leaderboard — none of which are AGT goals.
 
 Microsoft AGT ships Python / TypeScript / Rust / Go / .NET. Integrations
@@ -75,13 +75,13 @@ competing.
   ToxicSkills recall numbers (claimed 90–100%) are out of reach for a
   deterministic scanner. If you need semantic coverage on skills you
   don't author, you want both: Snyk for that and agent-audit-kit for
-  compliance evidence + pin/verify + CVE SLA.
+  compliance evidence + pin/verify + a public CVE-to-rule ledger.
 
 - **Hosted dashboards.** We ship SARIF for GitHub Security tab. If you
   want a hosted triage dashboard, a commercial product is easier.
 
-- **Vulnerability research.** We ship detection within 48h of a public
-  CVE. We do NOT originate CVE research — that's Invariant, Palo Alto
+- **Vulnerability research.** We ship detection for disclosed MCP CVEs on a
+  best-effort basis, tracked in a public ledger. We do NOT originate CVE research — that's Invariant, Palo Alto
   Unit 42, HiddenLayer, Check Point, etc.
 
 ## When to pick agent-audit-kit
@@ -115,7 +115,7 @@ plus Semgrep's Multimodal SAST.
 
 What's **empty** in the category: compliance evidence mapped to
 specific regulatory articles; deterministic reproducibility; a public
-CVE-to-rule SLA; a pinning + drift primitive; a public leaderboard.
+CVE-to-rule ledger; a pinning + drift primitive; a public leaderboard.
 agent-audit-kit occupies that space.
 
 Last reviewed: 2026-04-18.

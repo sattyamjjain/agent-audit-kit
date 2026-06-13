@@ -4,7 +4,7 @@
 
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent | Agent Audit | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| **Rules** | 74 | ~10 | ~15 | 57 | N/A (runtime) |
+| **Rules** | 221 | ~10 | ~15 | 57 | N/A (runtime) |
 | MCP config scanning | Yes | No | Yes | No | No |
 | Hook injection detection | Yes | No | No | No | No |
 | Trust boundary analysis | Yes | No | No | No | Yes |
@@ -18,7 +18,7 @@
 | Multi-agent discovery | Yes | No | Yes | No | No |
 | OWASP Agentic Top 10 | 10/10 | 0/10 | Partial | 10/10 | 10/10 |
 | OWASP MCP Top 10 | 10/10 | Partial | Partial | 0/10 | 0/10 |
-| Compliance frameworks | 5 | 0 | 0 | 0 | 3 |
+| Compliance frameworks | 12 | 0 | 0 | 0 | 3 |
 | SARIF output | Yes | No | Yes | No | No |
 | Auto-fix mode | Yes | No | No | No | No |
 | Security scoring | Yes | No | No | No | No |

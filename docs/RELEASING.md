@@ -45,7 +45,7 @@ RULES=$(python3 -c "from agent_audit_kit import RULE_COUNT; print(RULE_COUNT)")
 # README claim, not `len(FRAMEWORKS)`, for the description string.
 FRAMEWORKS=$(grep -oE 'Compliance mapping\*\* \([0-9]+ frameworks' README.md | grep -oE '[0-9]+')
 gh repo edit sattyamjjain/agent-audit-kit \
-  --description "Static scanner for MCP-connected AI agent pipelines — ${RULES} rules across 11 categories, ${FRAMEWORKS} compliance frameworks, OWASP Agentic 10/10 + MCP 10/10, GitHub Action, SARIF, 48h CVE-to-rule SLA."
+  --description "Static scanner for MCP-connected AI agent pipelines — ${RULES} rules across 11 categories, ${FRAMEWORKS} compliance frameworks, OWASP Agentic 10/10 + MCP 10/10, GitHub Action, SARIF, public CVE-to-rule ledger."
 ```
 
 This drift was observed at v0.3.15 ship time: the description still

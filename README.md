@@ -335,7 +335,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Regional frameworks (IN/SG/AL/TN) | **Yes** | No | No | No |
 | Sigstore-signed rule bundle | **Yes** | SLSA provenance | No | No |
 | CycloneDX + SPDX SBOM output | **Yes** | No | No | No |
-| Public 48h CVE-to-rule SLA | **Yes** | No | No | No |
+| Public CVE-to-rule ledger | **Yes** | No | No | No |
 | Public grade leaderboard | **Yes** (MCP Security Index) | No | No | No |
 | Pin + drift verification | **Yes** | Yes (runtime rings) | No | No |
 | Auto-fix CVE dependency bumps | **Yes** (`fix --cve`) | No | No | No |
@@ -376,9 +376,9 @@ Public leaderboard of MCP servers we scan weekly:
 - **90-day coordinated disclosure** before anything lands on a public card — see [`docs/disclosure-policy.md`](docs/disclosure-policy.md)
 - Maintainer-fix earlier gets published the day the fix lands, with credit
 
-## AAK Response SLA
+## CVE Response
 
-We publicly commit to shipping rule coverage within **48 hours** of any disclosed MCP CVE. The ledger is [`CHANGELOG.cves.md`](CHANGELOG.cves.md) and a [GitHub Action](.github/workflows/cve-watcher.yml) watches NVD's MCP keyword feed every 6 hours.
+AgentAuditKit tracks newly disclosed MCP CVEs and ships rule coverage on a best-effort basis, recorded in a public ledger ([`CHANGELOG.cves.md`](CHANGELOG.cves.md)). A [GitHub Action](.github/workflows/cve-watcher.yml) watches NVD's MCP keyword feed every 6 hours and files a tracking issue for each new disclosure.
 
 ## Supply chain
 
@@ -403,9 +403,9 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # 504 tests
+pytest -v                          # 1,100+ tests
 ruff check .                       # Lint
-mypy agent_audit_kit/              # Type check (52 source files, 0 errors)
+mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan
 ```
 

@@ -24,7 +24,7 @@ jobs:
 
       # Option 1: Use the GitHub Action (recommended)
       - name: Run AgentAuditKit
-        uses: sattyamjjain/agent-audit-kit@v0.2.0
+        uses: sattyamjjain/agent-audit-kit@v0.3.34
         with:
           fail-on: high          # Fail the build on high+ severity findings
           format: sarif          # Output SARIF for GitHub Security tab

@@ -2,20 +2,22 @@
 
 ## Summary
 
-| Category | Rules | IDs |
-|----------|-------|-----|
-| MCP Configuration | 10 | AAK-MCP-001 to 010 |
-| Hook Injection | 9 | AAK-HOOK-001 to 009 |
-| Trust Boundary | 7 | AAK-TRUST-001 to 007 |
-| Secret Exposure | 9 | AAK-SECRET-001 to 009 |
-| Supply Chain | 6 | AAK-SUPPLY-001 to 006 |
-| Agent Config | 5 | AAK-AGENT-001 to 005 |
-| Tool Poisoning | 6+3 | AAK-POISON-001 to 006, AAK-RUGPULL-001 to 003 |
-| Taint Analysis | 8 | AAK-TAINT-001 to 008 |
-| Transport Security | 4 | AAK-TRANSPORT-001 to 004 |
-| A2A Protocol | 4 | AAK-A2A-001 to 004 |
-| Legal Compliance | 3 | AAK-LEGAL-001 to 003 |
-| **Total** | **74** | |
+| Category | Rules |
+|----------|-------|
+| MCP Configuration | 50 |
+| Supply Chain | 40 |
+| Tool Poisoning | 26 |
+| Secret Exposure | 18 |
+| Agent Config | 15 |
+| A2A Protocol | 13 |
+| Trust Boundary | 12 |
+| Legal Compliance | 12 |
+| Hook Injection | 12 |
+| Taint Analysis | 12 |
+| Transport Security | 11 |
+| **Total** | **221** |
+
+_Counts are generated from the rule registry; run `agent-audit-kit export-rules` for the authoritative machine-readable list._
 
 ## Full Rule List
 

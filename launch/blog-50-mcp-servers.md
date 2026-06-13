@@ -18,7 +18,7 @@ We used AgentAuditKit's built-in benchmark crawler (`benchmarks/crawler.py`) to:
 
 1. Search the GitHub API for public `.mcp.json` files containing `mcpServers`
 2. Download 47 valid JSON configs from distinct repositories (3 were non-JSON templates)
-3. Run all 77 rules across 13 scanner modules against each config
+3. Run all 221 rules across 75 scanner modules against each config
 4. Aggregate the findings by severity and category
 
 The scan ran fully offline — zero network calls during analysis.
@@ -148,4 +148,4 @@ GitHub: [sattyamjjain/agent-audit-kit](https://github.com/sattyamjjain/agent-aud
 
 ---
 
-*AgentAuditKit is MIT licensed, runs fully offline, and the only runtime dependencies are click and pyyaml. 77 rules, 13 scanners, 452 tests at 90% coverage.*
+*AgentAuditKit is MIT licensed, runs fully offline, and the only runtime dependencies are click and pyyaml. 221 rules, 75 scanners, 1,100+ tests.*

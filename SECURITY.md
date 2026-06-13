@@ -30,7 +30,7 @@ We will coordinate disclosure with you. If you want credit, we will include your
 
 | Version | Supported |
 |---------|-----------|
-| Latest release (0.2.x) | Yes |
+| Latest release (0.3.x) | Yes |
 | Older releases | No |
 
 Only the latest release receives security updates. We recommend always running the most recent version.

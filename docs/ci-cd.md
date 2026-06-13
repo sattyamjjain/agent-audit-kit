@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: user/agent-audit-kit@v0.2.0
+      - uses: sattyamjjain/agent-audit-kit@v0.3.34
         with:
           severity: low
           fail-on: high
