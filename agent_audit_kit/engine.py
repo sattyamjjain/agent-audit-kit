@@ -91,6 +91,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("shared_resource_authz", "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)", []),
     ("mcp_stdio_launcher", "MCP stdio launcher-injection config (CVE-2026-40933)", []),
     ("mcp_toolgate_asymmetry", "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)", []),
+    ("mcp_env_placeholder_exfil", "MCP ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)", []),
 ]
 
 

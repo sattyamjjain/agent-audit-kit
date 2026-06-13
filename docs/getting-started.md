@@ -51,7 +51,7 @@ Add to `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.32
+    rev: v0.3.33
     hooks:
       - id: agent-audit-kit
 ```

