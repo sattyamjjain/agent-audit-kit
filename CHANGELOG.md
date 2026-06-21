@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — AAK-MCP-HTTP-NOAUTH-SERVER-001 extended to the launch surface ([CVE-2026-23744](https://nvd.nist.gov/vuln/detail/CVE-2026-23744))
+
+CVE-response cycle item. **Extended the existing no-auth-transport rule** (not a
+new duplicate — anti-duplicate check below) to flag the *launch* surface, where
+an MCP server / the MCP Inspector binds a non-loopback interface with no auth:
+
+- **MCP config files** — `mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml`
+  `command`/`args` declaring `--host 0.0.0.0` / `::` / a routable IP.
+- **Docker** — `--host 0.0.0.0` and `-p 0.0.0.0:` publishes in
+  `Dockerfile` / `docker-compose*.yml`.
+- **MCP Inspector / FastMCP startup args** — `npx @modelcontextprotocol/inspector
+  --host 0.0.0.0` with no `MCP_PROXY_AUTH_TOKEN` / `--token` / `requireAuth`, or
+  with the `DANGEROUSLY_OMIT_AUTH` kill-switch set (overrides any token marker).
+
+`CVE-2026-23744` (MCP Inspector, CVSS 9.8) is the motivating exemplar of the
+launch-bind variant; Censys counted ~12,520 MCP services exposed on the public
+internet in this shape. The rule already covered server *source* binding
+`0.0.0.0` / wildcard CORS (GitLab/Nocturne/AgenticMail). Maps **CWE-306**,
+**MCP07:2025**, **ASI03**. FP guards: 127.0.0.1 + token, `--require-auth`, and
+non-MCP Docker/compose files with `0.0.0.0` all pass.
+
+**Anti-duplicate check (G9):** `rg -i "0.0.0.0|bind|CWE-306|unauthenticated"`
+over `agent_audit_kit/rules/` matched the pre-existing
+`AAK-MCP-HTTP-NOAUTH-SERVER-001` (0.0.0.0 + no-auth, source-only). Per G9 the new
+config/Docker/inspector patterns were **added to that rule + scanner**, not filed
+as a separate `mcp_exposed_no_auth` rule. Rule count unchanged (**222**).
+
+Version **0.3.35 → 0.3.36**.
+
 ### Added — AAK-LLM-SQL-RCE-001: LLM-generated SQL on an RCE-capable DB role ([CVE-2026-25879](https://nvd.nist.gov/vuln/detail/CVE-2026-25879))
 
 CVE-response cycle item. New **CRITICAL** rule + scanner

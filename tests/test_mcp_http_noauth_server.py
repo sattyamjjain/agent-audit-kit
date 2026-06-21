@@ -8,6 +8,10 @@ endpoint to the network. GitLab MCP (CVE-2026-44895), Nocturne Memory
 Fixtures pin the contract: no-auth + 0.0.0.0 / wildcard-CORS FAILS; an
 authenticated server PASSES; a 127.0.0.1-bound server PASSES; a stdio (no HTTP)
 server PASSES; Azure-MCP repos defer to AAK-AZURE-MCP-NOAUTH-001.
+
+The rule also covers the *launch* surface (CVE-2026-23744 MCP Inspector class):
+MCP config files / Docker / inspector startup args binding a non-loopback
+interface with no auth FAIL; a 127.0.0.1 + token config PASSES.
 """
 
 from __future__ import annotations
@@ -33,6 +37,8 @@ def test_rule_is_registered() -> None:
     rule = RULES[RULE_ID]
     assert rule.severity.value == "high"
     assert "CVE-2026-44895" in rule.cve_references
+    assert "CVE-2026-23744" in rule.cve_references  # MCP Inspector launch-bind exemplar
+    assert "CWE-306" in rule.description
     assert "MCP07:2025" in rule.owasp_mcp_references
 
 
@@ -158,3 +164,90 @@ httpServer.listen(3000, "0.0.0.0");
 ''')
     findings, _ = scan(tmp_path)
     assert not _hits(findings), "Azure repo must defer to AAK-AZURE-MCP-NOAUTH-001"
+
+
+# --------------------------------------------------------------------------
+# Launch surface — config / Docker / inspector (CVE-2026-23744 class).
+# --------------------------------------------------------------------------
+
+
+def test_mcp_json_inspector_0000_no_auth_is_flagged(tmp_path: Path) -> None:
+    """mcp.json launching the MCP Inspector bound to 0.0.0.0 with no auth."""
+    _write(tmp_path, "mcp.json", (
+        '{"mcpServers": {"fs": {"command": "npx", "args": '
+        '["@modelcontextprotocol/inspector", "--host", "0.0.0.0", '
+        '"--port", "6274"]}}}'
+    ))
+    findings, scanned = scan(tmp_path)
+    assert "mcp.json" in scanned
+    assert _hits(findings), f"inspector --host 0.0.0.0 + no auth must fire {RULE_ID}"
+
+
+def test_claude_desktop_config_routable_host_is_flagged(tmp_path: Path) -> None:
+    _write(tmp_path, "claude_desktop_config.json", (
+        '{"mcpServers": {"srv": {"command": "fastmcp", "args": '
+        '["run", "--transport", "sse", "--host", "203.0.113.10"]}}}'
+    ))
+    findings, _ = scan(tmp_path)
+    assert _hits(findings), "routable (non-loopback) host bind + no auth must fire"
+
+
+def test_docker_compose_bind_all_no_auth_is_flagged(tmp_path: Path) -> None:
+    _write(tmp_path, "docker-compose.yml", '''
+services:
+  mcp:
+    image: my/mcp-server
+    command: fastmcp run --transport streamable-http --host 0.0.0.0
+    ports:
+      - "0.0.0.0:8000:8000"
+''')
+    findings, _ = scan(tmp_path)
+    assert _hits(findings), "docker compose 0.0.0.0 MCP bind + no auth must fire"
+
+
+def test_inspector_dangerously_omit_auth_is_flagged(tmp_path: Path) -> None:
+    """Inspector kill-switch fires even though a token env var is present."""
+    _write(tmp_path, "Dockerfile", '''
+FROM node:20
+ENV DANGEROUSLY_OMIT_AUTH=true
+ENV MCP_PROXY_AUTH_TOKEN=set-but-ignored
+CMD ["npx", "@modelcontextprotocol/inspector", "--host", "0.0.0.0"]
+''')
+    findings, _ = scan(tmp_path)
+    assert _hits(findings), "DANGEROUSLY_OMIT_AUTH overrides the token marker"
+
+
+def test_config_localhost_with_token_passes(tmp_path: Path) -> None:
+    """127.0.0.1 bind AND a token -> safe config, must pass."""
+    _write(tmp_path, "safe.mcp.yaml", '''
+mcpServers:
+  fs:
+    command: fastmcp
+    args: ["run", "--host", "127.0.0.1", "--port", "6274", "--token", "s3cr3t"]
+''')
+    findings, _ = scan(tmp_path)
+    assert not _hits(findings), "127.0.0.1 + token config must pass"
+
+
+def test_config_bind_all_with_auth_passes(tmp_path: Path) -> None:
+    """0.0.0.0 but an explicit auth token on the inspector -> safe."""
+    _write(tmp_path, "mcp.json", (
+        '{"mcpServers": {"fs": {"command": "npx", "args": '
+        '["@modelcontextprotocol/inspector", "--host", "0.0.0.0"], '
+        '"env": {"MCP_PROXY_AUTH_TOKEN": "abc123"}}}}'
+    ))
+    findings, _ = scan(tmp_path)
+    assert not _hits(findings), "0.0.0.0 + auth token must pass"
+
+
+def test_non_mcp_config_with_0000_passes(tmp_path: Path) -> None:
+    """A plain Docker/compose file with 0.0.0.0 but no MCP context must pass."""
+    _write(tmp_path, "docker-compose.yml", '''
+services:
+  web:
+    image: nginx
+    ports:
+      - "0.0.0.0:80:80"
+''')
+    findings, _ = scan(tmp_path)
+    assert not _hits(findings), "no MCP context -> must not fire"

@@ -4844,17 +4844,31 @@ _r(
     "(CVE-2026-50287) all shipped auth-less HTTP/SSE MCP transports on "
     "`0.0.0.0` with wildcard CORS. Generalises the Azure-only "
     "`AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP server (the Azure "
-    "rule still owns Azure-MCP repos; this rule defers to it there).",
+    "rule still owns Azure-MCP repos; this rule defers to it there). "
+    "Beyond server source, this also flags the launch surface: MCP config "
+    "files (`mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml` "
+    "`command`/`args`), Docker `--host 0.0.0.0` / `-p 0.0.0.0:` publishes, "
+    "and MCP Inspector / FastMCP startup args that bind a non-loopback "
+    "interface (`0.0.0.0` / `::` / a routable IP) with no token / "
+    "`requireAuth`, or with the Inspector kill-switch `DANGEROUSLY_OMIT_AUTH` "
+    "set. CVE-2026-23744 (MCP Inspector, CVSS 9.8) is the motivating exemplar "
+    "of the launch-bind variant; Censys counted ~12,520 MCP services exposed "
+    "on the public internet in this shape. CWE-306 (Missing Authentication "
+    "for Critical Function).",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Require an inbound credential on every `/mcp` route / SSE handler "
     "(bearer/JWT/mTLS/API-key middleware) and fail closed when the "
     "credential is unset — never bypass auth when an `API_TOKEN` env var is "
     "empty. Bind the listener to `127.0.0.1` (or behind an authenticating "
-    "reverse proxy) instead of `0.0.0.0`, and replace wildcard CORS with an "
-    "explicit origin allowlist (see AAK's wildcard-CORS rule).",
+    "reverse proxy) instead of `0.0.0.0`, never pass `--host 0.0.0.0` to the "
+    "MCP Inspector / FastMCP without a token, never set "
+    "`DANGEROUSLY_OMIT_AUTH`, and replace wildcard CORS with an explicit "
+    "origin allowlist (see AAK's wildcard-CORS rule).",
     sarif_name="McpHttpServerNoAuth",
-    cve_references=["CVE-2026-44895", "CVE-2026-44830", "CVE-2026-50287"],
+    cve_references=[
+        "CVE-2026-44895", "CVE-2026-44830", "CVE-2026-50287", "CVE-2026-23744",
+    ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
 )

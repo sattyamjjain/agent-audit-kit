@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-21T14:18:08Z",
-  "aak_version": "0.3.35",
+  "last_updated": "2026-06-21T14:44:19Z",
+  "aak_version": "0.3.36",
   "rule_count": 222,
   "coverage": [
     {
@@ -683,6 +683,7 @@
           "id": "AAK-MCP-HTTP-NOAUTH-SERVER-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-23744",
             "CVE-2026-44830",
             "CVE-2026-44895",
             "CVE-2026-50287"
