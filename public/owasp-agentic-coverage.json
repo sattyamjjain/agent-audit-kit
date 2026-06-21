@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-21T15:10:50Z",
-  "aak_version": "0.3.38",
+  "last_updated": "2026-06-21T16:09:34Z",
+  "aak_version": "0.3.39",
   "rule_count": 224,
   "coverage": [
     {
@@ -694,6 +694,8 @@
             "CVE-2026-23744",
             "CVE-2026-44830",
             "CVE-2026-44895",
+            "CVE-2026-48989",
+            "CVE-2026-49257",
             "CVE-2026-50287"
           ],
           "aicm_references": []

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — AAK-MCP-HTTP-NOAUTH-SERVER-001 now anchors mcp-pinot + Windows-MCP ([CVE-2026-49257](https://nvd.nist.gov/vuln/detail/CVE-2026-49257), [CVE-2026-48989](https://nvd.nist.gov/vuln/detail/CVE-2026-48989))
+
+CVE-response cycle item. **Extended the existing unauthenticated-HTTP-transport
+rule** (not a new duplicate — anti-duplicate check below) with two named 2026
+instances of the exact 0.0.0.0 / no-auth / wildcard-CORS class it already
+detects:
+
+- **CVE-2026-49257** — mcp-pinot ≤ 3.0.1 (CVSS 10.0, CWE-306) defaults to an
+  HTTP MCP server bound to `0.0.0.0:8080` with no authentication, exposing SQL
+  execution as a confused deputy.
+- **CVE-2026-48989** — Windows-MCP < 0.7.5 (CVSS 8.9, CWE-306) exposed the MCP
+  control plane over HTTP with no auth while enabling wildcard CORS.
+
+Both CVEs added to the rule's `cve_references` + description exemplars; new
+fixtures pin the mcp-pinot (`0.0.0.0:8080` no-auth) and Windows-MCP (wildcard
+CORS) shapes, plus a SARIF-fingerprint-stability test. No detection-engine
+changes were needed — the existing source + config arms already fire on both.
+
+**Anti-duplicate check:** `rg -i "wildcard CORS|0.0.0.0|no.?auth|unauthenticated"`
+over `agent_audit_kit/rules/builtin.py` matched the pre-existing
+`AAK-MCP-HTTP-NOAUTH-SERVER-001` (HTTP/SSE/Streamable-HTTP bound `0.0.0.0`/`::`
+or wildcard CORS, no auth — CWE-306). Per the repo's extend-don't-duplicate
+discipline the two CVEs were **added to that rule**, not filed as a separate
+`AAK-MCP-*` rule (a near-identical rule would double-fire). Rule count unchanged
+(**224**).
+
+Version **0.3.38 → 0.3.39**.
+
 ### Added — AAK-MCP-ARGV-TOCTOU-001: argv rebuilt after allowlist approval before spawn ([CVE-2026-53822](https://nvd.nist.gov/vuln/detail/CVE-2026-53822))
 
 CVE-response cycle item. New **HIGH** rule + scanner (`scanners/argv_toctou.py`)

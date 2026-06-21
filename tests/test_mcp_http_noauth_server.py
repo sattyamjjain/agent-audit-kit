@@ -16,8 +16,11 @@ interface with no auth FAIL; a 127.0.0.1 + token config PASSES.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+from agent_audit_kit.models import ScanResult
+from agent_audit_kit.output.sarif import format_results
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.mcp_http_noauth_server import scan
 
@@ -38,6 +41,8 @@ def test_rule_is_registered() -> None:
     assert rule.severity.value == "high"
     assert "CVE-2026-44895" in rule.cve_references
     assert "CVE-2026-23744" in rule.cve_references  # MCP Inspector launch-bind exemplar
+    assert "CVE-2026-49257" in rule.cve_references  # mcp-pinot 0.0.0.0:8080 no-auth
+    assert "CVE-2026-48989" in rule.cve_references  # Windows-MCP wildcard CORS
     assert "CWE-306" in rule.description
     assert "MCP07:2025" in rule.owasp_mcp_references
 
@@ -251,3 +256,70 @@ services:
 ''')
     findings, _ = scan(tmp_path)
     assert not _hits(findings), "no MCP context -> must not fire"
+
+
+# --------------------------------------------------------------------------
+# Named 2026 instances: mcp-pinot (CVE-2026-49257) + Windows-MCP (CVE-2026-48989)
+# --------------------------------------------------------------------------
+
+
+def test_mcp_pinot_0000_8080_no_auth_is_flagged(tmp_path: Path) -> None:
+    """CVE-2026-49257: mcp-pinot <= 3.0.1 defaults to an HTTP MCP server bound
+    to 0.0.0.0:8080 with no authentication."""
+    _write(tmp_path, "pinot_server.py", '''
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("pinot", host="0.0.0.0", port=8080)
+
+@mcp.custom_route("/mcp", methods=["POST"])
+async def handle(request):
+    return await dispatch(request)
+
+mcp.run(transport="streamable-http")
+''')
+    findings, scanned = scan(tmp_path)
+    assert "pinot_server.py" in scanned
+    assert _hits(findings), "mcp-pinot 0.0.0.0:8080 no-auth must fire (CVE-2026-49257)"
+
+
+def test_windows_mcp_wildcard_cors_no_auth_is_flagged(tmp_path: Path) -> None:
+    """CVE-2026-48989: Windows-MCP < 0.7.5 exposed the MCP control plane over
+    HTTP with no auth while enabling wildcard CORS."""
+    _write(tmp_path, "windows_mcp.py", '''
+from mcp.server.fastmcp import FastMCP
+from starlette.middleware.cors import CORSMiddleware
+
+mcp = FastMCP("windows")
+app = mcp.streamable_http_app()
+app.add_middleware(CORSMiddleware, allow_origins=["*"])
+mcp.run(transport="streamable-http")
+''')
+    findings, _ = scan(tmp_path)
+    assert _hits(findings), "Windows-MCP wildcard CORS no-auth must fire (CVE-2026-48989)"
+
+
+def test_sarif_fingerprint_is_stable(tmp_path: Path) -> None:
+    """The SARIF partial fingerprint for a given finding is deterministic across
+    repeated scans of identical input (so GitHub dedups, not re-alerts)."""
+    src = '''
+from mcp.server.fastmcp import FastMCP
+mcp = FastMCP("pinot", host="0.0.0.0", port=8080)
+@mcp.custom_route("/mcp", methods=["POST"])
+async def handle(request):
+    return await dispatch(request)
+mcp.run(transport="streamable-http")
+'''
+
+    def _fingerprint() -> str:
+        sub = tmp_path / "run"
+        sub.mkdir(exist_ok=True)
+        (sub / "pinot_server.py").write_text(src, encoding="utf-8")
+        findings = [f for f in scan(sub)[0] if f.rule_id == RULE_ID]
+        assert findings
+        result = ScanResult()
+        result.findings.extend(findings)
+        sarif = json.loads(format_results(result))
+        res = next(r for r in sarif["runs"][0]["results"] if r["ruleId"] == RULE_ID)
+        return res["partialFingerprints"]["primaryLocationLineHash"]
+
+    assert _fingerprint() == _fingerprint(), "SARIF fingerprint must be stable"

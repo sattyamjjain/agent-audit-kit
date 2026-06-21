@@ -4853,8 +4853,13 @@ _r(
     "`requireAuth`, or with the Inspector kill-switch `DANGEROUSLY_OMIT_AUTH` "
     "set. CVE-2026-23744 (MCP Inspector, CVSS 9.8) is the motivating exemplar "
     "of the launch-bind variant; Censys counted ~12,520 MCP services exposed "
-    "on the public internet in this shape. CWE-306 (Missing Authentication "
-    "for Critical Function).",
+    "on the public internet in this shape. Two further 2026 instances of this "
+    "exact class: CVE-2026-49257 (mcp-pinot <= 3.0.1, CVSS 10.0) defaults to "
+    "an HTTP MCP server bound to `0.0.0.0:8080` with no authentication, "
+    "exposing SQL execution as a confused deputy; CVE-2026-48989 (Windows-MCP "
+    "< 0.7.5, CVSS 8.9) exposed the MCP control plane over HTTP without auth "
+    "while enabling wildcard CORS. CWE-306 (Missing Authentication for "
+    "Critical Function).",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Require an inbound credential on every `/mcp` route / SSE handler "
@@ -4868,6 +4873,7 @@ _r(
     sarif_name="McpHttpServerNoAuth",
     cve_references=[
         "CVE-2026-44895", "CVE-2026-44830", "CVE-2026-50287", "CVE-2026-23744",
+        "CVE-2026-49257", "CVE-2026-48989",
     ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
