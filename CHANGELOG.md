@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-NOAUTH-DEFAULT: MCP server unauthenticated-by-default / fail-open auth ([CVE-2026-48814](https://nvd.nist.gov/vuln/detail/CVE-2026-48814))
+
+CVE-response cycle item. New **HIGH** rule + scanner
+(`scanners/mcp_noauth_default.py`) for MCP servers that ship an auth check that
+**does not actually enforce** — distinct from `AAK-MCP-HTTP-NOAUTH-SERVER-001`
+(no auth configured at all). Three arms:
+
+- **(a) fail-open auth** — an `is_authorized` / `verify_token`-style function
+  that returns truthy when the secret/token is empty or unset
+  (`if not SECRET: return True`);
+- **(b) default/placeholder secret** — a secret-named var set to `""` /
+  `"changeme"` / `"secret"` / `"admin"` etc., or `os.environ.get("X_SECRET", "")`
+  with an empty default;
+- **(c) warning-only gate** — a missing-secret check that only logs and
+  continues while the server binds a non-loopback interface (`0.0.0.0` / `::`).
+
+Anchor: **CVE-2026-48814** (Network-AI, CVSS 9.1) — an *incomplete fix* of
+CVE-2026-46701 whose added auth gate still admitted requests when the secret was
+unset. **CWE-306** (Missing Authentication) + **CWE-862** (Missing
+Authorization); **MCP07:2025**, **ASI03**. Python uses stdlib `ast`; JSON / YAML
+/ env / TOML configs use a guarded text pass (placeholder secret + non-loopback
+bind). FP guards: a required secret (no empty default), a non-empty literal, an
+auth fn returning `token == SECRET`, and a loopback bind all pass.
+
+Rule count **224 → 225**; scanner modules **78 → 79**. Version **0.3.39 → 0.3.40**.
+
 ### Changed — AAK-MCP-HTTP-NOAUTH-SERVER-001 now anchors mcp-pinot + Windows-MCP ([CVE-2026-49257](https://nvd.nist.gov/vuln/detail/CVE-2026-49257), [CVE-2026-48989](https://nvd.nist.gov/vuln/detail/CVE-2026-48989))
 
 CVE-response cycle item. **Extended the existing unauthenticated-HTTP-transport

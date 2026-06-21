@@ -4986,6 +4986,40 @@ _r(
     adversa_references=["ADV-INJECT-07"],
 )
 
+_r(
+    "AAK-MCP-NOAUTH-DEFAULT",
+    "MCP server unauthenticated-by-default / fail-open authentication",
+    "An MCP server ships an authentication check that does not actually "
+    "enforce — distinct from a transport with no auth at all "
+    "(`AAK-MCP-HTTP-NOAUTH-SERVER-001`). Three shapes are flagged: (a) an "
+    "auth / `is_authorized` / `verify_token`-style function that returns a "
+    "truthy/allow value when the secret or token is empty or unset "
+    "(`if not SECRET: return True`); (b) a default / placeholder secret literal "
+    "— a secret-named variable set to `\"\"` / `\"changeme\"` / `\"secret\"` / "
+    "`\"admin\"` etc., or `os.environ.get(\"X_SECRET\", \"\")` with an empty "
+    "default, so the server runs unauthenticated until an operator intervenes; "
+    "(c) a missing-secret check that only logs a warning and continues while "
+    "the server binds a non-loopback interface (`0.0.0.0` / `::`). Anchor: "
+    "CVE-2026-48814 (Network-AI, CVSS 9.1) — an incomplete fix of "
+    "CVE-2026-46701 whose added auth gate still admitted requests when the "
+    "secret was unset. CWE-306 (Missing Authentication for Critical Function) "
+    "+ CWE-862 (Missing Authorization).",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Fail closed: reject every request when the secret/token is empty, unset, "
+    "or still a default — never `return True` on an empty credential and never "
+    "ship a placeholder secret. Require the secret with no empty fallback "
+    "(`os.environ[\"MCP_SECRET\"]`, erroring if absent), compare with a "
+    "constant-time check, bind to `127.0.0.1` behind an authenticating proxy, "
+    "and turn any 'no secret set' warning into a hard startup failure. Pin "
+    "Network-AI past the CVE-2026-48814 fix.",
+    sarif_name="McpNoAuthDefault",
+    cve_references=["CVE-2026-48814", "CVE-2026-46701"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
