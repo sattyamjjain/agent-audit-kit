@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-21T14:44:19Z",
-  "aak_version": "0.3.36",
-  "rule_count": 222,
+  "last_updated": "2026-06-21T14:57:41Z",
+  "aak_version": "0.3.37",
+  "rule_count": 223,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1514,7 +1514,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 27,
+      "rule_density": 28,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1677,6 +1677,14 @@
           "aicm_references": [
             "STA-10"
           ]
+        },
+        {
+          "id": "AAK-SKILL-UNTRUSTED-EXEC-PATH",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-53819"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-SSRF-001",

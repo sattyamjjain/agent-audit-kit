@@ -4912,6 +4912,40 @@ _r(
     adversa_references=["ADV-INJECT-07"],
 )
 
+_r(
+    "AAK-SKILL-UNTRUSTED-EXEC-PATH",
+    "Untrusted-search-path executable override in skill/install flow",
+    "Install or skill-setup code resolves an executable, interpreter, or build "
+    "tool from a workspace-controlled source and runs it without an "
+    "absolute-path pin or allowlist, so the workspace decides which binary "
+    "executes. Detected sources: a `.env` / dotenv-sourced variable "
+    "(`load_dotenv()` then `os.environ.get(...)` / `os.getenv(...)` / "
+    "`dotenv_values(...)`), a `PATH` prepended with a non-absolute / workspace "
+    "directory (`os.environ['PATH'] = os.getcwd() + os.pathsep + ...`), "
+    "`shutil.which(...)` resolved over such a tainted `PATH`, or a Homebrew / "
+    "package-manager binary chosen via an env override (`HOMEBREW_*` / `BREW`). "
+    "Anchor: CVE-2026-53819 (CWE-426 Untrusted Search Path, CVSS 8.7) — "
+    "OpenClaw before 2026.5.27 let a workspace `.env` override the Homebrew "
+    "executable selection during skill install, executing unintended "
+    "Homebrew-compatible binaries to compromise the system. This is an "
+    "install-time code-execution sink, distinct from `AAK-CLAUDE-WIN-001` (a "
+    "Windows ProgramData config-path hijack) and from the `AAK-SKILL-001..005` "
+    "SKILL.md content checks.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Pin the executable to an absolute path; do not resolve build tools from "
+    "workspace-controlled env. Hard-code the trusted binary location (e.g. "
+    "`/opt/homebrew/bin/brew`) or validate the resolved path against an "
+    "allowlist with `os.path.isabs` before exec, and never let a workspace "
+    "`.env` or a workspace-relative `PATH` prepend select the interpreter / "
+    "build tool used during skill setup.",
+    sarif_name="SkillUntrustedExecPath",
+    cve_references=["CVE-2026-53819"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-PATH-01"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

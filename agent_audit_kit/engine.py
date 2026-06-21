@@ -94,6 +94,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_env_placeholder_exfil", "MCP ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)", []),
     ("mcp_http_noauth_server", "Unauthenticated MCP HTTP/SSE server on 0.0.0.0 / wildcard CORS", []),
     ("llm_sql_rce", "LLM-generated SQL on an RCE-capable DB role (CVE-2026-25879)", []),
+    ("skill_untrusted_exec_path", "Untrusted-search-path exec override in skill/install flow (CVE-2026-53819)", []),
 ]
 
 

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-SKILL-UNTRUSTED-EXEC-PATH: untrusted-search-path executable override in skill/install flows ([CVE-2026-53819](https://nvd.nist.gov/vuln/detail/CVE-2026-53819))
+
+CVE-response cycle item. New **HIGH** rule + scanner
+(`scanners/skill_untrusted_exec_path.py`) flagging install / skill-setup code
+that resolves an executable, interpreter, or build tool from a
+**workspace-controlled source** and runs it without an absolute-path pin or
+allowlist. Detected sources:
+
+- a `.env` / dotenv-sourced variable (`load_dotenv()` then `os.environ.get(...)`
+  / `os.getenv(...)` / `dotenv_values(...)`);
+- a `PATH` prepended with a non-absolute / workspace dir
+  (`os.environ["PATH"] = os.getcwd() + os.pathsep + ...`);
+- `shutil.which(...)` resolved over such a tainted `PATH`;
+- a Homebrew / package-manager binary chosen via an env override.
+
+Anchor: **CVE-2026-53819** (CWE-426 Untrusted Search Path, CVSS 8.7) — OpenClaw
+before 2026.5.27 let a workspace `.env` override the Homebrew executable
+selection during skill install, executing unintended Homebrew-compatible
+binaries to compromise the system. Python is analysed with stdlib `ast`; shell
+install scripts use a guarded regex. Maps **CWE-426**, **MCP05:2025**, **ASI06**.
+Distinct from `AAK-CLAUDE-WIN-001` (Windows ProgramData config-path hijack) and
+the `AAK-SKILL-001..005` SKILL.md content checks. FP guards: absolute-path-pinned
+binary, `os.path.isabs` / allowlist check, and non-install files all pass. SARIF
+output carries the rule ID, CWE-426 (fullDescription), the fix hint (help text),
+and the CVE tag.
+
+Rule count **222 → 223**; scanner modules **76 → 77**. Version **0.3.36 → 0.3.37**.
+
 ### Changed — AAK-MCP-HTTP-NOAUTH-SERVER-001 extended to the launch surface ([CVE-2026-23744](https://nvd.nist.gov/vuln/detail/CVE-2026-23744))
 
 CVE-response cycle item. **Extended the existing no-auth-transport rule** (not a
