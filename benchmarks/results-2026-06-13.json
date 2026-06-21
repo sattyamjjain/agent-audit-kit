@@ -1,0 +1,155 @@
+{
+  "files_on_disk": 631,
+  "duplicates_skipped": 59,
+  "configs_scanned_unique": 571,
+  "scan_errors": 1,
+  "total_findings": 3833,
+  "severity_totals": {
+    "medium": 2119,
+    "low": 586,
+    "high": 867,
+    "critical": 259,
+    "info": 2
+  },
+  "category_totals": {
+    "mcp-config": 3187,
+    "supply-chain": 586,
+    "transport-security": 37,
+    "tool-poisoning": 11,
+    "secret-exposure": 8,
+    "agent-config": 2,
+    "legal-compliance": 1,
+    "taint-analysis": 1
+  },
+  "pct_configs_with_any_finding": 99.5,
+  "configs_with_critical": 147,
+  "pct_configs_with_critical": 25.7,
+  "configs_with_high": 289,
+  "pct_configs_with_high": 50.6,
+  "configs_with_secret": 3,
+  "pct_configs_with_secret": 0.5,
+  "configs_enable_all": 1,
+  "pct_enable_all": 0.2,
+  "top_rules": [
+    {
+      "rule_id": "AAK-MCP-ATTEST-001",
+      "count": 1282,
+      "severity": "medium",
+      "title": "MCP server admitted without attestation"
+    },
+    {
+      "rule_id": "AAK-MCP-007",
+      "count": 586,
+      "severity": "low",
+      "title": "MCP server lacks version pinning in args"
+    },
+    {
+      "rule_id": "AAK-SUPPLY-001",
+      "count": 586,
+      "severity": "high",
+      "title": "MCP server package not pinned to exact version"
+    },
+    {
+      "rule_id": "AAK-MCP-005",
+      "count": 565,
+      "severity": "medium",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages"
+    },
+    {
+      "rule_id": "AAK-MCP-006",
+      "count": 237,
+      "severity": "medium",
+      "title": "MCP server command uses relative path"
+    },
+    {
+      "rule_id": "AAK-MCP-001",
+      "count": 236,
+      "severity": "critical",
+      "title": "Remote MCP server without authentication"
+    },
+    {
+      "rule_id": "AAK-MCP-003",
+      "count": 137,
+      "severity": "high",
+      "title": "MCP server environment exposes secrets"
+    },
+    {
+      "rule_id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+      "count": 72,
+      "severity": "high",
+      "title": "MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args"
+    },
+    {
+      "rule_id": "AAK-MCP-009",
+      "count": 50,
+      "severity": "high",
+      "title": "MCP server URL points to localhost/internal network"
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-003",
+      "count": 30,
+      "severity": "medium",
+      "title": "Deprecated SSE transport in use"
+    },
+    {
+      "rule_id": "AAK-MCP-002",
+      "count": 11,
+      "severity": "critical",
+      "title": "MCP server command runs with shell expansion"
+    },
+    {
+      "rule_id": "AAK-MCP-004",
+      "count": 10,
+      "severity": "high",
+      "title": "Excessive number of MCP servers declared"
+    },
+    {
+      "rule_id": "AAK-SECRET-004",
+      "count": 5,
+      "severity": "high",
+      "title": "Generic high-entropy secret"
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-001",
+      "count": 5,
+      "severity": "critical",
+      "title": "MCP server uses HTTP instead of HTTPS"
+    },
+    {
+      "rule_id": "AAK-SECRET-008",
+      "count": 3,
+      "severity": "critical",
+      "title": "GitHub/GitLab personal access token exposed"
+    },
+    {
+      "rule_id": "AAK-POISON-002",
+      "count": 3,
+      "severity": "critical",
+      "title": "Prompt injection patterns in tool description"
+    },
+    {
+      "rule_id": "AAK-POISON-006",
+      "count": 3,
+      "severity": "medium",
+      "title": "URL or file path in tool description"
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-004",
+      "count": 2,
+      "severity": "high",
+      "title": "Session token in URL query parameter"
+    },
+    {
+      "rule_id": "AAK-INTERNAL-SCANNER-FAIL",
+      "count": 2,
+      "severity": "info",
+      "title": "Scanner module raised an exception"
+    },
+    {
+      "rule_id": "AAK-POISON-003",
+      "count": 2,
+      "severity": "high",
+      "title": "Cross-tool reference in tool description"
+    }
+  ]
+}
