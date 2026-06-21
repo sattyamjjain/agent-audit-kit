@@ -4946,6 +4946,40 @@ _r(
     adversa_references=["ADV-PATH-01"],
 )
 
+_r(
+    "AAK-MCP-ARGV-TOCTOU-001",
+    "Argv re-built after allowlist approval before spawn (command-injection TOCTOU)",
+    "A command / argv buffer is approved against an allow/deny list and then "
+    "reassigned, re-split (`shlex.split` / `.split()`), re-joined, "
+    "concatenated, `.extend()`/`.push()`-ed, or otherwise rebuilt before it is "
+    "passed to a process-spawn sink (`subprocess.run`/`Popen`/`call`, "
+    "`os.exec*` / `os.system`; Node `child_process.spawn`/`exec`/`execFile`, "
+    "`execa`) — with no re-validation between the mutation and the spawn. The "
+    "executed command shape therefore differs from the one that was approved, "
+    "so an attacker-controlled argv can pass the allowlist check and still "
+    "reach the shell. Anchor: CVE-2026-53822 (CVSS 8.8) — OpenClaw before "
+    "2026.5.18 contained a command injection where the shell wrapper argv "
+    "could change between approval and execution. CWE-77 (Command Injection) "
+    "chained to CWE-367 (Time-of-check Time-of-use Race Condition). Detected "
+    "as an ordered approve -> mutate -> exec data flow on the same command "
+    "variable; distinct from `AAK-SSRF-TOCTOU-001` (a URL allow-list "
+    "DNS-rebind TOCTOU, not command spawn).",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Validate the exact argv array that will be executed, and execute that "
+    "same immutable buffer — never re-parse, re-split, re-join, or append to "
+    "the command after the allowlist check. If a transform is unavoidable, "
+    "re-run the allowlist/deny check on the final argv immediately before "
+    "spawning, pass an explicit argv list (never a shell string) with "
+    "`shell=False`, and freeze the approved value (e.g. a tuple) so it cannot "
+    "be mutated. Pin OpenClaw >= 2026.5.18.",
+    sarif_name="ArgvAllowlistToctou",
+    cve_references=["CVE-2026-53822"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-07"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)

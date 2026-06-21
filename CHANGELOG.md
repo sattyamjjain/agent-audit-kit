@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-ARGV-TOCTOU-001: argv rebuilt after allowlist approval before spawn ([CVE-2026-53822](https://nvd.nist.gov/vuln/detail/CVE-2026-53822))
+
+CVE-response cycle item. New **HIGH** rule + scanner (`scanners/argv_toctou.py`)
+flagging the check-then-mutate-then-exec data flow where a command / argv buffer
+is **approved against an allow/deny list and then reassigned, re-split
+(`shlex.split` / `.split()`), re-joined, concatenated, or `.extend()`/`.push()`-ed
+before it is spawned**, with no re-validation between the mutation and the spawn —
+so a different (unapproved) command shape executes.
+
+Anchor: **CVE-2026-53822** (CVSS 8.8) — "OpenClaw before 2026.5.18 contains a
+command injection vulnerability where shell wrapper argv could change between
+approval and execution." **CWE-77** (Command Injection) chained to **CWE-367**
+(TOCTOU Race Condition). Because the OpenClaw instance is Node.js, both Python
+(`subprocess` / `os.exec*`, stdlib `ast`) and TS/JS (`child_process.spawn` /
+`exec` / `execFile`, `execa`; comment-stripped line-ordered regex) are analysed.
+Maps **MCP05:2025**, **ASI02**. Distinct from `AAK-SSRF-TOCTOU-001` (a URL
+allow-list DNS-rebind TOCTOU, not command spawn).
+
+FP guards: approve → spawn with no mutation in between PASSES; a re-check after
+the mutation (approve → mutate → approve → spawn) PASSES. SARIF carries the rule
+ID, a partial fingerprint, a `fixes[]` entry, and a `security-severity` score.
+
+Rule count **223 → 224**; scanner modules **77 → 78**. Version **0.3.37 → 0.3.38**.
+
 ### Added — AAK-SKILL-UNTRUSTED-EXEC-PATH: untrusted-search-path executable override in skill/install flows ([CVE-2026-53819](https://nvd.nist.gov/vuln/detail/CVE-2026-53819))
 
 CVE-response cycle item. New **HIGH** rule + scanner

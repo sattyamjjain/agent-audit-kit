@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-21T14:57:41Z",
-  "aak_version": "0.3.37",
-  "rule_count": 223,
+  "last_updated": "2026-06-21T15:10:50Z",
+  "aak_version": "0.3.38",
+  "rule_count": 224,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -107,7 +107,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 37,
+      "rule_density": 38,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -273,6 +273,14 @@
           "id": "AAK-MCP-010",
           "severity": "high",
           "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-ARGV-TOCTOU-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-53822"
+          ],
           "aicm_references": []
         },
         {
