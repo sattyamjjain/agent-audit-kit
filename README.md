@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-221-blue.svg" alt="Rules: 221"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-222-blue.svg" alt="Rules: 222"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -23,8 +23,8 @@
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
-- **<!-- rule-count:total -->221<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
-- **<!-- scanner-count:total -->75<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **<!-- rule-count:total -->222<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
+- **<!-- scanner-count:total -->76<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (13 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)**, **MCP 2026 Roadmap (May 2026)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.34
+      - uses: sattyamjjain/agent-audit-kit@v0.3.35
         with:
           fail-on: high
 ```
@@ -81,7 +81,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.34
+    rev: v0.3.35
     hooks:
       - id: agent-audit-kit
 ```
@@ -112,12 +112,12 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Agent Config** | <!-- category-count:AGENT_CONFIG -->15<!-- /category-count --> | Routines permission escalation + schedule injection + audit-log gaps, AGENTS.md/CLAUDE.md/.cursorrules hijacking, hidden Unicode, encoded payloads, internal scanner-fail signal, Project Deal economic-drift detection |
 | **A2A Protocol** | <!-- category-count:A2A_PROTOCOL -->13<!-- /category-count --> | Missing mutual auth, unbounded delegation, transitive trust, replay protection, schema confusion, HTTP endpoints, JWT lifetime/validation, impersonation, multi-agent shared-state without lock (Code-as-Harness) |
 | **Hook Injection** | <!-- category-count:HOOK_INJECTION -->12<!-- /category-count --> | Hook RCE (CVE-2025-59536 class), `shell=True` + interpolation, pre-trust execution, network-capable hooks, credential exfiltration |
-| **Taint Analysis** | <!-- category-count:TAINT_ANALYSIS -->12<!-- /category-count --> | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST), `load_prompt()` user-path reachability, transport-flip MITM (DocsGPT + GPT-Researcher). SQL-injection sinks (`AAK-TAINT-005`) now detected in TypeScript/JS MCP servers too — interpolated/concatenated `.query()`/`.execute()`, `knex.raw`, Prisma `$queryRawUnsafe` — matching the Python + Rust scanners (OX MCP-SDK disclosure class) |
+| **Taint Analysis** | <!-- category-count:TAINT_ANALYSIS -->13<!-- /category-count --> | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST), `load_prompt()` user-path reachability, transport-flip MITM (DocsGPT + GPT-Researcher). SQL-injection sinks (`AAK-TAINT-005`) now detected in TypeScript/JS MCP servers too — interpolated/concatenated `.query()`/`.execute()`, `knex.raw`, Prisma `$queryRawUnsafe` — matching the Python + Rust scanners (OX MCP-SDK disclosure class). LLM-generated SQL executed on an RCE-capable DB role (`AAK-LLM-SQL-RCE-001`, **CVE-2026-25879**) — model output reaching `cursor.execute`/`text(...)`/`.query()` as the query itself with no allow-list, plus superuser/`COPY ... FROM PROGRAM`/`xp_cmdshell`/`FILE`-privilege connection roles that turn SQL injection into shell |
 | **Transport Security** | <!-- category-count:TRANSPORT_SECURITY -->11<!-- /category-count --> | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings, transport body-size limits (CVE-2026-39313), SSRF redirect bypass (CVE-2026-41481), DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577) |
 | **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->12<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (binding 2026-08-02) |
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->12<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
 
-**<!-- rule-count:total -->221<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->222<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### Agent Platforms Scanned
 
@@ -282,10 +282,10 @@ Generate an SVG badge for your README: `agent-audit-kit score . --badge`
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 11 |
-| **ASI02** | Tool Misuse | 36 |
+| **ASI02** | Tool Misuse | 37 |
 | **ASI03** | Memory Poisoning | 53 |
 | **ASI04** | Identity & Privilege Abuse | 37 |
-| **ASI05** | Cascading Failures | 32 |
+| **ASI05** | Cascading Failures | 33 |
 | **ASI06** | Unauthorized Capability Acquisition | 27 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 4 |
@@ -328,7 +328,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->221<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->222<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **12 frameworks** | No | 0 | 0 |

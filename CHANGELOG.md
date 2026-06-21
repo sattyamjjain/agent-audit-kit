@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-LLM-SQL-RCE-001: LLM-generated SQL on an RCE-capable DB role ([CVE-2026-25879](https://nvd.nist.gov/vuln/detail/CVE-2026-25879))
+
+CVE-response cycle item. New **CRITICAL** rule + scanner
+(`scanners/llm_sql_rce.py`) for the text-to-SQL agent RCE class: an agent feeds
+**model-generated SQL** into a database executor whose connection role holds
+code-execution / filesystem privileges, so a prompt-injected
+`COPY ... FROM PROGRAM` (PostgreSQL), `INTO OUTFILE` / `LOAD_FILE` (MySQL `FILE`
+privilege), or `xp_cmdshell` (MS SQL) escalates SQL injection to shell.
+
+Two detection arms (both emit the rule):
+
+- **Flow** — an LLM-output value reaches a SQL-execution sink
+  (`cursor.execute` / `conn.execute` / SQLAlchemy `text(...)`; TS `.query()` /
+  `.raw()`) **as the query itself**, with no allow-list / `sqlglot`-style
+  validation. Python uses a stdlib `ast` taint fixpoint (propagates through
+  `response.choices[0].message.content`); TS/JS uses guarded regex.
+- **Privilege** — a connection string / role granting the dangerous primitives
+  (superuser account, or literal `COPY ... FROM PROGRAM` /
+  `pg_execute_server_program` / `xp_cmdshell` / `GRANT ... FILE`) inside an
+  LLM/agent context.
+
+CVE-2026-25879 documents a "chat with your database" agent that ran model
+output on a superuser connection. Maps **CWE-94 → CWE-89 → CWE-78** via
+**CWE-250** (excess privilege); **MCP04:2025**, **ASI02** + **ASI05**.
+Distinct from `AAK-TAINT-005` (tool *parameter* → SQL string-format). FP guards:
+parameterised queries, validated/allow-listed flows, least-privilege read-only
+roles, and non-agent DB-admin scripts all pass.
+
+Rule count **221 → 222**; scanner modules **75 → 76**. Version
+**0.3.34 → 0.3.35**.
+
 ### Added — AAK-MCP-HTTP-NOAUTH-SERVER-001: unauthenticated MCP HTTP/SSE server (2026 no-auth-transport class)
 
 CVE-response backlog item. New **HIGH** rule + scanner

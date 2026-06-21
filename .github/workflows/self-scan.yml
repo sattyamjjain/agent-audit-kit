@@ -69,7 +69,12 @@ jobs:
           #                             gate regex embed the ${VAR}/process.env
           #                             sink it detects — self-FP on
           #                             AAK-MCP-ENV-PLACEHOLDER-EXFIL-001.
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py'
+          # - agent_audit_kit/scanners/llm_sql_rce.py
+          #                             scanner whose docstring + privilege-arm
+          #                             regexes embed `COPY ... FROM PROGRAM` /
+          #                             `xp_cmdshell` + LLM context — self-FP on
+          #                             AAK-LLM-SQL-RCE-001.
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py,agent_audit_kit/scanners/llm_sql_rce.py'
           comment-on-pr: 'true'
           fingerprint-strategy: 'auto'
 
@@ -86,7 +91,7 @@ jobs:
           fail-on: 'critical'
           format: 'sarif'
           upload-sarif: 'false'  # avoid double-upload colliding with default-scan
-          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py'
+          ignore-paths: 'tests,benchmarks,examples,docs,CLAUDE.md,rules.json,agent_audit_kit/rules/builtin.py,agent_audit_kit/data,agent_audit_kit/scanners/mcp_env_placeholder_exfil.py,agent_audit_kit/scanners/llm_sql_rce.py'
           preset: 'mcp-ox-2026-04'
           comment-on-pr: 'false'  # default-scan already posts the sticky comment
           fingerprint-strategy: 'auto'

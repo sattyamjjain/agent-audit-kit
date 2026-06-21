@@ -4859,6 +4859,45 @@ _r(
     owasp_agentic_references=["ASI03"],
 )
 
+_r(
+    "AAK-LLM-SQL-RCE-001",
+    "LLM-generated SQL executed on an RCE-capable database role",
+    "An agent / LLM application feeds model-generated SQL into a database "
+    "executor whose connection role holds code-execution or filesystem "
+    "privileges, turning prompt-injected SQL into remote code execution. Two "
+    "arms fire this rule: (a) an LLM-output value reaches a SQL-execution sink "
+    "(`cursor.execute` / `conn.execute` / SQLAlchemy `text(...)` / a TS "
+    "`.query()`/`.raw()` call) as the query itself — not as a bound "
+    "parameter — with no allow-list or query-validation step; and (b) a DB "
+    "connection string / role that grants the dangerous primitives (a "
+    "superuser connection account, or a literal PostgreSQL "
+    "`COPY ... FROM PROGRAM` / `pg_execute_server_program`, MySQL `FILE` / "
+    "`INTO OUTFILE` / `LOAD_FILE`, or MS SQL `xp_cmdshell`) inside an "
+    "LLM/agent context. CVE-2026-25879 is the documented instance: a "
+    "text-to-SQL chat agent ran model output on a superuser connection and a "
+    "prompt-injected `COPY ... FROM PROGRAM` produced a shell. CWE-94 (Code "
+    "Injection) / CWE-89 (SQL Injection) chained to CWE-78 (OS Command "
+    "Injection) through CWE-250 (Execution with Unnecessary Privileges). This "
+    "is distinct from `AAK-TAINT-005`, where the tainted source is a tool "
+    "*parameter* string-formatted into SQL rather than LLM output landing on "
+    "an RCE-capable role.",
+    Severity.CRITICAL,
+    Category.TAINT_ANALYSIS,
+    "Never execute LLM-generated SQL directly. Constrain the model to "
+    "parameterised, allow-listed queries (validate with `sqlglot`/`sqlparse` "
+    "and reject anything that is not a single read-only `SELECT` against an "
+    "approved table set), and run every agent query on a dedicated "
+    "least-privilege, read-only role that lacks `pg_execute_server_program` / "
+    "`FILE` / `xp_cmdshell` and cannot `COPY ... FROM PROGRAM`. Treat the DB "
+    "role as the last line of defence: even a perfect prompt filter must not "
+    "sit in front of a superuser connection.",
+    sarif_name="LlmSqlRce",
+    cve_references=["CVE-2026-25879"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI05"],
+    adversa_references=["ADV-INJECT-07"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
