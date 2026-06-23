@@ -105,3 +105,57 @@ def test_no_stale_hardcoded_counts_in_prose() -> None:
                 f"{rel} still contains stale phrase {stale!r}; "
                 "run scripts/sync_rule_count.py."
             )
+
+
+def test_rule_count_is_canonical() -> None:
+    """One canonical number, computed from len(RULES), shown everywhere it is
+    claimed as current state. Fails if any authoritative surface — README badge,
+    README total-anchors, action.yml description, __init__.RULE_COUNT, the signed
+    rules.json bundle — or the present-tense launch copy diverges from the
+    registry. Historical/version-stamped/category counts (CHANGELOG, ROADMAP
+    starting point, per-OWASP-category tables, "(v0.3.5)" snapshots) are NOT
+    current-state claims and are intentionally out of scope.
+    """
+    count = _actual_rule_count()
+
+    # 1. Authoritative current-state surfaces must all equal len(RULES).
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    badge = re.search(r"img\.shields\.io/badge/rules-(\d+)-[a-z]+\.svg", readme)
+    assert badge and int(badge.group(1)) == count, "README badge != len(RULES)"
+    anchors = re.findall(
+        r"<!--\s*rule-count:total\s*-->(\d+)<!--\s*/rule-count\s*-->", readme
+    )
+    assert anchors and all(int(a) == count for a in anchors), "README anchor drift"
+
+    action = (REPO_ROOT / "action.yml").read_text(encoding="utf-8")
+    am = re.search(r"description:.*?(\d+)\s+rules", action)
+    assert am and int(am.group(1)) == count, "action.yml description != len(RULES)"
+
+    from agent_audit_kit import RULE_COUNT
+
+    assert RULE_COUNT == count, "__init__.RULE_COUNT != len(RULES)"
+
+    bundle = json.loads((REPO_ROOT / "rules.json").read_text(encoding="utf-8"))
+    assert len(bundle["rules"]) == count, "rules.json bundle != len(RULES)"
+
+    # 2. The package meta must not carry a divergent hard-coded count.
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    desc = re.search(r'^description\s*=\s*"([^"]*)"', pyproject, re.MULTILINE)
+    assert desc, "pyproject description missing"
+    bad = re.search(r"(\d+)\s+rules", desc.group(1))
+    assert not bad or int(bad.group(1)) == count, (
+        "pyproject description hard-codes a divergent rule count"
+    )
+
+    # 3. Present-tense launch copy (marketing claims) must match the registry.
+    for rel in (
+        "docs/launch/hn.md",
+        "docs/launch/reddit.md",
+        "docs/launch/x-thread.md",
+    ):
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        for claimed in re.findall(r"(\d+)\s+(?:deterministic\s+)?rules?\b", text):
+            assert int(claimed) == count, (
+                f"{rel} claims {claimed} rules; canonical is {count}. "
+                "Update launch copy or run scripts/sync_rule_count.py."
+            )

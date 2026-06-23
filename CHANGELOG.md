@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — single canonical rule count enforced in CI (was drifting 77/148/169/194 across surfaces)
+
+The rule count is computed from `len(RULES)` (the registry in
+`agent_audit_kit/rules/builtin.py`) and asserted equal across every
+current-state surface by `tests/test_rule_count_sync.py::test_rule_count_is_canonical`:
+README badge + total-anchors, `action.yml` description, `__init__.RULE_COUNT`,
+the signed `rules.json` bundle, the pyproject `description`, and the
+present-tense launch copy (`docs/launch/{hn,reddit,x-thread}.md`). Fixed the
+last drifting surface — launch copy still said "221 rules" — to the canonical
+**225**. Historical/version-stamped/per-category counts (CHANGELOG, ROADMAP
+Apr-2026 starting point, `(v0.3.5)` snapshots, per-OWASP-category tables) are
+intentionally out of scope and left unchanged. Version **0.3.40 → 0.3.41**.
+
 ### Added — AAK-MCP-NOAUTH-DEFAULT: MCP server unauthenticated-by-default / fail-open auth ([CVE-2026-48814](https://nvd.nist.gov/vuln/detail/CVE-2026-48814))
 
 CVE-response cycle item. New **HIGH** rule + scanner

@@ -24,6 +24,7 @@
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
 - **<!-- rule-count:total -->225<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
+  - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
 - **<!-- scanner-count:total -->79<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -61,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.40
+      - uses: sattyamjjain/agent-audit-kit@v0.3.41
         with:
           fail-on: high
 ```
@@ -81,7 +82,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.40
+    rev: v0.3.41
     hooks:
       - id: agent-audit-kit
 ```
