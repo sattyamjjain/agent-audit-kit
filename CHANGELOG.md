@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — CVE-backlog coverage: extend existing pins (Flowise/LiteLLM/Doris)
+
+Worked the open `sla-48h` backlog. The genuinely AAK-actionable items map to
+packages AAK already pins, so the existing rules were extended rather than
+duplicated:
+
+- **Flowise** (`AAK-FLOWISE-001`): pin floor bumped **3.1.0 → 3.1.2** so
+  3.0.6–3.1.1 are still flagged; added CVE-2025-71336 (< 3.0.6 unsandboxed RCE)
+  and CVE-2026-56274 (< 3.1.2 OS command injection / regex bypass) to the
+  Custom-MCP RCE cluster.
+- **LiteLLM** (`AAK-LITELLM-CVE-2026-30623-PIN-001`): added CVE-2026-12773
+  (MCP-proxy improper auth), CVE-2026-12774 + CVE-2026-12798 (MCP SSRF) — all
+  already flagged by the existing `< 1.83.7` floor.
+- **Apache Doris** (`AAK-DORIS-001`): added sibling CVE-2025-66336 (metadata-path
+  SQL injection), covered by the existing `< 0.6.1` floor.
+
+The remaining backlog issues were vulnerabilities **inside third-party products
+AAK does not scan** (desktop apps, web platforms, plugins, the Linux kernel) or
+patterns **already detected** by generalised rules (no-auth HTTP transport,
+DNS-rebind, hook auto-exec, SSRF, tool-gate authz) — dispositioned and closed
+with per-issue reasons, no fabricated rules. Rule count unchanged (225).
+
 ### Changed — retire public 48h CVE-to-rule SLA (unbounded solo liability); lead with offline + compliance-evidence wedges
 
 Removed the public "48h CVE-to-rule SLA" promise — a clock a solo maintainer

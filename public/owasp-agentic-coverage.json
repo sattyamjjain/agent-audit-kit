@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-06-23T10:18:20Z",
+  "last_updated": "2026-06-27T10:05:37Z",
   "aak_version": "0.3.41",
   "rule_count": 225,
   "coverage": [
@@ -177,7 +177,8 @@
           "id": "AAK-DORIS-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2025-66335"
+            "CVE-2025-66335",
+            "CVE-2025-66336"
           ],
           "aicm_references": [
             "AIS-07",
@@ -199,7 +200,9 @@
           "id": "AAK-FLOWISE-001",
           "severity": "critical",
           "cve_references": [
-            "CVE-2026-40933"
+            "CVE-2025-71336",
+            "CVE-2026-40933",
+            "CVE-2026-56274"
           ],
           "aicm_references": [
             "STA-08"
@@ -240,6 +243,9 @@
           "id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-12773",
+            "CVE-2026-12774",
+            "CVE-2026-12798",
             "CVE-2026-30623"
           ],
           "aicm_references": [
@@ -2127,6 +2133,9 @@
           "id": "AAK-LITELLM-CVE-2026-30623-PIN-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-12773",
+            "CVE-2026-12774",
+            "CVE-2026-12798",
             "CVE-2026-30623"
           ],
           "aicm_references": [

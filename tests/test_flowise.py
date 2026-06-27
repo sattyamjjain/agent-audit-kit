@@ -28,11 +28,23 @@ def test_flowise_patched_pin_is_quiet(tmp_path: Path) -> None:
     (tmp_path / "package.json").write_text(
         json.dumps({
             "name": "agent-app",
-            "dependencies": {"flowise": "3.1.0"},
+            "dependencies": {"flowise": "3.1.2"},
         })
     )
     findings, _ = stdio_injection.scan(tmp_path)
     assert not any(f.rule_id == "AAK-FLOWISE-001" for f in findings)
+
+
+def test_flowise_3_1_1_still_flagged_for_cve_2026_56274(tmp_path: Path) -> None:
+    """CVE-2026-56274 is fixed in 3.1.2, so 3.1.0/3.1.1 must still flag."""
+    (tmp_path / "package.json").write_text(
+        json.dumps({
+            "name": "agent-app",
+            "dependencies": {"flowise": "3.1.1"},
+        })
+    )
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert any(f.rule_id == "AAK-FLOWISE-001" for f in findings)
 
 
 def test_flowise_components_package_also_matches(tmp_path: Path) -> None:
@@ -75,6 +87,8 @@ def test_flowise_rule_metadata_verified() -> None:
     rule = RULES["AAK-FLOWISE-001"]
     assert rule.severity.value == "critical"
     assert "CVE-2026-40933" in rule.cve_references
+    assert "CVE-2025-71336" in rule.cve_references
+    assert "CVE-2026-56274" in rule.cve_references
     assert rule.auto_fixable is True
 
 

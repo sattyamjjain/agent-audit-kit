@@ -2978,24 +2978,29 @@ _r(
 
 _r(
     "AAK-FLOWISE-001",
-    "Flowise < 3.1.0 MCP adapter authenticated RCE",
+    "Flowise < 3.1.2 MCP adapter authenticated RCE",
     "Package manifest depends on `flowise` or `flowise-components` at "
-    "version < 3.1.0, and/or a Flowise flow config (`.flowise/*.json`, "
+    "version < 3.1.2, and/or a Flowise flow config (`.flowise/*.json`, "
     "`flows/*.json`) declares an MCP adapter node with `customFunction` "
-    "or `runCode` sinks. CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) "
-    "lets an authenticated attacker combine allowlisted commands like "
-    "`npx` with execution flags such as `-c` to achieve arbitrary OS "
-    "command execution. Same architectural class as Ox's original STDIO "
-    "disclosure (see AAK-STDIO-001).",
+    "or `runCode` sinks. The Custom-MCP feature is a recurring RCE class: "
+    "CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated "
+    "attacker combine allowlisted commands like `npx` with execution flags "
+    "such as `-c` for arbitrary OS command execution; CVE-2025-71336 "
+    "(< 3.0.6, CVSS 9.8) is an unsandboxed RCE in the same feature; "
+    "CVE-2026-56274 (< 3.1.2, CVSS 9.9) adds OS command injection via "
+    "incomplete command-flag validation plus a regex bypass in local "
+    "file-access restrictions. Pin floor is 3.1.2 (highest fixed version) "
+    "so 3.0.6–3.1.1 are still flagged. Same architectural class as Ox's "
+    "original STDIO disclosure (see AAK-STDIO-001).",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade flowise and flowise-components to 3.1.0 or later. Audit "
+    "Upgrade flowise and flowise-components to 3.1.2 or later. Audit "
     "every MCP adapter node in your flow configs; remove "
     "`customFunction`/`runCode` sinks unless they're validated against "
     "a strict argv allowlist. See also AAK-STDIO-001 for the "
     "architectural-class detector.",
     sarif_name="FlowiseMcpAdapterRce",
-    cve_references=["CVE-2026-40933"],
+    cve_references=["CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
@@ -3095,14 +3100,17 @@ _r(
     "CVE-2025-66335 is a query-context neutralization bypass in the MCP "
     "adapter's tool layer — crafted tool arguments are concatenated into "
     "Doris SQL without a parameterized boundary, letting an LLM-driven "
-    "tool call reach into arbitrary reads/writes. Fixed in 0.6.1.",
+    "tool call reach into arbitrary reads/writes. CVE-2025-66336 is a "
+    "sibling SQL injection in a metadata query path (a user-controlled "
+    "database name interpolated without the caller's authz context), same "
+    "< 0.6.1 fixed line. Fixed in 0.6.1.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `apache-doris-mcp-server` to 0.6.1 or newer. Audit every "
     "tool the adapter exposes to confirm arguments flow through a "
     "parameterized query builder, never string concatenation.",
     sarif_name="DorisMcpSqlInjection",
-    cve_references=["CVE-2025-66335"],
+    cve_references=["CVE-2025-66335", "CVE-2025-66336"],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-02"],
@@ -4623,6 +4631,11 @@ _r(
     "covers the source-side architectural shape; this pin-only rule "
     "complements it by surfacing a discrete finding for consumers "
     "who run pin-check mode and need an actionable manifest fix. "
+    "The <1.83.7 floor also flags the LiteLLM MCP-proxy CVE cluster, all "
+    "in versions below the floor: CVE-2026-12773 (improper authentication "
+    "in the MCP proxy `UserAPIKeyAuth`, <=1.59.8), CVE-2026-12774 (SSRF in "
+    "MCP server connection testing, <=1.82.2), and CVE-2026-12798 (SSRF in "
+    "the MCP OpenAPI spec loader, <=1.82.2). "
     "Wired into `aak fix --cve` so the auto-fixer can rewrite "
     "requirements*.txt entries to `litellm>=1.83.7`.",
     Severity.HIGH,
@@ -4632,7 +4645,9 @@ _r(
     "edits should go through the project's normal dependency-update "
     "workflow.",
     sarif_name="LitellmCveStaleVersion",
-    cve_references=["CVE-2026-30623"],
+    cve_references=[
+        "CVE-2026-30623", "CVE-2026-12773", "CVE-2026-12774", "CVE-2026-12798",
+    ],
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI10"],
     incident_references=["BERRIAI-LITELLM-2026-04-30"],
