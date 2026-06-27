@@ -12,7 +12,6 @@
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
-  <a href="CHANGELOG.cves.md"><img src="https://img.shields.io/badge/CVE%E2%86%92rule_SLA-48h-orange.svg" alt="48h CVE-to-rule SLA"></a>
 </p>
 
 ---
@@ -23,6 +22,11 @@
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **13 agent platforms**.
 
+**Two things it does that hosted scanners can't:**
+
+1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). No account, no telemetry.
+2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 13 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
+
 - **<!-- rule-count:total -->225<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
 - **<!-- scanner-count:total -->79<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
@@ -31,7 +35,7 @@ Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, 
 - **Compliance mapping** (13 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)**, **MCP 2026 Roadmap (May 2026)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`
 - **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`)
 - **MCP Security Index**: weekly public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
-- **AAK Response SLA**: rule coverage within **48 hours** of any disclosed MCP CVE — ledger in [CHANGELOG.cves.md](CHANGELOG.cves.md)
+- **CVE coverage**: newly disclosed MCP CVEs are triaged and turned into rules as they land — surfaced automatically by the NVD watcher ([`cve-watcher.yml`](.github/workflows/cve-watcher.yml)) and logged in [CHANGELOG.cves.md](CHANGELOG.cves.md)
 - **Zero cloud dependencies** — runs fully offline, zero network calls in the default scan path
 
 ### Why This Exists
@@ -336,7 +340,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Regional frameworks (IN/SG/AL/TN) | **Yes** | No | No | No |
 | Sigstore-signed rule bundle | **Yes** | SLSA provenance | No | No |
 | CycloneDX + SPDX SBOM output | **Yes** | No | No | No |
-| Public CVE-to-rule ledger | **Yes** | No | No | No |
+| Public CVE-response ledger | **Yes** | No | No | No |
 | Public grade leaderboard | **Yes** (MCP Security Index) | No | No | No |
 | Pin + drift verification | **Yes** | Yes (runtime rings) | No | No |
 | Auto-fix CVE dependency bumps | **Yes** (`fix --cve`) | No | No | No |

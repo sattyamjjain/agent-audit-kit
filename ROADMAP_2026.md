@@ -51,7 +51,7 @@ Every one of these rules ships with (a) a fixture under `tests/fixtures/`, (b) a
 
 ### 2.3 Features that widen the moat
 
-1. **CVE-to-rule velocity commitment** — ship rule packs within 48 hours of any MCP CVE disclosure. Document this publicly as the **AAK Response SLA**. Run a public `CHANGELOG.cves.md` showing "CVE-2026-33032 → AAK-MCP-012 shipped 2026-03-16, 17 hours after NVD disclosure". This mirrors `npm audit`'s core value prop.
+1. **Disclosed-CVE rule coverage** — triage newly disclosed MCP CVEs and turn them into rules as they land, surfaced automatically by the NVD watcher (`.github/workflows/cve-watcher.yml`) and logged in a public `CHANGELOG.cves.md` (e.g. "CVE-2026-33032 → AAK-MCP-012, 2026-03-16"). No public deadline is promised — a solo maintainer can't carry an unbounded clock — but the ledger makes actual coverage and timing transparent.
 2. **Compliance-report v2** — today you map to EU AI Act / SOC 2 / ISO 27001 / HIPAA / NIST AI RMF. Add:
    - **ISO/IEC 42001** AI Management System evidence block.
    - **Singapore Agentic AI Governance Framework** (Jan 2026, first national).
@@ -86,7 +86,7 @@ Your honest answer to "why not Snyk Agent Scan?":
 
 - Land the four correctness fixes (dead rules, scanner exception handling, TypeScript/Rust rename or rewrite, explicit LLM flag).
 - Ship the 10 new 2026-CVE rule families as v0.3.0.
-- Publish the **AAK Response SLA** commitment.
+- Publish the public CVE-response ledger (`CHANGELOG.cves.md`) — coverage transparency, no clock commitment.
 - Scan 1,000 public MCP servers and compute the grade distribution. This is a blog post.
 - Run ToxicSkills head-to-head; publish numbers.
 
@@ -127,7 +127,7 @@ Your honest answer to "why not Snyk Agent Scan?":
 | GitHub stars | ~3 | 200 | 2,000 | 10,000 |
 | PyPI downloads/month | <30 | 3,000 | 40,000 | 400,000 |
 | Rules | 77 | 100 | 140 | 200 |
-| CVE-to-rule SLA compliance | n/a | 100% of new MCP CVEs in <48 h | same | same |
+| Disclosed MCP CVEs with rule coverage | n/a | majority covered | same | same |
 | GitHub Action usage | 0 | 20 | 250 | 3,000 |
 | Published MCP Security Index grades | 0 | 1,000 servers | 5,000 | all 10,000+ |
 | Coordinated CVE disclosures | 0 | 1 | 5 | 20 |
@@ -146,4 +146,4 @@ Your honest answer to "why not Snyk Agent Scan?":
 
 ## 6. The CEO-readable one-pager
 
-> *AgentAuditKit* scans your AI-agent pipeline for 100+ security and compliance issues — from tool-poisoning and prompt-injection to insecure MCP configs and missing OAuth 2.1 enforcement. It produces SARIF for GitHub Security, an OWASP MCP Top 10 scorecard, and auditor-ready compliance evidence mapped to EU AI Act Article 15, SOC 2, ISO 27001 / 42001, HIPAA, NIST AI RMF, Singapore Agentic AI Governance, and India DPDP. We publish the MCP Security Index, grading the top 10,000 public MCP servers weekly, and we ship rule coverage for every disclosed MCP CVE within 48 hours. Used by engineering teams that need to show an auditor that their agents are safe — before the EU AI Act high-risk obligations apply on August 2, 2026.
+> *AgentAuditKit* scans your AI-agent pipeline for 100+ security and compliance issues — from tool-poisoning and prompt-injection to insecure MCP configs and missing OAuth 2.1 enforcement. It produces SARIF for GitHub Security, an OWASP MCP Top 10 scorecard, and auditor-ready compliance evidence mapped to EU AI Act Article 15, SOC 2, ISO 27001 / 42001, HIPAA, NIST AI RMF, Singapore Agentic AI Governance, and India DPDP. We publish the MCP Security Index, grading the top 10,000 public MCP servers weekly, and we ship rule coverage for disclosed MCP CVEs. Used by engineering teams that need to show an auditor that their agents are safe — before the EU AI Act high-risk obligations apply on August 2, 2026.

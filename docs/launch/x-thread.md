@@ -54,10 +54,11 @@ Post same Tuesday as HN, ~1h after HN submission.
 
 ---
 
-**5/ Public CVE-to-rule ledger**
+**5/ Public CVE-response ledger**
 
-> We publicly commit: every disclosed MCP CVE gets rule coverage
-> within 48h of NVD disclosure. Tracked in CHANGELOG.cves.md.
+> Newly disclosed MCP CVEs are triaged and turned into rules as they
+> land (surfaced by an NVD watcher). Every one we cover is logged with
+> its rule ID and ship date in CHANGELOG.cves.md.
 >
 > Sigstore-signed rule bundles, so enterprise users can pin + verify
 > without a vendor account.

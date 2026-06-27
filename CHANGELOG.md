@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — retire public 48h CVE-to-rule SLA (unbounded solo liability); lead with offline + compliance-evidence wedges
+
+Removed the public "48h CVE-to-rule SLA" promise — a clock a solo maintainer
+can't reliably carry — from the README badge/bullet, ROADMAP_2026.md, and the
+live launch copy (`docs/launch/{hn,reddit,x-thread}.md`). Replaced it with a
+capability statement (no deadline): newly disclosed MCP CVEs are triaged and
+turned into rules as they land, surfaced by the NVD watcher
+(`.github/workflows/cve-watcher.yml`) and logged in `CHANGELOG.cves.md`. The
+README now leads with the two defensible wedges — **fully offline / deterministic
+scanning** and **auditor-ready compliance-evidence packs** — instead of response
+speed. No detection logic, no version bump. The NVD watcher and the `sla-48h`
+automation label (a release-gate dependency) are unchanged.
+
 ### Fixed — single canonical rule count enforced in CI (was drifting 77/148/169/194 across surfaces)
 
 The rule count is computed from `len(RULES)` (the registry in

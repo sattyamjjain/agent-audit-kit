@@ -31,13 +31,13 @@ the #1 channel for this repo.
 > - Scanner: https://github.com/sattyamjjain/agent-audit-kit
 > - Leaderboard: https://mcp-security-index.com/
 > - Disclosure policy: https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md
-> - CVE-to-rule ledger (48h SLA): https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md
+> - CVE-response ledger: https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md
 
 **Expected questions & answers**
 
 - "What makes this better than Snyk MCP-scan / `snyk/agent-scan`?"
   → No account required, air-gap friendly, compliance-evidence output,
-  public CVE-to-rule ledger, Sigstore-signed rule bundles.
+  public CVE-response ledger, Sigstore-signed rule bundles.
 - "Is the 82% stat your number or someone else's?"
   → Not ours. A 2,614-server survey, cited in the scanner's README.
   Our scan found similar proportions on the 500 we picked.

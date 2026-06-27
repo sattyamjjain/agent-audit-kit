@@ -40,7 +40,7 @@
 - **"How is this different from Snyk Agent Scan?"**
   → No auth, no cloud, compliance-evidence output, India DPDP +
   Singapore framework + EU AI Act Article 55. Deterministic, so CI
-  runs are reproducible. public CVE-to-rule ledger we maintain.
+  runs are reproducible. public CVE-response ledger we maintain.
 - **"Does it use an LLM?"**
   → No. The moat is deterministic rules. We keep an optional
   `--llm-scan` flag for semantic tool-description checks, but the core
