@@ -1,0 +1,93 @@
+{
+  "tool": "agent-audit-kit",
+  "corpus": "benchmarks/data",
+  "corpus_total_files": 631,
+  "distinct_configs_scanned": 571,
+  "duplicates_removed": 59,
+  "unparseable_removed": 1,
+  "grade_distribution": {
+    "A": 165,
+    "B": 213,
+    "C": 78,
+    "D": 45,
+    "F": 70
+  },
+  "configs_with_critical": 147,
+  "configs_with_critical_pct": 25.7,
+  "configs_with_high": 143,
+  "configs_with_high_pct": 25.0,
+  "severity_totals": {
+    "medium": 2256,
+    "low": 586,
+    "critical": 259,
+    "high": 280,
+    "info": 1
+  },
+  "category_hit_rate": {
+    "mcp-config": {
+      "configs": 567,
+      "pct": 99.3
+    },
+    "secret-exposure": {
+      "configs": 63,
+      "pct": 11.0
+    },
+    "transport-security": {
+      "configs": 18,
+      "pct": 3.2
+    },
+    "legal-compliance": {
+      "configs": 1,
+      "pct": 0.2
+    },
+    "agent-config": {
+      "configs": 1,
+      "pct": 0.2
+    },
+    "tool-poisoning": {
+      "configs": 1,
+      "pct": 0.2
+    }
+  },
+  "top_misconfigurations": [
+    {
+      "rule_id": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "severity": "medium",
+      "configs": 248,
+      "config_pct": 43.4
+    },
+    {
+      "rule_id": "AAK-MCP-006",
+      "title": "MCP server command uses relative path",
+      "severity": "medium",
+      "configs": 149,
+      "config_pct": 26.1
+    },
+    {
+      "rule_id": "AAK-MCP-001",
+      "title": "Remote MCP server without authentication",
+      "severity": "critical",
+      "configs": 136,
+      "config_pct": 23.8
+    },
+    {
+      "rule_id": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "severity": "high",
+      "configs": 63,
+      "config_pct": 11.0
+    },
+    {
+      "rule_id": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "severity": "medium",
+      "configs": 63,
+      "config_pct": 11.0
+    }
+  ],
+  "excluded_advisory_rules": [
+    "AAK-MCP-007",
+    "AAK-MCP-ATTEST-001"
+  ]
+}

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — State-of-MCP-Security-2026 research harness + report
+
+New `research/state-of-mcp-2026/` directory: a reproducible data-report harness
+(`run_report.py`) that scans a corpus of public MCP configs and aggregates a
+grade distribution (A–F), per-category hit rates, and the top misconfigurations.
+It contains **no scanner** — it reuses `agent_audit_kit.engine.run_scan` and
+`agent_audit_kit.scoring.compute_score` (the same scan + grade the CLI / MCP
+Security Index use), and delegates corpus acquisition to the existing
+`benchmarks/crawler.py`. Ships the raw aggregate (`results.json`) and the
+human-readable writeup (`REPORT.md`). Headline from the committed run: 571
+distinct configs, 25.7% with a critical finding, ~29% grade A. README gains a
+"State of MCP Security 2026" section with the reproduce command. Docs/research
+only — no package code, no version bump.
+
 ### Changed — CVE-backlog coverage: extend existing pins (Flowise/LiteLLM/Doris)
 
 Worked the open `sla-48h` backlog. The genuinely AAK-actionable items map to

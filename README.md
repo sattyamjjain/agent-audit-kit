@@ -381,6 +381,26 @@ Public leaderboard of MCP servers we scan weekly:
 - **90-day coordinated disclosure** before anything lands on a public card — see [`docs/disclosure-policy.md`](docs/disclosure-policy.md)
 - Maintainer-fix earlier gets published the day the fix lands, with credit
 
+## State of MCP Security 2026
+
+A reproducible, offline data report: we scanned **571 distinct public MCP server
+configs** and found **1 in 4 ships a critical-severity flaw** (only ~29% earn an
+"A"). Full methodology, grade distribution, top misconfigurations, external
+anchors (MCP Registry 9,652 servers; Knostic 1,862 exposed / 119-of-119
+unauthenticated; the 2,614-server 82%-path-traversal survey), and honesty
+caveats are in **[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)**
+(raw aggregate: [`results.json`](research/state-of-mcp-2026/results.json)).
+
+The harness contains no scanner — it reuses `agent_audit_kit.engine.run_scan` +
+`scoring.compute_score`. Reproduce:
+
+```bash
+export GITHUB_TOKEN=$(gh auth token)
+python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
+python research/state-of-mcp-2026/run_report.py --corpus benchmarks/data \
+    --out research/state-of-mcp-2026/results.json
+```
+
 ## CVE Response
 
 AgentAuditKit tracks newly disclosed MCP CVEs and ships rule coverage on a best-effort basis, recorded in a public ledger ([`CHANGELOG.cves.md`](CHANGELOG.cves.md)). A [GitHub Action](.github/workflows/cve-watcher.yml) watches NVD's MCP keyword feed every 6 hours and files a tracking issue for each new disclosure.
