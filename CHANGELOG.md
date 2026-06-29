@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — docs: align public rule-count to canonical 225; promote State-of-MCP-Security-2026 report
+
+Killed the last public rule-count drift: the GitHub repo "About" description and
+every human-facing rule-count string (`CLAUDE.md`, launch outreach/blog/awesome
+drafts, the launch data-report draft) said **221** — corrected to the canonical
+**225** (matching the README badge, the `RULES` registry, `rules.json`, and the
+`test_rule_count_is_canonical` CI fence). Adjacent stale metrics on the same
+lines were fixed too (75 → 79 scanners, v0.3.34 → v0.3.41). Promoted the
+reproducible report: the README "State of MCP Security 2026" section now leads
+with the two wedges (offline/deterministic + compliance-evidence), the earlier
+`launch/state-of-mcp-security-2026.md` marketing draft is banner-marked as
+superseded by `research/state-of-mcp-2026/REPORT.md` (canonical), and a manual
+`docs/DISTRIBUTION-CHECKLIST.md` lists launch surfaces (Show HN, r/netsec,
+awesome-mcp-security, OWASP working group). Docs/metadata only — no version bump.
+
 ### Added — State-of-MCP-Security-2026 research harness + report
 
 New `research/state-of-mcp-2026/` directory: a reproducible data-report harness

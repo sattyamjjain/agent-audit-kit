@@ -13,7 +13,7 @@ agent-audit-kit scan .
 
 ## Features
 
-- **221 detection rules** across 11 categories
+- **225 detection rules** across 11 categories
 - **OWASP Agentic Top 10** complete mapping (ASI01-ASI10)
 - **OWASP MCP Top 10** complete mapping
 - **Adversa AI Top 25** mapping

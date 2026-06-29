@@ -1,18 +1,22 @@
 # The State of MCP Security 2026
 
-## We scanned 571 public MCP server configs. 1 in 4 ships a critical flaw — and half ship a high-severity one.
+> **⚠️ Superseded — earlier marketing draft.** The canonical, reproducible report is
+> **[`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md)**
+> (raw aggregate: [`results.json`](../research/state-of-mcp-2026/results.json)),
+> regenerated against the current engine (v0.3.41, 225 rules): **571 distinct
+> configs, 25.7% with a critical finding, ~29% grade A.** Some derived figures in
+> the body below are from an earlier run — trust REPORT.md for any number you quote.
 
-> **Data report — draft.** Numbers below are a real, reproducible, content-deduped scan of a 571-config
-> corpus (current engine, 2026-06-13). Before publishing, re-run the crawler to widen
-> the corpus (see *Reproduce this*) and update every figure from the fresh `results.json`.
-> The structure, framing, and honesty caveats are final; only the corpus size should grow.
+## We scanned 571 public MCP server configs. 1 in 4 ships a critical flaw.
+
+> **Marketing draft.** Headline framing is final; for exact reproducible figures use the canonical report linked above.
 
 ---
 
 ### TL;DR
 
 - We took **571 distinct publicly committed `.mcp.json` configuration files** from GitHub and ran
-  [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit) (v0.3.34, 221 rules, fully
+  [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit) (v0.3.41, 225 rules, fully
   offline, MIT) over each one.
 - **Nearly every config (568/571, 99.5%) produced at least one finding** — but most configs' *worst*
   issue is advisory. The security-relevant story is sharper:
@@ -43,7 +47,7 @@ risks actually show up in configs in the wild. So we measured it.
   via the GitHub Code Search API and downloaded (crawled 2026; latest pass 2026-06-13). 631
   files were downloaded; 59 byte-identical duplicates and 1 unparseable file were removed,
   leaving 571 unique configs. Each is a real config from a real public repository.
-- **Tool.** AgentAuditKit v0.3.34 — 221 deterministic rules, no LLM, no cloud, no telemetry;
+- **Tool.** AgentAuditKit v0.3.41 — 225 deterministic rules, no LLM, no cloud, no telemetry;
   every config scanned in isolation. The exact rule set is in the
   [signed bundle](https://github.com/sattyamjjain/agent-audit-kit) (`rules.json`).
 - **Reproducible.** The crawler and scanner are open source and stdlib-only. Anyone can
@@ -144,7 +148,7 @@ python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
 ```
 
 Everything is MIT-licensed and the rule bundle is Sigstore-signed, so you can verify exactly
-which 221 rules produced these numbers.
+which 225 rules produced these numbers.
 
 ---
 ---
@@ -160,7 +164,7 @@ which 221 rules produced these numbers.
 
 **First comment (post immediately, as the author):**
 > Solo maintainer here. I took 571 publicly-committed `.mcp.json` files from GitHub and ran an
-> open-source, fully-offline scanner (AgentAuditKit, MIT, 221 rules) over each. Headline: **26%
+> open-source, fully-offline scanner (AgentAuditKit, MIT, 225 rules) over each. Headline: **26%
 > ship ≥1 critical issue, 51% ship ≥1 high.** The critical drivers are boring and fixable —
 > remote servers with no auth, and packages that aren't version-pinned (so they fetch-and-run
 > whatever the registry serves that day).

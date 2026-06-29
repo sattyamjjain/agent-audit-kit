@@ -3,10 +3,10 @@
 <!-- AUTO-MANAGED: project-description -->
 ## Overview
 
-**AgentAuditKit** (v0.3.34) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
+**AgentAuditKit** (v0.3.41) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
 
-- **221 rules** across 11 security categories
-- **75 scanner modules** including Python/TypeScript/Rust taint analysis
+- **225 rules** across 11 security categories
+- **79 scanner modules** including Python/TypeScript/Rust taint analysis
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (12 frameworks): EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, NSA MCP CSI, + regional (India DPDP, Singapore, Alabama, Tennessee)
@@ -65,8 +65,8 @@ agent_audit_kit/
   llm_scan.py          # LLM-assisted scanning
   vuln_db.py           # CVE/vulnerability database
   rules/
-    builtin.py         # 221 RuleDefinition entries (rule registry)
-  scanners/            # 75 scanner modules (core set shown), each exports scan() -> (list[Finding], set[str])
+    builtin.py         # 225 RuleDefinition entries (rule registry)
+  scanners/            # 79 scanner modules (core set shown), each exports scan() -> (list[Finding], set[str])
     mcp_config.py      # MCP configuration checks
     hook_injection.py  # Hook injection detection
     trust_boundary.py  # Trust boundary violations
@@ -123,7 +123,7 @@ benchmarks/            # Benchmark crawler
 ## Detected Patterns
 
 - **Scanner registry**: `engine.py` lazy-builds a list of `ScannerRegistration` dataclasses; each wraps a `scan_fn` callable. New scanners are registered via try/except ImportError blocks for backward compatibility.
-- **Rule registry**: `rules/builtin.py` defines all 221 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
+- **Rule registry**: `rules/builtin.py` defines all 225 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
 - **Finding model**: All scanners produce `Finding` dataclasses with rule_id, severity, category, evidence, remediation, and framework references (OWASP, CVE, Adversa).
 - **Scoring**: Penalty-based (start at 100, deduct per severity), clamped to [0,100], mapped to letter grade.
 - **Output formatters**: Each module in `output/` takes a `ScanResult` and formats it (console, JSON, SARIF, OWASP, compliance).
