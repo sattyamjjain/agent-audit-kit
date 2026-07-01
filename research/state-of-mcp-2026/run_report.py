@@ -94,6 +94,7 @@ def aggregate(corpus: Path) -> dict[str, Any]:
     severities: Counter[str] = Counter()
     category_configs: Counter[str] = Counter()  # configs with >=1 finding in cat
     rule_configs: Counter[str] = Counter()       # configs with >=1 finding of rule
+    owasp_mcp_configs: Counter[str] = Counter()  # configs with >=1 finding mapped to MCPxx
     has_critical = 0
     has_high = 0
 
@@ -114,16 +115,22 @@ def aggregate(corpus: Path) -> dict[str, Any]:
         cats_here: set[str] = set()
         rules_here: set[str] = set()
         sev_here: set[str] = set()
+        owasp_here: set[str] = set()
         for f in result.findings:
             sev = f.severity.value
             severities[sev] += 1
             sev_here.add(sev)
             cats_here.add(f.category.value)
             rules_here.add(f.rule_id)
+            rule = RULES.get(f.rule_id)
+            if rule:
+                owasp_here.update(rule.owasp_mcp_references)
         for c in cats_here:
             category_configs[c] += 1
         for r in rules_here:
             rule_configs[r] += 1
+        for o in owasp_here:
+            owasp_mcp_configs[o] += 1
         if "critical" in sev_here:
             has_critical += 1
         if "high" in sev_here:
@@ -160,6 +167,10 @@ def aggregate(corpus: Path) -> dict[str, Any]:
         "category_hit_rate": {
             cat: {"configs": n, "pct": _pct(n)}
             for cat, n in category_configs.most_common()
+        },
+        "owasp_mcp_hit_rate": {
+            code: {"configs": n, "pct": _pct(n)}
+            for code, n in owasp_mcp_configs.most_common()
         },
         "top_misconfigurations": top_misconfig,
         "excluded_advisory_rules": sorted(_ADVISORY_RULES),

@@ -4,11 +4,31 @@
 
 > **Reproducible data report.** Every number under "What we measured" comes from
 > running [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit)
-> (v0.3.41, 225 rules, fully offline, MIT) over a content-deduplicated corpus of
+> (v0.3.42, 225 rules, fully offline, MIT) over a content-deduplicated corpus of
 > public MCP configs. The raw aggregate is committed alongside this file as
-> [`results.json`](results.json); the exact command to regenerate it is in
-> *Reproduce this*. External figures (next section) are attributed to their
+> [`results.json`](results.json); the command to regenerate it is in
+> *How we scan*. External figures (next section) are attributed to their
 > sources, not measured by us.
+
+---
+
+## Executive summary
+
+- We statically scanned **571 distinct public MCP server configuration files**.
+  **147 (25.7%) contain at least one critical-severity finding**; only **165
+  (28.9%) earn an "A"** and **115 (20.1%) land at D or F**.
+- The single most common problem is **fetch-and-execute at launch**: **43.4% of
+  configs** start their server with `npx`/`uvx`, running whatever the registry
+  serves that moment (no pinned version, no hash).
+- The most common *critical* problem is **missing authentication on a remote
+  server** — **23.8% of configs** — which matches, from the deployment side,
+  Knostic's finding that **119 of 119** exposed servers they probed allowed
+  unauthenticated tool-listing.
+- Mapped to the OWASP MCP Top 10, **99.3% of configs** trip **MCP07:2025
+  (Insufficient Authorization / Excessive Permissions)** — this is an
+  authorization-and-launch-hygiene story, not exotic tool-poisoning.
+- It's fixable with a linter in CI, not a new exploit: **pin what you launch**
+  and **require a credential on anything mutating**.
 
 ---
 
@@ -21,43 +41,34 @@ months, and the exposed surface is already large and under-secured:
   ecosystem is now thousands of independently-published servers, not a handful.
   *(Source: official MCP Registry export, 2026-05-24.)*
 - **Knostic found 1,862 MCP servers exposed on the public internet, and 119 of
-  119 they probed allowed unauthenticated tool-listing** — i.e. every exposed
-  server they tested would hand its tool catalog to an anonymous caller.
+  119 they probed allowed unauthenticated tool-listing** — every exposed server
+  they tested would hand its tool catalog to an anonymous caller.
   *(Source: Knostic research.)*
-- **A 2,614-server survey found 82% had path-traversal issues.** *(Source: the
-  2,614-server MCP survey.)*
+- **A 2,614-server survey found 82% had path-traversal issues.**
+  *(Source: the 2,614-server MCP survey.)*
 
-These say the *population* is big and the *authentication/path* hygiene is poor.
-This report adds the missing piece: **what the configuration files people
-actually commit look like, measured deterministically.**
-
-### Where AgentAuditKit fits (two defensible wedges)
-
-1. **Offline & deterministic.** Every figure here was produced with zero network
-   calls and no LLM — the same corpus yields the same findings, byte-for-byte.
-   That is what makes a *report* reproducible and an *audit* defensible.
-2. **Compliance-evidence, not just findings.** The same scan emits SARIF for the
-   GitHub Security tab plus auditor-ready PDF evidence mapped to 13 frameworks
-   (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes).
+Those say the *population* is big and the *auth/path* hygiene is poor. This
+report adds the missing piece: **what the configuration files people actually
+commit look like, measured deterministically.**
 
 ---
 
 ## What we measured
 
-- **Corpus:** 631 publicly-committed MCP config files discovered via GitHub Code
+- **Corpus.** 631 publicly-committed MCP config files discovered via GitHub Code
   Search (seeded to overlap the MCP Registry export + mcp.so top-N), then
   content-deduplicated — **59 byte-identical duplicates and 1 unparseable file
   removed, leaving 571 distinct configs.**
-- **Tool:** AgentAuditKit v0.3.41 — 225 deterministic rules, no cloud, no
-  telemetry. Each config scanned in isolation via the same `run_scan` +
-  `compute_score` the CLI and the MCP Security Index use.
+- **Scanner.** AgentAuditKit **v0.3.42, 225 rules** — no cloud, no telemetry, no
+  LLM. Each config is scanned in isolation through the same `run_scan` +
+  `compute_score` the CLI and the public MCP Security Index use. Deterministic:
+  the same corpus produces the same `results.json`, byte-for-byte.
 
 ### Headline
 
-- **147 of 571 configs (25.7%) contain at least one CRITICAL-severity finding.**
-- **143 of 571 (25.0%) contain at least one HIGH-severity finding.**
-- Across all configs: **259 critical · 280 high · 2,256 medium · 586 low**
-  findings.
+- **147 of 571 (25.7%) have ≥1 CRITICAL finding.**
+- **143 of 571 (25.0%) have ≥1 HIGH finding.**
+- All findings: **259 critical · 280 high · 2,256 medium · 586 low.**
 
 ### Grade distribution (A–F)
 
@@ -72,17 +83,16 @@ actually commit look like, measured deterministically.**
 **~1 in 5 configs (20.1%) land at D or F.** The grade is AAK's penalty-based
 score (start at 100, deduct per finding severity), identical to `aak score`.
 
-### Where the findings cluster (per-category hit rate)
+### OWASP MCP Top 10 — configs tripping each risk
 
-| Category | Configs with ≥1 finding | Share |
+| OWASP MCP | Configs | Share |
 |---|--:|--:|
-| MCP configuration | 567 | 99.3% |
-| Secret exposure | 63 | 11.0% |
-| Transport security | 18 | 3.2% |
-| Tool poisoning / agent-config / legal | 1 each | ~0.2% |
-
-The story is overwhelmingly a **configuration** story: launch/transport/auth
-hygiene in the `.mcp.json` itself, not exotic tool-poisoning.
+| **MCP07:2025** — Insufficient Authorization / Excessive Permissions | 567 | 99.3% |
+| **MCP10:2025** — Supply-chain / untrusted package execution | 248 | 43.4% |
+| **MCP03:2025** — Tool/launch integrity | 248 | 43.4% |
+| **MCP04:2025** — Command injection surface | 174 | 30.5% |
+| **MCP01:2025** — Token / secret mismanagement | 64 | 11.2% |
+| **MCP09:2025** — Transport security | 38 | 6.7% |
 
 ### Top 5 misconfigurations (advisory-posture rules excluded)
 
@@ -94,22 +104,94 @@ hygiene in the `.mcp.json` itself, not exotic tool-poisoning.
 | `AAK-MCP-003` — server environment exposes secrets to the tool process | HIGH | 63 | 11.0% |
 | `AAK-SECRET-007` — secret in MCP server environment block | MEDIUM | 63 | 11.0% |
 
-The two things worth fixing **today**: (1) **pin what you launch** — 43% of
-configs `npx`/`uvx` fetch-and-run whatever the registry serves that moment; (2)
-**authenticate mutating remote servers** — ~1 in 4 declares a remote server with
-no auth, which aligns with Knostic's 119-of-119 unauthenticated finding from the
-*deployment* side.
+Two advisory-posture rules are **excluded** from this table so the story isn't
+inflated (tracked in `results.json` under `excluded_advisory_rules`):
+`AAK-MCP-ATTEST-001` (deny-by-default attestation — fires on nearly every server
+because attestation isn't an ecosystem norm yet) and `AAK-MCP-007` (no version
+pin in `args`, LOW — advisory hygiene).
 
-### What we deliberately did NOT count
+---
 
-To avoid inflating the story, two advisory-posture rules are **excluded** from
-the "top misconfigurations" table (they are tracked in `results.json` under
-`excluded_advisory_rules`):
+## Case studies (CVE-class, anonymized)
 
-- `AAK-MCP-ATTEST-001` (deny-by-default attestation) — fires on nearly every
-  server because attestation isn't an ecosystem norm yet; a roadmap signal, not
-  an exploit.
-- `AAK-MCP-007` (no version pin in `args`, LOW) — advisory hygiene.
+The snippets below are **illustrative, anonymized reconstructions** of the most
+common patterns — not any specific scanned repo (per our 90-day
+coordinated-disclosure policy, only aggregates are published). Each maps a top
+finding to the disclosed CVE class it mirrors.
+
+### 1. Unauthenticated remote server (`AAK-MCP-001`, 23.8% · CRITICAL)
+CVE class: **Azure-MCP no-auth (CVE-2026-32211), GitLab/Nocturne/AgenticMail
+no-auth cluster (CVE-2026-44895/44830/50287).**
+
+```jsonc
+{ "mcpServers": { "gateway": {
+    "url": "http://0.0.0.0:8080/mcp"    // network-bound, no Authorization header
+} } }
+```
+A mutation-capable RPC endpoint reachable by anyone on the network. This is the
+config-side mirror of Knostic's 119-of-119 unauthenticated tool-listing.
+**Fix:** require a bearer/mTLS credential; bind `127.0.0.1` behind an
+authenticating proxy.
+
+### 2. Fetch-and-execute at launch (`AAK-MCP-005`, 43.4% · supply chain)
+CVE class: **untrusted-package / rug-pull execution (MCP10:2025); the OX MCP
+STDIO command-injection cluster.**
+
+```jsonc
+{ "mcpServers": { "tools": {
+    "command": "npx", "args": ["-y", "some-mcp-server@latest"]   // unpinned, fetched every start
+} } }
+```
+`@latest` (or no version) means the server runs whatever the registry serves at
+launch — the contents can change between two starts without the config changing.
+**Fix:** pin an exact version or a hash; vendor the package.
+
+### 3. Secret in the environment block (`AAK-MCP-003` HIGH + `AAK-SECRET-007`, 11% each)
+CVE class: **credential exposure / token mismanagement (MCP01:2025); the
+splunk-mcp token-cleartext class (CVE-2026-20205).**
+
+```jsonc
+{ "mcpServers": { "svc": {
+    "command": "svc-mcp",
+    "env": { "API_TOKEN": "sk-live-REDACTED..." }   // long-lived secret in committed config
+} } }
+```
+A real credential in a file that lands in git history and every clone.
+**Fix:** reference an env var or secret manager; never inline the value.
+
+---
+
+## How we scan (offline, reproducible)
+
+AgentAuditKit exists because of two properties hosted scanners can't match, and
+they're exactly what makes this report trustworthy:
+
+1. **Offline & deterministic.** Zero network calls, no LLM in the loop. Your
+   code, configs, and secrets never leave the machine, and the same input always
+   yields the same finding. A report you can re-run and check, not a vibe.
+2. **Compliance-evidence, not just findings.** The same scan emits SARIF for the
+   GitHub Security tab plus auditor-ready PDF evidence mapped to 13 frameworks
+   (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes)
+   — what you hand an auditor, not just a list.
+
+### Reproduce this yourself
+
+```bash
+# Scan your own MCP/agent configs in 30s, fully offline:
+pip install agent-audit-kit
+agent-audit-kit scan .
+
+# Regenerate this exact report:
+git clone https://github.com/sattyamjjain/agent-audit-kit && cd agent-audit-kit
+pip install -e .
+export GITHUB_TOKEN=$(gh auth token)                                   # higher search rate limit
+python benchmarks/crawler.py --limit 500 --output benchmarks/results.json   # acquire corpus
+python research/state-of-mcp-2026/run_report.py \                      # scan + aggregate
+    --corpus benchmarks/data --out research/state-of-mcp-2026/results.json
+```
+
+The harness contains **no scanner** — it calls the same `run_scan` /
+`compute_score` the product ships. Output is deterministic for a fixed corpus.
 
 ---
 
@@ -124,38 +206,14 @@ the "top misconfigurations" table (they are tracked in `results.json` under
 4. **External figures are as-reported** by the cited third parties (MCP Registry,
    Knostic, the 2,614-server survey); only the 571-config scan is our own
    measurement.
+5. **The harness reports prevalence of patterns AAK already has rules for** — it
+   cannot, by construction, surface a class for which no rule exists. Discovering
+   genuinely uncovered patterns is a manual follow-up; any that hold up get filed
+   as issues and turned into rules separately. No speculative findings here.
 
 ---
 
-## Reproduce this
-
-```bash
-git clone https://github.com/sattyamjjain/agent-audit-kit && cd agent-audit-kit
-pip install -e .
-
-# 1. Acquire the corpus (reuses the existing crawler)
-export GITHUB_TOKEN=$(gh auth token)
-python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
-
-# 2. Scan + aggregate (reuses agent_audit_kit.engine.run_scan + scoring.compute_score)
-python research/state-of-mcp-2026/run_report.py \
-    --corpus benchmarks/data \
-    --out research/state-of-mcp-2026/results.json
-```
-
-The harness contains **no scanner** — it calls the same `run_scan` /
-`compute_score` the product ships. Output is deterministic for a fixed corpus.
-
-## Methodology note: novel-pattern discovery
-
-This harness reports the **prevalence of patterns AAK already has rules for** —
-it cannot, by construction, surface a misconfiguration class for which no rule
-exists. Discovering genuinely *uncovered* patterns is a manual corpus-inspection
-follow-up; any that hold up will be filed as `cve-response`/finding issues and
-turned into rules separately. No speculative findings were filed for this report.
-
----
-
-*Marketing/launch copy for this report lives in
-[`launch/state-of-mcp-security-2026.md`](../../launch/state-of-mcp-security-2026.md);
-this file is the rigorous, reproducible source of record.*
+*The earlier marketing draft at
+[`launch/state-of-mcp-security-2026.md`](../../launch/state-of-mcp-security-2026.md)
+is superseded; this file is the canonical, reproducible source of record.
+Launch-ready copy is in [`docs/DISTRIBUTION-CHECKLIST.md`](../../docs/DISTRIBUTION-CHECKLIST.md).*

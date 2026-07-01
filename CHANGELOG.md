@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — finish the State of MCP Security 2026 report (launch-ready)
+
+Promoted the data-report harness (shipped in #373) into a finished, launch-ready
+report. `research/state-of-mcp-2026/REPORT.md` gains an executive summary, an
+OWASP-MCP-Top-10 hit-rate table, three anonymized CVE-class case studies, a
+"how we scan (offline, reproducible)" section leading with the two wedges, and a
+`pip install` self-scan block so the report doubles as a distribution funnel.
+Every figure is sourced to `results.json` — the harness was re-run against the
+current corpus (571 distinct configs; 25.7% critical; 28.9% grade A; 99.3% trip
+OWASP MCP07). The harness now also aggregates `owasp_mcp_hit_rate` (no scanner
+change — it reads `owasp_mcp_references` off the existing rules). Filled
+`docs/DISTRIBUTION-CHECKLIST.md` with ready-to-post copy (Show HN, r/netsec,
+OWASP working-group note, awesome-mcp-security) — operator-posted, nothing
+auto-posts. Version **0.3.41 → 0.3.42**. No scanner rules added; rule count
+stays 225.
+
 ### Changed — docs: align public rule-count to canonical 225; promote State-of-MCP-Security-2026 report
 
 Killed the last public rule-count drift: the GitHub repo "About" description and

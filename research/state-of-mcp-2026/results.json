@@ -49,6 +49,44 @@
       "pct": 0.2
     }
   },
+  "owasp_mcp_hit_rate": {
+    "MCP07:2025": {
+      "configs": 567,
+      "pct": 99.3
+    },
+    "MCP10:2025": {
+      "configs": 248,
+      "pct": 43.4
+    },
+    "MCP03:2025": {
+      "configs": 248,
+      "pct": 43.4
+    },
+    "MCP04:2025": {
+      "configs": 174,
+      "pct": 30.5
+    },
+    "MCP01:2025": {
+      "configs": 64,
+      "pct": 11.2
+    },
+    "MCP09:2025": {
+      "configs": 38,
+      "pct": 6.7
+    },
+    "MCP02:2025": {
+      "configs": 10,
+      "pct": 1.8
+    },
+    "MCP06:2025": {
+      "configs": 1,
+      "pct": 0.2
+    },
+    "MCP05:2025": {
+      "configs": 1,
+      "pct": 0.2
+    }
+  },
   "top_misconfigurations": [
     {
       "rule_id": "AAK-MCP-005",
@@ -72,16 +110,16 @@
       "config_pct": 23.8
     },
     {
-      "rule_id": "AAK-MCP-003",
-      "title": "MCP server environment exposes secrets",
-      "severity": "high",
+      "rule_id": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "severity": "medium",
       "configs": 63,
       "config_pct": 11.0
     },
     {
-      "rule_id": "AAK-SECRET-007",
-      "title": "Secret in MCP server environment block",
-      "severity": "medium",
+      "rule_id": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "severity": "high",
       "configs": 63,
       "config_pct": 11.0
     }

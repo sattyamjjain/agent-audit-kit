@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.41
+      - uses: sattyamjjain/agent-audit-kit@v0.3.42
         with:
           fail-on: high
 ```
@@ -86,7 +86,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.41
+    rev: v0.3.42
     hooks:
       - id: agent-audit-kit
 ```
@@ -395,8 +395,15 @@ survey), and honesty caveats are in
 **[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)**
 (raw aggregate: [`results.json`](research/state-of-mcp-2026/results.json)).
 
+Mapped to the OWASP MCP Top 10, **99.3% of configs trip MCP07 (authorization /
+excessive permissions)**. Scan your own in 30s, fully offline:
+
+```bash
+pip install agent-audit-kit && agent-audit-kit scan .
+```
+
 The harness contains no scanner — it reuses `agent_audit_kit.engine.run_scan` +
-`scoring.compute_score`. Reproduce:
+`scoring.compute_score`. Regenerate the report:
 
 ```bash
 export GITHUB_TOKEN=$(gh auth token)
@@ -404,6 +411,8 @@ python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
 python research/state-of-mcp-2026/run_report.py --corpus benchmarks/data \
     --out research/state-of-mcp-2026/results.json
 ```
+
+Launch-ready copy for the report is in [`docs/DISTRIBUTION-CHECKLIST.md`](docs/DISTRIBUTION-CHECKLIST.md).
 
 ## CVE Response
 
