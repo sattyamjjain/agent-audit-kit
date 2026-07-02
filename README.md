@@ -383,19 +383,20 @@ Public leaderboard of MCP servers we scan weekly:
 
 ## State of MCP Security 2026
 
-A reproducible data report: we scanned **571 distinct public MCP server configs**
-and found **1 in 4 ships a critical-severity flaw** (only ~29% earn an "A"). It
+A reproducible data report: we scanned **664 distinct public MCP server configs**
+and found **1 in 4 ships a critical-severity flaw** — the **median config scores
+a B, the top 10% an A**, and **24.2% declare a remote server with no auth**. It
 exists because of AAK's two defensible wedges — the scan is **offline and
 deterministic** (no code or configs leave the machine; same input, same result),
 and it yields **auditor-ready compliance evidence**, which is what makes a report
-reproducible and an audit defensible. Full methodology, grade distribution, top
-misconfigurations, external anchors (MCP Registry 9,652 servers; Knostic 1,862
-exposed / 119-of-119 unauthenticated; the 2,614-server 82%-path-traversal
-survey), and honesty caveats are in
-**[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)**
+reproducible and an audit defensible. Full distribution, score calibration,
+OWASP-MCP-Top-10 hit rate, top-10 findings, external anchors (MCP Registry 9,652
+servers; Knostic 1,862 exposed / 119-of-119 unauthenticated; the 2,614-server
+82%-path-traversal survey), and honest limitations are in
+**[`research/state-of-mcp-2026/PREVALENCE.md`](research/state-of-mcp-2026/PREVALENCE.md)**
 (raw aggregate: [`results.json`](research/state-of-mcp-2026/results.json)).
 
-Mapped to the OWASP MCP Top 10, **99.3% of configs trip MCP07 (authorization /
+Mapped to the OWASP MCP Top 10, **99.4% of configs trip MCP07 (authorization /
 excessive permissions)**. Scan your own in 30s, fully offline:
 
 ```bash

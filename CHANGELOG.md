@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — MCP prevalence scan (664 configs) + score calibration (issue #23)
+
+Empirical sequel to the State-of-MCP-Security harness. Widened the corpus by
+sweeping five MCP-config filename queries in `benchmarks/crawler.py` (was a
+single `.mcp.json` query capped at GitHub Code Search's 1,000-result ceiling ≈
+571 distinct) → **664 distinct public configs**. Re-ran the #373 harness (reuses
+`engine.run_scan` + `scoring.compute_score`; extended to emit `owasp_mcp_hit_rate`
+and top-10). New report `research/state-of-mcp-2026/PREVALENCE.md`: the score
+distribution (A 30% / B 36% / C 13% / D 7% / F 13%; **median grade B, top 10%
+A** — the empirical anchor #23 asked for), 26.1% critical, 24.2% no-auth,
+OWASP-MCP hit rate (MCP07 99.4%), top-10 findings, methodology, honest
+limitations, and manual distribution drafts. `REPORT.md` now redirects to
+PREVALENCE.md (canonical); README + `docs/DISTRIBUTION-CHECKLIST.md` updated to
+664. Aggregate-only, no per-server list published and no CVEs filed (90-day
+coordinated-disclosure policy). No package code touched — version stays 0.3.42.
+
 ### Changed — finish the State of MCP Security 2026 report (launch-ready)
 
 Promoted the data-report harness (shipped in #373) into a finished, launch-ready

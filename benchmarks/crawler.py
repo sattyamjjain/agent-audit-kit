@@ -34,7 +34,19 @@ logger = logging.getLogger(__name__)
 
 GITHUB_SEARCH_URL = "https://api.github.com/search/code"
 GITHUB_API_VERSION = "2022-11-28"
+# Primary query (kept for back-compat / single-query callers).
 SEARCH_QUERY = "mcpServers filename:.mcp.json"
+# Each GitHub Code Search query is capped at 1,000 results, so a single
+# filename query plateaus (~571 distinct configs for `.mcp.json`). To widen the
+# corpus we sweep the other common MCP-config filenames and dedupe by
+# repo+path. Every query is public-metadata only (no exploitation).
+SEARCH_QUERIES = [
+    "mcpServers filename:.mcp.json",
+    "mcpServers filename:mcp.json",
+    "mcpServers filename:claude_desktop_config.json",
+    "mcpServers filename:cline_mcp_settings.json",
+    "mcpServers filename:mcp_settings.json",
+]
 PER_PAGE = 100  # max allowed by GitHub
 RATE_LIMIT_PAUSE_S = 10  # seconds to wait when rate-limited
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -136,27 +148,46 @@ def search_mcp_configs(limit: int = 100) -> list[dict[str, Any]]:
         List of search result items from the GitHub Code Search API.
     """
     items: list[dict[str, Any]] = []
-    page = 1
-    per_page = min(limit, PER_PAGE)
+    seen: set[tuple[str, str]] = set()
+    per_page = PER_PAGE
 
-    while len(items) < limit:
-        url = (
-            f"{GITHUB_SEARCH_URL}"
-            f"?q={urllib.request.quote(SEARCH_QUERY)}"
-            f"&per_page={per_page}&page={page}"
-        )
-        logger.info("Searching page %d (collected %d/%d)...", page, len(items), limit)
-        data = _api_get(url)
+    for query in SEARCH_QUERIES:
+        page = 1
+        while len(items) < limit:
+            url = (
+                f"{GITHUB_SEARCH_URL}"
+                f"?q={urllib.request.quote(query)}"
+                f"&per_page={per_page}&page={page}"
+            )
+            logger.info(
+                "Searching %r page %d (collected %d/%d distinct)...",
+                query, page, len(items), limit,
+            )
+            try:
+                data = _api_get(url)
+            except RuntimeError:
+                # GitHub caps Code Search at 1,000 results / rate-limits hard;
+                # a failed page just ends this query, not the whole sweep.
+                logger.warning("Query %r ended early at page %d", query, page)
+                break
 
-        page_items = data.get("items", [])
-        if not page_items:
+            page_items = data.get("items", [])
+            if not page_items:
+                break
+
+            for it in page_items:
+                repo = it.get("repository", {}).get("full_name", "")
+                path = it.get("path", "")
+                key = (repo, path)
+                if key in seen:
+                    continue
+                seen.add(key)
+                items.append(it)
+
+            page += 1
+            time.sleep(2)  # respect rate limits between pages
+        if len(items) >= limit:
             break
-
-        items.extend(page_items)
-        page += 1
-
-        # Respect rate limits between pages
-        time.sleep(2)
 
     return items[:limit]
 

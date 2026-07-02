@@ -149,7 +149,7 @@ def aggregate(corpus: Path) -> dict[str, Any]:
         }
         for rid, n in rule_configs.most_common()
         if rid not in _ADVISORY_RULES
-    ][:5]
+    ][:10]
 
     return {
         "tool": "agent-audit-kit",

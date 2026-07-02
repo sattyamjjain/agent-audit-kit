@@ -1,40 +1,40 @@
 {
   "tool": "agent-audit-kit",
   "corpus": "benchmarks/data",
-  "corpus_total_files": 631,
-  "distinct_configs_scanned": 571,
-  "duplicates_removed": 59,
+  "corpus_total_files": 748,
+  "distinct_configs_scanned": 664,
+  "duplicates_removed": 83,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 165,
-    "B": 213,
-    "C": 78,
-    "D": 45,
-    "F": 70
+    "A": 199,
+    "B": 242,
+    "C": 89,
+    "D": 49,
+    "F": 85
   },
-  "configs_with_critical": 147,
-  "configs_with_critical_pct": 25.7,
-  "configs_with_high": 143,
-  "configs_with_high_pct": 25.0,
+  "configs_with_critical": 173,
+  "configs_with_critical_pct": 26.1,
+  "configs_with_high": 163,
+  "configs_with_high_pct": 24.5,
   "severity_totals": {
-    "medium": 2256,
-    "low": 586,
-    "critical": 259,
-    "high": 280,
+    "medium": 2604,
+    "low": 640,
+    "critical": 295,
+    "high": 316,
     "info": 1
   },
   "category_hit_rate": {
     "mcp-config": {
-      "configs": 567,
-      "pct": 99.3
+      "configs": 660,
+      "pct": 99.4
     },
     "secret-exposure": {
-      "configs": 63,
-      "pct": 11.0
+      "configs": 70,
+      "pct": 10.5
     },
     "transport-security": {
-      "configs": 18,
-      "pct": 3.2
+      "configs": 20,
+      "pct": 3.0
     },
     "legal-compliance": {
       "configs": 1,
@@ -51,31 +51,31 @@
   },
   "owasp_mcp_hit_rate": {
     "MCP07:2025": {
-      "configs": 567,
-      "pct": 99.3
+      "configs": 660,
+      "pct": 99.4
     },
     "MCP10:2025": {
-      "configs": 248,
-      "pct": 43.4
+      "configs": 290,
+      "pct": 43.7
     },
     "MCP03:2025": {
-      "configs": 248,
-      "pct": 43.4
+      "configs": 290,
+      "pct": 43.7
     },
     "MCP04:2025": {
-      "configs": 174,
-      "pct": 30.5
+      "configs": 205,
+      "pct": 30.9
     },
     "MCP01:2025": {
-      "configs": 64,
-      "pct": 11.2
+      "configs": 71,
+      "pct": 10.7
     },
     "MCP09:2025": {
-      "configs": 38,
-      "pct": 6.7
+      "configs": 44,
+      "pct": 6.6
     },
     "MCP02:2025": {
-      "configs": 10,
+      "configs": 12,
       "pct": 1.8
     },
     "MCP06:2025": {
@@ -92,36 +92,71 @@
       "rule_id": "AAK-MCP-005",
       "title": "MCP server uses npx/uvx to fetch and execute remote packages",
       "severity": "medium",
-      "configs": 248,
-      "config_pct": 43.4
+      "configs": 290,
+      "config_pct": 43.7
     },
     {
       "rule_id": "AAK-MCP-006",
       "title": "MCP server command uses relative path",
       "severity": "medium",
-      "configs": 149,
-      "config_pct": 26.1
+      "configs": 175,
+      "config_pct": 26.4
     },
     {
       "rule_id": "AAK-MCP-001",
       "title": "Remote MCP server without authentication",
       "severity": "critical",
-      "configs": 136,
-      "config_pct": 23.8
+      "configs": 161,
+      "config_pct": 24.2
     },
     {
       "rule_id": "AAK-SECRET-007",
       "title": "Secret in MCP server environment block",
       "severity": "medium",
-      "configs": 63,
-      "config_pct": 11.0
+      "configs": 70,
+      "config_pct": 10.5
     },
     {
       "rule_id": "AAK-MCP-003",
       "title": "MCP server environment exposes secrets",
       "severity": "high",
-      "configs": 63,
-      "config_pct": 11.0
+      "configs": 70,
+      "config_pct": 10.5
+    },
+    {
+      "rule_id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+      "title": "MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args",
+      "severity": "high",
+      "configs": 49,
+      "config_pct": 7.4
+    },
+    {
+      "rule_id": "AAK-MCP-009",
+      "title": "MCP server URL points to localhost/internal network",
+      "severity": "high",
+      "configs": 44,
+      "config_pct": 6.6
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-003",
+      "title": "Deprecated SSE transport in use",
+      "severity": "medium",
+      "configs": 16,
+      "config_pct": 2.4
+    },
+    {
+      "rule_id": "AAK-MCP-004",
+      "title": "Excessive number of MCP servers declared",
+      "severity": "high",
+      "configs": 12,
+      "config_pct": 1.8
+    },
+    {
+      "rule_id": "AAK-MCP-002",
+      "title": "MCP server command runs with shell expansion",
+      "severity": "critical",
+      "configs": 9,
+      "config_pct": 1.4
     }
   ],
   "excluded_advisory_rules": [
