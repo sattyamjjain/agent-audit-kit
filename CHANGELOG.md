@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-CARD-* : MCP Server Card (SEP-1649) static audit + discovery crawler
+
+New **MCP Server Card** rule category (`Category.MCP_SERVER_CARD`) + scanner
+(`scanners/mcp_server_card.py`) that statically audits SEP-1649 discovery cards
+(`/.well-known/mcp/server-card.json`) — a client fetches and trusts a card
+*before* connecting, so the card is an attack surface. Four deterministic rules:
+
+- **AAK-MCP-CARD-001** (CRITICAL) — tool-description poisoning / imperative
+  injection in `tools[].description`. **Reuses** the AAK-POISON-001..006
+  detectors (invisible Unicode, prompt-injection, cross-tool reference, encoded
+  payloads) — nothing duplicated.
+- **AAK-MCP-CARD-002** (HIGH) — declared-transport vs advertised-capability
+  mismatch (remote transport with `authentication.required: false`, or a
+  `stdio`/local card advertising a remote `endpoint`).
+- **AAK-MCP-CARD-003** (HIGH) — missing / placeholder signature / provenance;
+  the card's self-declared tools + endpoint are trusted with no origin proof.
+- **AAK-MCP-CARD-004** (MEDIUM) — over-broad capability claims (wildcard scopes,
+  all-capabilities, `required: true` with empty `schemes`).
+
+SARIF 2.1.0 emitter (fingerprint + `fixes[]` + security-severity) is reused
+unchanged. Emits are stdlib-only and **offline by default** — card fetching is
+opt-in (`AAK_FETCH_SERVER_CARD_URL`, or the crawler's `--server-cards` pass).
+
+**Discovery crawler:** `benchmarks/sources.py` gains `well_known_server_cards()`
+and `benchmarks/crawler.py` a `--server-cards` network pass that enumerates
+servers, probes `/.well-known/mcp/server-card.json`, audits each card, and writes
+a **dated** `benchmarks/results-<date>.json` (never overwrites
+`results-2026-06-13.json`). New test + poisoned/clean card fixtures under
+`tests/fixtures/server_cards/`.
+
+Rule count **226 → 230**; scanner modules **80 → 81**; categories **11 → 12**.
+Version **0.3.43 → 0.3.44**.
+
 ### Added — AAK-MCP-AUTH-PATHTRAVERSAL-001: bearer-token → session-file path traversal ([CVE-2026-52830](https://nvd.nist.gov/vuln/detail/CVE-2026-52830))
 
 CVE-response cycle item (closes #394). New **CRITICAL** rule + scanner

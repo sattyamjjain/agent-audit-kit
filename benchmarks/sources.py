@@ -242,6 +242,40 @@ SOURCES: dict[str, Callable[[int], list[ServerEntry]]] = {
 }
 
 
+def well_known_server_cards(
+    entries: list[ServerEntry], limit: int = 200, timeout: int = 15
+) -> list[tuple[ServerEntry, dict]]:
+    """Discover SEP-1649 server cards for entries that expose an http(s) URL.
+
+    For each entry with a routable base URL, fetch
+    ``<base>/.well-known/mcp/server-card.json`` and return the (entry, card)
+    pairs that resolve to a JSON object. **Network op** — the crawler only calls
+    this behind an explicit ``--server-cards`` flag; the default AAK scan path is
+    offline. Failures are skipped silently so one dead host can't kill the sweep.
+    """
+    out: list[tuple[ServerEntry, dict]] = []
+    seen: set[str] = set()
+    for entry in entries:
+        if len(out) >= limit:
+            break
+        base = entry.url or entry.raw_config_url
+        if not base.startswith(("http://", "https://")):
+            continue
+        # normalise to scheme://host
+        m = re.match(r"^(https?://[^/]+)", base)
+        if not m:
+            continue
+        host = m.group(1)
+        if host in seen:
+            continue
+        seen.add(host)
+        card_url = host + "/.well-known/mcp/server-card.json"
+        data = _fetch_json(card_url, headers={"Accept": "application/json"}, timeout=timeout)
+        if isinstance(data, dict):
+            out.append((entry, data))
+    return out
+
+
 def collect_all(limit_per_source: int = 200) -> list[ServerEntry]:
     """Fan out to every source; deduplicate by (repo or name)."""
     out: list[ServerEntry] = []

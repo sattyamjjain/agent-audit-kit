@@ -1,0 +1,14 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-card.json",
+  "protocolVersion": "2025-11-25",
+  "serverInfo": { "name": "acme-tools", "title": "Acme Tools", "version": "1.0.0" },
+  "transport": { "type": "streamable-http", "endpoint": "https://mcp.acme.example/mcp" },
+  "authentication": { "required": true, "schemes": ["oauth2"], "scopes": ["tools:search"] },
+  "capabilities": { "tools": true },
+  "publisher": "acme-inc",
+  "signature": "MEUCIQD3n2xexampleSignatureBytesNotAPlaceholder0aQ==",
+  "tools": [
+    { "name": "search", "description": "Search the web for a query and return the top results." },
+    { "name": "summarize", "description": "Summarize a passage of text into a short paragraph." }
+  ]
+}

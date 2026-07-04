@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-226-blue.svg" alt="Rules: 226"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-230-blue.svg" alt="Rules: 230"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -27,9 +27,9 @@ Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, 
 1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). No account, no telemetry.
 2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 13 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
-- **<!-- rule-count:total -->226<!-- /rule-count --> rules** across 11 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->230<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
-- **<!-- scanner-count:total -->80<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **<!-- scanner-count:total -->81<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (13 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)**, **MCP 2026 Roadmap (May 2026)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.43
+      - uses: sattyamjjain/agent-audit-kit@v0.3.44
         with:
           fail-on: high
 ```
@@ -86,7 +86,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.43
+    rev: v0.3.44
     hooks:
       - id: agent-audit-kit
 ```
@@ -121,8 +121,23 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Transport Security** | <!-- category-count:TRANSPORT_SECURITY -->11<!-- /category-count --> | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings, transport body-size limits (CVE-2026-39313), SSRF redirect bypass (CVE-2026-41481), DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577) |
 | **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->12<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (binding 2026-08-02) |
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->12<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
+| **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 discovery cards (`/.well-known/mcp/server-card.json`): tool-description poisoning in `tools[].description` (`AAK-MCP-CARD-001`, reuses the AAK-POISON detectors), declared-transport vs advertised-capability mismatch — remote transport with `authentication.required: false`, or `stdio` advertising a remote endpoint (`AAK-MCP-CARD-002`), missing / placeholder signature / provenance (`AAK-MCP-CARD-003`), and over-broad capability / wildcard-scope claims (`AAK-MCP-CARD-004`) |
 
-**<!-- rule-count:total -->226<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->230<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+
+### MCP Server Card scanning (SEP-1649)
+
+The MCP discovery track ([SEP-1649](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1649), superseded-in-draft by SEP-2127) has servers publish a **server card** at `/.well-known/mcp/server-card.json` — a JSON document (`serverInfo`, `transport`, `capabilities`, `authentication`, `tools[]`) that a client fetches and **trusts before it connects**, ahead of the [2026-07-28 MCP spec finalization](https://modelcontextprotocol.io/). That makes the card an attack surface in its own right.
+
+`agent-audit-kit` statically audits a server card — from a committed file, or an **opt-in** fetch — with four deterministic rules (`AAK-MCP-CARD-001..004`, category **MCP Server Card**): tool-description poisoning, transport/capability mismatch, missing/placeholder provenance, and over-broad capability claims. It stays **offline and deterministic** — the default scan path makes zero network calls; card fetching only happens behind an explicit flag (`AAK_FETCH_SERVER_CARD_URL`, or the crawler's `--server-cards` network pass), and the same card always yields the same findings.
+
+```bash
+# audit a committed / saved server card, fully offline
+agent-audit-kit scan path/to/server-card.json
+
+# opt-in prevalence sweep of discoverable cards (network; writes results-<date>.json)
+python benchmarks/crawler.py --server-cards --limit 200
+```
 
 ### Agent Platforms Scanned
 
@@ -288,10 +303,10 @@ Generate an SVG badge for your README: `agent-audit-kit score . --badge`
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 11 |
 | **ASI02** | Tool Misuse | 38 |
-| **ASI03** | Memory Poisoning | 55 |
-| **ASI04** | Identity & Privilege Abuse | 37 |
+| **ASI03** | Memory Poisoning | 56 |
+| **ASI04** | Identity & Privilege Abuse | 38 |
 | **ASI05** | Cascading Failures | 33 |
-| **ASI06** | Unauthorized Capability Acquisition | 28 |
+| **ASI06** | Unauthorized Capability Acquisition | 30 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 4 |
 | **ASI09** | Resource Abuse | 14 |
@@ -333,7 +348,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->226<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->230<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **12 frameworks** | No | 0 | 0 |

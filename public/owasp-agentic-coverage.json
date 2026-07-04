@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-04T06:05:56Z",
-  "aak_version": "0.3.43",
-  "rule_count": 226,
+  "last_updated": "2026-07-04T08:01:53Z",
+  "aak_version": "0.3.44",
+  "rule_count": 230,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -526,7 +526,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 55,
+      "rule_density": 56,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -695,6 +695,12 @@
             "IAM-01",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-MCP-CARD-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001",
@@ -957,7 +963,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 37,
+      "rule_density": 38,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1127,6 +1133,12 @@
         },
         {
           "id": "AAK-MCP-ATTEST-001",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CARD-004",
           "severity": "medium",
           "cve_references": [],
           "aicm_references": []
@@ -1550,7 +1562,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 28,
+      "rule_density": 30,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1590,6 +1602,18 @@
         {
           "id": "AAK-MCP-015",
           "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CARD-001",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CARD-003",
+          "severity": "high",
           "cve_references": [],
           "aicm_references": []
         },

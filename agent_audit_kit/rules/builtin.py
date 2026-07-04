@@ -5073,6 +5073,99 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# MCP Server Card (SEP-1649) — /.well-known/mcp/server-card.json static audit
+# SEP-1649 (superseded-in-draft by SEP-2127) has servers publish a discovery
+# card a client fetches and trusts BEFORE connecting; the card is a surface.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-CARD-001",
+    "Poisoned tool description in an MCP server card",
+    "A tool entry in a SEP-1649 server card "
+    "(`/.well-known/mcp/server-card.json`) carries a `description` containing a "
+    "tool-poisoning / imperative-injection payload — invisible Unicode, a "
+    "prompt-injection directive, a cross-tool reference, or an encoded "
+    "(base64/hex) blob. Because a client fetches and trusts the card *before* "
+    "connecting, the injected instructions enter the model context ahead of any "
+    "tool call. Detection reuses the AAK-POISON-001..006 detectors.",
+    Severity.CRITICAL,
+    Category.MCP_SERVER_CARD,
+    "Treat a server card's tool descriptions as untrusted content: strip "
+    "invisible Unicode, reject imperative/injection phrasing and encoded "
+    "payloads, and render descriptions as data (never as instructions). Pin the "
+    "card to a signed, provenance-verified publisher.",
+    sarif_name="McpCardPoisonedTool",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SKILL-01"],
+)
+
+_r(
+    "AAK-MCP-CARD-002",
+    "MCP server card transport / advertised-capability mismatch",
+    "A SEP-1649 server card's declared `transport` disagrees with its "
+    "advertised capabilities: a remote transport (`http`/`sse`/`streamable-http`/"
+    "`ws`, or a routable `endpoint` URL) while `authentication.required` is "
+    "`false` (an anyone-can-connect network endpoint), or a `stdio`/local "
+    "transport that nonetheless advertises a remote `endpoint`. A client that "
+    "provisions based on the card's advertised shape connects to a transport it "
+    "did not expect.",
+    Severity.HIGH,
+    Category.MCP_SERVER_CARD,
+    "Make the card's `transport` and `authentication` consistent: require an "
+    "inbound credential on every remote transport, and do not advertise a "
+    "remote `endpoint` on a `stdio`/local card. Regenerate the card from the "
+    "server's real runtime configuration.",
+    sarif_name="McpCardTransportMismatch",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-CARD-003",
+    "MCP server card missing or invalid signature / provenance",
+    "A SEP-1649 server card carries no `signature` / `provenance` / "
+    "`attestation` / `publisher` field, or one that is empty / a placeholder. "
+    "The card's self-declared tool list, transport, and endpoint are then "
+    "trusted with no proof of origin — a MITM or a typosquatting host can serve "
+    "a forged card at the well-known path and the client will provision against "
+    "it.",
+    Severity.HIGH,
+    Category.MCP_SERVER_CARD,
+    "Sign the server card (detached signature or an `attestation` block) and "
+    "have clients verify it against a pinned publisher key before provisioning. "
+    "Populate `publisher` / `provenance` with a verifiable identity — never a "
+    "placeholder.",
+    sarif_name="McpCardUnsignedProvenance",
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SUPPLY-08"],
+)
+
+_r(
+    "AAK-MCP-CARD-004",
+    "Over-broad capability claims in an MCP server card",
+    "A SEP-1649 server card asserts over-broad capabilities: a wildcard auth "
+    "scope (`*` / `all`), a `capabilities` object with everything enabled and "
+    "no constraint, or `authentication.required: true` paired with an empty "
+    "`schemes` list (no enforceable method). Over-broad claims invite clients "
+    "to grant more trust / scope than the server needs, widening blast radius "
+    "on compromise.",
+    Severity.MEDIUM,
+    Category.MCP_SERVER_CARD,
+    "Declare only the capabilities and scopes the server actually exposes; "
+    "replace wildcard scopes with an explicit list, and pair "
+    "`authentication.required: true` with at least one concrete scheme. "
+    "Least-privilege the card.",
+    sarif_name="McpCardOverBroadClaims",
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+# ---------------------------------------------------------------------------
 # Internal / meta rules (surfaced when the scanner itself has a problem)
 # ---------------------------------------------------------------------------
 

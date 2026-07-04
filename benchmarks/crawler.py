@@ -507,6 +507,17 @@ def main() -> None:
         default=False,
         help="Enable verbose logging.",
     )
+    parser.add_argument(
+        "--server-cards",
+        action="store_true",
+        default=False,
+        help=(
+            "Opt-in NETWORK pass: discover SEP-1649 server cards at "
+            "/.well-known/mcp/server-card.json for enumerated servers and audit "
+            "each with the MCP Server Card scanner. Writes a dated results file "
+            "(benchmarks/results-<date>.json). Off by default (zero-cloud)."
+        ),
+    )
     args = parser.parse_args()
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -516,7 +527,64 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
+    if args.server_cards:
+        run_server_card_prevalence(limit=args.limit)
+        return
+
     run_benchmark(limit=args.limit, output_path=Path(args.output))
+
+
+def run_server_card_prevalence(limit: int = 200) -> dict[str, Any]:
+    """Opt-in: discover + audit SEP-1649 server cards; write a dated results file.
+
+    Reuses `benchmarks/sources.collect_all` for enumeration and
+    `agent_audit_kit.scanners.mcp_server_card` for the audit. Network-gated
+    (only runs behind `--server-cards`); never part of the default scan path or
+    the test suite.
+    """
+    import datetime
+    from collections import Counter
+
+    from agent_audit_kit.scanners.mcp_server_card import _audit_card
+
+    from sources import collect_all, well_known_server_cards  # type: ignore[import-not-found]
+
+    entries = collect_all(limit_per_source=limit)
+    logger.info("Enumerated %d distinct servers; probing for server cards...", len(entries))
+    pairs = well_known_server_cards(entries, limit=limit)
+    logger.info("Discovered %d reachable server cards.", len(pairs))
+
+    rule_counts: Counter[str] = Counter()
+    cards_with_finding = 0
+    per_card: list[dict[str, Any]] = []
+    for entry, card in pairs:
+        findings = _audit_card(card, entry.url or entry.name, json.dumps(card, indent=2))
+        rids = sorted({f.rule_id for f in findings})
+        if rids:
+            cards_with_finding += 1
+        for r in rids:
+            rule_counts[r] += 1
+        per_card.append({"server": entry.url or entry.name, "rules": rids})
+
+    total = len(pairs)
+    result = {
+        "kind": "server-card-prevalence",
+        "servers_enumerated": len(entries),
+        "cards_discovered": total,
+        "cards_with_finding": cards_with_finding,
+        "cards_with_finding_pct": round(100.0 * cards_with_finding / total, 1) if total else 0.0,
+        "rule_hit_counts": dict(rule_counts.most_common()),
+        "per_card": per_card,
+    }
+    # Deterministic dated filename; never clobber results-2026-06-13.json.
+    today = datetime.date.today().isoformat()
+    out = Path(__file__).resolve().parent / f"results-{today}.json"
+    out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    logger.info(
+        "Server-card prevalence: %d/%d cards had >=1 finding -> %s",
+        cards_with_finding, total, out,
+    )
+    return result
 
 
 if __name__ == "__main__":
