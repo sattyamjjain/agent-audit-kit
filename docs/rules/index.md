@@ -9,6 +9,12 @@ The pages are written by hand for high-traffic rules (CVE-driven, public
 SLA) and from `RuleDefinition` data for the rest. v0.3.5 ships the
 first batch — expect coverage to fill in over subsequent releases.
 
+## v0.3.43 (2026-07-04) — net-new
+
+| Rule | Severity | Class | CVE / source |
+|---|---|---|---|
+| [AAK-MCP-AUTH-PATHTRAVERSAL-001](./AAK-MCP-AUTH-PATHTRAVERSAL-001.md) | CRITICAL | MCP_CONFIG | [CVE-2026-52830](https://nvd.nist.gov/vuln/detail/CVE-2026-52830) |
+
 ## v0.3.5 (2026-04-25) — net-new
 
 | Rule | Severity | Class | CVE / source |

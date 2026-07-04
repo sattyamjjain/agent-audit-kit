@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-AUTH-PATHTRAVERSAL-001: bearer-token → session-file path traversal ([CVE-2026-52830](https://nvd.nist.gov/vuln/detail/CVE-2026-52830))
+
+CVE-response cycle item (closes #394). New **CRITICAL** rule + scanner
+(`scanners/mcp_auth_pathtraversal.py`) flagging MCP auth code that concatenates
+or `os.path.join`-es an untrusted token / bearer credential into a session file
+path used for an existence/read check — without rejecting path separators / `..`
+or resolving-and-containing the result. The caller controls the token, so they
+control the path (`../../etc/passwd`, `../<other-session>`): an auth check becomes
+arbitrary-file access + cross-session takeover. Anchor: **CVE-2026-52830**
+(CVSS 9.4, CWE-22) — `fast-mcp-telegram` before 0.19.1 joined the caller-supplied
+bearer token straight into the session path; fixed in 0.19.1.
+
+Python detection reuses the repo's stdlib-`ast` taint mechanism (token source →
+path construction → `exists`/`open` sink, suppressed by a separator/`..` reject
+or a resolve-and-contain guard — no new taint engine; the #22 tree-sitter
+migration is separate); TS/JS/Rust use the analogous concat-into-path regex.
+Category **MCP_CONFIG** (matching the nearest auth rules), OWASP **MCP07:2025**,
+**ASI03**. Distinct from `AAK-MCP-015` (resource-handler path traversal on a
+request *path* param). FP guards: separator-rejected + resolved-and-contained
+flows, constant paths, and non-auth code all pass; SARIF carries the fingerprint,
+the remediation, and the critical-band security-severity.
+
+Rule count **225 → 226**; scanner modules **79 → 80**. Version **0.3.42 → 0.3.43**.
+
 ### Added — MCP prevalence scan (664 configs) + score calibration (issue #23)
 
 Empirical sequel to the State-of-MCP-Security harness. Widened the corpus by

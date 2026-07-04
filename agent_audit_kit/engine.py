@@ -97,6 +97,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("skill_untrusted_exec_path", "Untrusted-search-path exec override in skill/install flow (CVE-2026-53819)", []),
     ("argv_toctou", "Argv rebuilt after allowlist approval before spawn (CVE-2026-53822)", []),
     ("mcp_noauth_default", "MCP server unauthenticated-by-default / fail-open auth (CVE-2026-48814)", []),
+    ("mcp_auth_pathtraversal", "MCP bearer-token joined into session file path (CVE-2026-52830)", []),
 ]
 
 

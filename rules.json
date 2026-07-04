@@ -2574,6 +2574,33 @@
       "title": "MCP server admitted without attestation"
     },
     {
+      "adversa_references": [
+        "ADV-RES-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-52830"
+      ],
+      "description": "MCP server authentication code concatenates or `os.path.join`-es an untrusted token / bearer credential into a filesystem path that is then used for a session existence / read check, without rejecting path separators / `..` or resolving-and-containing the result. Because the caller controls the token, they control the path: a value like `../../etc/passwd` or `../<another-user-session>` escapes the intended session directory, turning an auth check into arbitrary-file access and cross-session takeover. Anchor: CVE-2026-52830 (CVSS 9.4, CWE-22 Path Traversal) \u2014 `fast-mcp-telegram` before 0.19.1 joined the caller-supplied bearer token straight into the session file path used to test whether a session existed, so a crafted token traversed out of the session directory; fixed in 0.19.1. The Python detector is a stdlib-`ast` taint flow (token source -> path construction -> `exists`/`open` sink, suppressed by a separator/`..` reject or a resolve-and-contain guard); TS/JS/Rust use the analogous concat-into-path regex. Distinct from `AAK-MCP-015` (a resource-handler path traversal on a request *path* parameter) \u2014 here the tainted source is the auth *token* itself.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Reject path separators and `..` in the token before it touches the filesystem; resolve the constructed session path (`os.path.realpath` / `Path.resolve()`) and verify it is inside the intended session directory (`startswith` / `Path.is_relative_to`) before use; prefer a hashed / opaque session id over the raw token as a filename. Upgrade `fast-mcp-telegram` to >= 0.19.1.",
+      "rule_id": "AAK-MCP-AUTH-PATHTRAVERSAL-001",
+      "sarif_name": "McpAuthPathTraversal",
+      "severity": "critical",
+      "title": "MCP bearer-token joined into a session file path (path traversal)"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,

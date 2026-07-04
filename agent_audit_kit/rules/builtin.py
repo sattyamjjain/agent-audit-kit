@@ -123,6 +123,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STATELESS-003": ["IVS-04", "BCR-04"],
     "AAK-MCP-STATELESS-004": ["AIS-07"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
+    "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5033,6 +5034,41 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-AUTH-PATHTRAVERSAL-001",
+    "MCP bearer-token joined into a session file path (path traversal)",
+    "MCP server authentication code concatenates or `os.path.join`-es an "
+    "untrusted token / bearer credential into a filesystem path that is then "
+    "used for a session existence / read check, without rejecting path "
+    "separators / `..` or resolving-and-containing the result. Because the "
+    "caller controls the token, they control the path: a value like "
+    "`../../etc/passwd` or `../<another-user-session>` escapes the intended "
+    "session directory, turning an auth check into arbitrary-file access and "
+    "cross-session takeover. Anchor: CVE-2026-52830 (CVSS 9.4, CWE-22 Path "
+    "Traversal) — `fast-mcp-telegram` before 0.19.1 joined the caller-supplied "
+    "bearer token straight into the session file path used to test whether a "
+    "session existed, so a crafted token traversed out of the session "
+    "directory; fixed in 0.19.1. The Python detector is a stdlib-`ast` taint "
+    "flow (token source -> path construction -> `exists`/`open` sink, "
+    "suppressed by a separator/`..` reject or a resolve-and-contain guard); "
+    "TS/JS/Rust use the analogous concat-into-path regex. Distinct from "
+    "`AAK-MCP-015` (a resource-handler path traversal on a request *path* "
+    "parameter) — here the tainted source is the auth *token* itself.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Reject path separators and `..` in the token before it touches the "
+    "filesystem; resolve the constructed session path (`os.path.realpath` / "
+    "`Path.resolve()`) and verify it is inside the intended session directory "
+    "(`startswith` / `Path.is_relative_to`) before use; prefer a hashed / "
+    "opaque session id over the raw token as a filename. Upgrade "
+    "`fast-mcp-telegram` to >= 0.19.1.",
+    sarif_name="McpAuthPathTraversal",
+    cve_references=["CVE-2026-52830"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-RES-01"],
 )
 
 
