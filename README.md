@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-230-blue.svg" alt="Rules: 230"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-231-blue.svg" alt="Rules: 231"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -27,7 +27,7 @@ Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, 
 1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). No account, no telemetry.
 2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 13 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
-- **<!-- rule-count:total -->230<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->231<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
 - **<!-- scanner-count:total -->81<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **16 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `watch`, plus `export-rules`, `verify-bundle`, `sbom`, `report`, `install-precommit`, and the Security-Advisories scan flag
@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.44
+      - uses: sattyamjjain/agent-audit-kit@v0.3.45
         with:
           fail-on: high
 ```
@@ -86,7 +86,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.44
+    rev: v0.3.45
     hooks:
       - id: agent-audit-kit
 ```
@@ -112,7 +112,7 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 |----------|:-----:|-----------------|
 | **MCP Configuration** | <!-- category-count:MCP_CONFIG -->53<!-- /category-count --> | Missing auth middleware (CVE-2026-33032 class), empty IP allowlists, wildcard CORS, path traversal in resource handlers, SSRF (CWE-918), OAuth 2.1 misconfig (PKCE/S256/DPoP), Tasks primitive leakage (SEP-1686), shell injection, MCPwn middleware-asymmetry, Azure MCP no-auth (CVE-2026-32211), MCP Inspector vendored fork (CVE-2026-23744), 2026-07-28 stateless-MCP migration (`Mcp-Session-Id` reliance, removed `tasks/list`, sticky-session deployment, un-cached client `tools/list`), deny-by-default attested admission (signed clearance / `/.well-known/mcp-clearance` / pinned trust root — arXiv:2605.24248), Anthropic MCP Tunnels gateway (SSRF defense disabled / `upstream.disable_ip_validation`, HTTPS upstream missing `upstream.tls.ca_file` trust anchor, tunnel token + TLS private keys hardcoded in CI / committed Kubernetes Secrets — research preview 2026-05-19), stdio launcher injection (`npx`/`node`/`bash`/`sh`/`python` with `-c`/`-e`/`--eval`, or non-pinned interpolated argv — CVE-2026-40933), tool-gate enforcement asymmetry (allowlist / read-only / non-destructive check applied in `tools/list` but not `tools/call` — CVE-2026-46519), unauthenticated MCP HTTP/SSE server on `0.0.0.0` / wildcard CORS (GitLab/Nocturne/AgenticMail no-auth class — CVE-2026-44895/44830/50287), plus the non-loopback no-auth **launch surface** — `mcp.json`/`claude_desktop_config.json`/`*.mcp.yaml` `command`/`args`, Docker `--host 0.0.0.0`/`-p 0.0.0.0:`, and MCP Inspector / FastMCP startup binding `0.0.0.0`/`::`/a routable IP with no token or `DANGEROUSLY_OMIT_AUTH` set (CWE-306; MCP Inspector exemplar CVE-2026-23744; mcp-pinot `0.0.0.0:8080` no-auth CVE-2026-49257; Windows-MCP wildcard-CORS no-auth CVE-2026-48989; ~12,520 exposed services per Censys), argv-rebuild-after-allowlist command-injection TOCTOU (a command/argv approved against an allow/deny list is re-split / re-joined / extended before `subprocess`/`os.exec*` / Node `child_process.spawn`/`execa` with no re-check — `AAK-MCP-ARGV-TOCTOU-001`, **CWE-77 + CWE-367 / CVE-2026-53822**), MCP server unauthenticated-by-default / fail-open auth (an auth function returning truthy on an empty/unset secret, a placeholder/empty secret literal — `""`/`changeme`/`os.environ.get(...,"")` — or a warning-only secret gate on a `0.0.0.0` bind — `AAK-MCP-NOAUTH-DEFAULT`, **CWE-306 + CWE-862 / CVE-2026-48814** (incomplete fix of CVE-2026-46701)), bearer-token → session-file path traversal (an untrusted token / `Authorization` header joined into a session file path used for an existence/read check with no separator-reject or resolve-and-contain guard — `AAK-MCP-AUTH-PATHTRAVERSAL-001`, **CWE-22 / CVE-2026-52830**, fast-mcp-telegram < 0.19.1) |
 | **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->41<!-- /category-count --> | Vulnerable LangChain / langchain-text-splitters versions, named pin rules for `astro-mcp-server` / `chatgpt-mcp-server` / `docsgpt` / `gpt-researcher` / `litellm` / `mcp-calculate-server` / `semantic-kernel` / `@anthropic-ai/claude-code` / `apache-doris-mcp-server` / `excel-mcp-server`, OX MCP-STDIO command-injection (Python/TS/Java/Rust) — `AAK-MCP-STDIO-CMD-INJ-001..004` — Stainless-generator lineage, marketplace.json signatures / typosquat / mutable refs, unpinned packages, dangerous install scripts, untrusted-search-path executable override in skill/install flows (`.env`-sourced binary, workspace-prepended `PATH`, `shutil.which` over a tainted PATH, Homebrew env override — `AAK-SKILL-UNTRUSTED-EXEC-PATH`, **CWE-426 / CVE-2026-53819**) |
-| **Tool Poisoning** | <!-- category-count:TOOL_POISONING -->26<!-- /category-count --> | Invisible Unicode / bidi, skill frontmatter injection, SKILL.md post-install commands, data-exfil primitives, skill name hijacking, cross-tool references, rug-pull (SHA-256 pinning), `@mcp.tool` unsafe-eval (CVE-2026-44717 generalization), OpenAPI smells (Hermes paper LAZY/BLOATED/TANGLED), Metis POMDP refusal-refeed + scoring-sink, SkillsVote lifecycle attribution, MCP Calculate Server pin. Indirect-prompt-injection detection (`AAK-POISON-001..006`) runs against tool descriptions **and** every per-parameter `inputSchema.properties.*.description` (recursive — nested objects, array items, `anyOf`/`allOf`/`oneOf`), so instruction text hidden in a single argument's docstring is caught |
+| **Tool Poisoning** | <!-- category-count:TOOL_POISONING -->27<!-- /category-count --> | Invisible Unicode / bidi, skill frontmatter injection, SKILL.md post-install commands, data-exfil primitives, skill name hijacking, cross-tool references, rug-pull (SHA-256 pinning), `@mcp.tool` unsafe-eval (CVE-2026-44717 generalization), OpenAPI smells (Hermes paper LAZY/BLOATED/TANGLED), Metis POMDP refusal-refeed + scoring-sink, SkillsVote lifecycle attribution, MCP Calculate Server pin, Kong Konnect MCP server < 1.0.0 indirect prompt injection → unintended Konnect/Admin API requests (`AAK-MCP-KONG-CVE-2026-13341-001`, **CVE-2026-13341**, HIGH 7.4). Indirect-prompt-injection detection (`AAK-POISON-001..006`) runs against tool descriptions **and** every per-parameter `inputSchema.properties.*.description` (recursive — nested objects, array items, `anyOf`/`allOf`/`oneOf`), so instruction text hidden in a single argument's docstring is caught |
 | **Secret Exposure** | <!-- category-count:SECRET_EXPOSURE -->18<!-- /category-count --> | Anthropic/OpenAI/AWS/GitHub/GitLab/GCP keys, Shannon-entropy detection, `.env` leaks, private-key files, hardcoded credential surface, token-leak via log sinks (CVE-2026-20205), `${VAR}`/process.env placeholder resolution on user-supplied MCP URLs → secret exfiltration (CVE-2026-32625) |
 | **Agent Config** | <!-- category-count:AGENT_CONFIG -->15<!-- /category-count --> | Routines permission escalation + schedule injection + audit-log gaps, AGENTS.md/CLAUDE.md/.cursorrules hijacking, hidden Unicode, encoded payloads, internal scanner-fail signal, Project Deal economic-drift detection |
 | **A2A Protocol** | <!-- category-count:A2A_PROTOCOL -->13<!-- /category-count --> | Missing mutual auth, unbounded delegation, transitive trust, replay protection, schema confusion, HTTP endpoints, JWT lifetime/validation, impersonation, multi-agent shared-state without lock (Code-as-Harness) |
@@ -123,7 +123,7 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->12<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 discovery cards (`/.well-known/mcp/server-card.json`): tool-description poisoning in `tools[].description` (`AAK-MCP-CARD-001`, reuses the AAK-POISON detectors), declared-transport vs advertised-capability mismatch — remote transport with `authentication.required: false`, or `stdio` advertising a remote endpoint (`AAK-MCP-CARD-002`), missing / placeholder signature / provenance (`AAK-MCP-CARD-003`), and over-broad capability / wildcard-scope claims (`AAK-MCP-CARD-004`) |
 
-**<!-- rule-count:total -->230<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->231<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### MCP Server Card scanning (SEP-1649)
 
@@ -295,13 +295,29 @@ Generate an SVG badge for your README: `agent-audit-kit score . --badge`
 | **OWASP Agentic Top 10** (ASI01-ASI10) | 10/10 (100%) — density by slot below |
 | **OWASP MCP Top 10** (MCP01-MCP10) | 10/10 (100%) |
 
+### Public OWASP coverage leaderboard
+
+Category-by-category coverage tables — every OWASP slot mapped to the exact AAK
+rule IDs that cover it — are generated from the live rule registry so they
+cannot drift (CI regenerates and fails on staleness, `scripts/gen_coverage.py`):
+
+- **[OWASP Agentic Top 10 → AAK rules](docs/coverage/owasp-agentic-top10.md)**
+- **[OWASP MCP Top 10 → AAK rules](docs/coverage/owasp-mcp-top10.md)**
+
+Coverage labels use a published threshold (**Full** = ≥3 rules, **Partial** =
+1–2, **None** = 0) — reproducible from the registry, not a self-scored grade.
+The [Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)
+(2026-04-02) states 10/10 Agentic coverage as a *runtime* enforcer; AAK reports
+its honest per-category **static** rule counts next to it — a coverage
+cross-reference, not a head-to-head benchmark.
+
 <details>
 <summary>OWASP Agentic Top 10 — density by slot</summary>
 
 <!-- owasp-coverage:start -->
 | ASI | Title | # rules |
 | --- | --- | --- |
-| **ASI01** | Goal Hijack | 11 |
+| **ASI01** | Goal Hijack | 12 |
 | **ASI02** | Tool Misuse | 38 |
 | **ASI03** | Memory Poisoning | 56 |
 | **ASI04** | Identity & Privilege Abuse | 38 |
@@ -348,7 +364,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->230<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->231<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **12 frameworks** | No | 0 | 0 |
@@ -412,7 +428,9 @@ servers; Knostic 1,862 exposed / 119-of-119 unauthenticated; the 2,614-server
 (raw aggregate: [`results.json`](research/state-of-mcp-2026/results.json)).
 
 Mapped to the OWASP MCP Top 10, **99.4% of configs trip MCP07 (authorization /
-excessive permissions)**. Scan your own in 30s, fully offline:
+excessive permissions)** — see which AAK rules cover each slot in the
+[public coverage leaderboard](docs/coverage/owasp-mcp-top10.md). Scan your own in
+30s, fully offline:
 
 ```bash
 pip install agent-audit-kit && agent-audit-kit scan .

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "kong-konnect": {
+      "command": "npx",
+      "args": ["-y", "@kong/konnect-mcp@0.9.3"],
+      "env": { "KONNECT_TOKEN": "${KONNECT_TOKEN}" }
+    }
+  }
+}

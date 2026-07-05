@@ -2794,6 +2794,33 @@
       "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
     },
     {
+      "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "AIS-12"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [
+        "CVE-2026-13341"
+      ],
+      "description": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI01"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. Treat every API/spec/resource body the server relays as untrusted data (never as instructions), and constrain the agent's Konnect/Admin API credentials to the least scope the workflow needs so an injected request cannot reach sensitive endpoints.",
+      "rule_id": "AAK-MCP-KONG-CVE-2026-13341-001",
+      "sarif_name": "KongKonnectMcpPromptInjection",
+      "severity": "high",
+      "title": "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "STA-02",

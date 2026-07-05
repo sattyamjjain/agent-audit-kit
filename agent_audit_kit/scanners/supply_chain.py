@@ -463,6 +463,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_lockfile_exists(project_root))
     findings.extend(_check_mcp_specific_vulns(project_root))
     findings.extend(_check_doris_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_kong_konnect_mcp_pin(project_root, scanned_files))
     findings.extend(_check_excel_mcp_pin(project_root, scanned_files))
     findings.extend(_check_azure_mcp_auth(project_root, scanned_files))
     findings.extend(_check_astro_mcp_pin(project_root, scanned_files))
@@ -529,6 +530,69 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
                 scanned_files.add(rel)
                 _fire(rel, m.group(1))
                 break  # one finding per file is enough
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-KONG-CVE-2026-13341-001 — Kong Konnect MCP server < 1.0.0.
+# Indirect prompt injection (CVE-2026-13341, HIGH 7.4, published 2026-07-03):
+# untrusted content the server relays carries instructions the agent acts on,
+# issuing unintended Konnect/Admin API requests. Fixed in 1.0.0. Detected as a
+# version pin across dependency manifests AND MCP config files (the server is
+# commonly launched from `.mcp.json` / `claude_desktop_config.json`).
+# ---------------------------------------------------------------------------
+
+_KONG_KONNECT_PATCHED = (1, 0, 0)
+# Match the Konnect MCP package/command with an optional adjacent version.
+_KONG_KONNECT_MCP_RE = re.compile(
+    r"(?:@kong/|kong[-_/])?konnect[-_]?mcp(?:[-_]server)?"
+    r"\s*(?:==|>=|~=|<=|<|>|@|:|\"?\s*version\"?\s*[:=])?\s*v?([0-9][\w.\-]*)?",
+    re.IGNORECASE,
+)
+
+
+def _check_kong_konnect_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str | None) -> None:
+        shown = f"{raw!r}" if raw else "unpinned"
+        findings.append(make_finding(
+            "AAK-MCP-KONG-CVE-2026-13341-001",
+            rel,
+            f"Kong Konnect MCP server referenced at {shown} — CVE-2026-13341 "
+            "indirect prompt injection (unintended Konnect/Admin API requests) "
+            "is fixed in 1.0.0; pin >= 1.0.0.",
+        ))
+
+    candidates: list[Path] = []
+    candidates.extend(project_root.glob("requirements*.txt"))
+    for name in (
+        "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
+        "package.json", "package-lock.json",
+        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+    ):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    candidates.extend(project_root.glob("*.mcp.yaml"))
+    candidates.extend(project_root.glob("*.mcp.yml"))
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        m = _KONG_KONNECT_MCP_RE.search(text)
+        if not m:
+            continue
+        raw = m.group(1)
+        version = _semver3(raw) if raw else None
+        # Fire when the version is below 1.0.0, or when it cannot be proven
+        # to be >= 1.0.0 (unpinned reference).
+        if version is None or version < _KONG_KONNECT_PATCHED:
+            rel = str(path.relative_to(project_root))
+            scanned_files.add(rel)
+            _fire(rel, raw)
     return findings
 
 

@@ -32,6 +32,9 @@ jobs:
       - name: Run type checking
         run: mypy agent_audit_kit/ --ignore-missing-imports
 
+      - name: Verify OWASP coverage leaderboard is current (issue #67)
+        run: python scripts/gen_coverage.py --check
+
       - name: Run tests
         run: pytest -v --tb=short
 

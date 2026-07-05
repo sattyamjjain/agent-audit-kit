@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Public OWASP coverage leaderboard (issue #67) + Kong Konnect MCP CVE
+
+**OWASP coverage leaderboard (#67).** New generator `scripts/gen_coverage.py`
+emits two Markdown tables from the **live rule registry** so they cannot drift:
+`docs/coverage/owasp-agentic-top10.md` (ASI01–ASI10) and
+`docs/coverage/owasp-mcp-top10.md` (MCP01:2025–MCP10:2025). Each OWASP slot maps
+to the exact AAK rule IDs that cover it, with a **published, reproducible**
+coverage label (Full = ≥3 rules, Partial = 1–2, None = 0) — not a self-scored
+grade. Includes an honest "coverage vs. named toolkits" note: the Microsoft
+Agent Governance Toolkit (2026-04-02, MIT) states 10/10 Agentic coverage as a
+*runtime* enforcer; AAK reports its per-category *static* rule counts next to it
+(a cross-reference, not a head-to-head benchmark). CI regenerates and fails on
+staleness (`gen_coverage.py --check` in ci.yml + `tests/test_coverage_tables.py`).
+README links the leaderboard from the Frameworks section and the State-of-MCP
+report. Fully offline/deterministic — no account, cloud call, or signup.
+
+**AAK-MCP-KONG-CVE-2026-13341-001** (HIGH). Kong Konnect MCP server before 1.0.0
+is vulnerable to **indirect prompt injection** — untrusted content the server
+relays can carry instructions the agent acts on, issuing unintended
+Konnect/Admin API requests ([CVE-2026-13341](https://nvd.nist.gov/vuln/detail/CVE-2026-13341),
+CVSS 7.4, published 2026-07-03; fixed in 1.0.0). Detected as a version pin in
+`supply_chain.py` across dependency manifests **and** MCP config files (fires on
+`< 1.0.0` or an unpinned reference). Category TOOL_POISONING, OWASP MCP05:2025 +
+ASI01.
+
+Rule count **230 → 231**. Version **0.3.44 → 0.3.45**.
+
 ### Added — AAK-MCP-CARD-* : MCP Server Card (SEP-1649) static audit + discovery crawler
 
 New **MCP Server Card** rule category (`Category.MCP_SERVER_CARD`) + scanner

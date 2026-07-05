@@ -124,6 +124,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STATELESS-004": ["AIS-07"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
+    "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5162,6 +5163,32 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-KONG-CVE-2026-13341-001",
+    "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)",
+    "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt "
+    "injection: untrusted content returned to the server (e.g. an API response, "
+    "spec, or resource body it relays to the agent) can carry attacker-authored "
+    "instructions that the agent then acts on, causing it to issue unintended "
+    "Kong Admin/Konnect API requests it was never asked to make — a "
+    "confidentiality-impacting cross-boundary injection, not a generic "
+    "prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published "
+    "2026-07-03). A config that dispatches the Konnect MCP server at a version "
+    "below 1.0.0 (or unpinned) is exposed.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. "
+    "Treat every API/spec/resource body the server relays as untrusted data "
+    "(never as instructions), and constrain the agent's Konnect/Admin API "
+    "credentials to the least scope the workflow needs so an injected request "
+    "cannot reach sensitive endpoints.",
+    sarif_name="KongKonnectMcpPromptInjection",
+    cve_references=["CVE-2026-13341"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-INJECT-01"],
 )
 
 
