@@ -48,7 +48,9 @@ def test_kong_rule_lands_in_leaderboard() -> None:
 def test_toolkit_note_is_sourced_and_honest() -> None:
     text = gen_coverage.render_agentic()
     assert "Microsoft Agent Governance Toolkit" in text
-    assert "github.com/microsoft/agent-governance-toolkit" in text
-    assert "genai.owasp.org" in text  # OWASP Agentic project link
+    assert "https://github.com/microsoft/agent-governance-toolkit" in text
+    # Full path-qualified URLs (not bare hostnames) so the check can't be
+    # satisfied by a look-alike domain.
+    assert "https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications" in text
     # honest framing — static scanner vs runtime enforcement, not a head-to-head
     assert "static" in text.lower() and "runtime" in text.lower()
