@@ -18,8 +18,8 @@ coverage label (Full = ≥3 rules, Partial = 1–2, None = 0) — not a self-sco
 grade. Includes an honest "coverage vs. named toolkits" note: the Microsoft
 Agent Governance Toolkit (2026-04-02, MIT) states 10/10 Agentic coverage as a
 *runtime* enforcer; AAK reports its per-category *static* rule counts next to it
-(a cross-reference, not a head-to-head benchmark). CI regenerates and fails on
-staleness (`gen_coverage.py --check` in ci.yml + `tests/test_coverage_tables.py`).
+(a cross-reference, not a head-to-head benchmark). CI fails on staleness via
+`tests/test_coverage_tables.py` (runs `gen_coverage.check()` in every test job).
 README links the leaderboard from the Frameworks section and the State-of-MCP
 report. Fully offline/deterministic — no account, cloud call, or signup.
 
