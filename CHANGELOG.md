@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — bench: determinism head-to-head
+
+New `benchmarks/determinism/` proves AAK yields a **byte-identical finding set
+across 20 runs** (single shared SHA-256, 0% variance) over a fixed committed
+corpus, using the real `engine.run_scan` entrypoint — contrasted, **cited (from
+their own docs), not re-run**, against LLM-judge tools (Snyk Agent Scan +
+[Cisco DefenseClaw](https://github.com/cisco-ai-defense/defenseclaw)). No
+competitor number is fabricated; the LLM-as-judge variance concern is cited to
+[arXiv:2606.13685](https://arxiv.org/abs/2606.13685) ("The Coin Flip Judge?").
+`tests/test_determinism_benchmark.py` enforces the single-digest invariant in
+CI; README's determinism bullet + comparison table link
+`benchmarks/determinism/RESULTS.md`. Version **0.3.45 → 0.3.46**.
+
 ### Added — Public OWASP coverage leaderboard (issue #67) + Kong Konnect MCP CVE
 
 **OWASP coverage leaderboard (#67).** New generator `scripts/gen_coverage.py`

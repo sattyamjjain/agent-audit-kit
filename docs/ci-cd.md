@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.45
+      - uses: sattyamjjain/agent-audit-kit@v0.3.46
         with:
           severity: low
           fail-on: high
@@ -22,7 +22,7 @@ jobs:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.45
+    rev: v0.3.46
     hooks:
       - id: agent-audit-kit
       # Or strict mode:

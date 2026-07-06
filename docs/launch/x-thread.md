@@ -92,7 +92,7 @@ Post same Tuesday as HN, ~1h after HN submission.
 > • Repo: github.com/sattyamjjain/agent-audit-kit
 > • Leaderboard: mcp-security-index.com
 > • VS Code Marketplace: agent-audit-kit
-> • GitHub Action: uses: sattyamjjain/agent-audit-kit@v0.3.45
+> • GitHub Action: uses: sattyamjjain/agent-audit-kit@v0.3.46
 >
 > MIT. No strings.
 
