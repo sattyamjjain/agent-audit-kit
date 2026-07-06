@@ -984,9 +984,10 @@
       "cve_references": [
         "CVE-2026-40933",
         "CVE-2025-71336",
-        "CVE-2026-56274"
+        "CVE-2026-56274",
+        "CVE-2026-58057"
       ],
-      "description": "Package manifest depends on `flowise` or `flowise-components` at version < 3.1.2, and/or a Flowise flow config (`.flowise/*.json`, `flows/*.json`) declares an MCP adapter node with `customFunction` or `runCode` sinks. The Custom-MCP feature is a recurring RCE class: CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated attacker combine allowlisted commands like `npx` with execution flags such as `-c` for arbitrary OS command execution; CVE-2025-71336 (< 3.0.6, CVSS 9.8) is an unsandboxed RCE in the same feature; CVE-2026-56274 (< 3.1.2, CVSS 9.9) adds OS command injection via incomplete command-flag validation plus a regex bypass in local file-access restrictions. Pin floor is 3.1.2 (highest fixed version) so 3.0.6\u20133.1.1 are still flagged. Same architectural class as Ox's original STDIO disclosure (see AAK-STDIO-001).",
+      "description": "Package manifest depends on `flowise` or `flowise-components` at version < 3.1.2, and/or a Flowise flow config (`.flowise/*.json`, `flows/*.json`) declares an MCP adapter node with `customFunction` or `runCode` sinks. The Custom-MCP feature is a recurring RCE class: CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated attacker combine allowlisted commands like `npx` with execution flags such as `-c` for arbitrary OS command execution; CVE-2025-71336 (< 3.0.6, CVSS 9.8) is an unsandboxed RCE in the same feature; CVE-2026-56274 (< 3.1.2, CVSS 9.9) adds OS command injection via incomplete command-flag validation plus a regex bypass in local file-access restrictions; CVE-2026-58057 (< 3.1.3, CVSS 5.0) validates Custom-MCP stdio env vars against a *case-sensitive* denylist, so on Windows (case-insensitive env names) `node_options` slips past the NODE_OPTIONS entry and reaches `NODE_OPTIONS --require` code execution. Pin floor is 3.1.3 (highest fixed version) so 3.0.6\u20133.1.2 are still flagged. Same architectural class as Ox's original STDIO disclosure (see AAK-STDIO-001).",
       "incident_references": [],
       "owasp_agentic_references": [
         "ASI02"
@@ -994,7 +995,7 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Upgrade flowise and flowise-components to 3.1.2 or later. Audit every MCP adapter node in your flow configs; remove `customFunction`/`runCode` sinks unless they're validated against a strict argv allowlist. See also AAK-STDIO-001 for the architectural-class detector.",
+      "remediation": "Upgrade flowise and flowise-components to 3.1.3 or later. Audit every MCP adapter node in your flow configs; remove `customFunction`/`runCode` sinks unless they're validated against a strict argv allowlist, and treat env-var denylists as case-insensitive. See also AAK-STDIO-001 for the architectural-class detector.",
       "rule_id": "AAK-FLOWISE-001",
       "sarif_name": "FlowiseMcpAdapterRce",
       "severity": "critical",

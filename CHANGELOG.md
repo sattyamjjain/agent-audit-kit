@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — Flowise CVE-2026-58057 (closes #372)
+
+Bumped `AAK-FLOWISE-001`'s pin floor **3.1.2 → 3.1.3** and added
+[CVE-2026-58057](https://nvd.nist.gov/vuln/detail/CVE-2026-58057) (Flowise
+before 3.1.3 validates Custom-MCP stdio env vars against a *case-sensitive*
+denylist, so on Windows `node_options` bypasses the `NODE_OPTIONS` entry and
+reaches `NODE_OPTIONS --require` RCE). Flowise 3.1.2 configs now flag; test +
+ledger updated. Clears the last open `sla-48h` gate item.
+
 ### Added — bench: determinism head-to-head
 
 New `benchmarks/determinism/` proves AAK yields a **byte-identical finding set

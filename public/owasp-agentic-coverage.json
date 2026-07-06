@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-06T07:42:17Z",
+  "last_updated": "2026-07-06T07:50:13Z",
   "aak_version": "0.3.46",
   "rule_count": 231,
   "coverage": [
@@ -213,7 +213,8 @@
           "cve_references": [
             "CVE-2025-71336",
             "CVE-2026-40933",
-            "CVE-2026-56274"
+            "CVE-2026-56274",
+            "CVE-2026-58057"
           ],
           "aicm_references": [
             "STA-08"

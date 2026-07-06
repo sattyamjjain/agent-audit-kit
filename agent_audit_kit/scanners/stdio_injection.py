@@ -304,13 +304,15 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
 # ---------------------------------------------------------------------------
 # AAK-FLOWISE-001 — Flowise Custom-MCP RCE cluster. CVE-2026-40933 (< 3.1.0,
-# CVSS 10.0), CVE-2025-71336 (< 3.0.6 unsandboxed RCE), and CVE-2026-56274
-# (< 3.1.2 OS command injection / regex bypass) — pin floor is the highest
-# fixed version so 3.1.0/3.1.1 are still flagged for CVE-2026-56274.
+# CVSS 10.0), CVE-2025-71336 (< 3.0.6 unsandboxed RCE), CVE-2026-56274
+# (< 3.1.2 OS command injection / regex bypass), and CVE-2026-58057 (< 3.1.3
+# case-sensitive NODE_OPTIONS denylist bypass → `node_options` on Windows →
+# NODE_OPTIONS --require RCE) — pin floor is the highest fixed version so
+# 3.1.0/3.1.1/3.1.2 are still flagged for the CVE they remain exposed to.
 # ---------------------------------------------------------------------------
 
 
-_FLOWISE_PATCHED_VERSION = (3, 1, 2)
+_FLOWISE_PATCHED_VERSION = (3, 1, 3)
 
 
 def _parse_semver(spec: str) -> tuple[int, int, int] | None:

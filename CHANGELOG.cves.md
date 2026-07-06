@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.46 (2026-07-06)
+
+| Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-58057 (Flowise < 3.1.3 — case-sensitive NODE_OPTIONS denylist bypass → `node_options` on Windows → `NODE_OPTIONS --require` RCE) | [NVD CVE-2026-58057](https://nvd.nist.gov/vuln/detail/CVE-2026-58057) (CVSS 5.0, published 2026-06-28) | **AAK-FLOWISE-001** (pin floor bumped 3.1.2 → 3.1.3; 3.1.2 configs now flag) | 2026-07-06 | version-pin extension |
+
 ## Shipped in v0.3.22 (2026-05-20)
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
