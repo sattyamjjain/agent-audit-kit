@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 (Amazon mcp-gateway-registry SQLi)
+
+CVE-response (closes #408). New **HIGH** rule + version-pin detector for
+[CVE-2026-14471](https://nvd.nist.gov/vuln/detail/CVE-2026-14471) (CVSS 8.1):
+Amazon `mcp-gateway-registry` before 1.0.13 interpolates a caller-supplied
+`table_name` into an SQL identifier position in the metrics-service retention
+policy (CWE-89), letting an authenticated remote user run arbitrary SQL. Fires
+on `< 1.0.13` or an unpinned reference across manifests + MCP config files;
+fixture-backed test; `rules.json` regenerated. Rule count **231 → 232**.
+
 ### Fixed — correct SEP citations on the AAK-MCP-STATELESS-* pack
 
 Citation-accuracy pass on the shipped stateless-migration rules (no detection

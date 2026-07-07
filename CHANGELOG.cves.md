@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.47 (2026-07-07)
+
+| Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-14471 (Amazon mcp-gateway-registry < 1.0.13 — SQL injection: crafted `table_name` interpolated into an SQL identifier in the metrics-service retention policy, CWE-89) | [NVD CVE-2026-14471](https://nvd.nist.gov/vuln/detail/CVE-2026-14471) (HIGH, CVSS 8.1, published 2026-07-06) | **AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001** (NEW: HIGH, SUPPLY_CHAIN — version-pin, fires < 1.0.13 / unpinned) | 2026-07-07 | <24h on NVD |
+
 ## Shipped in v0.3.46 (2026-07-06)
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |

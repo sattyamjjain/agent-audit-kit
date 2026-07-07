@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-07T17:38:27Z",
+  "last_updated": "2026-07-07T17:45:39Z",
   "aak_version": "0.3.47",
-  "rule_count": 231,
+  "rule_count": 232,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -118,7 +118,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 38,
+      "rule_density": 39,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -322,6 +322,17 @@
           "aicm_references": [
             "AIS-07",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-14471"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-07"
           ]
         },
         {

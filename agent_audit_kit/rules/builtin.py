@@ -125,6 +125,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5202,6 +5203,30 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-INJECT-01"],
+)
+
+_r(
+    "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
+    "Amazon mcp-gateway-registry < 1.0.13 (SQL injection)",
+    "The Amazon `mcp-gateway-registry` before 1.0.13 improperly neutralizes a "
+    "caller-supplied `table_name` in the metrics-service retention-policy "
+    "component: the value is interpolated directly into an SQL statement in "
+    "identifier position, so an authenticated remote user can execute arbitrary "
+    "SQL against the gateway's metrics store (CVE-2026-14471, HIGH CVSS 8.1, "
+    "CWE-89, published 2026-07-06). A project that depends on the gateway "
+    "registry at a version below 1.0.13 (or unpinned) is exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-gateway-registry` to >= 1.0.13 and pin it explicitly. Never "
+    "interpolate a request-supplied value into an SQL identifier position; "
+    "validate `table_name` against a fixed allow-list of known table names, or "
+    "quote it with the driver's identifier-quoting API rather than string "
+    "formatting.",
+    sarif_name="McpGatewayRegistrySqlInjection",
+    cve_references=["CVE-2026-14471"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-SUPPLY-01"],
 )
 
 

@@ -2739,6 +2739,33 @@
       "title": "MCP tool description carries adversarial-suffix shape"
     },
     {
+      "adversa_references": [
+        "ADV-SUPPLY-01"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "DSP-07"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-14471"
+      ],
+      "description": "The Amazon `mcp-gateway-registry` before 1.0.13 improperly neutralizes a caller-supplied `table_name` in the metrics-service retention-policy component: the value is interpolated directly into an SQL statement in identifier position, so an authenticated remote user can execute arbitrary SQL against the gateway's metrics store (CVE-2026-14471, HIGH CVSS 8.1, CWE-89, published 2026-07-06). A project that depends on the gateway registry at a version below 1.0.13 (or unpinned) is exposed.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `mcp-gateway-registry` to >= 1.0.13 and pin it explicitly. Never interpolate a request-supplied value into an SQL identifier position; validate `table_name` against a fixed allow-list of known table names, or quote it with the driver's identifier-quoting API rather than string formatting.",
+      "rule_id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
+      "sarif_name": "McpGatewayRegistrySqlInjection",
+      "severity": "high",
+      "title": "Amazon mcp-gateway-registry < 1.0.13 (SQL injection)"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
