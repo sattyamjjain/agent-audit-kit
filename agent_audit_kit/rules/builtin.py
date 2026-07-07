@@ -525,22 +525,27 @@ _r(
 # ---------------------------------------------------------------------------
 # AAK-MCP-STATELESS-001..004 — 2026-07-28 stateless-MCP migration
 #
-# The MCP 2026-07-28 spec release candidate (locked 2026-05-21) makes the
-# protocol stateless by default: the `Mcp-Session-Id` header and the
-# protocol-level session are removed (SEP-1442), and the experimental
-# `tasks/list` method is removed because it can't be scoped safely without
-# sessions (SEP-1359). Server/client code that assumes the pre-RC stateful
-# protocol — relies on `Mcp-Session-Id`, dispatches `tasks/list`, requires
-# sticky routing or a shared session store, or skips client-side caching of
-# `tools/list` while holding per-session server state — will silently break
-# after 2026-07-28 once the final spec lands. These four rules surface the
-# migration surface so it can be fixed before the cutover.
+# The MCP 2026-07-28 spec release candidate makes the protocol stateless by
+# default: the `Mcp-Session-Id` header and the protocol-level session are
+# removed and replaced with explicit, server-minted state handles (SEP-2567),
+# while making the mandatory initialization handshake optional so stateless is
+# the default (SEP-1442 / SEP-2575). The experimental Tasks primitive (SEP-1686)
+# — including `tasks/list` — is moved out of the core spec into the Extensions
+# framework (redesigned as SEP-2663), so core `tasks/list` is removed. Server/
+# client code that assumes the pre-RC stateful protocol — relies on
+# `Mcp-Session-Id`, dispatches `tasks/list`, requires sticky routing or a shared
+# session store, or skips client-side caching of `tools/list` while holding
+# per-session server state — will silently break after 2026-07-28 once the final
+# spec lands. These four rules surface the migration surface so it can be fixed
+# before the cutover.
 #
 # Sources:
 #   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
-#   https://blog.modelcontextprotocol.io/posts/2025-12-19-mcp-transport-future/
+#   https://modelcontextprotocol.io/seps/2567-sessionless-mcp
 #   https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1442
-#   https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1359
+#   https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575
+#   https://modelcontextprotocol.io/community/seps/1686-tasks
+#   https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2663
 # ---------------------------------------------------------------------------
 
 _r(
@@ -548,8 +553,10 @@ _r(
     "Reliance on `Mcp-Session-Id` header / protocol-level session id",
     "Server or client code reads, writes, asserts, or constants the "
     "`Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate "
-    "(SEP-1442) makes the protocol stateless and removes the "
-    "`Mcp-Session-Id` header along with the protocol-level session. After "
+    "removes the `Mcp-Session-Id` header and the protocol-level session, "
+    "replacing them with explicit server-minted state handles (SEP-2567); "
+    "SEP-1442 / SEP-2575 make the initialization handshake optional so "
+    "stateless is the default. After "
     "the final spec lands on 2026-07-28, code that depends on this header "
     "(or on the session it represented) will silently break: any MCP "
     "request can land on any server instance, and sticky routing / shared "
@@ -572,10 +579,11 @@ _r(
     "Use of removed `tasks/list` method",
     "Server or client code dispatches, handles, or names the `tasks/list` "
     "JSON-RPC method. The MCP 2026-07-28 spec release candidate removes "
-    "`tasks/list` outright because it cannot be scoped safely without the "
-    "protocol-level session. Tasks moves out of the core specification into "
-    "the new Extensions framework; the stateful list surface has no "
-    "stateless successor.",
+    "`tasks/list` from the core because it cannot be scoped safely without "
+    "the protocol-level session: the experimental Tasks primitive (SEP-1686) "
+    "moves out of the core specification into the Extensions framework "
+    "(redesigned as SEP-2663), and the stateful list surface has no "
+    "stateless successor in core.",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Stop calling and handling `tasks/list`. If your application needs an "

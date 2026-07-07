@@ -3,11 +3,13 @@
 The MCP 2026-07-28 spec release candidate (locked 2026-05-21) makes the
 protocol stateless by default:
 
-* SEP-1442: the protocol-level session and `Mcp-Session-Id` header are
-  removed; any MCP request can land on any server instance.
-* SEP-1359: the `tasks/list` method is removed because it can't be scoped
-  safely without sessions; Tasks moves out of the core specification into
-  the Extensions framework.
+* SEP-2567: the protocol-level session and `Mcp-Session-Id` header are
+  removed and replaced with explicit server-minted state handles, so any
+  MCP request can land on any server instance. SEP-1442 / SEP-2575 make the
+  initialization handshake optional so stateless is the default.
+* The experimental Tasks primitive (SEP-1686), including `tasks/list`, moves
+  out of the core specification into the Extensions framework (redesigned as
+  SEP-2663), so core `tasks/list` is removed.
 
 Server / client code that assumes the pre-RC stateful protocol will
 silently break once the final spec lands on 2026-07-28. This scanner

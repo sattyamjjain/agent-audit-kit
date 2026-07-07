@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — correct SEP citations on the AAK-MCP-STATELESS-* pack
+
+Citation-accuracy pass on the shipped stateless-migration rules (no detection
+change, rule count stays 231). The `Mcp-Session-Id` / protocol-session removal
+was mis-attributed to SEP-1442; it is actually **SEP-2567** ("Sessionless MCP
+via Explicit State Handles"), with SEP-1442 / **SEP-2575** making the init
+handshake optional so stateless is the default. The `tasks/list` removal cited
+a **non-existent SEP-1359**; corrected to the experimental Tasks primitive
+(**SEP-1686**) moving out of core into the Extensions framework (redesigned as
+**SEP-2663**). Updated `AAK-MCP-STATELESS-001`/`-002` descriptions, the
+`mcp_stateless_migration` scanner docstring + engine label, and `rules.json`.
+Verified against modelcontextprotocol.io + the MCP GitHub SEPs. Version
+**0.3.46 → 0.3.47**.
+
 ### Security — Flowise CVE-2026-58057 (closes #372)
 
 Bumped `AAK-FLOWISE-001`'s pin floor **3.1.2 → 3.1.3** and added

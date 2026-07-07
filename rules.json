@@ -3014,7 +3014,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "Server or client code reads, writes, asserts, or constants the `Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate (SEP-1442) makes the protocol stateless and removes the `Mcp-Session-Id` header along with the protocol-level session. After the final spec lands on 2026-07-28, code that depends on this header (or on the session it represented) will silently break: any MCP request can land on any server instance, and sticky routing / shared session stores at the protocol layer are no longer guaranteed.",
+      "description": "Server or client code reads, writes, asserts, or constants the `Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate removes the `Mcp-Session-Id` header and the protocol-level session, replacing them with explicit server-minted state handles (SEP-2567); SEP-1442 / SEP-2575 make the initialization handshake optional so stateless is the default. After the final spec lands on 2026-07-28, code that depends on this header (or on the session it represented) will silently break: any MCP request can land on any server instance, and sticky routing / shared session stores at the protocol layer are no longer guaranteed.",
       "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
@@ -3037,7 +3037,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "Server or client code dispatches, handles, or names the `tasks/list` JSON-RPC method. The MCP 2026-07-28 spec release candidate removes `tasks/list` outright because it cannot be scoped safely without the protocol-level session. Tasks moves out of the core specification into the new Extensions framework; the stateful list surface has no stateless successor.",
+      "description": "Server or client code dispatches, handles, or names the `tasks/list` JSON-RPC method. The MCP 2026-07-28 spec release candidate removes `tasks/list` from the core because it cannot be scoped safely without the protocol-level session: the experimental Tasks primitive (SEP-1686) moves out of the core specification into the Extensions framework (redesigned as SEP-2663), and the stateful list surface has no stateless successor in core.",
       "incident_references": [],
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
