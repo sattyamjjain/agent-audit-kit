@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-SERENA-CVE-2026-49471-001: pin CVE-2026-49471 (Serena MCP unauthenticated-dashboard RCE)
+
+CVE-response (closes #411). New **HIGH** rule + version-pin detector for
+[CVE-2026-49471](https://nvd.nist.gov/vuln/detail/CVE-2026-49471) (CVSS 8.3,
+CWE-306 + CWE-352): the Serena MCP coding toolkit (`serena-agent`) before 1.5.2
+ships an unauthenticated Flask dashboard on a fixed port (no auth, no CSRF, no
+Host-header validation); a DNS-rebinding attack writes arbitrary content into
+the agent's persistent memory store, which — combined with
+`execute_shell_command(shell=True)` — is a remote-code-execution chain. Fires on
+`serena-agent < 1.5.2` / unpinned, and on an unpinned `oraios/serena` /
+`serena-mcp-server` launch reference, across manifests + MCP config files.
+Fixture-backed test; `rules.json` regenerated. Rule count **233 → 234**.
+
 ### Added — AAK-MCP-SSRF-001: pin CVE-2026-14748 (MCP-server SSRF via unvalidated tool-arg URL, CWE-918)
 
 New **MEDIUM** rule + scanner (`mcp_ssrf_toolarg`) for

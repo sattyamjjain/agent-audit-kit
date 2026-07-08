@@ -465,6 +465,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_doris_mcp_pin(project_root, scanned_files))
     findings.extend(_check_kong_konnect_mcp_pin(project_root, scanned_files))
     findings.extend(_check_mcp_gateway_registry_pin(project_root, scanned_files))
+    findings.extend(_check_serena_pin(project_root, scanned_files))
     findings.extend(_check_excel_mcp_pin(project_root, scanned_files))
     findings.extend(_check_azure_mcp_auth(project_root, scanned_files))
     findings.extend(_check_astro_mcp_pin(project_root, scanned_files))
@@ -650,6 +651,64 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
         raw = m.group(1)
         version = _semver3(raw) if raw else None
         if version is None or version < _MCP_GATEWAY_REGISTRY_PATCHED:
+            rel = str(path.relative_to(project_root))
+            scanned_files.add(rel)
+            _fire(rel, raw)
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-SERENA-CVE-2026-49471-001 — Serena MCP toolkit < 1.5.2.
+# Unauthenticated Flask dashboard + DNS rebinding -> agent-memory write ->
+# RCE via execute_shell_command(shell=True). Fixed in serena-agent 1.5.2.
+# ---------------------------------------------------------------------------
+
+_SERENA_PATCHED = (1, 5, 2)
+_SERENA_RE = re.compile(
+    r"(?:serena-agent|serena-mcp-server|oraios/serena)"
+    r"\s*(?:==|>=|~=|<=|<|>|@|:|\"?\s*version\"?\s*[:=])?\s*v?([0-9][\w.\-]*)?",
+    re.IGNORECASE,
+)
+
+
+def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str | None) -> None:
+        shown = f"{raw!r}" if raw else "unpinned"
+        findings.append(make_finding(
+            "AAK-MCP-SERENA-CVE-2026-49471-001",
+            rel,
+            f"Serena MCP toolkit referenced at {shown} — CVE-2026-49471 "
+            "(unauthenticated dashboard + DNS rebinding -> agent-memory write -> "
+            "RCE via execute_shell_command shell=True) is fixed in 1.5.2; pin "
+            "serena-agent >= 1.5.2.",
+        ))
+
+    candidates: list[Path] = []
+    candidates.extend(project_root.glob("requirements*.txt"))
+    for name in (
+        "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
+        "package.json", "package-lock.json",
+        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+    ):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    candidates.extend(project_root.glob("*.mcp.yaml"))
+    candidates.extend(project_root.glob("*.mcp.yml"))
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        m = _SERENA_RE.search(text)
+        if not m:
+            continue
+        raw = m.group(1)
+        version = _semver3(raw) if raw else None
+        if version is None or version < _SERENA_PATCHED:
             rel = str(path.relative_to(project_root))
             scanned_files.add(rel)
             _fire(rel, raw)

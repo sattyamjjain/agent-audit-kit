@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-08T17:22:01Z",
+  "last_updated": "2026-07-08T17:34:36Z",
   "aak_version": "0.3.48",
-  "rule_count": 233,
+  "rule_count": 234,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -986,7 +986,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 38,
+      "rule_density": 39,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1182,6 +1182,17 @@
             "CVE-2026-42074"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-SERENA-CVE-2026-49471-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-49471"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IAM-16"
+          ]
         },
         {
           "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",

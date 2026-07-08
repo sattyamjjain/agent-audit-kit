@@ -127,6 +127,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
     "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
+    "AAK-MCP-SERENA-CVE-2026-49471-001": ["IAM-01", "IAM-16"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5268,6 +5269,44 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Serena MCP toolkit unauthenticated-dashboard → RCE (CVE-2026-49471).
+# Delivered as a dependency version-pin (fixed in serena-agent 1.5.2), mirroring
+# the gateway-registry / Kong CVE pins, but the underlying weakness is CWE-306
+# missing authentication (+ CWE-352 CSRF / DNS-rebinding) — same MCP_CONFIG
+# no-auth class as AAK-AZURE-MCP-NOAUTH-001.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SERENA-CVE-2026-49471-001",
+    "Serena MCP toolkit < 1.5.2 (unauthenticated dashboard → DNS-rebinding RCE)",
+    "The Serena MCP coding toolkit (`serena-agent`) before 1.5.2 ships a "
+    "built-in web dashboard that \"exposes an unauthenticated Flask API on a "
+    "fixed, predictable port, with no authentication, no CSRF protection, and "
+    "no Host header validation. A DNS rebinding attack allows a malicious "
+    "webpage to reach this API from any browser and write arbitrary content to "
+    "the agent's persistent memory store, which the agent reads and acts on "
+    "autonomously. Combined with execute_shell_command using shell=True, this "
+    "creates a remote code execution chain requiring only that the victim visit "
+    "a malicious webpage while Serena is running.\" (NVD, CVE-2026-49471, HIGH "
+    "CVSS 8.3, CWE-306 + CWE-352, published 2026-07-07). A project depending on "
+    "`serena-agent` below 1.5.2 (or unpinned, or launched from an unpinned "
+    "`oraios/serena` / `serena-mcp-server` reference) is exposed. Fixed in 1.5.2.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Upgrade `serena-agent` to >= 1.5.2 and pin it explicitly. 1.5.2 binds the "
+    "dashboard to loopback, adds a random per-session token, validates the Host "
+    "header, and enforces CSRF — which together break the DNS-rebinding path. "
+    "Do not expose the Serena dashboard on a routable interface, and keep "
+    "`execute_shell_command` behind an explicit approval gate.",
+    sarif_name="SerenaMcpUnauthDashboardRce",
+    cve_references=["CVE-2026-49471"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
 )
 
 

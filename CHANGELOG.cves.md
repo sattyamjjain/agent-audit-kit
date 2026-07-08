@@ -12,6 +12,7 @@ diffs NVD's MCP keyword feed against this file and opens an
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
 |---|---|---|---|---|
+| CVE-2026-49471 (Serena MCP toolkit `serena-agent` < 1.5.2 — unauthenticated Flask dashboard on a fixed port + DNS rebinding writes the agent's persistent memory, chained with `execute_shell_command` `shell=True` to RCE; CWE-306 + CWE-352) | [NVD CVE-2026-49471](https://nvd.nist.gov/vuln/detail/CVE-2026-49471) (HIGH, CVSS 8.3, published 2026-07-07) | **AAK-MCP-SERENA-CVE-2026-49471-001** (NEW: HIGH, MCP_CONFIG — version-pin, fires < 1.5.2 / unpinned / unpinned `oraios/serena` launch ref) | 2026-07-08 | <24h on NVD |
 | CVE-2026-14748 (AIAnytime Awesome-MCP-Server `mcp-wiki/wiki-summary` — SSRF: the `url` argument of the tool handler is fetched server-side with no host/scheme allow-list, CWE-918; rolling-release project, no fixed version) | [NVD CVE-2026-14748](https://nvd.nist.gov/vuln/detail/CVE-2026-14748) (MEDIUM, CVSS 6.3, published 2026-07-05) | **AAK-MCP-SSRF-001** (NEW: MEDIUM, MCP_CONFIG — `ast` param→fetch taint / regex fallback, fires on unvalidated tool-arg URL) | 2026-07-08 | ~72h on NVD (past 48h target) |
 
 ## Shipped in v0.3.47 (2026-07-07)
