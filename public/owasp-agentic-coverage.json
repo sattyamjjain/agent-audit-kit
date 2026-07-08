@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-07T17:45:39Z",
-  "aak_version": "0.3.47",
-  "rule_count": 232,
+  "last_updated": "2026-07-08T17:22:01Z",
+  "aak_version": "0.3.48",
+  "rule_count": 233,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1585,7 +1585,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 30,
+      "rule_density": 31,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1647,6 +1647,17 @@
             "CVE-2026-42074"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-SSRF-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-14748"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
+          ]
         },
         {
           "id": "AAK-MCP-TUNNEL-003",

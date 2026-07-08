@@ -3033,6 +3033,33 @@
       "title": "Tool schema exposes an LLM-settable sandbox/isolation-disable parameter"
     },
     {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-14748"
+      ],
+      "description": "An MCP tool handler passes an attacker-controllable URL argument (`url` / `endpoint` / `target` / `uri` and similar) straight into an outbound fetch (`requests` / `httpx` / `urllib` / `aiohttp`) without validating the host or scheme first, so a caller-supplied URL is fetched server-side and can reach loopback, private-range, or cloud-metadata endpoints (CWE-918, server-side request forgery). NVD, CVE-2026-14748: \"A flaw has been found in AIAnytime Awesome-MCP-Server ... the file mcp-wiki/src/mcp_wiki/server.py of the component mcp-wiki/wiki-summary. This manipulation of the argument url causes server-side request forgery. The attack may be initiated remotely. The exploit has been published.\" (CVSS 6.3 MEDIUM, https://nvd.nist.gov/vuln/detail/CVE-2026-14748).",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Deny by default: before fetching, parse the URL, require an https scheme, resolve the host, and reject anything not on an explicit host allow-list (also reject RFC 1918, 127.0.0.0/8, 169.254.0.0/16, ::1, fc00::/7). Disable automatic redirects or re-validate every hop, and pin the resolved IP for the actual request to defeat DNS rebinding.",
+      "rule_id": "AAK-MCP-SSRF-001",
+      "sarif_name": "McpToolArgUrlSsrf",
+      "severity": "medium",
+      "title": "MCP tool handler fetches a caller-supplied URL without host/scheme allow-list"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "IAM-01",

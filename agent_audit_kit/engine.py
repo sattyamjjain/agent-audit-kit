@@ -99,6 +99,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_noauth_default", "MCP server unauthenticated-by-default / fail-open auth (CVE-2026-48814)", []),
     ("mcp_auth_pathtraversal", "MCP bearer-token joined into session file path (CVE-2026-52830)", []),
     ("mcp_server_card", "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)", []),
+    ("mcp_ssrf_toolarg", "MCP tool-arg URL SSRF (CVE-2026-14748)", []),
 ]
 
 

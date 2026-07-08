@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-SSRF-001: pin CVE-2026-14748 (MCP-server SSRF via unvalidated tool-arg URL, CWE-918)
+
+New **MEDIUM** rule + scanner (`mcp_ssrf_toolarg`) for
+[CVE-2026-14748](https://nvd.nist.gov/vuln/detail/CVE-2026-14748) (CVSS 6.3
+MEDIUM, CWE-918): an MCP tool handler that passes an attacker-controllable `url` /
+`endpoint` / `target` argument straight into an outbound `requests` / `httpx` /
+`urllib` / `aiohttp` fetch with no host/scheme allow-list — AIAnytime
+Awesome-MCP-Server's `mcp-wiki/wiki-summary` is the anchor. Detection uses a
+stdlib `ast` parameter→fetch taint path for Python (the same mechanism as
+`mcp_auth_pathtraversal`; no new engine) with a comment-stripped regex fallback
+for TS/JS/Rust. Complements the generic `AAK-SSRF-001..005` text family, which
+keys on request-object accessors and misses the bare-parameter CVE shape.
+Committed fixture pair (`tests/fixtures/mcp_ssrf/` — vulnerable + host-allow-listed
+safe handler); cross-referenced to OWASP MCP09:2025 + Agentic ASI06;
+`rules.json` regenerated. Rule count **232 → 233**, scanners **81 → 82**.
+
 ### Added — AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001 (Amazon mcp-gateway-registry SQLi)
 
 CVE-response (closes #408). New **HIGH** rule + version-pin detector for

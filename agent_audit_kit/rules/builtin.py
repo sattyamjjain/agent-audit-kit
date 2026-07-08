@@ -126,6 +126,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
+    "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5227,6 +5228,46 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SUPPLY-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# MCP tool-argument URL SSRF (CVE-2026-14748).
+#
+# The generic AAK-SSRF-001..005 family keys on request-object accessors
+# (`args[...]` / `req.query` / `request.json`) and misses the canonical
+# CVE-2026-14748 shape, where a bare tool-handler PARAMETER named `url` flows
+# straight into `requests.get(url)`. This CVE-pinned rule closes that gap with
+# an AST parameter->fetch taint path, mirroring how AAK-LANGCHAIN-SSRF-REDIR-001
+# and AAK-LMDEPLOY-VL-SSRF-001 sit alongside the generic SSRF class.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SSRF-001",
+    "MCP tool handler fetches a caller-supplied URL without host/scheme allow-list",
+    "An MCP tool handler passes an attacker-controllable URL argument "
+    "(`url` / `endpoint` / `target` / `uri` and similar) straight into an "
+    "outbound fetch (`requests` / `httpx` / `urllib` / `aiohttp`) without "
+    "validating the host or scheme first, so a caller-supplied URL is fetched "
+    "server-side and can reach loopback, private-range, or cloud-metadata "
+    "endpoints (CWE-918, server-side request forgery). NVD, CVE-2026-14748: "
+    "\"A flaw has been found in AIAnytime Awesome-MCP-Server ... the file "
+    "mcp-wiki/src/mcp_wiki/server.py of the component mcp-wiki/wiki-summary. "
+    "This manipulation of the argument url causes server-side request forgery. "
+    "The attack may be initiated remotely. The exploit has been published.\" "
+    "(CVSS 6.3 MEDIUM, https://nvd.nist.gov/vuln/detail/CVE-2026-14748).",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Deny by default: before fetching, parse the URL, require an https scheme, "
+    "resolve the host, and reject anything not on an explicit host allow-list "
+    "(also reject RFC 1918, 127.0.0.0/8, 169.254.0.0/16, ::1, fc00::/7). "
+    "Disable automatic redirects or re-validate every hop, and pin the resolved "
+    "IP for the actual request to defeat DNS rebinding.",
+    sarif_name="McpToolArgUrlSsrf",
+    cve_references=["CVE-2026-14748"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
 )
 
 

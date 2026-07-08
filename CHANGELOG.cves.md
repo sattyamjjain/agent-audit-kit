@@ -8,6 +8,12 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.48 (2026-07-08)
+
+| Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
+|---|---|---|---|---|
+| CVE-2026-14748 (AIAnytime Awesome-MCP-Server `mcp-wiki/wiki-summary` — SSRF: the `url` argument of the tool handler is fetched server-side with no host/scheme allow-list, CWE-918; rolling-release project, no fixed version) | [NVD CVE-2026-14748](https://nvd.nist.gov/vuln/detail/CVE-2026-14748) (MEDIUM, CVSS 6.3, published 2026-07-05) | **AAK-MCP-SSRF-001** (NEW: MEDIUM, MCP_CONFIG — `ast` param→fetch taint / regex fallback, fires on unvalidated tool-arg URL) | 2026-07-08 | ~72h on NVD (past 48h target) |
+
 ## Shipped in v0.3.47 (2026-07-07)
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
