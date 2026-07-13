@@ -47,6 +47,20 @@ _BEARER_ONLY_RE = re.compile(
 )
 _DPOP_HINT_RE = re.compile(r"\b(?:DPoP|dpop)\b|cnf\b", re.IGNORECASE)
 
+# RFC 9207 (MCP 2026-07-28 RC, SEP-2468): the client must validate the `iss`
+# authorization-response parameter. Fire when the file handles an authorization
+# response (token exchange with grant_type=authorization_code, or a callback
+# that reads `code` and `state`) but never references `iss`.
+_AUTHCODE_FLOW_RE = re.compile(
+    r"grant_type['\"]?\s*[:=]\s*['\"]?authorization_code"
+    r"|\bexchange[_A-Za-z]*code[_A-Za-z]*token\b"
+    r"|\bexchangeCodeForToken\b"
+    r"|(?:args|query|params|query_params|searchParams|GET)\s*(?:\.get\s*\(|\[)\s*"
+    r"['\"]code['\"]",
+    re.IGNORECASE,
+)
+_ISS_PRESENT_RE = re.compile(r"\biss\b")
+
 
 def _iter_source(project_root: Path) -> list[Path]:
     out: list[Path] = []
@@ -126,6 +140,18 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 "AAK-OAUTH-005",
                 rel,
                 "Bearer-only auth; no DPoP/mTLS proof-of-possession detected",
+            )
+        )
+
+    m_authcode = _AUTHCODE_FLOW_RE.search(text)
+    if m_authcode and not _ISS_PRESENT_RE.search(text):
+        findings.append(
+            make_finding(
+                "AAK-OAUTH-006",
+                rel,
+                "OAuth authorization-code response handled without validating the "
+                "`iss` parameter (RFC 9207 / MCP 2026-07-28 SEP-2468)",
+                line_number=find_line_number(text, m_authcode.group(0)),
             )
         )
 

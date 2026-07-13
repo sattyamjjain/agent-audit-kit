@@ -100,6 +100,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_auth_pathtraversal", "MCP bearer-token joined into session file path (CVE-2026-52830)", []),
     ("mcp_server_card", "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)", []),
     ("mcp_ssrf_toolarg", "MCP tool-arg URL SSRF (CVE-2026-14748)", []),
+    ("mcp_deprecated_features", "MCP 2026-07-28 deprecated features roots/sampling/logging (SEP-2577/2596)", []),
 ]
 
 

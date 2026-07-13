@@ -122,6 +122,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STATELESS-002": ["AIS-07", "AIS-08"],
     "AAK-MCP-STATELESS-003": ["IVS-04", "BCR-04"],
     "AAK-MCP-STATELESS-004": ["AIS-07"],
+    "AAK-MCP-DEPRECATED-001": ["AIS-08"],
+    "AAK-MCP-DEPRECATED-002": ["AIS-07", "AIS-08"],
+    "AAK-MCP-DEPRECATED-003": ["AIS-08", "LOG-06"],
+    "AAK-OAUTH-006": ["IAM-01", "IAM-16"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
@@ -635,6 +639,92 @@ _r(
     "`notifications/tools/list_changed`. Treat tool discovery as a hint "
     "that may differ between instances under the stateless transport.",
     sarif_name="McpClientNoToolsListCache",
+    owasp_mcp_references=["MCP07:2025"],
+)
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-DEPRECATED-001..003 — 2026-07-28 deprecated protocol features.
+#
+# The MCP 2026-07-28 spec release candidate is the first to ship a formal
+# deprecation policy (SEP-2596): a minimum 12-month window between deprecation
+# and removal. Under it, SEP-2577 annotation-deprecates three core features —
+# `roots`, `sampling`, and `logging`. They remain functional in every spec
+# version published within 12 months of 2026-07-28 (runway to ~mid-2027), but
+# they are on the removal path and each has a documented replacement:
+#   - roots     -> pass workspace paths as tool parameters / server config.
+#   - sampling  -> call the LLM provider API directly from the server.
+#   - logging   -> emit to stderr or OpenTelemetry instead of `logging/setLevel`.
+# These three rules surface continued use of the deprecated surfaces so authors
+# can migrate inside the 12-month window rather than break on removal. Distinct
+# from AAK-MCP-SAMPLING-001 (a *consent* guard on sampling) and the
+# AAK-MCP-STATELESS-* pack (the session/tasks transport changes of the same RC).
+#
+# Sources:
+#   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+#   https://modelcontextprotocol.io/seps/2577  (deprecate roots/sampling/logging)
+#   https://modelcontextprotocol.io/seps/2596  (12-month deprecation policy)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-DEPRECATED-001",
+    "Use of deprecated `roots` capability (roots/list)",
+    "Server or client code declares or exercises the `roots` capability — "
+    "the `roots/list` request, the `notifications/roots/list_changed` "
+    "notification, or the SDK aliases (`list_roots`, `ListRootsRequest`, "
+    "`send_roots_list_changed`). The MCP 2026-07-28 spec release candidate "
+    "deprecates `roots` (SEP-2577) under the new 12-month deprecation policy "
+    "(SEP-2596): it stays functional for at least a year but is on the "
+    "removal path. Roots leaked the client's workspace layout to every "
+    "connected server, which the RC judged an unnecessary standing surface.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Migrate before removal: stop advertising / handling the `roots` "
+    "capability and pass the specific workspace paths a tool needs as "
+    "explicit tool parameters or server configuration instead. Deprecated "
+    "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
+    sarif_name="McpDeprecatedRoots",
+    owasp_mcp_references=["MCP07:2025"],
+)
+
+_r(
+    "AAK-MCP-DEPRECATED-002",
+    "Use of deprecated `sampling` capability (sampling/createMessage)",
+    "Server or client code declares or exercises the `sampling` capability — "
+    "the `sampling/createMessage` request, a `CreateMessageRequest` handler, "
+    "or the SDK aliases (`create_message`, `.sampling.create`). The MCP "
+    "2026-07-28 spec release candidate deprecates `sampling` (SEP-2577) under "
+    "the 12-month deprecation policy (SEP-2596). Server-initiated sampling "
+    "made the server a privileged caller of the host LLM and had no clean "
+    "stateless story; it is on the removal path. (Distinct from "
+    "AAK-MCP-SAMPLING-001, which flags sampling wired up without a consent "
+    "gate — this rule flags the deprecated capability itself.)",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Migrate before removal: instead of asking the client to sample via "
+    "`sampling/createMessage`, call the LLM provider API directly from the "
+    "server with its own credentials. Deprecated 2026-07-28; plan to remove "
+    "ahead of the ~mid-2027 window.",
+    sarif_name="McpDeprecatedSampling",
+    owasp_mcp_references=["MCP07:2025"],
+)
+
+_r(
+    "AAK-MCP-DEPRECATED-003",
+    "Use of deprecated `logging` capability (logging/setLevel)",
+    "Server or client code declares or exercises the `logging` capability — "
+    "the `logging/setLevel` request, the `notifications/message` log "
+    "notification, or the SDK aliases (`set_level`, `SetLevelRequest`, "
+    "`LoggingMessageNotification`, `LoggingLevel`). The MCP 2026-07-28 spec "
+    "release candidate deprecates `logging` (SEP-2577) under the 12-month "
+    "deprecation policy (SEP-2596). Protocol-level log-level control was "
+    "redundant with host-side observability and is on the removal path.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Migrate before removal: emit logs to stderr or an OpenTelemetry "
+    "exporter and control verbosity out-of-band, rather than advertising the "
+    "`logging` capability / handling `logging/setLevel`. Deprecated "
+    "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
+    sarif_name="McpDeprecatedLogging",
     owasp_mcp_references=["MCP07:2025"],
 )
 
@@ -1963,6 +2053,36 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-10"],
+)
+
+# AAK-OAUTH-006 — RFC 9207 `iss` validation (MCP 2026-07-28 RC, SEP-2468).
+# The 2026-07-28 release candidate requires OAuth clients to validate the `iss`
+# authorization-response parameter per RFC 9207, a low-cost mitigation for the
+# mix-up attack class that MCP's single-client / many-server pattern makes more
+# likely. A future spec version will require clients to reject responses that
+# omit `iss`. Source: blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+_r(
+    "AAK-OAUTH-006",
+    "OAuth client does not validate the `iss` authorization-response parameter (RFC 9207)",
+    "An OAuth authorization-code client processes the authorization response / "
+    "redirect callback (reads `code` and `state`, or exchanges the code at the "
+    "token endpoint) but never references the `iss` parameter. The MCP "
+    "2026-07-28 spec release candidate (SEP-2468) requires clients to validate "
+    "`iss` on authorization responses per RFC 9207 — without it, an attacker "
+    "who controls one authorization server in MCP's single-client / "
+    "many-server deployment can mount an OAuth mix-up attack and have the "
+    "client redeem a code at the wrong server. A later spec version will "
+    "require rejecting responses that omit `iss` entirely.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Validate the `iss` authorization-response parameter against the expected "
+    "issuer of the authorization server the request was sent to (RFC 9207), "
+    "and reject the response on mismatch. Have your authorization server emit "
+    "`iss` now so the check can be enforced before the 2026-07-28 cutover.",
+    sarif_name="OAuthMissingIssValidation",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-11"],
 )
 
 # ---------------------------------------------------------------------------

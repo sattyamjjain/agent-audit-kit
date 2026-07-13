@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-MCP-DEPRECATED-* + AAK-OAUTH-006: MCP 2026-07-28 final-spec deprecation pack
+
+New scanner (`mcp_deprecated_features`) and rule family for the MCP
+[2026-07-28 release candidate](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/).
+The RC ships MCP's first formal deprecation policy (**SEP-2596**, a minimum
+12-month deprecation→removal window) and, under it, annotation-deprecates three
+core capabilities via **SEP-2577**:
+
+- **AAK-MCP-DEPRECATED-001** (MEDIUM) — `roots` capability (`roots/list`); migrate to tool parameters / config.
+- **AAK-MCP-DEPRECATED-002** (MEDIUM) — `sampling` capability (`sampling/createMessage`); call the LLM provider API directly. Distinct from `AAK-MCP-SAMPLING-001` (a *consent* guard on sampling) — this flags the deprecated capability itself.
+- **AAK-MCP-DEPRECATED-003** (MEDIUM) — `logging` capability (`logging/setLevel`); emit to stderr / OpenTelemetry.
+
+The scanner flags each deprecated surface across MCP config files, manifests, and
+server/client source; detection is tight (MCP method strings + SDK type names +
+a JSON `capabilities` walk) so ordinary stdlib `logging` / `logger.setLevel`
+does not fire.
+
+Also adds **AAK-OAUTH-006** (MEDIUM, in `oauth_misconfig`) for the RC's *actual*
+new OAuth requirement — **RFC 9207 `iss` validation (SEP-2468)**: an
+authorization-code client that handles the auth response but never validates the
+`iss` parameter. (The RC does **not** reference RFC 9728 / RFC 8707; those belong
+to MCP's existing authorization spec, not this changelog — so no rule cites them
+against 2026-07-28.)
+
+Fixture-backed tests; `rules.json` regenerated. Rule count **234 → 238**,
+scanners **82 → 83**.
+
 ### Added — AAK-MCP-SERENA-CVE-2026-49471-001: pin CVE-2026-49471 (Serena MCP unauthenticated-dashboard RCE)
 
 CVE-response (closes #411). New **HIGH** rule + version-pin detector for
