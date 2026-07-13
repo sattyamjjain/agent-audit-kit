@@ -132,6 +132,14 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
     "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-MCP-SERENA-CVE-2026-49471-001": ["IAM-01", "IAM-16"],
+    "AAK-MCP-LITELLM-CVE-2026-59822-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-CLINE-CVE-2026-59723-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-TEXTEDITOR-CVE-2026-15138-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-N8N-CVE-2026-59207-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-RUFLO-CVE-2026-59726-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-DEEPSEEK-CVE-2026-55604-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-K8S-CVE-2026-61459-001": ["AIS-07", "IVS-09", "STA-08"],
+    "AAK-MCP-ASTRBOT-CVE-2026-15501-001": ["IVS-04", "STA-08"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5427,6 +5435,190 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-07 MCP/agent CVE disclosure wave — dependency version-pins.
+#
+# Eight vulnerable-dependency pins for MCP/agent CVEs disclosed 2026-07-08..12
+# that ship a vendor fix and a pinnable PyPI / npm artifact. Detector:
+# `mcp_cve_pins_2026_07`. Package names + fix floors verified against PyPI / npm
+# before shipping. (Three sibling CVEs without a pinnable artifact or a tractable
+# version scheme — aerostack-mcp SSRF, MaxKB stdio command-injection, langchain4j
+# Maven — are dispositioned in CHANGELOG.cves.md rather than as pins.)
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-LITELLM-CVE-2026-59822-001",
+    "LiteLLM < 1.84.0 (MCP auth bypass + skills-archive path traversal)",
+    "LiteLLM before 1.84.0 has two MCP-relevant flaws: its MCP Streamable-HTTP "
+    "endpoint let a fabricated Authorization header trigger an OAuth2 passthrough "
+    "fallback that replaced failed key validation with an empty `UserAPIKeyAuth()`, "
+    "reaching MCP tooling without a valid key (CVE-2026-59822); and its Skills "
+    "archive extraction did not validate ZIP entry paths, allowing path traversal "
+    "outside the staging directory (CVE-2026-59820, fixed 1.83.7-stable). Both are "
+    "fixed by 1.84.0. A project pinning `litellm` below 1.84.0 (or unpinned) is "
+    "exposed. (CVSS not yet scored by NVD; auth bypass to MCP tooling.)",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `litellm` to >= 1.84.0 and pin it. Ensure MCP routes require a valid "
+    "LiteLLM key (no empty-auth fallback) and that skill/archive extraction "
+    "validates entry paths against the destination directory.",
+    sarif_name="LiteLLMMcpAuthBypass",
+    cve_references=["CVE-2026-59822", "CVE-2026-59820"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-CLINE-CVE-2026-59723-001",
+    "Cline < 3.0.30 (Hub dashboard WebSocket origin bypass → RCE)",
+    "The Cline (`cline`) Hub dashboard server before 3.0.30 accepts WebSocket "
+    "connections on `/browser` without validating the Origin header, and when "
+    "`ROOM_SECRET` is unset on a local 127.0.0.1 bind, `isAuthorizedBrowserRequest()` "
+    "lets an attacker-controlled website send `desktopCommand` frames that read "
+    "workspace state, mutate MCP and provider settings, and trigger command "
+    "execution once a provider/model is configured (CVE-2026-59723, CVSS 8.8). "
+    "Fixed in 3.0.30.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `cline` to >= 3.0.30 and pin it. Do not run the Hub dashboard on an "
+    "untrusted network; set `ROOM_SECRET` and require Origin validation on the "
+    "dashboard WebSocket.",
+    sarif_name="ClineHubDashboardOriginBypass",
+    cve_references=["CVE-2026-59723"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-TEXTEDITOR-CVE-2026-15138-001",
+    "tumf mcp-text-editor path traversal (affected up to 1.0.2)",
+    "The `mcp-text-editor` MCP server's `_validate_file_path` "
+    "(`mcp_text_editor/text_editor.py`) mishandles a caller-supplied `file_path`, "
+    "allowing remote path traversal (CVE-2026-15138, CVSS 6.3). NVD lists versions "
+    "up to 1.0.2 as affected; the vendor closed the report without an explanation, "
+    "so treat <= 1.0.2 (and unpinned) as exposed and move to the latest release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-text-editor` past 1.0.2 to the latest release and pin it; verify "
+    "the traversal fix landed. Constrain the editor to an allow-listed root and "
+    "reject `..` / absolute paths in `file_path`.",
+    sarif_name="McpTextEditorPathTraversal",
+    cve_references=["CVE-2026-15138"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-SUPPLY-01"],
+)
+
+_r(
+    "AAK-MCP-N8N-CVE-2026-59207-001",
+    "n8n < 2.27.4 / 2.28.1 (MCP tool bypasses credential domain allow-list → SSRF/exfil)",
+    "n8n before 2.27.4 (and the 2.28.x line before 2.28.1) did not enforce the "
+    "\"Allowed HTTP Request Domains\" restriction on credentials when an AI-Agent "
+    "MCP tool was pointed at an arbitrary URL, letting a member-level user with "
+    "use-only access to a shared credential send its secret to an external server "
+    "they control (CVE-2026-59207, CVSS 6.5). A project pinning `n8n` below 2.27.4 "
+    "(or unpinned) is exposed; a 2.28.0 pin is also affected — move to 2.28.1.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n` to >= 2.27.4 (or >= 2.28.1 on the 2.28 line) and pin it. Enforce "
+    "the credential domain allow-list on MCP/HTTP tool destinations so a "
+    "member-level user cannot redirect a shared credential to an external host.",
+    sarif_name="N8nMcpCredentialDomainBypass",
+    cve_references=["CVE-2026-59207"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+_r(
+    "AAK-MCP-RUFLO-CVE-2026-59726-001",
+    "ruflo < 3.16.3 (unauthenticated MCP bridge → tools/call RCE)",
+    "The `ruflo` agent meta-harness before 3.16.3 shipped a default "
+    "docker-compose deployment that exposed the MCP bridge `POST /mcp` and "
+    "`POST /mcp/:group` endpoints with no authentication, letting an unauthenticated "
+    "network attacker invoke `tools/call` for `terminal_execute`, obtain a shell in "
+    "the bridge container, read provider API keys, and poison AgentDB learning-store "
+    "patterns (CVE-2026-59726, CVSS 10 CRITICAL). Fixed in 3.16.3.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `ruflo` to >= 3.16.3 and pin it. Never expose the MCP bridge without "
+    "authentication; bind it to loopback and require a token on `/mcp` routes.",
+    sarif_name="RufloUnauthMcpBridgeRce",
+    cve_references=["CVE-2026-59726"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
+    "@arikusi/deepseek-mcp-server < 1.8.0 (unbound session IDs + unauth HTTP transport)",
+    "`@arikusi/deepseek-mcp-server` from 1.4.2 up to (not including) 1.8.0 accepts "
+    "caller-supplied `session_id` values in its process-global `SessionStore` "
+    "without binding them to an authenticated principal, so an attacker can "
+    "enumerate active sessions via `deepseek_sessions` and resume a victim's "
+    "conversation via `deepseek_chat` (CVE-2026-55604, CVSS 8.6); its self-hosted "
+    "HTTP transport also exposes `POST /mcp` with no `authProvider`, letting an "
+    "unauthenticated client initialize a session and invoke tools that use the "
+    "server-side `DEEPSEEK_API_KEY` (CVE-2026-55605, CVSS 5.3). Both fixed by 1.8.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@arikusi/deepseek-mcp-server` to >= 1.8.0 and pin it. Bind session "
+    "IDs to an authenticated principal / transport session, and configure an "
+    "`authProvider` so `POST /mcp` is not reachable unauthenticated.",
+    sarif_name="DeepseekMcpUnboundSession",
+    cve_references=["CVE-2026-55604", "CVE-2026-55605"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-K8S-CVE-2026-61459-001",
+    "mcp-server-kubernetes < 3.9.0 (argument injection → kubectl --server redirect)",
+    "`mcp-server-kubernetes` before 3.9.0 has an argument-injection flaw in its "
+    "structured tools (`kubectl_get`, `kubectl_describe`, `kubectl_delete`): "
+    "`resourceType` / `name` parameters with leading dashes bypass the "
+    "`assertNoDangerousFlags` check, so an attacker can inject `--server` to "
+    "redirect kubectl at an attacker-controlled API server, exfiltrating the "
+    "operator's bearer token and enabling full cluster compromise (CVE-2026-61459, "
+    "CVSS 9.8 CRITICAL). Fixed in 3.9.0.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-server-kubernetes` to >= 3.9.0 and pin it. Reject tool arguments "
+    "beginning with `-` and pass a `--` end-of-options separator before "
+    "caller-supplied values to any spawned `kubectl` command.",
+    sarif_name="McpServerKubernetesArgInjection",
+    cve_references=["CVE-2026-61459"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-INJECT-01"],
+)
+
+_r(
+    "AAK-MCP-ASTRBOT-CVE-2026-15501-001",
+    "AstrBot MCP-test endpoint SSRF (affected up to 4.25.2)",
+    "AstrBot's `ToolsRoute.test_mcp_connection` "
+    "(`astrbot/dashboard/routes/tools.py`, MCP Test Endpoint) fetches a "
+    "caller-supplied `mcp_server_config.url`, allowing remote server-side request "
+    "forgery (CVE-2026-15501, CVSS 6.3). NVD lists versions up to 4.25.2 as "
+    "affected and the vendor did not respond, so treat <= 4.25.2 (and unpinned) as "
+    "exposed and move to the latest release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `astrbot` past 4.25.2 to the latest release and pin it. Validate the "
+    "MCP-test URL against an allow-list (scheme + host) and block private / "
+    "loopback / metadata ranges before fetching.",
+    sarif_name="AstrBotMcpTestSsrf",
+    cve_references=["CVE-2026-15501"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
 )
 
 

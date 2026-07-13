@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-13T04:33:07Z",
+  "last_updated": "2026-07-13T04:50:43Z",
   "aak_version": "0.3.49",
-  "rule_count": 238,
+  "rule_count": 246,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 12,
+      "rule_density": 13,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -63,6 +63,18 @@
           "cve_references": [],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-MCP-K8S-CVE-2026-61459-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-61459"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-09",
+            "STA-08"
           ]
         },
         {
@@ -995,7 +1007,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 39,
+      "rule_density": 43,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1176,12 +1188,58 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-CLINE-CVE-2026-59723-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-59723"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-55604",
+            "CVE-2026-55605"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FHI-001",
           "severity": "high",
           "cve_references": [],
           "aicm_references": [
             "AIS-12",
             "CCC-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LITELLM-CVE-2026-59822-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-59820",
+            "CVE-2026-59822"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-RUFLO-CVE-2026-59726-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-59726"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
           ]
         },
         {
@@ -1605,7 +1663,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 31,
+      "rule_density": 33,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1649,6 +1707,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-ASTRBOT-CVE-2026-15501-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-15501"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-CARD-001",
           "severity": "critical",
           "cve_references": [],
@@ -1659,6 +1728,17 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-N8N-CVE-2026-59207-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-59207"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-SANDBOX-SELFDISABLE-001",
@@ -1973,7 +2053,7 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 14,
+      "rule_density": 15,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -2052,6 +2132,17 @@
           "aicm_references": [
             "AIS-08",
             "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-MCP-TEXTEDITOR-CVE-2026-15138-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-15138"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
           ]
         },
         {

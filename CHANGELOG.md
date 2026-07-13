@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — 2026-07 MCP/agent CVE disclosure-wave pins (8 rules, closes 13 sla-48h issues)
+
+CVE-response for the 2026-07-08..12 disclosure backlog. New table-driven scanner
+(`mcp_cve_pins_2026_07`) + **8 dependency version-pin rules**, package names and
+fix floors verified against PyPI / npm before shipping:
+
+- **AAK-MCP-LITELLM-CVE-2026-59822-001** (HIGH) — `litellm` < 1.84.0: MCP auth bypass via empty `UserAPIKeyAuth()` fallback (CVE-2026-59822) + skills-archive path traversal (CVE-2026-59820).
+- **AAK-MCP-CLINE-CVE-2026-59723-001** (HIGH) — `cline` < 3.0.30: Hub-dashboard WebSocket origin bypass → RCE (CVE-2026-59723).
+- **AAK-MCP-TEXTEDITOR-CVE-2026-15138-001** (MEDIUM) — `mcp-text-editor` ≤ 1.0.2: `file_path` path traversal (CVE-2026-15138).
+- **AAK-MCP-N8N-CVE-2026-59207-001** (MEDIUM) — `n8n` < 2.27.4 / 2.28.1: MCP tool bypasses credential domain allow-list → secret exfil (CVE-2026-59207).
+- **AAK-MCP-RUFLO-CVE-2026-59726-001** (CRITICAL) — `ruflo` < 3.16.3: unauthenticated MCP bridge → `tools/call` RCE (CVE-2026-59726, CVSS 10).
+- **AAK-MCP-DEEPSEEK-CVE-2026-55604-001** (HIGH) — `@arikusi/deepseek-mcp-server` < 1.8.0: unbound `session_id` + unauth HTTP transport (CVE-2026-55604, CVE-2026-55605).
+- **AAK-MCP-K8S-CVE-2026-61459-001** (CRITICAL) — `mcp-server-kubernetes` < 3.9.0: `kubectl --server` argument injection → cluster compromise (CVE-2026-61459, CVSS 9.8).
+- **AAK-MCP-ASTRBOT-CVE-2026-15501-001** (MEDIUM) — `astrbot` ≤ 4.25.2: MCP-test-endpoint SSRF (CVE-2026-15501).
+
+Three sibling CVEs are dispositioned in `CHANGELOG.cves.md` rather than as pins
+(no pinnable PyPI/npm artifact or tractable version scheme): CVE-2026-15189
+(aerostack-mcp SSRF, rolling — covered by the `AAK-MCP-SSRF-001` class),
+CVE-2026-54149 (MaxKB stdio command-injection — covered by the
+`AAK-MCP-STDIO-CMD-INJ-*` class), and CVE-2026-55405 (langchain4j Maven — four
+parallel beta fix-lines, Maven pin ecosystem not yet supported).
+
+Fixture-backed tests; `rules.json` regenerated. Rule count **238 → 246**,
+scanners **83 → 84**.
+
 ### Added — AAK-MCP-DEPRECATED-* + AAK-OAUTH-006: MCP 2026-07-28 final-spec deprecation pack
 
 New scanner (`mcp_deprecated_features`) and rule family for the MCP

@@ -8,6 +8,29 @@ shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens an
 `sla-48h`-labelled issue for anything new.
 
+## Shipped in v0.3.49 (2026-07-13)
+
+Batch response to the 2026-07-08..12 disclosure wave (13 CVEs). Eight have a
+vendor fix + a pinnable PyPI/npm artifact and ship as version-pins
+(`mcp_cve_pins_2026_07`); three have no pinnable artifact or a tractable version
+scheme and are dispositioned below. Latency exceeds the 48h target for the
+earlier CVEs — this backlog accumulated between the v0.3.48 and v0.3.49 releases
+and is recorded honestly.
+
+| Incident / Anchor | Reference | AAK rule(s) / disposition | Shipped |
+|---|---|---|---|
+| CVE-2026-59822 + CVE-2026-59820 (LiteLLM < 1.84.0 — MCP Streamable-HTTP auth bypass via empty `UserAPIKeyAuth()` fallback; skills-archive ZIP path traversal) | [NVD CVE-2026-59822](https://nvd.nist.gov/vuln/detail/CVE-2026-59822) (CVSS n/a) | **AAK-MCP-LITELLM-CVE-2026-59822-001** (NEW: HIGH, SUPPLY_CHAIN — pin `litellm` >= 1.84.0) | 2026-07-13 |
+| CVE-2026-59723 (Cline < 3.0.30 — Hub-dashboard `/browser` WebSocket accepts frames without Origin validation → workspace read + settings mutation + command exec) | [NVD CVE-2026-59723](https://nvd.nist.gov/vuln/detail/CVE-2026-59723) (HIGH, CVSS 8.8) | **AAK-MCP-CLINE-CVE-2026-59723-001** (NEW: HIGH, SUPPLY_CHAIN — pin `cline` >= 3.0.30) | 2026-07-13 |
+| CVE-2026-15138 (tumf mcp-text-editor — `_validate_file_path` path traversal via `file_path`; NVD affected up to 1.0.2) | [NVD CVE-2026-15138](https://nvd.nist.gov/vuln/detail/CVE-2026-15138) (MEDIUM, CVSS 6.3) | **AAK-MCP-TEXTEDITOR-CVE-2026-15138-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin `mcp-text-editor` past 1.0.2) | 2026-07-13 |
+| CVE-2026-59207 (n8n < 2.27.4 / 2.28.1 — AI-Agent MCP tool bypasses credential "Allowed HTTP Request Domains" → shared-credential exfil) | [NVD CVE-2026-59207](https://nvd.nist.gov/vuln/detail/CVE-2026-59207) (MEDIUM, CVSS 6.5) | **AAK-MCP-N8N-CVE-2026-59207-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin `n8n` >= 2.27.4 / 2.28.1) | 2026-07-13 |
+| CVE-2026-59726 (ruflo < 3.16.3 — default docker-compose exposes MCP bridge `POST /mcp` unauthenticated → `tools/call` `terminal_execute` RCE, key theft, AgentDB poisoning) | [NVD CVE-2026-59726](https://nvd.nist.gov/vuln/detail/CVE-2026-59726) (CRITICAL, CVSS 10) | **AAK-MCP-RUFLO-CVE-2026-59726-001** (NEW: CRITICAL, SUPPLY_CHAIN — pin `ruflo` >= 3.16.3) | 2026-07-13 |
+| CVE-2026-55604 + CVE-2026-55605 (@arikusi/deepseek-mcp-server 1.4.2–<1.8.0 — process-global `SessionStore` accepts unbound `session_id` → session hijack; unauth `POST /mcp` HTTP transport) | [NVD CVE-2026-55604](https://nvd.nist.gov/vuln/detail/CVE-2026-55604) (HIGH, CVSS 8.6) | **AAK-MCP-DEEPSEEK-CVE-2026-55604-001** (NEW: HIGH, SUPPLY_CHAIN — pin `@arikusi/deepseek-mcp-server` >= 1.8.0) | 2026-07-13 |
+| CVE-2026-61459 (MCP Server Kubernetes < 3.9.0 — leading-dash `resourceType`/`name` bypass `assertNoDangerousFlags`, inject `--server` to redirect kubectl → bearer-token exfil → cluster compromise) | [NVD CVE-2026-61459](https://nvd.nist.gov/vuln/detail/CVE-2026-61459) (CRITICAL, CVSS 9.8) | **AAK-MCP-K8S-CVE-2026-61459-001** (NEW: CRITICAL, SUPPLY_CHAIN — pin `mcp-server-kubernetes` >= 3.9.0) | 2026-07-13 |
+| CVE-2026-15501 (AstrBot ≤ 4.25.2 — `ToolsRoute.test_mcp_connection` fetches caller-supplied `mcp_server_config.url` → SSRF) | [NVD CVE-2026-15501](https://nvd.nist.gov/vuln/detail/CVE-2026-15501) (MEDIUM, CVSS 6.3) | **AAK-MCP-ASTRBOT-CVE-2026-15501-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin `astrbot` past 4.25.2) | 2026-07-13 |
+| CVE-2026-15189 (aerostackdev aerostack-mcp — `upload_media` `media_url` SSRF; rolling release, no version, no PyPI/npm artifact) | [NVD CVE-2026-15189](https://nvd.nist.gov/vuln/detail/CVE-2026-15189) (MEDIUM, CVSS 6.3) | **Class-covered** by `AAK-MCP-SSRF-001` (unvalidated tool-arg URL → fetch); no pinnable artifact to add | 2026-07-13 |
+| CVE-2026-54149 (MaxKB < 2.10.0-lts — `.tool` import allows stdio transport with malicious commands → `MultiServerMCPClient` executes arbitrary system commands) | [NVD CVE-2026-54149](https://nvd.nist.gov/vuln/detail/CVE-2026-54149) (HIGH, CVSS 8.8) | **Class-covered** by `AAK-MCP-STDIO-CMD-INJ-*` (MCP stdio command-injection); MaxKB is a Docker app, no PyPI/npm artifact to pin | 2026-07-13 |
+| CVE-2026-55405 (LangChain4j MariaDB / pgvector embedding stores — metadata-filter SQL injection via string-concatenated filter keys) | [NVD CVE-2026-55405](https://nvd.nist.gov/vuln/detail/CVE-2026-55405) (HIGH, CVSS 7.6) | **Documented, not pinned** — fixed in `langchain4j-mariadb`/`langchain4j-pgvector` 1.2.1-beta8 / 1.5.1-beta11 / 1.11.8-beta19 / 1.16.3-beta26; four parallel beta fix-lines can't be one semver floor and AAK has no Maven pin ecosystem yet (tracked) | 2026-07-13 |
+
 ## Shipped in v0.3.48 (2026-07-08)
 
 | Incident / Anchor | Reference | AAK rule(s) | Shipped | Latency |
