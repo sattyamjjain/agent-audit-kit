@@ -3,7 +3,7 @@
 **Released:** 2026-04-18 (launch Tuesday 13:00 UTC)
 
 Biggest release in the project's history. v0.3.0 adds the 2026 CVE
-wave coverage, the AAK Response SLA, the MCP Security Index
+wave coverage, the AAK CVE-response watcher, the MCP Security Index
 scaffolding, and a distribution set big enough to live in every
 developer workflow.
 
@@ -23,7 +23,7 @@ developer workflow.
   claim "taint analysis" where the code is pattern-based.
 - **`--strict-loading` CLI flag.** Opt-in: fail loudly when any
   optional scanner module can't be imported.
-- **AAK Response SLA — public 48h CVE-to-rule.** See
+- **AAK CVE-response watcher — best-effort CVE-to-rule coverage.** See
   `CHANGELOG.cves.md` for the ledger.
 - **Sigstore-signed rule bundle + SBOM.** `agent-audit-kit export-rules`
   and `agent-audit-kit verify-bundle`; CycloneDX + SPDX SBOM via

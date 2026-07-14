@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — docs: single-source rule count + retire unbounded 48h CVE-SLA claim
+
+- **Single source of truth for the rule count.** `scripts/sync_rule_count.py`
+  now also drives `docs/rules.md` (the per-category Summary table is
+  regenerated wholesale from the live registry between `<!-- BEGIN/END
+  rules-summary -->` markers) and the rule-count cells in `docs/comparison.md`
+  and `docs/comparison-gitlab-agentic-sast.md` (via `<!-- rule-count:total -->`
+  anchors). These docs had drifted to a stale **221** (and silently dropped the
+  12th category, `MCP_SERVER_CARD`) while the registry was at 246. New
+  regression tests in `tests/test_rule_count_sync.py` fail CI if any of these
+  surfaces diverge from `len(RULES)`.
+- **Retired the unbounded 48-hour CVE→rule SLA.** The public commitment is now
+  a best-effort statement ("triaged continuously, shipped as fast as we
+  responsibly can, no fixed deadline"), matching `ROADMAP_2026.md §2.3`. Updated
+  the `cve-watcher` workflow name/header/checklist and the launch/application
+  copy. The NVD watcher, the `cve-response` issue flow, the `CHANGELOG.cves.md`
+  ledger, and the release gate (which keys off the retained `sla-48h` label) are
+  unchanged. Separate, bounded 48h commitments — the SECURITY.md report
+  acknowledgment and the coordinated-disclosure repo-notify window — are kept.
+
 ### Added — 2026-07 MCP/agent CVE disclosure-wave pins (8 rules, closes 13 sla-48h issues)
 
 CVE-response for the 2026-07-08..12 disclosure backlog. New table-driven scanner

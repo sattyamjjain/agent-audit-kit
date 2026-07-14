@@ -48,8 +48,9 @@ Send via `partnerships@github.com` with subject:
   `scripts/`.
 - **Code-scan:** `CodeQL` analysis clean on every PR (configured in
   `.github/workflows/codeql.yml`).
-- **CVE response SLA:** publicly committed to 48-hour rule coverage for
-  every NVD-disclosed MCP CVE. Audit trail at
+- **CVE response:** best-effort rule coverage for NVD-disclosed MCP CVEs —
+  triaged continuously and shipped as fast as we responsibly can, with no
+  fixed public deadline. Audit trail at
   [`CHANGELOG.cves.md`](../../CHANGELOG.cves.md).
 
 ### Coverage breadth

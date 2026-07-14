@@ -16,11 +16,31 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# Docs the sync script drives, mirrored here so the test fails if a surface is
+# dropped from the script (or a doc loses its anchor/markers) — v0.3.49.
+_DOC_TOTAL_ANCHOR_FILES = (
+    "docs/comparison.md",
+    "docs/comparison-gitlab-agentic-sast.md",
+)
+_DOCS_RULES_MD = "docs/rules.md"
+
 
 def _actual_rule_count() -> int:
     from agent_audit_kit.rules.builtin import RULES
 
     return len(RULES)
+
+
+def _load_sync_module():
+    """Import scripts/sync_rule_count.py as a module (it lives outside the package)."""
+    script = REPO_ROOT / "scripts" / "sync_rule_count.py"
+    assert script.is_file(), "scripts/sync_rule_count.py missing"
+    spec = importlib.util.spec_from_file_location("sync_rule_count", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["sync_rule_count"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_bundle_count_matches_code() -> None:
@@ -65,17 +85,12 @@ def test_init_rule_count_matches() -> None:
 
 
 def test_sync_script_check_mode_is_clean() -> None:
-    """Running the sync tool in --check mode should exit 0 on a clean tree."""
-    script = REPO_ROOT / "scripts" / "sync_rule_count.py"
-    assert script.is_file()
+    """Running the sync tool in --check mode should exit 0 on a clean tree.
 
-    # Load the script as a module and invoke main() with a synthetic CLI —
-    # faster than subprocess + avoids noisy stdout.
-    spec = importlib.util.spec_from_file_location("sync_rule_count", script)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["sync_rule_count"] = module
-    spec.loader.exec_module(module)
+    This is the broad fence: --check now covers README + action.yml +
+    __init__.py + docs/rules.md summary + the comparison-page anchors.
+    """
+    module = _load_sync_module()
 
     old_argv = sys.argv[:]
     sys.argv = ["sync_rule_count", "--check"]
@@ -84,6 +99,47 @@ def test_sync_script_check_mode_is_clean() -> None:
     finally:
         sys.argv = old_argv
     assert rc == 0, "sync_rule_count --check reported drift; run the script and commit the result"
+
+
+def test_docs_rules_summary_is_generated_from_registry() -> None:
+    """docs/rules.md's Summary table must be the exact block the sync script
+    renders from the live registry — so a new/renamed category or a count
+    change can never leave the doc stale (the 221-vs-246 + missing-12th-category
+    drift that motivated v0.3.49)."""
+    module = _load_sync_module()
+    count = _actual_rule_count()
+    expected_block = module._render_rules_summary(count)
+    text = (REPO_ROOT / _DOCS_RULES_MD).read_text(encoding="utf-8")
+    assert expected_block in text, (
+        f"{_DOCS_RULES_MD} summary table is not the registry-generated block; "
+        "run scripts/sync_rule_count.py and commit the result."
+    )
+    # Every live category must be represented (guards against a dropped row).
+    from agent_audit_kit.rules.builtin import RULES
+
+    live_categories = {r.category.name for r in RULES.values()}
+    for name in live_categories:
+        assert name in module._CATEGORY_DISPLAY, (
+            f"Category {name} has no display name in sync_rule_count._CATEGORY_DISPLAY"
+        )
+
+
+def test_docs_comparison_anchors_match_registry() -> None:
+    """Every `<!-- rule-count:total -->N<!-- /rule-count -->` anchor in the
+    comparison docs must equal len(RULES)."""
+    count = _actual_rule_count()
+    anchor_re = re.compile(
+        r"<!--\s*rule-count:total\s*-->(\d+)<!--\s*/rule-count\s*-->"
+    )
+    for rel in _DOC_TOTAL_ANCHOR_FILES:
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        anchors = anchor_re.findall(text)
+        assert anchors, f"{rel} has no rule-count anchor — sync can't drive it"
+        for value in anchors:
+            assert int(value) == count, (
+                f"{rel} claims {value} rules; canonical is {count}. "
+                "Run scripts/sync_rule_count.py."
+            )
 
 
 def test_no_stale_hardcoded_counts_in_prose() -> None:
@@ -159,3 +215,14 @@ def test_rule_count_is_canonical() -> None:
                 f"{rel} claims {claimed} rules; canonical is {count}. "
                 "Update launch copy or run scripts/sync_rule_count.py."
             )
+
+    # 4. Docs pages the sync script drives — the rules-reference summary total
+    #    and the competitor-comparison rule-count cells (v0.3.49).
+    anchor_re = re.compile(r"<!--\s*rule-count:total\s*-->(\d+)<!--\s*/rule-count\s*-->")
+    rules_md = (REPO_ROOT / "docs/rules.md").read_text(encoding="utf-8")
+    total_row = re.search(r"\|\s*\*\*Total\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|", rules_md)
+    assert total_row and int(total_row.group(1)) == count, "docs/rules.md Total != len(RULES)"
+    for rel in ("docs/comparison.md", "docs/comparison-gitlab-agentic-sast.md"):
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        anchors = anchor_re.findall(text)
+        assert anchors and all(int(a) == count for a in anchors), f"{rel} rule-count anchor drift"
