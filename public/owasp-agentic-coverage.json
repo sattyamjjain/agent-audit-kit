@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-15T21:43:31Z",
+  "last_updated": "2026-07-15T21:58:10Z",
   "aak_version": "0.3.50",
-  "rule_count": 247,
+  "rule_count": 254,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -561,7 +561,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 58,
+      "rule_density": 60,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -732,6 +732,19 @@
           ]
         },
         {
+          "id": "AAK-MCP-BETTERAUTH-CVE-2026-53512-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-53512",
+            "CVE-2026-53518"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IAM-16",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-CARD-002",
           "severity": "high",
           "cve_references": [],
@@ -766,6 +779,17 @@
             "CVE-2026-48814"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-62195"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-SAMPLING-001",
@@ -1016,7 +1040,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 43,
+      "rule_density": 47,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1185,6 +1209,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-APPIUM-CVE-2026-58500-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-58500"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-ATTEST-001",
           "severity": "medium",
           "cve_references": [],
@@ -1237,6 +1272,40 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PENPOT-CVE-2026-45805-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-45805"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PRAISONAI-CVE-2026-61427-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-61427"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-REPOMIX-CVE-2026-49988-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-49988"
+          ],
+          "aicm_references": [
+            "DSP-17",
             "STA-08"
           ]
         },
@@ -1672,7 +1741,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 33,
+      "rule_density": 34,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1737,6 +1806,17 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-15643"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-N8N-CVE-2026-59207-001",

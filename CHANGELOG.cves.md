@@ -38,6 +38,30 @@ Separately, **AAK-OAUTH-007** (new in v0.3.50) is cited to the **ratified** MCP
 validation), independent of the 2026-07-28 RC. It is not part of this RC
 reconciliation.
 
+## Shipped in v0.3.50 (2026-07-16)
+
+Response to the 2026-07-13..15 disclosure wave (13 CVEs, issues #429–#442).
+Eight have a vendor fix + a pinnable PyPI/npm artifact and ship as version-pins
+(`mcp_cve_pins_2026_07`); five have no pinnable artifact, no vendor fix, or an
+unsupported ecosystem and are dispositioned below. Package names, fix floors, and
+(where NVD published CPE data) affected ranges were verified against PyPI / npm /
+NVD before shipping.
+
+| Incident / Anchor | Reference | AAK rule(s) / disposition | Shipped |
+|---|---|---|---|
+| CVE-2026-15643 (AWS HealthLake MCP `awslabs.healthlake-mcp-server` < 0.0.14 — `next_token` pagination SSRF exfiltrates AWS temporary credentials to an attacker endpoint) | [NVD CVE-2026-15643](https://nvd.nist.gov/vuln/detail/CVE-2026-15643) (HIGH, CVSS 7.3) | **AAK-MCP-HEALTHLAKE-CVE-2026-15643-001** (NEW: HIGH, SUPPLY_CHAIN — pin >= 0.0.14) | 2026-07-16 |
+| CVE-2026-61427 (PraisonAI `praisonai` < 4.6.78 — MCP HTTP-stream unauthenticated by default; `--api-key` defaults to None → `tools/list` + `tools/call`) | [NVD CVE-2026-61427](https://nvd.nist.gov/vuln/detail/CVE-2026-61427) (HIGH, CVSS 7.3) | **AAK-MCP-PRAISONAI-CVE-2026-61427-001** (NEW: HIGH, SUPPLY_CHAIN — pin >= 4.6.78) | 2026-07-16 |
+| CVE-2026-58500 (MCP Appium `appium-mcp` < 1.85.10 — `createLocatorGeneratorUI` HTML/JS injection → `window.parent.postMessage` invokes arbitrary MCP tools) | [NVD CVE-2026-58500](https://nvd.nist.gov/vuln/detail/CVE-2026-58500) (HIGH, CVSS 8.2) | **AAK-MCP-APPIUM-CVE-2026-58500-001** (NEW: HIGH, SUPPLY_CHAIN — pin >= 1.85.10) | 2026-07-16 |
+| CVE-2026-45805 (Penpot MCP `@penpot/mcp` < 2.15.0 — ReplServer on `0.0.0.0:4403` exposes unauthenticated `/execute` → JS RCE) | [NVD CVE-2026-45805](https://nvd.nist.gov/vuln/detail/CVE-2026-45805) (HIGH, CVSS 8.8) | **AAK-MCP-PENPOT-CVE-2026-45805-001** (NEW: CRITICAL, SUPPLY_CHAIN — pin >= 2.15.0) | 2026-07-16 |
+| CVE-2026-62195 (OpenClaw `openclaw` 2026.5.20–<2026.6.6 — MCP loopback authorization bypass lets lower-trust callers run owner-only tools) | [NVD CVE-2026-62195](https://nvd.nist.gov/vuln/detail/CVE-2026-62195) (HIGH, CVSS 8.3; NVD CPE `2026.5.20` <= v < `2026.6.6`) | **AAK-MCP-OPENCLAW-CVE-2026-62195-001** (NEW: HIGH, SUPPLY_CHAIN — pin >= 2026.6.6, introduced 2026.5.20) | 2026-07-16 |
+| CVE-2026-49988 (Repomix `repomix` < 1.14.1 — MCP `attach_packed_output`/`read_repomix_output` reads local files without the `runSecretLint()` boundary) | [NVD CVE-2026-49988](https://nvd.nist.gov/vuln/detail/CVE-2026-49988) (CVSS n/a) | **AAK-MCP-REPOMIX-CVE-2026-49988-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin >= 1.14.1) | 2026-07-16 |
+| CVE-2026-53512 + CVE-2026-53518 (Better Auth `better-auth` / `@better-auth/oauth-provider` < 1.6.11 — refresh-token grant skips `client_secret`; auth-code non-atomic find-then-delete → code replay; both reachable via `mcp`/`oidcProvider` plugins) | [NVD CVE-2026-53512](https://nvd.nist.gov/vuln/detail/CVE-2026-53512) (CVSS n/a) | **AAK-MCP-BETTERAUTH-CVE-2026-53512-001** (NEW: HIGH, SUPPLY_CHAIN — pin >= 1.6.11) | 2026-07-16 |
+| CVE-2026-61462 (mcp-gitlab — `job_id` path traversal in `build/index.js` redirects GitLab API calls using the operator PAT) | [NVD CVE-2026-61462](https://nvd.nist.gov/vuln/detail/CVE-2026-61462) (HIGH, CVSS 8.6) | **Documented, not pinned** — NVD has published no CPE/version data and the description names no fixed version; the "mcp-gitlab" npm name is ambiguous across several GitLab MCP servers. Will pin once the vendor fix version is confirmed (tracked). | 2026-07-16 |
+| CVE-2026-15749 (mastergo-design `mastergo-magic-mcp` <= 0.2.0 — `get-c2d.ts` `filePath` path traversal) | [NVD CVE-2026-15749](https://nvd.nist.gov/vuln/detail/CVE-2026-15749) (MEDIUM, CVSS 5.3) | **Documented, not pinned** — no PyPI/npm artifact (GitHub-only TS project) and NVD notes the vendor has not responded / released no fix, so there is no floor to pin. Path-traversal-in-tool-arg class. | 2026-07-16 |
+| CVE-2026-15750 (mastergo-design `mastergo-magic-mcp` <= 0.2.0 — `get-component-link.ts` `url` SSRF) | [NVD CVE-2026-15750](https://nvd.nist.gov/vuln/detail/CVE-2026-15750) (MEDIUM, CVSS 6.3) | **Class-covered** by `AAK-MCP-SSRF-001` (unvalidated tool-arg URL → fetch); no pinnable artifact / vendor fix | 2026-07-16 |
+| CVE-2026-15751 (mastergo-design `mastergo-magic-mcp` <= 0.2.0 — `component-workflow.md` `rootPath` path traversal) | [NVD CVE-2026-15751](https://nvd.nist.gov/vuln/detail/CVE-2026-15751) (MEDIUM, CVSS 5.3) | **Documented, not pinned** — same package/disposition as CVE-2026-15749 (no artifact, no vendor fix) | 2026-07-16 |
+| CVE-2026-15583 (Grafana MCP Server — `X-Grafana-URL` header confused-deputy exfiltrates the service-account token + SSRF to internal/metadata endpoints) | [NVD CVE-2026-15583](https://nvd.nist.gov/vuln/detail/CVE-2026-15583) (HIGH, CVSS 8.6) | **Documented, not pinned** — `mcp-grafana` is a Go module; AAK's pin detector reads PyPI/npm manifests only. SSRF / confused-deputy class. | 2026-07-16 |
+
 ## Shipped in v0.3.49 (2026-07-13)
 
 Batch response to the 2026-07-08..12 disclosure wave (13 CVEs). Eight have a

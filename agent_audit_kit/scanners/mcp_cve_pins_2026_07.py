@@ -1,12 +1,13 @@
 """MCP/agent CVE version-pins — 2026-07 disclosure wave (table-driven).
 
-Eight dependency version-pin rules for MCP/agent CVEs disclosed 2026-07-08..12
+Fifteen dependency version-pin rules for MCP/agent CVEs disclosed 2026-07-08..15
 that have both a vendor-fixed version and a pinnable PyPI / npm artifact. Each
 pin fires when a project references the affected package below its fix floor (or
 unpinned) across dependency manifests, lockfiles, and MCP config files — the same
 shape as the Kong / gateway-registry / Serena pins in `supply_chain`.
 
-Packages + fix floors were verified against PyPI / npm before shipping:
+Packages + fix floors were verified against PyPI / npm (and NVD CPE ranges where
+available) before shipping:
 
   - litellm                        >= 1.84.0  (CVE-2026-59822, CVE-2026-59820)
   - cline                          >= 3.0.30  (CVE-2026-59723)
@@ -16,10 +17,19 @@ Packages + fix floors were verified against PyPI / npm before shipping:
   - @arikusi/deepseek-mcp-server   >= 1.8.0   (CVE-2026-55604, CVE-2026-55605)
   - mcp-server-kubernetes          >= 3.9.0   (CVE-2026-61459)
   - astrbot                        >  4.25.2  (CVE-2026-15501; NVD "up to 4.25.2")
+  - awslabs.healthlake-mcp-server  >= 0.0.14  (CVE-2026-15643)
+  - praisonai                      >= 4.6.78  (CVE-2026-61427)
+  - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
+  - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
+  - openclaw                       >= 2026.6.6 (CVE-2026-62195; NVD 2026.5.20..<2026.6.6)
+  - repomix                        >= 1.14.1  (CVE-2026-49988)
+  - better-auth / @better-auth/oauth-provider >= 1.6.11 (CVE-2026-53512, CVE-2026-53518)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
-command-injection) or a tractable version scheme (langchain4j's four parallel
-beta fix-lines) are handled outside this module — see CHANGELOG.cves.md.
+command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
+Grafana MCP on Go, mcp-gitlab with no NVD version data yet) or a tractable version
+scheme (langchain4j's four parallel beta fix-lines) are handled outside this
+module — see CHANGELOG.cves.md.
 """
 
 from __future__ import annotations
@@ -78,6 +88,21 @@ _PINS: tuple[_Pin, ...] = (
          (3, 9, 0), fix_label="3.9.0"),
     _Pin("AAK-MCP-ASTRBOT-CVE-2026-15501-001", "astrbot", ("astrbot",), (4, 25, 3),
          fix_label="4.25.3 (affected up to 4.25.2)"),
+    # --- 2026-07-13..15 wave ---
+    _Pin("AAK-MCP-HEALTHLAKE-CVE-2026-15643-001", "awslabs.healthlake-mcp-server",
+         ("awslabs.healthlake-mcp-server",), (0, 0, 14), fix_label="0.0.14"),
+    _Pin("AAK-MCP-PRAISONAI-CVE-2026-61427-001", "praisonai", ("praisonai",), (4, 6, 78),
+         fix_label="4.6.78"),
+    _Pin("AAK-MCP-APPIUM-CVE-2026-58500-001", "appium-mcp", ("appium-mcp",), (1, 85, 10),
+         fix_label="1.85.10"),
+    _Pin("AAK-MCP-PENPOT-CVE-2026-45805-001", "@penpot/mcp", ("@penpot/mcp",), (2, 15, 0),
+         fix_label="2.15.0"),
+    _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 6, 6),
+         introduced=(2026, 5, 20), fix_label="2026.6.6 (affected 2026.5.20–2026.6.5)"),
+    _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
+         fix_label="1.14.1"),
+    _Pin("AAK-MCP-BETTERAUTH-CVE-2026-53512-001", "better-auth",
+         ("better-auth", "@better-auth/oauth-provider"), (1, 6, 11), fix_label="1.6.11"),
 )
 
 _CANDIDATE_NAMES = (

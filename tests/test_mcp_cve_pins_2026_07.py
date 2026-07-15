@@ -21,6 +21,14 @@ PINS = {
     "AAK-MCP-DEEPSEEK-CVE-2026-55604-001": "high",
     "AAK-MCP-K8S-CVE-2026-61459-001": "critical",
     "AAK-MCP-ASTRBOT-CVE-2026-15501-001": "medium",
+    # 2026-07-13..15 wave
+    "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001": "high",
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001": "high",
+    "AAK-MCP-APPIUM-CVE-2026-58500-001": "high",
+    "AAK-MCP-PENPOT-CVE-2026-45805-001": "critical",
+    "AAK-MCP-OPENCLAW-CVE-2026-62195-001": "high",
+    "AAK-MCP-REPOMIX-CVE-2026-49988-001": "medium",
+    "AAK-MCP-BETTERAUTH-CVE-2026-53512-001": "high",
 }
 
 
@@ -110,3 +118,80 @@ def test_texteditor_patched_passes(tmp_path: Path) -> None:
 
 def test_unrelated_dependencies_pass(tmp_path: Path) -> None:
     assert not _ids(tmp_path, "requirements.txt", "requests==2.31.0\nflask==3.0\n")
+
+
+# --- 2026-07-13..15 wave -----------------------------------------------------
+
+
+def test_healthlake_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001" in _ids(
+        tmp_path, "requirements.txt", "awslabs.healthlake-mcp-server==0.0.13\n"
+    )
+
+
+def test_healthlake_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001" not in _ids(
+        tmp_path, "requirements.txt", "awslabs.healthlake-mcp-server==0.0.14\n"
+    )
+
+
+def test_praisonai_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-PRAISONAI-CVE-2026-61427-001" in _ids(
+        tmp_path, "requirements.txt", "praisonai==4.6.77\n"
+    )
+
+
+def test_appium_mcp_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"appium-mcp": "1.85.9"}}'
+    assert "AAK-MCP-APPIUM-CVE-2026-58500-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_penpot_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@penpot/mcp": "2.14.9"}}'
+    assert "AAK-MCP-PENPOT-CVE-2026-45805-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_penpot_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@penpot/mcp": "2.15.0"}}'
+    assert "AAK-MCP-PENPOT-CVE-2026-45805-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_openclaw_calver_in_range_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"openclaw": "2026.5.25"}}'
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_openclaw_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"openclaw": "2026.6.6"}}'
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_openclaw_before_introduced_passes(tmp_path: Path) -> None:
+    # The flaw range starts at 2026.5.20; an earlier calendar release must not fire.
+    content = '{"dependencies": {"openclaw": "2026.5.10"}}'
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_repomix_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"repomix": "1.14.0"}}'
+    assert "AAK-MCP-REPOMIX-CVE-2026-49988-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_betterauth_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"better-auth": "1.6.10"}}'
+    assert "AAK-MCP-BETTERAUTH-CVE-2026-53512-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_betterauth_scoped_provider_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@better-auth/oauth-provider": "1.6.0"}}'
+    assert "AAK-MCP-BETTERAUTH-CVE-2026-53512-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_betterauth_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"better-auth": "1.6.11"}}'
+    assert "AAK-MCP-BETTERAUTH-CVE-2026-53512-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_betterauth_rule_cites_both_cves() -> None:
+    rule = RULES["AAK-MCP-BETTERAUTH-CVE-2026-53512-001"]
+    assert set(rule.cve_references) == {"CVE-2026-53512", "CVE-2026-53518"}

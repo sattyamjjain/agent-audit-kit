@@ -141,6 +141,13 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DEEPSEEK-CVE-2026-55604-001": ["IAM-01", "STA-08"],
     "AAK-MCP-K8S-CVE-2026-61459-001": ["AIS-07", "IVS-09", "STA-08"],
     "AAK-MCP-ASTRBOT-CVE-2026-15501-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-APPIUM-CVE-2026-58500-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-PENPOT-CVE-2026-45805-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-OPENCLAW-CVE-2026-62195-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-REPOMIX-CVE-2026-49988-001": ["DSP-17", "STA-08"],
+    "AAK-MCP-BETTERAUTH-CVE-2026-53512-001": ["IAM-01", "IAM-16", "STA-08"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5656,6 +5663,161 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+)
+
+# --- 2026-07-13..15 MCP/agent CVE disclosure wave (pinnable artifacts) -------
+# Package names + fix floors verified against PyPI / npm and, where available,
+# NVD CPE version ranges before shipping. Non-pinnable siblings (mastergo-magic-mcp
+# with no vendor fix, Grafana MCP on Go, mcp-gitlab with no NVD version data yet)
+# are dispositioned in CHANGELOG.cves.md.
+
+_r(
+    "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001",
+    "AWS HealthLake MCP server pagination SSRF → credential exfil (< 0.0.14)",
+    "`awslabs.healthlake-mcp-server` before 0.0.14 does not validate that "
+    "pagination URLs derived from the `next_token` parameter point back to the "
+    "expected HealthLake endpoint, so a remote authenticated caller can redirect "
+    "subsequent requests to an attacker-controlled server and exfiltrate the AWS "
+    "temporary security credentials the server attaches (CVE-2026-15643, CVSS 7.3, "
+    "SSRF / CWE-918). Treat < 0.0.14 (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.healthlake-mcp-server` to >= 0.0.14 and pin it. Validate that "
+    "pagination / `next_token` URLs resolve to the configured HealthLake endpoint "
+    "before following them.",
+    sarif_name="HealthLakeMcpPaginationSsrf",
+    cve_references=["CVE-2026-15643"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+_r(
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001",
+    "PraisonAI MCP HTTP-stream unauthenticated by default (< 4.6.78)",
+    "PraisonAI before 4.6.78 exposes the MCP HTTP-stream transport without "
+    "authentication by default: `praisonai mcp serve --transport http-stream` "
+    "defaults `--api-key` to None and only enforces Authorization/Bearer checks "
+    "when a key is configured, so an unauthenticated client can initialize a "
+    "session, enumerate tools (`tools/list`), and invoke them (`tools/call`); "
+    "arguments are also forwarded without validating the advertised inputSchema "
+    "(CVE-2026-61427, CVSS 7.3). Default bind is 127.0.0.1, so remote reach needs "
+    "a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `praisonai` to >= 4.6.78 and pin it. Always configure `--api-key` for "
+    "the HTTP-stream transport and never bind it to a non-loopback interface "
+    "without authentication.",
+    sarif_name="PraisonAiMcpNoAuthDefault",
+    cve_references=["CVE-2026-61427"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-APPIUM-CVE-2026-58500-001",
+    "MCP Appium locator-UI HTML/JS injection → unauthorized tool exec (< 1.85.10)",
+    "`appium-mcp` (MCP Appium) before 1.85.10 interpolates attacker-controlled "
+    "element attributes (text, content-desc, resource-id, locator selectors) into "
+    "an HTML template literal in `createLocatorGeneratorUI` with no HTML/JS "
+    "escaping. An attacker who controls the app-under-test UI can inject script "
+    "into the MCP UI resource returned by `generate_locators`; when the victim's "
+    "MCP client renders it, the script invokes arbitrary MCP tools via "
+    "`window.parent.postMessage` (CVE-2026-58500, CVSS 8.2). Treat < 1.85.10 (and "
+    "unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `appium-mcp` to >= 1.85.10 and pin it. Context-escape all element "
+    "attributes before interpolating them into UI-resource HTML.",
+    sarif_name="AppiumMcpLocatorUiInjection",
+    cve_references=["CVE-2026-58500"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-INJECT-01"],
+)
+
+_r(
+    "AAK-MCP-PENPOT-CVE-2026-45805-001",
+    "Penpot MCP ReplServer unauthenticated /execute RCE (< 2.15.0)",
+    "`@penpot/mcp` before 2.15.0 binds its ReplServer to `0.0.0.0:4403` and "
+    "exposes an unauthenticated `/execute` endpoint that passes the `code` field "
+    "to `PluginBridge.executePluginTask()`, letting anyone on the network execute "
+    "arbitrary JavaScript on the server (CVE-2026-45805, CVSS 8.8). Treat < 2.15.0 "
+    "(and unpinned) as exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@penpot/mcp` to >= 2.15.0 and pin it. Never expose a REPL / eval "
+    "endpoint unauthenticated; bind debugging servers to loopback only.",
+    sarif_name="PenpotMcpReplRce",
+    cve_references=["CVE-2026-45805"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
+    "OpenClaw MCP loopback authorization bypass (2026.5.20–2026.6.5)",
+    "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an "
+    "authorization-bypass in the MCP loopback feature that lets lower-trust "
+    "callers execute owner-only tools by routing through configured input paths, "
+    "so an attacker can execute or persist actions beyond their intended "
+    "permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < "
+    "`2026.6.6`). Treat that range (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `openclaw` to >= 2026.6.6 and pin it. Enforce the caller's trust tier "
+    "on every MCP loopback tool invocation, not just at the transport edge.",
+    sarif_name="OpenClawMcpLoopbackAuthzBypass",
+    cve_references=["CVE-2026-62195"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-REPOMIX-CVE-2026-49988-001",
+    "Repomix MCP server bypasses secret-scan file-read boundary (< 1.14.1)",
+    "Repomix before 1.14.1 lets the MCP server's `attach_packed_output` / "
+    "`read_repomix_output` flow register and read arbitrary local `.json` / `.txt` "
+    "/ `.md` / `.xml` files without the `file_system_read_file` `runSecretLint()` "
+    "safety check or packed-output validation, so MCP callers bypass the local "
+    "file-read secret-scanning boundary and can read secrets Repomix would "
+    "otherwise redact (CVE-2026-49988). Treat < 1.14.1 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `repomix` to >= 1.14.1 and pin it. Ensure every MCP file-read path "
+    "runs the same secret-lint / output-validation checks as the direct read tool.",
+    sarif_name="RepomixMcpSecretLintBypass",
+    cve_references=["CVE-2026-49988"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-DATA-01"],
+)
+
+_r(
+    "AAK-MCP-BETTERAUTH-CVE-2026-53512-001",
+    "Better Auth OAuth/MCP token-endpoint auth bypass + code replay (< 1.6.11)",
+    "Better Auth before 1.6.11 ships two token-endpoint flaws reachable through "
+    "the `mcp` and legacy `oidcProvider` plugins (and `@better-auth/oauth-provider` "
+    "from 1.6.0): the `refresh_token` grant authenticates only possession of the "
+    "refreshToken row + matching `client_id` and never verifies the confidential "
+    "client's `client_secret`, letting an attacker with a refresh token mint "
+    "access/refresh tokens (CVE-2026-53512); and the `authorization_code` grant "
+    "redeems a single-use code via a non-atomic find-then-delete, so two concurrent "
+    "requests both mint tokens (code replay, CVE-2026-53518). Treat < 1.6.11 (and "
+    "unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `better-auth` / `@better-auth/oauth-provider` to >= 1.6.11 and pin it. "
+    "Verify `client_secret` on confidential-client refresh grants and redeem "
+    "authorization codes atomically (single-use, delete-on-read under a lock).",
+    sarif_name="BetterAuthOauthTokenEndpointBypass",
+    cve_references=["CVE-2026-53512", "CVE-2026-53518"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
 )
 
 

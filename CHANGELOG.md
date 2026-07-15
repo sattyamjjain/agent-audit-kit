@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — 2026-07-13..15 MCP/agent CVE disclosure-wave pins (7 rules, closes 13 cve-response issues)
+
+CVE-response for the 2026-07-13..15 disclosure wave (issues #429–#442). Eight
+CVEs have a vendor fix + a pinnable PyPI/npm artifact and ship as version-pins in
+`mcp_cve_pins_2026_07` (now 15 pins total); five are dispositioned in
+`CHANGELOG.cves.md`. Package names, fix floors, and NVD CPE ranges (where
+published) were verified before shipping.
+
+- **AAK-MCP-HEALTHLAKE-CVE-2026-15643-001** (HIGH) — `awslabs.healthlake-mcp-server` >= 0.0.14: `next_token` pagination SSRF → AWS credential exfil.
+- **AAK-MCP-PRAISONAI-CVE-2026-61427-001** (HIGH) — `praisonai` >= 4.6.78: MCP HTTP-stream unauthenticated by default.
+- **AAK-MCP-APPIUM-CVE-2026-58500-001** (HIGH) — `appium-mcp` >= 1.85.10: locator-UI HTML/JS injection → `postMessage` tool exec.
+- **AAK-MCP-PENPOT-CVE-2026-45805-001** (CRITICAL) — `@penpot/mcp` >= 2.15.0: ReplServer unauthenticated `/execute` → JS RCE.
+- **AAK-MCP-OPENCLAW-CVE-2026-62195-001** (HIGH) — `openclaw` >= 2026.6.6 (NVD range 2026.5.20–<2026.6.6): MCP loopback authorization bypass.
+- **AAK-MCP-REPOMIX-CVE-2026-49988-001** (MEDIUM) — `repomix` >= 1.14.1: MCP file-read bypasses the secret-lint boundary.
+- **AAK-MCP-BETTERAUTH-CVE-2026-53512-001** (HIGH) — `better-auth` / `@better-auth/oauth-provider` >= 1.6.11: refresh-token grant skips `client_secret` (CVE-2026-53512) + auth-code replay (CVE-2026-53518).
+
+Dispositioned (no pinnable artifact / vendor fix / supported ecosystem, documented
+in `CHANGELOG.cves.md`): CVE-2026-61462 (mcp-gitlab — no NVD version data yet),
+CVE-2026-15749/15750/15751 (mastergo-magic-mcp — GitHub-only, no vendor fix;
+15750 class-covered by `AAK-MCP-SSRF-001`), CVE-2026-15583 (Grafana MCP — Go
+ecosystem). Rule count 247 → **254**.
+
 ### Added — AAK-OAUTH-007 (RFC 8707 Resource Indicators) + ratified-spec reconciliation
 
 - **AAK-OAUTH-007** (MEDIUM, MCP_CONFIG) — flags an OAuth 2.1 flow, or an MCP
