@@ -1,6 +1,6 @@
 """AgentAuditKit — Security scanner for MCP-connected AI agent pipelines."""
 from __future__ import annotations
 
-__version__ = "0.3.49"
-RULE_COUNT = 246
+__version__ = "0.3.50"
+RULE_COUNT = 247
 SCANNER_COUNT = 84

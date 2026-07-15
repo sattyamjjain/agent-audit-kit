@@ -4089,6 +4089,31 @@
       "title": "OAuth client does not validate the `iss` authorization-response parameter (RFC 9207)"
     },
     {
+      "adversa_references": [
+        "ADV-AUTH-11"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IAM-16"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "An OAuth 2.1 authorization/token flow \u2014 or an MCP client/server config that advertises OAuth 2.1 \u2014 builds authorization and/or token requests without the RFC 8707 `resource` parameter. The ratified MCP 2025-11-25 authorization spec requires MCP clients to send `resource` on both the authorization request and the token request, identifying the MCP server by its canonical URI, so the authorization server audience-binds the issued token. Without Resource Indicators the token is not bound to a specific MCP server, so a token minted for one server can be replayed at another (token replay / audience confusion) \u2014 the confused-deputy class OAuth 2.1 \u00a75.2 and the MCP spec's Access Token Privilege Restriction section forbid.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Set the `resource` parameter to the MCP server's canonical URI so issued tokens are audience-bound (RFC 8707, on both the authorization and token requests); reject tokens whose audience is not this server (validate the audience per RFC 8707 \u00a72 / RFC 9728 \u00a77.4).",
+      "rule_id": "AAK-OAUTH-007",
+      "sarif_name": "OAuthMissingResourceIndicator",
+      "severity": "medium",
+      "title": "OAuth flow does not set the RFC 8707 `resource` parameter (Resource Indicators)"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "STA-08"

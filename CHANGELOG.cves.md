@@ -1,12 +1,42 @@
-# AAK Response SLA — CVE-to-Rule Ledger
+# AAK CVE-to-Rule Ledger
 
-We publicly commit to shipping rule coverage for every disclosed MCP CVE
-within **48 hours of NVD disclosure**. This file is the audit trail.
+We triage newly disclosed MCP CVEs continuously and ship rule coverage as fast
+as we responsibly can — no fixed public deadline (see `ROADMAP_2026.md §2.3`).
+This file is the audit trail of what shipped and when.
 
 Format: one line per CVE, `CVE-YYYY-NNNNN` → `AAK-XXX-NNN` with the
 shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
-diffs NVD's MCP keyword feed against this file and opens an
-`sla-48h`-labelled issue for anything new.
+diffs NVD's MCP keyword feed against this file and opens a `cve-response`
+issue (retaining the `sla-48h` label as a release-gate mechanism key) for
+anything new.
+
+## MCP 2026-07-28 ratification reconciliation — 2026-07-16 (v0.3.50)
+
+The 2026-07-28 MCP specification is still a **release candidate** as of this
+date: the RC was locked on 2026-05-21 (milestone `2026-07-28-RC`) and the final,
+ratified spec publishes on **2026-07-28** (12 days out). Every AAK rule shipped
+in July for that spec is therefore *correctly* labelled "release candidate" — no
+rule is relabelled "ratified" ahead of publication. This attestation records that
+each rule's cited SEP number was re-verified against primary sources and is
+accurate; nothing needed correcting.
+
+Primary sources: [SEP-2596 PR #2596](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2596)
+(labelled `final`, milestone `2026-07-28-RC`),
+[SEP-2577/2596 spec-incorporation PR #2791](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2791),
+[2026-07-28 RC blog](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/).
+
+| Rule(s) | Cited SEP(s) | Verified meaning | Status |
+|---|---|---|---|
+| AAK-MCP-DEPRECATED-001..003 | SEP-2577 + SEP-2596 | SEP-2577 annotation-deprecates Roots/Sampling/Logging; SEP-2596 is the 12-month feature-lifecycle & deprecation policy | ✓ accurate · RC label correct |
+| AAK-OAUTH-006 | SEP-2468 (RFC 9207) | `iss` authorization-response validation | ✓ accurate · RC label correct |
+| AAK-MCP-STATELESS-001 | SEP-2567, SEP-2575, SEP-1442 | session removal / stateless transport; optional initialization handshake | ✓ accurate · RC label correct |
+| AAK-MCP-STATELESS-002 | SEP-1686, SEP-2663 | experimental Tasks primitive → Tasks extension | ✓ accurate · RC label correct |
+
+Separately, **AAK-OAUTH-007** (new in v0.3.50) is cited to the **ratified** MCP
+2025-11-25 authorization spec — RFC 8707 Resource Indicators are mandatory today
+(`resource` parameter on authorization + token requests; server-side audience
+validation), independent of the 2026-07-28 RC. It is not part of this RC
+reconciliation.
 
 ## Shipped in v0.3.49 (2026-07-13)
 

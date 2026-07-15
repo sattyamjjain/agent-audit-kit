@@ -1,8 +1,8 @@
 """OAuth 2.1 misconfiguration scanner.
 
-Fires AAK-OAUTH-001..005. MCP spec 2025-11-25 makes OAuth 2.1 mandatory
-with PKCE+S256; this scanner pattern-matches violations in source code
-and config files.
+Fires AAK-OAUTH-001..007. MCP spec 2025-11-25 makes OAuth 2.1 mandatory
+with PKCE+S256 and RFC 8707 Resource Indicators; this scanner pattern-matches
+violations in source code and config files.
 """
 
 from __future__ import annotations
@@ -60,6 +60,32 @@ _AUTHCODE_FLOW_RE = re.compile(
     re.IGNORECASE,
 )
 _ISS_PRESENT_RE = re.compile(r"\biss\b")
+
+# RFC 8707 Resource Indicators (ratified MCP 2025-11-25 auth spec): the client
+# MUST send the `resource` parameter on authorization + token requests so the
+# issued token is audience-bound to the target MCP server. Fire AAK-OAUTH-007
+# when the file drives an OAuth token-acquisition flow (or advertises an OAuth
+# authorization/token endpoint) but never sets the `resource` parameter.
+_TOKEN_ACQUISITION_RE = re.compile(
+    r"grant_type['\"]?\s*[:=]"
+    r"|\bauthorization_endpoint\b|\btoken_endpoint\b"
+    r"|\bauthorize\s*\("
+    r"|response_type['\"]?\s*[:=]\s*['\"]?code"
+    r"|/(?:oauth2?/)?(?:authorize|token)\b",
+    re.IGNORECASE,
+)
+# Presence of the RFC 8707 `resource` indicator (query param, JSON/dict key,
+# kwarg/assignment, or an explicit RFC-8707 marker). Also matches the RFC 9728
+# protected-resource-metadata `resource` field so an MCP server's own metadata
+# is not flagged.
+_RESOURCE_PARAM_RE = re.compile(
+    r"[?&]resource="
+    r"|['\"]resource['\"]\s*[:=]"
+    r"|\bresource\s*=\s*"
+    r"|\bresource_indicators?\b"
+    r"|\bRFC\s?8707\b",
+    re.IGNORECASE,
+)
 
 
 def _iter_source(project_root: Path) -> list[Path]:
@@ -152,6 +178,19 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 "OAuth authorization-code response handled without validating the "
                 "`iss` parameter (RFC 9207 / MCP 2026-07-28 SEP-2468)",
                 line_number=find_line_number(text, m_authcode.group(0)),
+            )
+        )
+
+    m_flow = _TOKEN_ACQUISITION_RE.search(text)
+    if m_flow and not _RESOURCE_PARAM_RE.search(text):
+        findings.append(
+            make_finding(
+                "AAK-OAUTH-007",
+                rel,
+                "OAuth flow builds authorization/token requests without the RFC 8707 "
+                "`resource` parameter (Resource Indicators) — issued tokens are not "
+                "audience-bound to this MCP server (MCP 2025-11-25 auth spec)",
+                line_number=find_line_number(text, m_flow.group(0)),
             )
         )
 

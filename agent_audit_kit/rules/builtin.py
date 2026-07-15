@@ -126,6 +126,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DEPRECATED-002": ["AIS-07", "AIS-08"],
     "AAK-MCP-DEPRECATED-003": ["AIS-08", "LOG-06"],
     "AAK-OAUTH-006": ["IAM-01", "IAM-16"],
+    "AAK-OAUTH-007": ["IAM-01", "IAM-16"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
@@ -2088,6 +2089,42 @@ _r(
     "and reject the response on mismatch. Have your authorization server emit "
     "`iss` now so the check can be enforced before the 2026-07-28 cutover.",
     sarif_name="OAuthMissingIssValidation",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-11"],
+)
+
+# AAK-OAUTH-007 — RFC 8707 Resource Indicators (`resource` parameter).
+# The *ratified* MCP 2025-11-25 authorization spec makes Resource Indicators
+# mandatory: MCP clients MUST send the `resource` parameter on both the
+# authorization request and the token request, set to the MCP server's
+# canonical URI, so the authorization server audience-binds the issued token
+# (RFC 8707 §2; aligns with RFC 9728 §7.4). Without it a token minted for one
+# MCP server can be replayed at another — the confused-deputy / audience-
+# confusion class the spec's "Access Token Privilege Restriction" section
+# forbids. This is a requirement of the current ratified spec, not a
+# 2026-07-28 release-candidate change. Source:
+#   https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+_r(
+    "AAK-OAUTH-007",
+    "OAuth flow does not set the RFC 8707 `resource` parameter (Resource Indicators)",
+    "An OAuth 2.1 authorization/token flow — or an MCP client/server config that "
+    "advertises OAuth 2.1 — builds authorization and/or token requests without the "
+    "RFC 8707 `resource` parameter. The ratified MCP 2025-11-25 authorization spec "
+    "requires MCP clients to send `resource` on both the authorization request and "
+    "the token request, identifying the MCP server by its canonical URI, so the "
+    "authorization server audience-binds the issued token. Without Resource "
+    "Indicators the token is not bound to a specific MCP server, so a token minted "
+    "for one server can be replayed at another (token replay / audience confusion) "
+    "— the confused-deputy class OAuth 2.1 §5.2 and the MCP spec's Access Token "
+    "Privilege Restriction section forbid.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Set the `resource` parameter to the MCP server's canonical URI so issued "
+    "tokens are audience-bound (RFC 8707, on both the authorization and token "
+    "requests); reject tokens whose audience is not this server (validate the "
+    "audience per RFC 8707 §2 / RFC 9728 §7.4).",
+    sarif_name="OAuthMissingResourceIndicator",
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],

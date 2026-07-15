@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-OAUTH-007 (RFC 8707 Resource Indicators) + ratified-spec reconciliation
+
+- **AAK-OAUTH-007** (MEDIUM, MCP_CONFIG) — flags an OAuth 2.1 flow, or an MCP
+  client/server config advertising OAuth 2.1, that never sets the RFC 8707
+  `resource` parameter. Without Resource Indicators the issued token is not
+  audience-bound, so a token minted for one MCP server can be replayed at
+  another (confused-deputy / audience confusion). Cited to the **ratified** MCP
+  2025-11-25 authorization spec (RFC 8707 §2 / RFC 9728 §7.4) — a requirement
+  today, not a 2026-07-28 change. Deterministic regex detection in
+  `oauth_misconfig` (fires when a token-acquisition flow lacks `resource`;
+  silent when it is present, including RFC 9728 protected-resource-metadata).
+  Rule count 246 → **247**.
+- **MCP 2026-07-28 ratification reconciliation.** Re-verified every July rule's
+  cited SEP against primary sources (modelcontextprotocol PRs #2596/#2791, the
+  RC blog, the `2026-07-28-RC` milestone): `AAK-MCP-DEPRECATED-001..003`
+  (SEP-2577 + SEP-2596), `AAK-OAUTH-006` (SEP-2468), `AAK-MCP-STATELESS-001..004`
+  (SEP-2567/2575/1442/1686/2663) — all accurate, no corrections. The 2026-07-28
+  spec is still a **release candidate** (ratifies 2026-07-28), so the rules keep
+  their "release candidate" labelling rather than being relabelled "ratified"
+  prematurely. Attestation recorded in `CHANGELOG.cves.md`. Also softened the
+  ledger's leftover 48h-SLA header to best-effort (completing the retirement
+  started in the docs pass).
+
 ### Changed — docs: single-source rule count + retire unbounded 48h CVE-SLA claim
 
 - **Single source of truth for the rule count.** `scripts/sync_rule_count.py`
