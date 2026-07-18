@@ -1,0 +1,25 @@
+# mcp-2026-07-28 — the MCP 2026-07-28 final auth-profile conformance set.
+#
+# One command to answer "is this MCP deployment ready for the 2026-07-28 spec's
+# authorization profile?". Selects exactly the three auth-hardening conformance
+# rules, all derived from the ratified MCP 2025-11-25 auth spec that the
+# 2026-07-28 final profile builds on:
+#
+#   AAK-OAUTH-006  RFC 9207  — validate the `iss` authorization-response param
+#   AAK-OAUTH-007  RFC 8707  — send the `resource` indicator (audience-bind tokens)
+#   AAK-OAUTH-008  RFC 9728  — Protected Resource Metadata discovery (no static creds)
+#
+# Usage: agent-audit-kit scan . --profile mcp-2026-07-28
+#        agent-audit-kit scan . --preset  mcp-2026-07-28   (equivalent)
+#
+# Source: MCP authorization spec (2025-11-25) + the 2026-07-28 release-candidate
+# calendar (final publication 2026-07-28). No sibling-tool analogy.
+name: mcp-2026-07-28
+description: >-
+  MCP 2026-07-28 final auth-profile conformance: RFC 9207 iss-validation,
+  RFC 8707 resource indicators, and RFC 9728 Protected-Resource-Metadata
+  discovery. One-command readiness check for the 07-28 authorization profile.
+rules:
+  - AAK-OAUTH-006
+  - AAK-OAUTH-007
+  - AAK-OAUTH-008

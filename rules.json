@@ -4466,7 +4466,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "An OAuth authorization-code client processes the authorization response / redirect callback (reads `code` and `state`, or exchanges the code at the token endpoint) but never references the `iss` parameter. The MCP 2026-07-28 spec release candidate (SEP-2468) requires clients to validate `iss` on authorization responses per RFC 9207 \u2014 without it, an attacker who controls one authorization server in MCP's single-client / many-server deployment can mount an OAuth mix-up attack and have the client redeem a code at the wrong server. A later spec version will require rejecting responses that omit `iss` entirely.",
+      "description": "An OAuth authorization-code client processes the authorization response / redirect callback (reads `code` and `state`, or exchanges the code at the token endpoint) but never references the `iss` parameter. The MCP 2026-07-28 spec release candidate (SEP-2468) requires clients to validate `iss` on authorization responses per RFC 9207 \u2014 without it, an attacker who controls one authorization server in MCP's single-client / many-server deployment can mount an OAuth mix-up attack and have the client redeem a code at the wrong server. This is the token-issuer-validation arm of the 2026-07-28 final MCP auth profile (scanned together with RFC 8707 resource indicators, `AAK-OAUTH-007`, and RFC 9728 Protected-Resource-Metadata discovery, `AAK-OAUTH-008`, via `--profile mcp-2026-07-28`). A later spec version will require rejecting responses that omit `iss` entirely.",
       "incident_references": [],
       "owasp_agentic_references": [
         "ASI03"
@@ -4504,6 +4504,31 @@
       "sarif_name": "OAuthMissingResourceIndicator",
       "severity": "medium",
       "title": "OAuth flow does not set the RFC 8707 `resource` parameter (Resource Indicators)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-11"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IAM-16"
+      ],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [],
+      "description": "A remote MCP OAuth surface presents no RFC 9728 Protected Resource Metadata discovery: a client config points at a remote (HTTP/SSE) MCP server and carries an inline / static credential (an `Authorization` / `Bearer` header, an `auth` block, or an embedded token) with no reference to `/.well-known/oauth-protected-resource`, `authorization_servers`, or `resource_metadata`; or MCP server source enforces bearer auth (e.g. `WWW-Authenticate`, a FastMCP `BearerAuthProvider`) without serving Protected Resource Metadata. The ratified MCP 2025-11-25 auth spec requires servers to implement RFC 9728 so clients can discover the authorization server and obtain an audience-bound token instead of relying on a pre-shared secret; the 2026-07-28 final auth profile builds on it. Without PRM the deployment cannot participate in discovery-based auth and typically hardcodes credentials.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Serve RFC 9728 Protected Resource Metadata at `/.well-known/oauth-protected-resource` (with an `authorization_servers` entry) and have clients discover the authorization server from it \u2014 via the `resource_metadata` field of a 401 `WWW-Authenticate` challenge \u2014 instead of embedding a static bearer/token credential in the MCP client config.",
+      "rule_id": "AAK-OAUTH-008",
+      "sarif_name": "OAuthMissingProtectedResourceMetadata",
+      "severity": "low",
+      "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery"
     },
     {
       "adversa_references": [],

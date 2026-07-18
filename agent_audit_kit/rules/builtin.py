@@ -127,6 +127,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DEPRECATED-003": ["AIS-08", "LOG-06"],
     "AAK-OAUTH-006": ["IAM-01", "IAM-16"],
     "AAK-OAUTH-007": ["IAM-01", "IAM-16"],
+    "AAK-OAUTH-008": ["IAM-01", "IAM-16"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
     "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
@@ -2094,8 +2095,11 @@ _r(
     "`iss` on authorization responses per RFC 9207 — without it, an attacker "
     "who controls one authorization server in MCP's single-client / "
     "many-server deployment can mount an OAuth mix-up attack and have the "
-    "client redeem a code at the wrong server. A later spec version will "
-    "require rejecting responses that omit `iss` entirely.",
+    "client redeem a code at the wrong server. This is the token-issuer-validation "
+    "arm of the 2026-07-28 final MCP auth profile (scanned together with RFC 8707 "
+    "resource indicators, `AAK-OAUTH-007`, and RFC 9728 Protected-Resource-Metadata "
+    "discovery, `AAK-OAUTH-008`, via `--profile mcp-2026-07-28`). A later spec "
+    "version will require rejecting responses that omit `iss` entirely.",
     Severity.MEDIUM,
     Category.MCP_CONFIG,
     "Validate the `iss` authorization-response parameter against the expected "
@@ -2139,6 +2143,42 @@ _r(
     "requests); reject tokens whose audience is not this server (validate the "
     "audience per RFC 8707 §2 / RFC 9728 §7.4).",
     sarif_name="OAuthMissingResourceIndicator",
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-11"],
+)
+
+# AAK-OAUTH-008 — RFC 9728 Protected Resource Metadata discovery gap.
+# The ratified MCP 2025-11-25 auth spec makes RFC 9728 a MUST: an MCP server
+# advertises its authorization server(s) via Protected Resource Metadata at
+# `/.well-known/oauth-protected-resource`, and clients discover auth that way
+# rather than carrying a static credential. This is the resource-discovery arm
+# of the 2026-07-28 final auth profile (`--profile mcp-2026-07-28`, with
+# AAK-OAUTH-006 iss-validation + AAK-OAUTH-007 resource indicators). Source:
+#   https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
+_r(
+    "AAK-OAUTH-008",
+    "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery",
+    "A remote MCP OAuth surface presents no RFC 9728 Protected Resource Metadata "
+    "discovery: a client config points at a remote (HTTP/SSE) MCP server and "
+    "carries an inline / static credential (an `Authorization` / `Bearer` header, "
+    "an `auth` block, or an embedded token) with no reference to "
+    "`/.well-known/oauth-protected-resource`, `authorization_servers`, or "
+    "`resource_metadata`; or MCP server source enforces bearer auth (e.g. "
+    "`WWW-Authenticate`, a FastMCP `BearerAuthProvider`) without serving Protected "
+    "Resource Metadata. The ratified MCP 2025-11-25 auth spec requires servers to "
+    "implement RFC 9728 so clients can discover the authorization server and obtain "
+    "an audience-bound token instead of relying on a pre-shared secret; the "
+    "2026-07-28 final auth profile builds on it. Without PRM the deployment cannot "
+    "participate in discovery-based auth and typically hardcodes credentials.",
+    Severity.LOW,
+    Category.MCP_CONFIG,
+    "Serve RFC 9728 Protected Resource Metadata at "
+    "`/.well-known/oauth-protected-resource` (with an `authorization_servers` "
+    "entry) and have clients discover the authorization server from it — via the "
+    "`resource_metadata` field of a 401 `WWW-Authenticate` challenge — instead of "
+    "embedding a static bearer/token credential in the MCP client config.",
+    sarif_name="OAuthMissingProtectedResourceMetadata",
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],

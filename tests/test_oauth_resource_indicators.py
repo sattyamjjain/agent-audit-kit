@@ -129,3 +129,64 @@ def test_rule_registered_and_shaped() -> None:
     assert "resource" in rule.remediation
     assert "8707" in rule.remediation
     assert rule.aicm_references == ["IAM-01", "IAM-16"]
+
+
+# ---------------------------------------------------------------------------
+# AAK-OAUTH-008 — RFC 9728 Protected Resource Metadata discovery gap.
+# ---------------------------------------------------------------------------
+
+PRM = "AAK-OAUTH-008"
+
+
+def test_prm_fires_on_remote_config_with_embedded_bearer(tmp_path: Path) -> None:
+    content = json.dumps(
+        {"mcpServers": {"r": {"type": "http", "url": "https://api.x.com/mcp",
+                              "headers": {"Authorization": "Bearer ${T}"}}}}
+    )
+    assert PRM in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
+def test_prm_fires_on_remote_config_with_oauth_block(tmp_path: Path) -> None:
+    content = json.dumps(
+        {"mcpServers": {"r": {"type": "sse", "url": "https://x/mcp", "auth": {"type": "oauth"}}}}
+    )
+    assert PRM in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
+def test_prm_quiet_when_protected_resource_metadata_present(tmp_path: Path) -> None:
+    # A config that references RFC 9728 discovery must NOT be flagged (0 FP).
+    content = json.dumps(
+        {"mcpServers": {"r": {"type": "http", "url": "https://api.x.com/mcp",
+                              "headers": {"Authorization": "Bearer t"},
+                              "authorization_servers": ["https://as.x.com"]}}}
+    )
+    assert PRM not in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
+def test_prm_quiet_on_stdio_config(tmp_path: Path) -> None:
+    content = json.dumps({"mcpServers": {"r": {"command": "python", "args": ["s.py"]}}})
+    assert PRM not in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
+def test_prm_quiet_on_remote_config_without_auth(tmp_path: Path) -> None:
+    # A public remote server with no embedded credential is not a PRM gap here.
+    content = json.dumps({"mcpServers": {"r": {"type": "http", "url": "https://public.x.com/mcp"}}})
+    assert PRM not in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
+def test_prm_fires_on_server_source_bearer_without_prm(tmp_path: Path) -> None:
+    content = (
+        "from fastmcp import FastMCP\n"
+        "from fastmcp.server.auth import BearerAuthProvider\n"
+        "mcp = FastMCP('demo', auth=BearerAuthProvider(public_key=KEY))\n"
+    )
+    assert PRM in _rule_ids(tmp_path, "server.py", content)
+
+
+def test_prm_rule_registered_and_shaped() -> None:
+    rule = RULES[PRM]
+    assert rule.severity.value == "low"
+    assert rule.category.value == "mcp-config"
+    assert "MCP01:2025" in rule.owasp_mcp_references
+    assert "9728" in rule.remediation
+    assert rule.aicm_references == ["IAM-01", "IAM-16"]

@@ -141,6 +141,15 @@ def cli(ctx: click.Context) -> None:
     ),
 )
 @click.option(
+    "--profile",
+    "profile",
+    default=None,
+    help=(
+        "Alias for --preset — a curated readiness profile. "
+        "Example: --profile mcp-2026-07-28 (the 07-28 final auth-profile check)."
+    ),
+)
+@click.option(
     "--fail-on",
     type=click.Choice(FAIL_ON_CHOICES),
     default=None,
@@ -232,6 +241,7 @@ def scan_cmd(
     rules: str | None,
     exclude_rules: str | None,
     preset: str | None,
+    profile: str | None,
     fail_on: str,
     config_path: str | None,
     ci: bool,
@@ -253,15 +263,20 @@ def scan_cmd(
 ) -> None:
     """Scan a project for MCP agent security vulnerabilities."""
     try:
-        # Preset → rules expansion. Preset narrows the rule set to a
-        # curated list; combining --preset with --rules unions both.
-        if preset:
+        # Preset/profile → rules expansion. A preset (or its --profile alias)
+        # narrows the rule set to a curated list; combining with --rules unions
+        # both. --profile is a synonym for --preset; if both are given, their
+        # rule lists union.
+        preset_names = [p for p in (preset, profile) if p]
+        if preset_names:
             from agent_audit_kit.presets import load_preset
-            preset_rules = load_preset(preset)
+            preset_rules: set[str] = set()
+            for name in preset_names:
+                preset_rules.update(load_preset(name))
             if rules:
-                rules = ",".join(sorted(set(rules.split(",")) | set(preset_rules)))
+                rules = ",".join(sorted(set(rules.split(",")) | preset_rules))
             else:
-                rules = ",".join(preset_rules)
+                rules = ",".join(sorted(preset_rules))
         _run_scan(
             path=path,
             output_format=output_format,

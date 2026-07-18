@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — AAK-OAUTH-008 (RFC 9728) + `mcp-2026-07-28` auth-profile + readiness report
+
+- **AAK-OAUTH-008** (LOW, MCP_CONFIG) — RFC 9728 Protected-Resource-Metadata
+  discovery gap: a remote MCP server config that embeds a static
+  `Authorization`/`Bearer`/`auth` credential with no
+  `/.well-known/oauth-protected-resource` discovery path, or server source
+  enforcing bearer auth without serving PRM. Detection in `oauth_misconfig` runs
+  independent of the client-flow hint so it evaluates `.mcp.json` configs.
+- **Anti-duplicate note:** RFC 9207 `iss`-validation was *not* added as a new
+  rule — it already ships as `AAK-OAUTH-006`, which was extended to reference the
+  2026-07-28 final auth profile (the proposed OAUTH-009 would have duplicated it).
+- **`--profile mcp-2026-07-28`** (alias of `--preset`) — one-command auth-profile
+  conformance check selecting exactly `AAK-OAUTH-006` (RFC 9207) + `AAK-OAUTH-007`
+  (RFC 8707) + `AAK-OAUTH-008` (RFC 9728). New preset YAML + docs + smoke tests.
+- **Readiness report** `docs/reports/mcp-2026-07-28-readiness.md` — a dated,
+  reproducible scan of 748 public MCP configs (`benchmarks/data/`): **0 reference
+  RFC 9728 PRM discovery; 100% of the 36 remote-auth configs hardcode a static
+  credential.** Numbers come from a real scan (`scripts/mcp_2026_07_28_readiness.py`,
+  deterministic), with explicit limitations (a config corpus can't exercise the
+  code-level `iss`/`resource` checks). Rule count 261 → **262**.
+
 ### Added — 2026-07-15..17 MCP/agent CVE disclosure-wave pins (7 rules, closes 24 cve-response issues)
 
 CVE-response for a second 2026-07 wave (issues #445–#468). 14 CVEs cluster onto 7

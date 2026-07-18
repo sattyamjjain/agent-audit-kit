@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-07-18T03:43:59Z",
-  "aak_version": "0.3.50",
-  "rule_count": 261,
+  "last_updated": "2026-07-18T06:59:13Z",
+  "aak_version": "0.3.51",
+  "rule_count": 262,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -561,7 +561,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 61,
+      "rule_density": 62,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -888,6 +888,15 @@
         {
           "id": "AAK-OAUTH-007",
           "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-01",
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-OAUTH-008",
+          "severity": "low",
           "cve_references": [],
           "aicm_references": [
             "IAM-01",
