@@ -29,6 +29,14 @@ PINS = {
     "AAK-MCP-OPENCLAW-CVE-2026-62195-001": "high",
     "AAK-MCP-REPOMIX-CVE-2026-49988-001": "medium",
     "AAK-MCP-BETTERAUTH-CVE-2026-53512-001": "high",
+    # 2026-07-15..17 wave
+    "AAK-MCP-SDK-CVE-2026-52869-001": "high",
+    "AAK-MCP-9ROUTER-CVE-2026-46339-001": "critical",
+    "AAK-MCP-N8NMCP-CVE-2026-54052-001": "critical",
+    "AAK-MCP-DBTMCP-CVE-2026-44968-001": "medium",
+    "AAK-MCP-APIFY-CVE-2026-46341-001": "medium",
+    "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001": "high",
+    "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001": "medium",
 }
 
 
@@ -195,3 +203,82 @@ def test_betterauth_patched_passes(tmp_path: Path) -> None:
 def test_betterauth_rule_cites_both_cves() -> None:
     rule = RULES["AAK-MCP-BETTERAUTH-CVE-2026-53512-001"]
     assert set(rule.cve_references) == {"CVE-2026-53512", "CVE-2026-53518"}
+
+
+# --- 2026-07-15..17 wave -----------------------------------------------------
+
+
+def test_mcp_sdk_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" in _ids(tmp_path, "requirements.txt", "mcp==1.25.0\n")
+
+
+def test_mcp_sdk_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" not in _ids(tmp_path, "requirements.txt", "mcp==1.28.1\n")
+
+
+def test_mcp_sdk_with_extras_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" in _ids(tmp_path, "requirements.txt", "mcp[cli]==1.26.0\n")
+
+
+def test_mcp_sdk_does_not_false_positive_on_similar_names(tmp_path: Path) -> None:
+    # fastmcp / mcp-text-editor / n8n-mcp / awslabs.*-mcp-server must NOT trip the bare `mcp` pin.
+    content = (
+        "fastmcp==2.1.0\n"
+        "mcp-text-editor==1.2.0\n"
+        "awslabs.healthlake-mcp-server==0.0.16\n"
+    )
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" not in _ids(tmp_path, "requirements.txt", content)
+
+
+def test_9router_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"9router": "0.4.30"}}'
+    assert "AAK-MCP-9ROUTER-CVE-2026-46339-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_n8n_mcp_fires_but_n8n_pin_does_not(tmp_path: Path) -> None:
+    # The distinct n8n-mcp package must fire its own pin, and must NOT trip the
+    # unrelated n8n (workflow-engine) pin via substring matching.
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n-mcp": "2.57.0"}}')
+    assert "AAK-MCP-N8NMCP-CVE-2026-54052-001" in ids
+    assert "AAK-MCP-N8N-CVE-2026-59207-001" not in ids
+
+
+def test_n8n_mcp_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"n8n-mcp": "2.57.4"}}'
+    assert "AAK-MCP-N8NMCP-CVE-2026-54052-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_n8n_workflow_engine_still_fires(tmp_path: Path) -> None:
+    # The n8n boundary fix must not break the original n8n pin.
+    content = '{"dependencies": {"n8n": "2.20.0"}}'
+    assert "AAK-MCP-N8N-CVE-2026-59207-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_dbt_mcp_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-DBTMCP-CVE-2026-44968-001" in _ids(tmp_path, "requirements.txt", "dbt-mcp==1.16.0\n")
+
+
+def test_apify_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@apify/actors-mcp-server": "0.9.20"}}'
+    assert "AAK-MCP-APIFY-CVE-2026-46341-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_agentic_flow_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"agentic-flow": "2.0.13"}}'
+    assert "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_healthomics_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001" in _ids(
+        tmp_path, "requirements.txt", "awslabs.aws-healthomics-mcp-server==0.0.35\n"
+    )
+
+
+def test_openclaw_rule_cites_both_cves() -> None:
+    rule = RULES["AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
+    assert set(rule.cve_references) == {"CVE-2026-62195", "CVE-2026-62208"}
+
+
+def test_mcp_sdk_rule_cites_three_cves() -> None:
+    rule = RULES["AAK-MCP-SDK-CVE-2026-52869-001"]
+    assert set(rule.cve_references) == {"CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"}

@@ -148,6 +148,13 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OPENCLAW-CVE-2026-62195-001": ["IAM-01", "STA-08"],
     "AAK-MCP-REPOMIX-CVE-2026-49988-001": ["DSP-17", "STA-08"],
     "AAK-MCP-BETTERAUTH-CVE-2026-53512-001": ["IAM-01", "IAM-16", "STA-08"],
+    "AAK-MCP-SDK-CVE-2026-52869-001": ["IAM-01", "AIS-08"],
+    "AAK-MCP-9ROUTER-CVE-2026-46339-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-N8NMCP-CVE-2026-54052-001": ["IAM-01", "DSP-07", "STA-08"],
+    "AAK-MCP-DBTMCP-CVE-2026-44968-001": ["AIS-07", "DSP-17", "STA-08"],
+    "AAK-MCP-APIFY-CVE-2026-46341-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001": ["IVS-04", "STA-08"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
     "AAK-MARKETPLACE-001": ["STA-10"],
@@ -5764,13 +5771,15 @@ _r(
     "callers execute owner-only tools by routing through configured input paths, "
     "so an attacker can execute or persist actions beyond their intended "
     "permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < "
-    "`2026.6.6`). Treat that range (and unpinned) as exposed.",
+    "`2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers "
+    "forwarded during MCP SSE redirects, fixed in 2026.6.5). Treat that range "
+    "(and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `openclaw` to >= 2026.6.6 and pin it. Enforce the caller's trust tier "
     "on every MCP loopback tool invocation, not just at the transport edge.",
     sarif_name="OpenClawMcpLoopbackAuthzBypass",
-    cve_references=["CVE-2026-62195"],
+    cve_references=["CVE-2026-62195", "CVE-2026-62208"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
@@ -5818,6 +5827,161 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+# --- 2026-07-15..17 MCP/agent CVE disclosure wave (pinnable artifacts) -------
+# Non-pinnable siblings (Frogman PHP PBX, Claude Code Action / GitHub Action,
+# AI Copilot WordPress plugin, ForgeCode with no fixed version, Langflow with no
+# NVD version data) are dispositioned in CHANGELOG.cves.md.
+
+_r(
+    "AAK-MCP-SDK-CVE-2026-52869-001",
+    "MCP Python SDK session/task cross-client access (`mcp` < 1.28.1)",
+    "The official MCP Python SDK (`mcp` on PyPI) before 1.28.1 has three "
+    "session-isolation flaws reachable over its HTTP transports: the SSE and "
+    "stateful Streamable HTTP transports route requests by `session_id` / "
+    "`Mcp-Session-Id` without verifying the authenticated principal that created "
+    "the session, so another bearer-authenticated client with a known session ID "
+    "can inject JSON-RPC messages (CVE-2026-52869); the `experimental.enable_tasks()` "
+    "default handlers key tasks only by id, letting any client enumerate / read / "
+    "cancel other clients' tasks (CVE-2026-52870, from 1.23.0); and the deprecated "
+    "`websocket_server` transport accepts handshakes with no Host/Origin validation "
+    "(CVE-2026-59950). Treat < 1.28.1 (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp` to >= 1.28.1 and pin it. Bind every session to the principal "
+    "that created it and validate Host/Origin on WebSocket handshakes.",
+    sarif_name="McpPythonSdkSessionIsolation",
+    cve_references=["CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-11"],
+)
+
+_r(
+    "AAK-MCP-9ROUTER-CVE-2026-46339-001",
+    "9Router unauthenticated MCP bridge → command execution (< 0.5.2)",
+    "9Router (`9router`) before 0.5.2 exposes MCP routes without authentication "
+    "and reaches command execution: `src/proxy.js` did not protect "
+    "`/api/cli-tools/*` and `/api/mcp/*`, allowing unauthenticated customPlugin "
+    "registration and command execution through the MCP bridge (CVE-2026-46339, "
+    "CVSS 10); the `isLocalRequest()` gate trusts spoofable Host/Origin headers "
+    "(CVE-2026-49353); and unvalidated MCP plugin args reach `child_process.spawn()` "
+    "for RCE via `/api/mcp//sse` (CVE-2026-62312). Treat < 0.5.2 (and unpinned) as "
+    "exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `9router` to >= 0.5.2 and pin it. Authenticate `/api/mcp/*` and "
+    "`/api/cli-tools/*`, do not gate on Host/Origin headers, and validate plugin "
+    "args before spawning subprocesses.",
+    sarif_name="NineRouterMcpUnauthRce",
+    cve_references=["CVE-2026-46339", "CVE-2026-49353", "CVE-2026-62312"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-N8NMCP-CVE-2026-54052-001",
+    "n8n-MCP multi-tenant backup isolation bypass (`n8n-mcp` < 2.57.4)",
+    "n8n-MCP (`n8n-mcp`) in HTTP multi-tenant mode (`ENABLE_MULTI_TENANT=true`) "
+    "does not isolate local workflow version-history backups per tenant: before "
+    "2.56.1 an authenticated tenant can read, delete, or destroy other tenants' "
+    "workflow snapshots — including node definitions, credential references, and "
+    "authorization headers (CVE-2026-54052, CVSS 9.9); before 2.57.4 a tenant can "
+    "also reach default-scope `workflow_versions` backups from prior single-tenant "
+    "deployments (CVE-2026-55608). Treat < 2.57.4 (and unpinned) as exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n-mcp` to >= 2.57.4 and pin it. Scope every backup read/write to "
+    "the authenticated tenant.",
+    sarif_name="N8nMcpTenantIsolation",
+    cve_references=["CVE-2026-54052", "CVE-2026-55608"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+_r(
+    "AAK-MCP-DBTMCP-CVE-2026-44968-001",
+    "dbt-mcp flag injection + tool-arg leakage (`dbt-mcp` < 1.17.1)",
+    "`dbt-mcp` before 1.17.1 appends unsanitized `node_selection` / `resource_type` "
+    "values to the dbt subprocess argv, letting an MCP client inject dbt global "
+    "flags such as `--profiles-dir` / `--project-dir` / `--target` into "
+    "`subprocess.Popen` even with `shell=False` (CVE-2026-44968); it also emits "
+    "every tool call's full arguments (`sql_query`, `vars`, `node_selection`) "
+    "through telemetry (CVE-2026-44970, on by default) and file logging "
+    "(CVE-2026-44969) without redaction. Treat < 1.17.1 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `dbt-mcp` to >= 1.17.1 and pin it. Validate `node_selection` / "
+    "`resource_type` against an allow-list before adding them to argv, and redact "
+    "tool arguments in telemetry / logs.",
+    sarif_name="DbtMcpFlagInjection",
+    cve_references=["CVE-2026-44968", "CVE-2026-44970", "CVE-2026-44969"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-INJECT-01"],
+)
+
+_r(
+    "AAK-MCP-APIFY-CVE-2026-46341-001",
+    "Apify MCP docs-allowlist bypass SSRF (`@apify/actors-mcp-server` < 0.9.21)",
+    "The Apify MCP server (`@apify/actors-mcp-server`) before 0.9.21 validates the "
+    "`fetch-apify-docs` allowlisted documentation domains with `String.startsWith()` "
+    "instead of hostname comparison, so attacker URLs such as "
+    "`https://docs.apify.com.evil.com/` or `https://docs.apify.com@evil.com/` pass "
+    "the `ALLOWED_DOC_DOMAINS` check and return arbitrary fetched content to the LLM "
+    "(CVE-2026-46341, CVSS 6.1, SSRF). Treat < 0.9.21 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@apify/actors-mcp-server` to >= 0.9.21 and pin it. Allow-list by "
+    "parsed URL hostname (exact / suffix match), never `startsWith` on the raw URL.",
+    sarif_name="ApifyMcpDocsAllowlistSsrf",
+    cve_references=["CVE-2026-46341"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+_r(
+    "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001",
+    "Agentic-Flow MCP tool params → execSync command injection (< 2.0.14)",
+    "`agentic-flow` before 2.0.14 interpolates attacker-influenceable MCP tool "
+    "parameters (`agent`, `task`, `name`, `language`, `agentdb`) directly into "
+    "shell command strings passed to `execSync()` across its stdio / FastMCP server "
+    "and agent/swarm/hooks tools, allowing arbitrary OS command execution as the "
+    "MCP server user (CVE-2026-58195, CVSS 8.8). Treat < 2.0.14 (and unpinned) as "
+    "exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `agentic-flow` to >= 2.0.14 and pin it. Never pass tool parameters "
+    "into a shell; use argv-array subprocess calls with validated inputs.",
+    sarif_name="AgenticFlowMcpExecSyncInjection",
+    cve_references=["CVE-2026-58195"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-INJECT-01"],
+)
+
+_r(
+    "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001",
+    "AWS HealthOmics MCP workflow-bundle path traversal (< 0.0.36)",
+    "The AWS HealthOmics MCP server (`awslabs.aws-healthomics-mcp-server`) before "
+    "0.0.36 improperly limits pathnames in its linting tools, so an actor who can "
+    "influence the MCP agent can write actor-controlled content outside the "
+    "intended workflow-bundle directory via directory-traversal sequences in the "
+    "`workflow_files` input (CVE-2026-15415, CVSS 5.5, CWE-22). Treat < 0.0.36 "
+    "(and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.aws-healthomics-mcp-server` to >= 0.0.36 and pin it. Resolve "
+    "and contain every `workflow_files` path under the bundle root before writing.",
+    sarif_name="HealthOmicsMcpPathTraversal",
+    cve_references=["CVE-2026-15415"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-PATH-01"],
 )
 
 

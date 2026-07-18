@@ -1,6 +1,6 @@
 """MCP/agent CVE version-pins — 2026-07 disclosure wave (table-driven).
 
-Fifteen dependency version-pin rules for MCP/agent CVEs disclosed 2026-07-08..15
+Twenty-two dependency version-pin rules for MCP/agent CVEs disclosed 2026-07-08..17
 that have both a vendor-fixed version and a pinnable PyPI / npm artifact. Each
 pin fires when a project references the affected package below its fix floor (or
 unpinned) across dependency manifests, lockfiles, and MCP config files — the same
@@ -24,6 +24,13 @@ available) before shipping:
   - openclaw                       >= 2026.6.6 (CVE-2026-62195; NVD 2026.5.20..<2026.6.6)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.11 (CVE-2026-53512, CVE-2026-53518)
+  - mcp (MCP Python SDK)            >= 1.28.1  (CVE-2026-52869, CVE-2026-52870, CVE-2026-59950)
+  - 9router                        >= 0.5.2   (CVE-2026-46339, CVE-2026-49353, CVE-2026-62312)
+  - n8n-mcp                        >= 2.57.4  (CVE-2026-54052, CVE-2026-55608)
+  - dbt-mcp                        >= 1.17.1  (CVE-2026-44968, CVE-2026-44970, CVE-2026-44969)
+  - @apify/actors-mcp-server       >= 0.9.21  (CVE-2026-46341)
+  - agentic-flow                   >= 2.0.14  (CVE-2026-58195)
+  - awslabs.aws-healthomics-mcp-server >= 0.0.36 (CVE-2026-15415)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -56,6 +63,26 @@ def _mk_re(name: str) -> re.Pattern[str]:
     )
 
 
+# Precise token regexes for names that are substrings of *other* packages —
+# `_mk_re` has no left boundary, so a bare "mcp" would match "fastmcp",
+# "mcp-text-editor", "n8n-mcp", etc. These require a real dependency token.
+_VER_REQ = (
+    r'(?:==|>=|~=|!=|<=|<|>|@|"\s*:\s*"[\^~><=v ]*|"?\s*version"?\s*[:=])'
+    r'\s*v?([0-9][\w.\-]*)'
+)
+_VER_OPT = (
+    r'(?:\s*(?:==|>=|~=|!=|<=|<|>|@|"\s*:\s*"[\^~><=v ]*|"?\s*version"?\s*[:=])'
+    r'\s*v?([0-9][\w.\-]*))?'
+)
+# Bare `mcp` (the MCP Python SDK on PyPI). Requires a version so an ambiguous
+# lone "mcp" token can't fire; the negative lookbehind/`[` handling keeps it off
+# fastmcp / mcp-text-editor / n8n-mcp / awslabs.*-mcp-server.
+_MCP_SDK_RE = re.compile(r"(?<![\w./-])mcp(?:\[[\w,\s-]+\])?\s*" + _VER_REQ, re.IGNORECASE)
+_N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECASE)
+# `n8n` fixed to exclude the distinct `n8n-mcp` package (right boundary).
+_N8N_RE = re.compile(r"(?<![\w./-])n8n(?![\w-])" + _VER_OPT, re.IGNORECASE)
+
+
 @dataclass(frozen=True)
 class _Pin:
     rule_id: str
@@ -78,7 +105,7 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-TEXTEDITOR-CVE-2026-15138-001", "mcp-text-editor", ("mcp-text-editor",),
          (1, 0, 3), fix_label="1.0.3 (affected up to 1.0.2)"),
     _Pin("AAK-MCP-N8N-CVE-2026-59207-001", "n8n", ("n8n",), (2, 27, 4),
-         fix_label="2.27.4 / 2.28.1"),
+         fix_label="2.27.4 / 2.28.1", regexes=(_N8N_RE,)),
     _Pin("AAK-MCP-RUFLO-CVE-2026-59726-001", "ruflo", ("ruflo",), (3, 16, 3),
          fix_label="3.16.3"),
     _Pin("AAK-MCP-DEEPSEEK-CVE-2026-55604-001", "@arikusi/deepseek-mcp-server",
@@ -103,6 +130,21 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="1.14.1"),
     _Pin("AAK-MCP-BETTERAUTH-CVE-2026-53512-001", "better-auth",
          ("better-auth", "@better-auth/oauth-provider"), (1, 6, 11), fix_label="1.6.11"),
+    # --- 2026-07-15..17 wave ---
+    _Pin("AAK-MCP-SDK-CVE-2026-52869-001", "mcp (MCP Python SDK)", ("mcp",), (1, 28, 1),
+         fix_label="1.28.1", regexes=(_MCP_SDK_RE,)),
+    _Pin("AAK-MCP-9ROUTER-CVE-2026-46339-001", "9router", ("9router",), (0, 5, 2),
+         fix_label="0.5.2"),
+    _Pin("AAK-MCP-N8NMCP-CVE-2026-54052-001", "n8n-mcp", ("n8n-mcp",), (2, 57, 4),
+         fix_label="2.57.4", regexes=(_N8N_MCP_RE,)),
+    _Pin("AAK-MCP-DBTMCP-CVE-2026-44968-001", "dbt-mcp", ("dbt-mcp",), (1, 17, 1),
+         fix_label="1.17.1"),
+    _Pin("AAK-MCP-APIFY-CVE-2026-46341-001", "@apify/actors-mcp-server",
+         ("@apify/actors-mcp-server",), (0, 9, 21), fix_label="0.9.21"),
+    _Pin("AAK-MCP-AGENTICFLOW-CVE-2026-58195-001", "agentic-flow", ("agentic-flow",),
+         (2, 0, 14), fix_label="2.0.14"),
+    _Pin("AAK-MCP-HEALTHOMICS-CVE-2026-15415-001", "awslabs.aws-healthomics-mcp-server",
+         ("awslabs.aws-healthomics-mcp-server",), (0, 0, 36), fix_label="0.0.36"),
 )
 
 _CANDIDATE_NAMES = (

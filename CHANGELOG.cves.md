@@ -38,6 +38,33 @@ Separately, **AAK-OAUTH-007** (new in v0.3.50) is cited to the **ratified** MCP
 validation), independent of the 2026-07-28 RC. It is not part of this RC
 reconciliation.
 
+## Shipped in v0.3.50 (2026-07-18) — 2026-07-15..17 wave
+
+Response to a second 2026-07 disclosure wave (24 CVEs, issues #445–#468) the NVD
+watcher filed while the earlier backlog was being cleared. Fourteen CVEs cluster
+onto seven pinnable packages (many share one fix version) and ship as version-pins
+(`mcp_cve_pins_2026_07`, now 22 pins); one is covered by an existing pin; nine are
+dispositioned (PHP / GitHub Action / WordPress ecosystems, no vendor fix, or no NVD
+version data). Packages + floors verified against PyPI / npm; `mcp` and `n8n-mcp`
+pins use precise token regexes so they never trip `fastmcp` / `mcp-text-editor` /
+`n8n`.
+
+| Incident / Anchor | Reference | AAK rule(s) / disposition | Shipped |
+|---|---|---|---|
+| CVE-2026-52869 + CVE-2026-52870 + CVE-2026-59950 (MCP Python SDK `mcp` < 1.28.1 — cross-client session injection, task cross-access, WebSocket no-Origin) | [NVD CVE-2026-52869](https://nvd.nist.gov/vuln/detail/CVE-2026-52869) (HIGH, CVSS 7.1) | **AAK-MCP-SDK-CVE-2026-52869-001** (NEW: HIGH, SUPPLY_CHAIN — pin `mcp` >= 1.28.1) | 2026-07-18 |
+| CVE-2026-46339 + CVE-2026-49353 + CVE-2026-62312 (9Router `9router` < 0.5.2 — unauthenticated MCP bridge → command exec / RCE) | [NVD CVE-2026-46339](https://nvd.nist.gov/vuln/detail/CVE-2026-46339) (CRITICAL, CVSS 10) | **AAK-MCP-9ROUTER-CVE-2026-46339-001** (NEW: CRITICAL, SUPPLY_CHAIN — pin `9router` >= 0.5.2) | 2026-07-18 |
+| CVE-2026-54052 + CVE-2026-55608 (n8n-MCP `n8n-mcp` < 2.57.4 — multi-tenant workflow-backup isolation bypass) | [NVD CVE-2026-54052](https://nvd.nist.gov/vuln/detail/CVE-2026-54052) (CRITICAL, CVSS 9.9) | **AAK-MCP-N8NMCP-CVE-2026-54052-001** (NEW: CRITICAL, SUPPLY_CHAIN — pin `n8n-mcp` >= 2.57.4) | 2026-07-18 |
+| CVE-2026-44968 + CVE-2026-44970 + CVE-2026-44969 (dbt-mcp `dbt-mcp` < 1.17.1 — dbt-flag injection into subprocess argv; tool-arg leakage via telemetry + file logging) | [NVD CVE-2026-44968](https://nvd.nist.gov/vuln/detail/CVE-2026-44968) (MEDIUM, CVSS 6.3) | **AAK-MCP-DBTMCP-CVE-2026-44968-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin `dbt-mcp` >= 1.17.1) | 2026-07-18 |
+| CVE-2026-46341 (Apify MCP `@apify/actors-mcp-server` < 0.9.21 — `fetch-apify-docs` `startsWith()` allowlist bypass → SSRF) | [NVD CVE-2026-46341](https://nvd.nist.gov/vuln/detail/CVE-2026-46341) (MEDIUM, CVSS 6.1) | **AAK-MCP-APIFY-CVE-2026-46341-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin `@apify/actors-mcp-server` >= 0.9.21) | 2026-07-18 |
+| CVE-2026-58195 (Agentic-Flow `agentic-flow` < 2.0.14 — MCP tool params interpolated into `execSync()` → OS command injection) | [NVD CVE-2026-58195](https://nvd.nist.gov/vuln/detail/CVE-2026-58195) (HIGH, CVSS 8.8) | **AAK-MCP-AGENTICFLOW-CVE-2026-58195-001** (NEW: HIGH, SUPPLY_CHAIN — pin `agentic-flow` >= 2.0.14) | 2026-07-18 |
+| CVE-2026-15415 (AWS HealthOmics MCP `awslabs.aws-healthomics-mcp-server` < 0.0.36 — `workflow_files` directory traversal writes outside the bundle dir) | [NVD CVE-2026-15415](https://nvd.nist.gov/vuln/detail/CVE-2026-15415) (MEDIUM, CVSS 5.5) | **AAK-MCP-HEALTHOMICS-CVE-2026-15415-001** (NEW: MEDIUM, SUPPLY_CHAIN — pin >= 0.0.36) | 2026-07-18 |
+| CVE-2026-62208 (OpenClaw before 2026.6.5 — Authorization headers forwarded during MCP SSE redirects) | [NVD CVE-2026-62208](https://nvd.nist.gov/vuln/detail/CVE-2026-62208) (MEDIUM, CVSS 6.5) | **Covered** by `AAK-MCP-OPENCLAW-CVE-2026-62195-001` (fires < 2026.6.6, which includes the < 2026.6.5 affected range); CVE added to that rule's references | 2026-07-18 |
+| CVE-2026-46512 / 46513 / 46514 / 46515 (Frogman headless-PBX MCP < 1.6.2 / 1.6.3 — dialplan injection → Asterisk RCE, raw API-token storage, plaintext creds in audit log, PERM_READ over-exposure) | [NVD CVE-2026-46512](https://nvd.nist.gov/vuln/detail/CVE-2026-46512) (CRITICAL, CVSS 9.9) | **Documented, not pinned** — Frogman is a PHP application (`Tools/*.php`, `oc_*` tables); AAK's pin detector reads PyPI/npm manifests only | 2026-07-18 |
+| CVE-2026-47751 (Claude Code Action < 1.0.74 — checks out attacker PR head + auto-enables all project MCP servers from a malicious `.mcp.json` → runner RCE + secret exfil) | [NVD CVE-2026-47751](https://nvd.nist.gov/vuln/detail/CVE-2026-47751) (CVSS n/a) | **Documented, not pinned** — a GitHub Action pinned in `.github/workflows` (`uses: anthropics/claude-code-action@vX`), not a PyPI/npm manifest artifact | 2026-07-18 |
+| CVE-2026-9810 (AI Copilot WordPress plugin < 1.5.4 — OAuth token not bound to a WP user → unauth admin MCP-tool execution) | [NVD CVE-2026-9810](https://nvd.nist.gov/vuln/detail/CVE-2026-9810) (CVSS n/a) | **Documented, not pinned** — a WordPress/PHP plugin; unsupported ecosystem for the pin detector | 2026-07-18 |
+| CVE-2026-57860 (ForgeCode `forgecode` — auto-loads + executes a repo's `.mcp.json` on startup with no confirmation → RCE from an untrusted repo) | [NVD CVE-2026-57860](https://nvd.nist.gov/vuln/detail/CVE-2026-57860) (HIGH, CVSS 7.8) | **Documented, not pinned** — NVD/advisory name no fixed version (design-level auto-exec); untrusted-`.mcp.json`-launch class | 2026-07-18 |
+| CVE-2026-9135 + CVE-2026-7755 (IBM Langflow OSS — ToolGuard dynamic-CodeInput code injection bypassing `allow_custom_components=false`; RCE via incomplete MCP-config validation) | [NVD CVE-2026-9135](https://nvd.nist.gov/vuln/detail/CVE-2026-9135) (CRITICAL, CVSS 9.9) | **Documented, not pinned** — NVD published no CPE data and the affected range is ambiguous (`1.0.0`–`1.10.0` vs "up to 1.9.2"); will pin once the fixed version is confirmed (tracked) | 2026-07-18 |
+
 ## Shipped in v0.3.50 (2026-07-16)
 
 Response to the 2026-07-13..15 disclosure wave (13 CVEs, issues #429–#442).

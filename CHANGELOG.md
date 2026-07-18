@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — 2026-07-15..17 MCP/agent CVE disclosure-wave pins (7 rules, closes 24 cve-response issues)
+
+CVE-response for a second 2026-07 wave (issues #445–#468). 14 CVEs cluster onto 7
+pinnable packages (many share one fix version) → version-pins in
+`mcp_cve_pins_2026_07` (now 22 pins); 1 covered by an existing pin; 9 dispositioned
+in `CHANGELOG.cves.md` (PHP / GitHub-Action / WordPress ecosystems, no vendor fix,
+or no NVD version data). The `mcp` and `n8n-mcp` pins use precise token regexes so
+they never trip `fastmcp` / `mcp-text-editor` / `n8n` (also fixed a latent
+substring false-positive in the existing `n8n` pin).
+
+- **AAK-MCP-SDK-CVE-2026-52869-001** (HIGH) — `mcp` (MCP Python SDK) >= 1.28.1: session injection + task cross-access + WS no-Origin (CVE-2026-52869/52870/59950).
+- **AAK-MCP-9ROUTER-CVE-2026-46339-001** (CRITICAL) — `9router` >= 0.5.2: unauth MCP bridge → RCE (CVE-2026-46339/49353/62312).
+- **AAK-MCP-N8NMCP-CVE-2026-54052-001** (CRITICAL) — `n8n-mcp` >= 2.57.4: multi-tenant backup isolation bypass (CVE-2026-54052/55608).
+- **AAK-MCP-DBTMCP-CVE-2026-44968-001** (MEDIUM) — `dbt-mcp` >= 1.17.1: dbt-flag injection + tool-arg leakage (CVE-2026-44968/44970/44969).
+- **AAK-MCP-APIFY-CVE-2026-46341-001** (MEDIUM) — `@apify/actors-mcp-server` >= 0.9.21: `startsWith()` allowlist bypass SSRF.
+- **AAK-MCP-AGENTICFLOW-CVE-2026-58195-001** (HIGH) — `agentic-flow` >= 2.0.14: MCP params → `execSync()` command injection.
+- **AAK-MCP-HEALTHOMICS-CVE-2026-15415-001** (MEDIUM) — `awslabs.aws-healthomics-mcp-server` >= 0.0.36: `workflow_files` path traversal.
+
+CVE-2026-62208 (OpenClaw) added to the existing `AAK-MCP-OPENCLAW-CVE-2026-62195-001`
+pin (already covers the affected range). Dispositioned: Frogman ×4 (PHP),
+Claude Code Action (GitHub Action), AI Copilot (WordPress), ForgeCode (no fix
+version), Langflow ×2 (no NVD data). Rule count 254 → **261**.
+
 ### Added — 2026-07-13..15 MCP/agent CVE disclosure-wave pins (7 rules, closes 13 cve-response issues)
 
 CVE-response for the 2026-07-13..15 disclosure wave (issues #429–#442). Eight
