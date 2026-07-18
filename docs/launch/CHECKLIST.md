@@ -5,7 +5,7 @@ everything else; these steps are for you.
 
 ## Pre-launch (T-48h)
 
-- [ ] Review `docs/launch/release-notes-v0.3.0.md` and approve.
+- [ ] Review the current release's notes and approve.
 - [ ] Review `docs/launch/hn.md`, `reddit.md`, `x-thread.md`,
       `press.md`. Adjust voice if anything sounds too synthetic.
 - [ ] Review `docs/disclosure-policy.md`. Confirm you're comfortable
