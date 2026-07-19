@@ -7,8 +7,20 @@ This file is the audit trail of what shipped and when.
 Format: one line per CVE, `CVE-YYYY-NNNNN` → `AAK-XXX-NNN` with the
 shipped-at timestamp. The GitHub Action `.github/workflows/cve-watcher.yml`
 diffs NVD's MCP keyword feed against this file and opens a `cve-response`
-issue (retaining the `sla-48h` label as a release-gate mechanism key) for
-anything new.
+issue for anything new; the release gate blocks a tag while any such issue is
+open.
+
+> **On the "48h" figures below:** AgentAuditKit does not commit to a 48-hour (or
+> any fixed) CVE-response SLA — that public commitment was retired in PR #432.
+> The `sla-48h` label is likewise retired and should be removed from any open
+> issue. The per-CVE latency figures in the tables are **measurements recorded at
+> the time**, kept as dated facts, not a standing promise.
+
+## Dispositioned 2026-07-19 (v0.3.52)
+
+| Incident / Anchor | Reference | AAK rule(s) / disposition | Dispositioned |
+|---|---|---|---|
+| CVE-2026-16133 (LiuMengxuan04 MiniCode 0.1.0 — `child_process.spawn` command injection in `mcp.ts`) | [NVD CVE-2026-16133](https://nvd.nist.gov/vuln/detail/CVE-2026-16133) (MEDIUM, CVSS 5) | **Class-covered** by `AAK-MCP-STDIO-CMD-INJ-*` (TS/JS MCP stdio `child_process.spawn` command injection). Not pinned — GitHub-only project (0.1.0), no released fix (upstream PR pending), no matching npm/PyPI artifact. | 2026-07-19 |
 
 ## MCP 2026-07-28 ratification reconciliation — 2026-07-16 (v0.3.50)
 
@@ -94,8 +106,8 @@ NVD before shipping.
 Batch response to the 2026-07-08..12 disclosure wave (13 CVEs). Eight have a
 vendor fix + a pinnable PyPI/npm artifact and ship as version-pins
 (`mcp_cve_pins_2026_07`); three have no pinnable artifact or a tractable version
-scheme and are dispositioned below. Latency exceeds the 48h target for the
-earlier CVEs — this backlog accumulated between the v0.3.48 and v0.3.49 releases
+scheme and are dispositioned below. Latency ran past 48 hours for the earlier
+CVEs — this backlog accumulated between the v0.3.48 and v0.3.49 releases
 and is recorded honestly.
 
 | Incident / Anchor | Reference | AAK rule(s) / disposition | Shipped |
@@ -312,6 +324,6 @@ Source: <https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critica
 | CVE-2026-34070 | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-34070) | AAK-LANGCHAIN-001, AAK-LANGCHAIN-002 | 2026-04-18 | retroactive |
 | CVE-2025-68664 | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2025-68664) | AAK-LANGCHAIN-003 | 2026-04-18 | retroactive |
 
-## Open (48h SLA ticking)
+## Open (best-effort — no committed SLA)
 
-_none — file response-tracking issues get posted here when the SLA fires._
+_none — newly-filed `cve-response` issues are tracked here until triaged._

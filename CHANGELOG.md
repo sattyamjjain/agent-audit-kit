@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.52] - 2026-07-19
+
+### Added — State of MCP 2026 report: corpus expanded to 1,374 configs (closes #23)
+
+- **Corpus expansion.** Added the official MCP Registry as a corpus source
+  (`research/state-of-mcp-2026/fetch_registry.py` — cursor pagination, cached,
+  rate-limited) and combined it with the existing GitHub crawl. Deduped by config
+  content: **1,374 distinct configs** (664 crawl + 710 registry latest-version
+  servers) — past issue #23's 1,000-server target. Full provenance (name,
+  transport, auth mode, source URL, fetch date) is committed in
+  `corpus/registry-manifest.json`, so every number is reproducible from the
+  manifest.
+- **Report harness extended, not duplicated.** `run_report.py` now also emits the
+  auth-profile metrics — no-auth %, RFC 9728 PRM %, remote-auth static-credential
+  %, transport distribution, rule-family distribution, and the 2026-07-28 /
+  2027-07-28 migration-exposure proxies — each with n + denominator + coverage,
+  reusing `engine.run_scan` / `scoring.compute_score`. Output is deterministic
+  across Python hash seeds (ties break on a stable secondary key).
+- **`research/state-of-mcp-2026/REPORT.md`** — the publishable report: **35.1%
+  (482/1,374) no-auth, 0% (0/1,374) RFC 9728 discovery, 100% (318/318) inline-auth
+  static credential**, 36.0% critical, median grade B. Plus factual Black Hat
+  Arsenal + Briefings abstract skeletons (rewrite-before-submit markers, per
+  Black Hat's no-LLM-text rule).
+- **`make report`** regenerates the numbers from the committed manifest, offline
+  and deterministically, so the report is a build artifact that cannot drift.
+  Adds no rules (still 262).
+
+### Changed — retire the residual 48h CVE-response SLA wording
+
+- Reconciled the leftover 48h-SLA framing in `CHANGELOG.cves.md` to best-effort,
+  no committed SLA (completing the retirement from PR #432). Historical per-CVE
+  latency measurements are left as dated facts; only the live-SLA framing (the
+  "Open (48h SLA ticking)" heading, the ledger preamble) was reworded. The
+  `sla-48h` label is retired — it should be removed from open issues; the release
+  gate keys off the `cve-response` label instead.
+
 ### Added — AAK-OAUTH-008 (RFC 9728) + `mcp-2026-07-28` auth-profile + readiness report
 
 - **AAK-OAUTH-008** (LOW, MCP_CONFIG) — RFC 9728 Protected-Resource-Metadata

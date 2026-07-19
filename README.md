@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.51
+      - uses: sattyamjjain/agent-audit-kit@v0.3.52
         with:
           fail-on: high
 ```
@@ -87,7 +87,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.51
+    rev: v0.3.52
     hooks:
       - id: agent-audit-kit
 ```
@@ -414,41 +414,33 @@ Public leaderboard of MCP servers we scan weekly:
 - **90-day coordinated disclosure** before anything lands on a public card — see [`docs/disclosure-policy.md`](docs/disclosure-policy.md)
 - Maintainer-fix earlier gets published the day the fix lands, with credit
 
-## State of MCP Security 2026
+## Research: State of MCP Server Authentication 2026
 
-A reproducible data report: we scanned **664 distinct public MCP server configs**
-and found **1 in 4 ships a critical-severity flaw** — the **median config scores
-a B, the top 10% an A**, and **24.2% declare a remote server with no auth**. It
-exists because of AAK's two defensible wedges — the scan is **offline and
-deterministic** (no code or configs leave the machine; same input, same result),
-and it yields **auditor-ready compliance evidence**, which is what makes a report
-reproducible and an audit defensible. Full distribution, score calibration,
-OWASP-MCP-Top-10 hit rate, top-10 findings, external anchors (MCP Registry 9,652
-servers; Knostic 1,862 exposed / 119-of-119 unauthenticated; the 2,614-server
-82%-path-traversal survey), and honest limitations are in
-**[`research/state-of-mcp-2026/PREVALENCE.md`](research/state-of-mcp-2026/PREVALENCE.md)**
-(raw aggregate: [`results.json`](research/state-of-mcp-2026/results.json)).
-
-Mapped to the OWASP MCP Top 10, **99.4% of configs trip MCP07 (authorization /
-excessive permissions)** — see which AAK rules cover each slot in the
-[public coverage leaderboard](docs/coverage/owasp-mcp-top10.md). Scan your own in
-30s, fully offline:
-
-```bash
-pip install agent-audit-kit && agent-audit-kit scan .
-```
+A reproducible data report over **1,374 distinct public MCP server configs** — 664
+GitHub-crawled plus **710 official MCP Registry latest-version servers**, deduped by
+content and scanned offline and deterministically (scan date 2026-07-19). Headline:
+**35.1% (482/1,374) declare a remote server with no authentication, 0% (0/1,374) use
+RFC 9728 Protected-Resource-Metadata discovery, and 100% (318/318) of inline-auth
+configs hardcode a static credential.** 36.0% carry a critical-severity finding; the
+median config scores a **B**, and **99.7% trip OWASP MCP07 (authorization)**. Full
+method, per-metric findings (each with n + denominator), the 2026-07-28 / 2027-07-28
+migration exposure with explicit coverage notes, disclosure posture, and limitations:
+**[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)** —
+raw aggregate [`results.json`](research/state-of-mcp-2026/results.json), corpus
+provenance [`registry-manifest.json`](research/state-of-mcp-2026/corpus/registry-manifest.json).
 
 The harness contains no scanner — it reuses `agent_audit_kit.engine.run_scan` +
-`scoring.compute_score`. Regenerate the report:
+`scoring.compute_score`, so every number is reproducible offline and cannot drift
+from the code (`make report` regenerates `results.json` from the committed
+manifest; the corpus refresh is the one network step, `fetch_registry.py`):
 
 ```bash
-export GITHUB_TOKEN=$(gh auth token)
-python benchmarks/crawler.py --limit 500 --output benchmarks/results.json
-python research/state-of-mcp-2026/run_report.py --corpus benchmarks/data \
-    --out research/state-of-mcp-2026/results.json
+make report   # regenerate the report numbers, offline + deterministic
 ```
 
-Launch-ready copy for the report is in [`docs/DISTRIBUTION-CHECKLIST.md`](docs/DISTRIBUTION-CHECKLIST.md).
+Scan your own in 30s, fully offline: `pip install agent-audit-kit && agent-audit-kit scan .`
+See which AAK rules cover each OWASP MCP slot in the
+[public coverage leaderboard](docs/coverage/owasp-mcp-top10.md).
 
 ## CVE Response
 

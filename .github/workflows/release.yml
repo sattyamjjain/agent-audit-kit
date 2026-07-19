@@ -13,9 +13,10 @@ permissions:
 
 jobs:
   # --------------------------------------------------------------------------
-  # 0. Gate: refuse to release while any sla-48h CVE-response issue is open.
+  # 0. Gate: refuse to release while any cve-response issue is open.
   #    Implements CLAUDE_PROMPT.md §5(1) — "blocks release until the issue
-  #    is closed". (C14)
+  #    is closed". (C14). Keys off the `cve-response` label; the old `sla-48h`
+  #    label was retired with the 48h SLA (PR #432).
   # --------------------------------------------------------------------------
   cve-response-gate:
     name: CVE-response gate
@@ -29,13 +30,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          count=$(gh issue list --repo "$GITHUB_REPOSITORY" --label sla-48h --state open --json number --jq length)
+          count=$(gh issue list --repo "$GITHUB_REPOSITORY" --label cve-response --state open --json number --jq length)
           if [ "$count" != "0" ]; then
-            echo "::error ::cve-response gate: $count open sla-48h issue(s). Close them (or resolve with patch-release) before tagging."
-            gh issue list --repo "$GITHUB_REPOSITORY" --label sla-48h --state open
+            echo "::error ::cve-response gate: $count open cve-response issue(s). Triage + close them (pin or disposition) before tagging."
+            gh issue list --repo "$GITHUB_REPOSITORY" --label cve-response --state open
             exit 1
           fi
-          echo "cve-response gate: clean — 0 open sla-48h issues."
+          echo "cve-response gate: clean — 0 open cve-response issues."
 
   # --------------------------------------------------------------------------
   # 1. Publish to PyPI using trusted publishing (OIDC)
