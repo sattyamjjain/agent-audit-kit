@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — benign-slice false-positive benchmark (`benchmarks/false_positive/`)
+
+- A reproducible, offline, deterministic harness that measures and publishes
+  AAK's **benign-slice HIGH/CRITICAL false-positive rate** — nobody in this
+  category publishes one. Reuses `engine.run_scan` + `rules.builtin.RULES` (no
+  scanner/scorer reimplemented) over a **pre-registered 368-config benign slice**
+  of the MCP Registry (predicate: official + active + declares an auth mode + not
+  in a shipped CVE feed; non-circular — "benign" is registry metadata, not "AAK
+  found nothing"). `stats.py` adds a stdlib Wilson interval (no new runtime dep).
+- **Measured figure (2026-07-20 run):** 4 HIGH/CRITICAL findings across the 368
+  configs (1.1%); hand-adjudicated (single rater) to **2 FP / 1 TP / 1 ambiguous
+  → 2/4 = 50% benign-slice HIGH/CRITICAL FP rate, Wilson 95% CI [15%, 85%]**
+  (small n, wide interval — stated, not smoothed). Both FPs share one root cause:
+  `AAK-MCP-001` doesn't recognise custom API-key headers (`X-*-Key`) as auth —
+  filed as #475. Published bad-and-all; that is the credibility value.
+- README claim 1 (determinism) extended with the measured-precision line. No rule
+  changes (still 262).
+
 ## [0.3.52] - 2026-07-19
 
 ### Added — State of MCP 2026 report: corpus expanded to 1,374 configs (closes #23)

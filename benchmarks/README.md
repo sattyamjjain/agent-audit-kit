@@ -13,6 +13,21 @@ MCP configuration files found on public GitHub repositories.
 3. **Provide sample configs** that exercise every major rule category so
    developers can verify scanner behaviour without network access.
 
+## Published benchmarks
+
+Two self-benchmarks are published with reproducible, offline, deterministic
+harnesses (no LLM in the loop):
+
+- **[Determinism](determinism/RESULTS.md)** — 20/20 runs → one shared SHA-256
+  finding-set digest, 0% variance (`determinism/run.py`).
+- **[Benign-slice HIGH/CRITICAL false-positive rate](false_positive/RESULTS.md)**
+  — measured on a pre-registered 368-config benign slice of the public MCP
+  Registry: 4 HIGH/CRITICAL findings (1.1% of the slice), hand-adjudicated to a
+  **2/4 = 50% benign-slice HIGH/CRITICAL FP rate** (Wilson 95% CI [15%, 85%];
+  small n, wide interval). Root cause filed as an issue. Harness:
+  `false_positive/run.py`, benign predicate: `false_positive/corpus.py`,
+  adjudication: `false_positive/triage.md`.
+
 ## Quick Start
 
 ```bash

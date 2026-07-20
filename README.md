@@ -24,7 +24,7 @@ Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, 
 
 **Two things it does that hosted scanners can't:**
 
-1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). This is measured, not just claimed: [20/20 identical runs → one shared SHA-256 finding-set digest, 0% variance](benchmarks/determinism/RESULTS.md). Scanners that route findings through an LLM judge can't guarantee a byte-identical re-run — so CI diffs, audit re-runs, and regression baselines stay stable here. No account, no telemetry.
+1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). This is measured, not just claimed: [20/20 identical runs → one shared SHA-256 finding-set digest, 0% variance](benchmarks/determinism/RESULTS.md). Scanners that route findings through an LLM judge can't guarantee a byte-identical re-run — so CI diffs, audit re-runs, and regression baselines stay stable here. No account, no telemetry. Precision is measured the same way, not asserted: we publish a reproducible, hand-adjudicated [benign-slice HIGH/CRITICAL false-positive rate](benchmarks/false_positive/RESULTS.md) — with a Wilson confidence interval and any offending rule filed as an issue.
 2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 13 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
 - **<!-- rule-count:total -->262<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.52
+      - uses: sattyamjjain/agent-audit-kit@v0.3.53
         with:
           fail-on: high
 ```
@@ -87,7 +87,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.52
+    rev: v0.3.53
     hooks:
       - id: agent-audit-kit
 ```

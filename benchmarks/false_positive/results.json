@@ -1,0 +1,88 @@
+{
+  "benign_slice_n": 368,
+  "benign_slice_predicate": "official MCP Registry latest-version server AND status=active AND auth_mode in {static-credential, header-nonsecret, local-stdio} AND not in AAK's shipped CVE/advisory feed (vuln_db.json + CVE-pin package names)",
+  "configs_with_high_critical": 4,
+  "finding_set_digest": "49223e1968553c0d835e05d417457ad465dd2a1119bf8abeb012d923e92de568",
+  "findings_per_config": 2.15,
+  "high_critical_config_rate": 0.0109,
+  "high_critical_findings": 4,
+  "rule_family_buckets": {
+    "AAK-MCP": 518,
+    "AAK-OAUTH": 275
+  },
+  "severity_buckets": {
+    "critical": 4,
+    "high": 0,
+    "info": 0,
+    "low": 348,
+    "medium": 441
+  },
+  "tool": "agent-audit-kit",
+  "top30_high_critical": [
+    {
+      "config": "ai.lattiq/x402-trading-signals",
+      "evidence": "Server 'x402-trading-signals' URL: https://api.lattiq.ai/mcp \u2014 no authentication headers",
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical"
+    },
+    {
+      "config": "ai.nefesh/human-state",
+      "evidence": "Server 'human-state' URL: https://mcp.nefesh.ai/mcp \u2014 no authentication headers",
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical"
+    },
+    {
+      "config": "ai.satoshidata/wallet-intelligence",
+      "evidence": "Server 'wallet-intelligence' URL: https://satoshidata.ai/mcp/v1/ \u2014 no authentication headers",
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical"
+    },
+    {
+      "config": "ai.spala/public-mcp",
+      "evidence": "Server 'public-mcp' URL: https://mcp.spala.ai/mcp \u2014 no authentication headers",
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical"
+    }
+  ],
+  "top_noisy_high_critical_rules": [
+    {
+      "high_critical_findings": 4,
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical",
+      "title": "Remote MCP server without authentication"
+    }
+  ],
+  "top_rules_overall": [
+    {
+      "findings": 368,
+      "rule_id": "AAK-MCP-ATTEST-001",
+      "severity": "medium",
+      "title": "MCP server admitted without attestation"
+    },
+    {
+      "findings": 275,
+      "rule_id": "AAK-OAUTH-008",
+      "severity": "low",
+      "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery"
+    },
+    {
+      "findings": 73,
+      "rule_id": "AAK-MCP-005",
+      "severity": "medium",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages"
+    },
+    {
+      "findings": 73,
+      "rule_id": "AAK-MCP-007",
+      "severity": "low",
+      "title": "MCP server lacks version pinning in args"
+    },
+    {
+      "findings": 4,
+      "rule_id": "AAK-MCP-001",
+      "severity": "critical",
+      "title": "Remote MCP server without authentication"
+    }
+  ],
+  "total_findings": 793
+}
