@@ -30,6 +30,13 @@ _MAX_FILE_BYTES = 512_000
 # First digit cannot be 0 or 1 (UIDAI spec).
 _AADHAAR_RE = re.compile(r"\b[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}\b")
 
+# A *bare* 12-digit run (no XXXX XXXX XXXX grouping) that merely passes the
+# Verhoeff checksum is a weak signal — ~1 in 10 random 12-digit numbers
+# (timestamps, DB ids, counters) pass Verhoeff. Require an Aadhaar/UID cue
+# nearby for the unformatted form; the grouped form stays a strong signal on
+# its own.
+_AADHAAR_CONTEXT_RE = re.compile(r"aadhaar|aadhar|uidai|\buid\b|आधार", re.IGNORECASE)
+
 # PAN: 5 letters + 4 digits + 1 letter, 10 chars total.
 _PAN_RE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")
 
@@ -113,6 +120,14 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         digits_only = re.sub(r"[ -]", "", m.group(0))
         if not _verhoeff_check(digits_only):
             continue
+        # Grouped form (with space/hyphen separators) is self-evidently an
+        # Aadhaar; a bare 12-digit run needs an Aadhaar/UID cue in the vicinity
+        # so we don't flag coincidental numeric ids.
+        has_separator = " " in m.group(0) or "-" in m.group(0)
+        if not has_separator:
+            window = text[max(0, m.start() - 64) : m.end() + 24]
+            if not _AADHAAR_CONTEXT_RE.search(window):
+                continue
         masked = f"{digits_only[:4]}****{digits_only[-4:]}"
         findings.append(
             make_finding(

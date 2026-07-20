@@ -29,7 +29,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pnpm-lock.yaml, yarn.lock) — pins now fire only when the resolved version is
   below the fix floor.
 
-No rule changes (still 262). Version 0.3.53 → 0.3.54.
+### Fixed — P2 rule-scoping precision (drives the benign-slice FP rate)
+
+Seven critical/high rules were firing on safe or benign patterns. Each fix
+narrows the scope so the rule still fires on the real shape but clears the
+false positive; each ships a benign-passes regression guard and a
+malicious-still-fires guard.
+
+- **AAK-STDIO-001** — an argv-list `subprocess.run(["cmd", tainted], shell=False)`
+  is the *safe* form (a tainted element is an argument, not a shell-injection
+  vector). It no longer fires on argv lists; only `shell=True` or a
+  string/dynamic command does.
+- **AAK-MCP-STDIO-CMD-INJ-001** — fired on *any* `StdioServerParameters(...)`
+  inside a function that merely had a generically-named arg (`config`, `data`).
+  Now requires an actual source→sink taint path: a network-controlled value
+  (request/env/json, a suspicious param, or a var assigned from one) must flow
+  into `command`/`args`. Constant command/args never fire.
+- **AAK-AGENT-001** — the catch-all `` `...` `` arm flagged *every* inline-code
+  span in an agent-instruction file (`` `cargo build` ``, `` `make` ``,
+  `` `npx tsc` `` — dozens of hits per CLAUDE.md). Removed it; genuinely
+  dangerous directives (`sh -c`, `rm -rf`, `curl … | bash`) still match.
+- **AAK-HOOK-RCE-001** — scanned any `hooks/` directory, catching **React
+  hooks** (`src/hooks/use-audit.ts`) whose `` `${event}` `` template literals
+  collided with the "hook" keyword. Now scoped to `.claude/` hook scripts, and
+  a py/js/ts script's interpolation must reach a shell-exec sink.
+- **AAK-TASKS-002 / -003** — fired on any module mentioning a bare `task_id`
+  (every Celery/job-queue worker). Now gated on a concrete MCP Tasks primitive
+  (a task class/store/manager, SEP-1686, or a `tasks/*` method).
+- **AAK-HEALTHCARE-AI-004 / -005** — fired on any markdown using clinical or
+  incident words: an ops runbook ("in an emergency, page on-call") tripped the
+  crisis rule; a clinical dataset README tripped the disclosure rule. Both now
+  require a conversational-agent surface, and 005's trigger is restricted to
+  unambiguous self-harm terms (dropping bare "crisis"/"emergency").
+- **AAK-INDIA-PII-001** — a bare 12-digit number that coincidentally passes the
+  Verhoeff checksum (~1 in 10) fired as an Aadhaar. The unformatted form now
+  needs an Aadhaar/UID cue nearby; the grouped `XXXX XXXX XXXX` form still fires
+  on its own.
+
+No rule changes (still 262). Version 0.3.53 → 0.3.55.
 
 ### Added — benign-slice false-positive benchmark (`benchmarks/false_positive/`)
 

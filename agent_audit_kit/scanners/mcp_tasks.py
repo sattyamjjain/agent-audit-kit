@@ -24,6 +24,20 @@ _TASK_HINT = re.compile(
     r"/tasks/[{:<]|task_id",
 )
 
+# A concrete MCP Tasks *primitive* — a task class / store / manager, the
+# SEP-1686 marker, or an MCP `tasks/*` method. Bare `task_id` (a variable in
+# any job-queue or Celery worker) is deliberately NOT enough: rules 002/003
+# gate on this so they stop firing on every module that merely mentions a
+# task, while the SEP-1686 leakage shapes (which always define a task object)
+# still match.
+_TASK_PRIMITIVE = re.compile(
+    r"class\s+\w*Task\w*\b|"
+    r"\b(?:Task|task)\s*(?:Manager|Store|Queue|Runner|Primitive)\b|"
+    r"\bSEP[_-]?1686\b|"
+    r"/tasks/[{:<]|"
+    r"\btasks/(?:create|get|list|cancel|result)\b",
+)
+
 _TASK_GET_RE = re.compile(
     r"""(?:def|async\s+def)\s+(?:get_task|read_task|task_read|get_by_id|findTask)\s*\([^)]*\)[^:]*:""",
     re.DOTALL,
@@ -99,7 +113,11 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 )
             )
 
-    if _CREDENTIAL_FIELD_RE.search(text) and _TERMINAL_STATE_RE.search(text):
+    if (
+        _TASK_PRIMITIVE.search(text)
+        and _CREDENTIAL_FIELD_RE.search(text)
+        and _TERMINAL_STATE_RE.search(text)
+    ):
         if not _ZEROIZE_RE.search(text):
             m_cred = _CREDENTIAL_FIELD_RE.search(text)
             findings.append(
@@ -111,12 +129,12 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 )
             )
 
-    if _TASK_HINT.search(text) and not _TTL_RE.search(text) and not _CANCEL_RE.search(text):
+    if _TASK_PRIMITIVE.search(text) and not _TTL_RE.search(text) and not _CANCEL_RE.search(text):
         findings.append(
             make_finding(
                 "AAK-TASKS-003",
                 rel,
-                "Task module references tasks but has no TTL or cancellation keyword",
+                "MCP Tasks primitive (task class/store) defines no TTL or cancellation path",
             )
         )
 

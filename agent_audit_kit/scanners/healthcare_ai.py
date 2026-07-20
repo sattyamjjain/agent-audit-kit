@@ -70,9 +70,26 @@ _AI_DISCLOSURE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# AAK-HEALTHCARE-AI-005: emergency / suicide-risk escalation missing
+# Rules 004/005 only make sense for a *conversational agent surface* — a
+# persona / chatbot / assistant prompt or agent card, not an arbitrary
+# markdown file that happens to use clinical words (a dataset README, an ops
+# runbook, a data dictionary). This gate keeps them from firing on documents
+# that describe healthcare rather than converse about it.
+_AGENT_SURFACE_RE = re.compile(
+    r"\b(?:you\s+are\s+(?:a|an|your)\b|I\s+am\s+(?:a|an|your)\b|"
+    r"system\s*prompt|persona|chat\s*bot|assistant|companion|conversational|"
+    r"virtual\s+(?:agent|assistant|nurse|therapist)|talk\s+to\s+me|"
+    r"how\s+are\s+you\s+feeling|I['’]?m\s+here\s+(?:to\s+help|for\s+you))\b",
+    re.IGNORECASE,
+)
+
+# AAK-HEALTHCARE-AI-005: suicide / self-harm escalation missing. Restricted to
+# unambiguous self-harm terms — bare "crisis"/"emergency" fired on DevOps
+# incident runbooks ("in an emergency, page on-call") that have nothing to do
+# with mental-health risk.
 _CRISIS_KEYWORDS_RE = re.compile(
-    r"\b(?:suicide|self[- ]harm|crisis|emergency|overdose|harm\s+(?:myself|yourself))\b",
+    r"\bsuicid\w*|\bself[- ]harm|\boverdose|\bharm\s+(?:myself|yourself)|"
+    r"\bkill\s+(?:myself|yourself)|\bend\s+(?:my|your)\s+life\b",
     re.IGNORECASE,
 )
 _CRISIS_RESPONSE_RE = re.compile(
@@ -168,16 +185,24 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             )
         )
 
-    if _HEALTHCARE_CONTEXT_RE.search(scan_body) and not _AI_DISCLOSURE_RE.search(scan_body):
+    if (
+        _HEALTHCARE_CONTEXT_RE.search(scan_body)
+        and _AGENT_SURFACE_RE.search(scan_body)
+        and not _AI_DISCLOSURE_RE.search(scan_body)
+    ):
         findings.append(
             make_finding(
                 "AAK-HEALTHCARE-AI-004",
                 rel,
-                "Healthcare context without explicit AI-disclosure string",
+                "Conversational healthcare agent surface without explicit AI-disclosure string",
             )
         )
 
-    if _CRISIS_KEYWORDS_RE.search(scan_body) and not _CRISIS_RESPONSE_RE.search(scan_body):
+    if (
+        _CRISIS_KEYWORDS_RE.search(scan_body)
+        and _AGENT_SURFACE_RE.search(scan_body)
+        and not _CRISIS_RESPONSE_RE.search(scan_body)
+    ):
         crisis_match = _CRISIS_KEYWORDS_RE.search(scan_body)
         findings.append(
             make_finding(

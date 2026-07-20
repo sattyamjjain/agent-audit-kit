@@ -210,8 +210,15 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
                         return True
             return False
 
-        if is_subprocess and not shell_true and not _args_reference_taint():
-            continue
+        # An argv-list `subprocess.*(["cmd", arg], shell=False)` is the SAFE
+        # form: the elements are handed to execve() directly, so a tainted
+        # element is an argument, not a shell-injection vector. Only
+        # shell=True (or a string / dynamic command expression) is the
+        # AAK-STDIO-001 sink. Skip argv-list calls that aren't shell=True.
+        if is_subprocess and not shell_true:
+            first_arg = call.args[0] if call.args else None
+            if isinstance(first_arg, (ast.List, ast.Tuple)):
+                continue
         if not _args_reference_taint():
             continue
 

@@ -49,3 +49,30 @@ def test_constant_command_passes(tmp_path: Path) -> None:
     )
     findings, _ = scan(tmp_path)
     assert not any(f.rule_id == "AAK-MCP-STDIO-CMD-INJ-001" for f in findings)
+
+
+def test_constant_command_with_config_arg_passes(tmp_path: Path) -> None:
+    """FP guard: a builder function with a generic `config`/`data` arg but a
+    constant command/args must not fire — the old heuristic flagged any
+    StdioServerParameters(...) inside a function with such an arg name."""
+    (tmp_path / "builder.py").write_text(
+        "from mcp.client.stdio import StdioServerParameters\n"
+        "def make_server(config, data):\n"
+        "    return StdioServerParameters(command='python', args=['-m', 'server'])\n",
+        encoding="utf-8",
+    )
+    findings, _ = scan(tmp_path)
+    assert not any(f.rule_id == "AAK-MCP-STDIO-CMD-INJ-001" for f in findings)
+
+
+def test_config_indexed_command_without_taint_passes(tmp_path: Path) -> None:
+    """A command pulled from a trusted config object (not a request/env/json
+    source and not a suspicious param) must not fire."""
+    (tmp_path / "b.py").write_text(
+        "from mcp.client.stdio import StdioServerParameters\n"
+        "def make_server(config):\n"
+        "    return StdioServerParameters(command=config['bin'], args=[])\n",
+        encoding="utf-8",
+    )
+    findings, _ = scan(tmp_path)
+    assert not any(f.rule_id == "AAK-MCP-STDIO-CMD-INJ-001" for f in findings)

@@ -60,3 +60,34 @@ def test_rule_metadata_has_cve_and_owasp() -> None:
     assert "MCP01:2025" in rule.owasp_mcp_references
     assert "ASI02" in rule.owasp_agentic_references
     assert rule.severity.value == "critical"
+
+
+def test_argv_list_subprocess_no_shell_is_quiet(tmp_path: Path) -> None:
+    """FP guard: `subprocess.run(["cmd", tainted])` with shell=False is the
+    SAFE argv form — a tainted element is an argument, not shell injection."""
+    (tmp_path / "server.py").write_text(
+        "from mcp.server import FastMCP\n"
+        "import subprocess\n"
+        "@tool\n"
+        "def run_git(args):\n"
+        "    return subprocess.run(['git', 'log', args], capture_output=True)\n",
+        encoding="utf-8",
+    )
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-STDIO-001" for f in findings), (
+        "argv-list subprocess (shell=False) must not fire AAK-STDIO-001"
+    )
+
+
+def test_string_command_shell_true_still_fires(tmp_path: Path) -> None:
+    """Contrast: shell=True with a tainted string command IS the sink."""
+    (tmp_path / "server.py").write_text(
+        "from mcp.server import FastMCP\n"
+        "import subprocess\n"
+        "@tool\n"
+        "def run_git(args):\n"
+        "    return subprocess.run(f'git log {args}', shell=True)\n",
+        encoding="utf-8",
+    )
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert any(f.rule_id == "AAK-STDIO-001" for f in findings)

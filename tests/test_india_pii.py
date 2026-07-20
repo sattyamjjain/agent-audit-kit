@@ -56,3 +56,22 @@ def test_verhoeff_false_aadhaar_not_flagged(tmp_path: Path) -> None:
     (tmp_path / "d.txt").write_text("aadhaar: 234567897437")
     findings, _ = india_pii.scan(tmp_path)
     assert not any(f.rule_id == "AAK-INDIA-PII-001" for f in findings)
+
+
+def test_bare_12_digit_id_without_context_not_flagged(tmp_path: Path) -> None:
+    """FP guard: a bare 12-digit numeric id that coincidentally passes the
+    Verhoeff checksum, with no Aadhaar/UID cue nearby, must not fire 001."""
+    n = next(c for c in range(200000000000, 200000000300) if india_pii._verhoeff_check(str(c)))
+    (tmp_path / "config.py").write_text(f"REQUEST_ID = {n}\nMAX_ROWS = {n}\n", encoding="utf-8")
+    findings, _ = india_pii.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-INDIA-PII-001" for f in findings), (
+        f"bare verhoeff-valid id {n} without aadhaar context must not fire"
+    )
+
+
+def test_bare_12_digit_with_aadhaar_context_fires(tmp_path: Path) -> None:
+    """The same bare number labeled `aadhaar` must fire."""
+    n = next(c for c in range(200000000000, 200000000300) if india_pii._verhoeff_check(str(c)))
+    (tmp_path / "d.py").write_text(f"aadhaar_number = {n}\n", encoding="utf-8")
+    findings, _ = india_pii.scan(tmp_path)
+    assert any(f.rule_id == "AAK-INDIA-PII-001" for f in findings)

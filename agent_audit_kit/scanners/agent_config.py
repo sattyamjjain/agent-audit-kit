@@ -19,14 +19,20 @@ _AGENT_CONFIG_FILES: list[str] = [
 ]
 
 # ---- AAK-AGENT-001: Shell command directives ----
+# NOTE: no bare `` `...` `` inline-code arm — it matched *every* backtick span
+# in an agent-instruction file (`` `cargo build` ``, `` `make` ``, `` `npx tsc` ``),
+# producing dozens of false positives per CLAUDE.md. A genuinely dangerous
+# backtick-wrapped command (`` `rm -rf /` ``, `` `sh -c ...` ``) still matches
+# through the specific arms below. The `curl|wget ... | sh` arm preserves
+# detection of pipe-to-shell that the catch-all used to cover.
 _SHELL_DIRECTIVE_RE = re.compile(
-    r"sh\s+-c\s|bash\s+-c\s|"
-    r"`[^`]+`|"
+    r"\bsh\s+-c\s|\bbash\s+-c\s|"
     r"\bos\.system\s*\(|"
     r"\bsubprocess\b|"
     r"\bexec\s*\(|"
     r"\beval\s*\(|"
-    r"\brm\s+-rf\b",
+    r"\brm\s+-rf\b|"
+    r"(?:curl|wget)\b[^\n`]*\|\s*(?:sh|bash|zsh)\b",
     re.IGNORECASE,
 )
 

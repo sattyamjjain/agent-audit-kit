@@ -182,3 +182,55 @@ def test_tasks_safe_is_quieter(tmp_path: Path) -> None:
     # Safe fixture must not fire owner-miss (001) or zeroize-miss (002).
     assert "AAK-TASKS-001" not in ids
     assert "AAK-TASKS-002" not in ids
+
+
+# ---------------------------------------------------------------------------
+# FP guards (P2 rule-scoping precision)
+# ---------------------------------------------------------------------------
+
+
+def test_react_hook_not_flagged_as_claude_hook(tmp_path: Path) -> None:
+    """FP guard: a React hook under `src/hooks/` with a `` `${event}` ``
+    template literal is not a Claude Code hook — Claude hooks live under
+    `.claude/`, and a pure UI helper has no shell-exec sink."""
+    hooks_dir = tmp_path / "src" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "use-audit.ts").write_text(
+        "import { useState } from 'react';\n"
+        "export function useAudit(event: string) {\n"
+        "  const [log] = useState(`audit:${event}`);\n"
+        "  return log;\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    findings, _ = hook_rce.scan(tmp_path)
+    assert not any(f.rule_id.startswith("AAK-HOOK-RCE") for f in findings)
+
+
+def test_claude_hook_script_with_exec_sink_still_fires(tmp_path: Path) -> None:
+    """A real Claude hook script under `.claude/hooks/` that interpolates
+    input into an exec sink must still fire."""
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "deploy.ts").write_text(
+        "import { execSync } from 'child_process';\n"
+        "export function run(event: any) { execSync(`deploy ${event.input}`); }\n",
+        encoding="utf-8",
+    )
+    findings, _ = hook_rce.scan(tmp_path)
+    assert any(f.rule_id == "AAK-HOOK-RCE-001" for f in findings)
+
+
+def test_generic_task_id_module_not_flagged(tmp_path: Path) -> None:
+    """FP guard: a job-queue/Celery worker that merely mentions `task_id`
+    (no task class, store, or SEP-1686 primitive) must not fire TASKS-002/003."""
+    (tmp_path / "worker.py").write_text(
+        "def process(task_id: str) -> str:\n"
+        "    log(f'task {task_id} failed')\n"
+        "    return task_id\n",
+        encoding="utf-8",
+    )
+    findings, _ = mcp_tasks.scan(tmp_path)
+    ids = {f.rule_id for f in findings}
+    assert "AAK-TASKS-002" not in ids
+    assert "AAK-TASKS-003" not in ids

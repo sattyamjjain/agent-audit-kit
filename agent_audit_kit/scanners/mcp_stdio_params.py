@@ -88,11 +88,92 @@ def _is_stdio_server_params_call(call: ast.Call) -> bool:
     return chain.split(".")[-1] == "StdioServerParameters"
 
 
-def _function_text(text: str, func: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-    lines = text.splitlines()
-    start = max(0, func.lineno - 1)
-    end = min(len(lines), (func.end_lineno or func.lineno))
-    return "\n".join(lines[start:end])
+# Function parameters whose *name* strongly implies untrusted, network-shaped
+# input. Deliberately excludes generic names like `config`/`data` (a config
+# object is normally trusted) so we don't fire on every builder function.
+_SUSPICIOUS_PARAMS = frozenset(
+    {"body", "payload", "req", "request", "event", "untrusted", "user_input"}
+)
+
+
+def _is_static(node: ast.AST) -> bool:
+    """True if the expression is a compile-time-constant literal."""
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        return all(_is_static(e) for e in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(
+            (k is None or _is_static(k)) and _is_static(v)
+            for k, v in zip(node.keys, node.values)
+        )
+    return False
+
+
+def _names_in(node: ast.AST) -> set[str]:
+    return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+
+
+def _unparse(node: ast.AST) -> str:
+    try:
+        return ast.unparse(node)
+    except Exception:  # pragma: no cover - unparse is available on 3.9+
+        return ""
+
+
+def _command_arg_exprs(call: ast.Call) -> list[ast.expr]:
+    """The `command=` / `args=` expressions of a StdioServerParameters call.
+
+    Positionally, StdioServerParameters(command, args, env, ...) — so arg 0 is
+    command and arg 1 is args.
+    """
+    exprs: list[ast.expr] = []
+    kw = {k.arg: k.value for k in call.keywords if k.arg}
+    if "command" in kw:
+        exprs.append(kw["command"])
+    elif call.args:
+        exprs.append(call.args[0])
+    if "args" in kw:
+        exprs.append(kw["args"])
+    elif len(call.args) > 1:
+        exprs.append(call.args[1])
+    return exprs
+
+
+def _taint_flows_to_command(
+    call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
+) -> bool:
+    """True only when the `command`/`args` fed to StdioServerParameters is a
+    dynamic value that traces back to a network-controlled source — a real
+    source→sink path, not merely 'a taint marker appears somewhere in the
+    function'. Constant command/args (allow-lists, literals) never fire."""
+    exprs = _command_arg_exprs(call)
+    if not exprs or all(_is_static(e) for e in exprs):
+        return False
+
+    referenced: set[str] = set()
+    for expr in exprs:
+        if _PY_TAINT_MODULES_RE.search(_unparse(expr)):
+            return True  # e.g. command=request.json()["cmd"] / os.environ[...]
+        referenced |= _names_in(expr)
+
+    # A referenced name that is a suspicious *parameter* of this function.
+    params = {a.arg for a in func.args.args}
+    params |= {a.arg for a in func.args.posonlyargs}
+    params |= {a.arg for a in func.args.kwonlyargs}
+    if referenced & (params & _SUSPICIOUS_PARAMS):
+        return True
+
+    # A referenced name that is locally assigned from a taint expression
+    # (`cmd = os.environ[...]` / `body = await request.json()`).
+    for stmt in ast.walk(func):
+        if isinstance(stmt, ast.Assign):
+            targets: set[str] = set()
+            for tgt in stmt.targets:
+                targets |= _names_in(tgt)
+            if targets & referenced and _PY_TAINT_MODULES_RE.search(_unparse(stmt.value)):
+                return True
+    return False
 
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
@@ -119,17 +200,13 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             for call in calls:
                 if not _is_stdio_server_params_call(call):
                     continue
-                # We have StdioServerParameters(command=X, args=Y).
-                # Heuristic: fire if any taint marker appears anywhere
-                # in the enclosing function above the call site.
-                func_src = _function_text(text, func)
-                if not _PY_TAINT_MODULES_RE.search(func_src):
-                    # Also accept a cross-frame hint: function arg
-                    # named like `body` / `payload` / `req` / `event`.
-                    arg_names = {a.arg for a in func.args.args}
-                    suspicious = arg_names & {"body", "payload", "req", "request", "event", "data", "config"}
-                    if not suspicious:
-                        continue
+                # We have StdioServerParameters(command=X, args=Y). Fire only
+                # when a network-controlled value actually flows into the
+                # command/args sink — not merely because a taint marker or a
+                # generically-named arg (`config`, `data`) exists somewhere in
+                # the function. Constant command/args never fire.
+                if not _taint_flows_to_command(call, func):
+                    continue
                 rel = str(path.relative_to(project_root))
                 scanned.add(rel)
                 findings.append(make_finding(

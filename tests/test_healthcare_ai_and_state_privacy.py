@@ -147,3 +147,45 @@ def test_report_cli_accepts_new_frameworks(tmp_path: Path) -> None:
             ["report", str(tmp_path), "--framework", fw, "--format", "text", "--output", str(out)],
         )
         assert r.exit_code == 0, (fw, r.output)
+
+
+# ---------------------------------------------------------------------------
+# FP guards (P2 rule-scoping precision)
+# ---------------------------------------------------------------------------
+
+
+def test_devops_runbook_does_not_fire_crisis_rule(tmp_path: Path) -> None:
+    """FP guard: an ops incident runbook using 'emergency'/'crisis' is not a
+    mental-health self-harm surface — must not fire AAK-HEALTHCARE-AI-005."""
+    (tmp_path / "RUNBOOK.md").write_text(
+        "# Incident Response\n"
+        "In an emergency or crisis, page the on-call engineer and escalate to "
+        "the incident commander. Critical severity pages immediately.\n",
+        encoding="utf-8",
+    )
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-HEALTHCARE-AI-005" for f in findings)
+
+
+def test_clinical_dataset_readme_does_not_fire_disclosure_rule(tmp_path: Path) -> None:
+    """FP guard: a data dictionary describing clinical columns is not a
+    conversational agent surface — must not fire AAK-HEALTHCARE-AI-004."""
+    (tmp_path / "DATA.md").write_text(
+        "# Dataset schema\n"
+        "Columns: patient_id, diagnosis_code, medication, treatment_plan, symptom_onset.\n",
+        encoding="utf-8",
+    )
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-HEALTHCARE-AI-004" for f in findings)
+
+
+def test_therapy_chatbot_suicide_without_escalation_fires(tmp_path: Path) -> None:
+    """A conversational healthcare agent that references suicide but has no
+    988/911 escalation must still fire AAK-HEALTHCARE-AI-005."""
+    (tmp_path / "SKILL.md").write_text(
+        "You are a wellness assistant. If the user mentions suicide, keep the "
+        "conversation going empathetically.\n",
+        encoding="utf-8",
+    )
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert any(f.rule_id == "AAK-HEALTHCARE-AI-005" for f in findings)
