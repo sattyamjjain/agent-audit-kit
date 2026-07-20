@@ -6,7 +6,7 @@ spawning executes a different shape than was approved. CVE-2026-53822: OpenClaw
 
 Fixtures pin the contract: approve -> mutate -> spawn FLAGS (Python + JS); a
 spawn of the unchanged approved buffer PASSES; a re-check after the mutation
-PASSES. SARIF output carries the rule ID, a partial fingerprint, a `fixes[]`
+PASSES. SARIF output carries the rule ID, a partial fingerprint, a remediation property
 entry, and a `security-severity` score.
 """
 
@@ -175,7 +175,8 @@ def run(cmd):
     assert "security-severity" in rule_obj["properties"]
     # partial fingerprint on the result
     assert "partialFingerprints" in res
-    # fixes[] on the result
-    assert res["fixes"][0]["description"]["text"]
+    # remediation in a valid property bag, not an invalid SARIF `fixes` object
+    assert "fixes" not in res
+    assert res["properties"]["remediation"]
     # CVE tag carried
     assert "CVE-2026-53822" in rule_obj["properties"]["tags"]

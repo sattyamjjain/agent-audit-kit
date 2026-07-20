@@ -24,7 +24,7 @@ inputs:
     required: false
     default: 'sarif'
   upload-sarif:
-    description: 'Upload SARIF results to GitHub Code Scanning'
+    description: 'Emit SARIF for GitHub Code Scanning. NOTE: this action does not upload directly — it writes the SARIF (see the `sarif-file` output) and prints a notice; you add a `github/codeql-action/upload-sarif` step with `security-events: write`. See README > SARIF Integration.'
     required: false
     default: 'true'
   include-user-config:

@@ -201,8 +201,9 @@ def load_session(request):
     assert float(rule_obj["properties"]["security-severity"]) >= 9.0
     # partial fingerprint on the result
     assert "partialFingerprints" in res
-    # fix / remediation carried
-    assert res["fixes"][0]["description"]["text"]
+    # remediation carried in a valid property bag, not an invalid SARIF `fixes`
+    assert "fixes" not in res
+    assert res["properties"]["remediation"]
     assert "resolve" in rule_obj["help"]["text"].lower()
     # CVE tag carried
     assert "CVE-2026-52830" in rule_obj["properties"]["tags"]

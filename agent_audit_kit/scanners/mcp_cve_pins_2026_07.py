@@ -47,7 +47,11 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
-from agent_audit_kit.scanners.supply_chain import _semver3
+from agent_audit_kit.scanners.supply_chain import (
+    _LOCKFILES,
+    _resolve_lockfile_version,
+    _semver3,
+)
 
 _Ver = tuple[int, int, int]
 
@@ -204,8 +208,24 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         except OSError:
             continue
         rel = str(path.relative_to(project_root))
+        is_lockfile = path.name.lower() in _LOCKFILES
         matched_here = False
         for pin in _PINS:
+            if is_lockfile:
+                # Resolve the actual locked version; fire ONLY when it is below
+                # the fix floor. Absent / unparseable → no finding, so a correct
+                # upgrade + re-lock clears the rule instead of forcing suppression.
+                resolved = _resolve_lockfile_version(text, path.name.lower(), pin.names)
+                if resolved is not None and _fires(pin, resolved):
+                    shown = ".".join(str(x) for x in resolved)
+                    findings.append(make_finding(
+                        pin.rule_id,
+                        rel,
+                        f"{pin.display} resolves to {shown} in {path.name} — fixed "
+                        f"in {pin.fix_label}; upgrade and re-lock.",
+                    ))
+                    matched_here = True
+                continue
             for rx in pin.compiled():
                 m = rx.search(text)
                 if not m:

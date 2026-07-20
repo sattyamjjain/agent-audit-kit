@@ -59,6 +59,15 @@ def _validate_sarif(doc: dict) -> None:
         assert "level" in result
         assert "message" in result
         assert isinstance(result.get("locations"), list)
+        # A SARIF `fixes[].fix` REQUIRES `artifactChanges` (it describes a
+        # machine-applicable patch). Emitting a fix with only `description`
+        # makes GitHub's codeql-action/upload-sarif reject the whole file —
+        # the exact P0 that this assertion now guards against.
+        for fix in result.get("fixes", []):
+            assert fix.get("artifactChanges"), (
+                "SARIF fix without artifactChanges — codeql-action/upload-sarif "
+                "would reject this file"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -141,3 +150,50 @@ def test_action_yml_declares_fingerprint_strategy_input() -> None:
     assert "fingerprint-strategy:" in text
     # One of the accepted default values is 'auto'.
     assert "default: 'auto'" in text
+
+
+# ---------------------------------------------------------------------------
+# P0 regression: remediation must not emit an invalid SARIF `fixes` object.
+# ---------------------------------------------------------------------------
+
+
+def test_remediation_emits_valid_sarif_not_invalid_fixes() -> None:
+    """A finding with remediation must produce SARIF that codeql-action accepts.
+
+    The prior bug emitted `fixes: [{description: ...}]` with no `artifactChanges`,
+    which invalidates every result and makes upload-sarif reject the whole file.
+    Remediation must instead surface via the rule-level help and/or a valid
+    property bag.
+    """
+    result = ScanResult(rules_evaluated=1, files_scanned=1, scan_duration_ms=1.0)
+    result.findings.append(_finding())  # _finding() carries remediation="fix"
+    doc = json.loads(format_results(result))
+
+    _validate_sarif(doc)  # now enforces fixes-require-artifactChanges
+
+    sarif_results = doc["runs"][0]["results"]
+    assert sarif_results
+    for r in sarif_results:
+        # No `fixes` at all (the valid choice), or — if a future change adds one —
+        # _validate_sarif above guarantees it carries artifactChanges.
+        assert "fixes" not in r, "results must not emit a prose-only SARIF fix"
+        assert r["properties"]["remediation"] == "fix"
+
+    # Remediation is still discoverable at the rule level (help/helpMarkdown).
+    rule = doc["runs"][0]["tool"]["driver"]["rules"][0]
+    help_blob = json.dumps(rule.get("help", {}))
+    assert "fix" in help_blob.lower() or "remediation" in help_blob.lower()
+
+
+def test_action_documents_external_sarif_upload_not_silent_noop() -> None:
+    """The action emits SARIF; it must say so (not claim a direct upload) and
+    point at github/codeql-action/upload-sarif — regression guard for the
+    silent-no-op bug."""
+    repo = Path(__file__).resolve().parent.parent
+    action = (repo / "action.yml").read_text(encoding="utf-8")
+    readme = (repo / "README.md").read_text(encoding="utf-8")
+    entry = (repo / "entrypoint.sh").read_text(encoding="utf-8")
+    assert "does not upload directly" in action
+    assert "github/codeql-action/upload-sarif" in readme
+    # entrypoint warns loudly instead of silently skipping.
+    assert "does NOT upload to Code Scanning" in entry

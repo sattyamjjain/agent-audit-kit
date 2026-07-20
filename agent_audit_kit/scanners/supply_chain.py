@@ -502,6 +502,78 @@ def _semver3(spec: str) -> tuple[int, int, int] | None:
     return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
 
 
+# Lockfiles pin a *resolved* graph — the package name and its version are not
+# adjacent, so a manifest regex reads them as "unpinned" and a version-pin rule
+# fires even after a correct upgrade. Resolve the actual locked version so the
+# fix the rule recommends can actually clear it (otherwise users suppress the
+# CVE rule and go future-blind).
+_LOCKFILES = frozenset({
+    "uv.lock", "poetry.lock", "pipfile.lock",
+    "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
+})
+
+
+def _resolve_lockfile_version(
+    text: str, filename: str, names: tuple[str, ...]
+) -> tuple[int, int, int] | None:
+    """Lowest resolved version of any of ``names`` in a lockfile, or None if the
+    package is absent / unparseable (conservative — a `None` result means the
+    pin does not fire on this lockfile)."""
+    lower = {n.lower() for n in names}
+    found: list[str] = []
+
+    if filename in ("uv.lock", "poetry.lock"):
+        for block in re.split(r"(?=^\[\[package\]\])", text, flags=re.MULTILINE):
+            nm = re.search(r'^\s*name\s*=\s*["\']([^"\']+)["\']', block, re.MULTILINE)
+            if nm and nm.group(1).lower() in lower:
+                vm = re.search(r'^\s*version\s*=\s*["\']([0-9][\w.\-]*)', block, re.MULTILINE)
+                if vm:
+                    found.append(vm.group(1))
+    elif filename == "pipfile.lock":
+        try:
+            data = json.loads(text)
+        except ValueError:
+            data = {}
+        for section in ("default", "develop"):
+            for pkg, meta in (data.get(section) or {}).items():
+                if pkg.lower() in lower and isinstance(meta, dict):
+                    v = str(meta.get("version", "")).lstrip("=")
+                    if v:
+                        found.append(v)
+    elif filename == "package-lock.json":
+        try:
+            data = json.loads(text)
+        except ValueError:
+            data = {}
+        for key, meta in (data.get("packages") or {}).items():
+            pkg = key.rsplit("node_modules/", 1)[-1]
+            if pkg.lower() in lower and isinstance(meta, dict) and meta.get("version"):
+                found.append(str(meta["version"]))
+
+        def _walk(deps: object) -> None:
+            if not isinstance(deps, dict):
+                return
+            for pkg, meta in deps.items():
+                if pkg.lower() in lower and isinstance(meta, dict) and meta.get("version"):
+                    found.append(str(meta["version"]))
+                if isinstance(meta, dict):
+                    _walk(meta.get("dependencies"))
+
+        _walk(data.get("dependencies"))
+    elif filename == "pnpm-lock.yaml":
+        for token in lower:
+            for m in re.finditer(re.escape(token) + r"@([0-9][\w.\-]*)", text, re.IGNORECASE):
+                found.append(m.group(1))
+    elif filename == "yarn.lock":
+        for token in lower:
+            pat = r'^"?' + re.escape(token) + r'@[^\n]*\n(?:\s+[^\n]*\n)*?\s+version\s+"([0-9][\w.\-]*)"'
+            for m in re.finditer(pat, text, re.IGNORECASE | re.MULTILINE):
+                found.append(m.group(1))
+
+    parsed = [v for v in (_semver3(x) for x in found) if v]
+    return min(parsed) if parsed else None
+
+
 def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
     findings: list[Finding] = []
 
@@ -703,13 +775,23 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        rel = str(path.relative_to(project_root))
+        if path.name.lower() in _LOCKFILES:
+            # Resolve the locked version; fire only when it is below the fix
+            # floor, so a correct upgrade + re-lock clears the finding.
+            resolved = _resolve_lockfile_version(
+                text, path.name.lower(), ("serena-agent", "serena-mcp-server")
+            )
+            if resolved is not None and resolved < _SERENA_PATCHED:
+                scanned_files.add(rel)
+                _fire(rel, ".".join(str(x) for x in resolved))
+            continue
         m = _SERENA_RE.search(text)
         if not m:
             continue
         raw = m.group(1)
         version = _semver3(raw) if raw else None
         if version is None or version < _SERENA_PATCHED:
-            rel = str(path.relative_to(project_root))
             scanned_files.add(rel)
             _fire(rel, raw)
     return findings

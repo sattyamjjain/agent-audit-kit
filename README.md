@@ -67,12 +67,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.53
+      - uses: sattyamjjain/agent-audit-kit@v0.3.54
+        id: scan
         with:
           fail-on: high
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()   # upload even if the scan failed the build
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarif-file }}
 ```
 
-Findings appear as **inline PR annotations** in the GitHub Security tab via SARIF.
+The scan step emits SARIF; the `upload-sarif` step publishes it, so findings
+appear as **inline PR annotations** and in the **Security tab**. See
+[SARIF Integration](#sarif-integration).
 
 ### CLI
 
@@ -87,7 +94,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.53
+    rev: v0.3.54
     hooks:
       - id: agent-audit-kit
 ```
@@ -261,12 +268,34 @@ CLI flags always take precedence over config file values.
 
 ## SARIF Integration
 
-With `upload-sarif: true` (default), findings appear:
-- As **inline annotations** on PR diffs showing exactly which line has the issue
-- In the **Security tab** under Code Scanning with full remediation guidance
-- With **OWASP references** and **CVE links** for each finding
+This action **emits** SARIF (the `sarif-file` output); it does **not** upload to
+Code Scanning itself. Add the canonical `github/codeql-action/upload-sarif` step
+so findings appear in the **Security tab** and as **inline PR annotations**:
 
-SARIF output conforms to [SARIF 2.1.0](https://json.schemastore.org/sarif-2.1.0.json) with `fingerprints`, `partialFingerprints`, `fixes[]`, `security-severity` scores, and `%SRCROOT%` relative paths.
+```yaml
+permissions:
+  security-events: write   # required for the upload
+  contents: read
+
+steps:
+  - uses: actions/checkout@v4
+  - uses: sattyamjjain/agent-audit-kit@v0.3.54
+    id: scan
+    with:
+      fail-on: high
+  - uses: github/codeql-action/upload-sarif@v3
+    if: always()           # upload even when the scan step failed the build
+    with:
+      sarif_file: ${{ steps.scan.outputs.sarif-file }}
+```
+
+SARIF output conforms to [SARIF 2.1.0](https://json.schemastore.org/sarif-2.1.0.json)
+with `fingerprints`, `partialFingerprints`, `security-severity` scores, and
+`%SRCROOT%` relative paths. Each finding carries **OWASP references** and **CVE
+links** via the rule-level `help`; per-finding remediation is in result
+`properties`. (No SARIF `fixes[]` — those require machine-applicable
+`artifactChanges`, so emitting prose there would make Code Scanning reject the
+upload.)
 
 ---
 

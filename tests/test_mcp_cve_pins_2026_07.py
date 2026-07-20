@@ -282,3 +282,34 @@ def test_openclaw_rule_cites_both_cves() -> None:
 def test_mcp_sdk_rule_cites_three_cves() -> None:
     rule = RULES["AAK-MCP-SDK-CVE-2026-52869-001"]
     assert set(rule.cve_references) == {"CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"}
+
+
+# --- Lockfiles resolve the actual version (no false-positive after a fix) ------
+
+
+def test_uv_lock_patched_version_clears(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "litellm"\nversion = "1.93.0"\n', encoding="utf-8"
+    )
+    assert "AAK-MCP-LITELLM-CVE-2026-59822-001" not in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+def test_uv_lock_vulnerable_version_fires(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "litellm"\nversion = "1.83.0"\n', encoding="utf-8"
+    )
+    assert "AAK-MCP-LITELLM-CVE-2026-59822-001" in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+def test_package_lock_patched_clears(tmp_path: Path) -> None:
+    (tmp_path / "package-lock.json").write_text(
+        '{"packages": {"node_modules/better-auth": {"version": "1.7.0"}}}', encoding="utf-8"
+    )
+    assert "AAK-MCP-BETTERAUTH-CVE-2026-53512-001" not in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+def test_lockfile_absent_package_does_not_fire(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "requests"\nversion = "2.31.0"\n', encoding="utf-8"
+    )
+    assert not {f.rule_id for f in scan(tmp_path)[0]}

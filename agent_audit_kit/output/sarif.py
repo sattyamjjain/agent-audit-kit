@@ -204,8 +204,14 @@ def _finding_to_result(
     if finding.evidence:
         result["message"]["text"] += f"\n\nEvidence: {finding.evidence}"
 
+    # NOTE: do NOT emit a SARIF `fixes` object here. A `fixes[].fix` requires
+    # `artifactChanges` (it describes a machine-applicable patch, not prose);
+    # emitting one with only `description` makes every result invalid and
+    # GitHub's codeql-action/upload-sarif rejects the whole file. The remediation
+    # prose is already surfaced via the rule-level `help`/`helpMarkdown`; the
+    # per-finding copy goes in a valid property bag.
     if finding.remediation:
-        result["fixes"] = [{"description": {"text": finding.remediation}}]
+        result.setdefault("properties", {})["remediation"] = finding.remediation
 
     return result
 

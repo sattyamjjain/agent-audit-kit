@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — P0/P1 integration bugs (SARIF upload, lockfile-aware pins)
+
+- **P0 — invalid SARIF `fixes[]` broke `codeql-action/upload-sarif`.** Every
+  result emitted a `fixes` object with only `description` and no
+  `artifactChanges` (required for a machine-applicable patch), so GitHub rejected
+  the whole file. Removed it — the remediation is already in the rule-level
+  `help`/`helpMarkdown`; the per-finding copy now goes in a valid `properties`
+  bag. The SARIF regression test now enforces the `fixes`-require-`artifactChanges`
+  invariant, so this can't recur silently.
+- **P0/P1 — the Docker action's SARIF upload was a silent no-op.** `upload-sarif`
+  was defined but never used; the action only emits the SARIF (`sarif-file`
+  output). It now prints a loud notice and the README/Quick Start document the
+  canonical `github/codeql-action/upload-sarif` step (with `security-events:
+  write`) instead of implying the action uploads.
+- **P1 — version-pin CVE rules were false-positive-after-fix on lockfiles.**
+  `mcp_cve_pins_2026_07` and `supply_chain`'s Serena pin fired on a lockfile
+  reference without parsing the resolved version, so a correct upgrade couldn't
+  clear the finding (forcing users to suppress the CVE rule). Added a shared
+  lockfile resolver (uv.lock, poetry.lock, Pipfile.lock, package-lock.json,
+  pnpm-lock.yaml, yarn.lock) — pins now fire only when the resolved version is
+  below the fix floor.
+
+No rule changes (still 262). Version 0.3.53 → 0.3.54.
+
 ### Added — benign-slice false-positive benchmark (`benchmarks/false_positive/`)
 
 - A reproducible, offline, deterministic harness that measures and publishes

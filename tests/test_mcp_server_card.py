@@ -127,6 +127,9 @@ def test_sarif_carries_fingerprint_and_fix(tmp_path: Path) -> None:
     run = sarif["runs"][0]
     res = next(r for r in run["results"] if r["ruleId"] == "AAK-MCP-CARD-001")
     assert "partialFingerprints" in res
-    assert res["fixes"][0]["description"]["text"]
+    # Remediation is in a valid property bag, NOT an invalid SARIF `fixes` object
+    # (a fix requires artifactChanges; prose-only fixes make codeql reject upload).
+    assert "fixes" not in res
+    assert res["properties"]["remediation"]
     rule_obj = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "AAK-MCP-CARD-001")
     assert "security-severity" in rule_obj["properties"]

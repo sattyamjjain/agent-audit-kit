@@ -154,10 +154,20 @@ if [ -n "${GITHUB_OUTPUT:-}" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Copy SARIF to GITHUB_WORKSPACE for upload step
+# Copy SARIF to GITHUB_WORKSPACE for the upload step.
+#
+# This action EMITS SARIF (the `sarif-file` output); it does not upload to Code
+# Scanning itself — that needs the canonical github/codeql-action/upload-sarif
+# step plus `security-events: write`, which a Docker action can't do cleanly.
+# If the caller set upload-sarif=true and expects an upload, say so LOUDLY
+# instead of silently doing nothing.
 # ---------------------------------------------------------------------------
 if [ -f "${SARIF_FILE}" ] && [ -n "${GITHUB_WORKSPACE:-}" ]; then
     cp "${SARIF_FILE}" "${GITHUB_WORKSPACE}/${SARIF_FILE}" 2>/dev/null || true
+fi
+
+if [ "${INPUT_UPLOAD_SARIF}" = "true" ] && [ "${INPUT_FORMAT}" = "sarif" ]; then
+    echo "::notice title=AgentAuditKit SARIF::SARIF written to '${SARIF_FILE}' (output: sarif-file). This action does NOT upload to Code Scanning; add a 'github/codeql-action/upload-sarif' step with sarif_file: \${{ steps.<id>.outputs.sarif-file }} and 'permissions: security-events: write'. See README > SARIF Integration."
 fi
 
 # ---------------------------------------------------------------------------
