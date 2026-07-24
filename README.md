@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.58
+      - uses: sattyamjjain/agent-audit-kit@v0.3.59
         id: scan
         with:
           fail-on: high
@@ -95,7 +95,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.58
+    rev: v0.3.59
     hooks:
       - id: agent-audit-kit
 ```
@@ -280,7 +280,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.58
+  - uses: sattyamjjain/agent-audit-kit@v0.3.59
     id: scan
     with:
       fail-on: high
@@ -334,6 +334,25 @@ cannot drift (CI regenerates and fails on staleness, `scripts/gen_coverage.py`):
 
 - **[OWASP Agentic Top 10 → AAK rules](docs/coverage/owasp-agentic-top10.md)**
 - **[OWASP MCP Top 10 → AAK rules](docs/coverage/owasp-mcp-top10.md)**
+
+### Coverage, mapped to frameworks
+
+One command emits the full per-rule crosswalk — every rule's `id`, `title`,
+`severity`, the **CVE(s)** it covers, and its **OWASP MCP Top-10**, **OWASP
+Agentic Top-10 (2026)**, **NSA MCP Security CSI** (U/OO/6030316-26), and **EU AI
+Act** article — grouped and counted by framework, straight from the rule
+registry (no hand-typed numbers):
+
+```bash
+agent-audit-kit --emit-coverage --format json   # machine-readable (== docs/coverage.json)
+agent-audit-kit --emit-coverage --format md      # human table
+```
+
+- **Machine-readable:** [`docs/coverage.json`](docs/coverage.json) — per-rule rows
+  + framework roll-ups + reserved slots for the 2026-07-28 MCP-final surfaces.
+- **Human report seed:** [`docs/STATE-OF-MCP-SECURITY-2026.md`](docs/STATE-OF-MCP-SECURITY-2026.md)
+  — the coverage table plus the "we scanned N public MCP servers, here's what
+  breaks" corpus section.
 
 Coverage labels use a published threshold (**Full** = ≥3 rules, **Partial** =
 1–2, **None** = 0) — reproducible from the registry, not a self-scored grade.

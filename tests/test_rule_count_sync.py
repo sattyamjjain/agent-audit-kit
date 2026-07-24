@@ -21,6 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOC_TOTAL_ANCHOR_FILES = (
     "docs/comparison.md",
     "docs/comparison-gitlab-agentic-sast.md",
+    "docs/STATE-OF-MCP-SECURITY-2026.md",
 )
 _DOCS_RULES_MD = "docs/rules.md"
 

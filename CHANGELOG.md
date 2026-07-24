@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — coverage crosswalk asset (`--emit-coverage`) + State-of-MCP report seed
+
+Make the tool's coverage legible without adding any rules (still 270).
+
+- **`agent-audit-kit --emit-coverage [--format json|md]`** — walks the built-in
+  rule registry and emits, per rule: id, title, severity, the CVE(s) it covers,
+  its OWASP MCP Top-10 slot, OWASP Agentic Top-10 (2026) slot, NSA MCP Security
+  CSI control, and EU AI Act article — grouped and counted by framework. One
+  source of truth: `agent_audit_kit/output/coverage_map.py`, reusing the
+  committed compliance + OWASP mappings (nothing hand-typed; `total_rules` is
+  always `len(RULES)`). Byte-deterministic.
+- **Two artifacts:** [`docs/coverage.json`](docs/coverage.json) (machine-readable)
+  and [`docs/STATE-OF-MCP-SECURITY-2026.md`](docs/STATE-OF-MCP-SECURITY-2026.md)
+  (human report seed — coverage table + a stubbed "we scanned N public MCP
+  servers, here's what breaks" corpus section cross-linking the live data run).
+  README gains a "Coverage, mapped to frameworks" section.
+- **Reserved 2026-07-28 MCP-final crosswalk slots** (no rules invented): stateless
+  `_meta`-per-request and JSON-Schema-2020-12 tool schemas are **reserved**;
+  SEP-1865 MCP Apps and SEP-2663 Tasks are already **covered** by shipped rules.
+- **Count-drift guard:** the reported drift (74/221/225) did not exist — the count
+  is 270 across the README badge/anchors, `__init__.RULE_COUNT`, and the signed
+  bundle, enforced by `test_rule_count_is_canonical`. The report seed's rule count
+  is an auto-synced `<!-- rule-count:total -->` anchor, and `docs/coverage.json`
+  has a byte-staleness test — so the new artifacts can't drift either.
+- Version 0.3.58 → 0.3.59.
+
+### Fixed — CI: codeql-action version consistency + reproducible lint (#493)
+
+- Pinned all `github/codeql-action/*` steps to one version (v4.37.1) — Dependabot's
+  per-sub-action PRs left init/analyze at different versions, failing CodeQL with
+  a configuration error. Bumped `actions/cache` v5 → v6, grouped github-actions
+  Dependabot bumps into one PR (no more mismatch), and capped `ruff>=0.15,<0.16`
+  so the linter version is reproducible (0.16.0 flagged 281 pre-existing style
+  issues on fresh installs). Closed Dependabot PRs #398–#402.
+
+## [0.3.58] - 2026-07-23
+
 ### Added — 2026-07-22 CVE-response triage (269 → 270 rules)
 
 - `AAK-MCP-N8N-CVE-2026-65594-001` — n8n MCP Server Trigger OAuth workflow-authz

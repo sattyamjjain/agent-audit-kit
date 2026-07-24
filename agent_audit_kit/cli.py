@@ -114,8 +114,27 @@ def _apply_config_defaults(
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.version_option(version=__version__)
-def cli(ctx: click.Context) -> None:
+@click.option(
+    "--emit-coverage",
+    is_flag=True,
+    default=False,
+    help="Emit the per-rule framework coverage crosswalk (id, severity, CVEs, "
+         "OWASP MCP, OWASP Agentic, NSA MCP CSI, EU AI Act) and exit.",
+)
+@click.option(
+    "--format",
+    "coverage_format",
+    type=click.Choice(["json", "md"]),
+    default="md",
+    help="Output format for --emit-coverage (default: md).",
+)
+def cli(ctx: click.Context, emit_coverage: bool, coverage_format: str) -> None:
     """AgentAuditKit -- Security scanner for MCP-connected AI agent pipelines."""
+    if emit_coverage:
+        from agent_audit_kit.output.coverage_map import render_json, render_markdown
+
+        click.echo((render_json() if coverage_format == "json" else render_markdown()), nl=False)
+        ctx.exit(0)
     if ctx.invoked_subcommand is None:
         ctx.invoke(scan_cmd)
 

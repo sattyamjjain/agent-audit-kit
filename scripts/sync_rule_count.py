@@ -67,6 +67,7 @@ _INIT_CONSTANT_RE = re.compile(
 _TOTAL_ANCHOR_DOCS = (
     "docs/comparison.md",
     "docs/comparison-gitlab-agentic-sast.md",
+    "docs/STATE-OF-MCP-SECURITY-2026.md",
 )
 
 # docs/rules.md ships a per-category Summary table. It is regenerated wholesale
