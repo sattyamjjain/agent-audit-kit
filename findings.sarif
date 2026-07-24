@@ -1,0 +1,768 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "AgentAuditKit",
+          "version": "0.3.48",
+          "semanticVersion": "0.3.48",
+          "informationUri": "https://github.com/sattyamjjain/agent-audit-kit",
+          "rules": [
+            {
+              "id": "AAK-MCP-001",
+              "name": "RemoteMcpServerNoAuth",
+              "shortDescription": {
+                "text": "Remote MCP server without authentication"
+              },
+              "fullDescription": {
+                "text": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-001",
+              "help": {
+                "text": "Add OAuth 2.1 bearer token or API key header authentication.\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-AUTH-01",
+                "markdown": "**Remediation:** Add OAuth 2.1 bearer token or API key header authentication.\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-AUTH-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-AUTH-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-009",
+              "name": "McpLocalhostInternalUrl",
+              "shortDescription": {
+                "text": "MCP server URL points to localhost/internal network"
+              },
+              "fullDescription": {
+                "text": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern)."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-009",
+              "help": {
+                "text": "Ensure local MCP servers are intentional and document the trust assumption.\n\nReferences:\n- OWASP MCP Top 10: MCP09:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SSRF-01",
+                "markdown": "**Remediation:** Ensure local MCP servers are intentional and document the trust assumption.\n\n**References:**\n- OWASP MCP Top 10: MCP09:2025\n- OWASP Agentic: ASI02\n- Adversa: ADV-SSRF-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI02",
+                  "Adversa-ADV-SSRF-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-003",
+              "name": "McpEnvExposesSecrets",
+              "shortDescription": {
+                "text": "MCP server environment exposes secrets"
+              },
+              "fullDescription": {
+                "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-003",
+              "help": {
+                "text": "Use environment variable references or a secrets manager.\n\nReferences:\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-01",
+                "markdown": "**Remediation:** Use environment variable references or a secrets manager.\n\n**References:**\n- OWASP MCP Top 10: MCP01:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TOKEN-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TOKEN-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-005",
+              "name": "McpRuntimePackageFetch",
+              "shortDescription": {
+                "text": "MCP server uses npx/uvx to fetch and execute remote packages"
+              },
+              "fullDescription": {
+                "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-005",
+              "help": {
+                "text": "Pin exact package versions or use locally installed packages.\n\nReferences:\n- OWASP MCP Top 10: MCP03:2025\n- OWASP MCP Top 10: MCP10:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-01",
+                "markdown": "**Remediation:** Pin exact package versions or use locally installed packages.\n\n**References:**\n- OWASP MCP Top 10: MCP03:2025\n- OWASP MCP Top 10: MCP10:2025\n- OWASP Agentic: ASI04\n- Adversa: ADV-SUPPLY-01"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI04",
+                  "Adversa-ADV-SUPPLY-01"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-ATTEST-001",
+              "name": "McpServerUnattested",
+              "shortDescription": {
+                "text": "MCP server admitted without attestation"
+              },
+              "fullDescription": {
+                "text": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-ATTEST-001",
+              "help": {
+                "text": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors.\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- OWASP Agentic: ASI04",
+                "markdown": "**Remediation:** Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors.\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- OWASP Agentic: ASI04"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "mcp-config",
+                  "OWASP-Agentic-ASI03",
+                  "OWASP-Agentic-ASI04",
+                  "incident-arXiv:2605.24248"
+                ]
+              }
+            },
+            {
+              "id": "AAK-MCP-KONG-CVE-2026-13341-001",
+              "name": "KongKonnectMcpPromptInjection",
+              "shortDescription": {
+                "text": "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)"
+              },
+              "fullDescription": {
+                "text": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-MCP-KONG-CVE-2026-13341-001",
+              "help": {
+                "text": "Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. Treat every API/spec/resource body the server relays as untrusted data (never as instructions), and constrain the agent's Konnect/Admin API credentials to the least scope the workflow needs so an injected request cannot reach sensitive endpoints.\n\nReferences:\n- CVE-2026-13341\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI01\n- Adversa: ADV-INJECT-01",
+                "markdown": "**Remediation:** Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. Treat every API/spec/resource body the server relays as untrusted data (never as instructions), and constrain the agent's Konnect/Admin API credentials to the least scope the workflow needs so an injected request cannot reach sensitive endpoints.\n\n**References:**\n- CVE-2026-13341\n- OWASP MCP Top 10: MCP05:2025\n- OWASP Agentic: ASI01\n- Adversa: ADV-INJECT-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "tool-poisoning",
+                  "CVE-2026-13341",
+                  "OWASP-Agentic-ASI01",
+                  "Adversa-ADV-INJECT-01",
+                  "AICM-AIS-07",
+                  "AICM-AIS-12"
+                ]
+              }
+            },
+            {
+              "id": "AAK-TRANSPORT-001",
+              "name": "McpHttpNotHttps",
+              "shortDescription": {
+                "text": "MCP server uses HTTP instead of HTTPS"
+              },
+              "fullDescription": {
+                "text": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-TRANSPORT-001",
+              "help": {
+                "text": "Use HTTPS for all remote MCP server connections.\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TRANSPORT-01",
+                "markdown": "**Remediation:** Use HTTPS for all remote MCP server connections.\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI03\n- Adversa: ADV-TRANSPORT-01"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "security-severity": "9.5",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "transport-security",
+                  "OWASP-Agentic-ASI03",
+                  "Adversa-ADV-TRANSPORT-01",
+                  "AICM-CEK-08"
+                ]
+              }
+            },
+            {
+              "id": "AAK-TRANSPORT-003",
+              "name": "McpDeprecatedSse",
+              "shortDescription": {
+                "text": "Deprecated SSE transport in use"
+              },
+              "fullDescription": {
+                "text": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP."
+              },
+              "helpUri": "https://agent-audit-kit.dev/rules/AAK-TRANSPORT-003",
+              "help": {
+                "text": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).\n\nReferences:\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI08\n- Adversa: ADV-TRANSPORT-03",
+                "markdown": "**Remediation:** Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).\n\n**References:**\n- OWASP MCP Top 10: MCP07:2025\n- OWASP Agentic: ASI08\n- Adversa: ADV-TRANSPORT-03"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "security-severity": "5.0",
+                "precision": "high",
+                "tags": [
+                  "security",
+                  "transport-security",
+                  "OWASP-Agentic-ASI08",
+                  "Adversa-ADV-TRANSPORT-03",
+                  "AICM-CEK-08"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "agent-audit-kit/"
+      },
+      "results": [
+        {
+          "ruleId": "AAK-MCP-001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.\n\nEvidence: Server 'analytics' URL: http://mcp-analytics.example.com/v1/sse \u2014 no authentication headers"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "9.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "ed845d8b9257614dc10a8e01becc797379e96c3588921b3882e4a6c814b88d08"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d613e2077b66c123fc81336bcfdf8b77168598a9a456d70df64bdf32be1cb2f0"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add OAuth 2.1 bearer token or API key header authentication."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-001",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "An MCP server uses HTTP transport (url field) without any authentication headers. Unauthenticated remote servers can be MITM'd or spoofed.\n\nEvidence: Server 'internal-tools' URL: http://192.168.1.50:8080/mcp \u2014 no authentication headers"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "9.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "7d9398f0a19fcb0ee7d1d6c2b153e969093182a06ced4105e8db39a534a0e848"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f200fff487bd2f65ace30c4cfac82795fa146dcf4c5791e0488a139243ed3f92"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add OAuth 2.1 bearer token or API key header authentication."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-009",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).\n\nEvidence: Server 'internal-tools' URL: http://192.168.1.50:8080/mcp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "7.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "9bf3774700402ba5703120220b2fc5704771f06d5f8a5703f73aadcdce8402e4"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ab1ab175d9eebb8fe7edf08e39752671ae73dbfc713f1a30ce772a9c5da6614c"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Ensure local MCP servers are intentional and document the trust assumption."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-003",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.\n\nEvidence: Server 'db' env.DB_PASSWORD = (hardcoded value)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "7.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "5cebc7272d17959291bca49155bb9a65e08d1c22e7ead15919a06b2ba940cc1d"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f69fe616742a5b0af28d4aa6a9f9b8cab4993d4744364c7806a7c30511e64aef"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use environment variable references or a secrets manager."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'db' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "2211ef34fdac39d062064fd12d45cfa9f9bc32dabceb96804c63b7875ba6ae1c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e5ec1a8959fff5f10c53d903c0df40f67f02d82109fe801391f0109d9ee1d76a"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-005",
+          "ruleIndex": 3,
+          "level": "warning",
+          "message": {
+            "text": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.\n\nEvidence: Server 'kong-konnect' command: npx"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "2211ef34fdac39d062064fd12d45cfa9f9bc32dabceb96804c63b7875ba6ae1c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e5ec1a8959fff5f10c53d903c0df40f67f02d82109fe801391f0109d9ee1d76a"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Pin exact package versions or use locally installed packages."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-ATTEST-001",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time.\n\nEvidence: Server 'analytics' admitted without attestation (no signed clearance / pinned trust root) \u2014 deny-by-default server admission unenforced"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "73e016701cb97246b924ad5c98085768e44b28a8bbae21659c9a12283b7b70dc"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4136c4aa1e9f89e1bde0e371e2ebeb37d979aa6cd3f8c4c7baff042528ad1537"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-ATTEST-001",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time.\n\nEvidence: Server 'internal-tools' admitted without attestation (no signed clearance / pinned trust root) \u2014 deny-by-default server admission unenforced"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "84d2b8231de5bd9b16ea2d74d7a4b7961ad9ed9efe40caccba841f64dd6c6130"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "89ce8830008bc270bbef27e2353c8f1cab2c5dbebbe59406bf9bacb0880dae23"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-ATTEST-001",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time.\n\nEvidence: Server 'db' admitted without attestation (no signed clearance / pinned trust root) \u2014 deny-by-default server admission unenforced"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "0e39ecd42d6d37ef2bff952a5afaf5eb4c4a5f134d2284a6acf6c4a414de223c"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "61040e114874a263a0c88d249f78b26d68755389306e7e41244539bf7470e960"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-ATTEST-001",
+          "ruleIndex": 4,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server entry in the agent/host config is dispatched without any of: a referenced signed clearance assertion, a `/.well-known/mcp-clearance` (or configured) URI, or a pinned trust root. Deny-by-default server admission is unenforced, so the server's self-declared tool list is implicitly trusted at dispatch time.\n\nEvidence: Server 'kong-konnect' admitted without attestation (no signed clearance / pinned trust root) \u2014 deny-by-default server admission unenforced"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 10
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "ffb1085fff37c9d0a7cea9d0e4899739bc17bb8b4d281c55d25f7817c770a929"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3cd01d1f4e2cb69466a1754c26dc801093e4c2130a3ec21a3b31c74fa6bbf1d2"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Add an `attestation` (or `clearance`) field on the server entry pointing to a signed clearance document, expose it at `/.well-known/mcp-clearance`, and pin a `trust_root` in the host config that the host verifies before any tool dispatch. See Metere 2026, arXiv:2605.24248 \u2014 wire format, verification algorithm, and RFC-2119 conformance vectors."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-MCP-KONG-CVE-2026-13341-001",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed.\n\nEvidence: Kong Konnect MCP server referenced at '0.9.3' \u2014 CVE-2026-13341 indirect prompt injection (unintended Konnect/Admin API requests) is fixed in 1.0.0; pin >= 1.0.0."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "7.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "db2754f40d593e6512ad1c36ba71df63a4ec2d85eb47c980a8b50f9a4b532d5e"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "05ebd8c59a286dbb61ddbd11c7d7311409db90bc347681c522e3e54f7406c370"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. Treat every API/spec/resource body the server relays as untrusted data (never as instructions), and constrain the agent's Konnect/Admin API credentials to the least scope the workflow needs so an injected request cannot reach sensitive endpoints."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-TRANSPORT-001",
+          "ruleIndex": 6,
+          "level": "error",
+          "message": {
+            "text": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.\n\nEvidence: Server 'analytics' URL: http://mcp-analytics.example.com/v1/sse"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "9.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "00433f6fef93901f3ff3b1a013aff47591ca430bc02048e036326bc510860ca9"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "600652fe97b2856ab9c0f81467ea762690016444dcdaa86af23eed7cb1056f95"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use HTTPS for all remote MCP server connections."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-TRANSPORT-003",
+          "ruleIndex": 7,
+          "level": "warning",
+          "message": {
+            "text": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.\n\nEvidence: Server 'analytics' URL contains /sse: http://mcp-analytics.example.com/v1/sse"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "5.0"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "15ad85d3a4ea83a00db195494185555975223efd4450db14e8e2e27387a42e86"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dc76c2df192a53f035a8e08349bed47986cda65b4e10f9938a7d960ca97c62a0"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+)."
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AAK-TRANSPORT-001",
+          "ruleIndex": 6,
+          "level": "error",
+          "message": {
+            "text": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.\n\nEvidence: Server 'internal-tools' URL: http://192.168.1.50:8080/mcp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".mcp.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "9.5"
+          },
+          "fingerprints": {
+            "primaryLocationFingerprint": "507bc39a6d2355bbff3322e4e71622147bf1c67b92a3e8389efd74c00db43377"
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "de8d6523c8d93f8c338802161edbc956e69af5ed86fa23c70a2ad78c51d13cef"
+          },
+          "fixes": [
+            {
+              "description": {
+                "text": "Use HTTPS for all remote MCP server connections."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

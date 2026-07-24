@@ -9,6 +9,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Group all github-actions bumps into a single PR. The codeql-action
+    # sub-actions (init / autobuild / analyze / upload-sarif) MUST share one
+    # version — CodeQL fails with a configuration error otherwise — so ungrouped
+    # per-action PRs each create a mismatch. One grouped PR keeps them in lockstep.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: "docker"
     directory: "/"
