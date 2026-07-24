@@ -37,7 +37,11 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",
-    "ruff>=0.4.0",
+    # Pin the linter minor so CI is reproducible. ruff 0.16.0 (2026-07-24)
+    # enabled stricter defaults (import-order I001, TRY004, ...) that flag ~281
+    # pre-existing style issues; cap below it so an upstream release can't turn
+    # CI red without a deliberate bump. Bump the cap + `ruff check --fix` to adopt.
+    "ruff>=0.15,<0.16",
     "types-PyYAML>=6.0",
 ]
 
