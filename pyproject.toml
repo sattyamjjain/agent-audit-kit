@@ -41,7 +41,7 @@ dev = [
     # enabled stricter defaults (import-order I001, TRY004, ...) that flag ~281
     # pre-existing style issues; cap below it so an upstream release can't turn
     # CI red without a deliberate bump. Bump the cap + `ruff check --fix` to adopt.
-    "ruff>=0.15,<0.16",
+    "ruff>=0.15,<0.17",
     "types-PyYAML>=6.0",
 ]
 
