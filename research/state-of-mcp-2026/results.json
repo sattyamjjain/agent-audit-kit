@@ -3,159 +3,151 @@
   "corpus": "benchmarks/data",
   "corpus_sources": {
     "crawl": 664,
-    "registry": 710
+    "registry": 1639
   },
-  "corpus_total_candidates": 1458,
-  "distinct_configs_scanned": 1374,
-  "duplicates_removed": 83,
+  "corpus_total_candidates": 2389,
+  "distinct_configs_scanned": 2303,
+  "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 500,
-    "B": 643,
-    "C": 97,
+    "A": 632,
+    "B": 1426,
+    "C": 111,
     "D": 49,
     "F": 85
   },
-  "configs_with_critical": 494,
-  "configs_with_critical_pct": 36.0,
-  "configs_with_high": 164,
-  "configs_with_high_pct": 11.9,
+  "configs_with_critical": 1217,
+  "configs_with_critical_pct": 52.8,
+  "configs_with_high": 165,
+  "configs_with_high_pct": 7.2,
   "severity_totals": {
-    "critical": 616,
-    "high": 317,
-    "medium": 3406,
-    "low": 1045,
+    "critical": 1338,
+    "high": 318,
+    "medium": 4426,
+    "low": 1221,
     "info": 1
   },
   "transport_distribution": {
-    "stdio": 1265,
-    "streamable-http": 900,
-    "sse": 41,
+    "streamable-http": 1726,
+    "stdio": 1347,
+    "sse": 62,
     "unknown": 7
   },
   "rule_family_distribution": {
     "AAK-MCP": {
-      "configs": 1370,
-      "pct": 99.7
+      "configs": 2299,
+      "pct": 99.8
     },
     "AAK-OAUTH": {
-      "configs": 318,
-      "pct": 23.1
+      "configs": 421,
+      "pct": 18.3
     },
     "AAK-SECRET": {
       "configs": 70,
-      "pct": 5.1
+      "pct": 3.0
     },
     "AAK-TRANSPORT": {
-      "configs": 26,
-      "pct": 1.9
-    },
-    "AAK-HEALTHCARE": {
-      "configs": 1,
-      "pct": 0.1
+      "configs": 42,
+      "pct": 1.8
     },
     "AAK-INTERNAL": {
       "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     },
     "AAK-POISON": {
       "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     }
   },
   "category_hit_rate": {
     "mcp-config": {
-      "configs": 1370,
-      "pct": 99.7
+      "configs": 2299,
+      "pct": 99.8
     },
     "secret-exposure": {
       "configs": 70,
-      "pct": 5.1
+      "pct": 3.0
     },
     "transport-security": {
-      "configs": 26,
-      "pct": 1.9
+      "configs": 42,
+      "pct": 1.8
     },
     "agent-config": {
       "configs": 1,
-      "pct": 0.1
-    },
-    "legal-compliance": {
-      "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     },
     "tool-poisoning": {
       "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     }
   },
   "owasp_mcp_hit_rate": {
     "MCP07:2025": {
-      "configs": 1370,
-      "pct": 99.7
+      "configs": 2299,
+      "pct": 99.8
     },
     "MCP01:2025": {
-      "configs": 385,
-      "pct": 28.0
+      "configs": 489,
+      "pct": 21.2
     },
     "MCP03:2025": {
-      "configs": 377,
-      "pct": 27.4
+      "configs": 450,
+      "pct": 19.5
     },
     "MCP10:2025": {
-      "configs": 377,
-      "pct": 27.4
+      "configs": 450,
+      "pct": 19.5
     },
     "MCP04:2025": {
-      "configs": 205,
-      "pct": 14.9
+      "configs": 209,
+      "pct": 9.1
     },
     "MCP09:2025": {
       "configs": 44,
-      "pct": 3.2
+      "pct": 1.9
     },
     "MCP02:2025": {
       "configs": 12,
-      "pct": 0.9
+      "pct": 0.5
     },
     "MCP05:2025": {
       "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     },
     "MCP06:2025": {
       "configs": 1,
-      "pct": 0.1
+      "pct": 0.0
     }
   },
   "auth_profile_2026_07_28": {
     "no_authentication": {
-      "n": 482,
-      "denominator": 1374,
-      "pct": 35.1
+      "n": 1205,
+      "denominator": 2303,
+      "pct": 52.3
     },
     "rfc9728_prm_discovery": {
       "n": 0,
-      "denominator": 1374,
+      "denominator": 2303,
       "pct": 0.0
     },
     "remote_configs": {
-      "n": 801,
-      "denominator": 1374,
-      "pct": 58.3
+      "n": 1648,
+      "denominator": 2303,
+      "pct": 71.6
     },
     "remote_auth_static_credential": {
-      "n": 318,
-      "denominator": 318,
+      "n": 421,
+      "denominator": 421,
       "pct": 100.0
     },
     "sse_transport_stateless_break_proxy": {
-      "n": 26,
-      "denominator": 1374,
-      "pct": 1.9
+      "n": 47,
+      "denominator": 2303,
+      "pct": 2.0
     },
     "removal_clock_features_measured_from_config": {
       "n": 0,
-      "denominator": 1374,
+      "denominator": 2303,
       "pct": 0.0
     }
   },
@@ -164,71 +156,71 @@
       "rule_id": "AAK-MCP-001",
       "title": "Remote MCP server without authentication",
       "severity": "critical",
-      "configs": 482,
-      "config_pct": 35.1
+      "configs": 1205,
+      "config_pct": 52.3
     },
     {
       "rule_id": "AAK-MCP-005",
       "title": "MCP server uses npx/uvx to fetch and execute remote packages",
       "severity": "medium",
-      "configs": 377,
-      "config_pct": 27.4
+      "configs": 450,
+      "config_pct": 19.5
     },
     {
       "rule_id": "AAK-OAUTH-008",
       "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery",
       "severity": "low",
-      "configs": 318,
-      "config_pct": 23.1
+      "configs": 421,
+      "config_pct": 18.3
     },
     {
       "rule_id": "AAK-MCP-006",
       "title": "MCP server command uses relative path",
       "severity": "medium",
-      "configs": 175,
-      "config_pct": 12.7
+      "configs": 179,
+      "config_pct": 7.8
     },
     {
       "rule_id": "AAK-MCP-003",
       "title": "MCP server environment exposes secrets",
       "severity": "high",
       "configs": 70,
-      "config_pct": 5.1
+      "config_pct": 3.0
     },
     {
       "rule_id": "AAK-SECRET-007",
       "title": "Secret in MCP server environment block",
       "severity": "medium",
       "configs": 70,
-      "config_pct": 5.1
+      "config_pct": 3.0
     },
     {
       "rule_id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
       "title": "MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args",
       "severity": "high",
       "configs": 49,
-      "config_pct": 3.6
+      "config_pct": 2.1
     },
     {
       "rule_id": "AAK-MCP-009",
       "title": "MCP server URL points to localhost/internal network",
       "severity": "high",
       "configs": 44,
-      "config_pct": 3.2
+      "config_pct": 1.9
     },
     {
       "rule_id": "AAK-TRANSPORT-003",
       "title": "Deprecated SSE transport in use",
       "severity": "medium",
-      "configs": 21,
-      "config_pct": 1.5
+      "configs": 36,
+      "config_pct": 1.6
     },
     {
       "rule_id": "AAK-MCP-004",
       "title": "Excessive number of MCP servers declared",
       "severity": "high",
       "configs": 12,
-      "config_pct": 0.9
+      "config_pct": 0.5
     }
   ],
   "excluded_advisory_rules": [

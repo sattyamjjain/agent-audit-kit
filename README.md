@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.59
+      - uses: sattyamjjain/agent-audit-kit@v0.3.60
         id: scan
         with:
           fail-on: high
@@ -95,7 +95,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.59
+    rev: v0.3.60
     hooks:
       - id: agent-audit-kit
 ```
@@ -280,7 +280,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.59
+  - uses: sattyamjjain/agent-audit-kit@v0.3.60
     id: scan
     with:
       fail-on: high
@@ -463,20 +463,24 @@ Public leaderboard of MCP servers we scan weekly:
 - **90-day coordinated disclosure** before anything lands on a public card — see [`docs/disclosure-policy.md`](docs/disclosure-policy.md)
 - Maintainer-fix earlier gets published the day the fix lands, with credit
 
-## Research: State of MCP Server Authentication 2026
+## State of MCP Security 2026
 
-A reproducible data report over **1,374 distinct public MCP server configs** — 664
-GitHub-crawled plus **710 official MCP Registry latest-version servers**, deduped by
-content and scanned offline and deterministically (scan date 2026-07-19). Headline:
-**35.1% (482/1,374) declare a remote server with no authentication, 0% (0/1,374) use
-RFC 9728 Protected-Resource-Metadata discovery, and 100% (318/318) of inline-auth
-configs hardcode a static credential.** 36.0% carry a critical-severity finding; the
-median config scores a **B**, and **99.7% trip OWASP MCP07 (authorization)**. Full
-method, per-metric findings (each with n + denominator), the 2026-07-28 / 2027-07-28
-migration exposure with explicit coverage notes, disclosure posture, and limitations:
-**[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)** —
-raw aggregate [`results.json`](research/state-of-mcp-2026/results.json), corpus
-provenance [`registry-manifest.json`](research/state-of-mcp-2026/corpus/registry-manifest.json).
+A reproducible data report over **2,303 distinct public MCP server configs** — 664
+GitHub-crawled plus **1,641 official MCP Registry latest-version servers** (up 2.3×
+from 710 in July as the registry grew), deduped by content and scanned offline and
+deterministically (scan date **2026-07-26**). Headline: **52.3% (1,205/2,303) declare
+a remote server with no authentication, 0% use RFC 9728 Protected-Resource-Metadata
+discovery, 100% (421/421) of inline-auth configs hardcode a static credential, and
+19.5% `npx`/`uvx`-fetch-and-execute unpinned remote packages** (the Shai-Hulud
+supply-chain blast radius, one `.mcp.json` away). 52.8% carry a critical finding.
+
+Full method, per-metric findings (each with n + denominator), the two defensible
+wedges (offline/deterministic scanning + a NSA-MCP-CSI / OWASP-Agentic
+compliance-evidence crosswalk), market backdrop, and limitations:
+**[`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)**
+(+ [PDF](research/state-of-mcp-2026/state-of-mcp-security-2026.pdf)) — raw aggregate
+[`results.json`](research/state-of-mcp-2026/results.json), corpus provenance
+[`registry-manifest.json`](research/state-of-mcp-2026/corpus/registry-manifest.json).
 
 The harness contains no scanner — it reuses `agent_audit_kit.engine.run_scan` +
 `scoring.compute_score`, so every number is reproducible offline and cannot drift

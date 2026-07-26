@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — State of MCP Security 2026 data report (fresh 2,303-config corpus)
+
+Publish the credibility artifact — no new detection, nothing gated.
+
+- **Refreshed the corpus** via `fetch_registry.py` from the live MCP Registry:
+  **1,641 distinct latest-version servers @ 2026-07-26**, up 2.3× from 710 on
+  2026-07-19 (the registry has grown fast). Combined with the GitHub crawl, the
+  scanned corpus is now **2,303 distinct public MCP server configs** (up from
+  1,374). Snapshot date + N logged in the manifest for reproducibility.
+- **Re-ran the aggregation** (`run_report.py`, offline + deterministic) →
+  refreshed `results.json`. Headline: **52.3% (1,205/2,303) declare a remote
+  server with no authentication** (up from 35.1% as the registry skewed toward
+  no-auth remotes), 0% use RFC 9728 PRM discovery, 100% (421/421) of inline-auth
+  configs hardcode a static credential, 19.5% `npx`/`uvx`-fetch-execute unpinned
+  packages, 52.8% carry a critical finding.
+- **Rewrote `research/state-of-mcp-2026/REPORT.md`** — headline `% fail X` per
+  rule family, method, corpus size + date, reproduce CLI, the two defensible
+  wedges (offline/deterministic + NSA-CSI/OWASP-Agentic compliance crosswalk),
+  and the market backdrop (Shai-Hulud 2.0 npm worm, NSA MCP CSI). Explicitly not
+  claiming "first". Added a **human PDF** via `output/pdf_report.py`
+  (`emit_report_pdf`): `state-of-mcp-security-2026.pdf`.
+- README "State of MCP Security 2026" section refreshed with the live headline.
+- Counts stay canonical (**270 rules / 86 scanners**, one number everywhere,
+  guarded by `test_rule_count_is_canonical` / scanner-count) — the reported
+  drift did not exist.
+- Version 0.3.59 → 0.3.60.
+
 ### Added — coverage crosswalk asset (`--emit-coverage`) + State-of-MCP report seed
 
 Make the tool's coverage legible without adding any rules (still 270).
