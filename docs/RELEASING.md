@@ -27,23 +27,24 @@ hook). Most surfaces are anchor-pinned. **One surface is not** — see §3.
 ## 3. Post-tag — re-PATCH the GitHub repo description
 
 > The GitHub repo `description` field is the highest-leverage marketing
-> surface (procurement reviewers read it first) and is **not** wired
-> into `_RULE_COUNT_RE` / `_FRAMEWORK_COUNT_RE` / sync scripts. It is a
-> one-time-set field unless we re-set it on every release.
+> surface (procurement reviewers read it first) and is **not** wired into
+> the sync scripts. It is a one-time-set field unless we re-set it on
+> every release.
 
 After every tag push, re-PATCH the description so it matches the live
-RULE_COUNT and the README framework-count claim:
+RULE_COUNT and the canonical framework count — both read from code, never
+laundered from the README's own claim:
 
 ```bash
 RULES=$(python3 -c "from agent_audit_kit import RULE_COUNT; print(RULE_COUNT)")
-# README "12 frameworks" claim is broader than `len(FRAMEWORKS)` —
-# FRAMEWORKS dict only includes frameworks with full control mappings
-# (currently 6: eu-ai-act, soc2, iso27001, hipaa, nist-ai-rmf,
-# mcp-2026-roadmap). The README claim adds 6 more reference-only
-# frameworks (Singapore Agentic AI, India DPDP, Alabama HB 351,
-# Tennessee SB 1580, ISO/IEC 42001, EU AI Act Art. 55). Use the
-# README claim, not `len(FRAMEWORKS)`, for the description string.
-FRAMEWORKS=$(grep -oE 'Compliance mapping\*\* \([0-9]+ frameworks' README.md | grep -oE '[0-9]+')
+# Two distinct framework surfaces — do not confuse them:
+#   12 = `report --framework` PDF/text evidence packs
+#        (agent_audit_kit.output.pdf_report._FRAMEWORK_TITLES). This is the
+#        "N compliance frameworks" number the description should carry, and it
+#        is fenced against README/CLAUDE/docs prose in test_rule_count_sync.py.
+#    8 = agent_audit_kit.output.compliance.FRAMEWORKS — the smaller,
+#        control-mapped table behind `scan --compliance`. Do NOT use it here.
+FRAMEWORKS=$(python3 -c "from agent_audit_kit.output.pdf_report import _FRAMEWORK_TITLES; print(len(_FRAMEWORK_TITLES))")
 gh repo edit sattyamjjain/agent-audit-kit \
   --description "Static scanner for MCP-connected AI agent pipelines — ${RULES} rules across 12 categories, ${FRAMEWORKS} compliance frameworks, OWASP Agentic 10/10 + MCP 10/10, GitHub Action, SARIF, public CVE-to-rule ledger."
 ```

@@ -3,7 +3,7 @@
 **Starting point (Apr 2026):** v0.2.0 · 77 rules across 11 categories · 13 scanner modules · SARIF + OWASP + compliance output · GitHub Action ready · single-digit stars.
 **Goal:** 1,000+ GitHub stars and reference-implementation status for the OWASP MCP Top 10 project within 90 days.
 
-Read `ECOSYSTEM_STATE_2026-04.md` first.
+Read [`launch/MARKET-RESEARCH-2026-04-12.md`](launch/MARKET-RESEARCH-2026-04-12.md) first — the April 2026 competitive/ecosystem landscape this roadmap is built on.
 
 ---
 

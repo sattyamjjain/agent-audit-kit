@@ -27,7 +27,7 @@ Skeleton of facts to draw from:
   deterministically — zero network calls in the default path, no LLM in the loop,
   the same input yields a byte-identical finding set (measured: 20/20 identical
   runs, 0% variance); (2) emits auditor-ready compliance-evidence packs — SARIF
-  for the GitHub Security tab plus PDF evidence mapped to 13 frameworks
+  for the GitHub Security tab plus PDF evidence mapped to 12 frameworks
   (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes).
 - No account, no telemetry.
 

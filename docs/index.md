@@ -20,7 +20,7 @@ agent-audit-kit scan .
 - **Compliance frameworks** (12): EU AI Act, SOC 2, ISO 27001, ISO 42001, HIPAA, NIST AI RMF, NSA MCP CSI, + regional (India DPDP, Singapore, Alabama, Tennessee)
 - **Tool pinning** for rug pull detection
 - **Taint analysis** for @tool function security
-- **Multi-agent discovery** across 10 frameworks
+- **Multi-agent discovery** across 10 agent platforms
 - **Auto-fix** for common misconfigurations
 - **Security scoring** with A-F grades and SVG badges
 - **SARIF output** for GitHub Code Scanning integration

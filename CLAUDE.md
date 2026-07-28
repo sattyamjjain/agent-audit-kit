@@ -57,7 +57,7 @@ agent_audit_kit/
   engine.py            # Scanner registry + orchestrator (run_scan)
   models.py            # Core dataclasses: Finding, ScanResult, Severity, Category
   scoring.py           # Penalty-based scoring (100 → deductions per severity)
-  discovery.py         # Agent platform discovery (13 platforms)
+  discovery.py         # Agent platform discovery (10 platforms)
   pinning.py           # MCP server version pinning
   verification.py      # Pinned server verification
   fix.py               # Auto-fix engine for fixable rules

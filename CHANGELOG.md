@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — one canonical framework (12) & agent-platform (10) count, fenced in CI
+
+- **README was the sole outlier** on two counts that live in code. Reconciled to the
+  source of truth: **12 compliance frameworks** = `report --framework` PDF/text evidence
+  packs (`pdf_report._FRAMEWORK_TITLES`); **10 agent platforms** = `discovery.AGENT_CONFIGS`.
+  Fixed README's "13 frameworks" (×2) and "13 agent platforms", `docs/index.md`
+  ("10 frameworks" → "10 agent platforms" — those are platforms, not frameworks),
+  CLAUDE.md's architecture-tree "(13 platforms)", and the outbound `launch/**` marketing
+  copy (owasp-outreach + both awesome-list PR bodies), which also carried stale
+  `225 rules` / `79 scanners`.
+- **`report --framework mcp-2026-roadmap` was never valid.** The README listed "MCP 2026
+  Roadmap" under the `report --format pdf --framework <name>` enumeration, but
+  `mcp-2026-roadmap` is a `scan --compliance` value only — `report --framework
+  mcp-2026-roadmap` exits with a Click usage error. Moved it to a correctly-attributed
+  `scan --compliance mcp-2026-roadmap` half-sentence so an auditor following the README
+  doesn't hit that error. (Three framework surfaces, now stated plainly: **12** =
+  `report --framework` evidence packs; **8** = `compliance.FRAMEWORKS` behind
+  `scan --compliance`; **10** = agent platforms `discover` walks.)
+- **Extended the prose-count fence** (`test_no_stale_hardcoded_counts_in_prose`) to
+  `frameworks` + `platforms` and to `launch/**/*.md`, and added
+  `test_report_framework_choices_match_titles` (the `report --framework` Click choices
+  minus `standards-crosswalk` must equal `_FRAMEWORK_TITLES`, so `len(_FRAMEWORK_TITLES)`
+  can't silently drift). Dated empirical case studies
+  (`launch/state-of-mcp-security-2026.md`, `launch/blog-50-mcp-servers.md`,
+  `research/state-of-mcp-2026/**`) stay exempt — their rule/scanner counts are the
+  methodology of a specific past scan run and must keep their published numbers.
+- **Fixed two phantom paths** the docs told readers to open: README's `data/history.json`
+  (no root `data/`; generated into the published index site by `benchmarks/index_builder.py`,
+  served at the gh-pages URL) and ROADMAP's `ECOSYSTEM_STATE_2026-04.md` (not in this repo
+  → now points at the in-repo `launch/MARKET-RESEARCH-2026-04-12.md`).
+- **`docs/RELEASING.md`**: replaced the repo-description framework count derived by grepping
+  the README's own claim with a code read (`len(_FRAMEWORK_TITLES)`), corrected "FRAMEWORKS
+  is currently 6" (it is 8), and removed the phantom `_FRAMEWORK_COUNT_RE` / `_RULE_COUNT_RE`
+  references. Date-stamped `DEEP_ANALYSIS.md` as a v0.2.0 historical snapshot so its
+  77-rule / 9-command figures don't read as current state.
+- No rules, scanners, CLI commands, or frameworks added; no runtime behaviour change.
+
 ## [0.3.60] - 2026-07-27
 
 Collapses the previously shipped-but-untagged 0.3.58 → 0.3.60 work (State-of-MCP

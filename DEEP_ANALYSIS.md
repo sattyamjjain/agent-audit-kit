@@ -1,5 +1,9 @@
 # AgentAuditKit — Deep Codebase Analysis
 
+> **Historical snapshot — v0.2.0, 2026-04-18.** Counts and architecture below
+> describe v0.2.0 and are intentionally NOT updated. Current state:
+> see README.md and `docs/rules.md`.
+
 **Version scanned:** v0.2.0
 **Stack:** Python 3.9+ · Click CLI · stdlib-first (+ PyYAML) · Hatch build · GitHub Action · Docker · MkDocs
 **Report date:** 2026-04-18

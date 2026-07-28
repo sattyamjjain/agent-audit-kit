@@ -150,19 +150,33 @@ def test_docs_comparison_anchors_match_registry() -> None:
 _PROSE_COUNT_EXEMPT_PREFIXES = (
     "docs/research/mcp-security-baseline-v1.0.md",  # frozen v1.0 baseline (262 rules)
     "docs/presets/",                                 # "shipped in vX" dated preset facts
+    # Dated empirical case studies in launch/: their "N rules / M scanners" is the
+    # methodology of a specific past scan run (v0.3.41, 225 rules), and the reported
+    # corpus results (571/47 configs, finding totals) came from that run — bumping the
+    # rule count would falsify the measurement. Same "keep the published numbers"
+    # category as research/state-of-mcp-2026/**. Both self-label as drafts.
+    "launch/state-of-mcp-security-2026.md",          # self-labelled "Superseded — earlier marketing draft"
+    "launch/blog-50-mcp-servers.md",                 # "We scanned 47 configs" — 258 findings tied to the 225-rule run
 )
 
 
 def _canonical_prose_counts() -> dict[str, int]:
-    """The three numbers current-state prose is allowed to claim, each computed
+    """The five numbers current-state prose is allowed to claim, each computed
     from the live source of truth — never hard-coded here."""
-    from agent_audit_kit import SCANNER_COUNT
+    from agent_audit_kit import SCANNER_COUNT, discovery
     from agent_audit_kit.cli import cli
+    from agent_audit_kit.output import pdf_report
 
     return {
         "rules": _actual_rule_count(),        # len(RULES)
         "scanners": SCANNER_COUNT,
         "commands": len(cli.commands),        # the real Click root-group command set
+        # `report --framework` PDF/text evidence packs — the number an auditor
+        # can actually request (cross-checked in test_report_framework_choices_match_titles).
+        "frameworks": len(pdf_report._FRAMEWORK_TITLES),
+        # agent platforms `discover` enumerates (NOT compliance frameworks, and NOT
+        # `compliance.FRAMEWORKS`, which is the smaller `scan --compliance` table).
+        "platforms": len(discovery.AGENT_CONFIGS),
     }
 
 
@@ -186,23 +200,42 @@ _PROSE_COUNT_PATTERNS = (
     # CLI commands — "N CLI commands" and "(N commands)" entry-point note.
     (re.compile(r"\b(\d+)\s+CLI commands?\b", re.I), "commands"),
     (re.compile(r"entry point\s*\((\d+)\s+commands?\)", re.I), "commands"),
+    # compliance frameworks — the `report --framework` PDF/text targets. Match the
+    # headline forms only ("**N frameworks**", "(N frameworks)", "mapped to N
+    # frameworks", "N compliance frameworks"); deliberately NOT bare "N frameworks"
+    # (docs/index.md L23 historically mislabels agent platforms "frameworks", and a
+    # per-item "N frameworks" in a sentence isn't a total).
+    (re.compile(r"\*\*(\d+)\s+frameworks\*\*", re.I), "frameworks"),
+    (re.compile(r"\((\d+)\s+frameworks\)", re.I), "frameworks"),
+    (re.compile(r"\bmapped to (\d+) frameworks\b", re.I), "frameworks"),
+    (re.compile(r"\b(\d+)\s+compliance frameworks\b", re.I), "frameworks"),
+    # agent platforms — the surface `discover` walks. Match "**N agent platforms**"
+    # and bare "N agent platforms"; deliberately NOT bare "N platforms" (avoids the
+    # AUTO-MANAGED architecture-tree "(N platforms)" note and stray prose).
+    (re.compile(r"\*\*(\d+)\s+agent platforms\*\*", re.I), "platforms"),
+    (re.compile(r"\b(\d+)\s+agent platforms\b", re.I), "platforms"),
 )
 
 
 def test_no_stale_hardcoded_counts_in_prose() -> None:
     """Every current-state count claim in prose must equal the live registry.
 
-    Extended fence (v0.3.60): scans README.md, CLAUDE.md, and all docs/**/*.md
-    for headline 'N rules' / 'N scanner modules' / 'N CLI commands' phrasings and
-    fails on any disagreement with the canonical counts computed from the code
-    (len(RULES), SCANNER_COUNT, len(cli.commands)). Historical/dated snapshots
-    are exempt via _PROSE_COUNT_EXEMPT_PREFIXES; per-category and singular-rule
+    Extended fence (v0.3.61): scans README.md, CLAUDE.md, all docs/**/*.md, and all
+    launch/**/*.md (the outbound copy — HN/Reddit/OWASP outreach/awesome-list PR
+    bodies, where a wrong number does the most reputational damage) for headline
+    'N rules' / 'N scanner modules' / 'N CLI commands' / 'N frameworks' /
+    'N agent platforms' phrasings, and fails on any disagreement with the canonical
+    counts computed from the code (len(RULES), SCANNER_COUNT, len(cli.commands),
+    len(_FRAMEWORK_TITLES), len(AGENT_CONFIGS)). Historical/dated snapshots are
+    exempt via _PROSE_COUNT_EXEMPT_PREFIXES; research/state-of-mcp-2026/** is left
+    unscanned on purpose (frozen research artifacts); per-category and singular
     phrasings are excluded by construction of the patterns.
     """
     counts = _canonical_prose_counts()
 
     files = [REPO_ROOT / "README.md", REPO_ROOT / "CLAUDE.md"]
     files += sorted((REPO_ROOT / "docs").rglob("*.md"))
+    files += sorted((REPO_ROOT / "launch").rglob("*.md"))
 
     failures: list[str] = []
     for path in files:
@@ -223,6 +256,32 @@ def test_no_stale_hardcoded_counts_in_prose() -> None:
         "stale count(s) in prose — reconcile to the registry "
         "(run scripts/sync_rule_count.py where it applies):\n  "
         + "\n  ".join(failures)
+    )
+
+
+def test_report_framework_choices_match_titles() -> None:
+    """`len(_FRAMEWORK_TITLES)` is only a legitimate canonical number if it is the
+    exact set of `report --framework` targets. Read the Click choices off the live
+    command object (never re-listed by hand) and assert they equal the title keys
+    once the single non-framework value `standards-crosswalk` is removed. If these
+    drift, the "N frameworks" prose fence is measuring the wrong thing."""
+    import click
+
+    from agent_audit_kit.cli import cli
+    from agent_audit_kit.output import pdf_report
+
+    report_cmd = cli.commands["report"]
+    framework_param = next(p for p in report_cmd.params if p.name == "framework")
+    param_type = framework_param.type
+    assert isinstance(param_type, click.Choice), "--framework is no longer a Click Choice"
+    choices = set(param_type.choices)
+    choices.discard("standards-crosswalk")
+
+    titles = set(pdf_report._FRAMEWORK_TITLES)
+    assert choices == titles, (
+        "report --framework choices (minus standards-crosswalk) diverged from "
+        f"pdf_report._FRAMEWORK_TITLES: only-in-choices={sorted(choices - titles)}, "
+        f"only-in-titles={sorted(titles - choices)}"
     )
 
 

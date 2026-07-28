@@ -9,7 +9,7 @@ Hi,
 
 I built AgentAuditKit — an open-source security scanner (MIT licensed) that maps detection rules to all 10 risks in the OWASP Agentic Top 10.
 
-225 rules across 79 scanners cover:
+271 rules across 86 scanners cover:
 - ASI01 (Goal Hijack) → AGENTS.md/.cursorrules/.CLAUDE.md scanning for prompt injection
 - ASI02 (Tool Misuse) → Python AST taint analysis tracking @tool params to dangerous sinks
 - ASI03 (Identity & Privilege Abuse) → Trust boundary violations, credential exposure
@@ -41,7 +41,7 @@ https://github.com/sattyamjjain
 
 Hi,
 
-I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 225 detection rules to all 10 risks in the OWASP MCP Top 10:
+I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 271 detection rules to all 10 risks in the OWASP MCP Top 10:
 
 - MCP01 (Token Mismanagement) → 16 rules detecting hardcoded secrets across Anthropic/OpenAI/AWS/GitHub/GCP keys
 - MCP02 (Context Over-Sharing) → Excessive server count, overly broad permissions
@@ -54,7 +54,7 @@ I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected A
 - MCP09 (Protocol Vulnerabilities) → HTTP endpoints, disabled TLS, deprecated SSE, tokens in URLs
 - MCP10 (Insecure Plugin/Extension) → npx/uvx runtime fetch, known vulnerable MCP packages
 
-It scans 13 agent platforms (Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Continue, Roo Code, Kiro) and outputs SARIF 2.1.0 for GitHub Code Scanning integration.
+It scans 10 agent platforms (Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Continue, Roo Code, Kiro) and outputs SARIF 2.1.0 for GitHub Code Scanning integration.
 
 GitHub: https://github.com/sattyamjjain/agent-audit-kit
 
@@ -70,7 +70,7 @@ https://github.com/sattyamjjain
 
 ### LangChain Discord (#general or #showcase)
 
-Hey everyone — I built an open-source security scanner for MCP agent configs. 225 rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
+Hey everyone — I built an open-source security scanner for MCP agent configs. 271 rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
 
 If you're using MCP tools with LangChain/LangGraph, it also does Python AST taint analysis on `@tool` functions — tracks parameter flow to dangerous sinks like eval, subprocess, SQL.
 
