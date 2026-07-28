@@ -48,3 +48,7 @@ benchmarks/site/
 
 # v0.3.3: cve-watcher persistent state
 .aak/cve-watcher-state.json
+
+# Private strategy note — kept locally, never tracked in the public tree
+# (removed from tracking 2026-07-28; its own header said "do not commit").
+KILL-CRITERIA.md

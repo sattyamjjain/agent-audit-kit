@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — private strategy note taken out of the public tree
+
+- Removed `KILL-CRITERIA.md` from version control (`git rm --cached` + `.gitignore`);
+  the local working copy is kept. The file was a private strategy note whose own
+  header read "Do not commit to the public repo" — it named a competitor and an
+  acqui-hire/services monetization path candidly, which does not belong in a public
+  repository. This only stops future tracking; the file remains in past commits and
+  was **not** scrubbed from git history.
+
 ### Fixed — one canonical framework (12) & agent-platform (10) count, fenced in CI
 
 - **README was the sole outlier** on two counts that live in code. Reconciled to the
