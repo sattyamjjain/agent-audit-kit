@@ -2457,6 +2457,31 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-18655"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
+      "severity": "medium",
+      "title": "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (< 2.0.24)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-46341"
       ],
       "eu_ai_act": [
@@ -6098,35 +6123,35 @@
       "mcp-config": 62,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 72,
+      "supply-chain": 73,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
       "trust-boundary": 12
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 88,
+      "Art. 10 - Data Governance": 89,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 38,
-      "Art. 15 - Robustness & Security": 159,
+      "Art. 15 - Robustness & Security": 160,
       "Art. 9 - Risk Management": 86
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 61,
+      "Choose supported MCP projects when possible (p.10)": 62,
       "Constrain and sandbox tool execution (p.11)": 74,
       "Design for boundaries (p.10)": 143,
       "Filter and monitor output pipelines and chained execution (p.12)": 56,
       "Instrument for logging and detection (p.13)": 33,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 124,
-      "Sign and verify MCP messages (p.12)": 123,
-      "Track and patch MCP related vulnerabilities (p.13)": 72,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 125,
+      "Sign and verify MCP messages (p.12)": 124,
+      "Track and patch MCP related vulnerabilities (p.13)": 73,
       "Validate parameters (p.11)": 78
     },
     "by_owasp_agentic": {
       "ASI01": 13,
       "ASI02": 39,
       "ASI03": 65,
-      "ASI04": 55,
+      "ASI04": 56,
       "ASI05": 35,
       "ASI06": 35,
       "ASI07": 9,
@@ -6135,7 +6160,7 @@
       "ASI10": 20
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 67,
+      "MCP01:2025": 68,
       "MCP02:2025": 13,
       "MCP03:2025": 27,
       "MCP04:2025": 28,
@@ -6151,10 +6176,10 @@
       "high": 125,
       "info": 5,
       "low": 8,
-      "medium": 71
+      "medium": 72
     },
-    "total_cves_covered": 118,
-    "total_rules": 274
+    "total_cves_covered": 119,
+    "total_rules": 275
   },
   "tool": "agent-audit-kit"
 }

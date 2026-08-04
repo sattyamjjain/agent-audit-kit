@@ -16,6 +16,17 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-04 (unreleased)
+
+Two `cve-response` issues adjudicated: one pinned (fourth `awslabs.*-mcp-server`
+family pin), one out of scope. Each row quotes a verbatim 3-line excerpt of the NVD
+description; each was read from NVD, not the issue title.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-18655 (`awslabs.amazon-mq-mcp-server` < 2.0.24 — broker-hostname SSRF exfiltrates broker credentials / OAuth tokens; CVSS 4.0 7.1 HIGH / 3.1 6.5 MEDIUM) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-18655) | **Pinned** `AAK-MCP-AMAZONMQ-CVE-2026-18655-001` — fix floor `awslabs.amazon-mq-mcp-server` 2.0.24; the fourth pin in the existing `awslabs.*-mcp-server` family. A pinnable PyPI artifact (latest 2.0.24) the pin scanner resolves from `requirements.txt`/`pyproject.toml`/`uv.lock`/`.mcp.json`. Regression test `test_amazon_mq_below_floor_fires`. NVD verbatim: *"Improper restriction of intended endpoints in the RabbitMQ broker connection tools of the Amazon MQ MCP Server (awslabs.amazon-mq-mcp-server) before 2.0.24 may allow a remote unauthenticated actor (via prompt injection) to obtain Amazon MQ for RabbitMQ broker credentials or OAuth access tokens sent to a crafted endpoint controlled through a broker hostname introduced in the MCP client context."* (#530) | 2026-08-04 |
+| CVE-2026-66065 (Ouroboros AI-agent runtime < 0.42.1 — incomplete dangerous-env-var denylist reaches RCE via an auto-loaded `.env`. The issue title says "CVSS n/a" but NVD scores it CVSS 4.0 8.4 HIGH; trusting NVD.) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-66065) | **Out of scope** — the vulnerable "Ouroboros" runtime is distributed via GitHub releases, not a PyPI/npm artifact the pin detector reads (PyPI `ouroboros` 404s; the npm `ouroboros` is an unrelated pure-Python package at 3.4.0), and the incomplete denylist is a version-specific bug in the runtime's own source. The `.env`-auto-load-to-RCE class is adjacent to `AAK-SKILL-UNTRUSTED-EXEC-PATH` and the langflow env-injection pin, but neither pins Ouroboros. Upgrade to ≥ 0.42.1. NVD verbatim: *"Versions prior to 0.42.1 have an incomplete denylist. Several execution-routing keys of the same RCE class were omitted, so a malicious cloned repo can still reach arbitrary command execution by shipping a .env (auto-loaded at import, with no review step)."* (#531) | 2026-08-04 |
+
 ## 2026-08-03 (v0.3.67)
 
 Two `cve-response` issues adjudicated for the v0.3.67 cut — both the same upstream

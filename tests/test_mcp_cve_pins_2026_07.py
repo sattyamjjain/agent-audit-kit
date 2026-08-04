@@ -52,6 +52,8 @@ PINS = {
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": "critical",
     # 2026-08-01 wave
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": "medium",
+    # 2026-08-04 wave
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": "medium",
 }
 
 
@@ -546,3 +548,23 @@ def test_gemini_bridge_before_introduced_passes(tmp_path: Path) -> None:
     assert "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001" not in _ids(
         tmp_path, "requirements.txt", "gemini-bridge==0.1.1\n"
     )
+
+
+# --- 2026-08-04 wave — awslabs.amazon-mq-mcp-server CVE-2026-18655 -------------
+
+
+def test_amazon_mq_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" in _ids(
+        tmp_path, "requirements.txt", "awslabs.amazon-mq-mcp-server==2.0.23\n"
+    )
+
+
+def test_amazon_mq_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" not in _ids(
+        tmp_path, "requirements.txt", "awslabs.amazon-mq-mcp-server==2.0.24\n"
+    )
+
+
+def test_amazon_mq_uvx_mcp_config_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"mq": {"command": "uvx", "args": ["awslabs.amazon-mq-mcp-server@2.0.20"]}}}'
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" in _ids(tmp_path, ".mcp.json", content)

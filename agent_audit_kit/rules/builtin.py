@@ -166,6 +166,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STATA-CVE-2026-47708-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-65594-001": ["IAM-01", "IAM-16", "STA-08"],
     "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -6307,6 +6308,29 @@ _r(
     "minimum operations required.",
     sarif_name="AwsApiMcpServerPolicyBypass",
     cve_references=["CVE-2026-16584"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
+    "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (< 2.0.24)",
+    "The Amazon MQ MCP Server (`awslabs.amazon-mq-mcp-server`) before 2.0.24 does not "
+    "restrict the broker hostname its RabbitMQ broker-connection tools connect to, so "
+    "a remote unauthenticated actor who injects a crafted broker hostname into the MCP "
+    "client context (via prompt injection) can make the server send the Amazon MQ for "
+    "RabbitMQ broker credentials or OAuth access tokens to an attacker-controlled "
+    "endpoint (CVE-2026-18655; CVSS 4.0 7.1 / 3.1 6.5). Fourth awslabs.*-mcp-server pin "
+    "in this family. Fixed in 2.0.24; treat < 2.0.24 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.amazon-mq-mcp-server` to >= 2.0.24 and pin it. Restrict the broker "
+    "hostname the RabbitMQ connection tools may reach to an allow-list, and never "
+    "forward broker credentials / OAuth tokens to a caller-influenced endpoint.",
+    sarif_name="AmazonMqMcpServerBrokerHostnameSsrf",
+    cve_references=["CVE-2026-18655"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],

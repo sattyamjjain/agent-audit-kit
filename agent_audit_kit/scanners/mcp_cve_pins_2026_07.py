@@ -32,6 +32,7 @@ available) before shipping:
   - @apify/actors-mcp-server       >= 0.9.21  (CVE-2026-46341)
   - agentic-flow                   >= 2.0.14  (CVE-2026-58195)
   - awslabs.aws-healthomics-mcp-server >= 0.0.36 (CVE-2026-15415)
+  - awslabs.amazon-mq-mcp-server    >= 2.0.24  (CVE-2026-18655)
   - whatsapp-mcp                   >= 0.2.1   (CVE-2026-46555)
   - @agenticmail/{claudecode,codex,core,openclaw} (CVE-2026-57495; fix floors
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
@@ -217,6 +218,13 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001", "gemini-bridge", ("gemini-bridge",),
          (1, 3, 1), introduced=(1, 0, 0),
          fix_label="1.3.1 (affected 1.0.0–1.3.0)"),
+    # --- 2026-08-04 wave ---
+    # awslabs.amazon-mq-mcp-server (PyPI) < 2.0.24: the RabbitMQ broker-connection
+    # tools do not restrict the broker hostname, so a prompt-injection actor can
+    # steer broker credentials / OAuth tokens to a crafted attacker endpoint
+    # (CVE-2026-18655). Fourth awslabs.*-mcp-server pin in this family. Fixed 2.0.24.
+    _Pin("AAK-MCP-AMAZONMQ-CVE-2026-18655-001", "awslabs.amazon-mq-mcp-server",
+         ("awslabs.amazon-mq-mcp-server",), (2, 0, 24), fix_label="2.0.24"),
 )
 
 _CANDIDATE_NAMES = (

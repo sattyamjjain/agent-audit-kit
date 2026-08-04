@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The github.com repo description still says "271 rules" while the code says 275.**
+  The previous change made the description renderable from `RULE_COUNT` and added a
+  test that fails if the rendered string carries a different number, but it could not
+  change the live description (that needs repo-admin rights a CI token does not have),
+  so the highest-traffic surface stayed stale. Added a `description-liveness` job to
+  the release workflow that fetches the live description from api.github.com and
+  byte-compares it to the rendered template, failing loudly on a mismatch. It is
+  non-gating (fixing it unblocks nothing) and release-only so it does not flake on a
+  fork that cannot read the description.
+- **A failed cve-response gate did not say which issue blocked the tag.** The release
+  gate now prints the issue number, the CVE id parsed from the title, and the full
+  title for every open cve-response issue, so a blocked release is diagnosable from
+  the failed run instead of a trip to the issue list.
+
+### Changed
+
+- Adjudicated CVE-2026-18655 and CVE-2026-66065 into the public CVE-to-rule ledger.
+  CVE-2026-18655 (`awslabs.amazon-mq-mcp-server` < 2.0.24, a broker-hostname SSRF that
+  exfiltrates broker credentials and OAuth tokens) is pinned as the fourth
+  `awslabs.*-mcp-server` family pin, so RULE_COUNT moves 274 to 275 and README updates
+  with it. CVE-2026-66065 (Ouroboros AI-agent runtime, distributed via GitHub releases)
+  is out of scope: not a PyPI/npm artifact the pin detector reads. Closes #530 and #531.
+
+## [0.3.67] - 2026-08-03
+
+### Fixed
+
 - **The GitHub repo description said 271 rules while the code said 274.** The repo
   description is the highest-traffic surface this project has, and it was the one
   place the rule count was never guarded. It is now rendered from `RULE_COUNT`
