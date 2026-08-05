@@ -167,6 +167,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-N8N-CVE-2026-65594-001": ["IAM-01", "IAM-16", "STA-08"],
     "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": ["DSP-17", "STA-08", "IVS-04"],
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -3341,6 +3342,12 @@ _r(
     "Custom-MCP stdio env vars against a *case-sensitive* denylist, so on "
     "Windows (case-insensitive env names) `node_options` slips past the "
     "NODE_OPTIONS entry and reaches `NODE_OPTIONS --require` code execution. "
+    "CVE-2026-69263 (< 3.1.3, CVSS 8.7) is the same denylist-bypass class one "
+    "step on: the denylist matched exact env-var names, but `npm_config_yes=true` "
+    "reproduces `npx --yes` auto-install-and-execute without using a blocked flag; "
+    "CVE-2026-69257 (< 3.1.3, CVSS 7.6) is a separate SSRF where `httpSecurity.ts` "
+    "did not normalise IPv4-mapped IPv6 (`::ffff:127.0.0.1`), letting the MCP tool "
+    "path reach loopback / cloud-metadata endpoints. "
     "Pin floor is 3.1.3 (highest fixed version) so 3.0.6–3.1.2 are still "
     "flagged. Same architectural class as Ox's original STDIO disclosure "
     "(see AAK-STDIO-001).",
@@ -3353,7 +3360,10 @@ _r(
     "case-insensitive. See also AAK-STDIO-001 for the "
     "architectural-class detector.",
     sarif_name="FlowiseMcpAdapterRce",
-    cve_references=["CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057"],
+    cve_references=[
+        "CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057",
+        "CVE-2026-69263", "CVE-2026-69257",
+    ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
@@ -6334,6 +6344,32 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+    "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (< 1.3.1)",
+    "`@langchain/langgraph-checkpoint-mongodb` (the LangGraph.js MongoDB "
+    "CheckpointSaver) at 1.3.0 and below passes checkpoint identifiers "
+    "(`thread_id`, `checkpoint_ns`, `checkpoint_id`) from `config.configurable` "
+    "into MongoDB `find()` queries in `MongoDBSaver.getTuple()` without type "
+    "enforcement. An attacker who supplies an object payload (e.g. the MongoDB "
+    "operators `$gt` / `$ne`) instead of a string has it interpreted as a query "
+    "operator, bypassing thread scoping and leaking checkpoints, including pending "
+    "writes, across tenants (CVE-2026-48121, CVSS 6.7). Fixed in 1.3.1; treat "
+    "<= 1.3.0 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@langchain/langgraph-checkpoint-mongodb` to >= 1.3.1 and pin it. "
+    "Coerce checkpoint identifiers from `config.configurable` to strings before "
+    "they reach a MongoDB query, so an object payload can never be read as an "
+    "operator.",
+    sarif_name="LangGraphMongoCheckpointNosqlInjection",
+    cve_references=["CVE-2026-48121"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-01"],
 )
 
 

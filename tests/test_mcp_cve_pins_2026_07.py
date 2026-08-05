@@ -54,6 +54,8 @@ PINS = {
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": "medium",
     # 2026-08-04 wave
     "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": "medium",
+    # 2026-08-05 wave
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": "medium",
 }
 
 
@@ -568,3 +570,16 @@ def test_amazon_mq_patched_passes(tmp_path: Path) -> None:
 def test_amazon_mq_uvx_mcp_config_below_floor_fires(tmp_path: Path) -> None:
     content = '{"mcpServers": {"mq": {"command": "uvx", "args": ["awslabs.amazon-mq-mcp-server@2.0.20"]}}}'
     assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" in _ids(tmp_path, ".mcp.json", content)
+
+
+# --- 2026-08-05 wave — @langchain/langgraph-checkpoint-mongodb CVE-2026-48121 --
+
+
+def test_langgraph_mongo_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@langchain/langgraph-checkpoint-mongodb": "1.3.0"}}'
+    assert "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_langgraph_mongo_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@langchain/langgraph-checkpoint-mongodb": "1.3.1"}}'
+    assert "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001" not in _ids(tmp_path, "package.json", content)

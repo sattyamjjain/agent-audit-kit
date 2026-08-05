@@ -31,6 +31,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `awslabs.*-mcp-server` family pin, so RULE_COUNT moves 274 to 275 and README updates
   with it. CVE-2026-66065 (Ouroboros AI-agent runtime, distributed via GitHub releases)
   is out of scope: not a PyPI/npm artifact the pin detector reads. Closes #530 and #531.
+- Three cve-response issues had no written disposition. Each one now has one in the
+  public CVE-to-rule ledger. CVE-2026-48121 (`@langchain/langgraph-checkpoint-mongodb`
+  at or below 1.3.0, a NoSQL injection that leaks checkpoints across tenants) is pinned
+  as a new rule, so RULE_COUNT moves 275 to 276. CVE-2026-69263 (an `npm_config_yes`
+  bypass of the npx denylist) and CVE-2026-69257 (an IPv4-mapped IPv6 SSRF) fold into
+  the existing `AAK-FLOWISE-001` rule, whose floor was already 3.1.3, so they add no new
+  rule. Closes #533, #534, and #535.
 
 ## [0.3.67] - 2026-08-03
 

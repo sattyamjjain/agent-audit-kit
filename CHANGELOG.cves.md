@@ -16,6 +16,20 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-05 (unreleased)
+
+Three `cve-response` issues adjudicated: one new pin (`@langchain/langgraph-checkpoint-mongodb`,
+an npm artifact), and two Flowise CVEs folded into the existing `AAK-FLOWISE-001`
+rule whose floor was already 3.1.3 — no new rule and no floor change for those two.
+Each row quotes a verbatim excerpt of the NVD description; each was read from NVD,
+not the issue title.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-48121 (`@langchain/langgraph-checkpoint-mongodb` ≤ 1.3.0 — checkpoint identifiers from `config.configurable` reach `MongoDBSaver.getTuple()` `find()` queries without type enforcement → NoSQL `$gt`/`$ne` operator injection leaks checkpoints across tenants; MEDIUM CVSS 6.7) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-48121) | **Pinned** `AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001` — fix floor `@langchain/langgraph-checkpoint-mongodb` 1.3.1. A pinnable npm artifact the pin scanner resolves from `package.json`/`package-lock.json`/`pnpm-lock.yaml`/`.mcp.json`. Regression tests `test_langgraph_mongo_below_floor_fires` / `test_langgraph_mongo_patched_passes`. NVD verbatim: *"Versions 1.3.0 and below are vulnerable to NoSQL injection: checkpoint identifiers (thread_id, checkpoint_ns, checkpoint_id) from config.configurable are passed into MongoDB find() queries in MongoDBSaver.getTuple() without type enforcement. If an attacker supplies an object payload (such as MongoDB operators $gt or $ne) instead of a string, it can be interpreted as a query operator, bypassing thread scoping and leaking checkpoints, including pending writes, across tenants."* (#535) | 2026-08-05 |
+| CVE-2026-69263 (Flowise < 3.1.3 — the CVE-2025-8943 mitigation denied `-y`/`--yes` on `npx` and blocked env vars by exact name, but `npm_config_yes=true` reproduces `--yes` via npm's `npm_config_*` config channel, so a Custom MCP server still auto-installs and executes the named package; NVD CVSS n/a) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-69263) | **Class-covered** by the existing `AAK-FLOWISE-001` rule — floor already `flowise` 3.1.3 (`_FLOWISE_PATCHED_VERSION`), fixed in the same release, CVE added to the rule's `cve_references`; no separate rule and no floor change. NVD verbatim: *"the mitigation for CVE-2025-8943 blocked -y and --yes flags on npx, but packages/components/nodes/tools/MCP/core.ts denied only PATH, LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, and NODE_OPTIONS by exact environment-variable name. Because npm reads configuration from npm_config_* variables, setting npm_config_yes=true reproduced --yes behavior without using a blocked flag, causing npx to auto-install and execute the named package when a Custom MCP server launched."* (#534) | 2026-08-05 |
+| CVE-2026-69257 (Flowise < 3.1.3 — `httpSecurity.ts` does not normalise IPv4-mapped IPv6 (`::ffff:127.0.0.1`, `::ffff:169.254.169.254`) before the deny-list check, so `isDeniedIP()` skips the IPv4 CIDR checks and the MCP-tool / HTTP-Node path can reach loopback, internal services, or cloud-metadata endpoints via a crafted AAAA record; NVD CVSS n/a) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-69257) | **Class-covered** by the existing `AAK-FLOWISE-001` rule — floor already `flowise` 3.1.3, fixed in the same release, CVE added to the rule's `cve_references`; no separate rule and no floor change. NVD verbatim: *"Flowise's HTTP security module httpSecurity.ts did not normalize IPv4-mapped IPv6 addresses such as ::ffff:127.0.0.1 and ::ffff:169.254.169.254 before checking them against the deny list. Because ipaddr.js reports these addresses as ipv6 while IPv4 CIDR deny-list entries are ipv4, isDeniedIP() skipped the IPv4 CIDR checks."* (#533) | 2026-08-05 |
+
 ## 2026-08-04 (unreleased)
 
 Two `cve-response` issues adjudicated: one pinned (fourth `awslabs.*-mcp-server`
