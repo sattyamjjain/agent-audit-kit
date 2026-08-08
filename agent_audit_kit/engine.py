@@ -155,6 +155,23 @@ def _get_registry(strict_loading: bool = False) -> list[ScannerRegistration]:
     return _REGISTRY
 
 
+def scanner_manifest() -> list[dict[str, str]]:
+    """The scanner modules the engine actually runs, as sorted ``{module, name}``.
+
+    This is the authoritative source for the scanner count and for
+    ``scanners.json``: it lists exactly what ``run_scan`` dispatches to, so it
+    cannot drift from behaviour the way a directory listing can. Back-compat
+    shims (e.g. ``typescript_scan``, which only re-exports the registered
+    ``typescript_pattern_scan``) are not in the registry and are not counted —
+    they add no detection. Reproduce it with ``agent-audit-kit scanners --json``.
+    """
+    seen: dict[str, str] = {}
+    for reg in _get_registry():
+        module = reg.scan_fn.__module__.rsplit(".", 1)[-1]
+        seen.setdefault(module, reg.name)
+    return [{"module": m, "name": n} for m, n in sorted(seen.items())]
+
+
 def _scanner_fail_finding(scanner_name: str, exc: BaseException) -> Finding:
     """Build an INFO finding marking that a scanner crashed."""
     rule = get_rule("AAK-INTERNAL-SCANNER-FAIL")

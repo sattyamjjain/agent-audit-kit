@@ -1,0 +1,345 @@
+{
+  "count": 85,
+  "scanners": [
+    {
+      "module": "a2a_protocol",
+      "name": "A2A protocol"
+    },
+    {
+      "module": "agent_config",
+      "name": "Agent config"
+    },
+    {
+      "module": "agent_harness_shared_state",
+      "name": "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)"
+    },
+    {
+      "module": "argv_toctou",
+      "name": "Argv rebuilt after allowlist approval before spawn (CVE-2026-53822)"
+    },
+    {
+      "module": "crewai_rce_chain",
+      "name": "CrewAI four-CVE chain (CERT/CC VU#221883)"
+    },
+    {
+      "module": "deepseek_v4_tool_injection",
+      "name": "DeepSeek V4 MoE-routed tool injection"
+    },
+    {
+      "module": "dns_rebind",
+      "name": "MCP SDK DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577)"
+    },
+    {
+      "module": "docsgpt_transport_flip",
+      "name": "DocsGPT MCP transport-flip MITM (OX-MCP-2026-05-01)"
+    },
+    {
+      "module": "eu_ai_act_art15_locale",
+      "name": "EU AI Act Art. 15 multilingual-eval coverage (advisory)"
+    },
+    {
+      "module": "gha_hardening",
+      "name": "GitHub Actions SHA-pin / Immutable Action policy"
+    },
+    {
+      "module": "gpt_researcher_transport_flip",
+      "name": "GPT-Researcher MCP transport-flip MITM (OX-MCP-2026-05-01)"
+    },
+    {
+      "module": "healthcare_ai",
+      "name": "Healthcare AI legal triggers"
+    },
+    {
+      "module": "hook_injection",
+      "name": "Hook injection"
+    },
+    {
+      "module": "hook_rce",
+      "name": "Hook RCE"
+    },
+    {
+      "module": "ide_task_rce",
+      "name": "VS Code IDE task/launch folder-open RCE"
+    },
+    {
+      "module": "india_pii",
+      "name": "India PII"
+    },
+    {
+      "module": "ipi_wild_corpus",
+      "name": "Wild IPI payload corpus (2026-04-24)"
+    },
+    {
+      "module": "langchain_prompt_loader",
+      "name": "LangChain load_prompt path traversal (CVE-2026-34070)"
+    },
+    {
+      "module": "langchain_vuln",
+      "name": "LangChain vulnerabilities"
+    },
+    {
+      "module": "langgraph_toolnode",
+      "name": "LangGraph ToolNode positional-list regression (1.0.11)"
+    },
+    {
+      "module": "legal_compliance",
+      "name": "Legal compliance"
+    },
+    {
+      "module": "llm_sql_rce",
+      "name": "LLM-generated SQL on an RCE-capable DB role (CVE-2026-25879)"
+    },
+    {
+      "module": "log_injection",
+      "name": "MCP tool log-injection (CVE-2026-6494)"
+    },
+    {
+      "module": "log_token_leak",
+      "name": "Token-shaped values in log sinks (CVE-2026-20205)"
+    },
+    {
+      "module": "marketplace_manifest",
+      "name": "Marketplace manifest"
+    },
+    {
+      "module": "mcp_apps_ui",
+      "name": "MCP Apps UI iframe sandbox / sanitization (SEP-1865)"
+    },
+    {
+      "module": "mcp_atlassian",
+      "name": "Atlassian MCP RCE chain (CVE-2026-27825/27826)"
+    },
+    {
+      "module": "mcp_auth_pathtraversal",
+      "name": "MCP bearer-token joined into session file path (CVE-2026-52830)"
+    },
+    {
+      "module": "mcp_auth_patterns",
+      "name": "MCP auth patterns"
+    },
+    {
+      "module": "mcp_config",
+      "name": "MCP configuration"
+    },
+    {
+      "module": "mcp_cve_pins_2026_07",
+      "name": "MCP/agent CVE version-pins \u2014 2026-07 disclosure wave"
+    },
+    {
+      "module": "mcp_deprecated_features",
+      "name": "MCP 2026-07-28 deprecated features roots/sampling/logging (SEP-2577/2596)"
+    },
+    {
+      "module": "mcp_env_placeholder_exfil",
+      "name": "MCP ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)"
+    },
+    {
+      "module": "mcp_fhi",
+      "name": "MCP function-hijacking adversarial tool descriptions (arXiv 2604.20994)"
+    },
+    {
+      "module": "mcp_http_noauth_server",
+      "name": "Unauthenticated MCP HTTP/SSE server on 0.0.0.0 / wildcard CORS"
+    },
+    {
+      "module": "mcp_inspector_cve",
+      "name": "MCPJam Inspector vendored fork (CVE-2026-23744)"
+    },
+    {
+      "module": "mcp_marketplace_fetch",
+      "name": "MCP marketplace-fetch \u2192 StdioServerParameters"
+    },
+    {
+      "module": "mcp_middleware",
+      "name": "MCPwn twin-route middleware asymmetry (CVE-2026-33032)"
+    },
+    {
+      "module": "mcp_noauth_default",
+      "name": "MCP server unauthenticated-by-default / fail-open auth (CVE-2026-48814)"
+    },
+    {
+      "module": "mcp_routing_desync",
+      "name": "MCP 2026-07-28 routable-header \u2194 body desync (SEP-2243)"
+    },
+    {
+      "module": "mcp_sampling_capability",
+      "name": "MCP `sampling` capability consent guard (MCP07:2025)"
+    },
+    {
+      "module": "mcp_sdk_hardening",
+      "name": "Upstream MCP SDK STDIO hardening (OX-MCP-2026-04-15)"
+    },
+    {
+      "module": "mcp_server_auth",
+      "name": "MCP server-author missing auth (Azure MCP, CVE-2026-32211)"
+    },
+    {
+      "module": "mcp_server_card",
+      "name": "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)"
+    },
+    {
+      "module": "mcp_ssrf_toolarg",
+      "name": "MCP tool-arg URL SSRF (CVE-2026-14748)"
+    },
+    {
+      "module": "mcp_stateless_migration",
+      "name": "MCP 2026-07-28 stateless-migration smells (SEP-2567/1442/2575)"
+    },
+    {
+      "module": "mcp_stdio_launcher",
+      "name": "MCP stdio launcher-injection config (CVE-2026-40933)"
+    },
+    {
+      "module": "mcp_stdio_params",
+      "name": "MCP StdioServerParameters config-to-spawn taint (OX-MCP-2026-04-25)"
+    },
+    {
+      "module": "mcp_tasks",
+      "name": "MCP Tasks leakage"
+    },
+    {
+      "module": "mcp_tool_unsafe_eval",
+      "name": "Unsafe eval/exec inside @mcp.tool handler (CVE-2026-44717 class)"
+    },
+    {
+      "module": "mcp_toolgate_asymmetry",
+      "name": "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)"
+    },
+    {
+      "module": "mcp_tunnel",
+      "name": "MCP Tunnels gateway config + credential exposure (Anthropic 2026-05-19 research preview)"
+    },
+    {
+      "module": "metis_pomdp",
+      "name": "Metis POMDP closed-loop reasoning defense (arXiv:2605.10067)"
+    },
+    {
+      "module": "neo4j_cve",
+      "name": "mcp-neo4j-cypher CVE-2026-35402"
+    },
+    {
+      "module": "oauth_misconfig",
+      "name": "OAuth 2.1 misconfig"
+    },
+    {
+      "module": "oauth_surface",
+      "name": "Third-party OAuth surface (VERCEL-2026-04-19)"
+    },
+    {
+      "module": "openapi_smells",
+      "name": "OpenAPI smells for MCP-on-REST (Hermes paper, arXiv:2605.14312)"
+    },
+    {
+      "module": "openclaw_privesc",
+      "name": "OpenClaw missing-role privesc (provisional)"
+    },
+    {
+      "module": "pin_drift",
+      "name": "Pin drift"
+    },
+    {
+      "module": "project_deal_drift",
+      "name": "Project Deal economic-drift (Anthropic 2026-04-26)"
+    },
+    {
+      "module": "prtitle_ipi",
+      "name": "PR-title indirect prompt injection (Comment-and-Control 2026-04-25)"
+    },
+    {
+      "module": "routines",
+      "name": "Claude Code routines"
+    },
+    {
+      "module": "rust_pattern_scan",
+      "name": "Rust pattern scan"
+    },
+    {
+      "module": "sandbox_self_disable",
+      "name": "Tool-schema sandbox self-disable parameter (CVE-2026-42074)"
+    },
+    {
+      "module": "secret_exposure",
+      "name": "Secret exposure"
+    },
+    {
+      "module": "shared_resource_authz",
+      "name": "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)"
+    },
+    {
+      "module": "skill_lifecycle_attribution",
+      "name": "Skill lifecycle outcome-attribution (SkillsVote, arXiv:2605.18401)"
+    },
+    {
+      "module": "skill_poisoning",
+      "name": "Skill poisoning"
+    },
+    {
+      "module": "skill_untrusted_exec_path",
+      "name": "Untrusted-search-path exec override in skill/install flow (CVE-2026-53819)"
+    },
+    {
+      "module": "social_agent_hijack",
+      "name": "Social-agent auto-reply hijack (BHASIA 2026)"
+    },
+    {
+      "module": "splunk_mcp_config",
+      "name": "splunk-mcp-server config-side token-leak (CVE-2026-20205)"
+    },
+    {
+      "module": "ssrf_patterns",
+      "name": "SSRF patterns"
+    },
+    {
+      "module": "ssrf_redirect",
+      "name": "SSRF: validate-then-fetch with redirects (CVE-2026-41481)"
+    },
+    {
+      "module": "ssrf_toctou",
+      "name": "SSRF: validate-then-fetch DNS-rebind / TOCTOU (CVE-2026-41488)"
+    },
+    {
+      "module": "stainless_lineage",
+      "name": "Stainless-generator provenance (Anthropic acquisition 2026-05-18)"
+    },
+    {
+      "module": "state_privacy",
+      "name": "US state consumer privacy"
+    },
+    {
+      "module": "stdio_injection",
+      "name": "Ox MCP STDIO command-injection"
+    },
+    {
+      "module": "supply_chain",
+      "name": "Supply chain"
+    },
+    {
+      "module": "taint_analysis",
+      "name": "Taint analysis"
+    },
+    {
+      "module": "tool_poisoning",
+      "name": "Tool poisoning"
+    },
+    {
+      "module": "toxic_flow",
+      "name": "Toxic-flow source/sink pair scoring"
+    },
+    {
+      "module": "transport_limits",
+      "name": "Transport body-size limits (CVE-2026-39313)"
+    },
+    {
+      "module": "transport_security",
+      "name": "Transport security"
+    },
+    {
+      "module": "trust_boundary",
+      "name": "Trust boundary"
+    },
+    {
+      "module": "typescript_pattern_scan",
+      "name": "TypeScript pattern scan"
+    }
+  ]
+}

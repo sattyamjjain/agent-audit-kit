@@ -6,8 +6,8 @@
 **AgentAuditKit** (version tracked in `pyproject.toml` / `agent_audit_kit.__version__`) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
 
 - **284 rules** across 12 security categories
-- **87 scanner modules** including AST-based Python taint analysis plus regex dangerous-sink pattern scanners for TypeScript/JavaScript and Rust (pattern matching, not taint flow)
-- **25 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`
+- **85 scanner modules** including AST-based Python taint analysis plus regex dangerous-sink pattern scanners for TypeScript/JavaScript and Rust (pattern matching, not taint flow)
+- **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (12 frameworks): EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, NSA MCP CSI, + regional (India DPDP, Singapore, Alabama, Tennessee)
 - Zero cloud dependencies — fully offline
@@ -53,7 +53,7 @@ docker build -t agent-audit-kit .
 
 ```
 agent_audit_kit/
-  cli.py              # Click CLI entry point (25 commands)
+  cli.py              # Click CLI entry point (26 commands)
   engine.py            # Scanner registry + orchestrator (run_scan)
   models.py            # Core dataclasses: Finding, ScanResult, Severity, Category
   scoring.py           # Penalty-based scoring (100 → deductions per severity)
@@ -66,7 +66,7 @@ agent_audit_kit/
   vuln_db.py           # CVE/vulnerability database
   rules/
     builtin.py         # 284 RuleDefinition entries (rule registry)
-  scanners/            # 87 scanner modules (core set shown), each exports scan() -> (list[Finding], set[str])
+  scanners/            # 85 scanner modules (core set shown), each exports scan() -> (list[Finding], set[str])
     mcp_config.py      # MCP configuration checks
     hook_injection.py  # Hook injection detection
     trust_boundary.py  # Trust boundary violations

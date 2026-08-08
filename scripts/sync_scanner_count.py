@@ -25,6 +25,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import pathlib
 import re
 import sys
@@ -32,15 +33,10 @@ import sys
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCANNERS_DIR = REPO_ROOT / "agent_audit_kit" / "scanners"
+SCANNERS_JSON = REPO_ROOT / "scanners.json"
 
-# Files in agent_audit_kit/scanners/ that are NOT detector modules and
-# should be excluded from the count. Add explicitly — CI fails if a new
-# private helper is added without bumping this set, so the count never
-# silently drifts.
-EXCLUDED: frozenset[str] = frozenset({
-    "__init__.py",
-    "_helpers.py",
-})
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 _README_ANCHOR_RE = re.compile(
     r"(<!--\s*scanner-count:total\s*-->)(.*?)(<!--\s*/scanner-count\s*-->)",
@@ -55,18 +51,42 @@ _INIT_CONSTANT_RE = re.compile(
 )
 
 
+def build_manifest() -> list[dict[str, str]]:
+    """The authoritative scanner list — what the engine actually runs.
+
+    Derived from ``engine.scanner_manifest()`` rather than a directory listing,
+    so back-compat shims (``typescript_scan`` / ``rust_scan``, which only
+    re-export the registered ``*_pattern_scan`` modules) are not miscounted as
+    detectors. Anyone can reproduce it with ``agent-audit-kit scanners --json``.
+    """
+    from agent_audit_kit.engine import scanner_manifest
+
+    return scanner_manifest()
+
+
+def render_manifest_json(manifest: list[dict[str, str]]) -> str:
+    """Byte-deterministic ``scanners.json`` (mirrors ``rules.json``)."""
+    return json.dumps(
+        {"count": len(manifest), "scanners": manifest},
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
 def count_scanners() -> int:
-    """Count `.py` detectors in agent_audit_kit/scanners/ excluding EXCLUDED."""
-    count = 0
-    for entry in sorted(SCANNERS_DIR.iterdir()):
-        if not entry.is_file():
-            continue
-        if entry.suffix != ".py":
-            continue
-        if entry.name in EXCLUDED:
-            continue
-        count += 1
-    return count
+    """The scanner count, derived from the manifest (not a directory listing)."""
+    return len(build_manifest())
+
+
+def _update_manifest_json(manifest: list[dict[str, str]], *, check: bool) -> bool:
+    text = render_manifest_json(manifest)
+    existing = SCANNERS_JSON.read_text(encoding="utf-8") if SCANNERS_JSON.exists() else ""
+    if text == existing:
+        return False
+    if check:
+        return True
+    SCANNERS_JSON.write_text(text, encoding="utf-8")
+    return True
 
 
 def _update_readme(count: int, *, check: bool) -> bool:
@@ -122,10 +142,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    count = count_scanners()
+    manifest = build_manifest()
+    count = len(manifest)
+    changed_manifest = _update_manifest_json(manifest, check=args.check)
     changed_readme = _update_readme(count, check=args.check)
     changed_init = _update_init_py(count, check=args.check)
-    changed = any((changed_readme, changed_init))
+    changed = any((changed_manifest, changed_readme, changed_init))
 
     if args.check and changed:
         sys.stderr.write(
@@ -135,7 +157,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if changed:
         sys.stdout.write(
-            f"sync_scanner_count: wrote {count} scanners into README / __init__.py\n"
+            f"sync_scanner_count: wrote {count} scanners into scanners.json / "
+            "README / __init__.py\n"
         )
     else:
         sys.stdout.write(
