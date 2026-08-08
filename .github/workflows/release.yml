@@ -69,12 +69,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          expected="$(python scripts/render_repo_metadata.py)"
+          # PYTHONPATH=. so the render script can import agent_audit_kit from the
+          # checkout (the package is not installed in this job). Without it the
+          # step died with ModuleNotFoundError *before* the byte-compare, which is
+          # why a stale description survived three release cycles undetected.
+          expected="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
           live="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.description // ""')"
           if [ "$live" != "$expected" ]; then
-            echo "::error ::repo description on github.com does not byte-match the description rendered from RULE_COUNT. Paste the expected string into repo Settings -> Description (it cannot be set from a CI token)."
-            echo "expected: $expected"
-            echo "live:     $live"
+            echo "::error title=Repo description is stale::Paste this into repo Settings > About (a CI token cannot set it): ${expected}"
+            echo "expected: ${expected}"
+            echo "live:     ${live}"
+            {
+              echo "### Repo description is stale — paste this into Settings > About"
+              echo ""
+              echo '```'
+              echo "${expected}"
+              echo '```'
+              echo ""
+              echo "live now: \`${live}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
           echo "repo description liveness: live == rendered."
