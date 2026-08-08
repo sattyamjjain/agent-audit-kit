@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A machine-readable scanner manifest (`scanners.json`, generated from the engine
+  registry) so the scanner count is countable the way the rule count is, not asserted.**
+  `agent-audit-kit scanners --json` prints it, the README marker renders from it, and a
+  test asserts they agree. Before this the count came from a directory listing that
+  included two back-compat shims (`typescript_scan` and `rust_scan`, which only re-export
+  the registered `*_pattern_scan` modules), so `87 scanners` was really 85. The number is
+  now 85, and reproducible in one command.
+
+### Fixed
+
+- **The GitHub "About" description said 271 rules for a third release in a row**, while
+  the code has said 284 since 2026-08-08. The render target (`make repo-description`) and
+  the release-time drift check both already existed; the check was silently useless
+  because the job crashed with `ModuleNotFoundError` before it ever reached the
+  byte-compare. The job now runs (`PYTHONPATH=.`), so a stale description actually fails
+  the release job and the failure prints the exact string to paste, in the annotation and
+  the run summary. The description still has to be pasted into repo Settings by hand — a
+  CI token cannot set it — but a stale one is no longer invisible.
+- **docs/CNAME pointed at `docs.agentauditkit.io`, which has no DNS record**, while
+  `mkdocs.yml` pointed at the Pages URL that actually serves. Two documented docs URLs,
+  one of them dead. Deleted the CNAME so the working Pages URL is the one docs URL, and
+  added a link-check over `docs/` and `README.md` (weekly + on doc changes) so a dead
+  docs link fails a build instead of sitting for months. The `security@agentauditkit.io`
+  contact address is left in place and excluded from the link-check.
+
+## [0.3.69] - 2026-08-08
+
+### Added
+
 - **VS Code IDE task/launch folder-open RCE coverage (`AAK-IDE-TASK-001..004`).** The
   scanner read `.vscode/mcp.json` but not the task surface right next to it. A
   `.vscode/tasks.json` task with `runOptions.runOn: folderOpen` runs the moment a
