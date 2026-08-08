@@ -52,6 +52,16 @@ PINS = {
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": "critical",
     # 2026-08-01 wave
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": "medium",
+    # 2026-08-04 wave
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": "medium",
+    # 2026-08-05 wave
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": "medium",
+    # 2026-08-06 wave
+    "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001": "medium",
+    "AAK-MCP-FRONTMCP-CVE-2026-67531-001": "high",
+    # 2026-08-08 wave
+    "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": "medium",
+    "AAK-METAADS-CVE-2026-48039-001": "critical",
 }
 
 
@@ -545,4 +555,93 @@ def test_gemini_bridge_before_introduced_passes(tmp_path: Path) -> None:
     # Affected range starts at 1.0.0; the unrelated 0.1.x line must not fire.
     assert "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001" not in _ids(
         tmp_path, "requirements.txt", "gemini-bridge==0.1.1\n"
+    )
+
+
+# --- 2026-08-04 wave — awslabs.amazon-mq-mcp-server CVE-2026-18655 -------------
+
+
+def test_amazon_mq_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" in _ids(
+        tmp_path, "requirements.txt", "awslabs.amazon-mq-mcp-server==2.0.23\n"
+    )
+
+
+def test_amazon_mq_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" not in _ids(
+        tmp_path, "requirements.txt", "awslabs.amazon-mq-mcp-server==2.0.24\n"
+    )
+
+
+def test_amazon_mq_uvx_mcp_config_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"mq": {"command": "uvx", "args": ["awslabs.amazon-mq-mcp-server@2.0.20"]}}}'
+    assert "AAK-MCP-AMAZONMQ-CVE-2026-18655-001" in _ids(tmp_path, ".mcp.json", content)
+
+
+# --- 2026-08-05 wave — @langchain/langgraph-checkpoint-mongodb CVE-2026-48121 --
+
+
+def test_langgraph_mongo_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@langchain/langgraph-checkpoint-mongodb": "1.3.0"}}'
+    assert "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_langgraph_mongo_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@langchain/langgraph-checkpoint-mongodb": "1.3.1"}}'
+    assert "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001" not in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-08-06 wave — awslabs.documentdb-mcp-server / frontmcp -------------
+
+
+def test_documentdb_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"docdb": {"command": "uvx", "args": ["awslabs.documentdb-mcp-server@1.0.11"]}}}'
+    assert "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001" in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_documentdb_patched_passes(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"docdb": {"command": "uvx", "args": ["awslabs.documentdb-mcp-server@1.0.12"]}}}'
+    assert "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001" not in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_frontmcp_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"frontmcp": "1.5.6"}}'
+    assert "AAK-MCP-FRONTMCP-CVE-2026-67531-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_frontmcp_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"frontmcp": "1.5.7"}}'
+    assert "AAK-MCP-FRONTMCP-CVE-2026-67531-001" not in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-08-08 wave — langgraph-checkpoint-postgres/sqlite / meta-ads-mcp ----
+
+
+def test_langgraph_checkpoint_postgres_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001" in _ids(
+        tmp_path, "requirements.txt", "langgraph-checkpoint-postgres==3.1.0\n"
+    )
+
+
+def test_langgraph_checkpoint_sqlite_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001" in _ids(
+        tmp_path, "requirements.txt", "langgraph-checkpoint-sqlite==3.1.0\n"
+    )
+
+
+def test_langgraph_checkpoint_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001" not in _ids(
+        tmp_path, "requirements.txt", "langgraph-checkpoint-postgres==3.1.1\n"
+    )
+
+
+def test_metaads_below_floor_fires(tmp_path: Path) -> None:
+    assert "AAK-METAADS-CVE-2026-48039-001" in _ids(
+        tmp_path, "requirements.txt", "meta-ads-mcp==1.0.108\n"
+    )
+
+
+def test_metaads_patched_passes(tmp_path: Path) -> None:
+    assert "AAK-METAADS-CVE-2026-48039-001" not in _ids(
+        tmp_path, "requirements.txt", "meta-ads-mcp==1.0.109\n"
     )

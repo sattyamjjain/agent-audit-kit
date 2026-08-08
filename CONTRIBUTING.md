@@ -90,6 +90,10 @@ mypy agent_audit_kit
 - Updates documentation if user-facing behavior changes.
 - Does not introduce secret values, `.env` files, or credentials.
 
+## Release checklist
+
+- **When `RULE_COUNT` changes, update the GitHub repo description.** It is not written from code (that needs repo-admin rights a CI token does not have), so run `python scripts/render_repo_metadata.py` and paste its output into repo Settings → Description. `tests/test_repo_metadata_matches_code.py` fails the build if the rendered string ever carries a different number than the code.
+
 ## Reporting Issues
 
 Use [GitHub Issues](https://github.com/sattyamjjain/agent-audit-kit/issues) for bugs and feature requests. For security vulnerabilities, see [SECURITY.md](SECURITY.md).

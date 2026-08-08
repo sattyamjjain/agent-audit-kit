@@ -166,6 +166,16 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-STATA-CVE-2026-47708-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-65594-001": ["IAM-01", "IAM-16", "STA-08"],
     "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001": ["IAM-01", "AIS-07", "STA-08"],
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": ["DSP-17", "STA-08", "IVS-04"],
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": ["STA-08", "AIS-07", "DSP-04"],
+    "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001": ["STA-08", "IAM-01", "DSP-04"],
+    "AAK-MCP-FRONTMCP-CVE-2026-67531-001": ["STA-08", "AIS-07", "IVS-04"],
+    "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": ["STA-08", "AIS-07", "DSP-04"],
+    "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
+    "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
+    "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
+    "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
+    "AAK-IDE-TASK-004": ["STA-08"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -2267,6 +2277,87 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
+# VS Code IDE task / launch folder-open RCE (AAK-IDE-TASK-001..004)
+#
+# `.vscode/tasks.json` and `.vscode/launch.json` are agent-adjacent config the
+# scanner did not read before: `.vscode/mcp.json` was covered, the task surface
+# was not. The keyv npm worm (2025) spread by shipping a task with
+# `runOptions.runOn: folderOpen`, which executes the moment a victim opens the
+# repo — before any interaction and before the workspace-trust prompt.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-IDE-TASK-001",
+    "VS Code task auto-executes on folderOpen (pre-trust code execution)",
+    "A task in `.vscode/tasks.json` sets `runOptions.runOn: folderOpen`, so it "
+    "runs as soon as the folder is opened — before any human interaction and "
+    "before the workspace-trust prompt. This is the vector the keyv npm worm used "
+    "to spread: a poisoned repository executes code the instant a victim opens "
+    "it. Severity is high on its own and critical when the auto-run command is a "
+    "shell, an interpreter, or a network fetch.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Remove `runOn: folderOpen` from any task that runs a command, or gate the "
+    "task behind an explicit manual trigger. Never auto-run a shell, interpreter, "
+    "or network-fetch command on folder open; require workspace trust first.",
+    sarif_name="IdeTaskFolderOpenAutorun",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-RCE-04"],
+)
+
+_r(
+    "AAK-IDE-TASK-002",
+    "VS Code task command reaches a shell via pipe, repo-path interpreter, or interpolation",
+    "A task in `.vscode/tasks.json` builds its `command`/`args` in a way that "
+    "reaches a shell: a pipe-to-shell (`... | sh`), an interpreter invoked on a "
+    "script path inside the repo, or a `${...}`/interpolated variable spliced into "
+    "a shell string. A poisoned repository controls that string, so opening or "
+    "running the task executes attacker-chosen code.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Do not pipe downloaded content into a shell and do not interpolate variables "
+    "into shell command strings. Invoke a vetted, in-tree binary with a fixed "
+    "argv, and pin or verify any script the task runs.",
+    sarif_name="IdeTaskShellInjection",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-RCE-05"],
+)
+
+_r(
+    "AAK-IDE-TASK-003",
+    "VS Code launch.json preLaunchTask chains to a flagged auto-exec task",
+    "A configuration in `.vscode/launch.json` sets `preLaunchTask` to a task that "
+    "AAK flagged (a folderOpen auto-run or a shell-reaching command). Starting a "
+    "debug session then runs that task, so the launch config is a second trigger "
+    "for the same code-execution path. Reported as one finding naming both files.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Point `preLaunchTask` only at tasks that run vetted, fixed-argv commands. "
+    "Remove the auto-run or shell injection from the referenced task (see the "
+    "paired AAK-IDE-TASK-001 / AAK-IDE-TASK-002 finding).",
+    sarif_name="IdeLaunchPreLaunchTaskChain",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-RCE-06"],
+)
+
+_r(
+    "AAK-IDE-TASK-004",
+    "VS Code task/launch config could not be parsed",
+    "A `.vscode/tasks.json` or `.vscode/launch.json` file could not be parsed even "
+    "after stripping JSONC comments and trailing commas. AAK reports this rather "
+    "than skipping it silently: an unparseable config file is exactly where an "
+    "auto-run task would hide from a scan.",
+    Severity.LOW,
+    Category.AGENT_CONFIG,
+    "Fix the JSON/JSONC syntax so the file can be audited. If it is intentionally "
+    "not a VS Code task/launch config, move it out of `.vscode/`.",
+    sarif_name="IdeTaskConfigUnparsable",
+)
+
+# ---------------------------------------------------------------------------
 # LangChain Path Traversal (AAK-LANGCHAIN-001..003)
 #
 # References:
@@ -3340,6 +3431,12 @@ _r(
     "Custom-MCP stdio env vars against a *case-sensitive* denylist, so on "
     "Windows (case-insensitive env names) `node_options` slips past the "
     "NODE_OPTIONS entry and reaches `NODE_OPTIONS --require` code execution. "
+    "CVE-2026-69263 (< 3.1.3, CVSS 8.7) is the same denylist-bypass class one "
+    "step on: the denylist matched exact env-var names, but `npm_config_yes=true` "
+    "reproduces `npx --yes` auto-install-and-execute without using a blocked flag; "
+    "CVE-2026-69257 (< 3.1.3, CVSS 7.6) is a separate SSRF where `httpSecurity.ts` "
+    "did not normalise IPv4-mapped IPv6 (`::ffff:127.0.0.1`), letting the MCP tool "
+    "path reach loopback / cloud-metadata endpoints. "
     "Pin floor is 3.1.3 (highest fixed version) so 3.0.6–3.1.2 are still "
     "flagged. Same architectural class as Ox's original STDIO disclosure "
     "(see AAK-STDIO-001).",
@@ -3352,7 +3449,10 @@ _r(
     "case-insensitive. See also AAK-STDIO-001 for the "
     "architectural-class detector.",
     sarif_name="FlowiseMcpAdapterRce",
-    cve_references=["CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057"],
+    cve_references=[
+        "CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057",
+        "CVE-2026-69263", "CVE-2026-69257",
+    ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
@@ -5866,17 +5966,21 @@ _r(
     "(CVE-2026-61427, CVSS 7.3). The same pin also covers CVE-2026-47394 — an "
     "arbitrary-file-read path traversal via `workflow.show` (and the dispatcher's "
     "unvalidated `**kwargs` from `tools/call`), an incomplete prior path-handling "
-    "fix that was fully closed only in 4.6.40. The 4.6.78 floor is the "
-    "higher of the two, so a project pinned below it is exposed to both. Default "
-    "bind is 127.0.0.1, so remote reach needs a network bind. Treat < 4.6.78 "
-    "(and unpinned) as exposed.",
+    "fix that was fully closed only in 4.6.40. The same floor also covers "
+    "CVE-2026-48168 (CVSS 10, fixed 4.6.40): a command injection in PraisonAI's "
+    "bundled Claude GitHub Actions workflow that splices an attacker-controlled "
+    "pull-request branch name into a Bash `run:` block, with any `@claude` comment "
+    "able to trigger the job, so a fork PR reaches arbitrary execution in the "
+    "Actions runner. The 4.6.78 floor is the highest of the three, so a project "
+    "pinned below it is exposed to all of them. Default bind is 127.0.0.1, so "
+    "remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `praisonai` to >= 4.6.78 and pin it. Always configure `--api-key` for "
     "the HTTP-stream transport and never bind it to a non-loopback interface "
     "without authentication.",
     sarif_name="PraisonAiMcpNoAuthDefault",
-    cve_references=["CVE-2026-61427", "CVE-2026-47394"],
+    cve_references=["CVE-2026-61427", "CVE-2026-47394", "CVE-2026-48168"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
@@ -6314,6 +6418,156 @@ _r(
 
 
 _r(
+    "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
+    "Amazon MQ MCP Server broker-hostname SSRF exfiltrates credentials/tokens (< 2.0.24)",
+    "The Amazon MQ MCP Server (`awslabs.amazon-mq-mcp-server`) before 2.0.24 does not "
+    "restrict the broker hostname its RabbitMQ broker-connection tools connect to, so "
+    "a remote unauthenticated actor who injects a crafted broker hostname into the MCP "
+    "client context (via prompt injection) can make the server send the Amazon MQ for "
+    "RabbitMQ broker credentials or OAuth access tokens to an attacker-controlled "
+    "endpoint (CVE-2026-18655; CVSS 4.0 7.1 / 3.1 6.5). Fourth awslabs.*-mcp-server pin "
+    "in this family. Fixed in 2.0.24; treat < 2.0.24 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.amazon-mq-mcp-server` to >= 2.0.24 and pin it. Restrict the broker "
+    "hostname the RabbitMQ connection tools may reach to an allow-list, and never "
+    "forward broker credentials / OAuth tokens to a caller-influenced endpoint.",
+    sarif_name="AmazonMqMcpServerBrokerHostnameSsrf",
+    cve_references=["CVE-2026-18655"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+    "LangGraph MongoDB checkpoint saver NoSQL injection leaks checkpoints across tenants (< 1.3.1)",
+    "`@langchain/langgraph-checkpoint-mongodb` (the LangGraph.js MongoDB "
+    "CheckpointSaver) at 1.3.0 and below passes checkpoint identifiers "
+    "(`thread_id`, `checkpoint_ns`, `checkpoint_id`) from `config.configurable` "
+    "into MongoDB `find()` queries in `MongoDBSaver.getTuple()` without type "
+    "enforcement. An attacker who supplies an object payload (e.g. the MongoDB "
+    "operators `$gt` / `$ne`) instead of a string has it interpreted as a query "
+    "operator, bypassing thread scoping and leaking checkpoints, including pending "
+    "writes, across tenants (CVE-2026-48121, CVSS 6.7). Fixed in 1.3.1; treat "
+    "<= 1.3.0 (and unpinned) as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@langchain/langgraph-checkpoint-mongodb` to >= 1.3.1 and pin it. "
+    "Coerce checkpoint identifiers from `config.configurable` to strings before "
+    "they reach a MongoDB query, so an object payload can never be read as an "
+    "operator.",
+    sarif_name="LangGraphMongoCheckpointNosqlInjection",
+    cve_references=["CVE-2026-48121"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-01"],
+)
+
+
+_r(
+    "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001",
+    "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (< 1.0.12)",
+    "`awslabs.documentdb-mcp-server` before 1.0.12 has incorrect authorization in "
+    "its aggregation-pipeline tool: write-capable pipeline stages bypass the "
+    "read-only-mode enforcement, so an authenticated MCP client can perform "
+    "inappropriate write operations on the connected database (CVE-2026-18954, "
+    "CVSS 5.5). A pinnable PyPI artifact (latest 1.0.14) the pin scanner resolves "
+    "from `requirements.txt` / `pyproject.toml` / `uv.lock` / `.mcp.json`; the "
+    "fifth pin in the existing `awslabs.*-mcp-server` family.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.documentdb-mcp-server` to >= 1.0.12 and pin it. Do not rely "
+    "on read-only mode alone; confirm the server rejects write-capable aggregation "
+    "stages when a client is scoped read-only.",
+    sarif_name="DocumentDbMcpAggregationAuthzBypass",
+    cve_references=["CVE-2026-18954"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-01"],
+)
+
+
+_r(
+    "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
+    "FrontMCP sandbox escape via Zod schema proxy reaches RCE (< 1.5.7)",
+    "`frontmcp` before 1.5.7 exposes live host Zod schema instances to the "
+    "sandboxed `codecall:execute` tool through `getTool()`; because Zod v4's "
+    "`_zod` is a non-configurable, non-writable own property, the Proxy invariants "
+    "force the security membrane to return the raw host object, letting a script "
+    "reach `_zod.constr.constructor` (the host Function constructor) and run "
+    "arbitrary code as the server user. One `tools/call` is sufficient, and the "
+    "framework's default public auth mode serves it to unauthenticated callers "
+    "(CVE-2026-67531). A pinnable npm artifact (latest 1.6.0) the pin scanner "
+    "resolves from `package.json` / lockfiles / `.mcp.json`.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `frontmcp` to >= 1.5.7 and pin it. Do not run the code-execution tool "
+    "in public auth mode; require authentication and treat tool output / fetched "
+    "content as untrusted so an indirect prompt injection cannot trigger it.",
+    sarif_name="FrontMcpZodSandboxEscapeRce",
+    cve_references=["CVE-2026-67531"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI05", "ASI04"],
+    adversa_references=["ADV-RCE-01"],
+)
+
+
+_r(
+    "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001",
+    "LangGraph Postgres/SQLite checkpoint saver cross-tenant namespace leak (< 3.1.1)",
+    "`langgraph-checkpoint-postgres` and `langgraph-checkpoint-sqlite` before 3.1.1 "
+    "persist hierarchical namespaces as a dot-joined string and scope reads by "
+    "matching that string as a simple prefix pattern. A read scoped to one namespace "
+    "can therefore also match a sibling namespace whose flattened form shares the "
+    "same leading characters, or a label containing unescaped pattern metacharacters, "
+    "so an authenticated caller retrieves another tenant's stored items through an "
+    "ordinary scoped search or `list namespaces` call, with no crafted input "
+    "(CVE-2026-71433, CVSS 5.3). Fixed in 3.1.1; the Postgres/SQLite sibling of the "
+    "langgraph-checkpoint-mongodb checkpoint leak. Treat < 3.1.1 (and unpinned) "
+    "as exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `langgraph-checkpoint-postgres` / `langgraph-checkpoint-sqlite` to "
+    ">= 3.1.1 and pin them. Store and match namespaces as structured, escaped "
+    "segments (not a prefix over a flattened dot-joined string) so a scoped read "
+    "cannot spill into a sibling namespace.",
+    sarif_name="LangGraphCheckpointNamespaceLeak",
+    cve_references=["CVE-2026-71433"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-01"],
+)
+
+
+_r(
+    "AAK-METAADS-CVE-2026-48039-001",
+    "Meta Ads MCP forwards unauthenticated requests and leaks the access token (< 1.0.109)",
+    "`meta-ads-mcp` before 1.0.109 has `AuthInjectionMiddleware.dispatch()` "
+    "unconditionally forward unauthenticated Streamable-HTTP requests to downstream "
+    "MCP tool handlers without a 401, so any network-reachable caller invokes tools "
+    "unauthenticated. With no per-request credential the handlers fall back to the "
+    "`META_ACCESS_TOKEN` env var, and when the downstream Meta Graph API call fails "
+    "the raw `httpx` request URL — including the operator's `access_token` query "
+    "parameter — is serialised into the JSON-RPC response, delivering the credential "
+    "to the unauthenticated caller (CVE-2026-48039, CVSS 9.1). Fixed in 1.0.109; "
+    "treat < 1.0.109 (and unpinned) as exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `meta-ads-mcp` to >= 1.0.109 and pin it. Require per-request "
+    "authentication and return 401 when it is absent; never echo an outbound request "
+    "URL (which carries `access_token`) into a tool response, and scrub credentials "
+    "from error paths.",
+    sarif_name="MetaAdsMcpNoAuthTokenLeak",
+    cve_references=["CVE-2026-48039"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
     "AAK-MCP-FLYTO-CVE-2026-67425-001",
     "Flyto2 Core forwards provider API keys to a caller-controlled base_url (<2.26.6)",
     "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent "
@@ -6346,16 +6600,26 @@ _r(
     "`DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, "
     "`BASHOPTS`, and `PS4`, so an unauthenticated attacker can inject those "
     "environment variables into a launched stdio MCP server process and achieve "
-    "arbitrary code execution (CVE-2026-12940, CVSS 9.8). Fixed in 1.11.0; treat "
-    "1.0.0–1.10.1 (and unpinned) as exposed. Pre-1.0.0 releases predate the MCP "
-    "stdio launcher and are not in the affected range.",
+    "arbitrary code execution (CVE-2026-12940, CVSS 9.8). The same 1.11.0 floor "
+    "also remediates five further Langflow OSS CVEs disclosed for 1.0.0–1.10.3: "
+    "CVE-2026-17623 (command-field RCE in MCP server configurations), "
+    "CVE-2026-17626 (host-file read/modify via unfiltered Docker volume-mount and "
+    "device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication "
+    "bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host "
+    "IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading "
+    "the JWT signing secret, the SQLite DB, and process env). Fixed at or before "
+    "1.11.0; treat < 1.11.0 (and unpinned) as exposed. Pre-1.0.0 releases predate "
+    "the MCP stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
     "Upgrade `langflow` to >= 1.11.0 and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
     "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`.",
     sarif_name="LangflowMcpStdioEnvInjectionRce",
-    cve_references=["CVE-2026-12940"],
+    cve_references=[
+        "CVE-2026-12940", "CVE-2026-17623", "CVE-2026-17626",
+        "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646",
+    ],
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],

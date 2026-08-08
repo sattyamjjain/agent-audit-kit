@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "type": "process",
+      "command": "tsc",
+      "args": ["-p", "."],
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "test",
+      "type": "process",
+      "command": "npm",
+      "args": ["test"]
+    }
+  ]
+}

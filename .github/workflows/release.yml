@@ -30,13 +30,67 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          count=$(gh issue list --repo "$GITHUB_REPOSITORY" --label cve-response --state open --json number --jq length)
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label cve-response --state open --json number,title)
+          count=$(echo "$open" | jq length)
           if [ "$count" != "0" ]; then
-            echo "::error ::cve-response gate: $count open cve-response issue(s). Triage + close them (pin or disposition) before tagging."
-            gh issue list --repo "$GITHUB_REPOSITORY" --label cve-response --state open
+            echo "::error ::cve-response gate: $count open cve-response issue(s) block this tag. Triage + close them (pin or disposition) before tagging:"
+            # Print the issue number, the CVE id parsed from the title, and the full
+            # title for each blocker, so the fix is obvious from the failed run itself
+            # instead of requiring a trip to the issue list.
+            echo "$open" | jq -r '.[] | "  #\(.number)  \(([.title | scan("CVE-[0-9]{4}-[0-9]+")] | first) // "no-CVE-id")  \(.title)"'
             exit 1
           fi
           echo "cve-response gate: clean — 0 open cve-response issues."
+
+  # --------------------------------------------------------------------------
+  # 0b. Loud, non-gating check: the live github.com description must byte-match
+  #     the description rendered from RULE_COUNT. GitHub's description is not
+  #     writable from a CI token, so this cannot fix it; it FAILS LOUDLY so a
+  #     stale count (e.g. "271 rules" while the code says 274) is impossible to
+  #     miss at release time. Deliberately NOT a dependency of the publish jobs
+  #     (fixing it unblocks nothing; the cve-response gate is the real gate).
+  #     Release-only so it never flakes on a fork that can't read the description.
+  # --------------------------------------------------------------------------
+  description-liveness:
+    name: Repo description liveness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Live github.com description must match the rendered template
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # PYTHONPATH=. so the render script can import agent_audit_kit from the
+          # checkout (the package is not installed in this job). Without it the
+          # step died with ModuleNotFoundError *before* the byte-compare, which is
+          # why a stale description survived three release cycles undetected.
+          expected="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
+          live="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.description // ""')"
+          if [ "$live" != "$expected" ]; then
+            echo "::error title=Repo description is stale::Paste this into repo Settings > About (a CI token cannot set it): ${expected}"
+            echo "expected: ${expected}"
+            echo "live:     ${live}"
+            {
+              echo "### Repo description is stale — paste this into Settings > About"
+              echo ""
+              echo '```'
+              echo "${expected}"
+              echo '```'
+              echo ""
+              echo "live now: \`${live}\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "repo description liveness: live == rendered."
 
   # --------------------------------------------------------------------------
   # 1. Publish to PyPI using trusted publishing (OIDC)
@@ -256,3 +310,27 @@ jobs:
             - `*.sigstore` — Sigstore keyless signatures (verify with `agent-audit-kit verify-bundle`)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The repo `description` cannot be written from a CI token (needs repo-admin),
+      # so the paste is a manual step. Print it here, at the very end of the release
+      # run, so it is impossible to forget rather than merely detectable afterwards
+      # by the (non-gating) description-liveness job.
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Print repo description to paste (rendered from RULE_COUNT)
+        run: |
+          set -euo pipefail
+          desc="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
+          echo "::notice title=Paste repo description into Settings > About::$desc"
+          {
+            echo "### Repo description — paste into Settings > About"
+            echo ""
+            echo "GitHub's \`description\` is not writable from a CI token. Paste this line in by hand so the highest-traffic surface stops drifting from RULE_COUNT:"
+            echo ""
+            echo '```'
+            echo "$desc"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

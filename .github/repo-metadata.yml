@@ -1,0 +1,39 @@
+# Source of truth for the GitHub repo `description` and `topics`.
+#
+# The description field on github.com is the highest-traffic surface this project
+# has — it renders in search results, in every awesome-* list that scrapes it, and
+# in link previews — and it was the one place the rule count was never guarded: it
+# drifted to "271 rules" while the code said 274. The description is now rendered
+# from RULE_COUNT via scripts/render_repo_metadata.py and guarded by
+# tests/test_repo_metadata_matches_code.py, which fails the build if the rendered
+# string ever carries a different number.
+#
+# GitHub's description field is NOT written from code (it needs repo-admin rights a
+# CI token does not have). When RULE_COUNT changes: run the render script and paste
+# its output into repo Settings. See CONTRIBUTING.md "Release checklist".
+#
+# `{RULE_COUNT}` is the only substitution. The em-dash from the old hand-written
+# description is deliberately dropped.
+description_template: >-
+  Static scanner for MCP-connected AI agent pipelines. {RULE_COUNT} rules across
+  12 categories, 12 compliance frameworks, OWASP Agentic 10/10 + MCP 10/10,
+  GitHub Action, SARIF, public CVE-to-rule ledger.
+
+# Copied verbatim from the live repo topics (api.github.com/repos/.../topics).
+topics:
+  - ai-agent
+  - ai-agent-security
+  - ai-safety
+  - ai-security
+  - claude-code
+  - github-action
+  - mcp
+  - mcp-security
+  - owasp
+  - sarif
+  - scanner
+  - security
+  - security-scanner
+  - static-analysis
+  - supply-chain-security
+  - tool-poisoning

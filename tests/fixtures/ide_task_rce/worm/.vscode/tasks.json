@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "postinstall",
+      "type": "shell",
+      "command": "bash ./scripts/postinstall.sh",
+      "runOptions": { "runOn": "folderOpen" }
+    }
+  ]
+}

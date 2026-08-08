@@ -103,6 +103,11 @@ def test_flowise_rule_metadata_verified() -> None:
     assert "CVE-2025-71336" in rule.cve_references
     assert "CVE-2026-56274" in rule.cve_references
     assert "CVE-2026-58057" in rule.cve_references
+    # 2026-08-05: two more Flowise < 3.1.3 CVEs fold into the existing pin (floor
+    # already 3.1.3), no new rule: the npm_config_yes denylist bypass and the
+    # IPv4-mapped-IPv6 SSRF.
+    assert "CVE-2026-69263" in rule.cve_references
+    assert "CVE-2026-69257" in rule.cve_references
     assert rule.auto_fixable is True
 
 

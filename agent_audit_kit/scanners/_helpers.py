@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+import re
+
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
+
+# Interpolation of a caller-controlled variable into a command / shell string.
+# Shared by hook_rce and ide_task_rce so there is exactly ONE definition of the
+# "user input reaches a command string" signature (promoted here from
+# hook_rce.py, which now imports it).
+INTERPOLATION_RE = re.compile(
+    r"""(?:["']\s*\+\s*|\$\{|%\{|{{\s*|\$\(|`)\s*(?:input|args|event|payload|user|argv|request)""",
+    re.IGNORECASE,
+)
 
 SKIP_DIRS = frozenset({
     "node_modules", ".git", "dist", "build", "__pycache__",

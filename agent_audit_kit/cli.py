@@ -1037,6 +1037,30 @@ def export_rules_cmd(output_file: str) -> None:
     click.echo(f"sha256={digest}")
 
 
+@cli.command("scanners")
+@click.version_option(version=__version__)
+@click.option("--json", "as_json", is_flag=True,
+              help="Emit the scanner manifest as JSON (count + module/name list).")
+def scanners_cmd(as_json: bool) -> None:
+    """List the scanner modules the engine runs — reproduces SCANNER_COUNT.
+
+    The count is derived from this list (and the committed `scanners.json`), not
+    asserted, so anyone can check it: `agent-audit-kit scanners --json`.
+    """
+    import json as _json
+
+    from agent_audit_kit.engine import scanner_manifest
+
+    manifest = scanner_manifest()
+    if as_json:
+        click.echo(_json.dumps({"count": len(manifest), "scanners": manifest},
+                               indent=2, sort_keys=True))
+    else:
+        for entry in manifest:
+            click.echo(f"{entry['module']:38s} {entry['name']}")
+        click.echo(f"\n{len(manifest)} scanner modules")
+
+
 @cli.command("verify-bundle")
 @click.version_option(version=__version__)
 @click.argument("bundle", type=click.Path(exists=True, dir_okay=False))

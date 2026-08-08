@@ -30,7 +30,12 @@ AGENT_CONFIGS: dict[str, list[str]] = {
         ".claude/CLAUDE.md",
     ],
     "Cursor": [".cursor/mcp.json", ".cursorrules"],
-    "VS Code Copilot": [".vscode/mcp.json", ".github/copilot-instructions.md"],
+    "VS Code Copilot": [
+        ".vscode/mcp.json",
+        ".github/copilot-instructions.md",
+        ".vscode/tasks.json",
+        ".vscode/launch.json",
+    ],
     "Windsurf": [".windsurf/mcp.json", ".windsurfrules"],
     "Amazon Q": [".amazonq/mcp.json"],
     "Gemini CLI": [],  # user-level only

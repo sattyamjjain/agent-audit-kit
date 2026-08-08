@@ -17,7 +17,12 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import (
+    INTERPOLATION_RE,
+    find_line_number,
+    make_finding,
+    SKIP_DIRS,
+)
 
 
 _HOOK_SETTINGS_NAMES = (
@@ -27,10 +32,10 @@ _HOOK_SETTINGS_NAMES = (
 )
 _HOOK_SCRIPT_EXTS = {".sh", ".bash", ".py", ".js", ".ts", ".mjs"}
 
-_INTERPOLATION_RE = re.compile(
-    r"""(?:["']\s*\+\s*|\$\{|%\{|{{\s*|\$\(|`)\s*(?:input|args|event|payload|user|argv|request)""",
-    re.IGNORECASE,
-)
+# _INTERPOLATION_RE now lives in scanners/_helpers.py as INTERPOLATION_RE so
+# hook_rce and ide_task_rce share one definition. Kept as a module alias so the
+# existing references below (and any importer) stay valid.
+_INTERPOLATION_RE = INTERPOLATION_RE
 
 _SHELL_TRUE_RE = re.compile(
     r"""(?:subprocess\.(?:run|call|Popen|check_output)|os\.system|exec\s*\(|child_process\.exec(?:Sync)?|spawnSync|spawn)\s*\([^)]*(?:shell\s*=\s*True|{\s*shell\s*:\s*true)""",

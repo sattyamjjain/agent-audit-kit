@@ -32,6 +32,12 @@ available) before shipping:
   - @apify/actors-mcp-server       >= 0.9.21  (CVE-2026-46341)
   - agentic-flow                   >= 2.0.14  (CVE-2026-58195)
   - awslabs.aws-healthomics-mcp-server >= 0.0.36 (CVE-2026-15415)
+  - awslabs.amazon-mq-mcp-server    >= 2.0.24  (CVE-2026-18655)
+  - @langchain/langgraph-checkpoint-mongodb >= 1.3.1 (CVE-2026-48121)
+  - awslabs.documentdb-mcp-server   >= 1.0.12  (CVE-2026-18954)
+  - frontmcp                        >= 1.5.7   (CVE-2026-67531)
+  - langgraph-checkpoint-postgres/sqlite >= 3.1.1 (CVE-2026-71433)
+  - meta-ads-mcp                    >= 1.0.109 (CVE-2026-48039)
   - whatsapp-mcp                   >= 0.2.1   (CVE-2026-46555)
   - @agenticmail/{claudecode,codex,core,openclaw} (CVE-2026-57495; fix floors
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
@@ -217,6 +223,48 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001", "gemini-bridge", ("gemini-bridge",),
          (1, 3, 1), introduced=(1, 0, 0),
          fix_label="1.3.1 (affected 1.0.0–1.3.0)"),
+    # --- 2026-08-04 wave ---
+    # awslabs.amazon-mq-mcp-server (PyPI) < 2.0.24: the RabbitMQ broker-connection
+    # tools do not restrict the broker hostname, so a prompt-injection actor can
+    # steer broker credentials / OAuth tokens to a crafted attacker endpoint
+    # (CVE-2026-18655). Fourth awslabs.*-mcp-server pin in this family. Fixed 2.0.24.
+    _Pin("AAK-MCP-AMAZONMQ-CVE-2026-18655-001", "awslabs.amazon-mq-mcp-server",
+         ("awslabs.amazon-mq-mcp-server",), (2, 0, 24), fix_label="2.0.24"),
+    # --- 2026-08-05 wave ---
+    # @langchain/langgraph-checkpoint-mongodb (npm) <= 1.3.0: checkpoint identifiers
+    # (thread_id / checkpoint_ns / checkpoint_id) from config.configurable flow into
+    # MongoDBSaver.getTuple() find() queries without type enforcement, so an object
+    # payload with operators ($gt/$ne) is read as a query operator, bypassing thread
+    # scoping and leaking checkpoints across tenants (CVE-2026-48121). Fixed 1.3.1.
+    _Pin("AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+         "@langchain/langgraph-checkpoint-mongodb",
+         ("@langchain/langgraph-checkpoint-mongodb",), (1, 3, 1), fix_label="1.3.1"),
+    # --- 2026-08-06 wave ---
+    # awslabs.documentdb-mcp-server (PyPI) < 1.0.12: write-capable aggregation
+    # pipeline stages bypass read-only-mode enforcement → unauthorized writes
+    # (CVE-2026-18954). Fifth pin in the awslabs.*-mcp-server family. Fixed 1.0.12.
+    _Pin("AAK-MCP-DOCUMENTDB-CVE-2026-18954-001",
+         "awslabs.documentdb-mcp-server",
+         ("awslabs.documentdb-mcp-server",), (1, 0, 12), fix_label="1.0.12"),
+    # frontmcp (npm) < 1.5.7: the sandboxed codecall:execute tool reaches the host
+    # Zod schema's Function constructor and runs arbitrary code as the server user;
+    # default public auth mode serves it unauthenticated (CVE-2026-67531). Fixed 1.5.7.
+    _Pin("AAK-MCP-FRONTMCP-CVE-2026-67531-001",
+         "frontmcp", ("frontmcp",), (1, 5, 7), fix_label="1.5.7"),
+    # --- 2026-08-08 wave ---
+    # langgraph-checkpoint-postgres / -sqlite (PyPI) < 3.1.1: namespaces stored as a
+    # dot-joined string and read by simple prefix match → a scoped read spills into a
+    # sibling namespace, cross-tenant checkpoint leak (CVE-2026-71433). Fixed 3.1.1.
+    _Pin("AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001",
+         "langgraph-checkpoint-postgres/sqlite",
+         ("langgraph-checkpoint-postgres", "langgraph-checkpoint-sqlite"),
+         (3, 1, 1), fix_label="3.1.1"),
+    # meta-ads-mcp (PyPI) < 1.0.109: AuthInjectionMiddleware forwards unauthenticated
+    # requests without a 401, and a failed Graph API call serialises the request URL
+    # (with the access_token) into the response → unauth tool invocation + token leak
+    # (CVE-2026-48039, CVSS 9.1). Fixed 1.0.109.
+    _Pin("AAK-METAADS-CVE-2026-48039-001",
+         "meta-ads-mcp", ("meta-ads-mcp",), (1, 0, 109), fix_label="1.0.109"),
 )
 
 _CANDIDATE_NAMES = (

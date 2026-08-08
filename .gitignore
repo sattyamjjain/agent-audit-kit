@@ -16,6 +16,10 @@ env/
 # IDE
 .idea/
 .vscode/
+# ...but test fixtures deliberately carry .vscode/ configs the ide_task_rce
+# scanner reads (AAK-IDE-TASK-001..004). Re-include the directory, then its files.
+!tests/fixtures/**/.vscode/
+!tests/fixtures/**/.vscode/**
 *.swp
 *.swo
 

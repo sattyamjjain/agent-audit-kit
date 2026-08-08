@@ -28,7 +28,7 @@
   - **586 server entries pull packages that are not pinned to an exact version** — the rug-pull surface.
   - **565 servers use `npx`/`uvx` to fetch-and-execute remote code at launch** — you run whatever the registry serves that day.
 - We are **deliberately honest about what is *not* a vulnerability**: the most common single
-  finding (1,282×, medium — "no deny-by-default attestation") is an *advisory posture* signal,
+  finding (1,284×, medium — "no deny-by-default attestation") is an *advisory posture* signal,
   not an exploit, and we exclude it from the headline. So is "no version pin in `args`" (low).
 
 ---
@@ -97,7 +97,7 @@ The two things worth fixing **today**, in order:
 
 #### What we deliberately did *not* count as "security issues"
 
-- **`AAK-MCP-ATTEST-001` (1,282×, medium — "admitted without attestation")** is AAK's
+- **`AAK-MCP-ATTEST-001` (1,284×, medium — "admitted without attestation")** is AAK's
   forward-looking *deny-by-default attestation* posture check. It fires on nearly every server
   because attestation simply isn't an ecosystem norm yet. It's a real roadmap signal, but it
   is **not an exploit**, so it's excluded from the headline. (This is why "99.5% of configs had

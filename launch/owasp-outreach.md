@@ -9,7 +9,7 @@ Hi,
 
 I built AgentAuditKit — an open-source security scanner (MIT licensed) that maps detection rules to all 10 risks in the OWASP Agentic Top 10.
 
-274 rules across 86 scanners cover:
+284 rules across 85 scanners cover:
 - ASI01 (Goal Hijack) → AGENTS.md/.cursorrules/.CLAUDE.md scanning for prompt injection
 - ASI02 (Tool Misuse) → Python AST taint analysis tracking @tool params to dangerous sinks
 - ASI03 (Identity & Privilege Abuse) → Trust boundary violations, credential exposure
@@ -41,13 +41,13 @@ https://github.com/sattyamjjain
 
 Hi,
 
-I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 274 detection rules to all 10 risks in the OWASP MCP Top 10:
+I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 284 detection rules to all 10 risks in the OWASP MCP Top 10:
 
-- MCP01 (Token Mismanagement) → 16 rules detecting hardcoded secrets across Anthropic/OpenAI/AWS/GitHub/GCP keys
+- MCP01 (Token Mismanagement) → 69 rules detecting hardcoded secrets across Anthropic/OpenAI/AWS/GitHub/GCP keys
 - MCP02 (Context Over-Sharing) → Excessive server count, overly broad permissions
-- MCP03 (Supply Chain) → 11 rules for unpinned packages, known vulns, dangerous install scripts
-- MCP04 (Command Injection) → 15 rules for shell expansion, hook injection, headersHelper abuse
-- MCP05 (Tool Poisoning) → 17 rules including invisible Unicode, prompt injection, rug pull detection (SHA-256 pinning)
+- MCP03 (Supply Chain) → 31 rules for unpinned packages, known vulns, dangerous install scripts
+- MCP04 (Command Injection) → 31 rules for shell expansion, hook injection, headersHelper abuse
+- MCP05 (Tool Poisoning) → 51 rules including invisible Unicode, prompt injection, rug pull detection (SHA-256 pinning)
 - MCP06 (Privilege Escalation) → Sudo in hooks, filesystem root access, trust boundary violations
 - MCP07 (Insufficient Auth) → Remote MCP servers without authentication headers
 - MCP08 (Audit Logging) → Missing deny rules, excessive unaudited hooks
@@ -60,6 +60,8 @@ GitHub: https://github.com/sattyamjjain/agent-audit-kit
 
 Would the project be interested in referencing this as an implementation tool? I'm also happy to contribute to the MCP Top 10 documentation.
 
+I also just published a short data report from statically scanning 2,303 public MCP server configs, which found more than half expose a remote endpoint with no authentication: https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md
+
 Best,
 Sattyam Jain
 https://github.com/sattyamjjain
@@ -70,7 +72,7 @@ https://github.com/sattyamjjain
 
 ### LangChain Discord (#general or #showcase)
 
-Hey everyone — I built an open-source security scanner for MCP agent configs. 274 rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
+Hey everyone — I built an open-source security scanner for MCP agent configs. 284 rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
 
 If you're using MCP tools with LangChain/LangGraph, it also does Python AST taint analysis on `@tool` functions — tracks parameter flow to dangerous sinks like eval, subprocess, SQL.
 

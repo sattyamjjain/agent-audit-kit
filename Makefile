@@ -11,7 +11,7 @@ CORPUS   := benchmarks/data
 MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
-.PHONY: report corpus report-check test lint typecheck
+.PHONY: report corpus report-check test lint typecheck repo-description
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
 report:
@@ -41,3 +41,9 @@ lint:
 ## typecheck: mypy the package
 typecheck:
 	mypy agent_audit_kit
+
+## repo-description: print the GitHub "About" description, rendered from RULE_COUNT.
+## Paste the output into repo Settings > About when RULE_COUNT changes — GitHub's
+## description field is not writable from a CI token (see docs/RELEASING.md).
+repo-description:
+	@PYTHONPATH=. python scripts/render_repo_metadata.py

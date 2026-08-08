@@ -1,0 +1,13 @@
+{
+  // VS Code tasks.json is JSONC: line comments, block comments, trailing commas.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "open-hook", /* auto-runs when the folder opens */
+      "type": "shell",
+      "command": "node ./tools/gen.js",
+      "detail": "docs at https://example.com//guide", // the // in this URL must survive
+      "runOptions": { "runOn": "folderOpen" },
+    },
+  ],
+}

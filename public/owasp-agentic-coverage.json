@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-02T09:40:05Z",
-  "aak_version": "0.3.66",
-  "rule_count": 274,
+  "last_updated": "2026-08-08T08:33:09Z",
+  "aak_version": "0.3.69",
+  "rule_count": 284,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -226,7 +226,9 @@
             "CVE-2025-71336",
             "CVE-2026-40933",
             "CVE-2026-56274",
-            "CVE-2026-58057"
+            "CVE-2026-58057",
+            "CVE-2026-69257",
+            "CVE-2026-69263"
           ],
           "aicm_references": [
             "STA-08"
@@ -1098,7 +1100,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 55,
+      "rule_density": 61,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1293,6 +1295,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-AMAZONMQ-CVE-2026-18655-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-18655"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-APPIUM-CVE-2026-58500-001",
           "severity": "high",
           "cve_references": [
@@ -1351,6 +1365,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-18954"
+          ],
+          "aicm_references": [
+            "DSP-04",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FHI-001",
           "severity": "high",
           "cve_references": [],
@@ -1372,14 +1398,55 @@
           ]
         },
         {
-          "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
-          "severity": "critical",
+          "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
+          "severity": "high",
           "cve_references": [
-            "CVE-2026-12940"
+            "CVE-2026-67531"
           ],
           "aicm_references": [
             "AIS-07",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-12940",
+            "CVE-2026-17623",
+            "CVE-2026-17626",
+            "CVE-2026-7646",
+            "CVE-2026-8446",
+            "CVE-2026-9077"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-71433"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-48121"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
             "STA-08"
           ]
         },
@@ -1425,6 +1492,7 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-47394",
+            "CVE-2026-48168",
             "CVE-2026-61427"
           ],
           "aicm_references": [
@@ -1502,6 +1570,18 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-METAADS-CVE-2026-48039-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-48039"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -1634,7 +1714,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 35,
+      "rule_density": 39,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -1738,6 +1818,33 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-IDE-TASK-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-IDE-TASK-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-IDE-TASK-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-LLM-SQL-RCE-001",
           "severity": "critical",
           "cve_references": [
@@ -1801,6 +1908,18 @@
           "aicm_references": [
             "AIS-07",
             "AIS-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-67531"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {

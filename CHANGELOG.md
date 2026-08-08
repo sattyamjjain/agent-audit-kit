@@ -7,6 +7,135 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A machine-readable scanner manifest (`scanners.json`, generated from the engine
+  registry) so the scanner count is countable the way the rule count is, not asserted.**
+  `agent-audit-kit scanners --json` prints it, the README marker renders from it, and a
+  test asserts they agree. Before this the count came from a directory listing that
+  included two back-compat shims (`typescript_scan` and `rust_scan`, which only re-export
+  the registered `*_pattern_scan` modules), so `87 scanners` was really 85. The number is
+  now 85, and reproducible in one command.
+
+### Fixed
+
+- **The GitHub "About" description said 271 rules for a third release in a row**, while
+  the code has said 284 since 2026-08-08. The render target (`make repo-description`) and
+  the release-time drift check both already existed; the check was silently useless
+  because the job crashed with `ModuleNotFoundError` before it ever reached the
+  byte-compare. The job now runs (`PYTHONPATH=.`), so a stale description actually fails
+  the release job and the failure prints the exact string to paste, in the annotation and
+  the run summary. The description still has to be pasted into repo Settings by hand — a
+  CI token cannot set it — but a stale one is no longer invisible.
+- **docs/CNAME pointed at `docs.agentauditkit.io`, which has no DNS record**, while
+  `mkdocs.yml` pointed at the Pages URL that actually serves. Two documented docs URLs,
+  one of them dead. Deleted the CNAME so the working Pages URL is the one docs URL, and
+  added a link-check over `docs/` and `README.md` (weekly + on doc changes) so a dead
+  docs link fails a build instead of sitting for months. The `security@agentauditkit.io`
+  contact address is left in place and excluded from the link-check.
+
+## [0.3.69] - 2026-08-08
+
+### Added
+
+- **VS Code IDE task/launch folder-open RCE coverage (`AAK-IDE-TASK-001..004`).** The
+  scanner read `.vscode/mcp.json` but not the task surface right next to it. A
+  `.vscode/tasks.json` task with `runOptions.runOn: folderOpen` runs the moment a
+  repository is opened, before any interaction and before the workspace-trust prompt.
+  That is the vector the keyv npm worm used to spread, and before today AAK did not read
+  this file at all. The new scanner flags folderOpen auto-run (high, and critical when
+  the command is a shell, an interpreter, or a network fetch), `command`/`args` that
+  reach a shell (pipe-to-shell, a repo-local interpreter path, or an interpolated
+  variable), and `launch.json` `preLaunchTask` chains into a flagged task.
+  `.vscode/tasks.json` and `.vscode/launch.json` are now also reported by `discover`.
+  JSONC comments and trailing commas are stripped before parsing, and a file that still
+  will not parse is reported (low) rather than skipped silently.
+- **`make repo-description`** prints the GitHub "About" description rendered from
+  `RULE_COUNT`, and the release workflow prints the same string at the end of a run with
+  a paste instruction, so the manual paste (the description is not writable from a CI
+  token) is impossible to forget instead of only detectable afterward by the liveness
+  check.
+
+### Changed
+
+- Adjudicated the eleven open cve-response issues into the public CVE-to-rule ledger.
+  Two new pins: `awslabs.documentdb-mcp-server` >= 1.0.12 (CVE-2026-18954, the fifth
+  `awslabs.*-mcp-server` pin) and `frontmcp` >= 1.5.7 (CVE-2026-67531, a Zod-proxy
+  sandbox escape to RCE). Six fold into existing pins: five Langflow CVEs
+  (CVE-2026-17623, 17626, 8446, 9077, 7646) into the `langflow` pin, whose 1.11.0 floor
+  already exceeds every affected version, and CVE-2026-48168 into the `praisonai` pin,
+  whose 4.6.78 floor already exceeds its 4.6.40 fix. Three are out of scope: an
+  ssh-mcp-server CVE with no pinnable version (rolling release, disputed, local-trust
+  model), and two MissionSquad mcp-api CVEs whose project is not distributed on npm/PyPI
+  under a resolvable name. Three more cve-response issues filed on 2026-08-07/08 were
+  drained in the same cut: two more pins (`meta-ads-mcp` >= 1.0.109 for the
+  unauthenticated tool-invocation + access-token leak CVE-2026-48039, and
+  `langgraph-checkpoint-postgres`/`-sqlite` >= 3.1.1 for the cross-tenant namespace leak
+  CVE-2026-71433, the Postgres/SQLite sibling of the mongo one), plus one out of scope
+  (HKUDS nanobot, whose GitHub project is not the unrelated PyPI `nanobot`). With the two
+  IDE-scanner rules that carry framework mappings folded in, RULE_COUNT moves 276 to 284
+  and the scanner count moves 86 to 87. Closes #537 through #550.
+
+## [0.3.68] - 2026-08-05
+
+### Fixed
+
+- **The github.com repo description still says "271 rules" while the code says 275.**
+  The previous change made the description renderable from `RULE_COUNT` and added a
+  test that fails if the rendered string carries a different number, but it could not
+  change the live description (that needs repo-admin rights a CI token does not have),
+  so the highest-traffic surface stayed stale. Added a `description-liveness` job to
+  the release workflow that fetches the live description from api.github.com and
+  byte-compares it to the rendered template, failing loudly on a mismatch. It is
+  non-gating (fixing it unblocks nothing) and release-only so it does not flake on a
+  fork that cannot read the description.
+- **A failed cve-response gate did not say which issue blocked the tag.** The release
+  gate now prints the issue number, the CVE id parsed from the title, and the full
+  title for every open cve-response issue, so a blocked release is diagnosable from
+  the failed run instead of a trip to the issue list.
+
+### Changed
+
+- Adjudicated CVE-2026-18655 and CVE-2026-66065 into the public CVE-to-rule ledger.
+  CVE-2026-18655 (`awslabs.amazon-mq-mcp-server` < 2.0.24, a broker-hostname SSRF that
+  exfiltrates broker credentials and OAuth tokens) is pinned as the fourth
+  `awslabs.*-mcp-server` family pin, so RULE_COUNT moves 274 to 275 and README updates
+  with it. CVE-2026-66065 (Ouroboros AI-agent runtime, distributed via GitHub releases)
+  is out of scope: not a PyPI/npm artifact the pin detector reads. Closes #530 and #531.
+- Three cve-response issues had no written disposition. Each one now has one in the
+  public CVE-to-rule ledger. CVE-2026-48121 (`@langchain/langgraph-checkpoint-mongodb`
+  at or below 1.3.0, a NoSQL injection that leaks checkpoints across tenants) is pinned
+  as a new rule, so RULE_COUNT moves 275 to 276. CVE-2026-69263 (an `npm_config_yes`
+  bypass of the npx denylist) and CVE-2026-69257 (an IPv4-mapped IPv6 SSRF) fold into
+  the existing `AAK-FLOWISE-001` rule, whose floor was already 3.1.3, so they add no new
+  rule. Closes #533, #534, and #535.
+
+## [0.3.67] - 2026-08-03
+
+### Fixed
+
+- **The GitHub repo description said 271 rules while the code said 274.** The repo
+  description is the highest-traffic surface this project has, and it was the one
+  place the rule count was never guarded. It is now rendered from `RULE_COUNT`
+  through `.github/repo-metadata.yml` and `scripts/render_repo_metadata.py`, with
+  `tests/test_repo_metadata_matches_code.py` failing the build if the rendered string
+  ever carries a different number. GitHub's description is not writable from a CI
+  token, so the maintainer step is a paste into repo Settings, now written down in
+  CONTRIBUTING.md ("Release checklist") rather than remembered.
+- **The State-of-MCP corpus size was a hand-reconciled string in five places.**
+  `2,303` is now `CORPUS_N` in `agent_audit_kit/__init__.py`, measured from
+  `results.json`, with `tests/test_corpus_n_single_source.py` tying every published
+  occurrence back to it (dated/frozen artifacts excluded), so the next corpus growth
+  cannot leave a stale number behind.
+
+### Changed
+
+- Adjudicated CVE-2026-68578 and CVE-2026-67357 into the public CVE-to-rule ledger
+  (both ArcadeDB < 26.7.3, dispositioned out of scope: a Java/Docker database the pin
+  detector does not read; server-side MCP-server flaws). Closes #528 and #527.
+
+## [0.3.66] - 2026-08-02
+
 ### Fixed — corpus refresh `--target` reconciled so the documented command reproduces the published N
 
 - **The State-of-MCP report's one network step quoted three different targets.**
