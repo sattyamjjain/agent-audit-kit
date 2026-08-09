@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A repo-resident agent config/skill auto-trust scanner (`AAK-AGENT-TRUST-001..004`).**
+  Coding agents auto-load skill and config files on open and trust them on first use, and
+  a non-interactive `-p` / headless run removes the workspace-trust prompt that is the
+  guardrail. The scanner flags a coding-agent CLI run headless in CI (high), the same on
+  an attacker-controllable ref such as `pull_request_target` or a PR-head checkout, where a
+  fork PR's config executes with the base repo's secrets (critical), checked-in agent
+  settings that bake in `bypassPermissions` / `autoApprove` / `yolo` / `trust` (high), and a
+  Gemini `GEMINI.md` context file carrying an embedded shell payload (medium). It extends
+  the per-file families (`AAK-IDE-TASK-*`, `AAK-SKILL-*`, `AAK-AGENT-*`) rather than
+  re-detecting their content. Motivated by the measured result in arXiv:2608.05223 (Gemini
+  CLI ran the shell commands hidden in benign-looking skill files in 95.5-96.1% of runs,
+  with explicit safety recognition in 1.99% of 5,629 runs); it does not claim validation
+  against that paper's unpublished 2,826-skill benchmark. Ships with fixtures.
 - **A machine-readable scanner manifest (`scanners.json`, generated from the engine
   registry) so the scanner count is countable the way the rule count is, not asserted.**
   `agent-audit-kit scanners --json` prints it, the README marker renders from it, and a

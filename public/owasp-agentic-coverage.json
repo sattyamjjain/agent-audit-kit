@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-08T08:33:09Z",
-  "aak_version": "0.3.69",
-  "rule_count": 284,
+  "last_updated": "2026-08-09T10:43:00Z",
+  "aak_version": "0.3.70",
+  "rule_count": 288,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -563,7 +563,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 65,
+      "rule_density": 67,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -579,6 +579,25 @@
           "cve_references": [],
           "aicm_references": [
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-TRUST-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-08",
+            "IAM-05",
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-TRUST-003",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "IAM-05",
+            "STA-08"
           ]
         },
         {
@@ -1714,8 +1733,28 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 39,
+      "rule_density": 41,
       "rules": [
+        {
+          "id": "AAK-AGENT-TRUST-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-TRUST-002",
+          "severity": "critical",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-08",
+            "IAM-05",
+            "IVS-04"
+          ]
+        },
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
           "severity": "critical",
@@ -2036,7 +2075,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 35,
+      "rule_density": 36,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -2045,6 +2084,15 @@
           "aicm_references": [
             "AIS-04",
             "IAM-05"
+          ]
+        },
+        {
+          "id": "AAK-AGENT-TRUST-004",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-08",
+            "STA-08"
           ]
         },
         {

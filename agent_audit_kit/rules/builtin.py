@@ -176,6 +176,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-004": ["STA-08"],
+    "AAK-AGENT-TRUST-001": ["AIS-08", "IVS-04", "STA-08"],
+    "AAK-AGENT-TRUST-002": ["AIS-08", "IVS-04", "IAM-05"],
+    "AAK-AGENT-TRUST-003": ["IAM-05", "STA-08"],
+    "AAK-AGENT-TRUST-004": ["AIS-08", "STA-08"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -2355,6 +2359,104 @@ _r(
     "Fix the JSON/JSONC syntax so the file can be audited. If it is intentionally "
     "not a VS Code task/launch config, move it out of `.vscode/`.",
     sarif_name="IdeTaskConfigUnparsable",
+)
+
+
+_r(
+    "AAK-AGENT-TRUST-001",
+    "Coding agent run non-interactively (-p / headless) in CI trusts repo-resident config",
+    "A CI workflow runs a coding-agent CLI in non-interactive mode "
+    "(`claude -p` / `--dangerously-skip-permissions`, `gemini --yolo`, "
+    "`aider --yes`, `codex --full-auto`, `cursor-agent`, `opencode run`, or a "
+    "first-party agent Action). Non-interactive mode removes the workspace-trust "
+    "prompt, so every repo-resident skill, command, MCP config, and task file is "
+    "trusted on load and its instructions are honoured automatically. A study of "
+    "malicious skill files (arXiv:2608.05223) measured coding agents executing the "
+    "shell commands hidden in benign-appearing skill files in the large majority of "
+    "runs (Gemini CLI 95.5-96.1%, Qwen Code 71.6-74.0%), with explicit safety "
+    "recognition in only 1.99% of 5,629 runs. The trust prompt this path skips is "
+    "the guardrail the per-file scanners (`AAK-IDE-TASK-*`, `AAK-SKILL-*`, "
+    "`AAK-AGENT-*`) assume is present.",
+    Severity.HIGH,
+    Category.HOOK_INJECTION,
+    "Do not run a coding agent headless over the whole repo tree on every event. "
+    "Restrict the agent to trusted refs, pin or allow-list the skill / MCP / task "
+    "files it may load, and review new agent-config files in PRs before a workflow "
+    "will execute them.",
+    sarif_name="HeadlessAgentInCiTrustsRepoConfig",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-04"],
+)
+
+
+_r(
+    "AAK-AGENT-TRUST-002",
+    "Headless agent CI runs on an attacker-controllable ref (fork-PR config executes with secrets)",
+    "A workflow that runs a coding agent non-interactively is triggered by an "
+    "attacker-controllable event (`pull_request_target`, `issue_comment`, "
+    "`workflow_run`, `pull_request_review[_comment]`) or explicitly checks out the "
+    "pull-request head ref, and then runs the agent with the base repository's "
+    "write-scoped `GITHUB_TOKEN` and secrets available. Because the headless run "
+    "trusts repo-resident skill / MCP / task files on load, a fork PR that adds or "
+    "edits one of those files gets its shell commands executed in CI with the base "
+    "repo's credentials, with no human trust prompt. This is the trust-on-first-use "
+    "bypass amplified by the classic pwn-request trigger.",
+    Severity.CRITICAL,
+    Category.HOOK_INJECTION,
+    "Never run a headless agent on `pull_request_target` / `workflow_run` / "
+    "`issue_comment` with secrets in scope, and never check out the PR head into a "
+    "job that then runs the agent. Split the privileged step onto the trusted base "
+    "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
+    sarif_name="HeadlessAgentCiUntrustedRef",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05", "ASI03"],
+    adversa_references=["ADV-INJECT-04"],
+)
+
+
+_r(
+    "AAK-AGENT-TRUST-003",
+    "Repo-resident agent settings bake in trust / auto-approval",
+    "A checked-in agent settings file (`.claude/settings.json`, "
+    "`.gemini/settings.json`, `.cursor/settings.json`, and siblings) sets a flag "
+    "that persists trust or auto-approval: `bypassPermissions`, "
+    "`permissionMode: bypassPermissions`, `autoApprove`, an approval mode of "
+    "`yolo` / `full-auto`, or `trust: true`. Trust-on-first-use is then baked into "
+    "the repository rather than granted per session, so it survives every "
+    "subsequent invocation (including a headless CI run) and travels with the "
+    "repository when it is forked or checked out on an untrusted ref.",
+    Severity.HIGH,
+    Category.AGENT_CONFIG,
+    "Remove the persisted-trust / auto-approve flag from the checked-in settings. "
+    "Grant approval per session interactively, or scope it to an explicit, minimal "
+    "allow-list of tools rather than a blanket bypass.",
+    sarif_name="AgentSettingsPersistTrust",
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-PRIV-01"],
+)
+
+
+_r(
+    "AAK-AGENT-TRUST-004",
+    "Gemini context/instruction file carries an embedded shell payload",
+    "A Gemini context / instruction file (`GEMINI.md` or a file under `.gemini/`) "
+    "contains an embedded shell payload: a fenced shell block or a pipe-to-shell "
+    "one-liner. Gemini auto-loads these files as context on session start, and the "
+    "malicious-skill-file study (arXiv:2608.05223) measured this surface exploited "
+    "in 95.5-96.1% of runs. The `AAK-AGENT-*` instruction-file family covered "
+    "`CLAUDE.md` / `AGENTS.md` / `.cursorrules` / `.windsurfrules` / "
+    "`copilot-instructions.md` but not the Gemini surface; this closes that gap.",
+    Severity.MEDIUM,
+    Category.AGENT_CONFIG,
+    "Do not ship executable shell in an agent context file. Keep `GEMINI.md` to "
+    "prose guidance, move any real scripts into a reviewed, path-pinned location, "
+    "and treat instruction files from an untrusted ref as untrusted input.",
+    sarif_name="GeminiInstructionShellPayload",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-INJECT-04"],
 )
 
 # ---------------------------------------------------------------------------

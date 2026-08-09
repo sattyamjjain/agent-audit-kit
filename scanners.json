@@ -1,5 +1,5 @@
 {
-  "count": 85,
+  "count": 86,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -12,6 +12,10 @@
     {
       "module": "agent_harness_shared_state",
       "name": "Multi-agent shared-state lock (Code-as-Harness, arXiv:2605.18747)"
+    },
+    {
+      "module": "agent_trust_surface",
+      "name": "Agent config/skill auto-trust (headless -p in CI)"
     },
     {
       "module": "argv_toctou",

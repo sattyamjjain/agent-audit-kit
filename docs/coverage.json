@@ -456,6 +456,93 @@
       "title": "Mutating tool on a shared/multi-agent resource lacks a per-actor authorization parameter"
     },
     {
+      "category": "hook-injection",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Filter and monitor output pipelines and chained execution (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection"
+      ],
+      "rule_id": "AAK-AGENT-TRUST-001",
+      "severity": "high",
+      "title": "Coding agent run non-interactively (-p / headless) in CI trusts repo-resident config"
+    },
+    {
+      "category": "hook-injection",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse",
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection"
+      ],
+      "rule_id": "AAK-AGENT-TRUST-002",
+      "severity": "critical",
+      "title": "Headless agent CI runs on an attacker-controllable ref (fork-PR config executes with secrets)"
+    },
+    {
+      "category": "agent-config",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-AGENT-TRUST-003",
+      "severity": "high",
+      "title": "Repo-resident agent settings bake in trust / auto-approval"
+    },
+    {
+      "category": "agent-config",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP05:2025 Tool Poisoning / Trust Boundary"
+      ],
+      "rule_id": "AAK-AGENT-TRUST-004",
+      "severity": "medium",
+      "title": "Gemini context/instruction file carries an embedded shell payload"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [
@@ -6336,8 +6423,8 @@
   "summary": {
     "by_category": {
       "a2a-protocol": 13,
-      "agent-config": 16,
-      "hook-injection": 15,
+      "agent-config": 18,
+      "hook-injection": 17,
       "legal-compliance": 12,
       "mcp-config": 62,
       "mcp-server-card": 4,
@@ -6349,30 +6436,30 @@
       "trust-boundary": 12
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 94,
+      "Art. 10 - Data Governance": 95,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 38,
-      "Art. 15 - Robustness & Security": 168,
-      "Art. 9 - Risk Management": 90
+      "Art. 15 - Robustness & Security": 171,
+      "Art. 9 - Risk Management": 92
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 67,
-      "Constrain and sandbox tool execution (p.11)": 78,
-      "Design for boundaries (p.10)": 147,
-      "Filter and monitor output pipelines and chained execution (p.12)": 60,
+      "Constrain and sandbox tool execution (p.11)": 80,
+      "Design for boundaries (p.10)": 150,
+      "Filter and monitor output pipelines and chained execution (p.12)": 62,
       "Instrument for logging and detection (p.13)": 33,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 130,
-      "Sign and verify MCP messages (p.12)": 129,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 132,
+      "Sign and verify MCP messages (p.12)": 131,
       "Track and patch MCP related vulnerabilities (p.13)": 78,
-      "Validate parameters (p.11)": 82
+      "Validate parameters (p.11)": 84
     },
     "by_owasp_agentic": {
       "ASI01": 13,
       "ASI02": 39,
-      "ASI03": 65,
+      "ASI03": 67,
       "ASI04": 61,
-      "ASI05": 39,
-      "ASI06": 35,
+      "ASI05": 41,
+      "ASI06": 36,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -6382,23 +6469,23 @@
       "MCP01:2025": 69,
       "MCP02:2025": 13,
       "MCP03:2025": 31,
-      "MCP04:2025": 31,
-      "MCP05:2025": 51,
-      "MCP06:2025": 13,
+      "MCP04:2025": 33,
+      "MCP05:2025": 52,
+      "MCP06:2025": 14,
       "MCP07:2025": 30,
       "MCP08:2025": 5,
       "MCP09:2025": 20,
       "MCP10:2025": 11
     },
     "by_severity": {
-      "critical": 66,
-      "high": 129,
+      "critical": 67,
+      "high": 131,
       "info": 5,
       "low": 9,
-      "medium": 75
+      "medium": 76
     },
     "total_cves_covered": 132,
-    "total_rules": 284
+    "total_rules": 288
   },
   "tool": "agent-audit-kit"
 }

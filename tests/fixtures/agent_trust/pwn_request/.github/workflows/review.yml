@@ -1,0 +1,13 @@
+name: PR assistant
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+jobs:
+  assist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Gemini reviews the PR
+        run: gemini --yolo -p "review the changes in this pull request"

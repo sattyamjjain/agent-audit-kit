@@ -41,6 +41,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("oauth_misconfig", "OAuth 2.1 misconfig", []),
     ("hook_rce", "Hook RCE", []),
     ("ide_task_rce", "VS Code IDE task/launch folder-open RCE", []),
+    ("agent_trust_surface", "Agent config/skill auto-trust (headless -p in CI)", []),
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),
     ("mcp_tasks", "MCP Tasks leakage", []),

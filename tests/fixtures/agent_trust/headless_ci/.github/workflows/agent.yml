@@ -1,0 +1,13 @@
+name: Nightly triage agent
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *'
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the coding agent headless
+        run: claude -p "triage open issues and label them" --dangerously-skip-permissions
