@@ -3537,6 +3537,33 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-19337"
+      ],
+      "description": "`@adenot/mcp-google-search` up to and including 0.3.1 has server-side request forgery in its `read_webpage` tool (`src/index.ts`): the `url` argument is fetched without validating the host or scheme, so an indirect prompt injection can steer the server to fetch attacker-chosen internal endpoints (cloud metadata, loopback admin ports, RFC-1918 hosts) and return the response (CVE-2026-19337, CVSS 5.3). The affected artifact is the scoped npm package `@adenot/mcp-google-search` (versions 0.1.0\u20130.3.1, latest 0.3.1); the unscoped `mcp-google-search` (latest 1.0.0) is an unrelated package and is not pinned. No patched release is published yet \u2014 the upstream fix (commit `f071d491`) is unreleased \u2014 so every published version is treated as exposed (presence-only pin). Same SSRF-via-tool-argument shape as the astrbot MCP-test-endpoint pin.",
+      "incident_references": [],
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Remove or replace the `@adenot/mcp-google-search` `read_webpage` server until a fixed release ships. If it must run, put it behind an egress allow-list that blocks loopback / link-local / metadata / RFC-1918 targets, and validate the `url` scheme and host before fetching. Re-pin to the fixed version once upstream publishes a patched release.",
+      "rule_id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
+      "sarif_name": "AdenotMcpGoogleSearchReadWebpageSsrf",
+      "severity": "medium",
+      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-15643"
       ],
       "description": "`awslabs.healthlake-mcp-server` before 0.0.14 does not validate that pagination URLs derived from the `next_token` parameter point back to the expected HealthLake endpoint, so a remote authenticated caller can redirect subsequent requests to an attacker-controlled server and exfiltrate the AWS temporary security credentials the server attaches (CVE-2026-15643, CVSS 7.3, SSRF / CWE-918). Treat < 0.0.14 (and unpinned) as exposed.",

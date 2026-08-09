@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-09T10:43:00Z",
+  "last_updated": "2026-08-09T11:00:56Z",
   "aak_version": "0.3.70",
-  "rule_count": 288,
+  "rule_count": 289,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2075,7 +2075,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 36,
+      "rule_density": 37,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -2160,6 +2160,17 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-19337"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001",

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Adjudicated the three cve-response issues filed on 2026-08-09 (all MEDIUM CVSS 5.3) on
+  their merits against the npm registry. One new pin: `@adenot/mcp-google-search` <= 0.3.1
+  for the `read_webpage` SSRF (CVE-2026-19337), the same shape as the astrbot
+  MCP-test-endpoint pin. No patched release exists yet, so the pin is presence-only and
+  fires on any installed version, with remediation to remove or replace the server until a
+  fix ships. Two are out of scope as unpinnable: codex_mcp (CVE-2026-19329) and MCP4EDA
+  (CVE-2026-19332) are GitHub-only projects with no versioned registry artifact, so a
+  version pin has nothing to resolve. RULE_COUNT moves 284 to 285. Closes #556 and #557;
+  #558 stays open until this pin ships.
+
 ### Added
 
 - **A repo-resident agent config/skill auto-trust scanner (`AAK-AGENT-TRUST-001..004`).**
