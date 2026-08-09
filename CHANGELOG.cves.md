@@ -16,6 +16,19 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-09 (unreleased)
+
+Three `cve-response` issues filed the same day (all MEDIUM CVSS 5.3), adjudicated on
+their merits against the npm registry rather than by repeating the prior batch's
+disposition. One is in scope and shipped a pin; two are unpinnable. Each was read from
+NVD and verified against the registry before deciding.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-19337 (adenot `@adenot/mcp-google-search` <= 0.3.1, SSRF via the `url` argument of `read_webpage` in `src/index.ts`; local) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-19337) | **In scope.** Added `AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001` (SUPPLY_CHAIN, MEDIUM). The scoped npm package resolves on the registry (versions 0.1.0 through 0.3.1); the unscoped `mcp-google-search` is a different package and is not pinned. No fixed release exists yet (upstream patch `f071d491` unreleased), so the pin is presence-only and fires on any installed version, with remediation to remove or replace until a patched version ships. Same shape as the astrbot MCP-test-endpoint SSRF pin. (#558) | 2026-08-09 |
+| CVE-2026-19329 (andreahaku `codex_mcp`, command injection via `model` in `src/codex-process-simple.ts`; local) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-19329) | **Out of scope, unpinnable.** `codex_mcp` and `@andreahaku/codex-mcp` both 404 on npm; the advisory states the project does not use versioning (git-hash artifact only). The only `codex-mcp` on npm is an unrelated author's package, so a name pin would false-positive it. No fix floor and no resolvable artifact to pin. (#556) | 2026-08-09 |
+| CVE-2026-19332 (NellyW8 `MCP4EDA` 1.0.0, command injection via `design_name`/`vcd_file` in `run_openlane`/`view_waveform`; local) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-19332) | **Out of scope, unpinnable.** `mcp4eda` and `@nellyw8/mcp4eda` both 404 on npm; a GitHub-only project with no registry artifact to pin. (#557) | 2026-08-09 |
+
 ## 2026-08-08 (later batch, unreleased)
 
 Four more `cve-response` issues filed the same day, all adjudicated **out of scope**:

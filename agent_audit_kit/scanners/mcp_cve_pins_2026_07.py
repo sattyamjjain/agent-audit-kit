@@ -42,6 +42,7 @@ available) before shipping:
   - @agenticmail/{claudecode,codex,core,openclaw} (CVE-2026-57495; fix floors
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
   - mcp-for-stata                  >= 1.17.3  (CVE-2026-47708)
+  - @adenot/mcp-google-search      <= 0.3.1   (CVE-2026-19337; SSRF, no fixed release yet)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -265,6 +266,21 @@ _PINS: tuple[_Pin, ...] = (
     # (CVE-2026-48039, CVSS 9.1). Fixed 1.0.109.
     _Pin("AAK-METAADS-CVE-2026-48039-001",
          "meta-ads-mcp", ("meta-ads-mcp",), (1, 0, 109), fix_label="1.0.109"),
+    # --- 2026-08-09 wave ---
+    # @adenot/mcp-google-search (npm) <= 0.3.1: the `read_webpage` tool
+    # (`src/index.ts`) fetches the caller-supplied `url` argument with no host or
+    # scheme validation → server-side request forgery to internal endpoints
+    # (CVE-2026-19337, CVSS 5.3). Same SSRF-via-tool-argument shape as the astrbot
+    # MCP-test-endpoint pin. No fixed release exists yet: the upstream patch (commit
+    # f071d491) is unreleased, so every published version (0.1.0–0.3.1) is exposed —
+    # floor=None (presence-only, fire on any match). The unscoped `mcp-google-search`
+    # (latest 1.0.0) is an unrelated package by a different author and is NOT pinned:
+    # `_mk_re` escapes the full scoped name so it cannot match the bare package. Set
+    # the floor to the fix version once upstream publishes a patched release.
+    _Pin("AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001", "@adenot/mcp-google-search",
+         ("@adenot/mcp-google-search",), None,
+         fix_label="no fixed release yet (upstream patch f071d491 unreleased) — "
+                   "remove or replace until a patched version ships"),
 )
 
 _CANDIDATE_NAMES = (

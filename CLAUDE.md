@@ -5,7 +5,7 @@
 
 **AgentAuditKit** (version tracked in `pyproject.toml` / `agent_audit_kit.__version__`) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
 
-- **284 rules** across 12 security categories
+- **285 rules** across 12 security categories
 - **85 scanner modules** including AST-based Python taint analysis plus regex dangerous-sink pattern scanners for TypeScript/JavaScript and Rust (pattern matching, not taint flow)
 - **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -65,7 +65,7 @@ agent_audit_kit/
   llm_scan.py          # LLM-assisted scanning
   vuln_db.py           # CVE/vulnerability database
   rules/
-    builtin.py         # 284 RuleDefinition entries (rule registry)
+    builtin.py         # 285 RuleDefinition entries (rule registry)
   scanners/            # 85 scanner modules (core set shown), each exports scan() -> (list[Finding], set[str])
     mcp_config.py      # MCP configuration checks
     hook_injection.py  # Hook injection detection
@@ -123,7 +123,7 @@ benchmarks/            # Benchmark crawler
 ## Detected Patterns
 
 - **Scanner registry**: `engine.py` lazy-builds a list of `ScannerRegistration` dataclasses; each wraps a `scan_fn` callable. New scanners are registered via try/except ImportError blocks for backward compatibility.
-- **Rule registry**: `rules/builtin.py` defines all 284 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
+- **Rule registry**: `rules/builtin.py` defines all 285 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
 - **Finding model**: All scanners produce `Finding` dataclasses with rule_id, severity, category, evidence, remediation, and framework references (OWASP, CVE, Adversa).
 - **Scoring**: Penalty-based (start at 100, deduct per severity), clamped to [0,100], mapped to letter grade.
 - **Output formatters**: Each module in `output/` takes a `ScanResult` and formats it (console, JSON, SARIF, OWASP, compliance).

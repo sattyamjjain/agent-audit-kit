@@ -3206,6 +3206,25 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-19337"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
+      "severity": "medium",
+      "title": "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-15643"
       ],
       "eu_ai_act": [
@@ -6342,14 +6361,14 @@
       "mcp-config": 62,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 78,
+      "supply-chain": 79,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
       "trust-boundary": 12
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 94,
+      "Art. 10 - Data Governance": 95,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 38,
       "Art. 15 - Robustness & Security": 168,
@@ -6372,7 +6391,7 @@
       "ASI03": 65,
       "ASI04": 61,
       "ASI05": 39,
-      "ASI06": 35,
+      "ASI06": 36,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -6387,7 +6406,7 @@
       "MCP06:2025": 13,
       "MCP07:2025": 30,
       "MCP08:2025": 5,
-      "MCP09:2025": 20,
+      "MCP09:2025": 21,
       "MCP10:2025": 11
     },
     "by_severity": {
@@ -6395,10 +6414,10 @@
       "high": 129,
       "info": 5,
       "low": 9,
-      "medium": 75
+      "medium": 76
     },
-    "total_cves_covered": 132,
-    "total_rules": 284
+    "total_cves_covered": 133,
+    "total_rules": 285
   },
   "tool": "agent-audit-kit"
 }

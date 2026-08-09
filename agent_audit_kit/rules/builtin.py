@@ -172,6 +172,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-FRONTMCP-CVE-2026-67531-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
+    "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": ["IVS-04", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
@@ -6564,6 +6565,35 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
+    "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)",
+    "`@adenot/mcp-google-search` up to and including 0.3.1 has server-side request "
+    "forgery in its `read_webpage` tool (`src/index.ts`): the `url` argument is "
+    "fetched without validating the host or scheme, so an indirect prompt injection "
+    "can steer the server to fetch attacker-chosen internal endpoints (cloud "
+    "metadata, loopback admin ports, RFC-1918 hosts) and return the response "
+    "(CVE-2026-19337, CVSS 5.3). The affected artifact is the scoped npm package "
+    "`@adenot/mcp-google-search` (versions 0.1.0–0.3.1, latest 0.3.1); the unscoped "
+    "`mcp-google-search` (latest 1.0.0) is an unrelated package and is not pinned. "
+    "No patched release is published yet — the upstream fix (commit `f071d491`) is "
+    "unreleased — so every published version is treated as exposed (presence-only "
+    "pin). Same SSRF-via-tool-argument shape as the astrbot MCP-test-endpoint pin.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Remove or replace the `@adenot/mcp-google-search` `read_webpage` server until a "
+    "fixed release ships. If it must run, put it behind an egress allow-list that "
+    "blocks loopback / link-local / metadata / RFC-1918 targets, and validate the "
+    "`url` scheme and host before fetching. Re-pin to the fixed version once upstream "
+    "publishes a patched release.",
+    sarif_name="AdenotMcpGoogleSearchReadWebpageSsrf",
+    cve_references=["CVE-2026-19337"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
 )
 
 

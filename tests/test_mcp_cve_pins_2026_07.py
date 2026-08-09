@@ -62,6 +62,8 @@ PINS = {
     # 2026-08-08 wave
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": "medium",
     "AAK-METAADS-CVE-2026-48039-001": "critical",
+    # 2026-08-09 wave
+    "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": "medium",
 }
 
 
@@ -645,3 +647,36 @@ def test_metaads_patched_passes(tmp_path: Path) -> None:
     assert "AAK-METAADS-CVE-2026-48039-001" not in _ids(
         tmp_path, "requirements.txt", "meta-ads-mcp==1.0.109\n"
     )
+
+
+# --- CVE-2026-19337: @adenot/mcp-google-search SSRF (presence-only, no fix yet) ---
+
+_GS_RULE = "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001"
+
+
+def test_googlesearch_scoped_latest_fires(tmp_path: Path) -> None:
+    # No fixed release exists, so even the latest published version (0.3.1) fires.
+    content = '{"dependencies": {"@adenot/mcp-google-search": "0.3.1"}}'
+    assert _GS_RULE in _ids(tmp_path, "package.json", content)
+
+
+def test_googlesearch_scoped_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"gs": {"command": "npx", "args": ["@adenot/mcp-google-search"]}}}'
+    assert _GS_RULE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_googlesearch_unscoped_package_does_not_fire(tmp_path: Path) -> None:
+    # The unscoped `mcp-google-search` (latest 1.0.0) is an unrelated package by a
+    # different author and must not be flagged as the CVE artifact.
+    content = '{"dependencies": {"mcp-google-search": "1.0.0"}}'
+    assert _GS_RULE not in _ids(tmp_path, "package.json", content)
+
+
+def test_googlesearch_fixtures_positive_and_negative() -> None:
+    # WI2 fixtures: a vulnerable manifest fires, the negative (unscoped-only)
+    # manifest does not. `aak scan` over tests/fixtures/ exercises these too.
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-19337-mcp-google-search"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _GS_RULE in vuln
+    assert _GS_RULE not in negative
