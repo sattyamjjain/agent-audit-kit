@@ -148,6 +148,7 @@ def test_docs_comparison_anchors_match_registry() -> None:
 # them. Keep this list tight — a path only belongs here if its counts are meant
 # to stay pinned to a past release.
 _PROSE_COUNT_EXEMPT_PREFIXES = (
+    "docs/changelog/archive/",                       # frozen changelog history (pre-0.3.60 counts)
     "docs/research/mcp-security-baseline-v1.0.md",  # frozen v1.0 baseline (262 rules)
     "docs/presets/",                                 # "shipped in vX" dated preset facts
     # Dated empirical case studies in launch/: their "N rules / M scanners" is the
