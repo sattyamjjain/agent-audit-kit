@@ -6,7 +6,7 @@
 
 | Category | Rules |
 |----------|-------|
-| Supply Chain | 79 |
+| Supply Chain | 80 |
 | MCP Configuration | 62 |
 | Tool Poisoning | 29 |
 | Agent Config | 18 |
@@ -14,11 +14,11 @@
 | Hook Injection | 17 |
 | A2A Protocol | 13 |
 | Taint Analysis | 13 |
+| Trust Boundaries | 13 |
 | Legal Compliance | 12 |
 | Transport Security | 12 |
-| Trust Boundaries | 12 |
 | MCP Server Card | 4 |
-| **Total** | **289** |
+| **Total** | **291** |
 
 <!-- END rules-summary -->
 

@@ -22,6 +22,12 @@ class RuleDefinition:
     # v0.3.2 — SCHEMA_VERSION 2
     incident_references: list[str] = field(default_factory=list)
     aicm_references: list[str] = field(default_factory=list)
+    # v0.3.73 — honest scope note. What the rule provably does NOT catch, in
+    # plain language. Used by the AAK-AGENT-TRUST-* pre-screen rules to state
+    # that single-artifact scanning does not detect intent split across multiple
+    # individually-benign skills. Empty when the rule has no material blind spot
+    # worth flagging.
+    limitations: str = ""
 
 
 RULES: dict[str, RuleDefinition] = {}
@@ -173,6 +179,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
@@ -181,6 +188,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AGENT-TRUST-002": ["AIS-08", "IVS-04", "IAM-05"],
     "AAK-AGENT-TRUST-003": ["IAM-05", "STA-08"],
     "AAK-AGENT-TRUST-004": ["AIS-08", "STA-08"],
+    "AAK-AGENT-COMPOSE-001": ["IVS-04", "AIS-08", "STA-08"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -291,6 +299,7 @@ def _r(
     auto_fixable: bool = False,
     incident_references: list[str] | None = None,
     aicm_references: list[str] | None = None,
+    limitations: str = "",
 ) -> None:
     RULES[rule_id] = RuleDefinition(
         rule_id=rule_id,
@@ -307,6 +316,7 @@ def _r(
         auto_fixable=auto_fixable,
         incident_references=incident_references or [],
         aicm_references=aicm_references or [],
+        limitations=limitations,
     )
 
 
@@ -2363,6 +2373,22 @@ _r(
 )
 
 
+# The four AAK-AGENT-TRUST-* rules scan ONE artifact at a time — a pre-screen,
+# not a boundary control. State that plainly on each so the rule set is honest
+# about its own blind spot; the set-level AAK-AGENT-COMPOSE-001 covers it.
+_AGENT_TRUST_LIMITATION = (
+    "Single-artifact pre-screen, not a boundary control. These rules inspect one "
+    "file at a time, so they cannot see intent split across several "
+    "individually-benign skills loaded into the same agent context. Cross-skill "
+    "composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a "
+    "96.0% average attack success rate across six skill scanners, and SkillsMetric "
+    "(arXiv:2608.08468) reports 0% detection for host-destruction via common shell "
+    "commands and 42% for natural-language prompt injection. Run these early and "
+    "cheaply as a first pass; they are not a guarantee. The composition blind spot "
+    "they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001."
+)
+
+
 _r(
     "AAK-AGENT-TRUST-001",
     "Coding agent run non-interactively (-p / headless) in CI trusts repo-resident config",
@@ -2385,6 +2411,7 @@ _r(
     "files it may load, and review new agent-config files in PRs before a workflow "
     "will execute them.",
     sarif_name="HeadlessAgentInCiTrustsRepoConfig",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
@@ -2410,6 +2437,7 @@ _r(
     "job that then runs the agent. Split the privileged step onto the trusted base "
     "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
     sarif_name="HeadlessAgentCiUntrustedRef",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05", "ASI03"],
     adversa_references=["ADV-INJECT-04"],
@@ -2433,6 +2461,7 @@ _r(
     "Grant approval per session interactively, or scope it to an explicit, minimal "
     "allow-list of tools rather than a blanket bypass.",
     sarif_name="AgentSettingsPersistTrust",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PRIV-01"],
@@ -2455,9 +2484,51 @@ _r(
     "prose guidance, move any real scripts into a reviewed, path-pinned location, "
     "and treat instruction files from an untrusted ref as untrusted input.",
     sarif_name="GeminiInstructionShellPayload",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-INJECT-04"],
+)
+
+
+_r(
+    "AAK-AGENT-COMPOSE-001",
+    "Skill set's composed capability union crosses a risk boundary no single skill requested",
+    "Unlike the `AAK-AGENT-TRUST-*` / `AAK-SKILL-*` rules, which inspect one "
+    "artifact at a time, this rule evaluates the SET of skills that load into one "
+    "agent context (all `SKILL.md` under a common container such as "
+    "`.claude/skills/`). It computes the union of declared capability across the set "
+    "(filesystem read/write, network egress by destination, shell execution, "
+    "credential access, memory write) and flags a union that crosses a configured "
+    "risk boundary that no single skill in the set requested. The shipped default: a "
+    "skill that can read the filesystem or credentials, composed with a skill that "
+    "can egress to a non-allowlisted destination, is an exfiltration path even when "
+    "every contributing skill is individually clean. That is the cross-skill "
+    "composition attack ColluSkill (arXiv:2608.09732) measured at a 96.0% average "
+    "success rate across six per-skill scanners. The finding names which skill "
+    "contributed which capability and lists every contributor as a related location. "
+    "The boundary set and egress allowlist are configurable via "
+    "`.aak/composition-boundaries.yaml`; the default and its reasoning are in "
+    "`docs/rules/skill-composition.md`.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Do not load a skill that reads files or credentials into the same context as a "
+    "skill that can egress to an unaudited destination. Split them into separate "
+    "agent contexts, pin each egress skill to an allowlisted destination, or remove "
+    "the network capability from the read-capable set. Review a new skill for the "
+    "capability it adds to the union, not only in isolation.",
+    sarif_name="SkillSetCapabilityUnionExfil",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Heuristic on DECLARED capability (`allowed-tools` / `capabilities` / "
+        "`egress` frontmatter). A skill that under-declares its tools, or reaches a "
+        "capability through an MCP server it does not name, is not measured here; the "
+        "per-skill scanners and Python taint analysis cover in-body behaviour. It "
+        "reasons about capability, not data flow, so it flags a possible exfiltration "
+        "path, not a proven one."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -6693,6 +6764,38 @@ _r(
     "publishes a patched release.",
     sarif_name="AdenotMcpGoogleSearchReadWebpageSsrf",
     cve_references=["CVE-2026-19337"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+    "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)",
+    "`mcp-grafana` before 1.1.0 lets a caller-supplied `X-Grafana-URL` request header "
+    "control the destination of the server's outbound requests, and the "
+    "`grafana_api_request` tool lets the caller also choose the HTTP method, path, and "
+    "body. Because the destination is not restricted to the configured Grafana "
+    "instance, a caller can point requests at internal, loopback, and link-local "
+    "services (including cloud metadata endpoints) and read the responses: server-side "
+    "request forgery (CVE-2026-19516, CVSS 9.1). This is the incomplete-fix follow-up "
+    "to CVE-2026-15583, whose fix stopped the configured service-account token from "
+    "being sent to unintended destinations but did not restrict the destinations "
+    "themselves, so the correct control is destination restriction, not token handling. "
+    "mcp-grafana is a Go server but ships a resolvable PyPI wrapper (`uvx mcp-grafana`), "
+    "so the pin scanner resolves it from `.mcp.json` / `requirements.txt` / "
+    "`pyproject.toml` / `uv.lock`; the archived ledger note that it was unpinnable is "
+    "now superseded. Fixed in 1.1.0, which restricts the destination to the configured "
+    "instance.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-grafana` to >= 1.1.0, which restricts outbound requests to the "
+    "configured Grafana instance. Do not let a caller-controlled `X-Grafana-URL` header "
+    "choose the destination, and do not expose `grafana_api_request` to untrusted "
+    "callers.",
+    sarif_name="McpGrafanaXGrafanaUrlSsrf",
+    cve_references=["CVE-2026-19516", "CVE-2026-15583"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],

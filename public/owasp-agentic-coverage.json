@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-09T11:06:33Z",
-  "aak_version": "0.3.71",
-  "rule_count": 289,
+  "last_updated": "2026-08-11T12:11:28Z",
+  "aak_version": "0.3.73",
+  "rule_count": 291,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2075,8 +2075,18 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 37,
+      "rule_density": 39,
       "rules": [
+        {
+          "id": "AAK-AGENT-COMPOSE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
           "severity": "medium",
@@ -2166,6 +2176,18 @@
           "severity": "medium",
           "cve_references": [
             "CVE-2026-19337"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-15583",
+            "CVE-2026-19516"
           ],
           "aicm_references": [
             "IVS-04",

@@ -34,6 +34,7 @@ def make_finding(
     file_path: str,
     evidence: str,
     line_number: int | None = None,
+    related_locations: list[dict] | None = None,
 ) -> Finding:
     rule = get_rule(rule_id)
     return Finding(
@@ -52,4 +53,5 @@ def make_finding(
         adversa_references=rule.adversa_references,
         incident_references=rule.incident_references,
         aicm_references=rule.aicm_references,
+        related_locations=related_locations or [],
     )

@@ -404,6 +404,23 @@
       "title": "Agent instruction file contains hidden content"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP05:2025 Tool Poisoning / Trust Boundary"
+      ],
+      "rule_id": "AAK-AGENT-COMPOSE-001",
+      "severity": "high",
+      "title": "Skill set's composed capability union crosses a risk boundary no single skill requested"
+    },
+    {
       "category": "a2a-protocol",
       "cve_references": [],
       "eu_ai_act": [
@@ -3308,6 +3325,26 @@
       "rule_id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",
       "severity": "medium",
       "title": "adenot mcp-google-search SSRF via the read_webpage url argument (<= 0.3.1, no fix released)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-15583",
+        "CVE-2026-19516"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+      "severity": "critical",
+      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)"
     },
     {
       "category": "supply-chain",
@@ -6448,14 +6485,14 @@
       "mcp-config": 62,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 79,
+      "supply-chain": 80,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
-      "trust-boundary": 12
+      "trust-boundary": 13
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 96,
+      "Art. 10 - Data Governance": 98,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 38,
       "Art. 15 - Robustness & Security": 171,
@@ -6478,7 +6515,7 @@
       "ASI03": 67,
       "ASI04": 61,
       "ASI05": 41,
-      "ASI06": 37,
+      "ASI06": 39,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -6489,22 +6526,22 @@
       "MCP02:2025": 13,
       "MCP03:2025": 31,
       "MCP04:2025": 33,
-      "MCP05:2025": 52,
+      "MCP05:2025": 53,
       "MCP06:2025": 14,
       "MCP07:2025": 30,
       "MCP08:2025": 5,
-      "MCP09:2025": 21,
+      "MCP09:2025": 22,
       "MCP10:2025": 11
     },
     "by_severity": {
-      "critical": 67,
-      "high": 131,
+      "critical": 68,
+      "high": 132,
       "info": 5,
       "low": 9,
       "medium": 77
     },
-    "total_cves_covered": 133,
-    "total_rules": 289
+    "total_cves_covered": 135,
+    "total_rules": 291
   },
   "tool": "agent-audit-kit"
 }

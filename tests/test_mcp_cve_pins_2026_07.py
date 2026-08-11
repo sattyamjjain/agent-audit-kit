@@ -64,6 +64,8 @@ PINS = {
     "AAK-METAADS-CVE-2026-48039-001": "critical",
     # 2026-08-09 wave
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": "medium",
+    # 2026-08-11 wave
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001": "critical",
 }
 
 
@@ -680,3 +682,30 @@ def test_googlesearch_fixtures_positive_and_negative() -> None:
     negative = {f.rule_id for f in scan(base / "negative")[0]}
     assert _GS_RULE in vuln
     assert _GS_RULE not in negative
+
+
+# --- CVE-2026-19516: mcp-grafana SSRF via X-Grafana-URL destination ---
+
+_GRAFANA_RULE = "AAK-MCP-GRAFANA-CVE-2026-19516-001"
+
+
+def test_grafana_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"grafana": {"command": "uvx", "args": ["mcp-grafana@1.0.0"]}}}'
+    assert _GRAFANA_RULE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_grafana_patched_passes(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"grafana": {"command": "uvx", "args": ["mcp-grafana@1.1.0"]}}}'
+    assert _GRAFANA_RULE not in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_grafana_unpinned_fires(tmp_path: Path) -> None:
+    assert _GRAFANA_RULE in _ids(tmp_path, "requirements.txt", "mcp-grafana\n")
+
+
+def test_grafana_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-19516-mcp-grafana"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    patched = {f.rule_id for f in scan(base / "patched")[0]}
+    assert _GRAFANA_RULE in vuln
+    assert _GRAFANA_RULE not in patched

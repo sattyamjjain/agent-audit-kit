@@ -43,6 +43,7 @@ available) before shipping:
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
   - mcp-for-stata                  >= 1.17.3  (CVE-2026-47708)
   - @adenot/mcp-google-search      <= 0.3.1   (CVE-2026-19337; SSRF, no fixed release yet)
+  - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -281,6 +282,18 @@ _PINS: tuple[_Pin, ...] = (
          ("@adenot/mcp-google-search",), None,
          fix_label="no fixed release yet (upstream patch f071d491 unreleased) — "
                    "remove or replace until a patched version ships"),
+    # --- 2026-08-11 wave ---
+    # mcp-grafana (PyPI; a Go server with a resolvable uvx / PyPI wrapper) < 1.1.0: a
+    # caller-supplied X-Grafana-URL header controls the destination of the server's
+    # outbound requests, and grafana_api_request lets the caller pick method / path /
+    # body, so the destination is not restricted to the configured Grafana instance ->
+    # SSRF to internal / loopback / metadata endpoints (CVE-2026-19516, CVSS 9.1). The
+    # incomplete-fix follow-up to CVE-2026-15583 (which stopped the token leak but not
+    # the destination). Fixed 1.1.0, which restricts destinations. Supersedes the
+    # archived "unpinnable Go module" note for CVE-2026-15583: a PyPI wrapper exists.
+    _Pin("AAK-MCP-GRAFANA-CVE-2026-19516-001", "mcp-grafana", ("mcp-grafana",),
+         (1, 1, 0),
+         fix_label="1.1.0 (affected <= 1.0.0; completes the incomplete fix of CVE-2026-15583)"),
 )
 
 _CANDIDATE_NAMES = (

@@ -23,7 +23,7 @@ Read in order:
 3. `ROADMAP_2026.md` — 90-day plan for this repo
 4. `../agent-airlock/LAUNCH_PLAYBOOK_2026.md` — shared growth tactics
 5. `agent_audit_kit/rules/builtin.py` — understand the 289 existing rules
-6. `agent_audit_kit/scanners/*.py` — understand the 86 scanner modules
+6. `agent_audit_kit/scanners/*.py` — understand the 87 scanner modules
 7. `tests/conftest.py` — fixture patterns
 8. Run `pytest -v` and `agent-audit-kit scan .` on the repo's own fixtures to confirm baseline
 

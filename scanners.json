@@ -1,5 +1,5 @@
 {
-  "count": 86,
+  "count": 87,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -268,6 +268,10 @@
     {
       "module": "shared_resource_authz",
       "name": "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)"
+    },
+    {
+      "module": "skill_composition",
+      "name": "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)"
     },
     {
       "module": "skill_lifecycle_attribution",

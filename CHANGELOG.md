@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`AAK-AGENT-COMPOSE-001`, a composition-aware capability-union check.** The
+  `AAK-AGENT-TRUST-*` and `AAK-SKILL-*` rules inspect one artifact at a time, so they
+  cannot see intent split across several individually-benign skills. That is the
+  ColluSkill attack (arXiv:2608.09732), reported at a 96.0% average success rate across
+  six per-skill scanners. This rule operates on the SET of skills that load into one
+  agent context: it computes the union of declared capability (filesystem read/write,
+  network egress by destination, shell execution, credential access, memory write) and
+  flags a union that crosses a configured risk boundary no single skill requested. The
+  shipped default: a skill that can read files or credentials, composed with a skill
+  that can egress to a non-allowlisted destination, is an exfiltration path, flagged
+  HIGH, even when each skill is individually clean. The finding names which skill
+  contributed which capability and emits each contributor as a SARIF related location.
+  The boundary and egress allowlist are configurable via `.aak/composition-boundaries.yaml`;
+  the default and its reasoning are in `docs/rules/skill-composition.md`. What it does
+  not do: it reasons about DECLARED capability, not data flow. A skill that under-declares
+  its tools, or reaches a capability through an MCP server it does not name, is out of
+  scope, and it flags a possible exfiltration path, not a proven one.
+- **`AAK-MCP-GRAFANA-CVE-2026-19516-001`: pin `mcp-grafana >= 1.1.0`.** In mcp-grafana
+  1.0.0 and earlier, a caller-controlled `X-Grafana-URL` header set the destination of the
+  server's outbound requests, giving SSRF to internal, loopback, and metadata endpoints
+  (CVE-2026-19516, CVSS 9.1). This is the incomplete-fix follow-up to CVE-2026-15583, so
+  the correct control is destination restriction, not token handling: 1.1.0 restricts the
+  destination to the configured Grafana instance. mcp-grafana is a Go server but ships a
+  resolvable PyPI wrapper (`uvx mcp-grafana`), so it is pinnable after all, superseding
+  the earlier "unpinnable Go module" ledger note.
+
+### Changed
+
+- **The four `AAK-AGENT-TRUST-*` rules now state their own limits.** They are a
+  single-artifact pre-screen, not a boundary control, and single-artifact scanning does
+  not detect intent split across multiple individually-benign skills. Each rule carries a
+  `limitations` note (new `RuleDefinition.limitations` field) citing ColluSkill
+  (arXiv:2608.09732, 96.0% average attack success across six scanners) and SkillsMetric
+  (arXiv:2608.08468, 0% detection for host-destruction via common shell commands, 42% for
+  natural-language prompt injection). The docs page `docs/rules/skill-composition.md` says
+  the same, without softening it. The composition blind spot these four cannot see is
+  covered by the new `AAK-AGENT-COMPOSE-001`.
+
 ## [0.3.72] - 2026-08-10
 
 ### Fixed

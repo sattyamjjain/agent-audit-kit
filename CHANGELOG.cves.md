@@ -16,6 +16,14 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-11 (v0.3.73)
+
+One `cve-response` issue, adjudicated in scope and pinned.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-19516 (Grafana `mcp-grafana` <= 1.0.0 — a caller-controlled `X-Grafana-URL` header sets the outbound destination and `grafana_api_request` picks the method/path/body, so the destination is not restricted to the configured instance, giving SSRF to internal / loopback / metadata endpoints; CRITICAL, CVSS 9.1) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-19516) | **Pinned** `AAK-MCP-GRAFANA-CVE-2026-19516-001` (SUPPLY_CHAIN, CRITICAL): `mcp-grafana >= 1.1.0`, which restricts the destination. The incomplete-fix follow-up to CVE-2026-15583 (that fix stopped the service-account token leak but not the destination), so the control is destination restriction, not token handling. mcp-grafana is a Go server but ships a resolvable PyPI wrapper (`uvx mcp-grafana`, versions through 1.1.0), so it is pinnable after all — superseding the 2026-07-16 "documented, not pinned" note. (#566) | 2026-08-11 |
+
 ## 2026-08-10 (v0.3.72)
 
 One `cve-response` issue, adjudicated out of scope after a registry check.
