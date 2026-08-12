@@ -180,6 +180,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
@@ -6839,6 +6841,61 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-N8N-CVE-2026-72768-001",
+    "n8n < 2.32.1 (MCP Client node bypasses SSRF protection → internal-host access)",
+    "n8n before 2.32.1 has a server-side-request-forgery-protection bypass in the "
+    "MCP Client node: an authenticated user can craft a workflow whose MCP Client "
+    "requests reach internal or blocked hosts without routing through n8n's SSRF "
+    "protection, exposing internal services and reading their responses back through "
+    "the workflow (CVE-2026-72768). A project pinning `n8n` below 2.32.1 (or unpinned) "
+    "is exposed. This is a distinct MCP-Client-node SSRF from the earlier n8n "
+    "credential-domain-bypass and OAuth two-branch-fix pins already carried by the pin "
+    "scanner — a third n8n arm. Fixed in 2.32.1, with all prior versions affected.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n` to >= 2.32.1 and pin it. Route the MCP Client node's outbound "
+    "requests through n8n's SSRF protection so a workflow author cannot reach internal "
+    "or blocked hosts, and segment the n8n runner from sensitive internal services.",
+    sarif_name="N8nMcpClientNodeSsrfBypass",
+    cve_references=["CVE-2026-72768"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001",
+    "claude-code-templates < 1.29.4 (--studio server: unauth 0.0.0.0:3444 → command-injection RCE)",
+    "Claude Code Templates (`claude-code-templates`), a CLI for configuring and "
+    "monitoring Claude Code, before 1.29.4 launches the Claude Code Studio server "
+    "(`cli-tool/src/sandbox-server.js`) via the `--studio` option bound to all "
+    "interfaces on port 3444, with cross-origin requests permitted and no "
+    "authentication. `POST /api/execute` passes the request-body `prompt` field to "
+    "`executeLocalTask()` and `POST /api/install-agent` passes the `agentName` field "
+    "to a child process; the same unsafe agent path is reachable from `/api/execute` "
+    "through `checkAndInstallAgent()`. These attacker-controlled values reach "
+    "`child_process.spawn()` with shell execution enabled, so shell metacharacters are "
+    "interpreted as OS commands — arbitrary command execution with the developer's "
+    "privileges. An attacker who can reach the port directly, or who lures a developer "
+    "running Studio to a malicious website, compromises source code, credentials, and "
+    "local data (CVE-2026-73222, CVSS 8.8). Fixed in 1.29.4 (the version before it is "
+    "1.29.2; no 1.29.3 was published, so treat < 1.29.4 and unpinned as exposed).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `claude-code-templates` to >= 1.29.4 and pin it. Do not run `--studio` on "
+    "an untrusted network; bind the Studio server to loopback, require authentication, "
+    "and reject cross-origin requests. Never pass request-body fields (`prompt`, "
+    "`agentName`) into a shell.",
+    sarif_name="ClaudeCodeTemplatesStudioCommandInjection",
+    cve_references=["CVE-2026-73222"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
 )
 
 

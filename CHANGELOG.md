@@ -51,6 +51,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   feed polled cleanly. What it still does not do: no live ox / cert-cc / thaicert /
   ironplate fetchers, and no notification sinks (payloads print to stdout/stderr).
 
+### Security
+
+- **Two newly disclosed MCP-adjacent CVEs, triaged in scope and pinned** — draining the
+  open `cve-response` backlog that gated this release. Rule count 292 → 294; see
+  [`CHANGELOG.cves.md`](CHANGELOG.cves.md).
+  - **`AAK-MCP-N8N-CVE-2026-72768-001`** (SUPPLY_CHAIN, MEDIUM): n8n before 2.32.1 has an
+    SSRF-protection bypass in the MCP Client node — an authenticated workflow author can
+    reach internal or blocked hosts without routing through n8n's SSRF protection and read
+    the responses back ([CVE-2026-72768](https://nvd.nist.gov/vuln/detail/CVE-2026-72768)).
+    Pinned at floor `n8n >= 2.32.1`; a third distinct n8n arm, separate from CVE-2026-59207
+    and CVE-2026-65594.
+  - **`AAK-MCP-CCTEMPLATES-CVE-2026-73222-001`** (SUPPLY_CHAIN, HIGH): claude-code-templates
+    before 1.29.4 launches the `--studio` server on `0.0.0.0:3444` with CORS open and no
+    authentication, passing request-body fields (`prompt`, `agentName`) to
+    `child_process.spawn()` with shell execution enabled → unauthenticated OS command
+    execution with the developer's privileges
+    ([CVE-2026-73222](https://nvd.nist.gov/vuln/detail/CVE-2026-73222), CVSS 8.8). Pinned at
+    floor `claude-code-templates >= 1.29.4` (no 1.29.3 was published).
+  - Both packages resolve on npm with the fixed version present, so both are in-scope
+    version pins in `mcp_cve_pins_2026_07`, verified against the registry before shipping.
+
 ## [0.3.73] - 2026-08-11
 
 ### Added

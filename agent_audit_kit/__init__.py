@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 __version__ = "0.3.74"
-RULE_COUNT = 292
+RULE_COUNT = 294
 SCANNER_COUNT = 88
 # Distinct public MCP server configs in the State-of-MCP-2026 corpus, measured from
 # research/state-of-mcp-2026/results.json (distinct_configs_scanned), fetched

@@ -66,6 +66,9 @@ PINS = {
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": "medium",
     # 2026-08-11 wave
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": "critical",
+    # 2026-08-11..12 wave
+    "AAK-MCP-N8N-CVE-2026-72768-001": "medium",
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": "high",
 }
 
 
@@ -709,3 +712,82 @@ def test_grafana_fixtures_positive_and_negative() -> None:
     patched = {f.rule_id for f in scan(base / "patched")[0]}
     assert _GRAFANA_RULE in vuln
     assert _GRAFANA_RULE not in patched
+
+
+# --- 2026-08-11..12 wave — n8n MCP Client node SSRF bypass (CVE-2026-72768) ---
+
+_N8N_72768 = "AAK-MCP-N8N-CVE-2026-72768-001"
+
+
+def test_n8n_72768_below_floor_fires(tmp_path: Path) -> None:
+    assert _N8N_72768 in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.0"}}')
+
+
+def test_n8n_72768_patched_passes(tmp_path: Path) -> None:
+    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.1"}}')
+
+
+def test_n8n_72768_unpinned_fires(tmp_path: Path) -> None:
+    assert _N8N_72768 in _ids(tmp_path, "requirements.txt", "n8n\n")
+
+
+def test_n8n_72768_is_the_only_n8n_arm_at_2_32_0(tmp_path: Path) -> None:
+    # 2.32.0 is above the 59207 (2.27.4) and 65594 (2.29.8 / 2.30.1) floors, so this
+    # new arm is the sole n8n finding — proving it is a distinct pin, not a duplicate.
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.0"}}')
+    assert _N8N_72768 in ids
+    assert "AAK-MCP-N8N-CVE-2026-59207-001" not in ids
+    assert "AAK-MCP-N8N-CVE-2026-65594-001" not in ids
+
+
+def test_n8n_72768_does_not_trip_on_n8n_mcp(tmp_path: Path) -> None:
+    # The distinct `n8n-mcp` package must not fire the n8n workflow-engine pin.
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n-mcp": "2.57.4"}}')
+    assert _N8N_72768 not in ids
+
+
+def test_n8n_72768_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-72768-n8n"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _N8N_72768 in vuln
+    assert _N8N_72768 not in negative
+
+
+# --- 2026-08-11..12 wave — claude-code-templates --studio RCE (CVE-2026-73222) ---
+
+_CCTEMPLATES = "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001"
+
+
+def test_cctemplates_below_floor_fires(tmp_path: Path) -> None:
+    # 1.29.2 is the last release before the 1.29.4 fix (no 1.29.3 was published).
+    content = '{"dependencies": {"claude-code-templates": "1.29.2"}}'
+    assert _CCTEMPLATES in _ids(tmp_path, "package.json", content)
+
+
+def test_cctemplates_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"claude-code-templates": "1.29.4"}}'
+    assert _CCTEMPLATES not in _ids(tmp_path, "package.json", content)
+
+
+def test_cctemplates_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"cct": {"command": "npx", "args": ["claude-code-templates"]}}}'
+    assert _CCTEMPLATES in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_cctemplates_package_lock_patched_clears(tmp_path: Path) -> None:
+    lock = '{"packages": {"node_modules/claude-code-templates": {"version": "1.29.4"}}}'
+    assert _CCTEMPLATES not in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_cctemplates_package_lock_vulnerable_fires(tmp_path: Path) -> None:
+    lock = '{"packages": {"node_modules/claude-code-templates": {"version": "1.29.2"}}}'
+    assert _CCTEMPLATES in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_cctemplates_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73222-claude-code-templates"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _CCTEMPLATES in vuln
+    assert _CCTEMPLATES not in negative

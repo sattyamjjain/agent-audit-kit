@@ -16,6 +16,15 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-12 (v0.3.74)
+
+Two `cve-response` issues, both adjudicated in scope and pinned after an npm registry check.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-72768 (n8n < 2.32.1 — server-side-request-forgery-protection bypass in the MCP Client node: an authenticated workflow author can send requests to internal / blocked hosts without routing through n8n's SSRF protection, exposing internal services and reading the responses back through the workflow; CVSS n/a) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-72768) | **In scope, pinned** `AAK-MCP-N8N-CVE-2026-72768-001` (SUPPLY_CHAIN, MEDIUM): floor `n8n >= 2.32.1`. `n8n` resolves on npm (fix 2.32.1 published; latest 2.34.5). A third distinct n8n arm — separate from CVE-2026-59207 (credential-domain bypass) and CVE-2026-65594 (two-branch OAuth fix) — carried by the same `mcp_cve_pins_2026_07` pin table. (#568) | 2026-08-12 |
+| CVE-2026-73222 (claude-code-templates < 1.29.4 — the `--studio` option launches the Claude Code Studio server on 0.0.0.0:3444 with CORS open and no authentication; `POST /api/execute` (`prompt`) and `POST /api/install-agent` (`agentName`), plus the agent path reachable from `/api/execute` via `checkAndInstallAgent()`, reach `child_process.spawn()` with shell execution enabled → unauthenticated OS command execution with the developer's privileges; HIGH, CVSS 8.8) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-73222) | **In scope, pinned** `AAK-MCP-CCTEMPLATES-CVE-2026-73222-001` (SUPPLY_CHAIN, HIGH): floor `claude-code-templates >= 1.29.4`. Resolves on npm (fix 1.29.4 is latest; the release before it is 1.29.2 — no 1.29.3 was published). (#569) | 2026-08-12 |
+
 ## 2026-08-11 (v0.3.73)
 
 One `cve-response` issue, adjudicated in scope and pinned.

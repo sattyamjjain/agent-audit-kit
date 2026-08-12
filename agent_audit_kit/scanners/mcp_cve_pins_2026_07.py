@@ -44,6 +44,8 @@ available) before shipping:
   - mcp-for-stata                  >= 1.17.3  (CVE-2026-47708)
   - @adenot/mcp-google-search      <= 0.3.1   (CVE-2026-19337; SSRF, no fixed release yet)
   - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
+  - n8n (MCP Client node)          >= 2.32.1  (CVE-2026-72768; SSRF-protection bypass)
+  - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -294,6 +296,28 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-GRAFANA-CVE-2026-19516-001", "mcp-grafana", ("mcp-grafana",),
          (1, 1, 0),
          fix_label="1.1.0 (affected <= 1.0.0; completes the incomplete fix of CVE-2026-15583)"),
+    # --- 2026-08-11..12 wave ---
+    # n8n (npm) < 2.32.1: the MCP Client node lets an authenticated workflow author send
+    # requests to internal / blocked hosts without routing through n8n's SSRF protection,
+    # exposing internal services and reading the responses back (CVE-2026-72768). A third
+    # distinct n8n arm — separate from the 59207 credential-domain bypass and the 65594
+    # two-branch OAuth fix. NVD says "before 2.32.1", so all prior versions are affected
+    # (floor 2.32.1, no `introduced`). Uses `_N8N_RE` so it never trips the distinct
+    # `n8n-mcp` package.
+    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 32, 1),
+         fix_label="2.32.1", regexes=(_N8N_RE,)),
+    # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
+    # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
+    # and no authentication. `POST /api/execute` (the `prompt` body field) and
+    # `POST /api/install-agent` (the `agentName` field), plus the agent path reachable from
+    # `/api/execute` via `checkAndInstallAgent()`, reach `child_process.spawn()` with shell
+    # execution enabled, so shell metacharacters in those values run as OS commands with the
+    # developer's privileges. Reachable directly by anyone who can hit the port, or via a
+    # malicious site a developer visits while Studio runs (CVE-2026-73222, CVSS 8.8). Fixed
+    # 1.29.4; the version before it is 1.29.2 (no 1.29.3 was published), so treat < 1.29.4
+    # and unpinned as exposed.
+    _Pin("AAK-MCP-CCTEMPLATES-CVE-2026-73222-001", "claude-code-templates",
+         ("claude-code-templates",), (1, 29, 4), fix_label="1.29.4"),
 )
 
 _CANDIDATE_NAMES = (
