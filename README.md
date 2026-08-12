@@ -11,7 +11,7 @@
   <a href="benchmarks/determinism/RESULTS.md"><img src="https://img.shields.io/badge/determinism-0%25%20variance%20(20%2F20)-brightgreen.svg" alt="Determinism: 0% variance across 20/20 runs"></a>
   <a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20HIGH%2FCRIT%20FP-0%2F1%20(n%3D1)-blue.svg" alt="Benign-slice HIGH/CRITICAL false-positive rate: 0/1, n=1"></a>
   <a href="docs/benchmarks/third-party-grading.md"><img src="https://img.shields.io/badge/third--party%20grade-see%20notes-lightgrey.svg" alt="Third-party grading notes"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-291-blue.svg" alt="Rules: 291"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-292-blue.svg" alt="Rules: 292"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -30,9 +30,9 @@ Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, 
 1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). This is measured, not just claimed: [20/20 identical runs → one shared SHA-256 finding-set digest, 0% variance](benchmarks/determinism/RESULTS.md). Scanners that route findings through an LLM judge can't guarantee a byte-identical re-run — so CI diffs, audit re-runs, and regression baselines stay stable here. No account, no telemetry. Precision is measured the same way, not asserted: we publish a reproducible, hand-adjudicated [benign-slice HIGH/CRITICAL false-positive rate](benchmarks/false_positive/RESULTS.md) — with a Wilson confidence interval and any offending rule filed as an issue.
 2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 12 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
-- **<!-- rule-count:total -->291<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->292<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
-- **<!-- scanner-count:total -->87<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **<!-- scanner-count:total -->88<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
 - **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (12 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`; plus `agent-audit-kit scan . --compliance mcp-2026-roadmap` for **MCP 2026 Roadmap (May 2026)** conformance (a scan-time mapping, not a PDF evidence pack)
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.73
+      - uses: sattyamjjain/agent-audit-kit@v0.3.74
         id: scan
         with:
           fail-on: high
@@ -98,7 +98,7 @@ agent-audit-kit scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.73
+    rev: v0.3.74
     hooks:
       - id: agent-audit-kit
 ```
@@ -132,10 +132,10 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Taint Analysis** | <!-- category-count:TAINT_ANALYSIS -->13<!-- /category-count --> | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST), `load_prompt()` user-path reachability, transport-flip MITM (DocsGPT + GPT-Researcher). SQL-injection sinks (`AAK-TAINT-005`) now detected in TypeScript/JS MCP servers too — interpolated/concatenated `.query()`/`.execute()`, `knex.raw`, Prisma `$queryRawUnsafe` — matching the Python + Rust scanners (OX MCP-SDK disclosure class). LLM-generated SQL executed on an RCE-capable DB role (`AAK-LLM-SQL-RCE-001`, **CVE-2026-25879**) — model output reaching `cursor.execute`/`text(...)`/`.query()` as the query itself with no allow-list, plus superuser/`COPY ... FROM PROGRAM`/`xp_cmdshell`/`FILE`-privilege connection roles that turn SQL injection into shell |
 | **Transport Security** | <!-- category-count:TRANSPORT_SECURITY -->12<!-- /category-count --> | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings, transport body-size limits (CVE-2026-39313), SSRF redirect bypass (CVE-2026-41481), DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577) |
 | **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->12<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (Annex III high-risk binding 2027-12-02, Annex I 2028-08-02 — AI Omnibus) |
-| **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->13<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
+| **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->14<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 discovery cards (`/.well-known/mcp/server-card.json`): tool-description poisoning in `tools[].description` (`AAK-MCP-CARD-001`, reuses the AAK-POISON detectors), declared-transport vs advertised-capability mismatch — remote transport with `authentication.required: false`, or `stdio` advertising a remote endpoint (`AAK-MCP-CARD-002`), missing / placeholder signature / provenance (`AAK-MCP-CARD-003`), and over-broad capability / wildcard-scope claims (`AAK-MCP-CARD-004`) |
 
-**<!-- rule-count:total -->291<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->292<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### MCP Server Card scanning (SEP-1649)
 
@@ -285,7 +285,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.73
+  - uses: sattyamjjain/agent-audit-kit@v0.3.74
     id: scan
     with:
       fail-on: high
@@ -374,10 +374,10 @@ cross-reference, not a head-to-head benchmark.
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 13 |
 | **ASI02** | Tool Misuse | 39 |
-| **ASI03** | Memory Poisoning | 67 |
+| **ASI03** | Memory Poisoning | 68 |
 | **ASI04** | Identity & Privilege Abuse | 61 |
 | **ASI05** | Cascading Failures | 41 |
-| **ASI06** | Unauthorized Capability Acquisition | 39 |
+| **ASI06** | Unauthorized Capability Acquisition | 40 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 5 |
 | **ASI09** | Resource Abuse | 18 |
@@ -419,7 +419,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->291<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->292<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **12 frameworks** | No | 0 | 0 |
@@ -523,7 +523,7 @@ See which AAK rules cover each OWASP MCP slot in the
 
 AgentAuditKit tracks newly disclosed MCP CVEs and ships rule coverage on a best-effort basis, recorded in a public ledger ([`CHANGELOG.cves.md`](CHANGELOG.cves.md)). A [GitHub Action](.github/workflows/cve-watcher.yml) watches NVD's MCP keyword feed every 6 hours and files a tracking issue for each new disclosure.
 
-> **`aak watch-cve` is experimental.** The CLI poller ships no live feed fetchers yet — it prints `feed <id>: NOT IMPLEMENTED` and exits non-zero rather than looking like a clean run that found nothing. The automated CVE tracking above runs through the `cve-watcher.yml` GitHub Action, not that command. (`aak watch`, the pinned-tool drift monitor, is a separate, functional command.)
+> **`aak watch-cve` is experimental — exactly one live feed.** The CLI poller ships one live feed, `nvd` (the NVD 2.0 API); its network call is opt-in behind `--online`, so a default run reads an on-disk cache and never touches the network. The other four feeds (`ox`, `cert-cc`, `thaicert`, `ironplate`) are unimplemented stubs that print `feed <id>: not implemented`; the command exits 0 when at least one requested feed polls cleanly and non-zero when every requested feed is a stub. The automated CVE tracking above runs through the `cve-watcher.yml` GitHub Action, not that command. (`aak watch`, the pinned-tool drift monitor, is a separate, functional command.)
 
 ## Supply chain
 

@@ -189,6 +189,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AGENT-TRUST-003": ["IAM-05", "STA-08"],
     "AAK-AGENT-TRUST-004": ["AIS-08", "STA-08"],
     "AAK-AGENT-COMPOSE-001": ["IVS-04", "AIS-08", "STA-08"],
+    "AAK-AGENT-COMPOSE-002": ["IVS-04", "AIS-08", "STA-08"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -2528,6 +2529,45 @@ _r(
         "per-skill scanners and Python taint analysis cover in-body behaviour. It "
         "reasons about capability, not data flow, so it flags a possible exfiltration "
         "path, not a proven one."
+    ),
+)
+
+
+_r(
+    "AAK-AGENT-COMPOSE-002",
+    "Tool-call arguments spliced across a session reconstruct a denied file path or URL",
+    "Where AAK-AGENT-COMPOSE-001 unions capability across a set of skills, this rule "
+    "reads an ordered transcript of tool calls in one session and flags when the "
+    "concatenation of arguments across consecutive same-tool calls reconstructs a "
+    "sensitive file path (e.g. `.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL to a "
+    "non-allowlisted host that no single call would have been allowed to request. Each "
+    "call is individually compliant; the intent exists only after fragmentation. This is "
+    "the GhostSplice / cross-channel trust-fragmentation attack disclosed by the ASSET "
+    "Research Group (https://asset-group.github.io/disclosures/ghostsplice/): a malicious "
+    "MCP server splits one refused request across several channels the agent already "
+    "trusts. Scope is deliberately narrow: file-path and URL reassembly only, not general "
+    "intent detection. It was written from the public disclosure, not from a reproduction "
+    "AAK ran. Reuses AAK-AGENT-COMPOSE-001's config "
+    "(`.aak/composition-boundaries.yaml`: `session_reassembly.sensitive_path_patterns` and "
+    "the shared `egress_allowlist`).",
+    Severity.MEDIUM,
+    Category.TRUST_BOUNDARY,
+    "Deny on the reassembled value, not just per-call arguments: normalise and re-check "
+    "the full path or URL at the point of file read or network egress, and pin egress to "
+    "an allowlist. Review the flagged session for whether the fragmentation was legitimate "
+    "chunked work or an actual splice.",
+    sarif_name="SessionSpliceReassembledDeniedTarget",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06", "ASI03"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["GHOSTSPLICE-2026-08"],
+    limitations=(
+        "Defaults to a warning (MEDIUM), not a failure, because it WILL produce false "
+        "positives on legitimate chunked work: a large file uploaded or written in "
+        "path-sized pieces, or a URL built from templated fragments, reassembles the same "
+        "way an attack does. It only sees file-path and URL reassembly across consecutive "
+        "same-tool calls; a splice across different tools, or intent that is not a path or "
+        "URL, is out of scope. Treat a finding as a prompt to look, not a verdict."
     ),
 )
 

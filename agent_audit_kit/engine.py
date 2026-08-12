@@ -43,6 +43,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("ide_task_rce", "VS Code IDE task/launch folder-open RCE", []),
     ("agent_trust_surface", "Agent config/skill auto-trust (headless -p in CI)", []),
     ("skill_composition", "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)", []),
+    ("session_splice", "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)", []),
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),
     ("mcp_tasks", "MCP Tasks leakage", []),

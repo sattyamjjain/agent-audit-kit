@@ -1,0 +1,7 @@
+{
+  "session_id": "single-call",
+  "calls": [
+    {"tool": "read_file", "arguments": {"path": ".ssh/id_rsa"}},
+    {"tool": "read_file", "arguments": {"path": "_backup"}}
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "count": 87,
+  "count": 88,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -264,6 +264,10 @@
     {
       "module": "secret_exposure",
       "name": "Secret exposure"
+    },
+    {
+      "module": "session_splice",
+      "name": "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)"
     },
     {
       "module": "shared_resource_authz",

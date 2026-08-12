@@ -33,5 +33,31 @@ boundaries:
 # Network destinations an egress skill may declare without counting as
 # `network_egress` for the boundary above. Empty by default: any declared
 # external destination is treated as non-allowlisted egress. Add hosts you
-# trust (exact host match), e.g. "docs.python.org".
+# trust (exact host match), e.g. "docs.python.org". Also used by
+# AAK-AGENT-COMPOSE-002 to allowlist reassembled URL destinations.
 egress_allowlist: []
+
+# AAK-AGENT-COMPOSE-002 (session-scoped splice check) reuses this same config.
+# Given an ordered transcript of tool calls, it flags when the concatenation of
+# arguments across consecutive same-tool calls reconstructs a file path or URL
+# that a single call would have been denied for (the GhostSplice / cross-channel
+# trust-fragmentation shape). Only file-path and URL reassembly, on purpose.
+session_reassembly:
+  # Substrings that mark a reassembled file path as sensitive. A finding fires
+  # only when the REASSEMBLED path contains one of these and NO single call's
+  # argument did — i.e. the sensitive target existed only after fragmentation.
+  sensitive_path_patterns:
+    - id_rsa
+    - id_dsa
+    - id_ecdsa
+    - id_ed25519
+    - .aws/credentials
+    - .env
+    - .netrc
+    - .pgpass
+    - .npmrc
+    - .pem
+    - .kube/config
+  # URL reassembly reuses `egress_allowlist` above: a reassembled URL whose host
+  # is not on the allowlist is flagged (when no single fragment was itself a
+  # complete non-allowlisted URL).

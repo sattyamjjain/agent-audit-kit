@@ -38,8 +38,10 @@ if str(REPO_ROOT) not in sys.path:
 EXCLUDE_EXACT: frozenset[str] = frozenset({
     "CHANGELOG.md",
     "CHANGELOG.cves.md",
-    "DEEP_ANALYSIS.md",                            # header: "Historical snapshot - v0.2.0"
-    "ROADMAP_2026.md",                             # "Starting point (Apr 2026): v0.2.0 - 77 rules"
+    # DEEP_ANALYSIS.md and ROADMAP_2026.md are exempted by their dated banner
+    # (see HISTORICAL_BANNER_RE below), not by name — so if a future file drops its
+    # banner while keeping a stale count, or a new snapshot file forgets to add one,
+    # it gets caught instead of silently sliding under a hard-coded name list.
     "launch/blog-50-mcp-servers.md",               # dated note: a v0.3.x 225-rule run
     "launch/state-of-mcp-security-2026.md",        # inline "v0.3.41, 225 rules", self-labelled superseded
     "docs/research/mcp-security-baseline-v1.0.md",  # frozen baseline: "0.3.56 - 262 rules"
@@ -64,6 +66,9 @@ PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\b(\d+)\s+rules across (\d+)\s+scanners?\b", re.I), "rules+scanners"),
     (re.compile(r"\b(\d+)\s+detection rules\b", re.I), "rules"),
     (re.compile(r"with (\d+) rules\b", re.I), "rules"),
+    # "understand the N existing rules" (CLAUDE_PROMPT.md) — the phrasing that
+    # drifted to 289 two rules after the v0.3.72 sweep, because no pattern matched it.
+    (re.compile(r"\b(\d+)\s+existing rules?\b", re.I), "rules"),
     (re.compile(r"\b(\d+)\s+scanner modules?\b", re.I), "scanners"),
     (re.compile(r"\b(\d+)\s+CLI commands?\b", re.I), "commands"),
     (re.compile(r"entry point\s*\((\d+)\s+commands?\)", re.I), "commands"),
@@ -100,6 +105,25 @@ def _tracked_markdown() -> list[str]:
     return [line for line in out.stdout.splitlines() if line]
 
 
+# A dated historical-snapshot banner near the top of a file declares that its
+# counts describe a named past version, not the current build. DEEP_ANALYSIS.md
+# opens with "Historical snapshot - v0.2.0"; ROADMAP_2026.md opens with
+# "Starting point (Apr 2026): v0.2.0 - 77 rules". Either form exempts the file;
+# a file that states a live count without such a banner is checked.
+HISTORICAL_BANNER_RE = re.compile(
+    r"historical snapshot|starting point \(\w+\.? 20\d\d\)", re.I
+)
+_BANNER_HEAD_CHARS = 800
+
+
+def has_historical_banner(path: Path) -> bool:
+    try:
+        head = path.read_text(encoding="utf-8")[:_BANNER_HEAD_CHARS]
+    except OSError:
+        return False
+    return bool(HISTORICAL_BANNER_RE.search(head))
+
+
 def is_excluded(rel: str) -> bool:
     return rel in EXCLUDE_EXACT or any(rel.startswith(p) for p in EXCLUDE_PREFIX)
 
@@ -115,6 +139,8 @@ def find_stale_counts() -> list[str]:
             continue
         path = REPO_ROOT / rel
         if not path.is_file():
+            continue
+        if has_historical_banner(path):
             continue
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             for pattern, key in PATTERNS:

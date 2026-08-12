@@ -176,6 +176,20 @@ def test_no_stale_hardcoded_counts_in_prose() -> None:
     )
 
 
+def test_historical_snapshot_files_carry_banner() -> None:
+    """DEEP_ANALYSIS.md and ROADMAP_2026.md are exempt from the count guard by their
+    dated historical-snapshot banner (v0.3.74), NOT a hard-coded name list. Assert the
+    banner is actually present, so if either drops it, this test fails AND the guard
+    starts checking the file's frozen v0.2.0 counts — a stale count can't hide behind a
+    silently-removed banner (the exact way CLAUDE_PROMPT.md drifted)."""
+    cc = _load_check_counts()
+    for rel in ("DEEP_ANALYSIS.md", "ROADMAP_2026.md"):
+        assert cc.has_historical_banner(REPO_ROOT / rel), (
+            f"{rel} lost its dated historical-snapshot banner. Restore it, or update "
+            "its counts to the canonical value — the guard now checks any banner-less file."
+        )
+
+
 def test_report_framework_choices_match_titles() -> None:
     """`len(_FRAMEWORK_TITLES)` is only a legitimate canonical number if it is the
     exact set of `report --framework` targets. Read the Click choices off the live

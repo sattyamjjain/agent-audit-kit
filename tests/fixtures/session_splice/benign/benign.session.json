@@ -1,0 +1,8 @@
+{
+  "session_id": "benign-chunks",
+  "calls": [
+    {"tool": "read_file", "arguments": {"path": "src/"}},
+    {"tool": "read_file", "arguments": {"path": "main"}},
+    {"tool": "read_file", "arguments": {"path": ".py"}}
+  ]
+}

@@ -23,7 +23,7 @@ Hi! I'd like to add AgentAuditKit to this list.
 
 AgentAuditKit is an open-source security scanner for AI agent configurations (MCP, Claude Code, Cursor, VS Code Copilot, Windsurf, etc.). It's the "npm audit" for AI agents.
 
-- **291 rules** across 12 security categories
+- **292 rules** across 12 security categories
 - **OWASP coverage**: MCP Top 10 (10/10), Agentic Top 10 (10/10)
 - **Output**: Console, JSON, SARIF (GitHub Security tab integration)
 - **Zero dependencies**: Only click + pyyaml, runs fully offline

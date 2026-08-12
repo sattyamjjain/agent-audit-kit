@@ -450,6 +450,36 @@
       "title": "Skill set's composed capability union crosses a risk boundary no single skill requested"
     },
     {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Where AAK-AGENT-COMPOSE-001 unions capability across a set of skills, this rule reads an ordered transcript of tool calls in one session and flags when the concatenation of arguments across consecutive same-tool calls reconstructs a sensitive file path (e.g. `.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL to a non-allowlisted host that no single call would have been allowed to request. Each call is individually compliant; the intent exists only after fragmentation. This is the GhostSplice / cross-channel trust-fragmentation attack disclosed by the ASSET Research Group (https://asset-group.github.io/disclosures/ghostsplice/): a malicious MCP server splits one refused request across several channels the agent already trusts. Scope is deliberately narrow: file-path and URL reassembly only, not general intent detection. It was written from the public disclosure, not from a reproduction AAK ran. Reuses AAK-AGENT-COMPOSE-001's config (`.aak/composition-boundaries.yaml`: `session_reassembly.sensitive_path_patterns` and the shared `egress_allowlist`).",
+      "incident_references": [
+        "GHOSTSPLICE-2026-08"
+      ],
+      "limitations": "Defaults to a warning (MEDIUM), not a failure, because it WILL produce false positives on legitimate chunked work: a large file uploaded or written in path-sized pieces, or a URL built from templated fragments, reassembles the same way an attack does. It only sees file-path and URL reassembly across consecutive same-tool calls; a splice across different tools, or intent that is not a path or URL, is out of scope. Treat a finding as a prompt to look, not a verdict.",
+      "owasp_agentic_references": [
+        "ASI06",
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Deny on the reassembled value, not just per-call arguments: normalise and re-check the full path or URL at the point of file read or network egress, and pin egress to an allowlist. Review the flagged session for whether the fragmentation was legitimate chunked work or an actual splice.",
+      "rule_id": "AAK-AGENT-COMPOSE-002",
+      "sarif_name": "SessionSpliceReassembledDeniedTarget",
+      "severity": "medium",
+      "title": "Tool-call arguments spliced across a session reconstruct a denied file path or URL"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "AIS-04",

@@ -121,16 +121,19 @@ def test_aak_coverage_prisma_fail_under_strict() -> None:
 # -------------------- aak watch-cve (fail-loud on stub feeds) --------------------
 
 def test_aak_watch_cve_stub_feed_fails_loud() -> None:
-    """watch-cve ships no live fetchers — every feed is an unimplemented stub, so
-    the command must fail loud (non-zero exit + "NOT IMPLEMENTED") instead of
-    exiting 0 as if it had run a clean poll that found nothing."""
+    """One live feed (`nvd`) now ships; `ox` and the rest are still stubs. Requesting
+    only a stub feed must fail loud (non-zero exit) instead of exiting 0 as if it had
+    run a clean poll that found nothing — and the message must name which feed(s) are
+    actually live rather than claiming everything is unimplemented."""
     runner = CliRunner()
     result = runner.invoke(
         cli,
         ["watch-cve", "--feeds", "ox", "--dry-run", "--max-iterations", "1", "--interval-seconds", "1"],
     )
     assert result.exit_code != 0
-    assert "NOT IMPLEMENTED" in result.output
+    assert "not implemented" in result.output.lower()
+    # Honest about what IS live, not a blanket "everything is a stub".
+    assert "nvd" in result.output
 
 
 # -------------------- aak rule lint --------------------

@@ -1432,8 +1432,17 @@ def parity_cmd(
 @click.version_option(version=__version__)
 @click.option(
     "--feeds",
-    default="ox,cert-cc,thaicert,ironplate",
-    help="Comma-separated feed IDs to poll.",
+    default="nvd",
+    help="Comma-separated feed IDs. Live: nvd (NVD 2.0 API). Stubbed (no fetcher "
+    "yet): ox, cert-cc, thaicert, ironplate.",
+)
+@click.option(
+    "--online",
+    is_flag=True,
+    default=False,
+    help="Allow the nvd feed to fetch from the network. Off by default so CI and "
+    "offline runs never make a network call; without it the nvd feed reads its "
+    "on-disk cache.",
 )
 @click.option(
     "--emit",
@@ -1445,6 +1454,7 @@ def parity_cmd(
 @click.option("--dry-run", is_flag=True, default=False)
 def watch_cve_cmd(
     feeds: str,
+    online: bool,
     emit: str | None,
     interval_seconds: int,
     max_iterations: int,
@@ -1452,10 +1462,12 @@ def watch_cve_cmd(
 ) -> None:
     """[experimental] Poll CVE feeds and surface new entries that lack an AAK rule.
 
-    No live feed fetchers ship yet — every feed is an unimplemented stub, so this
-    prints "feed <id>: NOT IMPLEMENTED" and exits non-zero rather than looking
-    like a clean run that found nothing. Distinct from `aak watch` (the pin-drift
-    monitor, which is fully functional)."""
+    Exactly one feed is live: nvd (the NVD 2.0 API). Its network call is opt-in
+    behind --online; without that flag the feed reads its on-disk cache, so a
+    default run never touches the network. The other feeds (ox, cert-cc, thaicert,
+    ironplate) are unimplemented stubs and print "not implemented"; the command
+    exits non-zero only when every requested feed is a stub, and 0 when at least one
+    live feed polled cleanly. Distinct from `aak watch` (the pin-drift monitor)."""
     from agent_audit_kit.feeds import run_watch as run_feed_watch
 
     feed_ids = [f.strip() for f in feeds.split(",") if f.strip()]
@@ -1465,6 +1477,7 @@ def watch_cve_cmd(
         interval_seconds=interval_seconds,
         max_iterations=max_iterations,
         dry_run=dry_run,
+        online=online,
     )
     sys.exit(rc)
 

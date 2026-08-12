@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (291 total; 278 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (292 total; 279 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -27,6 +27,7 @@ Every AgentAuditKit rule (291 total; 278 mapped) against two agentic-security st
 | `AAK-AGENT-004` | medium | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-005` | medium | agent-config | Filter and monitor output pipelines and chained execution | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-COMPOSE-001` | high | trust-boundary | — | ASI06 Memory & Context Poisoning |
+| `AAK-AGENT-COMPOSE-002` | medium | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI06 Memory & Context Poisoning; ASI03 Identity & Privilege Abuse |
 | `AAK-AGENT-HARNESS-SHARED-STATE-001` | medium | a2a-protocol | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities; ASI06 Memory & Context Poisoning |
 | `AAK-AGENT-SHARED-RES-AUTHZ-001` | high | trust-boundary | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities; ASI02 Tool Misuse |
 | `AAK-AGENT-TRUST-001` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution |

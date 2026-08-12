@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.74] - 2026-08-12
+
+### Added
+
+- **`AAK-AGENT-COMPOSE-002`, a session-scoped instruction-splice check.**
+  `AAK-AGENT-COMPOSE-001` unions capability across a set of skills; it cannot see one
+  intent fragmented across several individually-compliant tool calls. This rule reads an
+  ordered transcript of tool calls (`*.session.json` or JSON under `.aak/sessions/`) and
+  flags when the concatenation of arguments across consecutive same-tool calls
+  reconstructs a sensitive file path (`.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL
+  to a non-allowlisted host that no single call would have been allowed to request. This
+  is the GhostSplice / cross-channel trust-fragmentation attack (ASSET Research Group,
+  https://asset-group.github.io/disclosures/ghostsplice/); the rule was written from that
+  public disclosure, not from a reproduction we ran. It reuses `AAK-AGENT-COMPOSE-001`'s
+  config (`.aak/composition-boundaries.yaml`). It defaults to a warning (MEDIUM), not a
+  failure, and says so, because it WILL raise false positives on legitimate chunked work:
+  a large file written in path-sized pieces reassembles the same way. Scope is narrow on
+  purpose — file-path and URL reassembly only, not general intent detection.
+
+### Fixed
+
+- **`CLAUDE_PROMPT.md` said "289 existing rules" two rules after the v0.3.72 sweep
+  that was supposed to end count drift.** The whole-repo guard (`scripts/check_counts.py`)
+  scanned the file, but none of its patterns matched the phrasing "N existing rules", so
+  the drift slid through. Added an `existing rules` pattern, and switched the
+  `DEEP_ANALYSIS.md` / `ROADMAP_2026.md` exemption from a hard-coded name list to a
+  dated historical-snapshot banner: a snapshot file is exempt only while it carries its
+  banner, and a test asserts both files still do — so a future file that drops its banner
+  (or forgets to add one) gets its counts checked instead of hiding. The count is fixed by
+  reading `RULE_COUNT`, not by typing it.
+
+### Changed
+
+- **`aak watch-cve` now ships one live feed instead of only stubs.** The command counts
+  inside "26 CLI commands" but exited non-zero on every invocation — a claim ahead of
+  evidence. It now wires the NVD 2.0 API (`nvd`) as a real feed: the network call is
+  opt-in behind `--online`, so CI and offline runs never touch the network (the feed
+  reads an on-disk cache at `~/.agent-audit-kit/nvd-cache.json`), and one request per
+  poll stays under NVD's public rate limit (5 requests / 30 s; more with `NVD_API_KEY`).
+  The other four feeds (ox, cert-cc, thaicert, ironplate) stay stubbed; the stub message
+  now names which feeds are live, and the command exits 0 when at least one requested
+  feed polled cleanly. What it still does not do: no live ox / cert-cc / thaicert /
+  ironplate fetchers, and no notification sinks (payloads print to stdout/stderr).
+
+## [0.3.73] - 2026-08-11
+
 ### Added
 
 - **`AAK-AGENT-COMPOSE-001`, a composition-aware capability-union check.** The
