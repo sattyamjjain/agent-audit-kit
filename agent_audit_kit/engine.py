@@ -144,17 +144,17 @@ def _build_registry(strict_loading: bool = False) -> list[ScannerRegistration]:
 def reset_registry() -> None:
     """Clear the cached scanner registry (for tests that toggle strict_loading)."""
     global _REGISTRY
-    _REGISTRY = None
+    _REGISTRY = {}
 
 
-_REGISTRY: list[ScannerRegistration] | None = None
+_REGISTRY: dict[bool, list[ScannerRegistration]] = {}
 
 
 def _get_registry(strict_loading: bool = False) -> list[ScannerRegistration]:
     global _REGISTRY
-    if _REGISTRY is None:
-        _REGISTRY = _build_registry(strict_loading=strict_loading)
-    return _REGISTRY
+    if strict_loading not in _REGISTRY:
+        _REGISTRY[strict_loading] = _build_registry(strict_loading=strict_loading)
+    return _REGISTRY[strict_loading]
 
 
 def scanner_manifest() -> list[dict[str, str]]:
