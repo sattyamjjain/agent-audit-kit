@@ -1055,7 +1055,8 @@
         "CVE-2026-56274",
         "CVE-2026-58057",
         "CVE-2026-69257",
-        "CVE-2026-69263"
+        "CVE-2026-69263",
+        "CVE-2026-73601"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management"
@@ -2945,6 +2946,25 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-49857"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+      "severity": "high",
+      "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-16584"
       ],
       "eu_ai_act": [
@@ -3510,6 +3530,25 @@
       "rule_id": "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
       "severity": "critical",
       "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-49856"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+      "severity": "medium",
+      "title": "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)"
     },
     {
       "category": "supply-chain",
@@ -6602,14 +6641,14 @@
       "mcp-config": 63,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 83,
+      "supply-chain": 85,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
       "trust-boundary": 14
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 102,
+      "Art. 10 - Data Governance": 104,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 38,
       "Art. 15 - Robustness & Security": 175,
@@ -6632,7 +6671,7 @@
       "ASI03": 68,
       "ASI04": 63,
       "ASI05": 42,
-      "ASI06": 41,
+      "ASI06": 43,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -6647,18 +6686,18 @@
       "MCP06:2025": 14,
       "MCP07:2025": 30,
       "MCP08:2025": 5,
-      "MCP09:2025": 23,
+      "MCP09:2025": 25,
       "MCP10:2025": 11
     },
     "by_severity": {
       "critical": 69,
-      "high": 134,
+      "high": 135,
       "info": 5,
       "low": 9,
-      "medium": 79
+      "medium": 80
     },
-    "total_cves_covered": 139,
-    "total_rules": 296
+    "total_cves_covered": 142,
+    "total_rules": 298
   },
   "tool": "agent-audit-kit"
 }

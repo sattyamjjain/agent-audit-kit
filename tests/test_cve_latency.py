@@ -251,7 +251,17 @@ def test_real_ledger_parses_and_attributes_the_new_cves() -> None:
     shipped, out_of_scope = parse_ledger(repo_ledger.read_text(encoding="utf-8"))
     assert shipped
     assert out_of_scope
-    assert shipped["CVE-2026-73296"][1] == "v0.3.75"
-    assert shipped["CVE-2026-73498"][1] == "v0.3.75"
+    assert shipped["CVE-2026-73296"][1] == "v0.3.76"
+    assert shipped["CVE-2026-73498"][1] == "v0.3.76"
+    # Second wave of the same release.
+    assert shipped["CVE-2026-49856"][1] == "v0.3.76"
+    assert shipped["CVE-2026-49857"][1] == "v0.3.76"
+    # Carried by AAK-FLOWISE-001's existing 3.1.3 floor rather than a new pin.
+    assert shipped["CVE-2026-73601"][1] == "v0.3.76"
+    # Adjudicated out of scope in the 2026-08-13 wave.
+    for cve in ("CVE-2026-73614", "CVE-2026-19751", "CVE-2026-19752",
+                "CVE-2026-19753", "CVE-2026-73037"):
+        assert cve in out_of_scope, f"{cve} should be recorded out of scope"
+        assert cve not in shipped
     # Overlap would mean a CVE counted as both covered and ruled out.
     assert not (set(shipped) & out_of_scope)

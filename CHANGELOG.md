@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `AAK-MCP-AUTHFETCH-CVE-2026-49857-001` (SUPPLY_CHAIN, HIGH) — auth-fetch-mcp `<= 3.0.1`: `isPrivateV6()` misses IPv4-mapped IPv6 loopback in hex-normalised form, so `http://[::ffff:127.0.0.1]/` normalises to `[::ffff:7f00:1]`, `net.isIPv4('7f00:1')` is false, and the SSRF guard passes the URL through to loopback. Floor `>= 3.0.2` per GHSA-pvrj-8cg3-j5f8 — **not** the 3.0.1 the NVD prose names as the fix, which is inside the affected range. (#578)
+- `AAK-MCP-JSHOOK-CVE-2026-49856-001` (SUPPLY_CHAIN, MEDIUM) — @jshookmcp/jshook 0.3.1 enforces its SSRF authorization policy only on the raw HTTP/TCP/TLS tools; ICMP probe and traceroute call the native sink directly, giving internal reachability mapping with private-network access disabled. Floor `>= 0.3.2`. (#577)
+- `CVE-2026-73601` added to `AAK-FLOWISE-001` — the Custom MCP node stdio RCE shares Flowise's 3.1.3 fix floor, which that rule's detector already enforces, so it is a reference addition rather than a duplicate pin. (#575)
+
+### Changed
+
+- Adjudicated out of scope after a registry check, with reasons recorded in `CHANGELOG.cves.md`: CVE-2026-73614 (ClaudeHookBridge — absent from npm, PyPI and GitHub, so nothing to key a detector on), CVE-2026-19751 / CVE-2026-19752 (mcp-dominican-layer — rolling release, NVD states version details cannot be specified), CVE-2026-19753 (mcp-rdf-explorer — unresolvable, no published fix), CVE-2026-73037 (Next AI Draw.io — reflected XSS in a web app, no MCP surface and no XSS detector here). (#576, #579, #580, #581, #582)
+
 - `AAK-MCP-UFO-CVE-2026-73296-001` (MCP_CONFIG, CRITICAL) — Microsoft UFO < 3.0.8 serves its mobile MCP data-collection (8020) and action (8021) Streamable-HTTP endpoints without inbound auth, handing an unauthenticated caller the ADB device-control tools. New `ufo_mobile_mcp` scanner over vendored source, MCP config, and git dependency; a detection rule rather than a pin, because UFO ships as a git checkout and `ufo` on npm is an unrelated package. (#573)
 - `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` (SUPPLY_CHAIN, HIGH) — mcp-atlassian < 0.22.0 opens `confluence_upload_attachment`'s caller-supplied `file_path` without `validate_safe_path`, so any readable file can be exfiltrated to Confluence. Pin floor `>= 0.22.0` plus a vendored-source detector. (#574)
 - `agent_audit_kit/sessions/adapters.py` and `aak scan --sessions PATH` — normalises OpenAI Agents SDK run traces, LangGraph checkpoint/thread state, and raw JSONL into the ordered call list `AAK-AGENT-COMPOSE-002` already expects, so the rule fires on transcripts frameworks actually write. No rule change. Documented in `docs/session-transcripts.md`.

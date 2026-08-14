@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-14T06:59:14Z",
-  "aak_version": "0.3.75",
-  "rule_count": 296,
+  "last_updated": "2026-08-14T08:18:27Z",
+  "aak_version": "0.3.76",
+  "rule_count": 298,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -228,7 +228,8 @@
             "CVE-2026-56274",
             "CVE-2026-58057",
             "CVE-2026-69257",
-            "CVE-2026-69263"
+            "CVE-2026-69263",
+            "CVE-2026-73601"
           ],
           "aicm_references": [
             "STA-08"
@@ -2112,7 +2113,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 41,
+      "rule_density": 43,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2207,6 +2208,14 @@
           ]
         },
         {
+          "id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-49857"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-CARD-001",
           "severity": "critical",
           "cve_references": [],
@@ -2251,6 +2260,14 @@
             "IVS-04",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-49856"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-N8N-CVE-2026-59207-001",

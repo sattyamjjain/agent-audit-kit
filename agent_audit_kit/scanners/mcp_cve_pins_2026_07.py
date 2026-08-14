@@ -48,6 +48,10 @@ available) before shipping:
   - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
   - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
     arbitrary file read via unvalidated file_path)
+  - @jshookmcp/jshook              >= 0.3.2   (CVE-2026-49856; ICMP/traceroute skip the
+    SSRF authorization policy)
+  - auth-fetch-mcp                 >= 3.0.2   (CVE-2026-49857; IPv4-mapped IPv6 loopback
+    bypasses the private-address guard — floor is 3.0.2 per GHSA, not the 3.0.1 in NVD prose)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -329,6 +333,21 @@ _PINS: tuple[_Pin, ...] = (
     # PyPI (0.22.0 published, 0.23.0 latest).
     _Pin("AAK-MCP-ATLASSIAN-CVE-2026-73498-001", "mcp-atlassian",
          ("mcp-atlassian",), (0, 22, 0), fix_label="0.22.0"),
+    # @jshookmcp/jshook 0.3.1 gates its SSRF authorization policy on the raw
+    # HTTP/TCP/TLS tools only; the ICMP probe and traceroute tools call the
+    # native sink directly, so an MCP client can map internal reachability with
+    # private-network access disabled (CVE-2026-49856, CVSS 4.3). Fixed 0.3.2;
+    # GHSA-c5r6-m4mr-8q5j lists 0.3.1 as the only affected release.
+    _Pin("AAK-MCP-JSHOOK-CVE-2026-49856-001", "@jshookmcp/jshook",
+         ("@jshookmcp/jshook",), (0, 3, 2), fix_label="0.3.2"),
+    # auth-fetch-mcp <= 3.0.1: isPrivateV6() misses IPv4-mapped IPv6 loopback in
+    # hex-normalised form, so http://[::ffff:127.0.0.1]/ normalises to
+    # [::ffff:7f00:1], net.isIPv4('7f00:1') is false, and the guard passes the
+    # URL through to loopback (CVE-2026-49857, CVSS 7.4). The fix floor is 3.0.2
+    # per GHSA-pvrj-8cg3-j5f8 — NOT 3.0.1 as the NVD prose states; 3.0.1 is
+    # inside the affected range.
+    _Pin("AAK-MCP-AUTHFETCH-CVE-2026-49857-001", "auth-fetch-mcp",
+         ("auth-fetch-mcp",), (3, 0, 2), fix_label="3.0.2"),
 )
 
 _CANDIDATE_NAMES = (

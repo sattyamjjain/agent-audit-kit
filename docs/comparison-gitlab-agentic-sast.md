@@ -8,7 +8,7 @@ consumers can pick the right tool for their stack.
 |---|---|---|
 | License | MIT, OSS | Proprietary, Ultimate-tier paywall |
 | Distribution | PyPI + Marketplace + Docker + VS Code ext | GitLab CI / Premium offering only |
-| Rule count | <!-- rule-count:total -->296<!-- /rule-count --> | Not publicly disclosed |
+| Rule count | <!-- rule-count:total -->298<!-- /rule-count --> | Not publicly disclosed |
 | OWASP Agentic Top 10 mapping | Per-rule, public JSON manifest | Claimed; mapping not published |
 | MCP Top 10 mapping | Per-rule | Not advertised |
 | AICM (CSA) mapping | Yes | Not advertised |

@@ -1189,7 +1189,8 @@
         "CVE-2026-56274",
         "CVE-2026-58057",
         "CVE-2026-69263",
-        "CVE-2026-69257"
+        "CVE-2026-69257",
+        "CVE-2026-73601"
       ],
       "description": "Package manifest depends on `flowise` or `flowise-components` at version < 3.1.2, and/or a Flowise flow config (`.flowise/*.json`, `flows/*.json`) declares an MCP adapter node with `customFunction` or `runCode` sinks. The Custom-MCP feature is a recurring RCE class: CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated attacker combine allowlisted commands like `npx` with execution flags such as `-c` for arbitrary OS command execution; CVE-2025-71336 (< 3.0.6, CVSS 9.8) is an unsandboxed RCE in the same feature; CVE-2026-56274 (< 3.1.2, CVSS 9.9) adds OS command injection via incomplete command-flag validation plus a regex bypass in local file-access restrictions; CVE-2026-58057 (< 3.1.3, CVSS 5.0) validates Custom-MCP stdio env vars against a *case-sensitive* denylist, so on Windows (case-insensitive env names) `node_options` slips past the NODE_OPTIONS entry and reaches `NODE_OPTIONS --require` code execution. CVE-2026-69263 (< 3.1.3, CVSS 8.7) is the same denylist-bypass class one step on: the denylist matched exact env-var names, but `npm_config_yes=true` reproduces `npx --yes` auto-install-and-execute without using a blocked flag; CVE-2026-69257 (< 3.1.3, CVSS 7.6) is a separate SSRF where `httpSecurity.ts` did not normalise IPv4-mapped IPv6 (`::ffff:127.0.0.1`), letting the MCP tool path reach loopback / cloud-metadata endpoints. Pin floor is 3.1.3 (highest fixed version) so 3.0.6\u20133.1.2 are still flagged. Same architectural class as Ox's original STDIO disclosure (see AAK-STDIO-001).",
       "incident_references": [],
@@ -3253,6 +3254,31 @@
     },
     {
       "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-49857"
+      ],
+      "description": "`auth-fetch-mcp`, an MCP server that fetches authenticated web pages for assistants, blocks private and loopback destinations in `assertSafeUrl()` (`src/security.ts`), but its `isPrivateV6()` check misses IPv4-mapped IPv6 loopback addresses in hex-normalised form. A URL such as `http://[::ffff:127.0.0.1]:PORT/` is silently normalised by the Node WHATWG URL parser to `[::ffff:7f00:1]`; because `net.isIPv4('7f00:1')` is false, the private-address check does not fire and the URL reaches the browser or HTTP client, so an MCP tool call reaches loopback services the guard exists to protect. Exploitable under the default configuration with no special environment variable (CVE-2026-49857, CVSS 7.4). GHSA-pvrj-8cg3-j5f8 records the affected range as <= 3.0.1 with 3.0.2 the first patched release \u2014 note the NVD text's claim that 3.0.1 patches the issue is contradicted by the advisory's own version data.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `auth-fetch-mcp` to >= 3.0.2 and pin it. When validating a destination, resolve the host and test the resulting address, rather than pattern-matching the textual form: normalise IPv4-mapped IPv6 (`::ffff:a.b.c.d`, including its hex form) to IPv4 before the private-range check, and re-check after any redirect.",
+      "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+      "sarif_name": "AuthFetchMcpMappedIpv6LoopbackBypass",
+      "severity": "high",
+      "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
+    },
+    {
+      "adversa_references": [
         "ADV-AUTH-01"
       ],
       "aicm_references": [
@@ -3950,6 +3976,31 @@
       "sarif_name": "McpInspectorCve23744",
       "severity": "critical",
       "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-49856"
+      ],
+      "description": "`@jshookmcp/jshook`, an MCP server exposing JavaScript-analysis and security-research tools to agents, at 0.3.1 enforces its central SSRF authorization policy \u2014 which blocks private, loopback, link-local and reserved targets unless an authorization object explicitly permits private network access \u2014 only on the raw HTTP / TCP / TLS round-trip tools. The ICMP probe and traceroute tools resolve the caller's target and invoke the native ICMP / traceroute sink directly, skipping the policy. An MCP client holding an active network domain can therefore probe internal addresses even with local SSRF access disabled for every other raw network tool, yielding an internal reachability and route-mapping primitive from the server's network position (CVE-2026-49856, CVSS 4.3). Fixed in 0.3.2; GHSA-c5r6-m4mr-8q5j records 0.3.1 as the only affected release.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `@jshookmcp/jshook` to >= 0.3.2 and pin it. Route every network tool, including ICMP and traceroute, through the same SSRF authorization policy rather than gating only the raw HTTP/TCP/TLS paths.",
+      "rule_id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+      "sarif_name": "JshookIcmpSsrfPolicyBypass",
+      "severity": "medium",
+      "title": "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)"
     },
     {
       "adversa_references": [

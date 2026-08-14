@@ -3668,6 +3668,11 @@ _r(
     cve_references=[
         "CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057",
         "CVE-2026-69263", "CVE-2026-69257",
+        # CVE-2026-73601: Custom MCP node with CUSTOM_MCP_PROTOCOL=stdio lets an
+        # authenticated user reach OS commands by way of PYTHONWARNINGS/BROWSER
+        # with python3, or the root working directory with node. Same 3.1.3 fix
+        # floor this rule already enforces, so it needs no separate detector.
+        "CVE-2026-73601",
     ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
@@ -6954,6 +6959,65 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-DATA-01"],
+)
+
+
+_r(
+    "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+    "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)",
+    "`@jshookmcp/jshook`, an MCP server exposing JavaScript-analysis and "
+    "security-research tools to agents, at 0.3.1 enforces its central SSRF "
+    "authorization policy — which blocks private, loopback, link-local and "
+    "reserved targets unless an authorization object explicitly permits private "
+    "network access — only on the raw HTTP / TCP / TLS round-trip tools. The ICMP "
+    "probe and traceroute tools resolve the caller's target and invoke the native "
+    "ICMP / traceroute sink directly, skipping the policy. An MCP client holding "
+    "an active network domain can therefore probe internal addresses even with "
+    "local SSRF access disabled for every other raw network tool, yielding an "
+    "internal reachability and route-mapping primitive from the server's network "
+    "position (CVE-2026-49856, CVSS 4.3). Fixed in 0.3.2; GHSA-c5r6-m4mr-8q5j "
+    "records 0.3.1 as the only affected release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@jshookmcp/jshook` to >= 0.3.2 and pin it. Route every network tool, "
+    "including ICMP and traceroute, through the same SSRF authorization policy "
+    "rather than gating only the raw HTTP/TCP/TLS paths.",
+    sarif_name="JshookIcmpSsrfPolicyBypass",
+    cve_references=["CVE-2026-49856"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+    "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)",
+    "`auth-fetch-mcp`, an MCP server that fetches authenticated web pages for "
+    "assistants, blocks private and loopback destinations in `assertSafeUrl()` "
+    "(`src/security.ts`), but its `isPrivateV6()` check misses IPv4-mapped IPv6 "
+    "loopback addresses in hex-normalised form. A URL such as "
+    "`http://[::ffff:127.0.0.1]:PORT/` is silently normalised by the Node WHATWG "
+    "URL parser to `[::ffff:7f00:1]`; because `net.isIPv4('7f00:1')` is false, the "
+    "private-address check does not fire and the URL reaches the browser or HTTP "
+    "client, so an MCP tool call reaches loopback services the guard exists to "
+    "protect. Exploitable under the default configuration with no special "
+    "environment variable (CVE-2026-49857, CVSS 7.4). GHSA-pvrj-8cg3-j5f8 records "
+    "the affected range as <= 3.0.1 with 3.0.2 the first patched release — note "
+    "the NVD text's claim that 3.0.1 patches the issue is contradicted by the "
+    "advisory's own version data.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `auth-fetch-mcp` to >= 3.0.2 and pin it. When validating a "
+    "destination, resolve the host and test the resulting address, rather than "
+    "pattern-matching the textual form: normalise IPv4-mapped IPv6 "
+    "(`::ffff:a.b.c.d`, including its hex form) to IPv4 before the private-range "
+    "check, and re-check after any redirect.",
+    sarif_name="AuthFetchMcpMappedIpv6LoopbackBypass",
+    cve_references=["CVE-2026-49857"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
 )
 
 
