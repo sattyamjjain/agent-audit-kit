@@ -195,6 +195,17 @@ def cli(ctx: click.Context, emit_coverage: bool, coverage_format: str) -> None:
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
 @click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
 @click.option(
+    "--sessions",
+    default=None,
+    type=click.Path(exists=True),
+    help=(
+        "Session transcript file or directory to run the session-scoped rules over "
+        "(AAK-AGENT-COMPOSE-002). Reads OpenAI Agents SDK run traces, LangGraph "
+        "checkpoint/thread state, raw JSONL of {tool, args, ts}, and AAK's own "
+        "*.session.json."
+    ),
+)
+@click.option(
     "--llm",
     "llm_model",
     default="ollama/gemma2:2b",
@@ -271,6 +282,7 @@ def scan_cmd(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    sessions: str | None,
     llm_model: str,
     strict_loading: bool,
     advisories_repo: str | None,
@@ -315,6 +327,7 @@ def scan_cmd(
             verify_secrets=verify_secrets,
             diff_base=diff_base,
             llm_scan=llm_scan,
+            sessions=sessions,
             llm_model=llm_model,
             strict_loading=strict_loading,
             advisories_repo=advisories_repo,
@@ -351,6 +364,7 @@ def _run_scan(
     llm_scan: bool,
     llm_model: str,
     strict_loading: bool,
+    sessions: str | None = None,
     advisories_repo: str | None = None,
     advisories_dry_run: bool = False,
     step_summary: bool = True,
@@ -451,6 +465,29 @@ def _run_scan(
             click.echo(f"LLM scan config error: {e}", err=True)
         except Exception as e:
             click.echo(f"LLM scan failed: {e}", err=True)
+
+    # Session-transcript ingest. The session-scoped rules only discover
+    # *.session.json / .aak/sessions/ inside the project root, which no agent
+    # framework writes. --sessions normalises real transcripts (OpenAI Agents
+    # SDK traces, LangGraph checkpoints, raw JSONL) into that shape and runs the
+    # same rule over them, unchanged.
+    if sessions:
+        from agent_audit_kit.sessions.adapters import load_transcripts, scan_sessions
+
+        sessions_path = Path(sessions)
+        transcripts = load_transcripts(sessions_path)
+        if verbose:
+            for tpath, fmt, calls in transcripts:
+                click.echo(f"session: {tpath} ({fmt}, {len(calls)} calls)", err=True)
+        if not transcripts:
+            click.echo(
+                f"Warning: no readable session transcript found at {sessions} "
+                f"(supported: OpenAI Agents SDK traces, LangGraph checkpoint/thread "
+                f"state, JSONL of {{tool, args, ts}}, AAK *.session.json).",
+                err=True,
+            )
+        else:
+            result.findings.extend(scan_sessions(sessions_path, config_root=project_root))
 
     # RUGPULL / pin-drift detection now lives in the scanners/pin_drift.py
     # scanner and runs as part of run_scan() above.

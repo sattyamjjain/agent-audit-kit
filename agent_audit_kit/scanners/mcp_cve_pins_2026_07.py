@@ -46,6 +46,8 @@ available) before shipping:
   - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
   - n8n (MCP Client node)          >= 2.32.1  (CVE-2026-72768; SSRF-protection bypass)
   - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
+  - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
+    arbitrary file read via unvalidated file_path)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -318,6 +320,15 @@ _PINS: tuple[_Pin, ...] = (
     # and unpinned as exposed.
     _Pin("AAK-MCP-CCTEMPLATES-CVE-2026-73222-001", "claude-code-templates",
          ("claude-code-templates",), (1, 29, 4), fix_label="1.29.4"),
+    # mcp-atlassian < 0.22.0 passes the client-supplied `file_path` of
+    # `confluence_upload_attachment` straight into `open(file_path, "rb")` inside
+    # `_upload_attachment_direct()` without calling `validate_safe_path`, so an
+    # authenticated MCP client reads any file the server process can reach and
+    # exfiltrates it to Confluence as an attachment — including whatever holds
+    # CONFLUENCE_API_TOKEN (CVE-2026-73498, CVSS 7.7). Fixed 0.22.0; resolves on
+    # PyPI (0.22.0 published, 0.23.0 latest).
+    _Pin("AAK-MCP-ATLASSIAN-CVE-2026-73498-001", "mcp-atlassian",
+         ("mcp-atlassian",), (0, 22, 0), fix_label="0.22.0"),
 )
 
 _CANDIDATE_NAMES = (

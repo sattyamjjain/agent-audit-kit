@@ -1,5 +1,5 @@
 {
-  "count": 88,
+  "count": 89,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -352,6 +352,10 @@
     {
       "module": "typescript_pattern_scan",
       "name": "TypeScript pattern scan"
+    },
+    {
+      "module": "ufo_mobile_mcp",
+      "name": "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)"
     }
   ]
 }

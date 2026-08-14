@@ -16,6 +16,15 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-14 (v0.3.75)
+
+Two `cve-response` issues. One pinnable on PyPI; one distributed as a git checkout, so it ships as a detection rule instead of a pin — the disposition the pin scanner's docstring already reserves for non-pinnable CVEs.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-73296 (Microsoft UFO < 3.0.8 — `create_mobile_data_collection_server` and `create_mobile_action_server` in `ufo/client/mcp/http_servers/mobile_mcp_server.py` publish Streamable-HTTP MCP services on TCP 8020 and 8021 with no inbound authentication; an unauthenticated remote caller invokes `capture_screenshot`, `get_ui_tree`, `tap`, `swipe`, `type_text`, `launch_app`, `press_key` and `click_control` against the ADB-connected Android device, reading screen and device data and changing device state; CRITICAL, CVSS 9.4) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-73296) | **In scope, detection rule (not pinned)** `AAK-MCP-UFO-CVE-2026-73296-001` (MCP_CONFIG, CRITICAL). UFO ships as a git checkout, not a PyPI or npm artifact — `ufo` on PyPI 404s and `ufo` on npm is unjs's unrelated URL library, so a pin row would either never resolve or fire on the wrong package. New scanner `ufo_mobile_mcp` instead, over three paths: vendored server source that builds either mobile server without auth, an MCP config wired to 8020/8021, and a UFO git dependency unpinned or below 3.0.8. (#573) | 2026-08-14 |
+| CVE-2026-73498 (MCP Atlassian < 0.22.0 — `confluence_upload_attachment` passes its client-supplied `file_path` straight to `open(file_path, "rb")` in `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py` without calling `validate_safe_path`; an authenticated MCP client, or an agent induced by untrusted content, reads any file the server process can reach and exfiltrates it to Confluence as an attachment, including whatever holds `CONFLUENCE_API_TOKEN`; HIGH, CVSS 7.7) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-73498) | **In scope, pinned** `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` (SUPPLY_CHAIN, HIGH): floor `mcp-atlassian >= 0.22.0`, carried by the `mcp_cve_pins_2026_07` pin table. Resolves on PyPI (0.22.0 published; 0.23.0 latest). A second detector in `mcp_atlassian` catches a vendored or reimplemented copy of the handler, where there is no pin to read. Distinct from the 2026-04 Atlassian RCE chain (CVE-2026-27825/27826) already carried by that scanner. (#574) | 2026-08-14 |
+
 ## 2026-08-12 (v0.3.74)
 
 Two `cve-response` issues, both adjudicated in scope and pinned after an npm registry check.

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-UFO-CVE-2026-73296-001` (MCP_CONFIG, CRITICAL) — Microsoft UFO < 3.0.8 serves its mobile MCP data-collection (8020) and action (8021) Streamable-HTTP endpoints without inbound auth, handing an unauthenticated caller the ADB device-control tools. New `ufo_mobile_mcp` scanner over vendored source, MCP config, and git dependency; a detection rule rather than a pin, because UFO ships as a git checkout and `ufo` on npm is an unrelated package. (#573)
+- `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` (SUPPLY_CHAIN, HIGH) — mcp-atlassian < 0.22.0 opens `confluence_upload_attachment`'s caller-supplied `file_path` without `validate_safe_path`, so any readable file can be exfiltrated to Confluence. Pin floor `>= 0.22.0` plus a vendored-source detector. (#574)
+- `agent_audit_kit/sessions/adapters.py` and `aak scan --sessions PATH` — normalises OpenAI Agents SDK run traces, LangGraph checkpoint/thread state, and raw JSONL into the ordered call list `AAK-AGENT-COMPOSE-002` already expects, so the rule fires on transcripts frameworks actually write. No rule change. Documented in `docs/session-transcripts.md`.
+- `scripts/cve_latency.py` and `docs/cve-latency.md` — CVE-to-rule latency as a published, checkable number (median and p90 days from NVD publication to the release that shipped the rule), regenerated on every tag by the `cve-latency` release job. Published dates cached in `docs/data/cve-published.json`; `--refresh` is the one network step.
+
+### Fixed
+
+- `strict_loading` was ignored once the scanner registry was cached: a lenient call (`scanner_manifest()`, an earlier `run_scan`) baked its mode into a single-slot cache, so a later `run_scan(strict_loading=True)` silently skipped an unimportable scanner instead of raising `ScannerLoadError`. The cache is now keyed by mode. Supersedes #570, which had the right fix but left `tests/test_engine.py` patching `_REGISTRY` as a list — where `_REGISTRY[False] = ...` overwrites index 0 rather than failing, quietly disarming two crash-handling tests. Warm-registry regression tests added; the suite previously only covered the cold path.
+
+### Changed
+
+- Unguarded "N rules" totals in launch copy rewritten to the `N detection rules` phrasing `scripts/check_counts.py` already guards, fixing counts that had drifted to 291 where no pattern was looking.
+
 ## [0.3.74] - 2026-08-12
 
 ### Added

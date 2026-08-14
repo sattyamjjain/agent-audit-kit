@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-12T18:09:50Z",
-  "aak_version": "0.3.74",
-  "rule_count": 294,
+  "last_updated": "2026-08-14T06:59:14Z",
+  "aak_version": "0.3.75",
+  "rule_count": 296,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1129,7 +1129,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 62,
+      "rule_density": 63,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1602,6 +1602,14 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-UFO-CVE-2026-73296-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-73296"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-WHATSAPP-CVE-2026-46555-001",
           "severity": "high",
           "cve_references": [
@@ -1754,7 +1762,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 41,
+      "rule_density": 42,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -1969,6 +1977,14 @@
             "AIS-07",
             "AIS-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-73498"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",

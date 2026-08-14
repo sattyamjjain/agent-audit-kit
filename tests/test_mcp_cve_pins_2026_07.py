@@ -58,6 +58,8 @@ PINS = {
     "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": "medium",
     # 2026-08-06 wave
     "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001": "medium",
+    # 2026-08-12 wave
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001": "high",
     "AAK-MCP-FRONTMCP-CVE-2026-67531-001": "high",
     # 2026-08-08 wave
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": "medium",
@@ -791,3 +793,30 @@ def test_cctemplates_fixtures_positive_and_negative() -> None:
     negative = {f.rule_id for f in scan(base / "negative")[0]}
     assert _CCTEMPLATES in vuln
     assert _CCTEMPLATES not in negative
+
+
+# --- 2026-08-12 wave — mcp-atlassian attachment path traversal (CVE-2026-73498) ---
+
+_ATLASSIAN_73498 = "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+
+
+def test_atlassian_73498_below_floor_fires(tmp_path: Path) -> None:
+    # 0.21.1 is the last release before the 0.22.0 fix.
+    assert _ATLASSIAN_73498 in _ids(tmp_path, "requirements.txt", "mcp-atlassian==0.21.1\n")
+
+
+def test_atlassian_73498_patched_passes(tmp_path: Path) -> None:
+    assert _ATLASSIAN_73498 not in _ids(tmp_path, "requirements.txt", "mcp-atlassian==0.22.0\n")
+
+
+def test_atlassian_73498_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"atlassian": {"command": "uvx", "args": ["mcp-atlassian"]}}}'
+    assert _ATLASSIAN_73498 in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_atlassian_73498_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73498-mcp-atlassian"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _ATLASSIAN_73498 in vuln
+    assert _ATLASSIAN_73498 not in negative

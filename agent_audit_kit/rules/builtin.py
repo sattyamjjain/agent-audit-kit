@@ -6900,6 +6900,64 @@ _r(
 
 
 _r(
+    "AAK-MCP-UFO-CVE-2026-73296-001",
+    "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)",
+    "Microsoft UFO, the open-source framework for intelligent automation across "
+    "devices and platforms, before 3.0.8 exposes two Streamable-HTTP MCP services "
+    "from `ufo/client/mcp/http_servers/mobile_mcp_server.py`: "
+    "`create_mobile_data_collection_server` on TCP 8020 and "
+    "`create_mobile_action_server` on TCP 8021. Neither applies inbound "
+    "authentication, so an unauthenticated remote attacker who can reach either "
+    "port invokes `capture_screenshot`, `get_ui_tree`, `tap`, `swipe`, "
+    "`type_text`, `launch_app`, `press_key` and `click_control` against the "
+    "ADB-connected Android device — disclosing screen contents and device data, "
+    "and modifying device state (CVE-2026-73296, CVSS 9.4). Fixed in 3.0.8. UFO "
+    "is distributed as a git checkout rather than a PyPI or npm artifact (`ufo` "
+    "on npm is unjs's unrelated URL library), so this ships as a detection rule "
+    "rather than a version pin.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Upgrade UFO to >= 3.0.8. Bind the mobile data-collection and mobile action "
+    "MCP servers to 127.0.0.1 rather than all interfaces, and require an inbound "
+    "credential on both. Do not expose an ADB-connected device's MCP control "
+    "surface to any untrusted network.",
+    sarif_name="UfoMobileMcpUnauthenticated",
+    cve_references=["CVE-2026-73296"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+    "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)",
+    "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, "
+    "before 0.22.0 passes the client-supplied `file_path` argument of "
+    "`confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside "
+    "`_upload_attachment_direct()` in "
+    "`src/mcp_atlassian/confluence/attachments.py`, without routing it through "
+    "`validate_safe_path`. An authenticated MCP client can therefore read any "
+    "file the server process can reach and exfiltrate it to Confluence as an "
+    "attachment. Because the tool is agent-callable, untrusted content that "
+    "induces an agent to call it reaches the same primitive, disclosing server "
+    "environment material such as `CONFLUENCE_API_TOKEN` and other credentials "
+    "(CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-atlassian` to >= 0.22.0 and pin it. If you vendor or reimplement "
+    "the attachment path, validate the caller-supplied path against an allowed "
+    "root before opening it (the fix's `validate_safe_path`), and treat any "
+    "tool argument that reaches `open()` as untrusted.",
+    sarif_name="McpAtlassianAttachmentPathTraversal",
+    cve_references=["CVE-2026-73498"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-DATA-01"],
+)
+
+
+_r(
     "AAK-MCP-FLYTO-CVE-2026-67425-001",
     "Flyto2 Core forwards provider API keys to a caller-controlled base_url (<2.26.6)",
     "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent "

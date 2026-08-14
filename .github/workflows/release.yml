@@ -125,6 +125,34 @@ jobs:
           # installed first — PYTHONPATH alone is not enough.
           python scripts/check_counts.py
 
+  cve-latency:
+    name: CVE-to-rule latency doc
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate docs/cve-latency.md from the ledger
+        run: |
+          set -euo pipefail
+          # Offline and deterministic: reads only CHANGELOG.cves.md and the
+          # committed docs/data/cve-published.json, so an unchanged ledger
+          # regenerates byte-identically. Refreshing published dates from NVD
+          # is a separate, opt-in step (scripts/cve_latency.py --refresh) and is
+          # deliberately not run here.
+          python scripts/cve_latency.py
+
+      - name: Fail if the committed doc drifted from the ledger
+        run: |
+          set -euo pipefail
+          python scripts/cve_latency.py --check
+
   # --------------------------------------------------------------------------
   # 1. Publish to PyPI using trusted publishing (OIDC)
   # --------------------------------------------------------------------------
