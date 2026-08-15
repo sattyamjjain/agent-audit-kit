@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.78] - 2026-08-15
+
 ### Fixed
 
 - The CVE watcher no longer files CVEs from outside the ecosystem it tracks. NVD's `keywordSearch` matches indexed fields rather than only the description, and two of the watcher's keywords are short enough to hit unrelated CVEs: `mcp` (NVIDIA nForce parts are literally "MCP", so kernel CVEs match) and `claude` (increasingly appears in commit messages crediting the model for writing a patch). CVE-2026-68456 arrived via both at once — a `ueagle-atm` USB driver race whose description contains "mcp" zero times and ends "(The latter two were written by Claude...)". Every filed CVE opens a `cve-response` issue and the release gate blocks any tag while one is open, so an unrelated kernel CVE stopped a publish. Results are now corroborated against the description before filing.
