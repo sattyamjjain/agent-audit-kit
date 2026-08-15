@@ -918,7 +918,18 @@ def diff_cmd(
 )
 @click.option(
     "--apply-trivial", is_flag=True, default=False,
-    help="Apply mechanically-safe codemods in-place (NOT YET IMPLEMENTED in v0.3.8 — scaffolded).",
+    help="Apply the mechanically-safe fixes in-place, for rules marked auto-fixable. "
+         "Writes a log to .agent-audit-kit/fix-log.json. Same engine as `agent-audit-kit fix`.",
+)
+@click.option(
+    "--project", "project_path", default=".",
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+    help="Project root to apply fixes to with --apply-trivial (default: current directory). "
+         "The SARIF argument says what was found; this says where to fix it.",
+)
+@click.option(
+    "--dry-run", is_flag=True, default=False,
+    help="With --apply-trivial, report what would change without writing.",
 )
 @click.option(
     "--output", "-o", "output_path",
@@ -927,7 +938,8 @@ def diff_cmd(
     help="Write the Markdown body here. Default: stdout.",
 )
 def suggest_cmd(
-    sarif_path: str, pr_mode: bool, apply_trivial: bool, output_path: str | None
+    sarif_path: str, pr_mode: bool, apply_trivial: bool, project_path: str,
+    dry_run: bool, output_path: str | None
 ) -> None:
     """Generate per-finding remediation hints from a SARIF run."""
     from agent_audit_kit.remediation.engine import sarif_to_markdown
@@ -938,10 +950,35 @@ def suggest_cmd(
         Path(output_path).write_text(body, encoding="utf-8")
     else:
         click.echo(body)
-    if apply_trivial:
+
+    if not apply_trivial:
+        return
+
+    # Delegates to the same engine as `agent-audit-kit fix`. The flag shipped in
+    # v0.3.8 printing "not yet implemented (queued for v0.3.9)" and was still
+    # printing it seventy releases later, while `fix` did exactly this the whole
+    # time — so the work was to wire the two together, not to write a fixer.
+    from agent_audit_kit.fix import run_fixes
+
+    fixes = run_fixes(Path(project_path), dry_run=dry_run)
+    if not fixes:
         click.echo(
-            "suggest: --apply-trivial is scaffolded but not yet implemented "
-            "(queued for v0.3.9). The Markdown body above lists each fix.",
+            "suggest: no mechanically-safe fix applies here. Only rules marked "
+            "auto-fixable are applied; everything else in the body above needs a "
+            "human.",
+            err=True,
+        )
+        return
+
+    verb = "would apply" if dry_run else "applied"
+    click.echo(f"suggest: {verb} {len(fixes)} fix(es):", err=True)
+    for fix in fixes:
+        click.echo(f"  {fix.rule_id}  {fix.file_path}", err=True)
+    if not dry_run:
+        click.echo(
+            "suggest: log written to .agent-audit-kit/fix-log.json. Review the "
+            "diff before committing — these are mechanical edits, not reviewed "
+            "changes.",
             err=True,
         )
 
