@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Fixed four dangling relative links in `docs/`: one written a directory level too shallow, two pointing at per-rule pages that were never authored (for rules that do exist in the registry), and one to a doc explicitly marked "queued for v0.4.0". `tests/test_docs_links.py` now asserts every relative link under `docs/` resolves — the deterministic half of the link check, without the network flakiness.
 - Launch copy and `CLAUDE_PROMPT.md` now point at `https://sattyamjjain.github.io/agent-audit-kit/` instead of `mcp-security-index.com`, which never resolved and had been failing the docs link check on every PR (6 files).
 - Adjudicated out of scope after a registry check, with reasons recorded in `CHANGELOG.cves.md`: CVE-2026-73614 (ClaudeHookBridge — absent from npm, PyPI and GitHub, so nothing to key a detector on), CVE-2026-19751 / CVE-2026-19752 (mcp-dominican-layer — rolling release, NVD states version details cannot be specified), CVE-2026-19753 (mcp-rdf-explorer — unresolvable, no published fix), CVE-2026-73037 (Next AI Draw.io — reflected XSS in a web app, no MCP surface and no XSS detector here). (#576, #579, #580, #581, #582)
 

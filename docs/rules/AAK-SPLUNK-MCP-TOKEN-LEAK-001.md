@@ -16,7 +16,7 @@
 ## What it catches
 
 Distinct from v0.3.4's
-[AAK-SPLUNK-TOKLOG-001](./AAK-SPLUNK-TOKLOG-001.md) which detects
+`AAK-SPLUNK-TOKLOG-001` (see [the rule reference](../rules.md)) which detects
 token-shaped values flowing into log sinks at runtime. This rule fires
 on the *configuration* that makes the runtime leak inevitable: a
 `splunk-mcp-server` config file (`inputs.conf`, `splunk-mcp.yaml`,

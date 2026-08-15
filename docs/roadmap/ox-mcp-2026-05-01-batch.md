@@ -44,7 +44,7 @@ The four umbrella rules `AAK-MCP-STDIO-CMD-INJ-001/002/003/004` + `AAK-STDIO-001
 ### Phase 4 — close the carry list
 
 - Once Phase 1 → 3 ship, the v0.3.12 carry-list is fully retired.
-- The watcher dedup fix (cve-watcher should consult `closed`-issue lookup so the same CVE ID doesn't re-fire as a new issue every 24h) lands as a separate v0.3.15 patch — see [`scripts/cve_watcher.py`](../scripts/cve_watcher.py) for the current dedup logic.
+- The watcher dedup fix (cve-watcher should consult `closed`-issue lookup so the same CVE ID doesn't re-fire as a new issue every 24h) lands as a separate v0.3.15 patch — see [`scripts/cve_watcher.py`](../../scripts/cve_watcher.py) for the current dedup logic.
 
 ## Tracking issues (filed 2026-05-05 alongside this doc)
 

@@ -26,7 +26,7 @@ April-2026 disclosure aggregated 8 CVEs to this exact shape: the SDK
 executes whatever ends up in `command`/`args` verbatim.
 
 This rule is the SDK-named-API config-side counterpart to
-[AAK-STDIO-001](./AAK-STDIO-001.md), which detects the broader
+`AAK-STDIO-001` (see [the rule reference](../rules.md)), which detects the broader
 `subprocess(shell=True)` sink shape. Both fire on overlapping inputs;
 do not collapse them.
 
