@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-15T03:30:03Z",
+  "last_updated": "2026-08-15T03:24:07Z",
   "aak_version": "0.3.76",
-  "rule_count": 299,
+  "rule_count": 298,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -130,21 +130,13 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 40,
+      "rule_density": 39,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
           "severity": "high",
           "cve_references": [
             "CVE-2026-44654"
-          ],
-          "aicm_references": []
-        },
-        {
-          "id": "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-30624"
           ],
           "aicm_references": []
         },
@@ -2809,7 +2801,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 21,
+      "rule_density": 20,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -2818,14 +2810,6 @@
           "aicm_references": [
             "IAM-04"
           ]
-        },
-        {
-          "id": "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-30624"
-          ],
-          "aicm_references": []
         },
         {
           "id": "AAK-ANTHROPIC-SDK-001",

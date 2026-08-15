@@ -90,6 +90,9 @@ appear as **inline PR annotations** and in the **Security tab**. See
 ```bash
 pip install agent-audit-kit
 agent-audit-kit scan .
+
+# `aak` is installed as a shorthand for the same command
+aak scan .
 ```
 
 ### Pre-commit Hook
