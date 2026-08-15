@@ -9,7 +9,7 @@ Hi,
 
 I built AgentAuditKit — an open-source security scanner (MIT licensed) that maps detection rules to all 10 risks in the OWASP Agentic Top 10.
 
-303 rules across 90 scanners cover:
+304 rules across 90 scanners cover:
 - ASI01 (Goal Hijack) → AGENTS.md/.cursorrules/.CLAUDE.md scanning for prompt injection
 - ASI02 (Tool Misuse) → Python AST taint analysis tracking @tool params to dangerous sinks
 - ASI03 (Identity & Privilege Abuse) → Trust boundary violations, credential exposure
@@ -41,7 +41,7 @@ https://github.com/sattyamjjain
 
 Hi,
 
-I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 303 detection rules to all 10 risks in the OWASP MCP Top 10:
+I built AgentAuditKit, an open-source (MIT) security scanner for MCP-connected AI agent pipelines. It maps 304 detection rules to all 10 risks in the OWASP MCP Top 10:
 
 - MCP01 (Token Mismanagement) → 69 rules detecting hardcoded secrets across Anthropic/OpenAI/AWS/GitHub/GCP keys
 - MCP02 (Context Over-Sharing) → Excessive server count, overly broad permissions
@@ -72,7 +72,7 @@ https://github.com/sattyamjjain
 
 ### LangChain Discord (#general or #showcase)
 
-Hey everyone — I built an open-source security scanner for MCP agent configs. 303 detection rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
+Hey everyone — I built an open-source security scanner for MCP agent configs. 304 detection rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
 
 If you're using MCP tools with LangChain/LangGraph, it also does Python AST taint analysis on `@tool` functions — tracks parameter flow to dangerous sinks like eval, subprocess, SQL.
 

@@ -3742,6 +3742,32 @@
     },
     {
       "category": "supply-chain",
+      "cve_references": [
+        "CVE-2025-51482",
+        "CVE-2025-6101",
+        "CVE-2026-4964",
+        "CVE-2026-4965"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-MCP-LETTA-CVE-2025-51482-001",
+      "severity": "high",
+      "title": "Letta (MemGPT) <= 0.16.4 (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)"
+    },
+    {
+      "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [],
       "nsa_mcp_csi": [
@@ -6759,7 +6785,7 @@
       "mcp-config": 63,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 89,
+      "supply-chain": 90,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
@@ -6770,22 +6796,22 @@
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 176,
-      "Art. 9 - Risk Management": 96
+      "Art. 9 - Risk Management": 97
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 70,
-      "Constrain and sandbox tool execution (p.11)": 84,
-      "Design for boundaries (p.10)": 155,
+      "Constrain and sandbox tool execution (p.11)": 85,
+      "Design for boundaries (p.10)": 156,
       "Filter and monitor output pipelines and chained execution (p.12)": 63,
       "Instrument for logging and detection (p.13)": 34,
       "Scan local network for open or vulnerable MCP servers (p.14)": 136,
       "Sign and verify MCP messages (p.12)": 135,
       "Track and patch MCP related vulnerabilities (p.13)": 81,
-      "Validate parameters (p.11)": 88
+      "Validate parameters (p.11)": 89
     },
     "by_owasp_agentic": {
       "ASI01": 13,
-      "ASI02": 42,
+      "ASI02": 43,
       "ASI03": 68,
       "ASI04": 64,
       "ASI05": 42,
@@ -6796,7 +6822,7 @@
       "ASI10": 21
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 74,
+      "MCP01:2025": 75,
       "MCP02:2025": 13,
       "MCP03:2025": 31,
       "MCP04:2025": 34,
@@ -6809,13 +6835,13 @@
     },
     "by_severity": {
       "critical": 70,
-      "high": 138,
+      "high": 139,
       "info": 5,
       "low": 9,
       "medium": 81
     },
-    "total_cves_covered": 148,
-    "total_rules": 303
+    "total_cves_covered": 152,
+    "total_rules": 304
   },
   "tool": "agent-audit-kit"
 }

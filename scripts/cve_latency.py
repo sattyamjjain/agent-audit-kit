@@ -190,17 +190,48 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
         add("_No CVE has both a published date and a shipping release yet._")
         add("")
     else:
-        median = statistics.median(measured)
+        # Two populations live here and they answer different questions. A CVE
+        # triaged the day the watcher surfaced it measures response. A roadmap
+        # row picked up months later measures backlog. Averaging them produces a
+        # figure that describes neither: when four old Letta CVEs were pinned in
+        # one sitting, a mixed p90 jumped from 2 days to 122 while the actual
+        # response time to fresh disclosures had not changed at all.
+        response = [r.days for r in rows if r.days <= _BACKLOG_DAYS]
+        backlog = [r.days for r in rows if r.days > _BACKLOG_DAYS]
+
         add("## Summary")
+        add("")
+        add(
+            f"Response to newly disclosed CVEs — the {len(response)} rows shipped "
+            f"within {_BACKLOG_DAYS} days of publication:"
+        )
         add("")
         add("| Metric | Days |")
         add("|---|---|")
-        add(f"| Median | {median:.1f} |")
-        add(f"| p90 (nearest-rank) | {percentile_nearest_rank(measured, 90)} |")
-        add(f"| Fastest | {min(measured)} |")
-        add(f"| Slowest | {max(measured)} |")
+        if response:
+            add(f"| Median | {statistics.median(response):.1f} |")
+            add(f"| p90 (nearest-rank) | {percentile_nearest_rank(response, 90)} |")
+            add(f"| Fastest | {min(response)} |")
+            add(f"| Slowest | {max(response)} |")
+        else:
+            add("| — | no rows in this population |")
         add("")
-        add(f"Measured over **{len(measured)} CVEs** with both dates known.")
+
+        if backlog:
+            add(
+                f"Separately, **{len(backlog)}** deferred roadmap rows were picked "
+                f"up later, between {min(backlog)} and {max(backlog)} days after "
+                f"publication (median {statistics.median(backlog):.0f}). They are "
+                f"listed in full below. They are not response times and are "
+                f"deliberately kept out of the figures above — mixing them would "
+                f"describe neither population."
+            )
+            add("")
+
+        add(
+            f"Both populations together: {len(measured)} CVEs with a known "
+            f"publication date and shipping release."
+        )
         add("")
 
     add("## Coverage of this measurement")
@@ -359,12 +390,18 @@ def main() -> int:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered, encoding="utf-8")
-    measured = [r.days for r in rows]
-    summary = (
-        f"median {statistics.median(measured):.1f}d, "
-        f"p90 {percentile_nearest_rank(measured, 90)}d over {len(measured)} CVEs"
-        if measured else "no measurable CVEs yet"
-    )
+    # Mirror the doc: report the response population, disclose the backlog
+    # separately. A mixed figure describes neither.
+    response = [r.days for r in rows if r.days <= _BACKLOG_DAYS]
+    backlog = [r.days for r in rows if r.days > _BACKLOG_DAYS]
+    if response:
+        summary = (
+            f"response median {statistics.median(response):.1f}d, "
+            f"p90 {percentile_nearest_rank(response, 90)}d over {len(response)} CVEs"
+            + (f"; {len(backlog)} backlog row(s) excluded" if backlog else "")
+        )
+    else:
+        summary = "no measurable CVEs yet"
     print(f"cve-latency: wrote {out_path.relative_to(REPO_ROOT)} ({summary})")
     if missing:
         print(f"cve-latency: {len(missing)} CVE(s) lack a published date", file=sys.stderr)

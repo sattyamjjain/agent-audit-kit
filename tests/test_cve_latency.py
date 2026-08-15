@@ -300,3 +300,51 @@ def test_real_ledger_parses_and_attributes_the_new_cves() -> None:
         assert cve not in shipped
     # Overlap would mean a CVE counted as both covered and ruled out.
     assert not (set(shipped) & out_of_scope)
+
+
+# --- the two populations must stay separated -------------------------------
+
+
+def test_summary_reports_response_not_a_mixed_figure() -> None:
+    """A backlog row must not drag the headline response number.
+
+    Pinning four old Letta CVEs in one sitting moved a mixed p90 from 2 days to
+    122 while the actual response time to fresh disclosures had not changed.
+    The summary reports the response population; backlog is disclosed apart.
+    """
+    rows = [
+        cve_latency.Row("CVE-A", date(2026, 8, 12), date(2026, 8, 13), "v1", 1),
+        cve_latency.Row("CVE-B", date(2026, 8, 12), date(2026, 8, 14), "v1", 2),
+        cve_latency.Row("CVE-OLD", date(2025, 6, 16), date(2026, 8, 15), "v1", 425),
+    ]
+    doc = render(rows, [], set())
+    summary = doc.split("## Summary")[1].split("## Coverage")[0]
+
+    assert "| Median | 1.5 |" in summary, "median must cover the response rows only"
+    assert "| Slowest | 2 |" in summary, "the 425-day backlog row must not be the slowest"
+    assert "425" in summary, "the backlog range must still be disclosed"
+    assert "not response times" in summary
+
+
+def test_backlog_only_population_does_not_fabricate_a_response_figure() -> None:
+    rows = [cve_latency.Row("CVE-OLD", date(2025, 1, 1), date(2026, 8, 15), "v1", 591)]
+    summary = render(rows, [], set()).split("## Summary")[1].split("## Coverage")[0]
+    assert "no rows in this population" in summary
+
+
+def test_all_response_rows_needs_no_backlog_note() -> None:
+    rows = [cve_latency.Row("CVE-A", date(2026, 8, 12), date(2026, 8, 13), "v1", 1)]
+    doc = render(rows, [], set())
+    assert "deferred roadmap rows were picked up later" not in doc
+    assert "## Backlog rows" not in doc
+
+
+def test_real_doc_separates_the_populations() -> None:
+    """Guard the published artifact, not just the renderer."""
+    doc = (Path(__file__).resolve().parent.parent / "docs" / "cve-latency.md")
+    if not doc.is_file():
+        pytest.skip("doc not generated in this checkout")
+    text = doc.read_text(encoding="utf-8")
+    summary = text.split("## Summary")[1].split("## Coverage")[0]
+    assert "Response to newly disclosed CVEs" in summary
+    assert "not response times" in summary

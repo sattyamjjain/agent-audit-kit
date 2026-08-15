@@ -7,6 +7,7 @@ stays quiet at/above it. Package names + floors were verified against PyPI/npm.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from agent_audit_kit.rules.builtin import RULES
@@ -64,6 +65,7 @@ PINS = {
     "AAK-MCP-JSHOOK-CVE-2026-49856-001": "medium",
     "AAK-MCP-AUTHFETCH-CVE-2026-49857-001": "high",
     # 2026-08-14..15 wave
+    "AAK-MCP-LETTA-CVE-2025-51482-001": "high",
     "AAK-MCP-MEMSERVICE-CVE-2026-50027-001": "critical",
     "AAK-MCP-CORTEX-CVE-2026-49986-001": "high",
     "AAK-MCP-CKAN-CVE-2026-73846-001": "medium",
@@ -93,7 +95,11 @@ def test_all_pin_rules_registered_and_accurate() -> None:
         assert rule.severity.value == sev, rid
         assert rule.category.value == "supply-chain", rid
         assert rule.cve_references, rid
-        assert all(c.startswith("CVE-2026-") for c in rule.cve_references), rid
+        # The table began as a 2026-07 wave and every CVE in it was CVE-2026-*.
+        # It has since grown past that: the Letta chain includes CVE-2025-51482
+        # and CVE-2025-6101, disclosed in 2025 but never covered here. Assert a
+        # well-formed CVE id rather than a year, which was only ever incidental.
+        assert all(re.fullmatch(r"CVE-\d{4}-\d{4,7}", c) for c in rule.cve_references), rid
 
 
 def test_litellm_below_floor_fires(tmp_path: Path) -> None:
@@ -1000,3 +1006,61 @@ def test_ckan_fixtures_positive_and_negative() -> None:
     base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73846-ckan-mcp"
     assert _CKAN in {f.rule_id for f in scan(base / "vulnerable")[0]}
     assert _CKAN not in {f.rule_id for f in scan(base / "negative")[0]}
+
+
+# --- Letta (MemGPT) CVE chain — closes the pin arm of #161 ------------------
+
+_LETTA = "AAK-MCP-LETTA-CVE-2025-51482-001"
+
+
+def test_letta_highest_affected_version_fires(tmp_path: Path) -> None:
+    """0.16.4 is the newest version NVD names as affected."""
+    assert _LETTA in _ids(tmp_path, "requirements.txt", "letta==0.16.4\n")
+
+
+def test_letta_older_affected_versions_fire(tmp_path: Path) -> None:
+    for v in ("0.4.1", "0.7.12", "0.16.0"):
+        assert _LETTA in _ids(tmp_path, "requirements.txt", f"letta=={v}\n"), v
+
+
+def test_letta_floor_clears(tmp_path: Path) -> None:
+    """0.16.5 is the first release past every affected version."""
+    assert _LETTA not in _ids(tmp_path, "requirements.txt", "letta==0.16.5\n")
+
+
+def test_letta_latest_clears(tmp_path: Path) -> None:
+    assert _LETTA not in _ids(tmp_path, "requirements.txt", "letta==0.16.8\n")
+
+
+def test_letta_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"letta": {"command": "uvx", "args": ["letta"]}}}'
+    assert _LETTA in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_letta_client_sdk_is_not_the_server(tmp_path: Path) -> None:
+    """`letta-client` is a separate client SDK on its own version line.
+
+    The vulnerable code lives in the server's `letta/...` module paths. Pinning
+    the client would fire on consumers of a package that does not contain it.
+    """
+    assert _LETTA not in _ids(tmp_path, "requirements.txt", "letta-client==1.0.0\n")
+
+
+def test_letta_carries_all_four_cves() -> None:
+    from agent_audit_kit.rules.builtin import RULES
+    assert set(RULES[_LETTA].cve_references) == {
+        "CVE-2025-51482", "CVE-2026-4964", "CVE-2026-4965", "CVE-2025-6101",
+    }
+
+
+def test_letta_remediation_does_not_claim_a_vendor_fix() -> None:
+    """No vendor fix exists for any of the four; the rule must not imply one."""
+    from agent_audit_kit.rules.builtin import RULES
+    text = RULES[_LETTA].description
+    assert "not a vendor fix statement" in text or "inference from release ordering" in text
+
+
+def test_letta_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2025-51482-letta"
+    assert _LETTA in {f.rule_id for f in scan(base / "vulnerable")[0]}
+    assert _LETTA not in {f.rule_id for f in scan(base / "negative")[0]}

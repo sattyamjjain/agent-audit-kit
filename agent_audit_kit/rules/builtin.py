@@ -7201,6 +7201,55 @@ _r(
 
 
 _r(
+    "AAK-MCP-LETTA-CVE-2025-51482-001",
+    "Letta (MemGPT) <= 0.16.4 (four CVEs: /v1/tools/run RCE, file-URL handler, AST parser)",
+    "`letta` — the agent server formerly known as MemGPT — carries four "
+    "disclosed vulnerabilities across its 0.4 to 0.16 line, none of which names "
+    "a fixed release in NVD:\n"
+    "  - CVE-2025-51482 (HIGH): `run_tool_from_source` in "
+    "`letta.server.rest_api.routers.v1.tools` lets a remote caller execute "
+    "arbitrary Python and system commands through a crafted payload to the "
+    "`/v1/tools/run` endpoint. Affected at 0.7.12.\n"
+    "  - CVE-2026-4964: `_convert_message_create_to_message` in "
+    "`letta/helpers/message_helper.py` mishandles the File URL Handler. "
+    "Affected at 0.16.4.\n"
+    "  - CVE-2026-4965: `resolve_type` in `letta/functions/ast_parsers.py`, "
+    "explicitly recorded as an **incomplete fix** for CVE-2025-6101. Affected "
+    "at 0.16.4.\n"
+    "  - CVE-2025-6101: `function_message` in `letta/interface.py`, reachable "
+    "through the `function_name` / `function_args` arguments. Affected up to "
+    "0.4.1.\n"
+    "The floor is set at 0.16.5, the first release published after the highest "
+    "affected version — an inference from release ordering, not a vendor fix "
+    "statement, since every one of the four CPE entries names an exact version "
+    "with no `versionEndExcluding` and all four GHSA records are `unreviewed` "
+    "with no curated version range. Treat it as \"past every version known to "
+    "be affected\" rather than \"vendor-confirmed patched\". The pin targets the "
+    "PyPI `letta` server distribution only: the vulnerable code lives in "
+    "`letta/...` module paths, while `letta-client` and npm "
+    "`@letta-ai/letta-client` are separate client SDKs on their own version "
+    "lines, and npm `@letta-ai/letta` is a 0.0.1 placeholder.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `letta` to >= 0.16.5 and pin it. Because no vendor fix statement "
+    "exists for any of the four, also treat the server as untrusted at the "
+    "boundary regardless of version: do not expose `/v1/tools/run` beyond "
+    "loopback, and require authentication in front of it — CVE-2025-51482 is "
+    "remote code execution reachable through that endpoint. CVE-2026-4965 "
+    "being an incomplete fix for CVE-2025-6101 is a reason to verify the "
+    "behaviour yourself rather than rely on a version number alone.",
+    sarif_name="LettaAgentServerCveChain",
+    cve_references=[
+        "CVE-2025-51482", "CVE-2026-4964", "CVE-2026-4965", "CVE-2025-6101",
+    ],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-RCE-04"],
+    incident_references=["OX-MCP-2026-05-01"],
+)
+
+
+_r(
     "AAK-MCP-FLYTO-CVE-2026-67425-001",
     "Flyto2 Core forwards provider API keys to a caller-controlled base_url (<2.26.6)",
     "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent "
