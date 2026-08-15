@@ -33,6 +33,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Data-flow analysis for AAK-MCP-STDIO-CMD-INJ-002 (TS/JS). Strictly optional:
+# the scanner lazy-imports these and falls back to its proximity heuristic when
+# they are absent, so the default install stays dependency-light and offline.
+#   pip install "agent-audit-kit[taint]"
+taint = [
+    "tree-sitter>=0.21",
+    "tree-sitter-typescript>=0.21",
+]
+
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",

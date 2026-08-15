@@ -34,6 +34,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
+from . import _ts_stdio_taint
 from ._helpers import SKIP_DIRS, make_finding
 
 
@@ -252,10 +253,16 @@ _TS_TAINT_RE = re.compile(
 )
 
 
-def _walk_ts(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
+def _walk_ts_proximity(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
+    """Original heuristic: a taint marker within 1024 chars before the sink.
+
+    Retained as the fallback for when the tree-sitter grammar is unavailable, so
+    the package keeps working with no new hard dependency. It both over-fires
+    (an unrelated source that happens to sit nearby) and under-fires (a real
+    source that reaches the sink from beyond the window).
+    """
     findings: list[Finding] = []
     for m in _TS_STDIO_TRANSPORT_RE.finditer(text):
-        # Look at the 1024 chars immediately preceding for a taint marker.
         window_start = max(0, m.start() - 1024)
         window = text[window_start : m.start()]
         if not _TS_TAINT_RE.search(window):
@@ -268,11 +275,40 @@ def _walk_ts(text: str, path: Path, project_root: Path, scanned: set[str]) -> li
             rel,
             "new StdioClientTransport({...}) is built shortly after a "
             "network-controlled source (req.body / fetch / axios / "
-            "process.env / JSON.parse). OX MCP Apr-2026 class.",
+            "process.env / JSON.parse). OX MCP Apr-2026 class. "
+            "[proximity heuristic — install tree-sitter for data-flow analysis]",
             line_number=line,
         ))
         return findings  # one per file is plenty
     return findings
+
+
+def _walk_ts(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
+    """Data-flow when the grammar is present, proximity when it is not (#22).
+
+    What the rule reports is identical either way — same rule_id, severity and
+    framework mappings. Only the decision changed: reachability from a
+    caller-controlled source to the `command`/`args` of a StdioTransport,
+    instead of "a marker appeared somewhere in the preceding 1024 characters".
+    """
+    if not _ts_stdio_taint.available():
+        return _walk_ts_proximity(text, path, project_root, scanned)
+
+    line = _ts_stdio_taint.find_tainted_sink(text)
+    if line is None:
+        return []
+
+    rel = str(path.relative_to(project_root))
+    scanned.add(rel)
+    return [make_finding(
+        "AAK-MCP-STDIO-CMD-INJ-002",
+        rel,
+        "new StdioClientTransport({...}) receives a command/args value that "
+        "data-flow analysis traces back to a network-controlled source "
+        "(req.body / fetch / axios / process.env / JSON.parse). OX MCP "
+        "Apr-2026 class.",
+        line_number=line,
+    )]
 
 
 # ---------------------------------------------------------------------------

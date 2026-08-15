@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `AAK-MCP-STDIO-CMD-INJ-002` now decides by data flow instead of proximity (#22). It previously fired when a network-controlled marker appeared anywhere in the 1024 characters before a `new StdioClientTransport({...})`, which both over-fires (an unrelated source that happens to sit nearby) and under-fires (a real source reaching the sink from beyond the window). A tree-sitter pass now traces the `command`/`args` value back to its source through assignment, destructuring, template literals and single-hop helper returns. **What the rule reports is unchanged** — same rule_id, severity and framework mappings; only the decision moved. `tree-sitter` and `tree-sitter-typescript` are a new **optional** extra (`pip install "agent-audit-kit[taint]"`), lazy-imported, with the proximity heuristic retained as the fallback when the grammar is absent — so the default install stays dependency-light and fully offline.
+
 ### Fixed
 
 - Corrected the remediation on `AAK-DOCSGPT-MCP-STDIO-MITM-001` and `AAK-GPTRESEARCHER-MCP-STDIO-MITM-001`. Both told users to set `"deny_stdio_transport": true` or `"allowed_transports": ["sse"]` "so a MITM cannot flip the transport mid-session". Those keys are AgentAuditKit conventions, not MCP specification fields — they appear in **0 of the 748** public MCP configs in `benchmarks/data`, and searching the repo finds them only in AAK's own `rules.json`, tests and fixtures. Following that advice added a key the user's MCP client ignores, silenced the rule, and left them believing they were protected. The remediation now leads with the controls that work (the vendor version pin; TLS with certificate verification so the handshake cannot be rewritten) and states plainly what those keys are. Found while running the empirical false-positive study #162 asks for.
