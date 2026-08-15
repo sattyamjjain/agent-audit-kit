@@ -18,7 +18,7 @@
 | Legal Compliance | 12 |
 | Transport Security | 12 |
 | MCP Server Card | 4 |
-| **Total** | **299** |
+| **Total** | **300** |
 
 <!-- END rules-summary -->
 

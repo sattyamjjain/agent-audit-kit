@@ -5169,6 +5169,29 @@
       "title": "URL or file path in tool description"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-73614"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-POLICY-TRUNCATION-001",
+      "severity": "high",
+      "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [],
@@ -6671,29 +6694,29 @@
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
-      "trust-boundary": 14
+      "trust-boundary": 15
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 104,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 175,
-      "Art. 9 - Risk Management": 94
+      "Art. 9 - Risk Management": 95
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 69,
-      "Constrain and sandbox tool execution (p.11)": 82,
-      "Design for boundaries (p.10)": 153,
+      "Constrain and sandbox tool execution (p.11)": 83,
+      "Design for boundaries (p.10)": 154,
       "Filter and monitor output pipelines and chained execution (p.12)": 63,
       "Instrument for logging and detection (p.13)": 34,
       "Scan local network for open or vulnerable MCP servers (p.14)": 135,
       "Sign and verify MCP messages (p.12)": 134,
       "Track and patch MCP related vulnerabilities (p.13)": 80,
-      "Validate parameters (p.11)": 86
+      "Validate parameters (p.11)": 87
     },
     "by_owasp_agentic": {
       "ASI01": 13,
-      "ASI02": 40,
+      "ASI02": 41,
       "ASI03": 68,
       "ASI04": 63,
       "ASI05": 42,
@@ -6704,7 +6727,7 @@
       "ASI10": 21
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 72,
+      "MCP01:2025": 73,
       "MCP02:2025": 13,
       "MCP03:2025": 31,
       "MCP04:2025": 34,
@@ -6717,13 +6740,13 @@
     },
     "by_severity": {
       "critical": 69,
-      "high": 136,
+      "high": 137,
       "info": 5,
       "low": 9,
       "medium": 80
     },
-    "total_cves_covered": 142,
-    "total_rules": 299
+    "total_cves_covered": 143,
+    "total_rules": 300
   },
   "tool": "agent-audit-kit"
 }
