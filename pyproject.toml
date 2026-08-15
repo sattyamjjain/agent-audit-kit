@@ -43,6 +43,11 @@ taint = [
 ]
 
 dev = [
+    # Pulls in the optional taint extra so CI exercises the tree-sitter
+    # data-flow path, not only the proximity fallback. Without it the 18
+    # grammar-gated tests skip on every runner and the analysis would ship with
+    # no CI coverage at all — the fallback tests would be the only thing green.
+    "agent-audit-kit[taint]",
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",
