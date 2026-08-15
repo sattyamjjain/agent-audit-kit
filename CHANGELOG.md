@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.77] - 2026-08-15
+
 ### Added
 
 - `AAK-MCP-MEMSERVICE-CVE-2026-50027-001` (SUPPLY_CHAIN, CRITICAL) — mcp-memory-service < 10.67.1 serves every `/api/documents/*` route with no auth dependency even when `MCP_API_KEY` or OAuth is configured; the sibling `/api/memories` routes do enforce it, making this an inconsistent boundary. Floor `>= 10.67.1`. Closes #589.
