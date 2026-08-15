@@ -53,6 +53,10 @@ _VERSION_RE = re.compile(r"^v\d+\.\d+\.\d+$")
 # A row whose disposition says the CVE was ruled out never shipped a rule, so it
 # has no latency. Counted and disclosed separately rather than dropped silently.
 _OUT_OF_SCOPE_RE = re.compile(r"out of scope", re.I)
+# Above this, a row is a deferred backlog item rather than a response to a fresh
+# disclosure. Listed separately in the doc so the median/p90 are not read as if
+# every row answered the same question.
+_BACKLOG_DAYS = 30
 
 
 class Row(NamedTuple):
@@ -242,6 +246,27 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
         "that actually occurred."
     )
     add("")
+
+    # Two different things live in this population and a reader should not have to
+    # infer which is which from the row list.
+    outliers = [r for r in rows if r.days > _BACKLOG_DAYS]
+    if outliers:
+        add("## Backlog rows")
+        add("")
+        noun = "row" if len(outliers) == 1 else "rows"
+        add(
+            f"{len(outliers)} {noun} took more than {_BACKLOG_DAYS} days — deferred "
+            "roadmap items picked up later, not slow responses to a fresh disclosure. "
+            "The population mixes watcher-driven triage with backlog catch-up, and the "
+            "two answer different questions. Read the median and p90 as the response "
+            "figure; read these as the backlog:"
+        )
+        add("")
+        add("| CVE | Published | Rule shipped | Days |")
+        add("|---|---|---|---|")
+        for r in sorted(outliers, key=lambda r: -r.days):
+            add(f"| {r.cve} | {r.published.isoformat()} | {r.shipped.isoformat()} | {r.days} |")
+        add("")
 
     add("## Rows")
     add("")

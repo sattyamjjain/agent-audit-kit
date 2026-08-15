@@ -474,6 +474,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_chatgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_docsgpt_mcp_pin(project_root, scanned_files))
     findings.extend(_check_gpt_researcher_mcp_pin(project_root, scanned_files))
+    findings.extend(_check_agent_zero_pin(project_root, scanned_files))
     findings.extend(_check_claudecode_pin(project_root, scanned_files))
     findings.extend(_check_semantic_kernel_pin(project_root, scanned_files))
     findings.extend(_check_mcp_calculate_server_pin(project_root, scanned_files))
@@ -1156,6 +1157,114 @@ _CHATGPT_MCP_GIT_RE = re.compile(
     r'(?:github:|git\+https?://[^"\s]*)?Toowiredd/chatgpt-mcp-server',
     re.IGNORECASE,
 )
+
+
+# ---------------------------------------------------------------------------
+# AAK-AGENT-ZERO-CVE-2026-30624-PIN-001 — Agent Zero 0.9.8 (HIGH 8.6).
+#
+# The External MCP Servers feature takes a JSON config carrying arbitrary
+# `command` / `args` and executes them when the config is applied, with no
+# validation — a malicious MCP config is RCE with the Agent Zero process's
+# privileges. NVD's CPE scopes this to exactly `agent-zero:agent-zero:0.9.8`
+# with no versionEndExcluding, and the only reference is the OX advisory; no
+# vendor fix version is published.
+#
+# Three things the 2026-05 roadmap row got wrong, corrected here:
+#
+#   1. The repo moved. `frdel/agent-zero` now redirects to `agent0ai/agent-zero`.
+#      Both spellings are matched — existing manifests still carry the old one.
+#   2. `agent-zero` DOES resolve on PyPI, but it is an unrelated project ("AI
+#      outbound voice agent framework", 0.1.2, different author). Matching the
+#      bare distribution name would fire on an innocent package, so this pin is
+#      git-reference-only — the roadmap's "GitHub-only" conclusion was right even
+#      though the PyPI name is now taken.
+#   3. The version scheme jumped 0.9.8 -> 0.9.8.1/.2/.3 -> v1.1 (2026-03-26) and
+#      is now at v2.x. Since NVD names no fixed release, the floor is set at the
+#      1.x line: the 0.9.8 series is what NVD marks affected, and everything from
+#      1.0 on postdates the CVE's disclosure. `_semver3` collapses 0.9.8.3 to
+#      (0, 9, 8), so the whole 0.9.8 patch line is treated as affected — the
+#      conservative reading, since no advisory says which of those carries a fix.
+# ---------------------------------------------------------------------------
+
+# Git reference only — deliberately NOT the bare `agent-zero` distribution name.
+# The trailing boundary keeps sibling repos under the same org out: without it,
+# `agent0ai/agent-zero-plugins` and `agent0ai/agent-zero-clone` both match the
+# prefix and get flagged as the vulnerable project.
+_AGENT_ZERO_REPO = r'(?:frdel|agent0ai)/agent-zero(?![\w-])'
+_AGENT_ZERO_GIT_RE = re.compile(
+    r'(?:github:|git\+(?:https?|ssh)://[^"\s]*)?' + _AGENT_ZERO_REPO,
+    re.IGNORECASE,
+)
+# A version-ish ref hanging off that git URL: `...agent-zero@v0.9.8`,
+# `...agent-zero.git@0.9.8.3`, `...agent-zero#v1.1`.
+_AGENT_ZERO_REF_RE = re.compile(
+    _AGENT_ZERO_REPO + r'(?:\.git)?[@#]v?(\d+(?:\.\d+)*)',
+    re.IGNORECASE,
+)
+_AGENT_ZERO_PATCHED = (1, 0, 0)
+
+
+def _check_agent_zero_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
+    """Agent Zero git dependency at the 0.9.8 line, or unpinned (CVE-2026-30624)."""
+    findings: list[Finding] = []
+
+    def _fire(rel: str, raw: str, why: str, line: int | None) -> None:
+        findings.append(make_finding(
+            "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
+            rel,
+            f"Agent Zero referenced at {raw!r} — {why}. CVE-2026-30624 (HIGH, "
+            "CVSS 8.6): the External MCP Servers feature executes the `command` "
+            "and `args` of a user-supplied JSON MCP config without validation, so "
+            "a malicious config is remote code execution with the Agent Zero "
+            "process's privileges. NVD scopes the CVE to 0.9.8 and names no fixed "
+            "release; the project has since moved to the 1.x/2.x line. Move to a "
+            "1.0+ tag and do not accept MCP server configs from untrusted sources.",
+            line_number=line,
+        ))
+
+    candidates: list[Path] = []
+    for name in (
+        "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+        "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
+        ".mcp.json", "mcp.json", "claude_desktop_config.json",
+    ):
+        p = project_root / name
+        if p.is_file():
+            candidates.append(p)
+    candidates.extend(sorted(project_root.glob("requirements*.txt")))
+
+    for path in candidates:
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        if not _AGENT_ZERO_GIT_RE.search(text):
+            continue
+        rel = str(path.relative_to(project_root))
+
+        ref = _AGENT_ZERO_REF_RE.search(text)
+        if ref is None:
+            scanned_files.add(rel)
+            _fire(
+                rel,
+                _AGENT_ZERO_GIT_RE.search(text).group(0).strip(),  # type: ignore[union-attr]
+                "the git reference carries no tag, so it resolves to whatever "
+                "HEAD serves — including the affected 0.9.8 line",
+                find_line_number(text, "agent-zero"),
+            )
+            continue
+
+        version = _semver3(ref.group(1))
+        if version is not None and version >= _AGENT_ZERO_PATCHED:
+            continue
+        scanned_files.add(rel)
+        _fire(
+            rel,
+            ref.group(0).strip(),
+            f"pinned at {ref.group(1)}, at or below the affected 0.9.8 line",
+            find_line_number(text, ref.group(0)),
+        )
+    return findings
 
 
 def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:

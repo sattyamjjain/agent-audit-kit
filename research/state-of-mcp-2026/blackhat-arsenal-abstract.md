@@ -14,7 +14,7 @@
 ## Tool name and one-line
 
 AgentAuditKit — an offline, deterministic security scanner for MCP-connected AI
-agent pipelines (298 detection rules, SARIF + auditor-ready compliance evidence).
+agent pipelines (299 detection rules, SARIF + auditor-ready compliance evidence).
 
 ## Abstract (prose block)
 
@@ -22,7 +22,7 @@ agent pipelines (298 detection rules, SARIF + auditor-ready compliance evidence)
 
 Skeleton of facts to draw from:
 - Static scanner for MCP agent configs and source (Python/TS/Rust taint analysis).
-- **298 rules** across 12 categories; OWASP MCP Top 10 (10/10) + Agentic Top 10 (10/10).
+- **299 rules** across 12 categories; OWASP MCP Top 10 (10/10) + Agentic Top 10 (10/10).
 - **Two properties hosted scanners cannot match:** (1) runs fully offline and
   deterministically — zero network calls in the default path, no LLM in the loop,
   the same input yields a byte-identical finding set (measured: 20/20 identical

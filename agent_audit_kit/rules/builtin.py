@@ -5295,6 +5295,38 @@ _r(
 )
 
 _r(
+    "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
+    "Agent Zero 0.9.8 MCP-config RCE (CVE-2026-30624, git-only pin)",
+    "Agent Zero 0.9.8 executes the `command` and `args` of a user-supplied "
+    "JSON MCP server configuration when that config is applied, without "
+    "validation or restriction, so a malicious External MCP Servers entry is "
+    "remote code execution with the Agent Zero process's privileges "
+    "(CVE-2026-30624, CVSS 8.6; disclosed in the OX Security MCP supply-chain "
+    "advisory). NVD's CPE scopes the CVE to exactly 0.9.8 and names no fixed "
+    "release. Three practical notes for this pin: the repository moved from "
+    "`frdel/agent-zero` to `agent0ai/agent-zero`, so both spellings are "
+    "matched; the project's version scheme jumped from the 0.9.8 patch line to "
+    "1.x in March 2026 and is now on 2.x, so the floor sits at 1.0; and while "
+    "`agent-zero` does resolve on PyPI, that distribution is an unrelated "
+    "voice-agent framework, so this rule matches git references only and never "
+    "the bare distribution name. The architectural class is covered separately "
+    "by `AAK-STDIO-001`.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Move the Agent Zero git reference to a 1.0+ tag and pin it explicitly — an "
+    "untagged `git+https://` or `github:` reference resolves to whatever HEAD "
+    "serves. Independently of the version, do not let untrusted input reach the "
+    "External MCP Servers configuration: its `command` and `args` are executed "
+    "as given.",
+    sarif_name="AgentZeroMcpConfigRce",
+    cve_references=["CVE-2026-30624"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+    adversa_references=["ADV-RCE-04"],
+    incident_references=["NVD-CVE-2026-30624", "OX-MCP-2026-05-01"],
+)
+
+_r(
     "AAK-LITELLM-CVE-2026-30623-PIN-001",
     "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)",
     "A Python manifest (`requirements*.txt`, `pyproject.toml`, "

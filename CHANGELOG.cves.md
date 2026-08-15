@@ -16,6 +16,14 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-15 (unreleased)
+
+Backlog item, not a watcher issue: the Agent-Zero row deferred from the 2026-05-01 OX MCP batch (#160). Re-verified against NVD and the registries before authoring, which turned up three stale assumptions in the roadmap row.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-30624 (Agent Zero 0.9.8 — the External MCP Servers feature accepts a JSON config carrying arbitrary `command` and `args` and executes them when the config is applied, with no validation or restriction, so a malicious MCP config is remote code execution with the Agent Zero process's privileges; HIGH, CVSS 8.6) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-30624) | **In scope, pinned** `AAK-AGENT-ZERO-CVE-2026-30624-PIN-001` (SUPPLY_CHAIN, HIGH), git-reference-only, floor at the 1.x line. NVD's CPE scopes the CVE to exactly `agent-zero:0.9.8` with no `versionEndExcluding` and names no fixed release; the only reference is the OX advisory. Three corrections to the roadmap row: the repository moved `frdel/agent-zero` → `agent0ai/agent-zero` (both spellings matched, since existing manifests carry the old one); `agent-zero` now **does** resolve on PyPI but as an unrelated "AI outbound voice agent framework" (0.1.2, different author), so the rule matches git references only and never the bare distribution name; and the version scheme jumped 0.9.8 → 0.9.8.1/.2/.3 → v1.1 (2026-03-26) → v2.9, so the floor sits at 1.0 rather than a named fix. `_semver3` collapses 0.9.8.3 to (0, 9, 8), so the whole 0.9.8 patch line is treated as affected — the conservative reading, since no advisory says which patch carries a fix. (#160) | 2026-08-15 |
+
 ## 2026-08-14 (v0.3.76, second wave)
 
 Eight `cve-response` issues from the 2026-08-13 NVD wave. Three in scope (two new pins, one carried by a rule that already floors the same version); five adjudicated out of scope after a registry check — four because no resolvable artifact exists to pin, one because it is a web-application XSS with no MCP surface for a static config scan to see.
