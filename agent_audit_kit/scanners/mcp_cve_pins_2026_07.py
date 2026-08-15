@@ -52,6 +52,11 @@ available) before shipping:
     SSRF authorization policy)
   - auth-fetch-mcp                 >= 3.0.2   (CVE-2026-49857; IPv4-mapped IPv6 loopback
     bypasses the private-address guard — floor is 3.0.2 per GHSA, not the 3.0.1 in NVD prose)
+  - mcp-memory-service             >= 10.67.1 (CVE-2026-50027; /api/documents/* unauthenticated)
+  - neuro-cortex-memory            >= 3.18.0  (CVE-2026-49986; CLAUDE_PROJECT_DIR exec — floor
+    is 3.18.0 per GHSA, not the 3.17.1 in NVD prose, which was never published)
+  - @aborruso/ckan-mcp-server      >= 0.4.112 (CVE-2026-73846/73845/73844; cache-key collision,
+    prefix-only host check, verbose errors — one fix version, three CVEs)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -348,6 +353,30 @@ _PINS: tuple[_Pin, ...] = (
     # inside the affected range.
     _Pin("AAK-MCP-AUTHFETCH-CVE-2026-49857-001", "auth-fetch-mcp",
          ("auth-fetch-mcp",), (3, 0, 2), fix_label="3.0.2"),
+    # mcp-memory-service < 10.67.1 serves every /api/documents/* route with no
+    # auth dependency even when MCP_API_KEY or OAuth is configured, so an
+    # unauthenticated caller can write, read and delete other users' memories.
+    # The sibling /api/memories routes DO enforce auth, which is what makes it an
+    # inconsistent boundary rather than an obviously-open server
+    # (CVE-2026-50027, CVSS 9.8). GHSA-84hp-mqvj-3p8h: affected < 10.67.1.
+    _Pin("AAK-MCP-MEMSERVICE-CVE-2026-50027-001", "mcp-memory-service",
+         ("mcp-memory-service",), (10, 67, 1), fix_label="10.67.1"),
+    # Cortex (neuro-cortex-memory) <= 3.17.0 treats CLAUDE_PROJECT_DIR — set by
+    # Claude Code to the open project — as a candidate source root, validated
+    # only by the presence of mcp_server/ and ui/unified-viz.html, then executes
+    # mcp_server/server/visualize_bootstrap.py from it (CVE-2026-49986, HIGH).
+    # Floor is 3.18.0, NOT the 3.17.1 the NVD prose names: GHSA-gvpp-v77h-5w8g
+    # records <= 3.17.0 affected with 3.18.0 first patched, and no 3.17.1 was
+    # ever published to PyPI. The successor distribution `hypermnesia-mcp`
+    # starts at 3.24.0, always above this floor, so it needs no pin of its own.
+    _Pin("AAK-MCP-CORTEX-CVE-2026-49986-001", "neuro-cortex-memory",
+         ("neuro-cortex-memory",), (3, 18, 0), fix_label="3.18.0"),
+    # @aborruso/ckan-mcp-server < 0.4.112: cache-key collision via unescaped
+    # &/=/| in canonicalizeParams (CVE-2026-73846), prefix-only dati.gov.it host
+    # check in isValidMqaServer (CVE-2026-73845), and verbatim upstream/exception
+    # text in error paths (CVE-2026-73844). One pin, one fix version, three CVEs.
+    _Pin("AAK-MCP-CKAN-CVE-2026-73846-001", "@aborruso/ckan-mcp-server",
+         ("@aborruso/ckan-mcp-server",), (0, 4, 112), fix_label="0.4.112"),
 )
 
 _CANDIDATE_NAMES = (

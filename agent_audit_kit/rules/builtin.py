@@ -7087,6 +7087,104 @@ _r(
 
 
 _r(
+    "AAK-MCP-MEMSERVICE-CVE-2026-50027-001",
+    "mcp-memory-service < 10.67.1 (/api/documents/* served with no authentication)",
+    "`mcp-memory-service`, a semantic memory layer for AI applications, before "
+    "10.67.1 serves every HTTP route under `/api/documents/*` with no "
+    "authentication dependency attached — even when the server is configured "
+    "with an API key (`MCP_API_KEY`) or OAuth. An unauthenticated remote caller "
+    "can write arbitrary content into the memory store, read stored document "
+    "content back out, and permanently delete memories belonging to "
+    "authenticated users. The sibling `/api/memories` routes do enforce "
+    "authentication, which is what makes this an inconsistent boundary rather "
+    "than a server that is simply open: an operator who checks one route "
+    "reasonably concludes the surface is protected (CVE-2026-50027, CVSS 9.8). "
+    "Fixed in 10.67.1; GHSA-84hp-mqvj-3p8h records the affected range as "
+    "< 10.67.1.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-memory-service` to >= 10.67.1 and pin it. Until then treat the "
+    "memory store as world-writable and world-readable: do not expose the port "
+    "beyond loopback, and assume any document already in it may have been read "
+    "or altered. Apply the auth dependency at the router level rather than "
+    "per-route, so a new route cannot ship unprotected by omission.",
+    sarif_name="McpMemoryServiceUnauthDocuments",
+    cve_references=["CVE-2026-50027"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-CORTEX-CVE-2026-49986-001",
+    "neuro-cortex-memory <= 3.17.0 (CLAUDE_PROJECT_DIR treated as a trusted source root)",
+    "Cortex (`neuro-cortex-memory`), a cross-platform persistent-memory MCP "
+    "server, at 3.17.0 and below treats the `CLAUDE_PROJECT_DIR` environment "
+    "variable — which Claude Code sets automatically to whatever project is "
+    "currently open — as a candidate Cortex developer checkout. When the "
+    "`open_visualization` tool runs, `_find_dev_source()` resolves that "
+    "directory as a source root and `_is_cortex_root()` validates it by looking "
+    "for nothing more than an `mcp_server/` subdirectory and a "
+    "`ui/unified-viz.html` file. An attacker who ships those two marker paths in "
+    "a repository gets `mcp_server/server/visualize_bootstrap.py` from that "
+    "repository executed via `subprocess.run([sys.executable, ...])`, with the "
+    "victim's privileges, simply because the victim opened the repo "
+    "(CVE-2026-49986, HIGH). Note the fix version: the NVD text says 3.17.1, but "
+    "GHSA-gvpp-v77h-5w8g records the affected range as <= 3.17.0 with **3.18.0** "
+    "first patched, and no 3.17.1 was ever published to PyPI — so 3.18.0 is the "
+    "floor. The distribution was later renamed to `hypermnesia-mcp`, whose "
+    "earliest release is 3.24.0 and therefore always above this floor.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `neuro-cortex-memory` to >= 3.18.0 and pin it, or move to its "
+    "successor `hypermnesia-mcp` (>= 3.24.0, above the affected line). Never "
+    "derive a trusted code root from an environment variable the editor points "
+    "at untrusted content; marker-file presence is not authentication.",
+    sarif_name="CortexClaudeProjectDirExec",
+    cve_references=["CVE-2026-49986"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-RCE-04"],
+)
+
+
+_r(
+    "AAK-MCP-CKAN-CVE-2026-73846-001",
+    "@aborruso/ckan-mcp-server < 0.4.112 (cache-key collision, prefix-only host check, verbose errors)",
+    "`@aborruso/ckan-mcp-server`, an MCP server for querying CKAN open-data "
+    "portals, before 0.4.112 carries three related defects. `canonicalizeParams` "
+    "in `src/utils/cache.ts` serialises request parameters without escaping "
+    "`&`, `=` or `|`, so distinct logical parameter sets collapse to the same "
+    "`buildCacheKey` output and an attacker can prime the shared cache with a "
+    "response another user's different query then receives (CVE-2026-73846, "
+    "CVSS 6.5). `isValidMqaServer`, used by `ckan_get_mqa_quality` and "
+    "`ckan_get_mqa_quality_details` in `src/tools/quality.ts`, validates the "
+    "`server_url` parameter with a prefix-only regular expression for "
+    "`dati.gov.it`, which suffix-host and URL-userinfo forms defeat, letting a "
+    "caller point the tool at an attacker-controlled host and receive a spoofed "
+    "response (CVE-2026-73845, CVSS 5.3). Error paths reflect raw upstream "
+    "response bodies and internal exception text — hostnames, internal IPs, "
+    "database errors, stack fragments — back to the caller instead of a "
+    "sanitised message (CVE-2026-73844, CVSS 3.7). All three are fixed in "
+    "0.4.112.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@aborruso/ckan-mcp-server` to >= 0.4.112 and pin it. The three "
+    "share a root cause worth fixing in any MCP server: build cache keys from a "
+    "structured, escaped encoding rather than string concatenation; validate a "
+    "caller-supplied host by parsing the URL and comparing the resolved host "
+    "exactly, never by prefix-matching the raw string; and return a generic "
+    "error to the caller while logging the detail server-side.",
+    sarif_name="CkanMcpServerCacheAndHostValidation",
+    cve_references=["CVE-2026-73846", "CVE-2026-73845", "CVE-2026-73844"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
     "AAK-MCP-FLYTO-CVE-2026-67425-001",
     "Flyto2 Core forwards provider API keys to a caller-controlled base_url (<2.26.6)",
     "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent "

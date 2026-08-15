@@ -34,7 +34,7 @@ for a same-day embargo so they publish at or just after launch.
 >
 > Founder contact: {your-public-email}
 > Repo: https://github.com/sattyamjjain/agent-audit-kit
-> Leaderboard: https://mcp-security-index.com/
+> Leaderboard: https://sattyamjjain.github.io/agent-audit-kit/
 >
 > Thanks,
 > {Sattyam}
@@ -52,7 +52,7 @@ for a same-day embargo so they publish at or just after launch.
 
 ## What to include in the follow-up email
 
-- Link to embargoed access to the dataset (`mcp-security-index.com/press`)
+- Link to embargoed access to the dataset (`sattyamjjain.github.io/agent-audit-kit/press`)
 - One-pager PDF: auditor-ready compliance mapping (generate with
   `agent-audit-kit report . --framework eu-ai-act --format pdf`)
 - Founder bio, 1 paragraph

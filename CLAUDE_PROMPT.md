@@ -22,7 +22,7 @@ Read in order:
 2. `../agent-airlock/ECOSYSTEM_STATE_2026-04.md` — shared ecosystem brief
 3. `ROADMAP_2026.md` — 90-day plan for this repo
 4. `../agent-airlock/LAUNCH_PLAYBOOK_2026.md` — shared growth tactics
-5. `agent_audit_kit/rules/builtin.py` — understand the 300 existing rules
+5. `agent_audit_kit/rules/builtin.py` — understand the 303 existing rules
 6. `agent_audit_kit/scanners/*.py` — understand the 90 scanner modules
 7. `tests/conftest.py` — fixture patterns
 8. Run `pytest -v` and `agent-audit-kit scan .` on the repo's own fixtures to confirm baseline
@@ -81,7 +81,7 @@ This is the leaderboard-ownership growth play.
 
 1. **Crawler**: discovers MCP servers from `anthropics/claude-plugins-official`, `claudemarketplaces.com`, `aitmpl.com`, `buildwithclaude.com`, and the top 500 GitHub results for `topic:mcp-server`. Store in `benchmarks/crawler/`.
 2. **Scanner runner**: runs the full agent-audit-kit rule catalog against each MCP server weekly.
-3. **Index site**: publish `mcp-security-index.com` (or `index.agentauditkit.dev`) as a static site with per-server grades A–F, rule-hit breakdown, and week-over-week trends. Hosted on Cloudflare Pages.
+3. **Index site**: publish `sattyamjjain.github.io/agent-audit-kit` (or `index.agentauditkit.dev`) as a static site with per-server grades A–F, rule-hit breakdown, and week-over-week trends. Hosted on Cloudflare Pages.
 4. **Disclosure policy**: every discovered vuln goes to the maintainer first with a 90-day disclosure window. Publish the policy at `docs/disclosure-policy.md` before crawling.
 5. **Weekly State of MCP Security** blog post summarizing new findings, trends, and the worst-graded servers. This is the Aider-leaderboard play.
 

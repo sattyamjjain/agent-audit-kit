@@ -63,6 +63,10 @@ PINS = {
     # 2026-08-13 wave
     "AAK-MCP-JSHOOK-CVE-2026-49856-001": "medium",
     "AAK-MCP-AUTHFETCH-CVE-2026-49857-001": "high",
+    # 2026-08-14..15 wave
+    "AAK-MCP-MEMSERVICE-CVE-2026-50027-001": "critical",
+    "AAK-MCP-CORTEX-CVE-2026-49986-001": "high",
+    "AAK-MCP-CKAN-CVE-2026-73846-001": "medium",
     "AAK-MCP-FRONTMCP-CVE-2026-67531-001": "high",
     # 2026-08-08 wave
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": "medium",
@@ -914,3 +918,85 @@ def test_flowise_73601_is_carried_by_the_existing_rule() -> None:
 
     assert _FLOWISE_PATCHED_VERSION == (3, 1, 3)
     assert "CVE-2026-73601" in RULES["AAK-FLOWISE-001"].cve_references
+
+
+# --- 2026-08-14..15 wave ---------------------------------------------------
+
+_MEMSERVICE = "AAK-MCP-MEMSERVICE-CVE-2026-50027-001"
+_CORTEX = "AAK-MCP-CORTEX-CVE-2026-49986-001"
+_CKAN = "AAK-MCP-CKAN-CVE-2026-73846-001"
+
+
+def test_memservice_below_floor_fires(tmp_path: Path) -> None:
+    assert _MEMSERVICE in _ids(tmp_path, "requirements.txt", "mcp-memory-service==10.67.0\n")
+
+
+def test_memservice_patched_passes(tmp_path: Path) -> None:
+    assert _MEMSERVICE not in _ids(tmp_path, "requirements.txt", "mcp-memory-service==10.67.1\n")
+
+
+def test_memservice_later_line_passes(tmp_path: Path) -> None:
+    assert _MEMSERVICE not in _ids(tmp_path, "requirements.txt", "mcp-memory-service==11.8.0\n")
+
+
+def test_memservice_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"mem": {"command": "uvx", "args": ["mcp-memory-service"]}}}'
+    assert _MEMSERVICE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_memservice_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-50027-mcp-memory-service"
+    assert _MEMSERVICE in {f.rule_id for f in scan(base / "vulnerable")[0]}
+    assert _MEMSERVICE not in {f.rule_id for f in scan(base / "negative")[0]}
+
+
+def test_cortex_last_affected_release_fires(tmp_path: Path) -> None:
+    """3.17.0 is the last affected release per GHSA-gvpp-v77h-5w8g."""
+    assert _CORTEX in _ids(tmp_path, "requirements.txt", "neuro-cortex-memory==3.17.0\n")
+
+
+def test_cortex_floor_is_3_18_not_the_3_17_1_in_nvd_prose(tmp_path: Path) -> None:
+    """The NVD text says 3.17.1 fixes it. GHSA says <= 3.17.0 affected, 3.18.0 first
+    patched — and 3.17.1 was never published to PyPI. Pinning on the prose would
+    have set a floor at a version that does not exist."""
+    assert _CORTEX not in _ids(tmp_path, "requirements.txt", "neuro-cortex-memory==3.18.0\n")
+    assert _CORTEX in _ids(tmp_path, "requirements.txt", "neuro-cortex-memory==3.17.0\n")
+
+
+def test_cortex_successor_distribution_is_above_the_floor(tmp_path: Path) -> None:
+    """`hypermnesia-mcp` is the rename; its earliest release is 3.24.0, so it is
+    always above the floor and needs no pin of its own."""
+    assert _CORTEX not in _ids(tmp_path, "requirements.txt", "hypermnesia-mcp==3.24.0\n")
+
+
+def test_cortex_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-49986-neuro-cortex"
+    assert _CORTEX in {f.rule_id for f in scan(base / "vulnerable")[0]}
+    assert _CORTEX not in {f.rule_id for f in scan(base / "negative")[0]}
+
+
+def test_ckan_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@aborruso/ckan-mcp-server": "0.4.111"}}'
+    assert _CKAN in _ids(tmp_path, "package.json", content)
+
+
+def test_ckan_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@aborruso/ckan-mcp-server": "0.4.112"}}'
+    assert _CKAN not in _ids(tmp_path, "package.json", content)
+
+
+def test_ckan_later_release_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@aborruso/ckan-mcp-server": "0.4.118"}}'
+    assert _CKAN not in _ids(tmp_path, "package.json", content)
+
+
+def test_ckan_one_pin_carries_all_three_cves() -> None:
+    from agent_audit_kit.rules.builtin import RULES
+    refs = set(RULES[_CKAN].cve_references)
+    assert refs == {"CVE-2026-73846", "CVE-2026-73845", "CVE-2026-73844"}
+
+
+def test_ckan_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73846-ckan-mcp"
+    assert _CKAN in {f.rule_id for f in scan(base / "vulnerable")[0]}
+    assert _CKAN not in {f.rule_id for f in scan(base / "negative")[0]}

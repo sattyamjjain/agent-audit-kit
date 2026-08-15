@@ -4,7 +4,7 @@
 
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent | Agent Audit | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| **Rules** | <!-- rule-count:total -->300<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
+| **Rules** | <!-- rule-count:total -->303<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
 | MCP config scanning | Yes | No | Yes | No | No |
 | Hook injection detection | Yes | No | No | No | No |
 | Trust boundary analysis | Yes | No | No | No | Yes |

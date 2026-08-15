@@ -4,7 +4,7 @@
 > Show HN: We scanned 500 MCP servers for 2026 CVEs — here's the leaderboard
 
 **URL:**
-> https://mcp-security-index.com/ (the index, not the repo)
+> https://sattyamjjain.github.io/agent-audit-kit/ (the index, not the repo)
 
 **Text body:** leave blank (URL post — HN prefers clean URL submissions).
 
@@ -23,7 +23,7 @@
 > evidence output** — SARIF + OWASP MCP Top 10 + EU AI Act Article 15
 > + SOC 2 + ISO 27001 / 42001 + HIPAA + NIST AI RMF in one scan.
 >
-> agent-audit-kit is that. 300 deterministic rules. Zero cloud
+> agent-audit-kit is that. 303 deterministic rules. Zero cloud
 > dependencies, no auth required. MIT.
 >
 > The leaderboard: we run the scanner weekly against 500 public MCP
@@ -44,7 +44,7 @@
 - **"Does it use an LLM?"**
   → No. The moat is deterministic rules. We keep an optional
   `--llm-scan` flag for semantic tool-description checks, but the core
-  300 detection rules are regex + AST patterns that run in <50 ms on a normal
+  303 detection rules are regex + AST patterns that run in <50 ms on a normal
   project.
 - **"What's your false-positive rate?"**
   → We scan 500 public MCP servers weekly. Ground-truth is unknown

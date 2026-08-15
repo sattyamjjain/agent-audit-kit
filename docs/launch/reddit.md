@@ -19,7 +19,7 @@ the #1 channel for this repo.
 > that default to allow-all, path traversal in resource handlers,
 > SSRF in outbound-fetch tools, tokens in query params.
 >
-> We built agent-audit-kit, an OSS scanner: 300 deterministic rules,
+> We built agent-audit-kit, an OSS scanner: 303 deterministic rules,
 > SARIF + OWASP MCP Top 10 + compliance report for EU AI Act /
 > SOC 2 / ISO 27001 / HIPAA / NIST AI RMF. No auth, no cloud. MIT.
 >
@@ -29,7 +29,7 @@ the #1 channel for this repo.
 >
 > Links:
 > - Scanner: https://github.com/sattyamjjain/agent-audit-kit
-> - Leaderboard: https://mcp-security-index.com/
+> - Leaderboard: https://sattyamjjain.github.io/agent-audit-kit/
 > - Disclosure policy: https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md
 > - CVE-response ledger: https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md
 
@@ -54,11 +54,11 @@ the #1 channel for this repo.
 > `pip install agent-audit-kit && agent-audit-kit scan .`
 > Finds misconfigured hooks (CVE-2025-59536 was the catalyst), MCP
 > servers without auth, skill poisoning in SKILL.md files, supply-chain
-> risks in marketplace manifests, missing OAuth 2.1 PKCE. 300 detection rules.
+> risks in marketplace manifests, missing OAuth 2.1 PKCE. 303 detection rules.
 > Outputs SARIF for GitHub Security tab.
 >
 > Repo: https://github.com/sattyamjjain/agent-audit-kit
-> Index: https://mcp-security-index.com/
+> Index: https://sattyamjjain.github.io/agent-audit-kit/
 
 ## r/LocalLLaMA
 
@@ -78,7 +78,7 @@ the #1 channel for this repo.
 > OWASP MCP Top 10 reference scanner — 10/10 coverage, SARIF, EU AI Act evidence
 
 **Body:** developer-audience, technical:
-> If you maintain an MCP server, this is the linter. 300 detection rules mapped
+> If you maintain an MCP server, this is the linter. 303 detection rules mapped
 > to OWASP MCP Top 10 and OWASP Agentic 2026 (ASI01–ASI10). GitHub
 > Action that surfaces findings in the Security tab via SARIF. Docker
 > image at ghcr.io. VS Code extension with on-save diagnostics.
