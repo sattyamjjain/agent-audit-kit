@@ -48,6 +48,11 @@ dev = [
 
 [project.scripts]
 agent-audit-kit = "agent_audit_kit.cli:cli"
+# `aak` is the shorthand the docs, changelogs and release notes have used for
+# many releases (`aak scan`, `aak score`, `aak watch-cve`, ...) without ever
+# being installable, so every one of those snippets exits 127 when copied.
+# Same entry point, so the two names cannot drift.
+aak = "agent_audit_kit.cli:cli"
 
 [project.urls]
 Homepage = "https://github.com/sattyamjjain/agent-audit-kit"

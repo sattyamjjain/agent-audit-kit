@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `aak` is now an installed console script, aliasing `agent-audit-kit`. The docs, changelogs and release notes have used `aak scan` / `aak score` / `aak watch-cve` as shorthand for many releases, but it was never declared in `[project.scripts]`, so every one of those snippets exited 127 when copied. Both names share a single entry point, and `tests/test_console_scripts.py` asserts they stay in step — plus that every `` `aak <cmd>` `` in the docs names a command that actually exists.
+
+### Added
+
 - `AAK-MCP-AUTHFETCH-CVE-2026-49857-001` (SUPPLY_CHAIN, HIGH) — auth-fetch-mcp `<= 3.0.1`: `isPrivateV6()` misses IPv4-mapped IPv6 loopback in hex-normalised form, so `http://[::ffff:127.0.0.1]/` normalises to `[::ffff:7f00:1]`, `net.isIPv4('7f00:1')` is false, and the SSRF guard passes the URL through to loopback. Floor `>= 3.0.2` per GHSA-pvrj-8cg3-j5f8 — **not** the 3.0.1 the NVD prose names as the fix, which is inside the affected range. (#578)
 - `AAK-MCP-JSHOOK-CVE-2026-49856-001` (SUPPLY_CHAIN, MEDIUM) — @jshookmcp/jshook 0.3.1 enforces its SSRF authorization policy only on the raw HTTP/TCP/TLS tools; ICMP probe and traceroute call the native sink directly, giving internal reachability mapping with private-network access disabled. Floor `>= 0.3.2`. (#577)
 - `CVE-2026-73601` added to `AAK-FLOWISE-001` — the Custom MCP node stdio RCE shares Flowise's 3.1.3 fix floor, which that rule's detector already enforces, so it is a reference addition rather than a duplicate pin. (#575)
