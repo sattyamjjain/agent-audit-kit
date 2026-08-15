@@ -38,10 +38,22 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
             'README.md'
             'docs/**/*.md'
           fail: true
+
+      # globenewswire.com is excluded above because lychee fails its HTTP/2
+      # negotiation from the runner ("HTTP/2 protocol error. Server may not
+      # support HTTP/2 properly") while the URL itself is alive — verified 200
+      # over both HTTP/1.1 and HTTP/2 from outside CI. Excluding a live host is
+      # normally the wrong call, so this is the narrow trade: one press-release
+      # citation stays unchecked rather than the whole job staying red and
+      # hiding real breakage. Revisit if lychee gains a per-host HTTP/1.1 flag.
+      #
+      # The deterministic half of this job — relative links to files in this
+      # repo — is also covered by tests/test_docs_links.py, which fails fast and
+      # locally and does not depend on the network at all.
