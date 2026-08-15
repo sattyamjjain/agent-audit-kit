@@ -584,6 +584,32 @@
     },
     {
       "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-30624"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 14 - Human Oversight"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Instrument for logging and detection (p.13)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse",
+        "ASI10 Rogue Agents"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
+      "severity": "high",
+      "title": "Agent Zero 0.9.8 MCP-config RCE (CVE-2026-30624, git-only pin)"
+    },
+    {
+      "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -5143,29 +5169,6 @@
       "title": "URL or file path in tool description"
     },
     {
-      "category": "trust-boundary",
-      "cve_references": [
-        "CVE-2026-73614"
-      ],
-      "eu_ai_act": [
-        "Art. 9 - Risk Management"
-      ],
-      "nsa_mcp_csi": [
-        "Design for boundaries (p.10)",
-        "Validate parameters (p.11)",
-        "Constrain and sandbox tool execution (p.11)"
-      ],
-      "owasp_agentic": [
-        "ASI02 Tool Misuse"
-      ],
-      "owasp_mcp": [
-        "MCP01:2025 Token & Credential Mismanagement"
-      ],
-      "rule_id": "AAK-POLICY-TRUNCATION-001",
-      "severity": "high",
-      "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
-    },
-    {
       "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [],
@@ -6664,16 +6667,16 @@
       "mcp-config": 63,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 85,
+      "supply-chain": 86,
       "taint-analysis": 13,
       "tool-poisoning": 29,
       "transport-security": 12,
-      "trust-boundary": 15
+      "trust-boundary": 14
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 104,
       "Art. 13 - Transparency": 30,
-      "Art. 14 - Human Oversight": 38,
+      "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 175,
       "Art. 9 - Risk Management": 94
     },
@@ -6682,7 +6685,7 @@
       "Constrain and sandbox tool execution (p.11)": 82,
       "Design for boundaries (p.10)": 153,
       "Filter and monitor output pipelines and chained execution (p.12)": 63,
-      "Instrument for logging and detection (p.13)": 33,
+      "Instrument for logging and detection (p.13)": 34,
       "Scan local network for open or vulnerable MCP servers (p.14)": 135,
       "Sign and verify MCP messages (p.12)": 134,
       "Track and patch MCP related vulnerabilities (p.13)": 80,
@@ -6698,7 +6701,7 @@
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
-      "ASI10": 20
+      "ASI10": 21
     },
     "by_owasp_mcp": {
       "MCP01:2025": 72,
@@ -6719,7 +6722,7 @@
       "low": 9,
       "medium": 80
     },
-    "total_cves_covered": 143,
+    "total_cves_covered": 142,
     "total_rules": 299
   },
   "tool": "agent-audit-kit"

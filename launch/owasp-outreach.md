@@ -9,7 +9,7 @@ Hi,
 
 I built AgentAuditKit — an open-source security scanner (MIT licensed) that maps detection rules to all 10 risks in the OWASP Agentic Top 10.
 
-299 rules across 90 scanners cover:
+299 rules across 89 scanners cover:
 - ASI01 (Goal Hijack) → AGENTS.md/.cursorrules/.CLAUDE.md scanning for prompt injection
 - ASI02 (Tool Misuse) → Python AST taint analysis tracking @tool params to dangerous sinks
 - ASI03 (Identity & Privilege Abuse) → Trust boundary violations, credential exposure

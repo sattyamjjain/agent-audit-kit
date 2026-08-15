@@ -6,7 +6,7 @@
 
 | Category | Rules |
 |----------|-------|
-| Supply Chain | 85 |
+| Supply Chain | 86 |
 | MCP Configuration | 63 |
 | Tool Poisoning | 29 |
 | Agent Config | 18 |

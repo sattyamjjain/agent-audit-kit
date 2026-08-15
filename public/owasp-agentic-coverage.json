@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-15T03:41:51Z",
+  "last_updated": "2026-08-15T03:46:14Z",
   "aak_version": "0.3.76",
   "rule_count": 299,
   "coverage": [
@@ -137,6 +137,14 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-44654"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-30624"
           ],
           "aicm_references": []
         },
@@ -495,14 +503,6 @@
             "AIS-07",
             "AIS-12"
           ]
-        },
-        {
-          "id": "AAK-POLICY-TRUNCATION-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-73614"
-          ],
-          "aicm_references": []
         },
         {
           "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",
@@ -2809,7 +2809,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 20,
+      "rule_density": 21,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -2818,6 +2818,14 @@
           "aicm_references": [
             "IAM-04"
           ]
+        },
+        {
+          "id": "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-30624"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-ANTHROPIC-SDK-001",

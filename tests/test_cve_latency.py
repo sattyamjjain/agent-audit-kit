@@ -127,8 +127,20 @@ def test_a_row_covering_several_cves_counts_all_of_them() -> None:
     assert "CVE-2026-11111" not in shipped
 
 
-def test_real_ledger_has_no_implausible_latency() -> None:
-    """A year-long latency means a referenced CVE leaked into the measurement."""
+def test_real_ledger_produces_no_impossible_latency() -> None:
+    """Guard the parsing, not the calendar.
+
+    An earlier version of this asserted every row was under 90 days, on the
+    theory that a long latency meant a referenced CVE had leaked into the
+    measurement. That conflated two different things: CVE-2026-30624 is a
+    genuine 122-day row (published April, shipped as the deferred #160 backlog
+    item in August), and a real backlog entry should not fail the suite.
+
+    What actually indicates a parsing fault is a *negative* latency — a rule
+    credited to a release that predates the CVE — or a row whose shipped date
+    precedes its published date. Those are checked here; the referenced-CVE
+    leak is covered directly by the two attribution tests above.
+    """
     import json
 
     root = Path(__file__).resolve().parent.parent
@@ -136,9 +148,32 @@ def test_real_ledger_has_no_implausible_latency() -> None:
     published = json.loads((root / "docs" / "data" / "cve-published.json").read_text())
     rows, _missing = build_rows(shipped, published)
     assert rows
-    worst = max(rows, key=lambda r: r.days)
-    assert worst.days < 90, f"{worst.cve} shows {worst.days}d — likely a parsing artefact"
-    assert all(r.days >= 0 for r in rows)
+
+    negative = [r for r in rows if r.days < 0]
+    assert not negative, (
+        "negative latency means a CVE was credited to a release that predates it: "
+        + ", ".join(f"{r.cve} ({r.days}d)" for r in negative)
+    )
+    for r in rows:
+        assert r.shipped >= r.published, f"{r.cve}: shipped {r.shipped} < published {r.published}"
+
+
+def test_backlog_rows_are_disclosed_separately() -> None:
+    """Long rows must be labelled, so median/p90 aren't read as covering them."""
+    rows = [
+        cve_latency.Row("CVE-A", date(2026, 8, 12), date(2026, 8, 13), "v1", 1),
+        cve_latency.Row("CVE-B", date(2026, 4, 15), date(2026, 8, 15), "v1", 122),
+    ]
+    doc = render(rows, [], set())
+    assert "## Backlog rows" in doc
+    assert "CVE-B" in doc.split("## Backlog rows")[1]
+    # The fast row is not mislabelled as backlog.
+    assert "CVE-A" not in doc.split("## Backlog rows")[1].split("##")[0]
+
+
+def test_no_backlog_section_when_every_row_is_fast() -> None:
+    rows = [cve_latency.Row("CVE-A", date(2026, 8, 12), date(2026, 8, 13), "v1", 1)]
+    assert "## Backlog rows" not in render(rows, [], set())
 
 
 def test_prose_outside_a_table_is_ignored(parsed) -> None:
