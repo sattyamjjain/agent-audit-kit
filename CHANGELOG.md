@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.79] - 2026-08-15
+
 ### Fixed
 
 - `docs/cve-latency.md` now reports response and backlog as separate populations. Pinning four old Letta CVEs in one sitting moved the mixed p90 from 2 days to 122 while the actual response time to fresh disclosures had not changed — the headline described neither population. The summary now covers only rows shipped within 30 days of publication (median 1.0d, p90 2d over 35), with the 5 deferred roadmap rows disclosed separately with their own range.
