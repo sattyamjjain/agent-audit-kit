@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Corrected the remediation on `AAK-DOCSGPT-MCP-STDIO-MITM-001` and `AAK-GPTRESEARCHER-MCP-STDIO-MITM-001`. Both told users to set `"deny_stdio_transport": true` or `"allowed_transports": ["sse"]` "so a MITM cannot flip the transport mid-session". Those keys are AgentAuditKit conventions, not MCP specification fields — they appear in **0 of the 748** public MCP configs in `benchmarks/data`, and searching the repo finds them only in AAK's own `rules.json`, tests and fixtures. Following that advice added a key the user's MCP client ignores, silenced the rule, and left them believing they were protected. The remediation now leads with the controls that work (the vendor version pin; TLS with certificate verification so the handshake cannot be rewritten) and states plainly what those keys are. Found while running the empirical false-positive study #162 asks for.
+
+### Fixed
+
 - `ssrf_patterns` (AAK-SSRF-001..005) now requires reachability instead of deciding file-wide. It previously reported CRITICAL when the word `fetch` appeared anywhere in a file and a user-input marker appeared anywhere else — neither had to be code, related, or nearby — so a match inside a comment, a rule title or a regex literal counted. Against AAK's own source that produced three findings, all prose, including one where the SSRF scanner flagged **its own detection pattern**. Each rule now hangs off a real outbound call site whose URL argument is traced: Python via `ast`, TS/JS via comment-stripped def-use. String literals are deliberately kept, since a genuine metadata URL lives in one. Measured across `agent_audit_kit/`, `tests/fixtures`, `benchmarks/data`, `examples` and `vscode-extension`: **3 false positives removed, all 4 true positives preserved**. Closes #593.
 
 ## [0.3.77] - 2026-08-15

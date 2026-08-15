@@ -5222,12 +5222,20 @@ _r(
     "covered by AAK-MCP-STDIO-CMD-INJ-001 (Python).",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Pin `gpt-researcher` away from any pre-disclosure version when "
+    "Pin `gpt-researcher` away from any pre-disclosure version when the "
     "vendor ships a post-2026-05-01 fix (track at "
-    "https://github.com/assafelovic/gpt-researcher). For the "
-    "server-config arm, set `\"deny_stdio_transport\": true` (or "
-    "`\"allowed_transports\": [\"sse\"]`) to prevent MITM transport-flip "
-    "into the stdio cmd-injection class.",
+    "https://github.com/assafelovic/gpt-researcher). That version pin is "
+    "the control that actually works today. "
+    "For the transport-flip path itself, protect the channel rather than "
+    "the config: serve the MCP endpoint over TLS with certificate "
+    "verification enabled so a middlebox cannot rewrite the handshake, "
+    "and prefer a client that pins the transport it negotiated. "
+    "**Note on `deny_stdio_transport` / `allowed_transports`:** this rule "
+    "treats those keys as a short-circuit, but they are AgentAuditKit "
+    "conventions, not fields the MCP specification defines — they appear "
+    "in none of the 748 public MCP configs in this project's corpus. "
+    "Adding them silences this rule and is ignored by your MCP client, so "
+    "do not treat their presence as protection.",
     sarif_name="GptResearcherMcpTransportFlip",
     cve_references=["CVE-2025-65720"],
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
@@ -5254,12 +5262,20 @@ _r(
     "check the receiver-side rules don't catch.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Pin DocsGPT >=0.6.4 (vendor fix from the OX 2026-05-01 batch). For "
-    "the server-config arm, set `\"deny_stdio_transport\": true` (or "
-    "`\"allowed_transports\": [\"sse\"]`) so a MITM cannot flip the "
-    "transport mid-session. The receiver-side class detectors "
-    "(AAK-MCP-STDIO-CMD-INJ-*) catch the downstream cmd-injection if "
-    "the flip succeeds; this rule prevents the flip in the first place.",
+    "Pin DocsGPT >= 0.6.4 (the vendor fix from the OX 2026-05-01 batch). "
+    "That version pin is the control that actually works today. "
+    "For the transport-flip path itself, protect the channel rather than "
+    "the config: serve the MCP endpoint over TLS with certificate "
+    "verification enabled so a middlebox cannot rewrite the handshake, "
+    "and prefer a client that pins the transport it negotiated. The "
+    "receiver-side detectors (AAK-MCP-STDIO-CMD-INJ-*, AAK-STDIO-001) "
+    "catch the downstream command injection if a flip does succeed. "
+    "**Note on `deny_stdio_transport` / `allowed_transports`:** this rule "
+    "treats those keys as a short-circuit, but they are AgentAuditKit "
+    "conventions, not fields the MCP specification defines — they appear "
+    "in none of the 748 public MCP configs in this project's corpus. "
+    "Adding them silences this rule and is ignored by your MCP client, so "
+    "do not treat their presence as protection.",
     sarif_name="DocsGptMcpTransportFlip",
     cve_references=["CVE-2026-26015"],
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
