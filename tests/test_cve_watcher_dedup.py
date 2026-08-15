@@ -39,7 +39,12 @@ def _vuln(cve_id: str) -> dict:
                     {"cvssData": {"baseScore": 5.3, "baseSeverity": "MEDIUM"}}
                 ]
             },
-            "descriptions": [{"lang": "en", "value": f"Synthetic record for {cve_id}"}],
+            # Must read like an in-ecosystem CVE: the watcher corroborates the
+            # description before filing, so a placeholder string is now dropped
+            # as irrelevant before dedup is ever exercised.
+            "descriptions": [
+                {"lang": "en", "value": f"Synthetic MCP server record for {cve_id}"}
+            ],
         }
     }
 

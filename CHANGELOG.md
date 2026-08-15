@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The CVE watcher no longer files CVEs from outside the ecosystem it tracks. NVD's `keywordSearch` matches indexed fields rather than only the description, and two of the watcher's keywords are short enough to hit unrelated CVEs: `mcp` (NVIDIA nForce parts are literally "MCP", so kernel CVEs match) and `claude` (increasingly appears in commit messages crediting the model for writing a patch). CVE-2026-68456 arrived via both at once — a `ueagle-atm` USB driver race whose description contains "mcp" zero times and ends "(The latter two were written by Claude...)". Every filed CVE opens a `cve-response` issue and the release gate blocks any tag while one is open, so an unrelated kernel CVE stopped a publish. Results are now corroborated against the description before filing.
+
 ### Changed
 
 - `AAK-MCP-STDIO-CMD-INJ-002` now decides by data flow instead of proximity (#22). It previously fired when a network-controlled marker appeared anywhere in the 1024 characters before a `new StdioClientTransport({...})`, which both over-fires (an unrelated source that happens to sit nearby) and under-fires (a real source reaching the sink from beyond the window). A tree-sitter pass now traces the `command`/`args` value back to its source through assignment, destructuring, template literals and single-hop helper returns. **What the rule reports is unchanged** — same rule_id, severity and framework mappings; only the decision moved. `tree-sitter` and `tree-sitter-typescript` are a new **optional** extra (`pip install "agent-audit-kit[taint]"`), lazy-imported, with the proximity heuristic retained as the fallback when the grammar is absent — so the default install stays dependency-light and fully offline.

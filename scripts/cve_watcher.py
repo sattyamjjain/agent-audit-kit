@@ -129,6 +129,55 @@ def _all_issue_cves(owner_repo: str | None, token: str | None) -> set[str]:
 _open_issue_cves = _all_issue_cves
 
 
+# NVD's keywordSearch matches indexed fields, not just the description, and
+# "mcp" is three letters that appear in unrelated hardware naming — NVIDIA
+# nForce chipsets are literally "MCP" parts, so Linux kernel CVEs touching them
+# come back as hits. CVE-2026-68456 (a `ueagle-atm` USB driver firmware-load
+# race) arrived that way and opened a `cve-response` issue with the string "mcp"
+# appearing zero times in its description.
+#
+# That is not merely noise: every filed issue blocks the release gate until a
+# human dispositions it, so an unrelated kernel CVE stops a publish.
+#
+# So a hit must corroborate in the description before it is filed. Kept
+# deliberately broad — a missed CVE is worse than a filed irrelevant one — and
+# the watcher still logs what it dropped.
+#
+# Two words need care rather than a bare match:
+#
+#   "claude"  — CVE-2026-68456's kernel patch description ends with "(The latter
+#               two were written by Claude...)": the maintainer credited the model
+#               that wrote part of the commit. As AI-authored patches spread, an
+#               attribution line in any project's commit message will keep
+#               matching. So `claude` only counts next to a product word.
+#   "agent"   — user agent, agent process, SNMP agent. Far too common in CVE text
+#               to mean anything on its own; only the compound forms count.
+_RELEVANCE_RE = re.compile(
+    r"\bmcp\b"
+    r"|model[- ]context[- ]protocol"
+    r"|claude[- ](?:code|desktop|agent|sdk|mcp)"
+    r"|claude\.ai"
+    r"|\banthropic\b"
+    r"|\blangchain\b"
+    r"|\blanggraph\b"
+    r"|\bllm\b"
+    r"|\bai[- ]agent"
+    r"|\bagentic\b"
+    r"|\btool[- ]call"
+    r"|\bagent (?:framework|runtime|pipeline|orchestrat)",
+    re.IGNORECASE,
+)
+
+
+def is_relevant(description: str) -> bool:
+    """Does the CVE text itself mention the ecosystem we track?
+
+    Guards against NVD matching a keyword in a CPE name or reference URL rather
+    than in the vulnerability text. See the note above `_RELEVANCE_RE`.
+    """
+    return bool(_RELEVANCE_RE.search(description or ""))
+
+
 def _fetch(keyword: str, window_hours: int = 48) -> list[dict]:
     now = datetime.now(timezone.utc)
     start = (now - timedelta(hours=window_hours)).strftime("%Y-%m-%dT%H:%M:%S.000")
@@ -211,6 +260,13 @@ def collect_new_cves(
             entry = _extract(vuln)
             cve_id = entry["id"]
             if not cve_id or cve_id in suppressed or cve_id in seen:
+                continue
+            if not is_relevant(entry.get("description") or ""):
+                # NVD matched the keyword in an indexed field (CPE names,
+                # references) rather than the text. Filing it would open a
+                # release-gating issue for something unrelated — see
+                # is_relevant() for why this filter exists.
+                seen.add(cve_id)
                 continue
             seen.add(cve_id)
             results.append(entry)
