@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-15T17:47:08Z",
+  "last_updated": "2026-08-15T17:41:38Z",
   "aak_version": "0.3.78",
-  "rule_count": 303,
+  "rule_count": 304,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -130,7 +130,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 42,
+      "rule_density": 43,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -365,6 +365,17 @@
             "AIS-07",
             "DSP-07"
           ]
+        },
+        {
+          "id": "AAK-MCP-LETTA-CVE-2025-51482-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2025-51482",
+            "CVE-2025-6101",
+            "CVE-2026-4964",
+            "CVE-2026-4965"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-STDIO-CMD-INJ-001",

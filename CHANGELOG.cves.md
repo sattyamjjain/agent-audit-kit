@@ -16,6 +16,14 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-15 (unreleased) — backlog
+
+Not a watcher wave: the LettaAI row deferred from the 2026-05-01 OX MCP batch (#161). The transport-flip arm that issue describes still has no CVE assigned, but four real Letta CVEs exist on NVD and AAK covered none of them.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2025-51482, CVE-2026-4964, CVE-2026-4965, CVE-2025-6101 (Letta, formerly MemGPT — `run_tool_from_source` in `letta.server.rest_api.routers.v1.tools` gives remote arbitrary Python and system command execution through a crafted payload to `/v1/tools/run` at 0.7.12 (HIGH); `_convert_message_create_to_message` in `letta/helpers/message_helper.py` mishandles the File URL Handler at 0.16.4; `resolve_type` in `letta/functions/ast_parsers.py` at 0.16.4, recorded as an **incomplete fix** for CVE-2025-6101; and `function_message` in `letta/interface.py` up to 0.4.1) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2025-51482) | **In scope, pinned** `AAK-MCP-LETTA-CVE-2025-51482-001` (SUPPLY_CHAIN, HIGH): floor `letta >= 0.16.5`. **The floor is an inference, not a vendor fix** — every one of the four CPE entries names an exact affected version with no `versionEndExcluding`, and all four GHSA records are `type=unreviewed` with no curated version range, so 0.16.5 is simply the first release published after the highest affected version (0.16.4; latest is 0.16.8). Read it as "past every version known to be affected". Pin targets the PyPI `letta` server only: the vulnerable code is in `letta/…` module paths, while `letta-client` and npm `@letta-ai/letta-client` are separate client SDKs on their own version lines and npm `@letta-ai/letta` is a 0.0.1 placeholder. Uses a bounded regex, since the default matcher would also hit `letta-client` and `pyletta`. The transport-flip arm of #161 remains blocked: no CVE has been assigned to the OX batch's LettaAI entry. (#161) | 2026-08-15 |
+
 ## 2026-08-15 (v0.3.77)
 
 Five `cve-response` issues from the 2026-08-14 watcher wave. All five in scope and pinned, as three rules — the three CKAN defects share one package and one fix version. Two of the five had a fix version in the NVD text that the vendor advisory contradicts; both are pinned to the advisory.

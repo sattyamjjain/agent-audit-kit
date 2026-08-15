@@ -109,6 +109,10 @@ _VER_OPT = (
 # fastmcp / mcp-text-editor / n8n-mcp / awslabs.*-mcp-server.
 _MCP_SDK_RE = re.compile(r"(?<![\w./-])mcp(?:\[[\w,\s-]+\])?\s*" + _VER_REQ, re.IGNORECASE)
 _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECASE)
+# `letta` (the agent server, formerly MemGPT). The right boundary excludes the
+# hyphen so this stays off `letta-client`, a separate client SDK on its own
+# version line; the lookbehind keeps it off `pyletta`.
+_LETTA_RE = re.compile(r"(?<![\w./-])letta(?![\w-])" + _VER_OPT, re.IGNORECASE)
 # `n8n` fixed to exclude the distinct `n8n-mcp` package (right boundary).
 _N8N_RE = re.compile(r"(?<![\w./-])n8n(?![\w-])" + _VER_OPT, re.IGNORECASE)
 
@@ -377,6 +381,27 @@ _PINS: tuple[_Pin, ...] = (
     # text in error paths (CVE-2026-73844). One pin, one fix version, three CVEs.
     _Pin("AAK-MCP-CKAN-CVE-2026-73846-001", "@aborruso/ckan-mcp-server",
          ("@aborruso/ckan-mcp-server",), (0, 4, 112), fix_label="0.4.112"),
+    # letta (formerly MemGPT) carries four disclosed CVEs across its 0.4–0.16
+    # line with no fixed release named in any of them: CVE-2025-51482 (RCE via
+    # /v1/tools/run, 0.7.12), CVE-2026-4964 (file-URL handler, 0.16.4),
+    # CVE-2026-4965 (ast_parsers, 0.16.4, an incomplete fix for CVE-2025-6101)
+    # and CVE-2025-6101 (interface.py, up to 0.4.1).
+    #
+    # Floor 0.16.5 is the first release after the highest affected version, not
+    # a vendor fix — every CPE names an exact version with no
+    # versionEndExcluding and all four GHSA records are `unreviewed` with no
+    # curated range. PyPI `letta` only: the vulnerable code is in letta/…
+    # module paths, while letta-client and @letta-ai/letta-client are separate
+    # client SDKs and npm @letta-ai/letta is a 0.0.1 placeholder.
+    #
+    # Uses the bounded `_LETTA_RE` rather than the default `_mk_re`, which
+    # anchors on neither side: `_mk_re("letta")` matches `letta-client` (a real,
+    # separate client SDK) and `pyletta` too — the same class of collision the
+    # `mcp` / `n8n` pins above already carry explicit regexes for.
+    _Pin("AAK-MCP-LETTA-CVE-2025-51482-001", "letta",
+         ("letta",), (0, 16, 5),
+         fix_label="0.16.5 (first release past every affected version)",
+         regexes=(_LETTA_RE,)),
 )
 
 _CANDIDATE_NAMES = (
