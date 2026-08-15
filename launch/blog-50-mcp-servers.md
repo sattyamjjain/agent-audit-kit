@@ -1,5 +1,7 @@
 # We Scanned 47 Public MCP Server Configs on GitHub. Here's What We Found.
 
+> _Note (2026-08-10): this post documents a specific AgentAuditKit v0.3.x run — 225 rules across 79 scanner modules over 47 configs. Those figures are kept as the measurement they describe and are not bumped; the current build ships 289 rules across 86 scanner modules (see README.md)._
+
 > **TL;DR**: We used AgentAuditKit to scan 47 real `.mcp.json` files from public GitHub repositories. We found **258 security findings** across them — 13 critical, 87 high severity. The #1 issue? **Every single config using npx/uvx had unpinned packages** — a supply chain attack waiting to happen.
 
 ---

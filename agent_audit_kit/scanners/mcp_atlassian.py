@@ -141,9 +141,96 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     return findings
 
 
+# --- CVE-2026-73498: confluence_upload_attachment arbitrary file read --------
+#
+# mcp-atlassian < 0.22.0 hands the client-supplied `file_path` argument of
+# `confluence_upload_attachment` straight to `open(file_path, "rb")` inside
+# `_upload_attachment_direct()`, skipping `validate_safe_path`. The pin table
+# (`mcp_cve_pins_2026_07`) owns the dependency-version path; this catches a
+# vendored or reimplemented copy of the same handler, where no pin exists to
+# read.
+
+_ATTACHMENT_HANDLER_RE = re.compile(
+    r"""
+    (?:
+        def\s+confluence_upload_attachment\s*\(
+      | def\s+_upload_attachment_direct\s*\(
+      | ["']confluence_upload_attachment["']
+    )
+    """,
+    re.VERBOSE,
+)
+# The caller-supplied path opened for binary read — the CVE's exact primitive.
+_UNVALIDATED_OPEN_RE = re.compile(
+    r"""open\s*\(\s*(?:
+        file_path
+      | filepath
+      | attachment_path
+      | path
+    )\s*,\s*["']rb["']""",
+    re.VERBOSE,
+)
+_PATH_VALIDATION_RE = re.compile(
+    r"validate_safe_path"
+    r"|is_safe_path"
+    r"|resolve\s*\(\s*\)\s*\.\s*relative_to\s*\("
+    r"|os\.path\.commonpath\s*\(",
+)
+
+# Prose must not clear a finding: a docstring that *mentions* validate_safe_path
+# (a TODO, or a comment explaining the bug) is not a call to it. Strip
+# triple-quoted strings and `#` comments before looking for the validation call.
+_PY_DOCSTRING_RE = re.compile(r'""".*?"""|\'\'\'.*?\'\'\'', re.DOTALL)
+_PY_COMMENT_RE = re.compile(r"#[^\n]*")
+
+
+def _strip_py_prose(text: str) -> str:
+    return _PY_COMMENT_RE.sub(" ", _PY_DOCSTRING_RE.sub(" ", text))
+
+
+def _check_attachment_traversal(project_root: Path, scanned: set[str]) -> list[Finding]:
+    findings: list[Finding] = []
+    for path in project_root.rglob("*.py"):
+        try:
+            rel_parts = path.relative_to(project_root).parts
+        except ValueError:
+            continue
+        if any(part in SKIP_DIRS for part in rel_parts):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        code = _strip_py_prose(text)
+        if not _ATTACHMENT_HANDLER_RE.search(code):
+            continue
+        m = _UNVALIDATED_OPEN_RE.search(code)
+        if not m:
+            continue
+        if _PATH_VALIDATION_RE.search(code):
+            continue
+        rel = str(path.relative_to(project_root))
+        scanned.add(rel)
+        findings.append(make_finding(
+            "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+            rel,
+            (
+                f"Confluence attachment-upload handler opens the caller-supplied "
+                f"path directly ({m.group(0)!r}) with no validate_safe_path check "
+                f"— an authenticated MCP client, or an agent induced by untrusted "
+                f"content, reads any file the server process can reach and "
+                f"exfiltrates it to Confluence as an attachment, including "
+                f"CONFLUENCE_API_TOKEN and other credentials (CVE-2026-73498)."
+            ),
+            line_number=find_line_number(text, m.group(0)),
+        ))
+    return findings
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
     findings: list[Finding] = []
     findings.extend(_check_pin(project_root, scanned))
     findings.extend(_check_pattern(project_root, scanned))
+    findings.extend(_check_attachment_traversal(project_root, scanned))
     return findings, scanned

@@ -195,6 +195,17 @@ def cli(ctx: click.Context, emit_coverage: bool, coverage_format: str) -> None:
 @click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
 @click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
 @click.option(
+    "--sessions",
+    default=None,
+    type=click.Path(exists=True),
+    help=(
+        "Session transcript file or directory to run the session-scoped rules over "
+        "(AAK-AGENT-COMPOSE-002). Reads OpenAI Agents SDK run traces, LangGraph "
+        "checkpoint/thread state, raw JSONL of {tool, args, ts}, and AAK's own "
+        "*.session.json."
+    ),
+)
+@click.option(
     "--llm",
     "llm_model",
     default="ollama/gemma2:2b",
@@ -271,6 +282,7 @@ def scan_cmd(
     verify_secrets: bool,
     diff_base: str | None,
     llm_scan: bool,
+    sessions: str | None,
     llm_model: str,
     strict_loading: bool,
     advisories_repo: str | None,
@@ -315,6 +327,7 @@ def scan_cmd(
             verify_secrets=verify_secrets,
             diff_base=diff_base,
             llm_scan=llm_scan,
+            sessions=sessions,
             llm_model=llm_model,
             strict_loading=strict_loading,
             advisories_repo=advisories_repo,
@@ -351,6 +364,7 @@ def _run_scan(
     llm_scan: bool,
     llm_model: str,
     strict_loading: bool,
+    sessions: str | None = None,
     advisories_repo: str | None = None,
     advisories_dry_run: bool = False,
     step_summary: bool = True,
@@ -451,6 +465,29 @@ def _run_scan(
             click.echo(f"LLM scan config error: {e}", err=True)
         except Exception as e:
             click.echo(f"LLM scan failed: {e}", err=True)
+
+    # Session-transcript ingest. The session-scoped rules only discover
+    # *.session.json / .aak/sessions/ inside the project root, which no agent
+    # framework writes. --sessions normalises real transcripts (OpenAI Agents
+    # SDK traces, LangGraph checkpoints, raw JSONL) into that shape and runs the
+    # same rule over them, unchanged.
+    if sessions:
+        from agent_audit_kit.sessions.adapters import load_transcripts, scan_sessions
+
+        sessions_path = Path(sessions)
+        transcripts = load_transcripts(sessions_path)
+        if verbose:
+            for tpath, fmt, calls in transcripts:
+                click.echo(f"session: {tpath} ({fmt}, {len(calls)} calls)", err=True)
+        if not transcripts:
+            click.echo(
+                f"Warning: no readable session transcript found at {sessions} "
+                f"(supported: OpenAI Agents SDK traces, LangGraph checkpoint/thread "
+                f"state, JSONL of {{tool, args, ts}}, AAK *.session.json).",
+                err=True,
+            )
+        else:
+            result.findings.extend(scan_sessions(sessions_path, config_root=project_root))
 
     # RUGPULL / pin-drift detection now lives in the scanners/pin_drift.py
     # scanner and runs as part of run_scan() above.
@@ -1432,8 +1469,17 @@ def parity_cmd(
 @click.version_option(version=__version__)
 @click.option(
     "--feeds",
-    default="ox,cert-cc,thaicert,ironplate",
-    help="Comma-separated feed IDs to poll.",
+    default="nvd",
+    help="Comma-separated feed IDs. Live: nvd (NVD 2.0 API). Stubbed (no fetcher "
+    "yet): ox, cert-cc, thaicert, ironplate.",
+)
+@click.option(
+    "--online",
+    is_flag=True,
+    default=False,
+    help="Allow the nvd feed to fetch from the network. Off by default so CI and "
+    "offline runs never make a network call; without it the nvd feed reads its "
+    "on-disk cache.",
 )
 @click.option(
     "--emit",
@@ -1445,6 +1491,7 @@ def parity_cmd(
 @click.option("--dry-run", is_flag=True, default=False)
 def watch_cve_cmd(
     feeds: str,
+    online: bool,
     emit: str | None,
     interval_seconds: int,
     max_iterations: int,
@@ -1452,10 +1499,12 @@ def watch_cve_cmd(
 ) -> None:
     """[experimental] Poll CVE feeds and surface new entries that lack an AAK rule.
 
-    No live feed fetchers ship yet — every feed is an unimplemented stub, so this
-    prints "feed <id>: NOT IMPLEMENTED" and exits non-zero rather than looking
-    like a clean run that found nothing. Distinct from `aak watch` (the pin-drift
-    monitor, which is fully functional)."""
+    Exactly one feed is live: nvd (the NVD 2.0 API). Its network call is opt-in
+    behind --online; without that flag the feed reads its on-disk cache, so a
+    default run never touches the network. The other feeds (ox, cert-cc, thaicert,
+    ironplate) are unimplemented stubs and print "not implemented"; the command
+    exits non-zero only when every requested feed is a stub, and 0 when at least one
+    live feed polled cleanly. Distinct from `aak watch` (the pin-drift monitor)."""
     from agent_audit_kit.feeds import run_watch as run_feed_watch
 
     feed_ids = [f.strip() for f in feeds.split(",") if f.strip()]
@@ -1465,6 +1514,7 @@ def watch_cve_cmd(
         interval_seconds=interval_seconds,
         max_iterations=max_iterations,
         dry_run=dry_run,
+        online=online,
     )
     sys.exit(rc)
 

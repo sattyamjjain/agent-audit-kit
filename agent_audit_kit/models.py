@@ -88,6 +88,13 @@ class Finding:
     # `agent-audit-kit report --compliance aicm` output to group findings
     # by control. Empty for rules with no AICM mapping yet.
     aicm_references: list[str] = field(default_factory=list)
+    # v0.3.73 additions (SCHEMA_VERSION 3): other artifacts that, together with
+    # file_path, constitute the finding — e.g. the individual skills whose
+    # capability union AAK-AGENT-COMPOSE-001 flags. Each entry is
+    # {"file_path": str, "line_number": int | None, "message": str}. Emitted as
+    # SARIF `relatedLocations` so a code-scanning UI can navigate to each
+    # contributing artifact.
+    related_locations: list[dict] = field(default_factory=list)
 
 
 @dataclass

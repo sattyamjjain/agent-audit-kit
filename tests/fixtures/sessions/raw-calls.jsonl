@@ -1,0 +1,3 @@
+{"tool": "read_file", "args": {"path": "/srv/"}, "ts": "2026-08-13T12:00:01Z"}
+{"tool": "read_file", "args": {"path": "app/.e"}, "ts": "2026-08-13T12:00:02Z"}
+{"tool": "read_file", "args": {"path": "nv"}, "ts": "2026-08-13T12:00:03Z"}

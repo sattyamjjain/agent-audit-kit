@@ -143,121 +143,51 @@ def test_docs_comparison_anchors_match_registry() -> None:
             )
 
 
-# Docs that are intentionally frozen, dated, point-in-time snapshots: their
-# counts are historical facts, not current-state claims, so the prose guard skips
-# them. Keep this list tight — a path only belongs here if its counts are meant
-# to stay pinned to a past release.
-_PROSE_COUNT_EXEMPT_PREFIXES = (
-    "docs/changelog/archive/",                       # frozen changelog history (pre-0.3.60 counts)
-    "docs/research/mcp-security-baseline-v1.0.md",  # frozen v1.0 baseline (262 rules)
-    "docs/presets/",                                 # "shipped in vX" dated preset facts
-    # Dated empirical case studies in launch/: their "N rules / M scanners" is the
-    # methodology of a specific past scan run (v0.3.41, 225 rules), and the reported
-    # corpus results (571/47 configs, finding totals) came from that run — bumping the
-    # rule count would falsify the measurement. Same "keep the published numbers"
-    # category as research/state-of-mcp-2026/**. Both self-label as drafts.
-    "launch/state-of-mcp-security-2026.md",          # self-labelled "Superseded — earlier marketing draft"
-    "launch/blog-50-mcp-servers.md",                 # "We scanned 47 configs" — 258 findings tied to the 225-rule run
-)
-
-
-def _canonical_prose_counts() -> dict[str, int]:
-    """The five numbers current-state prose is allowed to claim, each computed
-    from the live source of truth — never hard-coded here."""
-    from agent_audit_kit import SCANNER_COUNT, discovery
-    from agent_audit_kit.cli import cli
-    from agent_audit_kit.output import pdf_report
-
-    return {
-        "rules": _actual_rule_count(),        # len(RULES)
-        "scanners": SCANNER_COUNT,
-        "commands": len(cli.commands),        # the real Click root-group command set
-        # `report --framework` PDF/text evidence packs — the number an auditor
-        # can actually request (cross-checked in test_report_framework_choices_match_titles).
-        "frameworks": len(pdf_report._FRAMEWORK_TITLES),
-        # agent platforms `discover` enumerates (NOT compliance frameworks, and NOT
-        # `compliance.FRAMEWORKS`, which is the smaller `scan --compliance` table).
-        "platforms": len(discovery.AGENT_CONFIGS),
-    }
-
-
-# (compiled pattern, count-key). Each pattern targets an unambiguous *headline
-# total* phrasing so per-category tables ("**12 rules**", "2 scanners", "≥ 1
-# deterministic rule") and historical quotes ("read '77 rules, 13 scanners'")
-# never trip it. Bare "N rules" in launch copy is covered by
-# test_rule_count_is_canonical; here we fence the prose surfaces the sync script
-# does NOT drive: README.md, CLAUDE.md, and docs/**/*.md.
-_PROSE_COUNT_PATTERNS = (
-    # rules — bold "**N rules** across", "all N rules", "N RuleDefinition
-    # entries", "N deterministic rules", "rule (N total".
-    (re.compile(r"\*\*(\d+)\s+(?:deterministic |detection )?rules?\*\*\s+across", re.I), "rules"),
-    (re.compile(r"\ball (\d+) rules\b", re.I), "rules"),
-    (re.compile(r"\b(\d+)\s+RuleDefinition entries\b"), "rules"),
-    (re.compile(r"\b(\d+)\s+deterministic rules\b", re.I), "rules"),
-    (re.compile(r"\brule\s*\((\d+)\s+total\b", re.I), "rules"),
-    # scanners — canonical phrasing is "N scanner modules" (never bare "N
-    # scanners", which appears as per-language counts).
-    (re.compile(r"\b(\d+)\s+scanner modules?\b", re.I), "scanners"),
-    # CLI commands — "N CLI commands" and "(N commands)" entry-point note.
-    (re.compile(r"\b(\d+)\s+CLI commands?\b", re.I), "commands"),
-    (re.compile(r"entry point\s*\((\d+)\s+commands?\)", re.I), "commands"),
-    # compliance frameworks — the `report --framework` PDF/text targets. Match the
-    # headline forms only ("**N frameworks**", "(N frameworks)", "mapped to N
-    # frameworks", "N compliance frameworks"); deliberately NOT bare "N frameworks"
-    # (docs/index.md L23 historically mislabels agent platforms "frameworks", and a
-    # per-item "N frameworks" in a sentence isn't a total).
-    (re.compile(r"\*\*(\d+)\s+frameworks\*\*", re.I), "frameworks"),
-    (re.compile(r"\((\d+)\s+frameworks\)", re.I), "frameworks"),
-    (re.compile(r"\bmapped to (\d+) frameworks\b", re.I), "frameworks"),
-    (re.compile(r"\b(\d+)\s+compliance frameworks\b", re.I), "frameworks"),
-    # agent platforms — the surface `discover` walks. Match "**N agent platforms**"
-    # and bare "N agent platforms"; deliberately NOT bare "N platforms" (avoids the
-    # AUTO-MANAGED architecture-tree "(N platforms)" note and stray prose).
-    (re.compile(r"\*\*(\d+)\s+agent platforms\*\*", re.I), "platforms"),
-    (re.compile(r"\b(\d+)\s+agent platforms\b", re.I), "platforms"),
-)
+def _load_check_counts():
+    """Import scripts/check_counts.py — the single source for the repo-wide count
+    guard, shared by this test, the release CI gate, and `make count-check`. The
+    prose patterns, canonical-count logic, and dated/frozen exclusion list all live
+    there now, so they cannot drift from a second copy here."""
+    script = REPO_ROOT / "scripts" / "check_counts.py"
+    assert script.is_file(), "scripts/check_counts.py missing"
+    spec = importlib.util.spec_from_file_location("check_counts", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["check_counts"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_no_stale_hardcoded_counts_in_prose() -> None:
-    """Every current-state count claim in prose must equal the live registry.
+    """No stale current-state count in any tracked markdown, repo-wide.
 
-    Extended fence (v0.3.61): scans README.md, CLAUDE.md, all docs/**/*.md, and all
-    launch/**/*.md (the outbound copy — HN/Reddit/OWASP outreach/awesome-list PR
-    bodies, where a wrong number does the most reputational damage) for headline
-    'N rules' / 'N scanner modules' / 'N CLI commands' / 'N frameworks' /
-    'N agent platforms' phrasings, and fails on any disagreement with the canonical
-    counts computed from the code (len(RULES), SCANNER_COUNT, len(cli.commands),
-    len(_FRAMEWORK_TITLES), len(AGENT_CONFIGS)). Historical/dated snapshots are
-    exempt via _PROSE_COUNT_EXEMPT_PREFIXES; research/state-of-mcp-2026/** is left
-    unscanned on purpose (frozen research artifacts); per-category and singular
-    phrasings are excluded by construction of the patterns.
+    Widened (v0.3.72) from the README / CLAUDE / docs / launch fence to the whole
+    repo via scripts/check_counts.py — counts drifted exactly where nothing looked
+    (DEEP_ANALYSIS.md, ROADMAP_2026.md, CLAUDE_PROMPT.md, research/**, owasp-outreach).
+    The changelogs and a small set of dated / frozen artifacts (each carrying an
+    in-file dated note or version label) are excluded in that module's
+    EXCLUDE_EXACT / EXCLUDE_PREFIX; per-category and singular phrasings are excluded
+    by construction of the patterns.
     """
-    counts = _canonical_prose_counts()
-
-    files = [REPO_ROOT / "README.md", REPO_ROOT / "CLAUDE.md"]
-    files += sorted((REPO_ROOT / "docs").rglob("*.md"))
-    files += sorted((REPO_ROOT / "launch").rglob("*.md"))
-
-    failures: list[str] = []
-    for path in files:
-        rel = path.relative_to(REPO_ROOT).as_posix()
-        if any(rel == p or rel.startswith(p) for p in _PROSE_COUNT_EXEMPT_PREFIXES):
-            continue
-        text = path.read_text(encoding="utf-8")
-        for pattern, key in _PROSE_COUNT_PATTERNS:
-            for m in pattern.finditer(text):
-                claimed = int(m.group(1))
-                if claimed != counts[key]:
-                    failures.append(
-                        f"{rel}: {m.group(0).strip()!r} claims {claimed} {key}; "
-                        f"canonical is {counts[key]}"
-                    )
-
+    failures = _load_check_counts().find_stale_counts()
     assert not failures, (
-        "stale count(s) in prose — reconcile to the registry "
-        "(run scripts/sync_rule_count.py where it applies):\n  "
-        + "\n  ".join(failures)
+        "stale count(s) in prose — reconcile to the registry, or add a dated note "
+        "and exclude the file in scripts/check_counts.py:\n  " + "\n  ".join(failures)
     )
+
+
+def test_historical_snapshot_files_carry_banner() -> None:
+    """DEEP_ANALYSIS.md and ROADMAP_2026.md are exempt from the count guard by their
+    dated historical-snapshot banner (v0.3.74), NOT a hard-coded name list. Assert the
+    banner is actually present, so if either drops it, this test fails AND the guard
+    starts checking the file's frozen v0.2.0 counts — a stale count can't hide behind a
+    silently-removed banner (the exact way CLAUDE_PROMPT.md drifted)."""
+    cc = _load_check_counts()
+    for rel in ("DEEP_ANALYSIS.md", "ROADMAP_2026.md"):
+        assert cc.has_historical_banner(REPO_ROOT / rel), (
+            f"{rel} lost its dated historical-snapshot banner. Restore it, or update "
+            "its counts to the canonical value — the guard now checks any banner-less file."
+        )
 
 
 def test_report_framework_choices_match_titles() -> None:

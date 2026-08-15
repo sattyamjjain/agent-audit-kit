@@ -11,7 +11,8 @@ CORPUS   := benchmarks/data
 MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
-.PHONY: report corpus report-check test lint typecheck repo-description
+.PHONY: report corpus report-check count-check test lint typecheck repo-description \
+        cve-latency cve-latency-check cve-latency-refresh
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
 report:
@@ -29,6 +30,22 @@ report-check:
 	@python $(RESEARCH)/run_report.py --corpus $(CORPUS) --registry-manifest $(MANIFEST) --out /tmp/aak-report-check.json >/dev/null
 	@diff -q $(RESULTS) /tmp/aak-report-check.json >/dev/null && echo "report is up to date" \
 	  || (echo "results.json is stale — run 'make report' and commit" && exit 1)
+
+## count-check: fail if any tracked markdown carries a stale rule/scanner count (repo-wide, minus changelogs + dated artifacts)
+count-check:
+	@PYTHONPATH=. python scripts/check_counts.py
+
+## cve-latency: regenerate docs/cve-latency.md from the ledger (offline, deterministic)
+cve-latency:
+	python scripts/cve_latency.py
+
+## cve-latency-check: fail if docs/cve-latency.md is stale vs the ledger (drift guard, runs on tag)
+cve-latency-check:
+	@python scripts/cve_latency.py --check
+
+## cve-latency-refresh: top up docs/data/cve-published.json from NVD (the one network step)
+cve-latency-refresh:
+	python scripts/cve_latency.py --refresh
 
 ## test: run the test suite
 test:

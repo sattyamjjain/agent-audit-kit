@@ -7,6 +7,160 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-AUTHFETCH-CVE-2026-49857-001` (SUPPLY_CHAIN, HIGH) — auth-fetch-mcp `<= 3.0.1`: `isPrivateV6()` misses IPv4-mapped IPv6 loopback in hex-normalised form, so `http://[::ffff:127.0.0.1]/` normalises to `[::ffff:7f00:1]`, `net.isIPv4('7f00:1')` is false, and the SSRF guard passes the URL through to loopback. Floor `>= 3.0.2` per GHSA-pvrj-8cg3-j5f8 — **not** the 3.0.1 the NVD prose names as the fix, which is inside the affected range. (#578)
+- `AAK-MCP-JSHOOK-CVE-2026-49856-001` (SUPPLY_CHAIN, MEDIUM) — @jshookmcp/jshook 0.3.1 enforces its SSRF authorization policy only on the raw HTTP/TCP/TLS tools; ICMP probe and traceroute call the native sink directly, giving internal reachability mapping with private-network access disabled. Floor `>= 0.3.2`. (#577)
+- `CVE-2026-73601` added to `AAK-FLOWISE-001` — the Custom MCP node stdio RCE shares Flowise's 3.1.3 fix floor, which that rule's detector already enforces, so it is a reference addition rather than a duplicate pin. (#575)
+
+### Changed
+
+- Adjudicated out of scope after a registry check, with reasons recorded in `CHANGELOG.cves.md`: CVE-2026-73614 (ClaudeHookBridge — absent from npm, PyPI and GitHub, so nothing to key a detector on), CVE-2026-19751 / CVE-2026-19752 (mcp-dominican-layer — rolling release, NVD states version details cannot be specified), CVE-2026-19753 (mcp-rdf-explorer — unresolvable, no published fix), CVE-2026-73037 (Next AI Draw.io — reflected XSS in a web app, no MCP surface and no XSS detector here). (#576, #579, #580, #581, #582)
+
+- `AAK-MCP-UFO-CVE-2026-73296-001` (MCP_CONFIG, CRITICAL) — Microsoft UFO < 3.0.8 serves its mobile MCP data-collection (8020) and action (8021) Streamable-HTTP endpoints without inbound auth, handing an unauthenticated caller the ADB device-control tools. New `ufo_mobile_mcp` scanner over vendored source, MCP config, and git dependency; a detection rule rather than a pin, because UFO ships as a git checkout and `ufo` on npm is an unrelated package. (#573)
+- `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` (SUPPLY_CHAIN, HIGH) — mcp-atlassian < 0.22.0 opens `confluence_upload_attachment`'s caller-supplied `file_path` without `validate_safe_path`, so any readable file can be exfiltrated to Confluence. Pin floor `>= 0.22.0` plus a vendored-source detector. (#574)
+- `agent_audit_kit/sessions/adapters.py` and `aak scan --sessions PATH` — normalises OpenAI Agents SDK run traces, LangGraph checkpoint/thread state, and raw JSONL into the ordered call list `AAK-AGENT-COMPOSE-002` already expects, so the rule fires on transcripts frameworks actually write. No rule change. Documented in `docs/session-transcripts.md`.
+- `scripts/cve_latency.py` and `docs/cve-latency.md` — CVE-to-rule latency as a published, checkable number (median and p90 days from NVD publication to the release that shipped the rule), regenerated on every tag by the `cve-latency` release job. Published dates cached in `docs/data/cve-published.json`; `--refresh` is the one network step.
+
+### Fixed
+
+- `strict_loading` was ignored once the scanner registry was cached: a lenient call (`scanner_manifest()`, an earlier `run_scan`) baked its mode into a single-slot cache, so a later `run_scan(strict_loading=True)` silently skipped an unimportable scanner instead of raising `ScannerLoadError`. The cache is now keyed by mode. Supersedes #570, which had the right fix but left `tests/test_engine.py` patching `_REGISTRY` as a list — where `_REGISTRY[False] = ...` overwrites index 0 rather than failing, quietly disarming two crash-handling tests. Warm-registry regression tests added; the suite previously only covered the cold path.
+
+### Changed
+
+- Unguarded "N rules" totals in launch copy rewritten to the `N detection rules` phrasing `scripts/check_counts.py` already guards, fixing counts that had drifted to 291 where no pattern was looking.
+
+## [0.3.74] - 2026-08-12
+
+### Added
+
+- **`AAK-AGENT-COMPOSE-002`, a session-scoped instruction-splice check.**
+  `AAK-AGENT-COMPOSE-001` unions capability across a set of skills; it cannot see one
+  intent fragmented across several individually-compliant tool calls. This rule reads an
+  ordered transcript of tool calls (`*.session.json` or JSON under `.aak/sessions/`) and
+  flags when the concatenation of arguments across consecutive same-tool calls
+  reconstructs a sensitive file path (`.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL
+  to a non-allowlisted host that no single call would have been allowed to request. This
+  is the GhostSplice / cross-channel trust-fragmentation attack (ASSET Research Group,
+  https://asset-group.github.io/disclosures/ghostsplice/); the rule was written from that
+  public disclosure, not from a reproduction we ran. It reuses `AAK-AGENT-COMPOSE-001`'s
+  config (`.aak/composition-boundaries.yaml`). It defaults to a warning (MEDIUM), not a
+  failure, and says so, because it WILL raise false positives on legitimate chunked work:
+  a large file written in path-sized pieces reassembles the same way. Scope is narrow on
+  purpose — file-path and URL reassembly only, not general intent detection.
+
+### Fixed
+
+- **`CLAUDE_PROMPT.md` said "289 existing rules" two rules after the v0.3.72 sweep
+  that was supposed to end count drift.** The whole-repo guard (`scripts/check_counts.py`)
+  scanned the file, but none of its patterns matched the phrasing "N existing rules", so
+  the drift slid through. Added an `existing rules` pattern, and switched the
+  `DEEP_ANALYSIS.md` / `ROADMAP_2026.md` exemption from a hard-coded name list to a
+  dated historical-snapshot banner: a snapshot file is exempt only while it carries its
+  banner, and a test asserts both files still do — so a future file that drops its banner
+  (or forgets to add one) gets its counts checked instead of hiding. The count is fixed by
+  reading `RULE_COUNT`, not by typing it.
+
+### Changed
+
+- **`aak watch-cve` now ships one live feed instead of only stubs.** The command counts
+  inside "26 CLI commands" but exited non-zero on every invocation — a claim ahead of
+  evidence. It now wires the NVD 2.0 API (`nvd`) as a real feed: the network call is
+  opt-in behind `--online`, so CI and offline runs never touch the network (the feed
+  reads an on-disk cache at `~/.agent-audit-kit/nvd-cache.json`), and one request per
+  poll stays under NVD's public rate limit (5 requests / 30 s; more with `NVD_API_KEY`).
+  The other four feeds (ox, cert-cc, thaicert, ironplate) stay stubbed; the stub message
+  now names which feeds are live, and the command exits 0 when at least one requested
+  feed polled cleanly. What it still does not do: no live ox / cert-cc / thaicert /
+  ironplate fetchers, and no notification sinks (payloads print to stdout/stderr).
+
+### Security
+
+- **Two newly disclosed MCP-adjacent CVEs, triaged in scope and pinned** — draining the
+  open `cve-response` backlog that gated this release. Rule count 292 → 294; see
+  [`CHANGELOG.cves.md`](CHANGELOG.cves.md).
+  - **`AAK-MCP-N8N-CVE-2026-72768-001`** (SUPPLY_CHAIN, MEDIUM): n8n before 2.32.1 has an
+    SSRF-protection bypass in the MCP Client node — an authenticated workflow author can
+    reach internal or blocked hosts without routing through n8n's SSRF protection and read
+    the responses back ([CVE-2026-72768](https://nvd.nist.gov/vuln/detail/CVE-2026-72768)).
+    Pinned at floor `n8n >= 2.32.1`; a third distinct n8n arm, separate from CVE-2026-59207
+    and CVE-2026-65594.
+  - **`AAK-MCP-CCTEMPLATES-CVE-2026-73222-001`** (SUPPLY_CHAIN, HIGH): claude-code-templates
+    before 1.29.4 launches the `--studio` server on `0.0.0.0:3444` with CORS open and no
+    authentication, passing request-body fields (`prompt`, `agentName`) to
+    `child_process.spawn()` with shell execution enabled → unauthenticated OS command
+    execution with the developer's privileges
+    ([CVE-2026-73222](https://nvd.nist.gov/vuln/detail/CVE-2026-73222), CVSS 8.8). Pinned at
+    floor `claude-code-templates >= 1.29.4` (no 1.29.3 was published).
+  - Both packages resolve on npm with the fixed version present, so both are in-scope
+    version pins in `mcp_cve_pins_2026_07`, verified against the registry before shipping.
+
+## [0.3.73] - 2026-08-11
+
+### Added
+
+- **`AAK-AGENT-COMPOSE-001`, a composition-aware capability-union check.** The
+  `AAK-AGENT-TRUST-*` and `AAK-SKILL-*` rules inspect one artifact at a time, so they
+  cannot see intent split across several individually-benign skills. That is the
+  ColluSkill attack (arXiv:2608.09732), reported at a 96.0% average success rate across
+  six per-skill scanners. This rule operates on the SET of skills that load into one
+  agent context: it computes the union of declared capability (filesystem read/write,
+  network egress by destination, shell execution, credential access, memory write) and
+  flags a union that crosses a configured risk boundary no single skill requested. The
+  shipped default: a skill that can read files or credentials, composed with a skill
+  that can egress to a non-allowlisted destination, is an exfiltration path, flagged
+  HIGH, even when each skill is individually clean. The finding names which skill
+  contributed which capability and emits each contributor as a SARIF related location.
+  The boundary and egress allowlist are configurable via `.aak/composition-boundaries.yaml`;
+  the default and its reasoning are in `docs/rules/skill-composition.md`. What it does
+  not do: it reasons about DECLARED capability, not data flow. A skill that under-declares
+  its tools, or reaches a capability through an MCP server it does not name, is out of
+  scope, and it flags a possible exfiltration path, not a proven one.
+- **`AAK-MCP-GRAFANA-CVE-2026-19516-001`: pin `mcp-grafana >= 1.1.0`.** In mcp-grafana
+  1.0.0 and earlier, a caller-controlled `X-Grafana-URL` header set the destination of the
+  server's outbound requests, giving SSRF to internal, loopback, and metadata endpoints
+  (CVE-2026-19516, CVSS 9.1). This is the incomplete-fix follow-up to CVE-2026-15583, so
+  the correct control is destination restriction, not token handling: 1.1.0 restricts the
+  destination to the configured Grafana instance. mcp-grafana is a Go server but ships a
+  resolvable PyPI wrapper (`uvx mcp-grafana`), so it is pinnable after all, superseding
+  the earlier "unpinnable Go module" ledger note.
+
+### Changed
+
+- **The four `AAK-AGENT-TRUST-*` rules now state their own limits.** They are a
+  single-artifact pre-screen, not a boundary control, and single-artifact scanning does
+  not detect intent split across multiple individually-benign skills. Each rule carries a
+  `limitations` note (new `RuleDefinition.limitations` field) citing ColluSkill
+  (arXiv:2608.09732, 96.0% average attack success across six scanners) and SkillsMetric
+  (arXiv:2608.08468, 0% detection for host-destruction via common shell commands, 42% for
+  natural-language prompt injection). The docs page `docs/rules/skill-composition.md` says
+  the same, without softening it. The composition blind spot these four cannot see is
+  covered by the new `AAK-AGENT-COMPOSE-001`.
+
+## [0.3.72] - 2026-08-10
+
+### Fixed
+
+- Rule and scanner counts were stale in several launch, research, and analysis files that
+  nothing guarded. Bumped the current-state claims (owasp-outreach,
+  awesome-opensource-security, the Black Hat Arsenal skeleton, CLAUDE_PROMPT) to the live
+  counts, and left the dated measurements (blog-50, DEEP_ANALYSIS, ROADMAP, the v0.3.41 and
+  v0.3.56 reports) as the versions they describe, adding an in-file dated note where one was
+  missing. The count guard now scans every tracked markdown except the changelogs and those
+  dated artifacts (`scripts/check_counts.py`); the test and `make count-check` share it, and
+  the release job fails on a mismatch with the offending file and line.
+- The scanner-count assertion in `tests/test_scanner_manifest.py` no longer hardcodes a
+  number in its docstring, so it cannot go stale when a scanner is added.
+
+### Added
+
+- `docs/benchmarks/third-party-grading.md`. Went to grade AAK against the OASB benchmark.
+  Recorded honestly that its submission API returns 404 and that it withdrew its comparative
+  metrics on 2026-08-09 because the benign class was self-labelled by the scanner under test,
+  so there is no measured grade to publish. Published the two numbers we do stand behind
+  instead: the determinism digest (20/20 runs, one SHA-256, 0% variance) and the benign-slice
+  HIGH/CRITICAL false-positive rate with its Wilson interval. Linked from the README badges.
+
 ## [0.3.71] - 2026-08-09
 
 ### Added

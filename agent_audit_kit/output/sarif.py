@@ -213,6 +213,27 @@ def _finding_to_result(
     if finding.remediation:
         result.setdefault("properties", {})["remediation"] = finding.remediation
 
+    # relatedLocations: other artifacts that together with the primary location
+    # constitute the finding (e.g. the individual skills whose capability union
+    # AAK-AGENT-COMPOSE-001 flags). A code-scanning UI links each one so the
+    # finding is navigable to every contributing file, not just the anchor.
+    related = []
+    for rel in finding.related_locations:
+        phys: dict = {
+            "artifactLocation": {
+                "uri": rel["file_path"],
+                "uriBaseId": "%SRCROOT%",
+            },
+        }
+        if rel.get("line_number"):
+            phys["region"] = {"startLine": rel["line_number"]}
+        entry: dict = {"physicalLocation": phys}
+        if rel.get("message"):
+            entry["message"] = {"text": rel["message"]}
+        related.append(entry)
+    if related:
+        result["relatedLocations"] = related
+
     return result
 
 

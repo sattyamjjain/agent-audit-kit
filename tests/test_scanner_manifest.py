@@ -2,11 +2,13 @@
 
 `rules.json` can be counted by anyone in one command; before this the scanner
 count could not. These tests tie four surfaces to one machine-readable manifest
-(`scanners.json`, generated from the engine registry) so `85 scanners` is a
+(`scanners.json`, generated from the engine registry) so the scanner count is a
 number a stranger can reproduce with `agent-audit-kit scanners --json`, not a
-claim. They also guard against the exact bug the manifest surfaced: the old
-directory-listing count included two back-compat shims (`typescript_scan`,
-`rust_scan`) that only re-export a registered pattern scanner, inflating 85 to 87.
+claim — the count itself is never spelled out here, so this docstring cannot go
+stale when a scanner is added. They also guard against the exact bug the manifest
+surfaced: the old directory-listing count included two back-compat shims
+(`typescript_scan`, `rust_scan`) that only re-export a registered pattern scanner,
+inflating the true module count by two.
 """
 
 from __future__ import annotations

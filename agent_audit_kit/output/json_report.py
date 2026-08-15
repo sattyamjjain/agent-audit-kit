@@ -7,7 +7,7 @@ from agent_audit_kit.models import Finding, ScanResult, Severity
 
 
 def _finding_to_dict(finding: Finding) -> dict:
-    d = {
+    d: dict = {
         "ruleId": finding.rule_id,
         "title": finding.title,
         "description": finding.description,
@@ -22,6 +22,8 @@ def _finding_to_dict(finding: Finding) -> dict:
         "owaspAgenticReferences": finding.owasp_agentic_references,
         "adversaReferences": finding.adversa_references,
     }
+    if finding.related_locations:
+        d["relatedLocations"] = finding.related_locations
     return d
 
 

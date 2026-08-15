@@ -58,12 +58,22 @@ PINS = {
     "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": "medium",
     # 2026-08-06 wave
     "AAK-MCP-DOCUMENTDB-CVE-2026-18954-001": "medium",
+    # 2026-08-12 wave
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001": "high",
+    # 2026-08-13 wave
+    "AAK-MCP-JSHOOK-CVE-2026-49856-001": "medium",
+    "AAK-MCP-AUTHFETCH-CVE-2026-49857-001": "high",
     "AAK-MCP-FRONTMCP-CVE-2026-67531-001": "high",
     # 2026-08-08 wave
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": "medium",
     "AAK-METAADS-CVE-2026-48039-001": "critical",
     # 2026-08-09 wave
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": "medium",
+    # 2026-08-11 wave
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001": "critical",
+    # 2026-08-11..12 wave
+    "AAK-MCP-N8N-CVE-2026-72768-001": "medium",
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": "high",
 }
 
 
@@ -680,3 +690,227 @@ def test_googlesearch_fixtures_positive_and_negative() -> None:
     negative = {f.rule_id for f in scan(base / "negative")[0]}
     assert _GS_RULE in vuln
     assert _GS_RULE not in negative
+
+
+# --- CVE-2026-19516: mcp-grafana SSRF via X-Grafana-URL destination ---
+
+_GRAFANA_RULE = "AAK-MCP-GRAFANA-CVE-2026-19516-001"
+
+
+def test_grafana_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"grafana": {"command": "uvx", "args": ["mcp-grafana@1.0.0"]}}}'
+    assert _GRAFANA_RULE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_grafana_patched_passes(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"grafana": {"command": "uvx", "args": ["mcp-grafana@1.1.0"]}}}'
+    assert _GRAFANA_RULE not in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_grafana_unpinned_fires(tmp_path: Path) -> None:
+    assert _GRAFANA_RULE in _ids(tmp_path, "requirements.txt", "mcp-grafana\n")
+
+
+def test_grafana_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-19516-mcp-grafana"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    patched = {f.rule_id for f in scan(base / "patched")[0]}
+    assert _GRAFANA_RULE in vuln
+    assert _GRAFANA_RULE not in patched
+
+
+# --- 2026-08-11..12 wave — n8n MCP Client node SSRF bypass (CVE-2026-72768) ---
+
+_N8N_72768 = "AAK-MCP-N8N-CVE-2026-72768-001"
+
+
+def test_n8n_72768_below_floor_fires(tmp_path: Path) -> None:
+    assert _N8N_72768 in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.0"}}')
+
+
+def test_n8n_72768_patched_passes(tmp_path: Path) -> None:
+    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.1"}}')
+
+
+def test_n8n_72768_unpinned_fires(tmp_path: Path) -> None:
+    assert _N8N_72768 in _ids(tmp_path, "requirements.txt", "n8n\n")
+
+
+def test_n8n_72768_is_the_only_n8n_arm_at_2_32_0(tmp_path: Path) -> None:
+    # 2.32.0 is above the 59207 (2.27.4) and 65594 (2.29.8 / 2.30.1) floors, so this
+    # new arm is the sole n8n finding — proving it is a distinct pin, not a duplicate.
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.0"}}')
+    assert _N8N_72768 in ids
+    assert "AAK-MCP-N8N-CVE-2026-59207-001" not in ids
+    assert "AAK-MCP-N8N-CVE-2026-65594-001" not in ids
+
+
+def test_n8n_72768_does_not_trip_on_n8n_mcp(tmp_path: Path) -> None:
+    # The distinct `n8n-mcp` package must not fire the n8n workflow-engine pin.
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n-mcp": "2.57.4"}}')
+    assert _N8N_72768 not in ids
+
+
+def test_n8n_72768_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-72768-n8n"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _N8N_72768 in vuln
+    assert _N8N_72768 not in negative
+
+
+# --- 2026-08-11..12 wave — claude-code-templates --studio RCE (CVE-2026-73222) ---
+
+_CCTEMPLATES = "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001"
+
+
+def test_cctemplates_below_floor_fires(tmp_path: Path) -> None:
+    # 1.29.2 is the last release before the 1.29.4 fix (no 1.29.3 was published).
+    content = '{"dependencies": {"claude-code-templates": "1.29.2"}}'
+    assert _CCTEMPLATES in _ids(tmp_path, "package.json", content)
+
+
+def test_cctemplates_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"claude-code-templates": "1.29.4"}}'
+    assert _CCTEMPLATES not in _ids(tmp_path, "package.json", content)
+
+
+def test_cctemplates_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"cct": {"command": "npx", "args": ["claude-code-templates"]}}}'
+    assert _CCTEMPLATES in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_cctemplates_package_lock_patched_clears(tmp_path: Path) -> None:
+    lock = '{"packages": {"node_modules/claude-code-templates": {"version": "1.29.4"}}}'
+    assert _CCTEMPLATES not in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_cctemplates_package_lock_vulnerable_fires(tmp_path: Path) -> None:
+    lock = '{"packages": {"node_modules/claude-code-templates": {"version": "1.29.2"}}}'
+    assert _CCTEMPLATES in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_cctemplates_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73222-claude-code-templates"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _CCTEMPLATES in vuln
+    assert _CCTEMPLATES not in negative
+
+
+# --- 2026-08-12 wave — mcp-atlassian attachment path traversal (CVE-2026-73498) ---
+
+_ATLASSIAN_73498 = "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+
+
+def test_atlassian_73498_below_floor_fires(tmp_path: Path) -> None:
+    # 0.21.1 is the last release before the 0.22.0 fix.
+    assert _ATLASSIAN_73498 in _ids(tmp_path, "requirements.txt", "mcp-atlassian==0.21.1\n")
+
+
+def test_atlassian_73498_patched_passes(tmp_path: Path) -> None:
+    assert _ATLASSIAN_73498 not in _ids(tmp_path, "requirements.txt", "mcp-atlassian==0.22.0\n")
+
+
+def test_atlassian_73498_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"atlassian": {"command": "uvx", "args": ["mcp-atlassian"]}}}'
+    assert _ATLASSIAN_73498 in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_atlassian_73498_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73498-mcp-atlassian"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _ATLASSIAN_73498 in vuln
+    assert _ATLASSIAN_73498 not in negative
+
+
+# --- 2026-08-13 wave — jshook ICMP SSRF-policy bypass (CVE-2026-49856) ---
+
+_JSHOOK = "AAK-MCP-JSHOOK-CVE-2026-49856-001"
+
+
+def test_jshook_below_floor_fires(tmp_path: Path) -> None:
+    # 0.3.1 is the only affected release per GHSA-c5r6-m4mr-8q5j.
+    content = '{"dependencies": {"@jshookmcp/jshook": "0.3.1"}}'
+    assert _JSHOOK in _ids(tmp_path, "package.json", content)
+
+
+def test_jshook_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@jshookmcp/jshook": "0.3.2"}}'
+    assert _JSHOOK not in _ids(tmp_path, "package.json", content)
+
+
+def test_jshook_later_release_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@jshookmcp/jshook": "0.3.5"}}'
+    assert _JSHOOK not in _ids(tmp_path, "package.json", content)
+
+
+def test_jshook_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"jshook": {"command": "npx", "args": ["@jshookmcp/jshook"]}}}'
+    assert _JSHOOK in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_jshook_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-49856-jshook"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _JSHOOK in vuln
+    assert _JSHOOK not in negative
+
+
+# --- 2026-08-13 wave — auth-fetch-mcp mapped-IPv6 loopback (CVE-2026-49857) ---
+
+_AUTHFETCH = "AAK-MCP-AUTHFETCH-CVE-2026-49857-001"
+
+
+def test_authfetch_3_0_1_fires_despite_nvd_prose(tmp_path: Path) -> None:
+    """NVD prose calls 3.0.1 the fix; GHSA-pvrj-8cg3-j5f8 records it as affected.
+
+    The floor is 3.0.2. Pinning to 3.0.1 on the strength of the prose would have
+    left the mapped-IPv6 loopback bypass reachable, so this is the case that
+    matters most.
+    """
+    content = '{"dependencies": {"auth-fetch-mcp": "3.0.1"}}'
+    assert _AUTHFETCH in _ids(tmp_path, "package.json", content)
+
+
+def test_authfetch_patched_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"auth-fetch-mcp": "3.0.2"}}'
+    assert _AUTHFETCH not in _ids(tmp_path, "package.json", content)
+
+
+def test_authfetch_later_release_passes(tmp_path: Path) -> None:
+    content = '{"dependencies": {"auth-fetch-mcp": "3.0.3"}}'
+    assert _AUTHFETCH not in _ids(tmp_path, "package.json", content)
+
+
+def test_authfetch_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"fetch": {"command": "npx", "args": ["auth-fetch-mcp"]}}}'
+    assert _AUTHFETCH in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_authfetch_package_lock_vulnerable_fires(tmp_path: Path) -> None:
+    lock = '{"packages": {"node_modules/auth-fetch-mcp": {"version": "3.0.1"}}}'
+    assert _AUTHFETCH in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_authfetch_fixtures_positive_and_negative() -> None:
+    base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-49857-auth-fetch-mcp"
+    vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
+    negative = {f.rule_id for f in scan(base / "negative")[0]}
+    assert _AUTHFETCH in vuln
+    assert _AUTHFETCH not in negative
+
+
+# --- 2026-08-13 wave — Flowise stdio RCE (CVE-2026-73601), already covered ---
+
+
+def test_flowise_73601_is_carried_by_the_existing_rule() -> None:
+    """CVE-2026-73601 shares Flowise's 3.1.3 fix floor, which AAK-FLOWISE-001
+    already enforces, so it is a reference addition rather than a new pin."""
+    from agent_audit_kit.rules.builtin import RULES
+    from agent_audit_kit.scanners.stdio_injection import _FLOWISE_PATCHED_VERSION
+
+    assert _FLOWISE_PATCHED_VERSION == (3, 1, 3)
+    assert "CVE-2026-73601" in RULES["AAK-FLOWISE-001"].cve_references

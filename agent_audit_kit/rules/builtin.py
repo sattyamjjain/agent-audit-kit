@@ -22,6 +22,12 @@ class RuleDefinition:
     # v0.3.2 — SCHEMA_VERSION 2
     incident_references: list[str] = field(default_factory=list)
     aicm_references: list[str] = field(default_factory=list)
+    # v0.3.73 — honest scope note. What the rule provably does NOT catch, in
+    # plain language. Used by the AAK-AGENT-TRUST-* pre-screen rules to state
+    # that single-artifact scanning does not detect intent split across multiple
+    # individually-benign skills. Empty when the rule has no material blind spot
+    # worth flagging.
+    limitations: str = ""
 
 
 RULES: dict[str, RuleDefinition] = {}
@@ -173,6 +179,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
     "AAK-IDE-TASK-001": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-002": ["STA-08", "IVS-04"],
     "AAK-IDE-TASK-003": ["STA-08", "IVS-04"],
@@ -181,6 +190,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-AGENT-TRUST-002": ["AIS-08", "IVS-04", "IAM-05"],
     "AAK-AGENT-TRUST-003": ["IAM-05", "STA-08"],
     "AAK-AGENT-TRUST-004": ["AIS-08", "STA-08"],
+    "AAK-AGENT-COMPOSE-001": ["IVS-04", "AIS-08", "STA-08"],
+    "AAK-AGENT-COMPOSE-002": ["IVS-04", "AIS-08", "STA-08"],
     "AAK-MCP-FLYTO-CVE-2026-67425-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001": ["STA-08", "AIS-07", "IVS-04"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
@@ -291,6 +302,7 @@ def _r(
     auto_fixable: bool = False,
     incident_references: list[str] | None = None,
     aicm_references: list[str] | None = None,
+    limitations: str = "",
 ) -> None:
     RULES[rule_id] = RuleDefinition(
         rule_id=rule_id,
@@ -307,6 +319,7 @@ def _r(
         auto_fixable=auto_fixable,
         incident_references=incident_references or [],
         aicm_references=aicm_references or [],
+        limitations=limitations,
     )
 
 
@@ -2363,6 +2376,22 @@ _r(
 )
 
 
+# The four AAK-AGENT-TRUST-* rules scan ONE artifact at a time — a pre-screen,
+# not a boundary control. State that plainly on each so the rule set is honest
+# about its own blind spot; the set-level AAK-AGENT-COMPOSE-001 covers it.
+_AGENT_TRUST_LIMITATION = (
+    "Single-artifact pre-screen, not a boundary control. These rules inspect one "
+    "file at a time, so they cannot see intent split across several "
+    "individually-benign skills loaded into the same agent context. Cross-skill "
+    "composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a "
+    "96.0% average attack success rate across six skill scanners, and SkillsMetric "
+    "(arXiv:2608.08468) reports 0% detection for host-destruction via common shell "
+    "commands and 42% for natural-language prompt injection. Run these early and "
+    "cheaply as a first pass; they are not a guarantee. The composition blind spot "
+    "they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001."
+)
+
+
 _r(
     "AAK-AGENT-TRUST-001",
     "Coding agent run non-interactively (-p / headless) in CI trusts repo-resident config",
@@ -2385,6 +2414,7 @@ _r(
     "files it may load, and review new agent-config files in PRs before a workflow "
     "will execute them.",
     sarif_name="HeadlessAgentInCiTrustsRepoConfig",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
@@ -2410,6 +2440,7 @@ _r(
     "job that then runs the agent. Split the privileged step onto the trusted base "
     "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
     sarif_name="HeadlessAgentCiUntrustedRef",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05", "ASI03"],
     adversa_references=["ADV-INJECT-04"],
@@ -2433,6 +2464,7 @@ _r(
     "Grant approval per session interactively, or scope it to an explicit, minimal "
     "allow-list of tools rather than a blanket bypass.",
     sarif_name="AgentSettingsPersistTrust",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PRIV-01"],
@@ -2455,9 +2487,90 @@ _r(
     "prose guidance, move any real scripts into a reviewed, path-pinned location, "
     "and treat instruction files from an untrusted ref as untrusted input.",
     sarif_name="GeminiInstructionShellPayload",
+    limitations=_AGENT_TRUST_LIMITATION,
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-INJECT-04"],
+)
+
+
+_r(
+    "AAK-AGENT-COMPOSE-001",
+    "Skill set's composed capability union crosses a risk boundary no single skill requested",
+    "Unlike the `AAK-AGENT-TRUST-*` / `AAK-SKILL-*` rules, which inspect one "
+    "artifact at a time, this rule evaluates the SET of skills that load into one "
+    "agent context (all `SKILL.md` under a common container such as "
+    "`.claude/skills/`). It computes the union of declared capability across the set "
+    "(filesystem read/write, network egress by destination, shell execution, "
+    "credential access, memory write) and flags a union that crosses a configured "
+    "risk boundary that no single skill in the set requested. The shipped default: a "
+    "skill that can read the filesystem or credentials, composed with a skill that "
+    "can egress to a non-allowlisted destination, is an exfiltration path even when "
+    "every contributing skill is individually clean. That is the cross-skill "
+    "composition attack ColluSkill (arXiv:2608.09732) measured at a 96.0% average "
+    "success rate across six per-skill scanners. The finding names which skill "
+    "contributed which capability and lists every contributor as a related location. "
+    "The boundary set and egress allowlist are configurable via "
+    "`.aak/composition-boundaries.yaml`; the default and its reasoning are in "
+    "`docs/rules/skill-composition.md`.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Do not load a skill that reads files or credentials into the same context as a "
+    "skill that can egress to an unaudited destination. Split them into separate "
+    "agent contexts, pin each egress skill to an allowlisted destination, or remove "
+    "the network capability from the read-capable set. Review a new skill for the "
+    "capability it adds to the union, not only in isolation.",
+    sarif_name="SkillSetCapabilityUnionExfil",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Heuristic on DECLARED capability (`allowed-tools` / `capabilities` / "
+        "`egress` frontmatter). A skill that under-declares its tools, or reaches a "
+        "capability through an MCP server it does not name, is not measured here; the "
+        "per-skill scanners and Python taint analysis cover in-body behaviour. It "
+        "reasons about capability, not data flow, so it flags a possible exfiltration "
+        "path, not a proven one."
+    ),
+)
+
+
+_r(
+    "AAK-AGENT-COMPOSE-002",
+    "Tool-call arguments spliced across a session reconstruct a denied file path or URL",
+    "Where AAK-AGENT-COMPOSE-001 unions capability across a set of skills, this rule "
+    "reads an ordered transcript of tool calls in one session and flags when the "
+    "concatenation of arguments across consecutive same-tool calls reconstructs a "
+    "sensitive file path (e.g. `.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL to a "
+    "non-allowlisted host that no single call would have been allowed to request. Each "
+    "call is individually compliant; the intent exists only after fragmentation. This is "
+    "the GhostSplice / cross-channel trust-fragmentation attack disclosed by the ASSET "
+    "Research Group (https://asset-group.github.io/disclosures/ghostsplice/): a malicious "
+    "MCP server splits one refused request across several channels the agent already "
+    "trusts. Scope is deliberately narrow: file-path and URL reassembly only, not general "
+    "intent detection. It was written from the public disclosure, not from a reproduction "
+    "AAK ran. Reuses AAK-AGENT-COMPOSE-001's config "
+    "(`.aak/composition-boundaries.yaml`: `session_reassembly.sensitive_path_patterns` and "
+    "the shared `egress_allowlist`).",
+    Severity.MEDIUM,
+    Category.TRUST_BOUNDARY,
+    "Deny on the reassembled value, not just per-call arguments: normalise and re-check "
+    "the full path or URL at the point of file read or network egress, and pin egress to "
+    "an allowlist. Review the flagged session for whether the fragmentation was legitimate "
+    "chunked work or an actual splice.",
+    sarif_name="SessionSpliceReassembledDeniedTarget",
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI06", "ASI03"],
+    adversa_references=["ADV-INJECT-04"],
+    incident_references=["GHOSTSPLICE-2026-08"],
+    limitations=(
+        "Defaults to a warning (MEDIUM), not a failure, because it WILL produce false "
+        "positives on legitimate chunked work: a large file uploaded or written in "
+        "path-sized pieces, or a URL built from templated fragments, reassembles the same "
+        "way an attack does. It only sees file-path and URL reassembly across consecutive "
+        "same-tool calls; a splice across different tools, or intent that is not a path or "
+        "URL, is out of scope. Treat a finding as a prompt to look, not a verdict."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3555,6 +3668,11 @@ _r(
     cve_references=[
         "CVE-2026-40933", "CVE-2025-71336", "CVE-2026-56274", "CVE-2026-58057",
         "CVE-2026-69263", "CVE-2026-69257",
+        # CVE-2026-73601: Custom MCP node with CUSTOM_MCP_PROTOCOL=stdio lets an
+        # authenticated user reach OS commands by way of PYTHONWARNINGS/BROWSER
+        # with python3, or the root working directory with node. Same 3.1.3 fix
+        # floor this rule already enforces, so it needs no separate detector.
+        "CVE-2026-73601",
     ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02"],
@@ -6693,6 +6811,210 @@ _r(
     "publishes a patched release.",
     sarif_name="AdenotMcpGoogleSearchReadWebpageSsrf",
     cve_references=["CVE-2026-19337"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+    "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)",
+    "`mcp-grafana` before 1.1.0 lets a caller-supplied `X-Grafana-URL` request header "
+    "control the destination of the server's outbound requests, and the "
+    "`grafana_api_request` tool lets the caller also choose the HTTP method, path, and "
+    "body. Because the destination is not restricted to the configured Grafana "
+    "instance, a caller can point requests at internal, loopback, and link-local "
+    "services (including cloud metadata endpoints) and read the responses: server-side "
+    "request forgery (CVE-2026-19516, CVSS 9.1). This is the incomplete-fix follow-up "
+    "to CVE-2026-15583, whose fix stopped the configured service-account token from "
+    "being sent to unintended destinations but did not restrict the destinations "
+    "themselves, so the correct control is destination restriction, not token handling. "
+    "mcp-grafana is a Go server but ships a resolvable PyPI wrapper (`uvx mcp-grafana`), "
+    "so the pin scanner resolves it from `.mcp.json` / `requirements.txt` / "
+    "`pyproject.toml` / `uv.lock`; the archived ledger note that it was unpinnable is "
+    "now superseded. Fixed in 1.1.0, which restricts the destination to the configured "
+    "instance.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-grafana` to >= 1.1.0, which restricts outbound requests to the "
+    "configured Grafana instance. Do not let a caller-controlled `X-Grafana-URL` header "
+    "choose the destination, and do not expose `grafana_api_request` to untrusted "
+    "callers.",
+    sarif_name="McpGrafanaXGrafanaUrlSsrf",
+    cve_references=["CVE-2026-19516", "CVE-2026-15583"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-N8N-CVE-2026-72768-001",
+    "n8n < 2.32.1 (MCP Client node bypasses SSRF protection → internal-host access)",
+    "n8n before 2.32.1 has a server-side-request-forgery-protection bypass in the "
+    "MCP Client node: an authenticated user can craft a workflow whose MCP Client "
+    "requests reach internal or blocked hosts without routing through n8n's SSRF "
+    "protection, exposing internal services and reading their responses back through "
+    "the workflow (CVE-2026-72768). A project pinning `n8n` below 2.32.1 (or unpinned) "
+    "is exposed. This is a distinct MCP-Client-node SSRF from the earlier n8n "
+    "credential-domain-bypass and OAuth two-branch-fix pins already carried by the pin "
+    "scanner — a third n8n arm. Fixed in 2.32.1, with all prior versions affected.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `n8n` to >= 2.32.1 and pin it. Route the MCP Client node's outbound "
+    "requests through n8n's SSRF protection so a workflow author cannot reach internal "
+    "or blocked hosts, and segment the n8n runner from sensitive internal services.",
+    sarif_name="N8nMcpClientNodeSsrfBypass",
+    cve_references=["CVE-2026-72768"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001",
+    "claude-code-templates < 1.29.4 (--studio server: unauth 0.0.0.0:3444 → command-injection RCE)",
+    "Claude Code Templates (`claude-code-templates`), a CLI for configuring and "
+    "monitoring Claude Code, before 1.29.4 launches the Claude Code Studio server "
+    "(`cli-tool/src/sandbox-server.js`) via the `--studio` option bound to all "
+    "interfaces on port 3444, with cross-origin requests permitted and no "
+    "authentication. `POST /api/execute` passes the request-body `prompt` field to "
+    "`executeLocalTask()` and `POST /api/install-agent` passes the `agentName` field "
+    "to a child process; the same unsafe agent path is reachable from `/api/execute` "
+    "through `checkAndInstallAgent()`. These attacker-controlled values reach "
+    "`child_process.spawn()` with shell execution enabled, so shell metacharacters are "
+    "interpreted as OS commands — arbitrary command execution with the developer's "
+    "privileges. An attacker who can reach the port directly, or who lures a developer "
+    "running Studio to a malicious website, compromises source code, credentials, and "
+    "local data (CVE-2026-73222, CVSS 8.8). Fixed in 1.29.4 (the version before it is "
+    "1.29.2; no 1.29.3 was published, so treat < 1.29.4 and unpinned as exposed).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `claude-code-templates` to >= 1.29.4 and pin it. Do not run `--studio` on "
+    "an untrusted network; bind the Studio server to loopback, require authentication, "
+    "and reject cross-origin requests. Never pass request-body fields (`prompt`, "
+    "`agentName`) into a shell.",
+    sarif_name="ClaudeCodeTemplatesStudioCommandInjection",
+    cve_references=["CVE-2026-73222"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-UFO-CVE-2026-73296-001",
+    "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)",
+    "Microsoft UFO, the open-source framework for intelligent automation across "
+    "devices and platforms, before 3.0.8 exposes two Streamable-HTTP MCP services "
+    "from `ufo/client/mcp/http_servers/mobile_mcp_server.py`: "
+    "`create_mobile_data_collection_server` on TCP 8020 and "
+    "`create_mobile_action_server` on TCP 8021. Neither applies inbound "
+    "authentication, so an unauthenticated remote attacker who can reach either "
+    "port invokes `capture_screenshot`, `get_ui_tree`, `tap`, `swipe`, "
+    "`type_text`, `launch_app`, `press_key` and `click_control` against the "
+    "ADB-connected Android device — disclosing screen contents and device data, "
+    "and modifying device state (CVE-2026-73296, CVSS 9.4). Fixed in 3.0.8. UFO "
+    "is distributed as a git checkout rather than a PyPI or npm artifact (`ufo` "
+    "on npm is unjs's unrelated URL library), so this ships as a detection rule "
+    "rather than a version pin.",
+    Severity.CRITICAL,
+    Category.MCP_CONFIG,
+    "Upgrade UFO to >= 3.0.8. Bind the mobile data-collection and mobile action "
+    "MCP servers to 127.0.0.1 rather than all interfaces, and require an inbound "
+    "credential on both. Do not expose an ADB-connected device's MCP control "
+    "surface to any untrusted network.",
+    sarif_name="UfoMobileMcpUnauthenticated",
+    cve_references=["CVE-2026-73296"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+    "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)",
+    "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, "
+    "before 0.22.0 passes the client-supplied `file_path` argument of "
+    "`confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside "
+    "`_upload_attachment_direct()` in "
+    "`src/mcp_atlassian/confluence/attachments.py`, without routing it through "
+    "`validate_safe_path`. An authenticated MCP client can therefore read any "
+    "file the server process can reach and exfiltrate it to Confluence as an "
+    "attachment. Because the tool is agent-callable, untrusted content that "
+    "induces an agent to call it reaches the same primitive, disclosing server "
+    "environment material such as `CONFLUENCE_API_TOKEN` and other credentials "
+    "(CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-atlassian` to >= 0.22.0 and pin it. If you vendor or reimplement "
+    "the attachment path, validate the caller-supplied path against an allowed "
+    "root before opening it (the fix's `validate_safe_path`), and treat any "
+    "tool argument that reaches `open()` as untrusted.",
+    sarif_name="McpAtlassianAttachmentPathTraversal",
+    cve_references=["CVE-2026-73498"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-DATA-01"],
+)
+
+
+_r(
+    "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+    "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)",
+    "`@jshookmcp/jshook`, an MCP server exposing JavaScript-analysis and "
+    "security-research tools to agents, at 0.3.1 enforces its central SSRF "
+    "authorization policy — which blocks private, loopback, link-local and "
+    "reserved targets unless an authorization object explicitly permits private "
+    "network access — only on the raw HTTP / TCP / TLS round-trip tools. The ICMP "
+    "probe and traceroute tools resolve the caller's target and invoke the native "
+    "ICMP / traceroute sink directly, skipping the policy. An MCP client holding "
+    "an active network domain can therefore probe internal addresses even with "
+    "local SSRF access disabled for every other raw network tool, yielding an "
+    "internal reachability and route-mapping primitive from the server's network "
+    "position (CVE-2026-49856, CVSS 4.3). Fixed in 0.3.2; GHSA-c5r6-m4mr-8q5j "
+    "records 0.3.1 as the only affected release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@jshookmcp/jshook` to >= 0.3.2 and pin it. Route every network tool, "
+    "including ICMP and traceroute, through the same SSRF authorization policy "
+    "rather than gating only the raw HTTP/TCP/TLS paths.",
+    sarif_name="JshookIcmpSsrfPolicyBypass",
+    cve_references=["CVE-2026-49856"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+    "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)",
+    "`auth-fetch-mcp`, an MCP server that fetches authenticated web pages for "
+    "assistants, blocks private and loopback destinations in `assertSafeUrl()` "
+    "(`src/security.ts`), but its `isPrivateV6()` check misses IPv4-mapped IPv6 "
+    "loopback addresses in hex-normalised form. A URL such as "
+    "`http://[::ffff:127.0.0.1]:PORT/` is silently normalised by the Node WHATWG "
+    "URL parser to `[::ffff:7f00:1]`; because `net.isIPv4('7f00:1')` is false, the "
+    "private-address check does not fire and the URL reaches the browser or HTTP "
+    "client, so an MCP tool call reaches loopback services the guard exists to "
+    "protect. Exploitable under the default configuration with no special "
+    "environment variable (CVE-2026-49857, CVSS 7.4). GHSA-pvrj-8cg3-j5f8 records "
+    "the affected range as <= 3.0.1 with 3.0.2 the first patched release — note "
+    "the NVD text's claim that 3.0.1 patches the issue is contradicted by the "
+    "advisory's own version data.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `auth-fetch-mcp` to >= 3.0.2 and pin it. When validating a "
+    "destination, resolve the host and test the resulting address, rather than "
+    "pattern-matching the textual form: normalise IPv4-mapped IPv6 "
+    "(`::ffff:a.b.c.d`, including its hex form) to IPv4 before the private-range "
+    "check, and re-check after any redirect.",
+    sarif_name="AuthFetchMcpMappedIpv6LoopbackBypass",
+    cve_references=["CVE-2026-49857"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],

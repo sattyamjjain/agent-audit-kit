@@ -18,6 +18,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Rule Reference: rules.md
+  - Session Transcripts: session-transcripts.md
   - OWASP Mapping: owasp-mapping.md
   - CI/CD Integration: ci-cd.md
   - GitLab CI: gitlab-ci.md

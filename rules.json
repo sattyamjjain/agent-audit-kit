@@ -12,6 +12,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card exposes internal capabilities or admin-level skills that should not be advertised externally.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -36,6 +37,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card does not require authentication for interactions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -60,6 +62,7 @@
       "cve_references": [],
       "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents. Unvalidated cross-agent payloads are the canonical ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -85,6 +88,7 @@
       "cve_references": [],
       "description": "An A2A agent endpoint uses HTTP instead of HTTPS.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -109,6 +113,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card configures a JWT token lifetime greater than 1 hour (3600 seconds). Long-lived tokens increase the window for token theft and replay attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -133,6 +138,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card disables JWT signature verification or allows the 'none' algorithm, permitting token forgery.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -157,6 +163,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card lacks an 'id' or 'identity' field, or uses an HTTP endpoint, making it susceptible to agent impersonation attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -181,6 +188,7 @@
       "cve_references": [],
       "description": "Two agents establish an A2A connection where only the caller authenticates. The callee is trusted by URL alone \u2014 easy to spoof.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -205,6 +213,7 @@
       "cve_references": [],
       "description": "An A2A agent forwards incoming delegation tokens without reducing scope, allowing an N-deep chain to accumulate the caller's full rights.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -229,6 +238,7 @@
       "cve_references": [],
       "description": "An A2A agent trusts claims relayed by a peer without verifying the original issuer. 'Agent B says A says X' must not be treated as X.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -253,6 +263,7 @@
       "cve_references": [],
       "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed. Replayed agent messages are a core ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -278,6 +289,7 @@
       "cve_references": [],
       "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics. Schema-confusion injection is an ASI08 Agent Communication Poisoning pattern.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -303,6 +315,7 @@
       "cve_references": [],
       "description": "An agent instruction file (AGENTS.md, .cursorrules, CLAUDE.md) contains shell commands or execution directives that could be injected into agent behavior.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -327,6 +340,7 @@
       "cve_references": [],
       "description": "Agent instruction files reference external URLs that could serve as C2 channels or data exfiltration endpoints.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -349,6 +363,7 @@
       "cve_references": [],
       "description": "Agent instructions contain patterns that attempt to disable or bypass security controls (e.g., 'ignore security warnings', 'skip verification').",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -371,6 +386,7 @@
       "cve_references": [],
       "description": "Agent instruction files reference credentials, API keys, or environment variables.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -393,6 +409,7 @@
       "cve_references": [],
       "description": "Agent instruction files contain hidden content via HTML comments, zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -404,6 +421,63 @@
       "sarif_name": "AgentHiddenContent",
       "severity": "medium",
       "title": "Agent instruction file contains hidden content"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Unlike the `AAK-AGENT-TRUST-*` / `AAK-SKILL-*` rules, which inspect one artifact at a time, this rule evaluates the SET of skills that load into one agent context (all `SKILL.md` under a common container such as `.claude/skills/`). It computes the union of declared capability across the set (filesystem read/write, network egress by destination, shell execution, credential access, memory write) and flags a union that crosses a configured risk boundary that no single skill in the set requested. The shipped default: a skill that can read the filesystem or credentials, composed with a skill that can egress to a non-allowlisted destination, is an exfiltration path even when every contributing skill is individually clean. That is the cross-skill composition attack ColluSkill (arXiv:2608.09732) measured at a 96.0% average success rate across six per-skill scanners. The finding names which skill contributed which capability and lists every contributor as a related location. The boundary set and egress allowlist are configurable via `.aak/composition-boundaries.yaml`; the default and its reasoning are in `docs/rules/skill-composition.md`.",
+      "incident_references": [],
+      "limitations": "Heuristic on DECLARED capability (`allowed-tools` / `capabilities` / `egress` frontmatter). A skill that under-declares its tools, or reaches a capability through an MCP server it does not name, is not measured here; the per-skill scanners and Python taint analysis cover in-body behaviour. It reasons about capability, not data flow, so it flags a possible exfiltration path, not a proven one.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Do not load a skill that reads files or credentials into the same context as a skill that can egress to an unaudited destination. Split them into separate agent contexts, pin each egress skill to an allowlisted destination, or remove the network capability from the read-capable set. Review a new skill for the capability it adds to the union, not only in isolation.",
+      "rule_id": "AAK-AGENT-COMPOSE-001",
+      "sarif_name": "SkillSetCapabilityUnionExfil",
+      "severity": "high",
+      "title": "Skill set's composed capability union crosses a risk boundary no single skill requested"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "AIS-08",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "Where AAK-AGENT-COMPOSE-001 unions capability across a set of skills, this rule reads an ordered transcript of tool calls in one session and flags when the concatenation of arguments across consecutive same-tool calls reconstructs a sensitive file path (e.g. `.ssh/id_rsa`, `.env`, `.aws/credentials`) or a URL to a non-allowlisted host that no single call would have been allowed to request. Each call is individually compliant; the intent exists only after fragmentation. This is the GhostSplice / cross-channel trust-fragmentation attack disclosed by the ASSET Research Group (https://asset-group.github.io/disclosures/ghostsplice/): a malicious MCP server splits one refused request across several channels the agent already trusts. Scope is deliberately narrow: file-path and URL reassembly only, not general intent detection. It was written from the public disclosure, not from a reproduction AAK ran. Reuses AAK-AGENT-COMPOSE-001's config (`.aak/composition-boundaries.yaml`: `session_reassembly.sensitive_path_patterns` and the shared `egress_allowlist`).",
+      "incident_references": [
+        "GHOSTSPLICE-2026-08"
+      ],
+      "limitations": "Defaults to a warning (MEDIUM), not a failure, because it WILL produce false positives on legitimate chunked work: a large file uploaded or written in path-sized pieces, or a URL built from templated fragments, reassembles the same way an attack does. It only sees file-path and URL reassembly across consecutive same-tool calls; a splice across different tools, or intent that is not a path or URL, is out of scope. Treat a finding as a prompt to look, not a verdict.",
+      "owasp_agentic_references": [
+        "ASI06",
+        "ASI03"
+      ],
+      "owasp_mcp_references": [
+        "MCP05:2025"
+      ],
+      "remediation": "Deny on the reassembled value, not just per-call arguments: normalise and re-check the full path or URL at the point of file read or network egress, and pin egress to an allowlist. Review the flagged session for whether the fragmentation was legitimate chunked work or an actual splice.",
+      "rule_id": "AAK-AGENT-COMPOSE-002",
+      "sarif_name": "SessionSpliceReassembledDeniedTarget",
+      "severity": "medium",
+      "title": "Tool-call arguments spliced across a session reconstruct a denied file path or URL"
     },
     {
       "adversa_references": [],
@@ -418,6 +492,7 @@
       "incident_references": [
         "ARXIV-2605.18747"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI06"
@@ -439,6 +514,7 @@
       ],
       "description": "A tool/function/MCP descriptor exposes a mutating operation (delete / remove / edit / update / overwrite / move) on a file, record, or resource that is reachable in a shared or multi-agent context, yet its input schema carries no owner / actor / authorization / permission field. Any agent that can call the tool can therefore mutate another principal's resource \u2014 there is nothing in the call surface that scopes the action to the caller. This is the CVE-2026-44654 broken-access-control class (LibreChat <= 0.8.3: a shared-agent editor could delete file records via `DELETE /api/files` that the owner had reused across multiple agents; CWE-863 Incorrect Authorization, CVSS 8.1). The shared context is inferred from a multi-agent config (an `agents` collection with >1 member, or a `shared` / `scope: shared|workspace|team` marker) or from shared-resource language in the tool's own name/description.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI02"
@@ -466,6 +542,7 @@
       "cve_references": [],
       "description": "A CI workflow runs a coding-agent CLI in non-interactive mode (`claude -p` / `--dangerously-skip-permissions`, `gemini --yolo`, `aider --yes`, `codex --full-auto`, `cursor-agent`, `opencode run`, or a first-party agent Action). Non-interactive mode removes the workspace-trust prompt, so every repo-resident skill, command, MCP config, and task file is trusted on load and its instructions are honoured automatically. A study of malicious skill files (arXiv:2608.05223) measured coding agents executing the shell commands hidden in benign-appearing skill files in the large majority of runs (Gemini CLI 95.5-96.1%, Qwen Code 71.6-74.0%), with explicit safety recognition in only 1.99% of 5,629 runs. The trust prompt this path skips is the guardrail the per-file scanners (`AAK-IDE-TASK-*`, `AAK-SKILL-*`, `AAK-AGENT-*`) assume is present.",
       "incident_references": [],
+      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -492,6 +569,7 @@
       "cve_references": [],
       "description": "A workflow that runs a coding agent non-interactively is triggered by an attacker-controllable event (`pull_request_target`, `issue_comment`, `workflow_run`, `pull_request_review[_comment]`) or explicitly checks out the pull-request head ref, and then runs the agent with the base repository's write-scoped `GITHUB_TOKEN` and secrets available. Because the headless run trusts repo-resident skill / MCP / task files on load, a fork PR that adds or edits one of those files gets its shell commands executed in CI with the base repo's credentials, with no human trust prompt. This is the trust-on-first-use bypass amplified by the classic pwn-request trigger.",
       "incident_references": [],
+      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001.",
       "owasp_agentic_references": [
         "ASI05",
         "ASI03"
@@ -518,6 +596,7 @@
       "cve_references": [],
       "description": "A checked-in agent settings file (`.claude/settings.json`, `.gemini/settings.json`, `.cursor/settings.json`, and siblings) sets a flag that persists trust or auto-approval: `bypassPermissions`, `permissionMode: bypassPermissions`, `autoApprove`, an approval mode of `yolo` / `full-auto`, or `trust: true`. Trust-on-first-use is then baked into the repository rather than granted per session, so it survives every subsequent invocation (including a headless CI run) and travels with the repository when it is forked or checked out on an untrusted ref.",
       "incident_references": [],
+      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -543,6 +622,7 @@
       "cve_references": [],
       "description": "A Gemini context / instruction file (`GEMINI.md` or a file under `.gemini/`) contains an embedded shell payload: a fenced shell block or a pipe-to-shell one-liner. Gemini auto-loads these files as context on session start, and the malicious-skill-file study (arXiv:2608.05223) measured this surface exploited in 95.5-96.1% of runs. The `AAK-AGENT-*` instruction-file family covered `CLAUDE.md` / `AGENTS.md` / `.cursorrules` / `.windsurfrules` / `copilot-instructions.md` but not the Gemini surface; this closes that gap.",
       "incident_references": [],
+      "limitations": "Single-artifact pre-screen, not a boundary control. These rules inspect one file at a time, so they cannot see intent split across several individually-benign skills loaded into the same agent context. Cross-skill composition defeats per-skill scanners: ColluSkill (arXiv:2608.09732) reports a 96.0% average attack success rate across six skill scanners, and SkillsMetric (arXiv:2608.08468) reports 0% detection for host-destruction via common shell commands and 42% for natural-language prompt injection. Run these early and cheaply as a first pass; they are not a guarantee. The composition blind spot they cannot see is covered by the set-level rule AAK-AGENT-COMPOSE-001.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -570,6 +650,7 @@
       "incident_references": [
         "OX-MCP-2026-04-15"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -600,6 +681,7 @@
         "NVD-CVE-2026-7591",
         "VULDB-360544"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -630,6 +712,7 @@
       "incident_references": [
         "MSRC-2026-04-03-AZUREMCP"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -659,6 +742,7 @@
       "incident_references": [
         "MSRC-2026-04-03-AZUREMCP"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -687,6 +771,7 @@
       "incident_references": [
         "NVD-CVE-2026-7061"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -714,6 +799,7 @@
       ],
       "description": "On Windows, Claude Code prior to 2.1.75 loads `%ProgramData%\\ClaudeCode\\managed-settings.json` without validating directory ownership or ACLs. A low-privileged user can plant a malicious config that executes on every launch. CVE-2026-35603 (CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -742,6 +828,7 @@
       "incident_references": [
         "ANTHROPIC-CLAUDECODE-2026-05-06"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03",
         "ASI10"
@@ -771,6 +858,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01",
         "ASI05",
@@ -800,6 +888,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -824,6 +913,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -848,6 +938,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -875,6 +966,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -895,6 +987,7 @@
       "cve_references": [],
       "description": "A function that targets DeepSeek V4 (OpenAI-compatible client with `base_url=` containing 'deepseek', or `import deepseek`) reads from an untrusted source (request body, document loader, file read) and passes the value into a `tools=[{description: ...}]` payload without calling `sanitize_tool_description`. DeepSeek V4 (Apache 2.0, 2026-04-24) exposes MoE routing via its tool-call envelope \u2014 untrusted text inside a tool description can poison expert selection (LLM01 with MoE-specific surface). Speculative shape until corpus refresh.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -925,6 +1018,7 @@
       "incident_references": [
         "MCP-DNS-REBIND-2026-04"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -958,6 +1052,7 @@
       "incident_references": [
         "MCP-DNS-REBIND-2026-04"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -988,6 +1083,7 @@
       "incident_references": [
         "OX-MCP-2026-05-01"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -1018,6 +1114,7 @@
       ],
       "description": "Project depends on `apache-doris-mcp-server` at a version < 0.6.1. CVE-2025-66335 is a query-context neutralization bypass in the MCP adapter's tool layer \u2014 crafted tool arguments are concatenated into Doris SQL without a parameterized boundary, letting an LLM-driven tool call reach into arbitrary reads/writes. CVE-2025-66336 is a sibling SQL injection in a metadata query path (a user-controlled database name interpolated without the caller's authz context), same < 0.6.1 fixed line. Fixed in 0.6.1.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1038,6 +1135,7 @@
       "cve_references": [],
       "description": "An agent config declares two or more locales (or `multilingual: true`) for a user-facing surface, but the repository's eval / test fixtures reference only a single language. Cross-lingual robustness is a required-evidence axis under EU AI Act Article 15 (binding for Annex III high-risk use cases on 2027-12-02 and for Annex I product-embedded high-risk systems on 2028-08-02), and Ford et al. 2026 (arXiv:2605.23157) document that single-language safety eval misses language-specific jailbreak / refusal-regression vectors that scale non-uniformly across languages.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Add per-locale eval fixtures matching the declared locale set (one scenario file per language, or a parametrized eval matrix), or narrow the agent config's declared locales to the set you can evidence. The EU AI Act Article 15 evidence pack must show robustness testing across each user-facing language.",
@@ -1061,6 +1159,7 @@
       ],
       "description": "Project depends on `excel-mcp-server` at a version <= 0.1.7. CVE-2026-40576 is a path-traversal in the server's `get_excel_path()` helper \u2014 absolute paths pass through unchecked, relative paths are joined without resolving-and-validating the result. Combined with the default 0.0.0.0 bind + zero authentication on SSE / Streamable-HTTP, any unauthenticated network peer can read, write or overwrite files anywhere on the host. Fixed in 0.1.8.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1090,10 +1189,12 @@
         "CVE-2026-56274",
         "CVE-2026-58057",
         "CVE-2026-69263",
-        "CVE-2026-69257"
+        "CVE-2026-69257",
+        "CVE-2026-73601"
       ],
       "description": "Package manifest depends on `flowise` or `flowise-components` at version < 3.1.2, and/or a Flowise flow config (`.flowise/*.json`, `flows/*.json`) declares an MCP adapter node with `customFunction` or `runCode` sinks. The Custom-MCP feature is a recurring RCE class: CVE-2026-40933 (GHSA-c9gw-hvqq-f33r, CVSS 10.0) lets an authenticated attacker combine allowlisted commands like `npx` with execution flags such as `-c` for arbitrary OS command execution; CVE-2025-71336 (< 3.0.6, CVSS 9.8) is an unsandboxed RCE in the same feature; CVE-2026-56274 (< 3.1.2, CVSS 9.9) adds OS command injection via incomplete command-flag validation plus a regex bypass in local file-access restrictions; CVE-2026-58057 (< 3.1.3, CVSS 5.0) validates Custom-MCP stdio env vars against a *case-sensitive* denylist, so on Windows (case-insensitive env names) `node_options` slips past the NODE_OPTIONS entry and reaches `NODE_OPTIONS --require` code execution. CVE-2026-69263 (< 3.1.3, CVSS 8.7) is the same denylist-bypass class one step on: the denylist matched exact env-var names, but `npm_config_yes=true` reproduces `npx --yes` auto-install-and-execute without using a blocked flag; CVE-2026-69257 (< 3.1.3, CVSS 7.6) is a separate SSRF where `httpSecurity.ts` did not normalise IPv4-mapped IPv6 (`::ffff:127.0.0.1`), letting the MCP tool path reach loopback / cloud-metadata endpoints. Pin floor is 3.1.3 (highest fixed version) so 3.0.6\u20133.1.2 are still flagged. Same architectural class as Ox's original STDIO disclosure (see AAK-STDIO-001).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1121,6 +1222,7 @@
       "incident_references": [
         "GHA-IMMUTABLE-2026-04"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -1150,6 +1252,7 @@
       "incident_references": [
         "OX-MCP-2026-05-01"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -1172,6 +1275,7 @@
       "cve_references": [],
       "description": "A tool description, SKILL.md body, agent card, or system prompt represents the AI as a therapist / counselor / psychologist / 'qualified mental health professional'. Tennessee SB 1580 (signed 2026-04-01) makes this unlawful and enforceable via the TN Consumer Protection Act, with a **private right of action** and $5,000 civil penalty per violation.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1192,6 +1296,7 @@
       "cve_references": [],
       "description": "Code or prompt describes an AI system making prior-authorization or medical-necessity decisions without licensed-physician review. Kansas, Washington, and Utah 2026 laws require a clinician in the loop for these decisions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1210,6 +1315,7 @@
       "cve_references": [],
       "description": "Code / prompt describes an AI system approving or denying insurance coverage without a human in the loop. Georgia and Iowa 2026 laws restrict AI-only coverage / benefit determinations.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1228,6 +1334,7 @@
       "cve_references": [],
       "description": "Text mentions patient / clinical / mental-health / therapy / diagnosis but the tool never explicitly says the responder is an AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI disclosure in clinical interactions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1246,6 +1353,7 @@
       "cve_references": [],
       "description": "A healthcare AI surface mentions suicide / self-harm / crisis but never references 988 / 911 / 112 / 999 / a crisis line. Tennessee HB 1951 (2026) creates criminal liability for encouraging suicide; lacking an escalation path materially worsens the exposure.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1270,6 +1378,7 @@
       ],
       "description": "A hook command contains network-capable tools (curl, wget, nc, etc.). Hooks run automatically and can exfiltrate code, API keys, or session data.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1294,6 +1403,7 @@
       "cve_references": [],
       "description": "A hook command accesses credential environment variables. This enables direct credential theft via hook execution.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1318,6 +1428,7 @@
       "cve_references": [],
       "description": "A hook command writes to paths outside the project boundary, which can modify system configs, plant persistence, or stage exfiltration.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1342,6 +1453,7 @@
       "cve_references": [],
       "description": "A non-formatting hook is attached to a sensitive lifecycle event (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). These events fire on every tool call or session start.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1366,6 +1478,7 @@
       "cve_references": [],
       "description": "A hook command contains base64 operations, commonly used to obfuscate exfiltration payloads or encode stolen credentials.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1390,6 +1503,7 @@
       "cve_references": [],
       "description": "A hook command uses sudo, doas, pkexec, or chmod +x. Hooks should never require elevated privileges.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1414,6 +1528,7 @@
       "cve_references": [],
       "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1437,6 +1552,7 @@
       "cve_references": [],
       "description": "A hook command contains hex-encoded strings, unicode escapes, very long commands, or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1459,6 +1575,7 @@
       "cve_references": [],
       "description": "A hook command reads or references project source code files, which could enable code exfiltration.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1483,6 +1600,7 @@
       ],
       "description": "A Claude Code hook script command-string interpolates a variable or captured group directly into a shell command. This is the CVE-2025-59536 shape: a poisoned config file triggers arbitrary code execution.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -1507,6 +1625,7 @@
       ],
       "description": "A hook script invokes subprocess.run / spawn with shell=True (or the equivalent in Node/Bash) while passing a composed string that includes caller-provided fields.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -1531,6 +1650,7 @@
       ],
       "description": "A settings.local.json or project-relative hook file executes before the Claude Code trust prompt. This is the core CVE-2025-59536 regression pattern; any project-contained hook must not run until trust is confirmed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -1556,6 +1676,7 @@
       "cve_references": [],
       "description": "A task in `.vscode/tasks.json` sets `runOptions.runOn: folderOpen`, so it runs as soon as the folder is opened \u2014 before any human interaction and before the workspace-trust prompt. This is the vector the keyv npm worm used to spread: a poisoned repository executes code the instant a victim opens it. Severity is high on its own and critical when the auto-run command is a shell, an interpreter, or a network fetch.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1581,6 +1702,7 @@
       "cve_references": [],
       "description": "A task in `.vscode/tasks.json` builds its `command`/`args` in a way that reaches a shell: a pipe-to-shell (`... | sh`), an interpreter invoked on a script path inside the repo, or a `${...}`/interpolated variable spliced into a shell string. A poisoned repository controls that string, so opening or running the task executes attacker-chosen code.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1606,6 +1728,7 @@
       "cve_references": [],
       "description": "A configuration in `.vscode/launch.json` sets `preLaunchTask` to a task that AAK flagged (a folderOpen auto-run or a shell-reaching command). Starting a debug session then runs that task, so the launch config is a second trigger for the same code-execution path. Reported as one finding naming both files.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1628,6 +1751,7 @@
       "cve_references": [],
       "description": "A `.vscode/tasks.json` or `.vscode/launch.json` file could not be parsed even after stripping JSONC comments and trailing commas. AAK reports this rather than skipping it silently: an unparseable config file is exactly where an auto-run task would hide from a scan.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Fix the JSON/JSONC syntax so the file can be audited. If it is intentionally not a VS Code task/launch config, move it out of `.vscode/`.",
@@ -1644,6 +1768,7 @@
       "cve_references": [],
       "description": "A 12-digit Aadhaar number passed the Verhoeff checksum and is embedded in project text. Aadhaar is restricted under the UIDAI Act and India DPDP \u00a78(4). Storing in code is a reportable breach.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1664,6 +1789,7 @@
       "cve_references": [],
       "description": "A 10-char PAN (5 letters + 4 digits + 1 letter) was detected. PAN is tax-linked personal data under DPDP \u00a78(4).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1684,6 +1810,7 @@
       "cve_references": [],
       "description": "A UPI VPA (<handle>@<psp>) was detected. UPI IDs are payment identifiers regulated by NPCI and covered by DPDP \u00a78(4).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1704,6 +1831,7 @@
       "cve_references": [],
       "description": "An IFSC code (4 letters + 0 + 6 alnum) was detected. IFSC is a banking identifier; pairing it with an account number constitutes DPDP \u00a78(4) 'sensitive personal data'.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1724,6 +1852,7 @@
       "cve_references": [],
       "description": "An Indian +91 mobile number (starting 6/7/8/9) was detected. Phone numbers are personal data under DPDP \u00a78(4).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1744,6 +1873,7 @@
       "cve_references": [],
       "description": "An Indian state-issued vehicle registration (e.g. 'MH 12 AB 1234') was detected. Vehicle registrations are PII in combination with driver records.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1764,6 +1894,7 @@
       "cve_references": [],
       "description": "A scanner module crashed during execution. The scan continued with the remaining scanners, but results may be incomplete. This is always a bug in agent-audit-kit itself; please file an issue with the evidence string.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "File an issue at https://github.com/sattyamjjain/agent-audit-kit/issues with the scanner name, exception class, and (if safe) the project shape.",
@@ -1787,6 +1918,7 @@
       "incident_references": [
         "IPI-WILD-2026-04-24"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1811,6 +1943,7 @@
       ],
       "description": "A dependency file pins langchain or langchain-core to a version earlier than 1.2.22. CVE-2026-34070 allows absolute paths and '..' traversal via load_prompt() / load_prompt_from_config().",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1835,6 +1968,7 @@
       ],
       "description": "Source code calls langchain.load_prompt() or load_prompt_from_config() with a user-controlled path argument. Even on patched versions, the allow_dangerous_paths escape hatch is a sharp edge.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1859,6 +1993,7 @@
       ],
       "description": "A dependency file pins langchain / langchainjs to a version vulnerable to GHSA-r399-636x-v7f6 / CVE-2025-68664, a serialization-injection chain that extracts secrets through crafted saved chains.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1885,6 +2020,7 @@
       "incident_references": [
         "LANGCHAIN-PROMPT-LOADER-2026-03"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1912,6 +2048,7 @@
       "incident_references": [
         "GHSA-fv5p-p927-qmxr"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -1935,6 +2072,7 @@
       "cve_references": [],
       "description": "Source code calls `ToolNode([...])` (or `ToolNode(some_list)`) with a positional list rather than the documented `ToolNode(tools=[...])` keyword form. langgraph-prebuilt 1.0.11 (2026-04-24) regressed and silently coerces a positional list into a single-tool node, dropping every tool past the first and producing message-loop bugs in agents that depend on tool-routing behaviour.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -1953,6 +2091,7 @@
       "cve_references": [],
       "description": "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations on your project.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1973,6 +2112,7 @@
       "cve_references": [],
       "description": "A dependency has no declared license, creating legal uncertainty about usage rights.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1993,6 +2133,7 @@
       "cve_references": [],
       "description": "A dependency has been flagged for DMCA/IP violations or contains leaked proprietary code.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2023,6 +2164,7 @@
       "incident_references": [
         "BERRIAI-LITELLM-2026-04-30"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -2049,6 +2191,7 @@
       ],
       "description": "An agent / LLM application feeds model-generated SQL into a database executor whose connection role holds code-execution or filesystem privileges, turning prompt-injected SQL into remote code execution. Two arms fire this rule: (a) an LLM-output value reaches a SQL-execution sink (`cursor.execute` / `conn.execute` / SQLAlchemy `text(...)` / a TS `.query()`/`.raw()` call) as the query itself \u2014 not as a bound parameter \u2014 with no allow-list or query-validation step; and (b) a DB connection string / role that grants the dangerous primitives (a superuser connection account, or a literal PostgreSQL `COPY ... FROM PROGRAM` / `pg_execute_server_program`, MySQL `FILE` / `INTO OUTFILE` / `LOAD_FILE`, or MS SQL `xp_cmdshell`) inside an LLM/agent context. CVE-2026-25879 is the documented instance: a text-to-SQL chat agent ran model output on a superuser connection and a prompt-injected `COPY ... FROM PROGRAM` produced a shell. CWE-94 (Code Injection) / CWE-89 (SQL Injection) chained to CWE-78 (OS Command Injection) through CWE-250 (Execution with Unnecessary Privileges). This is distinct from `AAK-TAINT-005`, where the tainted source is a tool *parameter* string-formatted into SQL rather than LLM output landing on an RCE-capable role.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -2079,6 +2222,7 @@
       "incident_references": [
         "GHSA-LMDEPLOY-VL-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -2106,6 +2250,7 @@
       ],
       "description": "A `@tool`-decorated function parameter flows into logger.info / print / sys.stdout.write / console.log without stripping control characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 MEDIUM, CWE-117) lets an attacker forge log entries and inject ANSI escape sequences to socially engineer an operator.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2130,6 +2275,7 @@
       "cve_references": [],
       "description": ".claude-plugin/marketplace.json lacks a signature or integrity hash field. An attacker with write access to the marketplace can replace the plugin bundle with no detection.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2154,6 +2300,7 @@
       "cve_references": [],
       "description": "A plugin's manifest grants access to filesystem, network, shell exec, or user-credential surfaces. Broad permissions should be opt-in after a clear user prompt.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2178,6 +2325,7 @@
       "cve_references": [],
       "description": "A plugin entry uses a name that is one edit distance from a popular upstream (e.g. 'anthropic', 'langchain', 'mcp'). Typosquatting is the single highest-volume supply-chain attack vector in 2026.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2202,6 +2350,7 @@
       "cve_references": [],
       "description": "A plugin entry pins to a branch (main/master) or tag without commit SHA. The maintainer (or an attacker with write access) can silently change plugin behavior post-install \u2014 the 'maintainer takeover' pattern from the June 2024 xz incident and its 2026 re-runs.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2224,6 +2373,7 @@
       "cve_references": [],
       "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom X-*-Key / *-API-Key credential-header family, and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. Unauthenticated remote servers can be MITM'd or spoofed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2246,6 +2396,7 @@
       "cve_references": [],
       "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2268,6 +2419,7 @@
       "cve_references": [],
       "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2292,6 +2444,7 @@
       ],
       "description": "More than 10 MCP servers in a single config. Large tool surface increases attack surface.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2314,6 +2467,7 @@
       "cve_references": [],
       "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2337,6 +2491,7 @@
       "cve_references": [],
       "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2359,6 +2514,7 @@
       "cve_references": [],
       "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2381,6 +2537,7 @@
       "cve_references": [],
       "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2403,6 +2560,7 @@
       "cve_references": [],
       "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2425,6 +2583,7 @@
       "cve_references": [],
       "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2449,6 +2608,7 @@
       ],
       "description": "A remote MCP server exposes an HTTP handler with no authentication check. Per MCP spec 2025-11-25 all remote servers must require OAuth 2.1 or an equivalent bearer credential. Matches the CVE-2026-33032 pattern where /mcp_message was exposed without the auth middleware that /mcp used.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2474,6 +2634,7 @@
       ],
       "description": "An MCP server's IP allowlist configuration defaults to an empty list, which its middleware interprets as 'allow all'. This is the exact CVE-2026-33032 root cause. Tight-by-default is required.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2496,6 +2657,7 @@
       "cve_references": [],
       "description": "An MCP HTTP endpoint sets Access-Control-Allow-Origin to '*' while also returning credentials/tokens. This allows hostile origins to read MCP responses from a victim browser session.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2518,6 +2680,7 @@
       "cve_references": [],
       "description": "An MCP client or server expects authentication tokens in URL query parameters. Query parameters land in server access logs, browser history, and referer headers, making this a token-leak vector.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2540,6 +2703,7 @@
       "cve_references": [],
       "description": "An MCP server exposes a resource/file handler that passes user-supplied paths to open()/fs.readFile without normalization or allowlist checks. 2,614 MCP implementations surveyed; 82% had this class of issue.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2562,6 +2726,7 @@
       "cve_references": [],
       "description": "An MCP server endpoint accepts request bodies without a maximum-size limit. This enables token-cost denial-of-service and memory exhaustion.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2586,6 +2751,7 @@
       "cve_references": [],
       "description": "An MCP server configuration binds to plain HTTP without TLS. MCP spec 2025-11-25 requires Streamable HTTP over TLS for remote servers.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2608,6 +2774,7 @@
       "cve_references": [],
       "description": "An MCP server endpoint does not declare rate limiting. Unrestricted access allows credential stuffing and enumeration attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2630,6 +2797,7 @@
       "cve_references": [],
       "description": "An MCP handler performs work (e.g. db lookups, external calls) before verifying authentication. This reveals existence/shape of protected resources via timing and error channels.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2654,6 +2822,7 @@
       ],
       "description": "Two MCP HTTP routes share a single handler but only one is wrapped in auth middleware. The second route inherits the tool surface without the auth check. This is the CVE-2026-33032 bypass pattern.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2685,6 +2854,7 @@
       ],
       "description": "9Router (`9router`) before 0.5.2 exposes MCP routes without authentication and reaches command execution: `src/proxy.js` did not protect `/api/cli-tools/*` and `/api/mcp/*`, allowing unauthenticated customPlugin registration and command execution through the MCP bridge (CVE-2026-46339, CVSS 10); the `isLocalRequest()` gate trusts spoofable Host/Origin headers (CVE-2026-49353); and unvalidated MCP plugin args reach `child_process.spawn()` for RCE via `/api/mcp//sse` (CVE-2026-62312). CVE-2026-63732 (CVSS 9.9) re-reports the same default-credential (`123456`) + spoofed-Host LOCAL_ONLY bypass + unvalidated `child_process.spawn()` plugin-registration chain on 0.4.59, also remediated by the 0.5.2 floor. Treat < 0.5.2 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2712,6 +2882,7 @@
       ],
       "description": "`agentic-flow` before 2.0.14 interpolates attacker-influenceable MCP tool parameters (`agent`, `task`, `name`, `language`, `agentdb`) directly into shell command strings passed to `execSync()` across its stdio / FastMCP server and agent/swarm/hooks tools, allowing arbitrary OS command execution as the MCP server user (CVE-2026-58195, CVSS 8.8). Treat < 2.0.14 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2740,6 +2911,7 @@
       ],
       "description": "AgenticMail gives AI agents real email addresses. In @agenticmail/claudecode < 0.2.39, @agenticmail/codex < 0.1.33, @agenticmail/core < 0.9.43, and @agenticmail/openclaw < 0.5.71, two inbound-mail handlers act on a privileged effect without verifying the sender is the operator (a sibling handler gates the same untrusted `From` provenance fail-closed with `isOperatorReplySender`). The high-impact path: any external email routed to the bridge inbox resumes the operator's Claude Code session with `permissionMode: 'bypassPermissions'`, embedding the attacker-controlled `from`/`subject`/`preview` verbatim into the prompt \u2014 an indirect prompt injection into a fully-privileged agent (Bash/Write/Edit/WebFetch + the agenticmail MCP toolbelt) running as the operator's OAuth identity (CVE-2026-57495). Fixed in @agenticmail/claudecode 0.2.39, @agenticmail/codex 0.1.33, @agenticmail/core 0.9.43, and @agenticmail/openclaw 0.5.71.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2768,6 +2940,7 @@
       ],
       "description": "The Amazon MQ MCP Server (`awslabs.amazon-mq-mcp-server`) before 2.0.24 does not restrict the broker hostname its RabbitMQ broker-connection tools connect to, so a remote unauthenticated actor who injects a crafted broker hostname into the MCP client context (via prompt injection) can make the server send the Amazon MQ for RabbitMQ broker credentials or OAuth access tokens to an attacker-controlled endpoint (CVE-2026-18655; CVSS 4.0 7.1 / 3.1 6.5). Fourth awslabs.*-mcp-server pin in this family. Fixed in 2.0.24; treat < 2.0.24 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2795,6 +2968,7 @@
       ],
       "description": "The Apify MCP server (`@apify/actors-mcp-server`) before 0.9.21 validates the `fetch-apify-docs` allowlisted documentation domains with `String.startsWith()` instead of hostname comparison, so attacker URLs such as `https://docs.apify.com.evil.com/` or `https://docs.apify.com@evil.com/` pass the `ALLOWED_DOC_DOMAINS` check and return arbitrary fetched content to the LLM (CVE-2026-46341, CVSS 6.1, SSRF). Treat < 0.9.21 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2822,6 +2996,7 @@
       ],
       "description": "`appium-mcp` (MCP Appium) before 1.85.10 interpolates attacker-controlled element attributes (text, content-desc, resource-id, locator selectors) into an HTML template literal in `createLocatorGeneratorUI` with no HTML/JS escaping. An attacker who controls the app-under-test UI can inject script into the MCP UI resource returned by `generate_locators`; when the victim's MCP client renders it, the script invokes arbitrary MCP tools via `window.parent.postMessage` (CVE-2026-58500, CVSS 8.2). Treat < 1.85.10 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2847,6 +3022,7 @@
       "cve_references": [],
       "description": "An MCP Apps (SEP-1865) `text/html` UI resource is rendered in an `<iframe>` with no `sandbox` attribute, or with a self-defeating `sandbox=\"allow-scripts allow-same-origin\"` (which lets the framed document script the host origin). MCP Apps UI is server-controlled, untrusted content running next to the user's agent session; without a restrictive sandbox it executes in the host context (XSS / token theft / tool invocation).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2872,6 +3048,7 @@
       "cve_references": [],
       "description": "An MCP Apps (SEP-1865) UI writes content to the DOM through a raw-HTML sink (`innerHTML` / `outerHTML` / `insertAdjacentHTML` / React `dangerouslySetInnerHTML` / Vue `v-html` / Svelte `{@html}`) with no sanitizer (DOMPurify / `sanitize*` / escaping) in the file. Server- or tool-provided content reaching an unsanitized HTML sink is DOM XSS \u2014 the injected script runs in the app frame with access to its postMessage tool bridge.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2896,6 +3073,7 @@
       ],
       "description": "A command / argv buffer is approved against an allow/deny list and then reassigned, re-split (`shlex.split` / `.split()`), re-joined, concatenated, `.extend()`/`.push()`-ed, or otherwise rebuilt before it is passed to a process-spawn sink (`subprocess.run`/`Popen`/`call`, `os.exec*` / `os.system`; Node `child_process.spawn`/`exec`/`execFile`, `execa`) \u2014 with no re-validation between the mutation and the spawn. The executed command shape therefore differs from the one that was approved, so an attacker-controlled argv can pass the allowlist check and still reach the shell. Anchor: CVE-2026-53822 (CVSS 8.8) \u2014 OpenClaw before 2026.5.18 contained a command injection where the shell wrapper argv could change between approval and execution. CWE-77 (Command Injection) chained to CWE-367 (Time-of-check Time-of-use Race Condition). Detected as an ordered approve -> mutate -> exec data flow on the same command variable; distinct from `AAK-SSRF-TOCTOU-001` (a URL allow-list DNS-rebind TOCTOU, not command spawn).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2923,6 +3101,7 @@
       ],
       "description": "AstrBot's `ToolsRoute.test_mcp_connection` (`astrbot/dashboard/routes/tools.py`, MCP Test Endpoint) fetches a caller-supplied `mcp_server_config.url`, allowing remote server-side request forgery (CVE-2026-15501, CVSS 6.3). NVD lists versions up to 4.25.2 as affected and the vendor did not respond, so treat <= 4.25.2 (and unpinned) as exposed and move to the latest release.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2952,6 +3131,7 @@
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2982,6 +3162,7 @@
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2995,6 +3176,31 @@
       "title": "mcp-atlassian Jira/Confluence content reaches file-write sink"
     },
     {
+      "adversa_references": [
+        "ADV-DATA-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-73498"
+      ],
+      "description": "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, before 0.22.0 passes the client-supplied `file_path` argument of `confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py`, without routing it through `validate_safe_path`. An authenticated MCP client can therefore read any file the server process can reach and exfiltrate it to Confluence as an attachment. Because the tool is agent-callable, untrusted content that induces an agent to call it reaches the same primitive, disclosing server environment material such as `CONFLUENCE_API_TOKEN` and other credentials (CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `mcp-atlassian` to >= 0.22.0 and pin it. If you vendor or reimplement the attachment path, validate the caller-supplied path against an allowed root before opening it (the fix's `validate_safe_path`), and treat any tool argument that reaches `open()` as untrusted.",
+      "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+      "sarif_name": "McpAtlassianAttachmentPathTraversal",
+      "severity": "high",
+      "title": "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
@@ -3004,6 +3210,7 @@
       "incident_references": [
         "arXiv:2605.24248"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03",
         "ASI04"
@@ -3032,6 +3239,7 @@
       ],
       "description": "MCP server authentication code concatenates or `os.path.join`-es an untrusted token / bearer credential into a filesystem path that is then used for a session existence / read check, without rejecting path separators / `..` or resolving-and-containing the result. Because the caller controls the token, they control the path: a value like `../../etc/passwd` or `../<another-user-session>` escapes the intended session directory, turning an auth check into arbitrary-file access and cross-session takeover. Anchor: CVE-2026-52830 (CVSS 9.4, CWE-22 Path Traversal) \u2014 `fast-mcp-telegram` before 0.19.1 joined the caller-supplied bearer token straight into the session file path used to test whether a session existed, so a crafted token traversed out of the session directory; fixed in 0.19.1. The Python detector is a stdlib-`ast` taint flow (token source -> path construction -> `exists`/`open` sink, suppressed by a separator/`..` reject or a resolve-and-contain guard); TS/JS/Rust use the analogous concat-into-path regex. Distinct from `AAK-MCP-015` (a resource-handler path traversal on a request *path* parameter) \u2014 here the tainted source is the auth *token* itself.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3043,6 +3251,31 @@
       "sarif_name": "McpAuthPathTraversal",
       "severity": "critical",
       "title": "MCP bearer-token joined into a session file path (path traversal)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-49857"
+      ],
+      "description": "`auth-fetch-mcp`, an MCP server that fetches authenticated web pages for assistants, blocks private and loopback destinations in `assertSafeUrl()` (`src/security.ts`), but its `isPrivateV6()` check misses IPv4-mapped IPv6 loopback addresses in hex-normalised form. A URL such as `http://[::ffff:127.0.0.1]:PORT/` is silently normalised by the Node WHATWG URL parser to `[::ffff:7f00:1]`; because `net.isIPv4('7f00:1')` is false, the private-address check does not fire and the URL reaches the browser or HTTP client, so an MCP tool call reaches loopback services the guard exists to protect. Exploitable under the default configuration with no special environment variable (CVE-2026-49857, CVSS 7.4). GHSA-pvrj-8cg3-j5f8 records the affected range as <= 3.0.1 with 3.0.2 the first patched release \u2014 note the NVD text's claim that 3.0.1 patches the issue is contradicted by the advisory's own version data.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `auth-fetch-mcp` to >= 3.0.2 and pin it. When validating a destination, resolve the host and test the resulting address, rather than pattern-matching the textual form: normalise IPv4-mapped IPv6 (`::ffff:a.b.c.d`, including its hex form) to IPv4 before the private-range check, and re-check after any redirect.",
+      "rule_id": "AAK-MCP-AUTHFETCH-CVE-2026-49857-001",
+      "sarif_name": "AuthFetchMcpMappedIpv6LoopbackBypass",
+      "severity": "high",
+      "title": "auth-fetch-mcp <= 3.0.1 (IPv4-mapped IPv6 loopback bypasses the SSRF guard)"
     },
     {
       "adversa_references": [
@@ -3060,6 +3293,7 @@
       ],
       "description": "The AWS API MCP Server (`awslabs.aws-api-mcp-server`) from 0.2.13 through 1.3.46 improperly handles a startup initialization failure: when the security policy enforcement data fails to initialize, the policy check is skipped for the entire lifetime of the process, so an actor can execute AWS API operations the user-configured policy was set to deny or gate. The IAM permissions on the configured credentials still apply, but the extra deny/gate layer the operator relied on is silently absent (CVE-2026-16584, CVSS 7.0). Fixed in 1.3.47; treat 0.2.13\u20131.3.46 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3091,6 +3325,7 @@
       ],
       "description": "Better Auth before 1.6.13 ships a cluster of OAuth flaws reachable through the `mcp` and legacy `oidcProvider` plugins (and `@better-auth/oauth-provider` from 1.6.0): the `refresh_token` grant authenticates only possession of the refreshToken row + matching `client_id` and never verifies the confidential client's `client_secret`, letting an attacker with a refresh token mint access/refresh tokens (CVE-2026-53512); the `authorization_code` grant redeems a single-use code via a non-atomic find-then-delete, so two concurrent requests both mint tokens (code replay, CVE-2026-53518); insecure cryptographic defaults advertise the `none` algorithm and accept plain PKCE by default (CVE-2026-67336, fixed 1.6.11); and registered `redirect_uris` are not scheme-validated, so a `javascript:` redirect URI executes in the authorization-server origin \u2192 session theft / account takeover (CVE-2026-67333, fixed 1.6.13). Treat < 1.6.13 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3113,6 +3348,7 @@
       "cve_references": [],
       "description": "A tool entry in a SEP-1649 server card (`/.well-known/mcp/server-card.json`) carries a `description` containing a tool-poisoning / imperative-injection payload \u2014 invisible Unicode, a prompt-injection directive, a cross-tool reference, or an encoded (base64/hex) blob. Because a client fetches and trusts the card *before* connecting, the injected instructions enter the model context ahead of any tool call. Detection reuses the AAK-POISON-001..006 detectors.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3135,6 +3371,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card's declared `transport` disagrees with its advertised capabilities: a remote transport (`http`/`sse`/`streamable-http`/`ws`, or a routable `endpoint` URL) while `authentication.required` is `false` (an anyone-can-connect network endpoint), or a `stdio`/local transport that nonetheless advertises a remote `endpoint`. A client that provisions based on the card's advertised shape connects to a transport it did not expect.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3157,6 +3394,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card carries no `signature` / `provenance` / `attestation` / `publisher` field, or one that is empty / a placeholder. The card's self-declared tool list, transport, and endpoint are then trusted with no proof of origin \u2014 a MITM or a typosquatting host can serve a forged card at the well-known path and the client will provision against it.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3179,6 +3417,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card asserts over-broad capabilities: a wildcard auth scope (`*` / `all`), a `capabilities` object with everything enabled and no constraint, or `authentication.required: true` paired with an empty `schemes` list (no enforceable method). Over-broad claims invite clients to grant more trust / scope than the server needs, widening blast radius on compromise.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3202,10 +3441,39 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-73222"
+      ],
+      "description": "Claude Code Templates (`claude-code-templates`), a CLI for configuring and monitoring Claude Code, before 1.29.4 launches the Claude Code Studio server (`cli-tool/src/sandbox-server.js`) via the `--studio` option bound to all interfaces on port 3444, with cross-origin requests permitted and no authentication. `POST /api/execute` passes the request-body `prompt` field to `executeLocalTask()` and `POST /api/install-agent` passes the `agentName` field to a child process; the same unsafe agent path is reachable from `/api/execute` through `checkAndInstallAgent()`. These attacker-controlled values reach `child_process.spawn()` with shell execution enabled, so shell metacharacters are interpreted as OS commands \u2014 arbitrary command execution with the developer's privileges. An attacker who can reach the port directly, or who lures a developer running Studio to a malicious website, compromises source code, credentials, and local data (CVE-2026-73222, CVSS 8.8). Fixed in 1.29.4 (the version before it is 1.29.2; no 1.29.3 was published, so treat < 1.29.4 and unpinned as exposed).",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Upgrade `claude-code-templates` to >= 1.29.4 and pin it. Do not run `--studio` on an untrusted network; bind the Studio server to loopback, require authentication, and reject cross-origin requests. Never pass request-body fields (`prompt`, `agentName`) into a shell.",
+      "rule_id": "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001",
+      "sarif_name": "ClaudeCodeTemplatesStudioCommandInjection",
+      "severity": "high",
+      "title": "claude-code-templates < 1.29.4 (--studio server: unauth 0.0.0.0:3444 \u2192 command-injection RCE)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-59723"
       ],
       "description": "The Cline (`cline`) Hub dashboard server before 3.0.30 accepts WebSocket connections on `/browser` without validating the Origin header, and when `ROOM_SECRET` is unset on a local 127.0.0.1 bind, `isAuthorizedBrowserRequest()` lets an attacker-controlled website send `desktopCommand` frames that read workspace state, mutate MCP and provider settings, and trigger command execution once a provider/model is configured (CVE-2026-59723, CVSS 8.8). Fixed in 3.0.30.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3236,6 +3504,7 @@
       ],
       "description": "`dbt-mcp` before 1.17.1 appends unsanitized `node_selection` / `resource_type` values to the dbt subprocess argv, letting an MCP client inject dbt global flags such as `--profiles-dir` / `--project-dir` / `--target` into `subprocess.Popen` even with `shell=False` (CVE-2026-44968); it also emits every tool call's full arguments (`sql_query`, `vars`, `node_selection`) through telemetry (CVE-2026-44970, on by default) and file logging (CVE-2026-44969) without redaction. Treat < 1.17.1 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -3264,6 +3533,7 @@
       ],
       "description": "`@arikusi/deepseek-mcp-server` from 1.4.2 up to (not including) 1.8.0 accepts caller-supplied `session_id` values in its process-global `SessionStore` without binding them to an authenticated principal, so an attacker can enumerate active sessions via `deepseek_sessions` and resume a victim's conversation via `deepseek_chat` (CVE-2026-55604, CVSS 8.6); its self-hosted HTTP transport also exposes `POST /mcp` with no `authProvider`, letting an unauthenticated client initialize a session and invoke tools that use the server-side `DEEPSEEK_API_KEY` (CVE-2026-55605, CVSS 5.3). Both fixed by 1.8.0.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3286,6 +3556,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `roots` capability \u2014 the `roots/list` request, the `notifications/roots/list_changed` notification, or the SDK aliases (`list_roots`, `ListRootsRequest`, `send_roots_list_changed`). The MCP 2026-07-28 spec release candidate deprecates `roots` (SEP-2577) under the new 12-month deprecation policy (SEP-2596): it stays functional for at least a year but is on the removal path. Roots leaked the client's workspace layout to every connected server, which the RC judged an unnecessary standing surface.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -3307,6 +3578,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `sampling` capability \u2014 the `sampling/createMessage` request, a `CreateMessageRequest` handler, or the SDK aliases (`create_message`, `.sampling.create`). The MCP 2026-07-28 spec release candidate deprecates `sampling` (SEP-2577) under the 12-month deprecation policy (SEP-2596). Server-initiated sampling made the server a privileged caller of the host LLM and had no clean stateless story; it is on the removal path. (Distinct from AAK-MCP-SAMPLING-001, which flags sampling wired up without a consent gate \u2014 this rule flags the deprecated capability itself.)",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -3328,6 +3600,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `logging` capability \u2014 the `logging/setLevel` request, the `notifications/message` log notification, or the SDK aliases (`set_level`, `SetLevelRequest`, `LoggingMessageNotification`, `LoggingLevel`). The MCP 2026-07-28 spec release candidate deprecates `logging` (SEP-2577) under the 12-month deprecation policy (SEP-2596). Protocol-level log-level control was redundant with host-side observability and is on the removal path.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -3354,6 +3627,7 @@
       ],
       "description": "`awslabs.documentdb-mcp-server` before 1.0.12 has incorrect authorization in its aggregation-pipeline tool: write-capable pipeline stages bypass the read-only-mode enforcement, so an authenticated MCP client can perform inappropriate write operations on the connected database (CVE-2026-18954, CVSS 5.5). A pinnable PyPI artifact (latest 1.0.14) the pin scanner resolves from `requirements.txt` / `pyproject.toml` / `uv.lock` / `.mcp.json`; the fifth pin in the existing `awslabs.*-mcp-server` family.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3376,6 +3650,7 @@
       ],
       "description": "An MCP server resolves `${VAR}` / `$VAR` placeholders against its own process environment (`process.env` in Node, `os.environ` / `os.path.expandvars` in Python) while parsing or validating a user-supplied MCP server config \u2014 typically the server URL. An authenticated user can then submit a URL like `https://attacker.example/?k=${JWT_SECRET}` and the server interpolates its own secrets into the outbound request, exfiltrating them to an attacker-controlled host. This is the CVE-2026-32625 class (LibreChat <= 0.8.3 resolved `${VAR}` against `process.env` during Zod validation of user-supplied MCP server URLs, leaking `CREDS_KEY`, `JWT_SECRET`, `MONGO_URI`, etc.; CWE-200, CVSS 9.6). Detected as a `${...}`-placeholder resolver that reads the process environment (`.replace(/.../, ... process.env ...)`, `os.path.expandvars(...)`, `.format(**os.environ)`) inside an MCP-server config/URL path.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3403,6 +3678,7 @@
       "incident_references": [
         "ARXIV-2604.20994"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3431,6 +3707,7 @@
       ],
       "description": "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent workflows, before 2.26.6 has `llm.chat` read provider credentials such as `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` from the environment and send them in the `Authorization: Bearer` header to a caller-controlled `base_url`. An actor who can steer `base_url` to a public host that clears the SSRF guard receives the operator's provider key (CVE-2026-67425, CVSS 8.6). Fixed in 2.26.6; treat < 2.26.6 (and unpinned) as exposed. The env-var-key exfil-to-caller-controlled-endpoint class here is adjacent to the config-side env-secret exfil surface `AAK-MCP-ENV-PLACEHOLDER-EXFIL-001` covers.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3459,6 +3736,7 @@
       ],
       "description": "`frontmcp` before 1.5.7 exposes live host Zod schema instances to the sandboxed `codecall:execute` tool through `getTool()`; because Zod v4's `_zod` is a non-configurable, non-writable own property, the Proxy invariants force the security membrane to return the raw host object, letting a script reach `_zod.constr.constructor` (the host Function constructor) and run arbitrary code as the server user. One `tools/call` is sufficient, and the framework's default public auth mode serves it to unauthenticated callers (CVE-2026-67531). A pinnable npm artifact (latest 1.6.0) the pin scanner resolves from `package.json` / lockfiles / `.mcp.json`.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05",
         "ASI04"
@@ -3487,6 +3765,7 @@
       ],
       "description": "The Amazon `mcp-gateway-registry` before 1.0.13 improperly neutralizes a caller-supplied `table_name` in the metrics-service retention-policy component: the value is interpolated directly into an SQL statement in identifier position, so an authenticated remote user can execute arbitrary SQL against the gateway's metrics store (CVE-2026-14471, HIGH CVSS 8.1, CWE-89, published 2026-07-06). A project that depends on the gateway registry at a version below 1.0.13 (or unpinned) is exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3514,6 +3793,7 @@
       ],
       "description": "The `gemini-bridge` MCP server (PyPI) from 1.0.0 through 1.3.0 has a path traversal in `consult_gemini_with_files`: in inline mode it reads any file path supplied in the `files` argument without confining it to the working directory, then forwards the contents to the Gemini CLI \u2014 so a caller can exfiltrate arbitrary files the server process can read (CVE-2026-54785, CVSS 6.2). Fixed in 1.3.1; treat 1.0.0\u20131.3.0 (and unpinned) as exposed. The npm `gemini-bridge` (0.1.x) is an unrelated package below the affected range.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -3541,6 +3821,7 @@
       ],
       "description": "`@adenot/mcp-google-search` up to and including 0.3.1 has server-side request forgery in its `read_webpage` tool (`src/index.ts`): the `url` argument is fetched without validating the host or scheme, so an indirect prompt injection can steer the server to fetch attacker-chosen internal endpoints (cloud metadata, loopback admin ports, RFC-1918 hosts) and return the response (CVE-2026-19337, CVSS 5.3). The affected artifact is the scoped npm package `@adenot/mcp-google-search` (versions 0.1.0\u20130.3.1, latest 0.3.1); the unscoped `mcp-google-search` (latest 1.0.0) is an unrelated package and is not pinned. No patched release is published yet \u2014 the upstream fix (commit `f071d491`) is unreleased \u2014 so every published version is treated as exposed (presence-only pin). Same SSRF-via-tool-argument shape as the astrbot MCP-test-endpoint pin.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3564,10 +3845,40 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-19516",
+        "CVE-2026-15583"
+      ],
+      "description": "`mcp-grafana` before 1.1.0 lets a caller-supplied `X-Grafana-URL` request header control the destination of the server's outbound requests, and the `grafana_api_request` tool lets the caller also choose the HTTP method, path, and body. Because the destination is not restricted to the configured Grafana instance, a caller can point requests at internal, loopback, and link-local services (including cloud metadata endpoints) and read the responses: server-side request forgery (CVE-2026-19516, CVSS 9.1). This is the incomplete-fix follow-up to CVE-2026-15583, whose fix stopped the configured service-account token from being sent to unintended destinations but did not restrict the destinations themselves, so the correct control is destination restriction, not token handling. mcp-grafana is a Go server but ships a resolvable PyPI wrapper (`uvx mcp-grafana`), so the pin scanner resolves it from `.mcp.json` / `requirements.txt` / `pyproject.toml` / `uv.lock`; the archived ledger note that it was unpinnable is now superseded. Fixed in 1.1.0, which restricts the destination to the configured instance.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `mcp-grafana` to >= 1.1.0, which restricts outbound requests to the configured Grafana instance. Do not let a caller-controlled `X-Grafana-URL` header choose the destination, and do not expose `grafana_api_request` to untrusted callers.",
+      "rule_id": "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+      "sarif_name": "McpGrafanaXGrafanaUrlSsrf",
+      "severity": "critical",
+      "title": "Grafana mcp-grafana SSRF via caller-controlled X-Grafana-URL destination (< 1.1.0)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-15643"
       ],
       "description": "`awslabs.healthlake-mcp-server` before 0.0.14 does not validate that pagination URLs derived from the `next_token` parameter point back to the expected HealthLake endpoint, so a remote authenticated caller can redirect subsequent requests to an attacker-controlled server and exfiltrate the AWS temporary security credentials the server attaches (CVE-2026-15643, CVSS 7.3, SSRF / CWE-918). Treat < 0.0.14 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3595,6 +3906,7 @@
       ],
       "description": "The AWS HealthOmics MCP server (`awslabs.aws-healthomics-mcp-server`) before 0.0.36 improperly limits pathnames in its linting tools, so an actor who can influence the MCP agent can write actor-controlled content outside the intended workflow-bundle directory via directory-traversal sequences in the `workflow_files` input (CVE-2026-15415, CVSS 5.5, CWE-22). Treat < 0.0.36 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -3622,6 +3934,7 @@
       ],
       "description": "A repository publishes an MCP server over HTTP / SSE / Streamable-HTTP (an `/mcp` route handler, or an `SSEServerTransport` / `StreamableHTTPServerTransport` / `--http` setup) with no inbound authentication marker on the handler, while also binding to all interfaces (`0.0.0.0` / `::`) or serving a wildcard `Access-Control-Allow-Origin: *`. The result is a mutation-capable RPC endpoint, backed by the operator's own tokens, reachable without credentials by any network (or, with wildcard CORS, any cross-origin browser) peer. This is a recurring 2026 class: GitLab MCP Server (CVE-2026-44895), Nocturne Memory (CVE-2026-44830), and AgenticMail (CVE-2026-50287) all shipped auth-less HTTP/SSE MCP transports on `0.0.0.0` with wildcard CORS. Generalises the Azure-only `AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP server (the Azure rule still owns Azure-MCP repos; this rule defers to it there). Beyond server source, this also flags the launch surface: MCP config files (`mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml` `command`/`args`), Docker `--host 0.0.0.0` / `-p 0.0.0.0:` publishes, and MCP Inspector / FastMCP startup args that bind a non-loopback interface (`0.0.0.0` / `::` / a routable IP) with no token / `requireAuth`, or with the Inspector kill-switch `DANGEROUSLY_OMIT_AUTH` set. CVE-2026-23744 (MCP Inspector, CVSS 9.8) is the motivating exemplar of the launch-bind variant; Censys counted ~12,520 MCP services exposed on the public internet in this shape. Two further 2026 instances of this exact class: CVE-2026-49257 (mcp-pinot <= 3.0.1, CVSS 10.0) defaults to an HTTP MCP server bound to `0.0.0.0:8080` with no authentication, exposing SQL execution as a confused deputy; CVE-2026-48989 (Windows-MCP < 0.7.5, CVSS 8.9) exposed the MCP control plane over HTTP without auth while enabling wildcard CORS. CWE-306 (Missing Authentication for Critical Function).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3651,6 +3964,7 @@
       "incident_references": [
         "MCPJAM-INSPECTOR-2026-04"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -3662,6 +3976,31 @@
       "sarif_name": "McpInspectorCve23744",
       "severity": "critical",
       "title": "Vendored mcpjam-inspector fork carries CVE-2026-23744"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-49856"
+      ],
+      "description": "`@jshookmcp/jshook`, an MCP server exposing JavaScript-analysis and security-research tools to agents, at 0.3.1 enforces its central SSRF authorization policy \u2014 which blocks private, loopback, link-local and reserved targets unless an authorization object explicitly permits private network access \u2014 only on the raw HTTP / TCP / TLS round-trip tools. The ICMP probe and traceroute tools resolve the caller's target and invoke the native ICMP / traceroute sink directly, skipping the policy. An MCP client holding an active network domain can therefore probe internal addresses even with local SSRF access disabled for every other raw network tool, yielding an internal reachability and route-mapping primitive from the server's network position (CVE-2026-49856, CVSS 4.3). Fixed in 0.3.2; GHSA-c5r6-m4mr-8q5j records 0.3.1 as the only affected release.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `@jshookmcp/jshook` to >= 0.3.2 and pin it. Route every network tool, including ICMP and traceroute, through the same SSRF authorization policy rather than gating only the raw HTTP/TCP/TLS paths.",
+      "rule_id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
+      "sarif_name": "JshookIcmpSsrfPolicyBypass",
+      "severity": "medium",
+      "title": "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)"
     },
     {
       "adversa_references": [
@@ -3679,6 +4018,7 @@
       ],
       "description": "`mcp-server-kubernetes` before 3.9.0 has an argument-injection flaw in its structured tools (`kubectl_get`, `kubectl_describe`, `kubectl_delete`): `resourceType` / `name` parameters with leading dashes bypass the `assertNoDangerousFlags` check, so an attacker can inject `--server` to redirect kubectl at an attacker-controlled API server, exfiltrating the operator's bearer token and enabling full cluster compromise (CVE-2026-61459, CVSS 9.8 CRITICAL). Fixed in 3.9.0.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -3706,6 +4046,7 @@
       ],
       "description": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -3739,6 +4080,7 @@
       ],
       "description": "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to unauthenticated remote code execution through its MCP stdio launcher: the `DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, `BASHOPTS`, and `PS4`, so an unauthenticated attacker can inject those environment variables into a launched stdio MCP server process and achieve arbitrary code execution (CVE-2026-12940, CVSS 9.8). The same 1.11.0 floor also remediates five further Langflow OSS CVEs disclosed for 1.0.0\u20131.10.3: CVE-2026-17623 (command-field RCE in MCP server configurations), CVE-2026-17626 (host-file read/modify via unfiltered Docker volume-mount and device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading the JWT signing secret, the SQLite DB, and process env). Fixed at or before 1.11.0; treat < 1.11.0 (and unpinned) as exposed. Pre-1.0.0 releases predate the MCP stdio launcher and are not in the affected range.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3767,6 +4109,7 @@
       ],
       "description": "`langgraph-checkpoint-postgres` and `langgraph-checkpoint-sqlite` before 3.1.1 persist hierarchical namespaces as a dot-joined string and scope reads by matching that string as a simple prefix pattern. A read scoped to one namespace can therefore also match a sibling namespace whose flattened form shares the same leading characters, or a label containing unescaped pattern metacharacters, so an authenticated caller retrieves another tenant's stored items through an ordinary scoped search or `list namespaces` call, with no crafted input (CVE-2026-71433, CVSS 5.3). Fixed in 3.1.1; the Postgres/SQLite sibling of the langgraph-checkpoint-mongodb checkpoint leak. Treat < 3.1.1 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3795,6 +4138,7 @@
       ],
       "description": "`@langchain/langgraph-checkpoint-mongodb` (the LangGraph.js MongoDB CheckpointSaver) at 1.3.0 and below passes checkpoint identifiers (`thread_id`, `checkpoint_ns`, `checkpoint_id`) from `config.configurable` into MongoDB `find()` queries in `MongoDBSaver.getTuple()` without type enforcement. An attacker who supplies an object payload (e.g. the MongoDB operators `$gt` / `$ne`) instead of a string has it interpreted as a query operator, bypassing thread scoping and leaking checkpoints, including pending writes, across tenants (CVE-2026-48121, CVSS 6.7). Fixed in 1.3.1; treat <= 1.3.0 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3820,6 +4164,7 @@
       "incident_references": [
         "ANTHROPIC-STAINLESS-2026-05-18"
       ],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "No action required for the rule fire itself \u2014 this is a lineage data point. For SBOM / supply-chain attestation, record the Stainless lineage alongside the package's own version metadata. If you'd prefer to suppress the rule in your project, add the rule ID to your `aak ignore` config \u2014 `INFO` rules are silent by default in `aak scan` unless `--severity info` is passed.",
@@ -3844,6 +4189,7 @@
       ],
       "description": "LiteLLM before 1.84.0 has two MCP-relevant flaws: its MCP Streamable-HTTP endpoint let a fabricated Authorization header trigger an OAuth2 passthrough fallback that replaced failed key validation with an empty `UserAPIKeyAuth()`, reaching MCP tooling without a valid key (CVE-2026-59822); and its Skills archive extraction did not validate ZIP entry paths, allowing path traversal outside the staging directory (CVE-2026-59820, fixed 1.83.7-stable). Both are fixed by 1.84.0. A project pinning `litellm` below 1.84.0 (or unpinned) is exposed. (CVSS not yet scored by NVD; auth bypass to MCP tooling.)",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3872,6 +4218,7 @@
         "OX-MCP-2026-04-25",
         "CLOUDFLARE-MCP-DEFENDER-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -3900,6 +4247,7 @@
       ],
       "description": "n8n before 2.27.4 (and the 2.28.x line before 2.28.1) did not enforce the \"Allowed HTTP Request Domains\" restriction on credentials when an AI-Agent MCP tool was pointed at an arbitrary URL, letting a member-level user with use-only access to a shared credential send its secret to an external server they control (CVE-2026-59207, CVSS 6.5). A project pinning `n8n` below 2.27.4 (or unpinned) is exposed; a 2.28.0 pin is also affected \u2014 move to 2.28.1.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3928,6 +4276,7 @@
       ],
       "description": "n8n before 2.29.8 (and the 2.30.x line before 2.30.1), affected from 2.27.0 when the OAuth 2.1 consent / token-issuance flow was introduced, does not verify that the authenticated user has access to the workflow referenced as the OAuth resource. On an instance with an active MCP Server Trigger workflow using n8n OAuth2 auth, a member-level user can register an OAuth client, self-approve consent for another user's workflow, and obtain a valid token; the workflow then runs in the owner's project with the owner's stored credentials, breaking user/project isolation (CVE-2026-65594). This is a distinct fix line from n8n's earlier 2.27.4 / 2.28.1 MCP auth-bypass pin, so it has its own rule. Treat 2.27.0\u20132.29.7 and 2.30.0 as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3939,6 +4288,34 @@
       "sarif_name": "N8nMcpOAuthWorkflowAuthzBypass",
       "severity": "high",
       "title": "n8n MCP Server Trigger OAuth workflow-authorization bypass (2.27.0\u2013<2.29.8, 2.30.0\u2013<2.30.1)"
+    },
+    {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-72768"
+      ],
+      "description": "n8n before 2.32.1 has a server-side-request-forgery-protection bypass in the MCP Client node: an authenticated user can craft a workflow whose MCP Client requests reach internal or blocked hosts without routing through n8n's SSRF protection, exposing internal services and reading their responses back through the workflow (CVE-2026-72768). A project pinning `n8n` below 2.32.1 (or unpinned) is exposed. This is a distinct MCP-Client-node SSRF from the earlier n8n credential-domain-bypass and OAuth two-branch-fix pins already carried by the pin scanner \u2014 a third n8n arm. Fixed in 2.32.1, with all prior versions affected.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `n8n` to >= 2.32.1 and pin it. Route the MCP Client node's outbound requests through n8n's SSRF protection so a workflow author cannot reach internal or blocked hosts, and segment the n8n runner from sensitive internal services.",
+      "rule_id": "AAK-MCP-N8N-CVE-2026-72768-001",
+      "sarif_name": "N8nMcpClientNodeSsrfBypass",
+      "severity": "medium",
+      "title": "n8n < 2.32.1 (MCP Client node bypasses SSRF protection \u2192 internal-host access)"
     },
     {
       "adversa_references": [
@@ -3957,6 +4334,7 @@
       ],
       "description": "n8n-MCP (`n8n-mcp`) in HTTP multi-tenant mode (`ENABLE_MULTI_TENANT=true`) does not isolate local workflow version-history backups per tenant: before 2.56.1 an authenticated tenant can read, delete, or destroy other tenants' workflow snapshots \u2014 including node definitions, credential references, and authorization headers (CVE-2026-54052, CVSS 9.9); before 2.57.4 a tenant can also reach default-scope `workflow_versions` backups from prior single-tenant deployments (CVE-2026-55608). Treat < 2.57.4 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3982,6 +4360,7 @@
       ],
       "description": "An MCP server ships an authentication check that does not actually enforce \u2014 distinct from a transport with no auth at all (`AAK-MCP-HTTP-NOAUTH-SERVER-001`). Three shapes are flagged: (a) an auth / `is_authorized` / `verify_token`-style function that returns a truthy/allow value when the secret or token is empty or unset (`if not SECRET: return True`); (b) a default / placeholder secret literal \u2014 a secret-named variable set to `\"\"` / `\"changeme\"` / `\"secret\"` / `\"admin\"` etc., or `os.environ.get(\"X_SECRET\", \"\")` with an empty default, so the server runs unauthenticated until an operator intervenes; (c) a missing-secret check that only logs a warning and continues while the server binds a non-loopback interface (`0.0.0.0` / `::`). Anchor: CVE-2026-48814 (Network-AI, CVSS 9.1) \u2014 an incomplete fix of CVE-2026-46701 whose added auth gate still admitted requests when the secret was unset. CWE-306 (Missing Authentication for Critical Function) + CWE-862 (Missing Authorization).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4006,6 +4385,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Decompose the operation into smaller MCP tools, each owning <=12 parameters, OR split the request body into nested sub-operations. If the breadth is required, expose a structured-output schema that the agent can consult before the call.",
@@ -4026,6 +4406,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Author a >=40-character description that names the operation's purpose, expected input shape, and side-effecting class. Agent tool-selection accuracy improves materially when descriptions disambiguate similar-looking operations.",
@@ -4046,6 +4427,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Split the tangled path into >=2 disjoint paths, each owning <=4 methods with method-name and path-segment in semantic agreement. Reserve verbs (`/get/...`, `/create/...`) for their corresponding HTTP methods only.",
@@ -4070,6 +4452,7 @@
       ],
       "description": "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an authorization-bypass in the MCP loopback feature that lets lower-trust callers execute owner-only tools by routing through configured input paths, so an attacker can execute or persist actions beyond their intended permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < `2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers forwarded during MCP SSE redirects, fixed in 2026.6.5). Treat that range (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4098,6 +4481,7 @@
       ],
       "description": "`@penpot/mcp` before 2.15.0 binds its ReplServer to `0.0.0.0:4403` and exposes an unauthenticated `/execute` endpoint that passes the `code` field to `PluginBridge.executePluginTask()`, letting anyone on the network execute arbitrary JavaScript on the server (CVE-2026-45805, CVSS 8.8). Treat < 2.15.0 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4127,6 +4511,7 @@
       ],
       "description": "PraisonAI before 4.6.78 exposes the MCP HTTP-stream transport without authentication by default: `praisonai mcp serve --transport http-stream` defaults `--api-key` to None and only enforces Authorization/Bearer checks when a key is configured, so an unauthenticated client can initialize a session, enumerate tools (`tools/list`), and invoke them (`tools/call`); arguments are also forwarded without validating the advertised inputSchema (CVE-2026-61427, CVSS 7.3). The same pin also covers CVE-2026-47394 \u2014 an arbitrary-file-read path traversal via `workflow.show` (and the dispatcher's unvalidated `**kwargs` from `tools/call`), an incomplete prior path-handling fix that was fully closed only in 4.6.40. The same floor also covers CVE-2026-48168 (CVSS 10, fixed 4.6.40): a command injection in PraisonAI's bundled Claude GitHub Actions workflow that splices an attacker-controlled pull-request branch name into a Bash `run:` block, with any `@claude` comment able to trigger the job, so a fork PR reaches arbitrary execution in the Actions runner. The 4.6.78 floor is the highest of the three, so a project pinned below it is exposed to all of them. Default bind is 127.0.0.1, so remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4154,6 +4539,7 @@
       ],
       "description": "Repomix before 1.14.1 lets the MCP server's `attach_packed_output` / `read_repomix_output` flow register and read arbitrary local `.json` / `.txt` / `.md` / `.xml` files without the `file_system_read_file` `runSecretLint()` safety check or packed-output validation, so MCP callers bypass the local file-read secret-scanning boundary and can read secrets Repomix would otherwise redact (CVE-2026-49988). Treat < 1.14.1 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4179,6 +4565,7 @@
       "cve_references": [],
       "description": "The 2026-07-28 spec (SEP-2243) adds routable request-metadata headers \u2014 `Mcp-Method` and `Mcp-Name` \u2014 so proxies can route and pre-authorize a JSON-RPC call from the HTTP header. This server/proxy makes a routing or authorization decision from that header but never cross-checks it against the authoritative JSON-RPC body `method`/`name`. A caller can set `Mcp-Method: tools/list` (allowed at the gateway) while the body invokes `tools/call` on a privileged tool \u2014 a header/body desync that smuggles the real call past the gate (confused-deputy). A flow that asserts the header equals the body method does not fire.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4206,6 +4593,7 @@
       ],
       "description": "The `ruflo` agent meta-harness before 3.16.3 shipped a default docker-compose deployment that exposed the MCP bridge `POST /mcp` and `POST /mcp/:group` endpoints with no authentication, letting an unauthenticated network attacker invoke `tools/call` for `terminal_execute`, obtain a shell in the bridge container, read provider API keys, and poison AgentDB learning-store patterns (CVE-2026-59726, CVSS 10 CRITICAL). Fixed in 3.16.3.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4231,6 +4619,7 @@
       "cve_references": [],
       "description": "An MCP server or client participates in the `sampling` capability (the server can request LLM completions through the client) without an accompanying elicitation/consent gate, human-approval flag, or documented risk acceptance. Sampling output must be treated as untrusted tool input \u2014 without a guard, a compromised or adversarial server can silently steer the client's LLM (and any tool calls it triggers).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4254,6 +4643,7 @@
       ],
       "description": "A tool/function JSON schema or MCP tool descriptor declares a parameter whose name disables or weakens sandboxing/isolation (e.g. `dangerouslyDisableSandbox`, `disable_sandbox`, `no_sandbox`, `allow_unsafe`, `skip_isolation`) inside the schema's `properties` \u2014 meaning the LLM, an untrusted principal, can set it in any tool_use response and turn off the very sandbox that contains tool execution. This is the CVE-2026-42074 class (OpenClaude < 0.5.1 exposed `dangerouslyDisableSandbox` in the BashTool input schema; CWE-284 / CWE-306, CVSS 9.8). A parameter that is genuinely operator-only must not live in the model-facing input schema; mark it `readOnly: true` or annotate it `\"x-aak-sandbox-control\": \"ops-only\"` (or `\"x-llm-settable\": false`) to assert it is set server-side, which suppresses this finding.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06",
         "ASI04"
@@ -4284,6 +4674,7 @@
       ],
       "description": "The official MCP Python SDK (`mcp` on PyPI) before 1.28.1 has three session-isolation flaws reachable over its HTTP transports: the SSE and stateful Streamable HTTP transports route requests by `session_id` / `Mcp-Session-Id` without verifying the authenticated principal that created the session, so another bearer-authenticated client with a known session ID can inject JSON-RPC messages (CVE-2026-52869); the `experimental.enable_tasks()` default handlers key tasks only by id, letting any client enumerate / read / cancel other clients' tasks (CVE-2026-52870, from 1.23.0); and the deprecated `websocket_server` transport accepts handshakes with no Host/Origin validation (CVE-2026-59950). Treat < 1.28.1 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4311,6 +4702,7 @@
       ],
       "description": "The Serena MCP coding toolkit (`serena-agent`) before 1.5.2 ships a built-in web dashboard that \"exposes an unauthenticated Flask API on a fixed, predictable port, with no authentication, no CSRF protection, and no Host header validation. A DNS rebinding attack allows a malicious webpage to reach this API from any browser and write arbitrary content to the agent's persistent memory store, which the agent reads and acts on autonomously. Combined with execute_shell_command using shell=True, this creates a remote code execution chain requiring only that the victim visit a malicious webpage while Serena is running.\" (NVD, CVE-2026-49471, HIGH CVSS 8.3, CWE-306 + CWE-352, published 2026-07-07). A project depending on `serena-agent` below 1.5.2 (or unpinned, or launched from an unpinned `oraios/serena` / `serena-mcp-server` reference) is exposed. Fixed in 1.5.2.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4338,6 +4730,7 @@
       ],
       "description": "An MCP tool handler passes an attacker-controllable URL argument (`url` / `endpoint` / `target` / `uri` and similar) straight into an outbound fetch (`requests` / `httpx` / `urllib` / `aiohttp`) without validating the host or scheme first, so a caller-supplied URL is fetched server-side and can reach loopback, private-range, or cloud-metadata endpoints (CWE-918, server-side request forgery). NVD, CVE-2026-14748: \"A flaw has been found in AIAnytime Awesome-MCP-Server ... the file mcp-wiki/src/mcp_wiki/server.py of the component mcp-wiki/wiki-summary. This manipulation of the argument url causes server-side request forgery. The attack may be initiated remotely. The exploit has been published.\" (CVSS 6.3 MEDIUM, https://nvd.nist.gov/vuln/detail/CVE-2026-14748).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -4366,6 +4759,7 @@
       ],
       "description": "MCP-for-Stata before 1.17.3 interpolates the `log_file_name` parameter of the `stata_do` API/CLI directly into a Stata command string without sanitization. Its `GuardValidator` scans only the do-file content, not this parameter, so a crafted `log_file_name` containing quotes, newlines, or Stata command separators injects arbitrary Stata commands \u2014 including `shell`, `python`, and `erase` \u2014 reaching OS command execution (CVE-2026-47708). Fixed in 1.17.3; treat < 1.17.3 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4389,6 +4783,7 @@
       "cve_references": [],
       "description": "Server or client code reads, writes, asserts, or constants the `Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate removes the `Mcp-Session-Id` header and the protocol-level session, replacing them with explicit server-minted state handles (SEP-2567); SEP-1442 / SEP-2575 make the initialization handshake optional so stateless is the default. After the final spec lands on 2026-07-28, code that depends on this header (or on the session it represented) will silently break: any MCP request can land on any server instance, and sticky routing / shared session stores at the protocol layer are no longer guaranteed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4412,6 +4807,7 @@
       "cve_references": [],
       "description": "Server or client code dispatches, handles, or names the `tasks/list` JSON-RPC method. The MCP 2026-07-28 spec release candidate removes `tasks/list` from the core because it cannot be scoped safely without the protocol-level session: the experimental Tasks primitive (SEP-1686) moves out of the core specification into the Extensions framework (redesigned as SEP-2663), and the stateful list surface has no stateless successor in core.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -4433,6 +4829,7 @@
       "cve_references": [],
       "description": "An MCP server's deployment manifest requires sticky routing (nginx `ip_hash`, Kubernetes `sessionAffinity: ClientIP`, Traefik / ALB sticky cookies) or its handler code reads a shared session store keyed by a per-connection id used across requests. The 2026-07-28 stateless transport guarantees that any MCP request can land on any server instance \u2014 sticky routing and gateway deep-packet-inspection to keep a client pinned to one pod stop being safe assumptions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -4453,6 +4850,7 @@
       "cve_references": [],
       "description": "Client code calls `tools/list` (or the SDK alias `list_tools`) inside a hot path / per-request loop with no caching marker (no `lru_cache`, TTL cache, dict memoization, or `cached_*` helper) nearby. Combined with reliance on per-session server state, this pattern multiplies round-trips and breaks when the 2026-07-28 stateless transport lets successive requests hit different server instances with different tool catalogs.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [
         "MCP07:2025"
@@ -4487,6 +4885,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -4525,6 +4924,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -4563,6 +4963,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -4601,6 +5002,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -4627,6 +5029,7 @@
       ],
       "description": "An MCP stdio server definition (`command` + `args` in a `.mcp.json` / `mcpServers` block) launches a shell-style interpreter (`npx`, `node`, `bash`, `sh`, `python`) with a code-execution flag (`-c`, `-e`, `--eval`), or passes an arg carrying a template / interpolation token (`${...}` embedded in a larger string, `{{...}}`, `%s`) that is not a pinned static literal. Either shape turns the launched process into an arbitrary-code sink the moment the value is attacker- or model-influenced. This is the CVE-2026-40933 class (Flowise < 3.1.0 unsafely serialised stdio commands in its MCP adapter \u2014 an authenticated actor could register an stdio server whose allowlisted launcher, e.g. `npx`, was combined with `-c` to run arbitrary OS commands; CWE-78, CVSS 9.9). Distinct from AAK-MCP-002 (which inspects only the `command` string for `sh -c`/`bash -c` wrappers and shell metacharacters, never `args`) and from the source-code taint rules AAK-MCP-STDIO-CMD-INJ-001..004 (which model `StdioServerParameters(command=tainted)` in Python/TS/Java/Rust). A standalone env reference (`${VAR}`) is treated as pinned and does not fire.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05",
         "ASI02"
@@ -4655,6 +5058,7 @@
       ],
       "description": "The `mcp-text-editor` MCP server's `_validate_file_path` (`mcp_text_editor/text_editor.py`) mishandles a caller-supplied `file_path`, allowing remote path traversal (CVE-2026-15138, CVSS 6.3). NVD lists versions up to 1.0.2 as affected; the vendor closed the report without an explanation, so treat <= 1.0.2 (and unpinned) as exposed and move to the latest release.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -4682,6 +5086,7 @@
       "incident_references": [
         "NVD-CVE-2026-44717"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -4706,6 +5111,7 @@
       ],
       "description": "An MCP server gates tools by an allowlist / read-only / non-destructive control (e.g. `ALLOWED_TOOLS`, `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`, a `*READONLY*` / `*NON_DESTRUCTIVE*` env var or config) and applies that check in the tool-discovery handler (`tools/list` / `list_tools` / `ListToolsRequestSchema`) but NOT in the execution handler (`tools/call` / `call_tool` / `CallToolRequestSchema`). A client that skips discovery and calls a hidden tool name directly bypasses the control entirely \u2014 the gate is cosmetic. This is the CVE-2026-46519 class (mcp-server-kubernetes < 3.6.0 documented three env vars as access controls but enforced them only at the discovery layer; CWE-863 Incorrect Authorization, CVSS 8.8). This is an enforcement-layer asymmetry \u2014 distinct from AAK-MCPWN-001, which is a transport-middleware route asymmetry (`/mcp_message` vs `/mcp`). Do not conflate the two.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI02"
@@ -4730,6 +5136,7 @@
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -4755,6 +5162,7 @@
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4779,6 +5187,7 @@
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03",
         "ASI06"
@@ -4797,6 +5206,31 @@
       "adversa_references": [
         "ADV-AUTH-01"
       ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-73296"
+      ],
+      "description": "Microsoft UFO, the open-source framework for intelligent automation across devices and platforms, before 3.0.8 exposes two Streamable-HTTP MCP services from `ufo/client/mcp/http_servers/mobile_mcp_server.py`: `create_mobile_data_collection_server` on TCP 8020 and `create_mobile_action_server` on TCP 8021. Neither applies inbound authentication, so an unauthenticated remote attacker who can reach either port invokes `capture_screenshot`, `get_ui_tree`, `tap`, `swipe`, `type_text`, `launch_app`, `press_key` and `click_control` against the ADB-connected Android device \u2014 disclosing screen contents and device data, and modifying device state (CVE-2026-73296, CVSS 9.4). Fixed in 3.0.8. UFO is distributed as a git checkout rather than a PyPI or npm artifact (`ufo` on npm is unjs's unrelated URL library), so this ships as a detection rule rather than a version pin.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Upgrade UFO to >= 3.0.8. Bind the mobile data-collection and mobile action MCP servers to 127.0.0.1 rather than all interfaces, and require an inbound credential on both. Do not expose an ADB-connected device's MCP control surface to any untrusted network.",
+      "rule_id": "AAK-MCP-UFO-CVE-2026-73296-001",
+      "sarif_name": "UfoMobileMcpUnauthenticated",
+      "severity": "critical",
+      "title": "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
       "aicm_references": [
         "IAM-01",
         "IVS-04",
@@ -4809,6 +5243,7 @@
       ],
       "description": "The WhatsApp MCP Server's `whatsapp-bridge` HTTP API before 0.2.1 listens on 127.0.0.1:8080 with no authentication and no Host-header validation, and its `/api/send` endpoint accepts an absolute `media_path` with no directory confinement. Any local process running as the same user \u2014 which in an MCP session includes sibling MCP servers, IDE extensions, and tool-triggered flows \u2014 can send WhatsApp messages from the paired account and read then exfiltrate arbitrary user-readable files (SSH keys, browser session data, dotfiles) as document attachments; the missing Host validation also enables DNS-rebinding from a visited webpage (CVE-2026-46555, CVSS 7.7). Fixed in 0.2.1, which adds required bearer-token auth, a Host allow-list, and media_path confinement. Treat < 0.2.1 (or unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4837,6 +5272,7 @@
       "incident_references": [
         "NVD-CVE-2026-44717"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -4865,6 +5301,7 @@
       ],
       "description": "Project depends on `mcp-framework` at a version < 0.2.22, or a TS/JS file implements an MCP HTTP transport that concatenates request body chunks into a string without consulting Content-Length or a `maxMessageSize` guard. CVE-2026-39313 lets an unauthenticated attacker crash the server with a single large POST to /mcp by exhausting process memory. Fixed in 0.2.22.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -4894,6 +5331,7 @@
       "incident_references": [
         "MCPWN-2026-04-16"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -4923,6 +5361,7 @@
       ],
       "description": "`meta-ads-mcp` before 1.0.109 has `AuthInjectionMiddleware.dispatch()` unconditionally forward unauthenticated Streamable-HTTP requests to downstream MCP tool handlers without a 401, so any network-reachable caller invokes tools unauthenticated. With no per-request credential the handlers fall back to the `META_ACCESS_TOKEN` env var, and when the downstream Meta Graph API call fails the raw `httpx` request URL \u2014 including the operator's `access_token` query parameter \u2014 is serialised into the JSON-RPC response, delivering the credential to the unauthenticated caller (CVE-2026-48039, CVSS 9.1). Fixed in 1.0.109; treat < 1.0.109 (and unpinned) as exposed.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4948,6 +5387,7 @@
       "incident_references": [
         "ARXIV-2605.10067"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -4972,6 +5412,7 @@
       "incident_references": [
         "ARXIV-2605.10067"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -4997,6 +5438,7 @@
       ],
       "description": "A dependency pin targets mcp-neo4j-cypher earlier than 0.6.0, or source code sets read_only=True while issuing CALL apoc.* / db.cypher.runWrite procedures. CVE-2026-35402 (CVSS 2.3 LOW, but integrity-critical) lets attackers bypass the read-only mode and execute arbitrary writes or SSRF.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -5024,6 +5466,7 @@
       ],
       "description": "Project depends on `next-ai-draw-io` at a version below 0.4.15. CVE-2026-40608 is a body-accumulation OOM in the embedded HTTP sidecar's /api/state, /api/restore and /api/history-svg handlers \u2014 the entire request body is concatenated into a JavaScript string without a size cap, so a single ~500 MiB POST exhausts V8 heap and crashes the MCP server. Same DoS class as AAK-MCPFRAME-001. Fixed in 0.4.15.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -5049,6 +5492,7 @@
       "cve_references": [],
       "description": "An OAuth 2.1 client flow does not use PKCE. PKCE is mandatory for all MCP remote server clients per spec 2025-11-25, including confidential clients.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5073,6 +5517,7 @@
       "cve_references": [],
       "description": "An OAuth client sets code_challenge_method=plain (or omits it). S256 is mandatory; 'plain' leaks the verifier to anyone with access to the authorization request.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5097,6 +5542,7 @@
       "cve_references": [],
       "description": "An MCP server receives a bearer token from one identity and forwards it to a downstream service without re-minting. This is the 'confused deputy' shape banned by OAuth 2.1 BCPs.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5121,6 +5567,7 @@
       "cve_references": [],
       "description": "An OAuth client registers a wildcard, localhost-with-any-port, or overly-broad redirect_uri. Attackers can hijack authorization codes via dangling subdomains or open redirectors.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5145,6 +5592,7 @@
       "cve_references": [],
       "description": "An MCP remote server accepts plain Bearer tokens on a flow that MCP spec 2025-11-25 flags for DPoP (Demonstrating Proof of Possession) or mTLS-bound tokens. A stolen Bearer token is fully replayable.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5170,6 +5618,7 @@
       "cve_references": [],
       "description": "An OAuth authorization-code client processes the authorization response / redirect callback (reads `code` and `state`, or exchanges the code at the token endpoint) but never references the `iss` parameter. The MCP 2026-07-28 spec release candidate (SEP-2468) requires clients to validate `iss` on authorization responses per RFC 9207 \u2014 without it, an attacker who controls one authorization server in MCP's single-client / many-server deployment can mount an OAuth mix-up attack and have the client redeem a code at the wrong server. This is the token-issuer-validation arm of the 2026-07-28 final MCP auth profile (scanned together with RFC 8707 resource indicators, `AAK-OAUTH-007`, and RFC 9728 Protected-Resource-Metadata discovery, `AAK-OAUTH-008`, via `--profile mcp-2026-07-28`). A later spec version will require rejecting responses that omit `iss` entirely.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5195,6 +5644,7 @@
       "cve_references": [],
       "description": "An OAuth 2.1 authorization/token flow \u2014 or an MCP client/server config that advertises OAuth 2.1 \u2014 builds authorization and/or token requests without the RFC 8707 `resource` parameter. The ratified MCP 2025-11-25 authorization spec requires MCP clients to send `resource` on both the authorization request and the token request, identifying the MCP server by its canonical URI, so the authorization server audience-binds the issued token. Without Resource Indicators the token is not bound to a specific MCP server, so a token minted for one server can be replayed at another (token replay / audience confusion) \u2014 the confused-deputy class OAuth 2.1 \u00a75.2 and the MCP spec's Access Token Privilege Restriction section forbid.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5220,6 +5670,7 @@
       "cve_references": [],
       "description": "A remote MCP OAuth surface presents no RFC 9728 Protected Resource Metadata discovery: a client config points at a remote (HTTP/SSE) MCP server and carries an inline / static credential (an `Authorization` / `Bearer` header, an `auth` block, or an embedded token) with no reference to `/.well-known/oauth-protected-resource`, `authorization_servers`, or `resource_metadata`; or MCP server source enforces bearer auth (e.g. `WWW-Authenticate`, a FastMCP `BearerAuthProvider`) without serving Protected Resource Metadata. The ratified MCP 2025-11-25 auth spec requires servers to implement RFC 9728 so clients can discover the authorization server and obtain an audience-bound token instead of relying on a pre-shared secret; the 2026-07-28 final auth profile builds on it. Without PRM the deployment cannot participate in discovery-based auth and typically hardcodes credentials.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5244,6 +5695,7 @@
       "incident_references": [
         "VERCEL-2026-04-19"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -5268,6 +5720,7 @@
       "incident_references": [
         "VERCEL-2026-04-19"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -5292,6 +5745,7 @@
       "incident_references": [
         "IRONPLATE-2026-04-07"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5312,6 +5766,7 @@
       "cve_references": [],
       "description": "Meta / informational rule that surfaces the project's static CVE coverage map (`agent_audit_kit/data/ox-cve-manifest.json`). Drives the OX-coverage badge endpoint and the `aak coverage --source ox` CLI; never fires findings on user code.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Run `aak coverage --source ox` to see which OX-disclosed CVEs are covered by AAK rules. The manifest is regenerated on every release and powers the `OX coverage` badge in README.",
@@ -5332,6 +5787,7 @@
       "cve_references": [],
       "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5356,6 +5812,7 @@
       "cve_references": [],
       "description": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5380,6 +5837,7 @@
       "cve_references": [],
       "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5404,6 +5862,7 @@
       "cve_references": [],
       "description": "Tool description contains base64, hex, or URL-encoded content that could hide malicious instructions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5428,6 +5887,7 @@
       "cve_references": [],
       "description": "Tool description exceeds 500 characters, which increases the surface area for hidden instructions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5452,6 +5912,7 @@
       "cve_references": [],
       "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5474,6 +5935,7 @@
       "cve_references": [],
       "description": "Meta / informational rule that surfaces AAK's static coverage of the public Prisma AIRS 3.0 attack catalog. Drives `aak coverage --source prisma-airs` and the published coverage matrix. Never fires findings on user code.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Run `aak coverage --source prisma-airs` to see how AAK's static ruleset maps onto Palo Alto's published Prisma AIRS attack catalog. The map is hand-curated; entries flagged `status: catalog-private` are not publicly disclosed and intentionally absent from AAK coverage.",
@@ -5495,6 +5957,7 @@
       "incident_references": [
         "ANTHROPIC-PROJECT-DEAL-2026-04-26"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5520,6 +5983,7 @@
       "incident_references": [
         "COMMENT-AND-CONTROL-2026-04-25"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5544,6 +6008,7 @@
       "cve_references": [],
       "description": "A routine configuration declares tool permissions wider than what the same user has in interactive Claude Code. A routine running non-interactively at 3am with admin-level tools is an excessive-agency risk (OWASP ASI05).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -5566,6 +6031,7 @@
       "cve_references": [],
       "description": "A routine's cron expression, HTTP webhook URL, or GitHub event filter is built from a user-controlled value. Schedule injection can repurpose the routine at off-hours without review.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -5588,6 +6054,7 @@
       "cve_references": [],
       "description": "A routine runs tool calls but writes no run-log, making post-hoc audit impossible. An attacker with edit access to the routine file can run anything and delete the evidence.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -5610,6 +6077,7 @@
       "cve_references": [],
       "description": "A tool's definition (name, description, or input schema) has changed since it was last pinned. This could indicate a rug pull attack.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5632,6 +6100,7 @@
       "cve_references": [],
       "description": "A new tool was added to an MCP server since the last pin. New tools should be reviewed before approval.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5654,6 +6123,7 @@
       "cve_references": [],
       "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5676,6 +6146,7 @@
       "cve_references": [],
       "description": "A repository whose name or pyproject keywords declare it as an MCP server ships without a top-level SECURITY.md AND without a `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -5700,6 +6171,7 @@
       "cve_references": [],
       "description": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5724,6 +6196,7 @@
       "cve_references": [],
       "description": "An OpenAI API key (sk-*) was found in a project file.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5748,6 +6221,7 @@
       "cve_references": [],
       "description": "AWS access key ID or secret access key found in a project file.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5772,6 +6246,7 @@
       "cve_references": [],
       "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5796,6 +6271,7 @@
       "cve_references": [],
       "description": "A private key file (*.pem, *.key, id_rsa, etc.) or PEM content was found in the project.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5820,6 +6296,7 @@
       "cve_references": [],
       "description": "A .env file exists but .gitignore does not contain a .env exclusion pattern.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5844,6 +6321,7 @@
       "cve_references": [],
       "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5868,6 +6346,7 @@
       "cve_references": [],
       "description": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5892,6 +6371,7 @@
       "cve_references": [],
       "description": "A Google Cloud service account key JSON file was found in the project.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -5920,6 +6400,7 @@
       "incident_references": [
         "MSRC-2026-05-07"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05",
@@ -5944,6 +6425,7 @@
       "cve_references": [],
       "description": "A SKILL.md frontmatter or body declares a post-install or auto-run command (bash, curl, pipe-to-sh, wget). Skills should be declarative; arbitrary installation commands are a rug-pull risk.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5968,6 +6450,7 @@
       "cve_references": [],
       "description": "A SKILL.md body contains hidden characters (bidi override, zero-width, tag-unicode) that render differently than they parse. This hides malicious tool-use instructions from human review.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -5992,6 +6475,7 @@
       "cve_references": [],
       "description": "A SKILL.md references outbound HTTP tools (fetch/curl/request) combined with instructions to send local data (files, environment, credentials).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6016,6 +6500,7 @@
       "cve_references": [],
       "description": "A skill's frontmatter name or description mimics a well-known skill ('pdf', 'docx', 'frontend-design') but the body declares unrelated / hostile instructions. Description hijacking is the ToxicSkills 2026 signature pattern.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6040,6 +6525,7 @@
       "cve_references": [],
       "description": "A SKILL.md frontmatter or YAML header embeds phrases targeted at the loading model ('ignore previous', 'you are now', 'system:'). These are prompt-injection probes rather than legitimate skill metadata.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -6065,6 +6551,7 @@
       "incident_references": [
         "ARXIV-2605.18401"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -6088,6 +6575,7 @@
       ],
       "description": "Install or skill-setup code resolves an executable, interpreter, or build tool from a workspace-controlled source and runs it without an absolute-path pin or allowlist, so the workspace decides which binary executes. Detected sources: a `.env` / dotenv-sourced variable (`load_dotenv()` then `os.environ.get(...)` / `os.getenv(...)` / `dotenv_values(...)`), a `PATH` prepended with a non-absolute / workspace directory (`os.environ['PATH'] = os.getcwd() + os.pathsep + ...`), `shutil.which(...)` resolved over such a tainted `PATH`, or a Homebrew / package-manager binary chosen via an env override (`HOMEBREW_*` / `BREW`). Anchor: CVE-2026-53819 (CWE-426 Untrusted Search Path, CVSS 8.7) \u2014 OpenClaw before 2026.5.27 let a workspace `.env` override the Homebrew executable selection during skill install, executing unintended Homebrew-compatible binaries to compromise the system. This is an install-time code-execution sink, distinct from `AAK-CLAUDE-WIN-001` (a Windows ProgramData config-path hijack) and from the `AAK-SKILL-001..005` SKILL.md content checks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6117,6 +6605,7 @@
       "incident_references": [
         "SVD-2026-0405"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6146,6 +6635,7 @@
       "incident_references": [
         "SVD-2026-0405"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6170,6 +6660,7 @@
       "cve_references": [],
       "description": "An MCP tool handler fetches a URL provided by the caller with no host/scheme validation. This is the classic SSRF shape (CWE-918).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6194,6 +6685,7 @@
       "cve_references": [],
       "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6218,6 +6710,7 @@
       "cve_references": [],
       "description": "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP metadata) or metadata.google.internal, allowing exfiltration of instance credentials.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6242,6 +6735,7 @@
       "cve_references": [],
       "description": "An MCP tool follows HTTP redirects using the default client settings. An attacker can bypass initial host checks by returning a 3xx to an internal address. DNS rebinding works the same way.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6266,6 +6760,7 @@
       "cve_references": [],
       "description": "An MCP tool performs outbound HTTP but has no allowlist of permitted destinations. Deny-by-default with an explicit allowlist is the only reliable defense against SSRF chains.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6295,6 +6790,7 @@
       "incident_references": [
         "GHSA-r7w7-9xr2-qq2r"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6315,6 +6811,7 @@
       "cve_references": [],
       "description": "A privacy policy / notice lacks the CCPA-lineage opt-out-of-sale language that Alabama DPPA, CCPA, CPRA, VCDPA, and the other 21 state comprehensive privacy laws converge on.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Add a 'Do Not Sell / Share My Personal Information' section and a usable opt-out mechanism.",
@@ -6331,6 +6828,7 @@
       "cve_references": [],
       "description": "A privacy policy does not describe the consumer's access, deletion, or portability rights \u2014 mandatory across every state comprehensive privacy law passed 2018-2026.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Describe DSAR submission, 45-day cure window where applicable, and the portability format.",
@@ -6347,6 +6845,7 @@
       "cve_references": [],
       "description": "A privacy policy does not expose a data-controller contact (DPO email / privacy@ / mailing address). Required by most state laws and a prerequisite for any DSAR.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [],
       "owasp_mcp_references": [],
       "remediation": "Add a privacy@ inbox and a postal mailing address for DSARs.",
@@ -6379,6 +6878,7 @@
       "incident_references": [
         "OX-MCP-2026-04-15"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -6403,6 +6903,7 @@
       "cve_references": [],
       "description": "MCP server args contain package names without @x.y.z version pinning. Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6427,6 +6928,7 @@
       "cve_references": [],
       "description": "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6452,6 +6954,7 @@
       "cve_references": [],
       "description": "package.json has install scripts (preinstall, postinstall, etc.) that execute arbitrary commands during npm install.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6476,6 +6979,7 @@
       "cve_references": [],
       "description": "A package manifest exists but no lockfile was found. Without lockfiles, dependency versions float and can be silently updated.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6500,6 +7004,7 @@
       "cve_references": [],
       "description": "More than 200 direct + transitive dependencies in lockfile. Each dependency is a trust decision.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6524,6 +7029,7 @@
       "cve_references": [],
       "description": "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -6548,6 +7054,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is passed to os.system(), subprocess, or similar shell execution functions without sanitization.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -6572,6 +7079,7 @@
       "cve_references": [],
       "description": "A @tool function parameter flows to eval(), exec(), or compile() enabling arbitrary code execution.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -6596,6 +7104,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is used in open() or file path construction, enabling path traversal attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -6620,6 +7129,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is passed to requests.get/post or urllib, enabling SSRF attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -6644,6 +7154,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is used in cursor.execute() or similar database query functions via string formatting.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -6668,6 +7179,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is passed to pickle.loads(), yaml.load(), or similar deserialization functions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -6692,6 +7204,7 @@
       "cve_references": [],
       "description": "A @tool function has no type hints or input validation on its parameters.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -6716,6 +7229,7 @@
       "cve_references": [],
       "description": "A @tool function accesses more than 3 different dangerous sinks, indicating overly broad permissions.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -6738,6 +7252,7 @@
       "cve_references": [],
       "description": "A task read endpoint returns task state based on the task ID alone. Any caller that guesses or enumerates a task ID gets another user's data (CWE-639).",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6760,6 +7275,7 @@
       "cve_references": [],
       "description": "A task record retains API keys / OAuth tokens after the task reaches a terminal state (completed/failed/cancelled). Long-lived credentials in persistent state are an obvious exfil target.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6782,6 +7298,7 @@
       "cve_references": [],
       "description": "A task record has no expiration and no cancellation endpoint. Orphaned tasks accumulate forever, including their inputs.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6807,6 +7324,7 @@
       "cve_references": [],
       "description": "The MCP Tasks primitive (SEP-2663) exposes a task-creation path (`tasks/create`, `create_task`, `enqueue`, `submit`) with no per-caller quota, max-in-flight, or concurrency bound. Unbounded task creation lets a caller flood the server with long-running tasks and exhaust memory / worker capacity \u2014 a task-flood denial of service. This is distinct from a missing TTL / cancellation path (AAK-TASKS-003): a server may expire and cancel tasks yet still accept unlimited concurrent creation.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI08"
       ],
@@ -6832,6 +7350,7 @@
       "incident_references": [
         "BHASIA-2026-TIKTOK-HIJACK"
       ],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -6855,6 +7374,7 @@
       "cve_references": [],
       "description": "An agent project exposes both a sensitive source tool (filesystem read, secrets read, database query) and an external sink tool (HTTP POST, email send, git push) without an explicit `.aak-toxic-flow-trust.yml` allow-list entry. Even if each tool is individually safe, the LLM can chain them \u2014 the canonical exfil pattern is `read_file -> http.post`. Suppress with an allow-list when the pairing is a documented product feature.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI02",
         "ASI09"
@@ -6880,6 +7400,7 @@
       "cve_references": [],
       "description": "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic including credentials to interception.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6904,6 +7425,7 @@
       "cve_references": [],
       "description": "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, enabling MITM attacks.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6928,6 +7450,7 @@
       "cve_references": [],
       "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI08"
       ],
@@ -6952,6 +7475,7 @@
       "cve_references": [],
       "description": "A session token or API key is passed as a URL query parameter, risking exposure in logs and referrer headers.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6978,6 +7502,7 @@
       ],
       "description": "Auto-approves ALL MCP servers in .mcp.json without user consent. A compromised repo can ship arbitrary MCP servers that execute immediately.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -7004,6 +7529,7 @@
       ],
       "description": "Redirects all API traffic (including API keys) to attacker-controlled endpoint BEFORE trust prompt displays. This is the exact attack vector of CVE-2026-21852.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -7028,6 +7554,7 @@
       "cve_references": [],
       "description": "Permission allow patterns use wildcards (*, **) or broad tool names. This bypasses the permission system, allowing unchecked tool execution.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -7052,6 +7579,7 @@
       "cve_references": [],
       "description": "Settings file has permission allows but empty or missing deny rules. Defense-in-depth requires explicit deny rules for sensitive operations.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -7079,6 +7607,7 @@
       ],
       "description": "An environment variable matching *_BASE_URL, *_API_URL, or *_ENDPOINT is set in project settings. This can redirect authenticated traffic to attacker-controlled servers.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -7103,6 +7632,7 @@
       "cve_references": [],
       "description": "Project settings have permission allows that could shadow user-level deny rules. Misconfigurations can create a false sense of security.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -7127,6 +7657,7 @@
       "cve_references": [],
       "description": "No enabledMcpjsonServers allowlist is configured, meaning server approval relies entirely on user prompts.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -7153,6 +7684,7 @@
       ],
       "description": "A `.windsurf/mcp.json` file declares auto_approve:true or auto_execute:true, or contains server `command:` entries with no SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows attackers can inject malicious MCP registrations via HTML prompt injection when auto-approval is enabled.",
       "incident_references": [],
+      "limitations": "",
       "owasp_agentic_references": [
         "ASI06"
       ],

@@ -1,0 +1,63 @@
+# Default capability-union risk boundaries for AAK-AGENT-COMPOSE-001.
+#
+# AAK-AGENT-COMPOSE-001 operates on the SET of skills that would load into one
+# agent context (all SKILL.md files under a common skills container, e.g.
+# `.claude/skills/`), not on one artifact at a time. It computes the UNION of
+# declared capability across the set, then trips a boundary when the union spans
+# both sides of that boundary AND no single skill in the set holds both sides —
+# i.e. the risk exists only because the skills were composed.
+#
+# Capability vocabulary (six):
+#   filesystem_read, filesystem_write, network_egress, shell_execution,
+#   credential_access, memory_write
+#
+# This file is the DEFAULT. A project may override it by committing
+# `.aak/composition-boundaries.yaml` at its root (same schema); when present,
+# that file replaces this one wholesale. The default and its reasoning are also
+# written up in docs/rules/skill-composition.md.
+
+boundaries:
+  - name: exfiltration-path
+    # {filesystem read OR credential access} + {network egress to a
+    # non-allowlisted destination} = an exfiltration path, even when every
+    # contributing skill is individually clean. This is the ColluSkill shape
+    # (arXiv:2608.09732): benign skills whose composed capability leaks data.
+    left: [filesystem_read, credential_access]
+    right: [network_egress]
+    # Only the `right` side (egress) is destination-checked against the
+    # allowlist below; a boundary trips only when the egress goes somewhere not
+    # on the allowlist.
+    destination_checked_side: right
+    severity: high
+
+# Network destinations an egress skill may declare without counting as
+# `network_egress` for the boundary above. Empty by default: any declared
+# external destination is treated as non-allowlisted egress. Add hosts you
+# trust (exact host match), e.g. "docs.python.org". Also used by
+# AAK-AGENT-COMPOSE-002 to allowlist reassembled URL destinations.
+egress_allowlist: []
+
+# AAK-AGENT-COMPOSE-002 (session-scoped splice check) reuses this same config.
+# Given an ordered transcript of tool calls, it flags when the concatenation of
+# arguments across consecutive same-tool calls reconstructs a file path or URL
+# that a single call would have been denied for (the GhostSplice / cross-channel
+# trust-fragmentation shape). Only file-path and URL reassembly, on purpose.
+session_reassembly:
+  # Substrings that mark a reassembled file path as sensitive. A finding fires
+  # only when the REASSEMBLED path contains one of these and NO single call's
+  # argument did — i.e. the sensitive target existed only after fragmentation.
+  sensitive_path_patterns:
+    - id_rsa
+    - id_dsa
+    - id_ecdsa
+    - id_ed25519
+    - .aws/credentials
+    - .env
+    - .netrc
+    - .pgpass
+    - .npmrc
+    - .pem
+    - .kube/config
+  # URL reassembly reuses `egress_allowlist` above: a reassembled URL whose host
+  # is not on the allowlist is flagged (when no single fragment was itself a
+  # complete non-allowlisted URL).

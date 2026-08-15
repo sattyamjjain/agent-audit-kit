@@ -42,6 +42,8 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("hook_rce", "Hook RCE", []),
     ("ide_task_rce", "VS Code IDE task/launch folder-open RCE", []),
     ("agent_trust_surface", "Agent config/skill auto-trust (headless -p in CI)", []),
+    ("skill_composition", "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)", []),
+    ("session_splice", "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)", []),
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),
     ("mcp_tasks", "MCP Tasks leakage", []),
@@ -95,6 +97,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("mcp_toolgate_asymmetry", "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)", []),
     ("mcp_env_placeholder_exfil", "MCP ${VAR} env-placeholder secret exfiltration (CVE-2026-32625)", []),
     ("mcp_http_noauth_server", "Unauthenticated MCP HTTP/SSE server on 0.0.0.0 / wildcard CORS", []),
+    ("ufo_mobile_mcp", "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)", []),
     ("llm_sql_rce", "LLM-generated SQL on an RCE-capable DB role (CVE-2026-25879)", []),
     ("skill_untrusted_exec_path", "Untrusted-search-path exec override in skill/install flow (CVE-2026-53819)", []),
     ("argv_toctou", "Argv rebuilt after allowlist approval before spawn (CVE-2026-53822)", []),
@@ -142,18 +145,21 @@ def _build_registry(strict_loading: bool = False) -> list[ScannerRegistration]:
 
 def reset_registry() -> None:
     """Clear the cached scanner registry (for tests that toggle strict_loading)."""
-    global _REGISTRY
-    _REGISTRY = None
+    _REGISTRY.clear()
 
 
-_REGISTRY: list[ScannerRegistration] | None = None
+# Keyed by ``strict_loading``. A single shared slot would bake the first
+# caller's mode in permanently: ``scanner_manifest()`` (strict_loading=False)
+# running before ``run_scan(strict_loading=True)`` left the strict caller
+# reading a lenient registry, so a scanner that failed to import was silently
+# skipped instead of raising ScannerLoadError.
+_REGISTRY: dict[bool, list[ScannerRegistration]] = {}
 
 
 def _get_registry(strict_loading: bool = False) -> list[ScannerRegistration]:
-    global _REGISTRY
-    if _REGISTRY is None:
-        _REGISTRY = _build_registry(strict_loading=strict_loading)
-    return _REGISTRY
+    if strict_loading not in _REGISTRY:
+        _REGISTRY[strict_loading] = _build_registry(strict_loading=strict_loading)
+    return _REGISTRY[strict_loading]
 
 
 def scanner_manifest() -> list[dict[str, str]]:

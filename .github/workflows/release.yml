@@ -93,6 +93,67 @@ jobs:
           echo "repo description liveness: live == rendered."
 
   # --------------------------------------------------------------------------
+  # Repo-wide count liveness (v0.3.72): the sibling of description-liveness for
+  # in-repo prose. Every current-state "N rules / N scanner modules / N CLI
+  # commands / N frameworks / N agent platforms" claim in any tracked markdown
+  # (minus the changelogs and a small dated-artifact exclusion list) must equal
+  # the live registry. Same posture: FAILS LOUDLY, prints the offending file:line,
+  # and is deliberately NOT a dependency of the publish jobs (a stale doc count
+  # blocks nothing but is impossible to miss at release time).
+  # --------------------------------------------------------------------------
+  count-liveness:
+    name: Repo-wide count liveness
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Install the package (check_counts imports agent_audit_kit)
+        run: pip install -e .
+
+      - name: No stale rule/scanner count in any tracked markdown
+        run: |
+          set -euo pipefail
+          # check_counts computes the canonical counts by importing agent_audit_kit
+          # (cli needs click, etc.), so the package + its runtime deps must be
+          # installed first — PYTHONPATH alone is not enough.
+          python scripts/check_counts.py
+
+  cve-latency:
+    name: CVE-to-rule latency doc
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate docs/cve-latency.md from the ledger
+        run: |
+          set -euo pipefail
+          # Offline and deterministic: reads only CHANGELOG.cves.md and the
+          # committed docs/data/cve-published.json, so an unchanged ledger
+          # regenerates byte-identically. Refreshing published dates from NVD
+          # is a separate, opt-in step (scripts/cve_latency.py --refresh) and is
+          # deliberately not run here.
+          python scripts/cve_latency.py
+
+      - name: Fail if the committed doc drifted from the ledger
+        run: |
+          set -euo pipefail
+          python scripts/cve_latency.py --check
+
+  # --------------------------------------------------------------------------
   # 1. Publish to PyPI using trusted publishing (OIDC)
   # --------------------------------------------------------------------------
   pypi:

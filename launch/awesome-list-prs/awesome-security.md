@@ -9,7 +9,7 @@ Add under **Tools / Static Analysis** or create new **AI Agent Security** sectio
 ## Line to add
 
 ```markdown
-- [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit) - Security scanner for MCP-connected AI agent pipelines — 289 rules, OWASP MCP/Agentic Top 10 coverage, SARIF output, fully offline.
+- [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit) - Security scanner for MCP-connected AI agent pipelines — 298 detection rules, OWASP MCP/Agentic Top 10 coverage, SARIF output, fully offline.
 ```
 
 ## PR Title
@@ -23,7 +23,7 @@ Hi! I'd like to add AgentAuditKit to this list.
 
 AgentAuditKit is an open-source security scanner for AI agent configurations (MCP, Claude Code, Cursor, VS Code Copilot, Windsurf, etc.). It's the "npm audit" for AI agents.
 
-- **289 rules** across 12 security categories
+- **298 rules** across 12 security categories
 - **OWASP coverage**: MCP Top 10 (10/10), Agentic Top 10 (10/10)
 - **Output**: Console, JSON, SARIF (GitHub Security tab integration)
 - **Zero dependencies**: Only click + pyyaml, runs fully offline

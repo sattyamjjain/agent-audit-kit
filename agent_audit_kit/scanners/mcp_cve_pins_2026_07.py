@@ -43,6 +43,15 @@ available) before shipping:
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
   - mcp-for-stata                  >= 1.17.3  (CVE-2026-47708)
   - @adenot/mcp-google-search      <= 0.3.1   (CVE-2026-19337; SSRF, no fixed release yet)
+  - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
+  - n8n (MCP Client node)          >= 2.32.1  (CVE-2026-72768; SSRF-protection bypass)
+  - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
+  - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
+    arbitrary file read via unvalidated file_path)
+  - @jshookmcp/jshook              >= 0.3.2   (CVE-2026-49856; ICMP/traceroute skip the
+    SSRF authorization policy)
+  - auth-fetch-mcp                 >= 3.0.2   (CVE-2026-49857; IPv4-mapped IPv6 loopback
+    bypasses the private-address guard — floor is 3.0.2 per GHSA, not the 3.0.1 in NVD prose)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -281,6 +290,64 @@ _PINS: tuple[_Pin, ...] = (
          ("@adenot/mcp-google-search",), None,
          fix_label="no fixed release yet (upstream patch f071d491 unreleased) — "
                    "remove or replace until a patched version ships"),
+    # --- 2026-08-11 wave ---
+    # mcp-grafana (PyPI; a Go server with a resolvable uvx / PyPI wrapper) < 1.1.0: a
+    # caller-supplied X-Grafana-URL header controls the destination of the server's
+    # outbound requests, and grafana_api_request lets the caller pick method / path /
+    # body, so the destination is not restricted to the configured Grafana instance ->
+    # SSRF to internal / loopback / metadata endpoints (CVE-2026-19516, CVSS 9.1). The
+    # incomplete-fix follow-up to CVE-2026-15583 (which stopped the token leak but not
+    # the destination). Fixed 1.1.0, which restricts destinations. Supersedes the
+    # archived "unpinnable Go module" note for CVE-2026-15583: a PyPI wrapper exists.
+    _Pin("AAK-MCP-GRAFANA-CVE-2026-19516-001", "mcp-grafana", ("mcp-grafana",),
+         (1, 1, 0),
+         fix_label="1.1.0 (affected <= 1.0.0; completes the incomplete fix of CVE-2026-15583)"),
+    # --- 2026-08-11..12 wave ---
+    # n8n (npm) < 2.32.1: the MCP Client node lets an authenticated workflow author send
+    # requests to internal / blocked hosts without routing through n8n's SSRF protection,
+    # exposing internal services and reading the responses back (CVE-2026-72768). A third
+    # distinct n8n arm — separate from the 59207 credential-domain bypass and the 65594
+    # two-branch OAuth fix. NVD says "before 2.32.1", so all prior versions are affected
+    # (floor 2.32.1, no `introduced`). Uses `_N8N_RE` so it never trips the distinct
+    # `n8n-mcp` package.
+    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 32, 1),
+         fix_label="2.32.1", regexes=(_N8N_RE,)),
+    # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
+    # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
+    # and no authentication. `POST /api/execute` (the `prompt` body field) and
+    # `POST /api/install-agent` (the `agentName` field), plus the agent path reachable from
+    # `/api/execute` via `checkAndInstallAgent()`, reach `child_process.spawn()` with shell
+    # execution enabled, so shell metacharacters in those values run as OS commands with the
+    # developer's privileges. Reachable directly by anyone who can hit the port, or via a
+    # malicious site a developer visits while Studio runs (CVE-2026-73222, CVSS 8.8). Fixed
+    # 1.29.4; the version before it is 1.29.2 (no 1.29.3 was published), so treat < 1.29.4
+    # and unpinned as exposed.
+    _Pin("AAK-MCP-CCTEMPLATES-CVE-2026-73222-001", "claude-code-templates",
+         ("claude-code-templates",), (1, 29, 4), fix_label="1.29.4"),
+    # mcp-atlassian < 0.22.0 passes the client-supplied `file_path` of
+    # `confluence_upload_attachment` straight into `open(file_path, "rb")` inside
+    # `_upload_attachment_direct()` without calling `validate_safe_path`, so an
+    # authenticated MCP client reads any file the server process can reach and
+    # exfiltrates it to Confluence as an attachment — including whatever holds
+    # CONFLUENCE_API_TOKEN (CVE-2026-73498, CVSS 7.7). Fixed 0.22.0; resolves on
+    # PyPI (0.22.0 published, 0.23.0 latest).
+    _Pin("AAK-MCP-ATLASSIAN-CVE-2026-73498-001", "mcp-atlassian",
+         ("mcp-atlassian",), (0, 22, 0), fix_label="0.22.0"),
+    # @jshookmcp/jshook 0.3.1 gates its SSRF authorization policy on the raw
+    # HTTP/TCP/TLS tools only; the ICMP probe and traceroute tools call the
+    # native sink directly, so an MCP client can map internal reachability with
+    # private-network access disabled (CVE-2026-49856, CVSS 4.3). Fixed 0.3.2;
+    # GHSA-c5r6-m4mr-8q5j lists 0.3.1 as the only affected release.
+    _Pin("AAK-MCP-JSHOOK-CVE-2026-49856-001", "@jshookmcp/jshook",
+         ("@jshookmcp/jshook",), (0, 3, 2), fix_label="0.3.2"),
+    # auth-fetch-mcp <= 3.0.1: isPrivateV6() misses IPv4-mapped IPv6 loopback in
+    # hex-normalised form, so http://[::ffff:127.0.0.1]/ normalises to
+    # [::ffff:7f00:1], net.isIPv4('7f00:1') is false, and the guard passes the
+    # URL through to loopback (CVE-2026-49857, CVSS 7.4). The fix floor is 3.0.2
+    # per GHSA-pvrj-8cg3-j5f8 — NOT 3.0.1 as the NVD prose states; 3.0.1 is
+    # inside the affected range.
+    _Pin("AAK-MCP-AUTHFETCH-CVE-2026-49857-001", "auth-fetch-mcp",
+         ("auth-fetch-mcp",), (3, 0, 2), fix_label="3.0.2"),
 )
 
 _CANDIDATE_NAMES = (

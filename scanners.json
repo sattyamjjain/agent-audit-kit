@@ -1,5 +1,5 @@
 {
-  "count": 86,
+  "count": 89,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -266,8 +266,16 @@
       "name": "Secret exposure"
     },
     {
+      "module": "session_splice",
+      "name": "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)"
+    },
+    {
       "module": "shared_resource_authz",
       "name": "Shared/multi-agent resource missing per-actor authz (CVE-2026-44654)"
+    },
+    {
+      "module": "skill_composition",
+      "name": "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)"
     },
     {
       "module": "skill_lifecycle_attribution",
@@ -344,6 +352,10 @@
     {
       "module": "typescript_pattern_scan",
       "name": "TypeScript pattern scan"
+    },
+    {
+      "module": "ufo_mobile_mcp",
+      "name": "Microsoft UFO mobile MCP servers unauthenticated on 8020/8021 (CVE-2026-73296)"
     }
   ]
 }
