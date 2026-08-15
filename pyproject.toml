@@ -37,10 +37,11 @@ dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",
-    # Pin the linter minor so CI is reproducible. ruff 0.16.0 (2026-07-24)
-    # enabled stricter defaults (import-order I001, TRY004, ...) that flag ~281
-    # pre-existing style issues; cap below it so an upstream release can't turn
-    # CI red without a deliberate bump. Bump the cap + `ruff check --fix` to adopt.
+    # The cap used to sit below 0.16 because that release expanded ruff's default
+    # rule set and turned CI red on ~281 pre-existing style issues. The real
+    # problem was that the repo had no explicit rule selection, so CI enforced
+    # whatever ruff happened to ship. `[tool.ruff.lint] select` now pins that set,
+    # which makes the bound safe to widen — see the note there before touching it.
     "ruff>=0.15,<0.17",
     "types-PyYAML>=6.0",
 ]
@@ -63,6 +64,23 @@ testpaths = ["tests"]
 # CVE fixtures contain intentionally broken / vulnerable code; they are
 # scanner INPUT, not library code, so lint them loosely.
 extend-exclude = ["tests/fixtures/cves"]
+
+[tool.ruff.lint]
+# Pin the rule set explicitly. Without this, the repo lints against whatever
+# ruff ships as its default, so a ruff release can silently change what CI
+# enforces: 0.16 expanded the defaults from these 59 rules to a set that flags
+# 314 findings here (148 I001 import-order, 40 SIM102, 16 UP045, ...) — none of
+# them regressions, just rules this project never opted into. That is what broke
+# the `ruff>=0.15,<0.17` bump.
+#
+# These four selectors reproduce ruff 0.15's default set exactly (verified rule
+# for rule: 59 enabled either way, no additions, no removals), so pinning them
+# changes nothing about what is enforced today and makes the bound safe to widen.
+#
+# Adopting any of the newly-default rules is a separate, deliberate choice —
+# add the selector here and fix the findings in its own change, not as a side
+# effect of a dependency bump.
+select = ["E4", "E7", "E9", "F"]
 
 [[tool.mypy.overrides]]
 # reportlab is used only in output/pdf_report.py; it has no py.typed marker.
