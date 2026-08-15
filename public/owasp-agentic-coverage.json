@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-14T08:18:27Z",
+  "last_updated": "2026-08-15T03:41:51Z",
   "aak_version": "0.3.76",
-  "rule_count": 298,
+  "rule_count": 299,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -130,7 +130,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 39,
+      "rule_density": 40,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -495,6 +495,14 @@
             "AIS-07",
             "AIS-12"
           ]
+        },
+        {
+          "id": "AAK-POLICY-TRUNCATION-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-73614"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",

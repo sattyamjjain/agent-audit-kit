@@ -5926,6 +5926,31 @@
       "title": "URL or file path in tool description"
     },
     {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-73614"
+      ],
+      "description": "A hook bridge, gateway or guard cuts a candidate command, URL or path to a fixed length \"for matching\", evaluates its deny / block patterns against the cut copy, and hands the full untruncated value to whatever executes it. Everything past the cut point is invisible to the policy and visible to the executor, so a caller simply positions the dangerous part after the bound and the hard-deny list never sees it. The disclosed instance is CVE-2026-73614 (Network-AI ClaudeHookBridge < 5.15.1, CVSS 8.8): the target string is truncated to 500 characters before `denyPatterns` are evaluated while Claude Code executes the full Bash command field. That package is not pinnable \u2014 it resolves on neither npm nor PyPI and its GitHub repository 404s \u2014 so this rule is written against the shape rather than the vendor, and applies to any policy code with the same asymmetry. It fires only when the untruncated source is still referenced elsewhere in the file, which is what separates a policy/executor split from ordinary display truncation.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Evaluate the policy against exactly the value the executor receives. If a length bound is needed to cap matching cost, reject over-long input outright rather than matching a prefix of it \u2014 a truncated match is a decision made on data that is not what runs. Where the check and the execution live in different components, pass one canonical value between them instead of letting each derive its own.",
+      "rule_id": "AAK-POLICY-TRUNCATION-001",
+      "sarif_name": "DenyPolicyTruncationBypass",
+      "severity": "high",
+      "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "STA-08"

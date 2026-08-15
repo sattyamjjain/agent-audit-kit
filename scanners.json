@@ -1,5 +1,5 @@
 {
-  "count": 89,
+  "count": 90,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -240,6 +240,10 @@
     {
       "module": "pin_drift",
       "name": "Pin drift"
+    },
+    {
+      "module": "policy_truncation",
+      "name": "Deny policy evaluated on a truncated copy of the executed value (CVE-2026-73614 class)"
     },
     {
       "module": "project_deal_drift",

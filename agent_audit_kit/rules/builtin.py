@@ -6935,6 +6935,39 @@ _r(
 
 
 _r(
+    "AAK-POLICY-TRUNCATION-001",
+    "Deny policy evaluated on a truncated copy of the value the executor receives",
+    "A hook bridge, gateway or guard cuts a candidate command, URL or path to a "
+    "fixed length \"for matching\", evaluates its deny / block patterns against "
+    "the cut copy, and hands the full untruncated value to whatever executes it. "
+    "Everything past the cut point is invisible to the policy and visible to the "
+    "executor, so a caller simply positions the dangerous part after the bound "
+    "and the hard-deny list never sees it. The disclosed instance is "
+    "CVE-2026-73614 (Network-AI ClaudeHookBridge < 5.15.1, CVSS 8.8): the target "
+    "string is truncated to 500 characters before `denyPatterns` are evaluated "
+    "while Claude Code executes the full Bash command field. That package is not "
+    "pinnable — it resolves on neither npm nor PyPI and its GitHub repository "
+    "404s — so this rule is written against the shape rather than the vendor, "
+    "and applies to any policy code with the same asymmetry. It fires only when "
+    "the untruncated source is still referenced elsewhere in the file, which is "
+    "what separates a policy/executor split from ordinary display truncation.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Evaluate the policy against exactly the value the executor receives. If a "
+    "length bound is needed to cap matching cost, reject over-long input outright "
+    "rather than matching a prefix of it — a truncated match is a decision made "
+    "on data that is not what runs. Where the check and the execution live in "
+    "different components, pass one canonical value between them instead of "
+    "letting each derive its own.",
+    sarif_name="DenyPolicyTruncationBypass",
+    cve_references=["CVE-2026-73614"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+)
+
+
+_r(
     "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
     "mcp-atlassian < 0.22.0 (confluence_upload_attachment arbitrary file read)",
     "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, "
