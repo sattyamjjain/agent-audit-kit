@@ -38,7 +38,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -59,9 +59,12 @@ jobs:
       # repo — is also covered by tests/test_docs_links.py, which fails fast and
       # locally and does not depend on the network at all.
       #
-      # --timeout is raised from lychee's 20s default because the README's
-      # asciinema demo embed intermittently times out from the runner while
-      # answering in under a second from elsewhere (verified 200 in ~0.9s). A
-      # timeout exits 2 the same as a dead link, so a slow-but-alive host fails
-      # the job just as loudly as a real break; the retries above only help if
-      # the request completes at all.
+      # asciinema.org is excluded for the same reason, after the gentler fix was
+      # tried and did not work: the README's demo embed times out from the runner
+      # while answering 200 in ~0.9s from elsewhere, and raising --timeout from
+      # 20s to 30s did not change it — so it is being throttled or blocked by
+      # IP range, not merely slow. A timeout exits 2 exactly like a dead link, so
+      # leaving it in makes the job permanently red.
+      #
+      # --timeout stays at 30 regardless: it is a reasonable default for the
+      # remaining hosts and costs nothing.
