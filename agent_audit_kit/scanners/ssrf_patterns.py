@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners import _ssrf_reach
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
 
 
@@ -20,23 +21,9 @@ _MCP_TOOL_HINT = re.compile(
     r"\b(@tool|createTool|McpServer|FastMCP|mcp\.tool|Server\.run_streamable_http)\b"
 )
 
-_URL_FETCH_RE = re.compile(
-    r"\b(?:requests\.(?:get|post|put|delete|head)|urllib\.request\.urlopen|"
-    r"httpx\.(?:get|post|put|delete)|http\.client\.HTTP(?:S)?Connection|"
-    r"fetch|axios\.(?:get|post|put|delete)|got\(|\bnode_fetch\()",
-    re.IGNORECASE,
-)
-
-_USER_VAR_RE = re.compile(
-    r"\b(?:input|args\[|params\[|req\.query|req\.body|request\.json|event\.body|tool_input)\b",
-    re.IGNORECASE,
-)
-
-_PRIVATE_IP_PATTERN_RE = re.compile(
-    r"\b(?:127\.0\.0\.1|0\.0\.0\.0|localhost|::1|169\.254\.169\.254|metadata\.google\.internal|"
-    r"10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)\b",
-    re.IGNORECASE,
-)
+# The outbound-call, user-input and private-address patterns that used to live
+# here moved into `_ssrf_reach`, where they are applied to a real call site and
+# its URL argument rather than to the whole file. See #593.
 
 _ALLOWLIST_HINT_RE = re.compile(
     r"\b(?:ALLOW(?:ED)?_HOSTS?|URL_ALLOW_LIST)\b|"
@@ -72,6 +59,21 @@ def _iter_source(project_root: Path) -> list[Path]:
 
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
+    """Report only what an actual outbound call site can be shown to reach.
+
+    This used to decide file-wide: `fetch` anywhere plus a user-input marker
+    anywhere meant CRITICAL, with no requirement that either be code, be
+    related, or be near the other. It reported "loopback address reachable from
+    MCP tool" against this scanner's own detection regex, a rule title in
+    `builtin.py`, and a scanner description in `engine.py` — three findings, all
+    prose (#593).
+
+    Each rule now hangs off a real call site found by `_ssrf_reach`, which walks
+    Python via `ast` and TS/JS via comment-stripped def-use. String literals are
+    deliberately NOT stripped: a genuine metadata URL lives in one, so blanking
+    literals would delete the true positives along with the prose. The
+    discrimination comes from reachability instead.
+    """
     findings: list[Finding] = []
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -81,64 +83,63 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         return findings
     rel = str(path.relative_to(project_root))
 
-    has_fetch = bool(_URL_FETCH_RE.search(text))
-    has_user_var = bool(_USER_VAR_RE.search(text))
+    is_python = path.suffix.lower() == ".py"
+    sites = _ssrf_reach.analyze(text, is_python=is_python)
+    if not sites:
+        return findings
+
     has_allowlist = bool(_ALLOWLIST_HINT_RE.search(text))
     has_scheme_check = bool(_URL_SCHEME_VALIDATION_RE.search(text))
 
-    if has_fetch and has_user_var and not has_allowlist and not has_scheme_check:
-        m = _URL_FETCH_RE.search(text)
-        findings.append(
-            make_finding(
-                "AAK-SSRF-001",
+    tainted_sites = [s for s in sites if s.tainted]
+
+    if tainted_sites and not has_allowlist and not has_scheme_check:
+        site = tainted_sites[0]
+        findings.append(make_finding(
+            "AAK-SSRF-001",
+            rel,
+            f"Outbound HTTP call with user input and no scheme/allowlist check: "
+            f"{site.callee!r} receives a URL derived from caller-controlled input",
+            line_number=site.line or None,
+        ))
+
+    for site in sites:
+        addr = site.private_addr
+        if not addr:
+            continue
+        if addr in {"169.254.169.254", "metadata.google.internal"}:
+            findings.append(make_finding(
+                "AAK-SSRF-003",
                 rel,
-                f"Outbound HTTP call with user input and no scheme/allowlist check: {m.group(0)!r}" if m else "",
-                line_number=find_line_number(text, m.group(0)) if m else None,
-            )
-        )
+                f"Cloud metadata address reaches an outbound call: {addr} via {site.callee!r}",
+                line_number=site.line or None,
+            ))
+        else:
+            findings.append(make_finding(
+                "AAK-SSRF-002",
+                rel,
+                f"Loopback/private address reaches an outbound call: {addr} via {site.callee!r}",
+                line_number=site.line or None,
+            ))
+        break
 
-    if has_fetch and _PRIVATE_IP_PATTERN_RE.search(text):
-        for m in _PRIVATE_IP_PATTERN_RE.finditer(text):
-            ip = m.group(0).lower()
-            if ip in {"169.254.169.254", "metadata.google.internal"}:
-                findings.append(
-                    make_finding(
-                        "AAK-SSRF-003",
-                        rel,
-                        f"Cloud metadata address reachable in code path: {ip}",
-                        line_number=find_line_number(text, ip),
-                    )
-                )
-            elif ip in {"127.0.0.1", "localhost", "::1", "0.0.0.0"}:
-                findings.append(
-                    make_finding(
-                        "AAK-SSRF-002",
-                        rel,
-                        f"Loopback address reachable from MCP tool: {ip}",
-                        line_number=find_line_number(text, ip),
-                    )
-                )
-            break
-
-    if has_fetch and _FOLLOW_REDIRECTS_RE.search(text):
+    if _FOLLOW_REDIRECTS_RE.search(text):
         m = _FOLLOW_REDIRECTS_RE.search(text)
-        findings.append(
-            make_finding(
-                "AAK-SSRF-004",
-                rel,
-                f"Redirects followed without re-validation: {m.group(0) if m else ''!r}",
-                line_number=find_line_number(text, m.group(0)) if m else None,
-            )
-        )
+        findings.append(make_finding(
+            "AAK-SSRF-004",
+            rel,
+            f"Redirects followed without re-validation: {m.group(0) if m else ''!r}",
+            line_number=find_line_number(text, m.group(0)) if m else None,
+        ))
 
-    if has_fetch and has_user_var and not has_allowlist:
-        findings.append(
-            make_finding(
-                "AAK-SSRF-005",
-                rel,
-                "Outbound HTTP call without allowlist guard",
-            )
-        )
+    if tainted_sites and not has_allowlist:
+        findings.append(make_finding(
+            "AAK-SSRF-005",
+            rel,
+            f"Outbound HTTP call without allowlist guard: {tainted_sites[0].callee!r} "
+            f"receives a URL derived from caller-controlled input",
+            line_number=tainted_sites[0].line or None,
+        ))
 
     return findings
 

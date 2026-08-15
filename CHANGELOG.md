@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `ssrf_patterns` (AAK-SSRF-001..005) now requires reachability instead of deciding file-wide. It previously reported CRITICAL when the word `fetch` appeared anywhere in a file and a user-input marker appeared anywhere else — neither had to be code, related, or nearby — so a match inside a comment, a rule title or a regex literal counted. Against AAK's own source that produced three findings, all prose, including one where the SSRF scanner flagged **its own detection pattern**. Each rule now hangs off a real outbound call site whose URL argument is traced: Python via `ast`, TS/JS via comment-stripped def-use. String literals are deliberately kept, since a genuine metadata URL lives in one. Measured across `agent_audit_kit/`, `tests/fixtures`, `benchmarks/data`, `examples` and `vscode-extension`: **3 false positives removed, all 4 true positives preserved**. Closes #593.
+
 ## [0.3.77] - 2026-08-15
 
 ### Added
