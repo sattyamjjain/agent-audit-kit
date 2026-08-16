@@ -5,7 +5,7 @@
 > is stubbed and cross-links the live data run. Regenerate with
 > `python -c "from agent_audit_kit.output.coverage_map import render_json; open('docs/coverage.json','w').write(render_json())"`.
 
-AgentAuditKit ships **<!-- rule-count:total -->304<!-- /rule-count --> deterministic rules**,
+AgentAuditKit ships **<!-- rule-count:total -->308<!-- /rule-count --> deterministic rules**,
 each mapped — rule by rule — to the framework control it evidences. The full,
 machine-readable crosswalk is [`docs/coverage.json`](coverage.json); the live
 per-framework counts (severity, OWASP MCP Top-10, OWASP Agentic Top-10 2026, NSA

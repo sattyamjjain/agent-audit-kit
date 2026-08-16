@@ -929,7 +929,14 @@ def diff_cmd(
 )
 @click.option(
     "--dry-run", is_flag=True, default=False,
-    help="With --apply-trivial, report what would change without writing.",
+    help="With --apply-trivial or --auto-pr, report what would change without writing.",
+)
+@click.option(
+    "--auto-pr", "auto_pr", is_flag=True, default=False,
+    help="Apply allow-listed mechanical fixes on a new branch and open a DRAFT PR "
+         "via the `gh` CLI. Off by default. Refuses if any pending fix is for a "
+         "rule outside the auto-PR allow-list, or if the working tree is dirty. "
+         "AAK never handles a token: delivery runs under your own `gh auth`.",
 )
 @click.option(
     "--output", "-o", "output_path",
@@ -939,7 +946,7 @@ def diff_cmd(
 )
 def suggest_cmd(
     sarif_path: str, pr_mode: bool, apply_trivial: bool, project_path: str,
-    dry_run: bool, output_path: str | None
+    dry_run: bool, auto_pr: bool, output_path: str | None
 ) -> None:
     """Generate per-finding remediation hints from a SARIF run."""
     from agent_audit_kit.remediation.engine import sarif_to_markdown
@@ -950,6 +957,30 @@ def suggest_cmd(
         Path(output_path).write_text(body, encoding="utf-8")
     else:
         click.echo(body)
+
+    if auto_pr:
+        from agent_audit_kit.autopr import AutoPrError, open_auto_pr, plan_auto_pr
+
+        plan = plan_auto_pr(Path(project_path))
+        for fix in plan.fixes:
+            click.echo(f"  + {fix.rule_id}  {fix.file_path}", err=True)
+        for fix in plan.blocked:
+            click.echo(f"  - {fix.rule_id}  {fix.file_path}  (not allow-listed)", err=True)
+        if dry_run:
+            verdict = "would open" if plan.is_runnable else "would refuse"
+            click.echo(
+                f"suggest: {verdict} a draft PR on branch '{plan.branch or '-'}' "
+                f"with {len(plan.fixes)} fix(es).",
+                err=True,
+            )
+            return
+        try:
+            url = open_auto_pr(Path(project_path), plan)
+        except AutoPrError as exc:
+            click.echo(f"suggest --auto-pr: {exc}", err=True)
+            sys.exit(EXIT_ERROR)
+        click.echo(f"suggest: opened draft PR {url}", err=True)
+        return
 
     if not apply_trivial:
         return

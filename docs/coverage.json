@@ -4251,6 +4251,59 @@
     {
       "category": "mcp-config",
       "cve_references": [
+        "CVE-2026-49471",
+        "CVE-2026-55156",
+        "CVE-2026-73222"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Filter and monitor output pipelines and chained execution (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication"
+      ],
+      "rule_id": "AAK-MCP-SIDECAR-NOAUTH-001",
+      "severity": "high",
+      "title": "MCP server binds an unauthenticated sidecar HTTP surface"
+    },
+    {
+      "category": "transport-security",
+      "cve_references": [
+        "CVE-2026-49471",
+        "CVE-2026-55156"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Filter and monitor output pipelines and chained execution (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication"
+      ],
+      "rule_id": "AAK-MCP-SIDECAR-REBIND-001",
+      "severity": "high",
+      "title": "Loopback bind used as access control with no Host-header allow-list"
+    },
+    {
+      "category": "mcp-config",
+      "cve_references": [
         "CVE-2026-14748"
       ],
       "eu_ai_act": [
@@ -4270,7 +4323,8 @@
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-47708"
+        "CVE-2026-47708",
+        "CVE-2026-55071"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance",
@@ -4290,7 +4344,7 @@
       ],
       "rule_id": "AAK-MCP-STATA-CVE-2026-47708-001",
       "severity": "high",
-      "title": "MCP-for-Stata < 1.17.3 (log_file_name Stata command injection)"
+      "title": "stata-mcp < 1.19.0 (Stata command injection, two CVEs)"
     },
     {
       "category": "mcp-config",
@@ -5676,6 +5730,54 @@
       "title": "Google Cloud service account key file"
     },
     {
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-55071",
+        "CVE-2026-55157"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-SHELL-DEFAULT-PROFILE-001",
+      "severity": "high",
+      "title": "Command-executing tool is reachable in the default tool profile"
+    },
+    {
+      "category": "taint-analysis",
+      "cve_references": [
+        "CVE-2026-55071",
+        "CVE-2026-55157"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-SHELL-QUOTED-INTERP-001",
+      "severity": "high",
+      "title": "Tool argument interpolated into a shell command, quoting notwithstanding"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-26030"
@@ -5991,7 +6093,8 @@
     {
       "category": "transport-security",
       "cve_references": [
-        "CVE-2026-41488"
+        "CVE-2026-41488",
+        "CVE-2026-53708"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance",
@@ -6782,39 +6885,39 @@
       "agent-config": 18,
       "hook-injection": 17,
       "legal-compliance": 12,
-      "mcp-config": 63,
+      "mcp-config": 65,
       "mcp-server-card": 4,
       "secret-exposure": 18,
       "supply-chain": 90,
-      "taint-analysis": 13,
+      "taint-analysis": 14,
       "tool-poisoning": 29,
-      "transport-security": 12,
+      "transport-security": 13,
       "trust-boundary": 15
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 106,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 39,
-      "Art. 15 - Robustness & Security": 176,
-      "Art. 9 - Risk Management": 97
+      "Art. 15 - Robustness & Security": 178,
+      "Art. 9 - Risk Management": 101
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 70,
-      "Constrain and sandbox tool execution (p.11)": 85,
-      "Design for boundaries (p.10)": 156,
-      "Filter and monitor output pipelines and chained execution (p.12)": 63,
+      "Constrain and sandbox tool execution (p.11)": 89,
+      "Design for boundaries (p.10)": 160,
+      "Filter and monitor output pipelines and chained execution (p.12)": 65,
       "Instrument for logging and detection (p.13)": 34,
       "Scan local network for open or vulnerable MCP servers (p.14)": 136,
       "Sign and verify MCP messages (p.12)": 135,
       "Track and patch MCP related vulnerabilities (p.13)": 81,
-      "Validate parameters (p.11)": 89
+      "Validate parameters (p.11)": 93
     },
     "by_owasp_agentic": {
       "ASI01": 13,
-      "ASI02": 43,
+      "ASI02": 45,
       "ASI03": 68,
       "ASI04": 64,
-      "ASI05": 42,
+      "ASI05": 44,
       "ASI06": 44,
       "ASI07": 9,
       "ASI08": 5,
@@ -6822,26 +6925,26 @@
       "ASI10": 21
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 75,
+      "MCP01:2025": 77,
       "MCP02:2025": 13,
       "MCP03:2025": 31,
       "MCP04:2025": 34,
       "MCP05:2025": 54,
       "MCP06:2025": 14,
-      "MCP07:2025": 31,
+      "MCP07:2025": 33,
       "MCP08:2025": 5,
       "MCP09:2025": 26,
       "MCP10:2025": 11
     },
     "by_severity": {
       "critical": 70,
-      "high": 139,
+      "high": 143,
       "info": 5,
       "low": 9,
       "medium": 81
     },
-    "total_cves_covered": 152,
-    "total_rules": 304
+    "total_cves_covered": 156,
+    "total_rules": 308
   },
   "tool": "agent-audit-kit"
 }

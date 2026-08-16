@@ -22,7 +22,7 @@ Post same Tuesday as HN, ~1h after HN submission.
 
 > agent-audit-kit — OSS static scanner for MCP-connected AI agents.
 >
-> 304 deterministic rules. SARIF → GitHub Security tab.
+> 308 deterministic rules. SARIF → GitHub Security tab.
 > Compliance evidence for EU AI Act Article 15, SOC 2, ISO 27001/42001,
 > HIPAA, NIST AI RMF.
 >
@@ -92,7 +92,7 @@ Post same Tuesday as HN, ~1h after HN submission.
 > • Repo: github.com/sattyamjjain/agent-audit-kit
 > • Leaderboard: sattyamjjain.github.io/agent-audit-kit
 > • VS Code Marketplace: agent-audit-kit
-> • GitHub Action: uses: sattyamjjain/agent-audit-kit@v0.3.79
+> • GitHub Action: uses: sattyamjjain/agent-audit-kit@v0.3.80
 >
 > MIT. No strings.
 

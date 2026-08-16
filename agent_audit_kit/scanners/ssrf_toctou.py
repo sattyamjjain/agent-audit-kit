@@ -14,6 +14,16 @@ fetch on a re-resolved hostname, with no IP-pinning marker between
 them. Suppress when the function pins the IP via `socket.getaddrinfo`,
 `HTTPAdapter`, `Host:` header, or a `pinned_ip` / `resolved_ip` symbol.
 
+Guard recognition is two-track, because the original closed list of seven
+names only matched guards named the way langchain-openai named its own.
+`mcp-contextforge-gateway` < 1.0.3 (CVE-2026-53708 / GHSA-9hgc-g3w5-67cm)
+calls its guard `validate_gateway_test_url`: it resolves the host, rejects
+private ranges on `/admin/gateways/test`, and then hands the *hostname* to
+an httpx client that resolves it a second time. Identical bug, different
+name, and the allow-list said nothing. So a callee now counts as a guard
+if either its **name** reads like a URL/host check, or its **body** in this
+file both resolves a name and range-checks the result.
+
 Pin check: `langchain-openai < 1.1.14`.
 """
 
@@ -44,6 +54,61 @@ _VALIDATOR_NAMES = frozenset({
     "ssrf_guard",
     "is_url_safe",
 })
+
+# The closed set above only recognises guards that happen to be named the way
+# langchain-openai named its own. Real projects name theirs after the thing they
+# guard — `validate_gateway_test_url` in mcp-contextforge-gateway
+# (CVE-2026-53708 / GHSA-9hgc-g3w5-67cm), which resolves the host, rejects
+# private ranges, and then hands the *hostname* to an httpx client that resolves
+# it a second time. Same bug, different name, and the allow-list missed it.
+#
+# Two ways in now: a name that reads like a URL/host guard, or (below) a callee
+# defined in this file whose body actually resolves and range-checks.
+_VALIDATOR_NAME_RE = re.compile(
+    r"""
+    ^(?:
+        (?:validate|verify|check|ensure|assert|guard|sanitize|is)_\w*
+        (?:url|uri|host|hostname|endpoint|address|target|gateway|ssrf)\w*
+      | \w*(?:url|uri|host|hostname|endpoint|target)_\w*
+        (?:valid|safe|allowed|check|guard)\w*
+      | \w*ssrf\w*
+    )$
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+# A function body that resolves a name and tests the result against private /
+# reserved ranges *is* an SSRF guard, whatever it is called.
+_RESOLVES_RE = re.compile(
+    r"\bsocket\.gethostbyname\b|\bsocket\.getaddrinfo\b|\bgethostbyname_ex\b"
+    r"|\bdns\.resolver\b|\bresolver\.resolve\b"
+)
+_RANGE_CHECK_RE = re.compile(
+    r"\bis_private\b|\bis_loopback\b|\bis_reserved\b|\bis_link_local\b"
+    r"|\bip_address\s*\(|\bip_network\s*\(|\bBLOCKED_\w*|\bDENY_\w*|\bPRIVATE_\w*"
+)
+
+
+def _is_validator_name(name: str | None) -> bool:
+    if not name:
+        return False
+    return name in _VALIDATOR_NAMES or bool(_VALIDATOR_NAME_RE.match(name))
+
+
+def _guard_functions(tree: ast.AST, text: str) -> set[str]:
+    """Names of functions in this file that resolve a host and range-check it.
+
+    Catches a guard whose name gives nothing away, as long as its body does the
+    two things that make it a guard.
+    """
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        body = ast.get_source_segment(text, node) or ""
+        if _RESOLVES_RE.search(body) and _RANGE_CHECK_RE.search(body):
+            names.add(node.name)
+    return names
 
 _FETCH_NAMES = frozenset({
     "get",
@@ -110,6 +175,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     except SyntaxError:
         return []
     findings: list[Finding] = []
+    body_guards = _guard_functions(tree, text)
 
     class FuncVisitor(ast.NodeVisitor):
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
@@ -131,7 +197,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             validator_line = 0
             for child in calls:
                 callee = _attr_name(child.func)
-                if callee in _VALIDATOR_NAMES:
+                if _is_validator_name(callee) or callee in body_guards:
                     validator_seen = True
                     validator_line = child.lineno
                     continue

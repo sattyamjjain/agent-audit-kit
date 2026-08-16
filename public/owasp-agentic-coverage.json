@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-15T17:56:20Z",
-  "aak_version": "0.3.79",
-  "rule_count": 304,
+  "last_updated": "2026-08-16T16:24:32Z",
+  "aak_version": "0.3.80",
+  "rule_count": 308,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -130,7 +130,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 43,
+      "rule_density": 45,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -528,6 +528,24 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-73614"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-SHELL-DEFAULT-PROFILE-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-55071",
+            "CVE-2026-55157"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-SHELL-QUOTED-INTERP-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-55071",
+            "CVE-2026-55157"
           ],
           "aicm_references": []
         },
@@ -1629,7 +1647,8 @@
           "id": "AAK-MCP-STATA-CVE-2026-47708-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-47708"
+            "CVE-2026-47708",
+            "CVE-2026-55071"
           ],
           "aicm_references": [
             "AIS-08",
@@ -1746,7 +1765,8 @@
           "id": "AAK-SSRF-TOCTOU-001",
           "severity": "medium",
           "cve_references": [
-            "CVE-2026-41488"
+            "CVE-2026-41488",
+            "CVE-2026-53708"
           ],
           "aicm_references": [
             "AIS-08",
@@ -1806,7 +1826,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 42,
+      "rule_density": 44,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2041,6 +2061,25 @@
             "IVS-04",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-SIDECAR-NOAUTH-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-49471",
+            "CVE-2026-55156",
+            "CVE-2026-73222"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-SIDECAR-REBIND-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-49471",
+            "CVE-2026-55156"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",

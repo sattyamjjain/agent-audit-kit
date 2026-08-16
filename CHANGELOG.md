@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.80] - 2026-08-16
+
+### Added
+
+- Added detection for MCP servers that ship an unauthenticated sidecar dashboard, which was three of the seven advisories published this week. Also tightened the shell-interpolation rule, because double quotes do not stop command substitution and two CVEs this week relied on exactly that.
+- `AAK-MCP-SIDECAR-NOAUTH-001` (MCP_CONFIG, HIGH) — a process that registers MCP tools also binds an HTTP listener whose routes carry no auth dependency or middleware. Distinct from `AAK-MCP-HTTP-NOAUTH-SERVER-001`, which requires a non-loopback bind or wildcard CORS: this is the *second* listener, on loopback, that the threat model forgot. AAK already carried four package-specific pins of this exact shape (Serena CVE-2026-49471, Cline CVE-2026-59723, claude-code-templates CVE-2026-73222, Penpot CVE-2026-45805) — this detects the pattern, so the next one does not need a pin. Anchors: CVE-2026-55156 / GHSA-76pc-mqxp-3rq5 (`@ooples/token-optimizer-mcp` < 5.1.0) and GHSA-rm43-82j9-r4mj (`atomic-agents-stack` <= 1.0.0).
+- `AAK-MCP-SIDECAR-REBIND-001` (TRANSPORT_SECURITY, HIGH) — a loopback bind used as the access control with no Host-header allow-list, which is the DNS-rebinding precondition. Suppressed by request-borne credentials (bearer, API key), which a rebinding attacker cannot supply; **not** suppressed by cookie or session auth, which the browser attaches on the attacker's behalf. Stands down on the MCP SDK's own StreamableHTTP transport, which `AAK-DNS-REBIND-001` owns.
+- `AAK-SHELL-QUOTED-INTERP-001` (TAINT_ANALYSIS, HIGH) — a tool argument reaching a shell sink through an interpolated command string, including through a local variable and including when the site is quoted. `AAK-TAINT-001` only matched a bare parameter handed straight to the sink, so it saw neither August CVE: both build a string first, and both quote it. Covers the argv-behind-an-eval-flag form too, since a list stops shell metacharacters but not injection into an interpreter you invoked yourself. Anchors: CVE-2026-55157 (CVSS 3.1 8.4) and CVE-2026-55071 (CVSS 3.1 8.4).
+- `AAK-SHELL-DEFAULT-PROFILE-001` (MCP_CONFIG, HIGH) — a command-executing tool exposed in the default profile with no opt-in flag, env gate, or profile membership. This is what the `PR:N` in both CVSS vectors records, and what moved both advisories from "reachable if you enabled the risky profile" to "reachable out of the box". Fires only for tools that already reach a command sink.
+- `agent-audit-kit suggest --auto-pr` applies allow-listed mechanical fixes on a new branch and opens a **draft** PR. Off by default; refuses if any pending fix is for a rule outside `AUTO_PR_ALLOWLIST`, or if the working tree is dirty. Delivery runs through the `gh` CLI under the operator's own auth, so AAK never asks for, stores, or reads a token. Closes #68.
+
+### Fixed
+
+- `AAK-SSRF-TOCTOU-001` recognised SSRF guards from a closed list of seven names borrowed from langchain-openai, so it missed CVE-2026-53708 (`mcp-contextforge-gateway` < 1.0.3, GHSA-9hgc-g3w5-67cm) — the same resolve-then-connect defect, reached through a guard named `validate_gateway_test_url` after the endpoint it protects rather than after the check it performs. Guard recognition is now two-track: the name reads like a URL/host check, or the body in that file both resolves a name and range-checks the result. No new findings on the existing corpus.
+- `AAK-MCP-STATA-CVE-2026-47708-001` pinned `mcp-for-stata`, which is a 404 on PyPI — the GHSA title is the project name and the distribution is `stata-mcp`, so the rule had not matched a real manifest since it landed. Name corrected and the floor moved 1.17.3 → 1.19.0 for CVE-2026-55071, which 1.18.x otherwise cleared while still being vulnerable.
+
 ## [0.3.79] - 2026-08-15
 
 ### Fixed

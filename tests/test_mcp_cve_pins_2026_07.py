@@ -448,13 +448,35 @@ def test_agenticmail_pin_does_not_match_bare_openclaw(tmp_path: Path) -> None:
 
 def test_stata_below_floor_fires(tmp_path: Path) -> None:
     assert "AAK-MCP-STATA-CVE-2026-47708-001" in _ids(
+        tmp_path, "requirements.txt", "stata-mcp==1.17.0\n"
+    )
+
+
+def test_stata_pin_uses_the_real_pypi_name(tmp_path: Path) -> None:
+    """The pin shipped against `mcp-for-stata`, which is a 404 on PyPI.
+
+    The GHSA titles say "MCP-for-Stata" because that is the project name; the
+    distribution is `stata-mcp`. A pin on the project name never matched a
+    manifest, so this rule had not fired on a real repo since it landed.
+    """
+    assert "AAK-MCP-STATA-CVE-2026-47708-001" not in _ids(
         tmp_path, "requirements.txt", "mcp-for-stata==1.17.0\n"
+    )
+
+
+def test_stata_floor_covers_the_second_cve(tmp_path: Path) -> None:
+    """CVE-2026-55071 (`ado_package_install`) is fixed in 1.19.0, not 1.17.3.
+
+    1.18.x clears the old floor and is still vulnerable to the newer one.
+    """
+    assert "AAK-MCP-STATA-CVE-2026-47708-001" in _ids(
+        tmp_path, "requirements.txt", "stata-mcp==1.18.2\n"
     )
 
 
 def test_stata_patched_passes(tmp_path: Path) -> None:
     assert "AAK-MCP-STATA-CVE-2026-47708-001" not in _ids(
-        tmp_path, "requirements.txt", "mcp-for-stata==1.17.3\n"
+        tmp_path, "requirements.txt", "stata-mcp==1.19.0\n"
     )
 
 

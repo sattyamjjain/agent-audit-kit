@@ -4075,7 +4075,10 @@ _r(
     "resolution. Between the two resolutions a malicious hostname can "
     "rotate from a public IP to a private/localhost/cloud-metadata IP "
     "(DNS rebinding) — bypassing the allow-list. CVE-2026-41488 "
-    "(langchain-openai `_url_to_size`) is the canonical example. The "
+    "(langchain-openai `_url_to_size`) is the canonical example; "
+    "CVE-2026-53708 (`mcp-contextforge-gateway` < 1.0.3, "
+    "`/admin/gateways/test`) is the same bug reached through a guard "
+    "named after the endpoint rather than after the check. The "
     "fix is to resolve once, pin the IP, and reuse the same `Session` / "
     "`HTTPAdapter` for the fetch — or drive the allow-list check on the "
     "resolved IP instead of the hostname.",
@@ -4087,7 +4090,7 @@ _r(
     "+ explicit IP, custom `HTTPAdapter`, or `pinned_ip`-style helper). "
     "Pin `langchain-openai >= 1.1.14`.",
     sarif_name="UrlAllowListToctou",
-    cve_references=["CVE-2026-41488"],
+    cve_references=["CVE-2026-41488", "CVE-2026-53708"],
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-NETWORK-03"],
@@ -6605,21 +6608,28 @@ _r(
 
 _r(
     "AAK-MCP-STATA-CVE-2026-47708-001",
-    "MCP-for-Stata < 1.17.3 (log_file_name Stata command injection)",
-    "MCP-for-Stata before 1.17.3 interpolates the `log_file_name` parameter of "
-    "the `stata_do` API/CLI directly into a Stata command string without "
-    "sanitization. Its `GuardValidator` scans only the do-file content, not this "
-    "parameter, so a crafted `log_file_name` containing quotes, newlines, or "
-    "Stata command separators injects arbitrary Stata commands — including "
-    "`shell`, `python`, and `erase` — reaching OS command execution "
-    "(CVE-2026-47708). Fixed in 1.17.3; treat < 1.17.3 (and unpinned) as exposed.",
+    "stata-mcp < 1.19.0 (Stata command injection, two CVEs)",
+    "MCP-for-Stata (PyPI `stata-mcp`) reaches OS command execution twice over, "
+    "by the same route: an unsanitized parameter is concatenated into a Stata "
+    "command string, and Stata's own `shell` / `python` escapes turn that into "
+    "the operating system. CVE-2026-47708 (< 1.17.3) is the `log_file_name` "
+    "parameter of `stata_do` — the `GuardValidator` scans only the do-file "
+    "content, never the parameter. CVE-2026-55071 (< 1.19.0, CVSS 3.1 8.4, "
+    "GHSA-49m4-vp58-wgc9) is the `package` parameter of `ado_package_install`, "
+    "which is in the **default** tool profile, so no non-default configuration "
+    "is required. The command is handed over as an argv element, which stops "
+    "shell metacharacters and does nothing at all about newline injection into "
+    "Stata's command language. Fixed in 1.19.0; treat < 1.19.0 (and unpinned) "
+    "as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `mcp-for-stata` to >= 1.17.3 and pin it. Validate/allow-list the "
-    "`log_file_name` parameter (reject quotes, newlines, and Stata separators) in "
-    "addition to the do-file content guard.",
+    "Upgrade `stata-mcp` to >= 1.19.0 and pin it. Allow-list both the "
+    "`log_file_name` and `package` parameters (reject quotes, newlines, and "
+    "Stata command separators) rather than relying on the do-file content "
+    "guard or on argv quoting.",
     sarif_name="McpForStataCommandInjection",
-    cve_references=["CVE-2026-47708"],
+    cve_references=["CVE-2026-47708", "CVE-2026-55071"],
+    incident_references=["GHSA-4p62-hqp5-g644", "GHSA-49m4-vp58-wgc9"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
@@ -7328,6 +7338,153 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-SUPPLY-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# MCP sidecar HTTP surface (2026-08 wave) — the "dashboard next to the tools"
+# class. Three advisories in one week, one shape: the MCP server also binds a
+# local HTTP dashboard, and the dashboard has no auth because "it only listens
+# on localhost". AAK already carries four package-specific pins of this exact
+# shape (Serena CVE-2026-49471, Cline CVE-2026-59723, claude-code-templates
+# CVE-2026-73222, Penpot CVE-2026-45805); these two rules detect the pattern.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SIDECAR-NOAUTH-001",
+    "MCP server binds an unauthenticated sidecar HTTP surface",
+    "A process that registers MCP tools also binds an HTTP listener whose "
+    "routes carry no authentication dependency or middleware (CWE-306, Missing "
+    "Authentication for a Critical Function). The MCP transport itself may be "
+    "authenticated or stdio-only, but the sidecar dashboard / status API / "
+    "debug UI beside it is not, and it is backed by the same process state and "
+    "the same operator credentials. Binding to loopback is not an "
+    "authorization boundary: the listener is reachable by DNS rebinding from "
+    "any page the operator visits, and by any co-located SSRF on the host. "
+    "Distinct from `AAK-MCP-HTTP-NOAUTH-SERVER-001`, which covers the MCP "
+    "endpoint itself bound to a non-loopback interface or serving wildcard "
+    "CORS; this rule covers the *second* listener, on loopback, that the "
+    "threat model forgot.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Put authentication on the sidecar's routes, not just on the MCP "
+    "transport. A bearer token or API-key header checked in middleware is "
+    "enough, and unlike a loopback bind it also survives DNS rebinding. If the "
+    "surface exists only for local debugging, gate it behind an explicit "
+    "opt-in flag that is off by default.",
+    sarif_name="McpSidecarNoAuth",
+    cve_references=["CVE-2026-55156", "CVE-2026-49471", "CVE-2026-73222"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-MCP-03"],
+    incident_references=["GHSA-76pc-mqxp-3rq5", "GHSA-rm43-82j9-r4mj"],
+    limitations="Detects the listener and the absence of an auth marker in the "
+    "same file. An auth check applied from a separate middleware module that "
+    "this file never references will read as absent.",
+)
+
+_r(
+    "AAK-MCP-SIDECAR-REBIND-001",
+    "Loopback bind used as access control with no Host-header allow-list",
+    "An HTTP listener beside an MCP server binds 127.0.0.1 / ::1 and relies on "
+    "that bind as its access control, with no Host-header allow-list (CWE-350, "
+    "Reliance on Reverse DNS Resolution). This is the DNS-rebinding "
+    "precondition: an attacker page resolves its own hostname to a public IP, "
+    "then re-resolves it to 127.0.0.1, and the browser delivers the request to "
+    "the loopback listener with an attacker-chosen Host header. The bind "
+    "address never enters into it, because the packet genuinely does arrive on "
+    "loopback. Only a Host-header allow-list rejects it. Suppressed when the "
+    "app enforces request-borne credentials (bearer token, API-key header), "
+    "which a rebinding attacker cannot supply; not suppressed by cookie or "
+    "session auth, which the browser attaches on the attacker's behalf. "
+    "Complements `AAK-DNS-REBIND-001`, which owns the MCP SDK's own "
+    "StreamableHTTP transport; this rule stands down on those.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Add a Host-header allow-list to the listener — FastAPI/Starlette's "
+    "TrustedHostMiddleware, or an equivalent check that rejects any Host not "
+    "in {localhost, 127.0.0.1, ::1}. Keep the loopback bind, but stop treating "
+    "it as the control.",
+    sarif_name="McpSidecarRebind",
+    cve_references=["CVE-2026-55156", "CVE-2026-49471"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-MCP-03"],
+    incident_references=["GHSA-76pc-mqxp-3rq5"],
+    limitations="Detects a literal loopback bind. A bind address read from "
+    "config at runtime is not resolved, so a server that defaults to loopback "
+    "via a settings object will not be flagged.",
+)
+
+
+# ---------------------------------------------------------------------------
+# Shell interpolation precision (2026-08 wave)
+#
+# `AAK-TAINT-001` fires only when a bare parameter is passed straight to the
+# sink. Both August CVSS-8.4 advisories build a command string first, and both
+# quote the interpolation site — which stops nothing, because $(...) and
+# backticks expand inside double quotes.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SHELL-QUOTED-INTERP-001",
+    "Tool argument interpolated into a shell command, quoting notwithstanding",
+    "An agent/tool parameter reaches a shell-executing sink through an "
+    "interpolated command string (CWE-78), including via a local variable and "
+    "including when the interpolation site is quoted. Double quotes are not a "
+    "mitigation: `$(...)`, backticks and `${...}` all expand inside them, so "
+    "`getent passwd \"${username}\"` is exactly as injectable as the unquoted "
+    "form — that is CVE-2026-55157 (CVSS 3.1 8.4). Single quotes do block "
+    "substitution but not a literal `'` that closes the quoting. The rule also "
+    "covers the argv-behind-an-eval-flag form: passing a list instead of a "
+    "shell string stops shell metacharacters, but not injection into an "
+    "interpreter you explicitly invoked, which is how CVE-2026-55071 (CVSS 3.1 "
+    "8.4) reached the OS through Stata's own shell escape. Narrower and more "
+    "precise than `AAK-TAINT-001`, which only matches a bare parameter handed "
+    "straight to the sink.",
+    Severity.HIGH,
+    Category.TAINT_ANALYSIS,
+    "Do not build the command as a string. Pass an argv list with no shell, "
+    "and if an element must carry a value, escape it with `shlex.quote` "
+    "(Python) or the `shell-quote` package (Node). Where the argv element is "
+    "itself a program for an interpreter, validate the value against an "
+    "allow-list — quoting the outer shell does nothing for the inner one.",
+    sarif_name="ShellQuotedInterpolation",
+    cve_references=["CVE-2026-55157", "CVE-2026-55071"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-TOOL-02"],
+    incident_references=["GHSA-49mq-fc6q-3h46", "GHSA-49m4-vp58-wgc9"],
+    limitations="Propagation is one hop: a parameter interpolated into a local "
+    "variable that is then passed to the sink. A value routed through a helper "
+    "function in another module is not followed.",
+)
+
+_r(
+    "AAK-SHELL-DEFAULT-PROFILE-001",
+    "Command-executing tool is reachable in the default tool profile",
+    "A tool that reaches a command-execution sink is registered in the "
+    "server's default profile, with no opt-in flag, environment gate, or "
+    "profile membership standing between a freshly connected MCP client and "
+    "the sink. This is the condition that moved both August 2026 shell CVEs "
+    "from theoretical to high: no non-default configuration was needed, which "
+    "is what the `PR:N` in their CVSS vectors records. Fires only for tools "
+    "that already reach a command sink, so it qualifies a real finding rather "
+    "than complaining about every server that runs commands.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Move command-executing tools behind an explicit opt-in — an "
+    "`AAK_ENABLE_*` environment gate, a named non-default tool profile, or a "
+    "CLI flag — so that reaching the sink requires a deliberate operator "
+    "decision rather than the default install.",
+    sarif_name="ShellToolDefaultProfile",
+    cve_references=["CVE-2026-55157", "CVE-2026-55071"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-TOOL-02"],
+    incident_references=["GHSA-49mq-fc6q-3h46", "GHSA-49m4-vp58-wgc9"],
+    limitations="Reads the registration site in the same file as the tool. A "
+    "gate applied by a loader in another module is not seen.",
 )
 
 

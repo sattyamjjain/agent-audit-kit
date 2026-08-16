@@ -41,7 +41,9 @@ available) before shipping:
   - whatsapp-mcp                   >= 0.2.1   (CVE-2026-46555)
   - @agenticmail/{claudecode,codex,core,openclaw} (CVE-2026-57495; fix floors
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
-  - mcp-for-stata                  >= 1.17.3  (CVE-2026-47708)
+  - stata-mcp                      >= 1.19.0  (CVE-2026-47708, CVE-2026-55071 —
+    the PyPI name is `stata-mcp`; the GHSA title "MCP-for-Stata" is the project
+    name, and `mcp-for-stata` does not exist on PyPI)
   - @adenot/mcp-google-search      <= 0.3.1   (CVE-2026-19337; SSRF, no fixed release yet)
   - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
   - n8n (MCP Client node)          >= 2.32.1  (CVE-2026-72768; SSRF-protection bypass)
@@ -198,8 +200,13 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-AGENTICMAIL-CVE-2026-57495-001", "@agenticmail/openclaw",
          ("@agenticmail/openclaw",), (0, 5, 71), fix_label="0.5.71"),
     # --- 2026-07-21 wave ---
-    _Pin("AAK-MCP-STATA-CVE-2026-47708-001", "mcp-for-stata", ("mcp-for-stata",),
-         (1, 17, 3), fix_label="1.17.3"),
+    # The GHSA titles read "MCP-for-Stata", but the PyPI artifact is `stata-mcp`
+    # — `mcp-for-stata` is a 404 and never matched a real manifest. Floor moves
+    # 1.17.3 -> 1.19.0 for CVE-2026-55071 (GHSA-49m4-vp58-wgc9, CVSS 3.1 8.4):
+    # `ado_package_install` concatenates an unsanitized `package` into a Stata
+    # command, and Stata's shell escape turns newline injection into OS RCE.
+    _Pin("AAK-MCP-STATA-CVE-2026-47708-001", "stata-mcp", ("stata-mcp",),
+         (1, 19, 0), fix_label="1.19.0"),
     # --- 2026-07-22 wave ---
     # n8n CVE-2026-65594 is fixed on two branches (2.29.8 mainline, 2.30.1 on the
     # 2.30.x line) and affects only from 2.27.0 — two pin arms, one rule_id, each

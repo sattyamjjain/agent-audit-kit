@@ -1,5 +1,5 @@
 {
-  "count": 90,
+  "count": 92,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -182,6 +182,10 @@
       "name": "MCP Server Card static audit (SEP-1649 /.well-known/mcp/server-card.json)"
     },
     {
+      "module": "mcp_sidecar_http",
+      "name": "MCP server binds an unauthenticated sidecar dashboard on loopback (2026-08 wave)"
+    },
+    {
       "module": "mcp_ssrf_toolarg",
       "name": "MCP tool-arg URL SSRF (CVE-2026-14748)"
     },
@@ -252,6 +256,10 @@
     {
       "module": "prtitle_ipi",
       "name": "PR-title indirect prompt injection (Comment-and-Control 2026-04-25)"
+    },
+    {
+      "module": "quoted_shell_interp",
+      "name": "Tool argument interpolated into a shell command despite quoting (CVE-2026-55157 class)"
     },
     {
       "module": "routines",
