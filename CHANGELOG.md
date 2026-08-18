@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.82] - 2026-08-17
+
 ### Fixed
 
 - The JSON report's own numbers disagreed and nothing in the document said why. `summary.total` and the severity histogram counted every finding; `findings` held only what cleared `min_severity`, which defaults to LOW. Scanning the 748-config corpus therefore emitted `"total": 370`, `"info": 1`, and 369 entries — so anything counting the array silently disagreed with the summary by one, and a histogram claiming an INFO finding sat beside an array containing none. The filtering is deliberate; the silence was not. `summary` now also carries `reported` (always equal to `len(findings)`) and `minSeverity` (the threshold actually applied), so the gap is self-explaining. No existing field changed meaning, so consumers reading `total` are unaffected. `tests/test_json_report_counts.py` holds the invariant in both directions, including that `total - reported` always equals exactly the count below the threshold — if that stops holding, the two numbers differ for some other reason and `minSeverity` no longer explains the document.
