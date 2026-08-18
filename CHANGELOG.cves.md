@@ -16,6 +16,17 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-18: both out of scope, and one of them for a reason worth writing down
+
+Two advisories, neither pinnable. The Onyx one is the more interesting: it names fix
+versions, which normally means a pin, but the package names it would key on belong to
+different projects entirely.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-71424 (Onyx < 3.1.10 / < 3.2.14 / < 4.0.0, CWE-200, CVSS 3.1 9.6 - `OnyxTokenStorage.set_tokens` and `set_client_info` copy per-user OAuth tokens into a shared admin `MCPConnectionConfig` row, and `_db_mcp_server_to_api_mcp_server` returns it through `auth_template.headers` to any BASIC_ACCESS user, so `GET /api/mcp/servers` hands one user's Authorization header to another) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-71424) | **Out of scope** - no pinnable artifact, and the near miss is the point. Fix versions are named, so this looks pinnable, but the Onyx AI platform ships no PyPI or npm distribution: `onyx` on PyPI is an unrelated trading framework (latest 0.8.11) and `onyx` on npm is a static file server. Their version lines do not even overlap the 3.1.x / 3.2.x / 4.0 lines this CVE names, which is what confirms they are different projects. A pin keyed on that name would fire on two innocent packages and never once on the vulnerable platform, the same collision the `@adenot/mcp-google-search` pin comment documents for the unscoped name. Onyx is deployed self-hosted by container, and an image tag is not in the pin detector's candidate set, same basis as ArcadeDB CVE-2026-68578 (#528). Upgrade to >= 3.1.10, >= 3.2.14 or >= 4.0.0. The token disclosure is server-side and has no config-detectable signature; `AAK-MCP-001` flags the reachable posture where the endpoint is remote and unauthenticated. Revisit if Onyx ever publishes a pinnable distribution. | 2026-08-18 |
+| CVE-2026-75060 (JetBrains PyCharm < 2026.2.1, CVSS 3.1 8.4 - code execution via unauthenticated Jupyter MCP tools) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-75060) | **Out of scope** - same basis already settled for SiYuan CVE-2026-66012 (#499), reused for ArcadeDB CVE-2026-68578 (#528) and for SiYuan CVE-2026-74798 in 0.3.81. PyCharm is a desktop IDE installed from vendor builds, not a pinned `npx` / `uvx` artifact, so its version never appears in a dependency manifest, a lockfile or an MCP config and a static config scan cannot see it. Upgrade to >= 2026.2.1. The exposed shape, an MCP tool surface reachable without authentication, is exactly what `AAK-MCP-001` (critical) reports, and that is the finding that matters here because the CVE's precondition is the missing auth. | 2026-08-18 |
+
 ## 2026-08-17 — one pin with no fix to pin to, one repeat of a settled disposition
 
 Both of the day's advisories are decided by packaging rather than by severity. The

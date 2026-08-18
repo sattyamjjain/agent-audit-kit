@@ -26,7 +26,7 @@ authors:
 repository-code: "https://github.com/sattyamjjain/agent-audit-kit"
 url: "https://github.com/sattyamjjain/agent-audit-kit"
 license: MIT
-version: "0.3.82"
+version: "0.3.83"
 date-released: "2026-08-17"
 keywords:
   - model-context-protocol

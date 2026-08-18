@@ -15,6 +15,7 @@
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
+  <a href="research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.0-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.0"></a>
 </p>
 
 ---
@@ -24,6 +25,14 @@
 </p>
 
 Security scanner for MCP-connected AI agent pipelines. Finds misconfigurations, hardcoded secrets, tool poisoning, rug pulls, trust boundary violations, and tainted data flows across **10 agent platforms**.
+
+**What we measured across the public MCP ecosystem** ([State of MCP Security 2026, v1.0](research/state-of-mcp-2026/REPORT.md) — [how to cite](research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report)):
+
+- **<!-- report:corpus -->2,303<!-- /report --> distinct public MCP configs scanned**, of which **<!-- report:rfc9728-n -->0<!-- /report --> serve RFC 9728** Protected-Resource-Metadata discovery.
+- **<!-- report:noauth-pct -->52.3<!-- /report -->% (<!-- report:noauth-n -->1,205<!-- /report -->)** declare a remote server with **no authentication**.
+- **<!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->421<!-- /report -->/<!-- report:inline-auth-d -->421<!-- /report -->)** of inline-auth remote configs **hardcode a static credential**.
+
+These are regenerated from `research/state-of-mcp-2026/results.json` by `scripts/sync_rule_count.py` and asserted by `tests/test_report_headline_numbers.py`, so they cannot drift from the report.
 
 **Two things it does that hosted scanners can't:**
 
@@ -73,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.82
+      - uses: sattyamjjain/agent-audit-kit@v0.3.83
         id: scan
         with:
           fail-on: high
@@ -103,7 +112,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.82
+    rev: v0.3.83
     hooks:
       - id: agent-audit-kit
 ```
@@ -293,7 +302,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.82
+  - uses: sattyamjjain/agent-audit-kit@v0.3.83
     id: scan
     with:
       fail-on: high

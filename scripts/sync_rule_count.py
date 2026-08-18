@@ -60,6 +60,43 @@ _INIT_CONSTANT_RE = re.compile(
     re.MULTILINE,
 )
 
+# State of MCP Security report headline numbers. Driven from
+# research/state-of-mcp-2026/results.json, which `make report` regenerates
+# deterministically and `make report-check` already guards, so the README cannot drift
+# from the report it cites. Asserted by tests/test_report_headline_numbers.py.
+_REPORT_RESULTS = REPO_ROOT / "research" / "state-of-mcp-2026" / "results.json"
+_README_REPORT_RE = re.compile(
+    r"(<!--\s*report:([a-z0-9-]+)\s*-->)(.*?)(<!--\s*/report\s*-->)",
+    re.DOTALL,
+)
+
+
+def report_headline_numbers() -> dict[str, str]:
+    """marker key -> rendered value, read from the committed results.json.
+
+    Rendered here rather than in the README so one place decides formatting. Counts
+    over 999 carry a thousands separator to match the surrounding prose; the test
+    compares parsed integers, so a formatting change cannot fail it spuriously.
+    """
+    import json
+
+    data = json.loads(_REPORT_RESULTS.read_text(encoding="utf-8"))
+    auth = data["auth_profile_2026_07_28"]
+
+    def _n(value: int) -> str:
+        return f"{value:,}"
+
+    return {
+        "corpus": _n(data["distinct_configs_scanned"]),
+        "rfc9728-n": _n(auth["rfc9728_prm_discovery"]["n"]),
+        "noauth-pct": f"{auth['no_authentication']['pct']:g}",
+        "noauth-n": _n(auth["no_authentication"]["n"]),
+        "inline-auth-pct": f"{auth['remote_auth_static_credential']['pct']:g}",
+        "inline-auth-n": _n(auth["remote_auth_static_credential"]["n"]),
+        "inline-auth-d": _n(auth["remote_auth_static_credential"]["denominator"]),
+    }
+
+
 # Fix-recipe coverage (issue #607). Driven from the registry for the same reason the
 # rule total is: it is a published capability number, so a hand-edited value rots.
 # Asserted by tests/test_fix_recipe_coverage.py::test_fix_recipe_coverage_is_canonical.
@@ -186,6 +223,20 @@ def _update_readme(count: int, *, check: bool) -> bool:
     text = _README_FIX_PCT_RE.sub(
         lambda m: f"{m.group(1)}{fix_count / count * 100:.1f}{m.group(3)}", text
     )
+
+    # Report headline numbers — see report_headline_numbers() above.
+    report_values = report_headline_numbers()
+
+    def _sub_report(match: "re.Match") -> str:
+        key = match.group(2)
+        if key not in report_values:
+            raise SystemExit(
+                f"sync_rule_count: README references unknown report marker `{key}` — "
+                f"valid keys: {sorted(report_values)}"
+            )
+        return f"{match.group(1)}{report_values[key]}{match.group(4)}"
+
+    text = _README_REPORT_RE.sub(_sub_report, text)
 
     if text == original:
         return False
