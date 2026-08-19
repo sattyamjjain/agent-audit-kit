@@ -442,3 +442,38 @@ def test_category_pattern_does_not_match_the_owasp_taxonomy_size() -> None:
         rx.search("- **313 rules** across 13 security categories")
         for rx in category_patterns
     )
+
+
+def test_the_graph_size_bound_is_pinned_and_its_silence_is_documented() -> None:
+    """A bound that produces silence reads exactly like a clean result.
+
+    Path enumeration is O(n**depth) so some bound is required, but an undocumented
+    one means a large project gets no composition findings and no way to know the
+    rule never ran. The number is pinned here and its consequence is stated in the
+    rule's own `limitations`, so both move together or the test fails.
+    """
+    assert composition._MAX_GRAPH_NODES == 200
+    limitations = RULES[CHAIN].limitations
+    assert "200" in limitations, (
+        "the graph-size bound must be stated in AAK-COMPOSE-001's limitations, or a "
+        "project above it gets silence indistinguishable from a clean scan"
+    )
+
+
+def test_exceeding_the_graph_bound_yields_silence_not_a_crash() -> None:
+    """Known behaviour, asserted, rather than an accident nobody has hit."""
+    import json
+    import tempfile
+    from pathlib import Path as _Path
+
+    with tempfile.TemporaryDirectory() as td:
+        root = _Path(td)
+        servers = {"browsermcp": {"url": "https://b.example/mcp"}}
+        for i in range(composition._MAX_GRAPH_NODES + 5):
+            servers[f"srv{i}"] = {
+                "url": f"https://s{i}.example/mcp",
+                "env": {"API_KEY": "x"},
+            }
+        (root / ".mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
+        findings, _ = scan(root)
+        assert not [f for f in findings if f.rule_id == CHAIN]

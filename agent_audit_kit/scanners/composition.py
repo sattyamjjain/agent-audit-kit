@@ -85,10 +85,19 @@ RULE_IDS = frozenset({_RULE_CHAIN, _RULE_SHARED_STATE, _RULE_UNDERDECLARED})
 # one. Raising it is a deliberate decision, not a tuning knob.
 MAX_PATH_NODES = 3
 
-# Refuse to build a graph for absurd containers rather than melting on one. A
-# config with more servers than this has a bigger problem than composition, and
-# AAK-MCP-004 already reports it at a threshold of 10.
-_MAX_NODES_PER_CONTAINER = 60
+# Above this many components the graph is not built and this pass reports nothing.
+# Path enumeration is O(n**depth), so some bound is required; the number is set
+# from measurement rather than taste. Uncapped, one component reaching egress
+# through a config of N servers costs roughly 7ms at 60 nodes, 65ms at 200, 150ms
+# at 300 and 410ms at 500. 200 keeps the worst case inside the sub-100ms budget
+# the project advertises while putting the silent zone far beyond anything real:
+# the largest config in the 748-config public corpus is nowhere near it, and
+# AAK-MCP-004 already reports a server count above 10 as its own finding.
+#
+# The consequence is stated in AAK-COMPOSE-001's `limitations`, because a bound
+# that produces silence is indistinguishable from a clean result unless it is
+# written down.
+_MAX_GRAPH_NODES = 200
 _MAX_FILE_BYTES = 512_000
 # Upper bound on how many lines one server block may claim for suppression.
 _MAX_BLOCK_LINES = 200
@@ -410,7 +419,7 @@ def _edges(nodes: list[_Node]) -> dict[tuple[str, str], set[tuple[str, str]]]:
     the rule's `limitations` states.
     """
     adj: dict[tuple[str, str], set[tuple[str, str]]] = {n.key: set() for n in nodes}
-    if len(nodes) > _MAX_NODES_PER_CONTAINER:
+    if len(nodes) > _MAX_GRAPH_NODES:
         return adj
 
     for a in nodes:

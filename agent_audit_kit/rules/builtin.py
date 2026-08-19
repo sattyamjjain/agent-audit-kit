@@ -7639,8 +7639,10 @@ _r(
         "a data flow: it does not execute anything or evaluate a condition, so a "
         "reported chain is a path that exists, not one that is guaranteed to be "
         "taken. It stands down entirely when any component on the path is already "
-        "reported by another rule, so a genuine chain can be hidden by an unrelated "
-        "finding in the same file."
+        "reported at or above its own severity, so a genuine chain can be hidden by "
+        "an unrelated finding of equal weight on one of its components. Above 200 "
+        "components in a scanned project the graph is not built at all and this rule "
+        "reports nothing, which is silence rather than a clean result."
     ),
 )
 
