@@ -180,6 +180,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-METAADS-CVE-2026-48039-001": ["DSP-17", "IAM-01", "STA-08"],
     "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001": ["IVS-04", "STA-08"],
     "AAK-MCP-FLORENCE2-CVE-2026-19984-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CODEWHALE-CVE-2026-75858-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -6482,19 +6483,34 @@ _r(
 
 _r(
     "AAK-MCP-APIFY-CVE-2026-46341-001",
-    "Apify MCP docs-allowlist bypass SSRF (`@apify/actors-mcp-server` < 0.9.21)",
-    "The Apify MCP server (`@apify/actors-mcp-server`) before 0.9.21 validates the "
-    "`fetch-apify-docs` allowlisted documentation domains with `String.startsWith()` "
-    "instead of hostname comparison, so attacker URLs such as "
-    "`https://docs.apify.com.evil.com/` or `https://docs.apify.com@evil.com/` pass "
-    "the `ALLOWED_DOC_DOMAINS` check and return arbitrary fetched content to the LLM "
-    "(CVE-2026-46341, CVSS 6.1, SSRF). Treat < 0.9.21 (and unpinned) as exposed.",
-    Severity.MEDIUM,
+    "Apify MCP host-validation defects: docs-allowlist SSRF and Actor "
+    "path-authority token leak (`@apify/actors-mcp-server` < 0.10.11)",
+    "Two defects in the Apify MCP server (`@apify/actors-mcp-server`), both of them "
+    "a host check that trusts a string instead of a parsed origin. Before 0.9.21 the "
+    "`fetch-apify-docs` allowlist is validated with `String.startsWith()` rather than "
+    "hostname comparison, so attacker URLs such as `https://docs.apify.com.evil.com/` "
+    "or `https://docs.apify.com@evil.com/` pass the `ALLOWED_DOC_DOMAINS` check and "
+    "return arbitrary fetched content to the LLM (CVE-2026-46341, CVSS 6.1, SSRF). "
+    "Before 0.10.11 `getActorMCPServerURL` in `src/mcp/actors.ts` concatenates the "
+    "trusted Actor standby URL with the Actor-supplied `webServerMcpPath` without "
+    "re-checking the resulting origin, so a userinfo-style authority (`@evil.host`) "
+    "in a malicious Actor definition redirects `connectMCPClient` to a third-party "
+    "host — and the `call-actor`, `fetch-actor-details` and `actor-mcp` paths hand "
+    "that URL to transports in `src/mcp/client.ts` that attach the victim's "
+    "`Authorization` bearer token, disclosing the Apify API token and with it access "
+    "to Actors, stored datasets and billable compute (CVE-2026-50143, CVSS 8.1, "
+    "CWE-918). Exploiting the second requires only that the victim invoke or inspect "
+    "the attacker-published Actor. The floor is the later of the two: treat "
+    "< 0.10.11 (and unpinned) as exposed.",
+    Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@apify/actors-mcp-server` to >= 0.9.21 and pin it. Allow-list by "
-    "parsed URL hostname (exact / suffix match), never `startsWith` on the raw URL.",
+    "Upgrade `@apify/actors-mcp-server` to >= 0.10.11 and pin it. Allow-list by "
+    "parsed URL hostname (exact / suffix match), never `startsWith` on the raw URL, "
+    "and re-parse any URL built from a partly-untrusted path before attaching "
+    "credentials to it — comparing the parsed origin against the expected one is what "
+    "catches a userinfo authority that string concatenation does not.",
     sarif_name="ApifyMcpDocsAllowlistSsrf",
-    cve_references=["CVE-2026-46341"],
+    cve_references=["CVE-2026-46341", "CVE-2026-50143"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
@@ -7535,6 +7551,41 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
+    "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact "
+    "bypass the approval policy (`codewhale` >= 0.8.41, < 0.8.64)",
+    "CodeWhale between 0.8.41 and 0.8.64 ships two tools whose "
+    "`approval_requirement()` returns `ApprovalRequirement::Auto`, which the engine "
+    "treats as \"never prompt\". That silently overrides the user's configured "
+    "`--approval-policy` for the two tool classes it should never be overridden for. "
+    "`rlm_eval` runs model-supplied Python in a `python3` interpreter with no prompt "
+    "and no audit step (CVE-2026-75858, CVSS 7.8, CWE-94); `exec_shell_interact` "
+    "(alias `exec_interact`) writes LLM-controlled stdin into an already-approved "
+    "long-running interactive session — a `python3 -i` REPL, `mysql`, `ssh`, or "
+    "`sudo -i` — so commands run at that process's privilege level (CVE-2026-75857, "
+    "CVSS 7.0). Neither needs a malicious operator: prompt injection in any untrusted "
+    "content the agent reads (a fetched page, a repository file, an MCP tool result) "
+    "reaches both, and the companion `rlm_open` tool can stage exactly that content. "
+    "Both are fixed in 0.8.64. `deepseek-tui` is the same project before it was "
+    "renamed and is carried by both advisories; it is deprecated on npm in favour of "
+    "`codewhale`, so it has no fixed release of its own.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `codewhale` to >= 0.8.64 and pin it. If the manifest still names "
+    "`deepseek-tui`, that package is deprecated and its line ends before the fix: "
+    "migrate to `codewhale` >= 0.8.64 rather than upgrading in place. Until then, "
+    "treat any approval policy you have configured as not in force for `rlm_eval` or "
+    "`exec_shell_interact` and remove those tools from the exposed tool set, since a "
+    "policy the engine never consults offers no protection.",
+    sarif_name="CodeWhaleAutoApprovedExecution",
+    cve_references=["CVE-2026-75858", "CVE-2026-75857"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-INJECT-01"],
 )
 
 

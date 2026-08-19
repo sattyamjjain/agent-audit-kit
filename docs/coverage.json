@@ -2718,7 +2718,8 @@
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-46341"
+        "CVE-2026-46341",
+        "CVE-2026-50143"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance"
@@ -2731,8 +2732,8 @@
         "MCP09:2025 SSRF / Network Boundary"
       ],
       "rule_id": "AAK-MCP-APIFY-CVE-2026-46341-001",
-      "severity": "medium",
-      "title": "Apify MCP docs-allowlist bypass SSRF (`@apify/actors-mcp-server` < 0.9.21)"
+      "severity": "high",
+      "title": "Apify MCP host-validation defects: docs-allowlist SSRF and Actor path-authority token leak (`@apify/actors-mcp-server` < 0.10.11)"
     },
     {
       "category": "supply-chain",
@@ -3187,6 +3188,27 @@
       "rule_id": "AAK-MCP-CLINE-CVE-2026-59723-001",
       "severity": "high",
       "title": "Cline < 3.0.30 (Hub dashboard WebSocket origin bypass \u2192 RCE)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-75857",
+        "CVE-2026-75858"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 13 - Transparency"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI01 Agent Goal Hijacking"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
+      "severity": "high",
+      "title": "CodeWhale auto-approved code execution: rlm_eval and exec_shell_interact bypass the approval policy (`codewhale` >= 0.8.41, < 0.8.64)"
     },
     {
       "category": "supply-chain",
@@ -6907,7 +6929,7 @@
       "mcp-config": 65,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 91,
+      "supply-chain": 92,
       "taint-analysis": 14,
       "tool-poisoning": 29,
       "transport-security": 13,
@@ -6915,10 +6937,10 @@
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 107,
-      "Art. 13 - Transparency": 30,
+      "Art. 13 - Transparency": 31,
       "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 178,
-      "Art. 9 - Risk Management": 101
+      "Art. 9 - Risk Management": 102
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 70,
@@ -6932,7 +6954,7 @@
       "Validate parameters (p.11)": 93
     },
     "by_owasp_agentic": {
-      "ASI01": 13,
+      "ASI01": 14,
       "ASI02": 45,
       "ASI03": 68,
       "ASI04": 64,
@@ -6944,7 +6966,7 @@
       "ASI10": 21
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 77,
+      "MCP01:2025": 78,
       "MCP02:2025": 13,
       "MCP03:2025": 31,
       "MCP04:2025": 34,
@@ -6957,13 +6979,13 @@
     },
     "by_severity": {
       "critical": 70,
-      "high": 143,
+      "high": 145,
       "info": 5,
       "low": 9,
-      "medium": 82
+      "medium": 81
     },
-    "total_cves_covered": 157,
-    "total_rules": 309
+    "total_cves_covered": 160,
+    "total_rules": 310
   },
   "tool": "agent-audit-kit"
 }

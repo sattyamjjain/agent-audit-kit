@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-16T16:30:25Z",
-  "aak_version": "0.3.80",
-  "rule_count": 308,
+  "last_updated": "2026-08-19T12:24:44Z",
+  "aak_version": "0.3.83",
+  "rule_count": 310,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 13,
+      "rule_density": 14,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -63,6 +63,18 @@
           "cve_references": [],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CODEWHALE-CVE-2026-75858-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-75857",
+            "CVE-2026-75858"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
           ]
         },
         {
@@ -2195,7 +2207,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 44,
+      "rule_density": 45,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2269,9 +2281,10 @@
         },
         {
           "id": "AAK-MCP-APIFY-CVE-2026-46341-001",
-          "severity": "medium",
+          "severity": "high",
           "cve_references": [
-            "CVE-2026-46341"
+            "CVE-2026-46341",
+            "CVE-2026-50143"
           ],
           "aicm_references": [
             "IVS-04",
@@ -2318,6 +2331,17 @@
             "CVE-2026-73846"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-FLORENCE2-CVE-2026-19984-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-19984"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001",

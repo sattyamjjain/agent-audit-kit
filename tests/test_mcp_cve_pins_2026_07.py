@@ -37,7 +37,7 @@ PINS = {
     "AAK-MCP-9ROUTER-CVE-2026-46339-001": "critical",
     "AAK-MCP-N8NMCP-CVE-2026-54052-001": "critical",
     "AAK-MCP-DBTMCP-CVE-2026-44968-001": "medium",
-    "AAK-MCP-APIFY-CVE-2026-46341-001": "medium",
+    "AAK-MCP-APIFY-CVE-2026-46341-001": "high",
     "AAK-MCP-AGENTICFLOW-CVE-2026-58195-001": "high",
     "AAK-MCP-HEALTHOMICS-CVE-2026-15415-001": "medium",
     # 2026-07-19..20 wave
@@ -84,6 +84,7 @@ PINS = {
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": "high",
     # 2026-08-17 wave
     "AAK-MCP-FLORENCE2-CVE-2026-19984-001": "medium",
+    "AAK-MCP-CODEWHALE-CVE-2026-75858-001": "high",
 }
 
 
@@ -338,6 +339,46 @@ def test_dbt_mcp_below_floor_fires(tmp_path: Path) -> None:
 def test_apify_below_floor_fires(tmp_path: Path) -> None:
     content = '{"dependencies": {"@apify/actors-mcp-server": "0.9.20"}}'
     assert "AAK-MCP-APIFY-CVE-2026-46341-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_apify_between_old_and_new_floor_fires(tmp_path: Path) -> None:
+    """CVE-2026-50143 moved this floor 0.9.21 -> 0.10.11.
+
+    0.10.4 cleared the old floor and is still exposed, so this is the exact version
+    band the floor move exists to catch. Without it the move is untested.
+    """
+    content = '{"dependencies": {"@apify/actors-mcp-server": "0.10.4"}}'
+    assert "AAK-MCP-APIFY-CVE-2026-46341-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_apify_at_new_floor_is_quiet(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@apify/actors-mcp-server": "0.10.11"}}'
+    assert "AAK-MCP-APIFY-CVE-2026-46341-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_codewhale_below_floor_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"codewhale": "0.8.50"}}'
+    assert "AAK-MCP-CODEWHALE-CVE-2026-75858-001" in _ids(tmp_path, "package.json", content)
+
+
+def test_codewhale_at_floor_is_quiet(tmp_path: Path) -> None:
+    content = '{"dependencies": {"codewhale": "0.8.64"}}'
+    assert "AAK-MCP-CODEWHALE-CVE-2026-75858-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_codewhale_does_not_fire_on_the_cargo_only_twin(tmp_path: Path) -> None:
+    """`codewhale-tui` is a crates.io package the pin detector does not read.
+
+    It has the same defect, but no Cargo manifest is in _CANDIDATE_NAMES, so a finding
+    here would be a claim the scanner cannot support from what it actually read.
+    """
+    content = '{"dependencies": {"codewhale-tui": "0.8.50"}}'
+    assert "AAK-MCP-CODEWHALE-CVE-2026-75858-001" not in _ids(tmp_path, "package.json", content)
+
+
+def test_deepseek_tui_pre_rename_name_fires(tmp_path: Path) -> None:
+    content = '{"dependencies": {"deepseek-tui": "0.8.39"}}'
+    assert "AAK-MCP-CODEWHALE-CVE-2026-75858-001" in _ids(tmp_path, "package.json", content)
 
 
 def test_agentic_flow_below_floor_fires(tmp_path: Path) -> None:

@@ -62,10 +62,19 @@ available) before shipping:
     is 3.18.0 per GHSA, not the 3.17.1 in NVD prose, which was never published)
   - @aborruso/ckan-mcp-server      >= 0.4.112 (CVE-2026-73846/73845/73844; cache-key collision,
     prefix-only host check, verbose errors — one fix version, three CVEs)
+  - @apify/actors-mcp-server       >= 0.10.11 (CVE-2026-50143 moved this floor up from
+    the 0.9.21 of CVE-2026-46341 — same package and rule, higher floor)
+  - codewhale                      >= 0.8.64  (CVE-2026-75858, CVE-2026-75857; rlm_eval and
+    exec_shell_interact return ApprovalRequirement::Auto and skip the approval policy.
+    `deepseek-tui` is the pre-rename name, deprecated, pinned at its own 0.8.41 boundary.
+    The crates.io twin `codewhale-tui` has the same defect but Cargo manifests are not in
+    _CANDIDATE_NAMES, so it is out of this detector's reach)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
-Grafana MCP on Go, mcp-gitlab with no NVD version data yet) or a tractable version
+Grafana MCP on Go, Apache SkyWalking MCP on Go, ArcadeDB on Maven, Context7 whose
+defect is in the hosted service rather than any published client version,
+mcp-gitlab with no NVD version data yet) or a tractable version
 scheme (langchain4j's four parallel beta fix-lines) are handled outside this
 module — see CHANGELOG.cves.md.
 """
@@ -118,6 +127,15 @@ _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECAS
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
 # version line; the lookbehind keeps it off `pyletta`.
 _LETTA_RE = re.compile(r"(?<![\w./-])letta(?![\w-])" + _VER_OPT, re.IGNORECASE)
+# `codewhale` (npm) and its pre-rename name `deepseek-tui`. Both exclude a trailing
+# hyphen so `codewhale` stays off the crates.io twin `codewhale-tui`, which carries the
+# same defect but lives in an ecosystem this detector does not read (no Cargo.toml in
+# _CANDIDATE_NAMES) — firing on it from a JS manifest would be a claim we cannot make.
+# The lookbehind is what the 0.3.82 `cline` fix taught: an unbounded name matches prose.
+_CODEWHALE_RE = re.compile(r"(?<![\w./-])codewhale(?![\w-])" + _VER_OPT, re.IGNORECASE)
+_DEEPSEEK_TUI_RE = re.compile(
+    r"(?<![\w./-])deepseek-tui(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
 # `cline` needs the same treatment, and for a blunter reason: unbounded, `_mk_re`
 # matches the substring in ordinary English. "declined", "inclined", "recline" and
 # "declines" all fired, so any prose file that happened to contain one reported a
@@ -189,8 +207,11 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="2.57.4", regexes=(_N8N_MCP_RE,)),
     _Pin("AAK-MCP-DBTMCP-CVE-2026-44968-001", "dbt-mcp", ("dbt-mcp",), (1, 17, 1),
          fix_label="1.17.1"),
+    # Floor moved 0.9.21 -> 0.10.11 for CVE-2026-50143 (Actor path-authority token
+    # leak). Same package, same rule: a second pin on the same name would report the
+    # one dependency twice, and the higher floor already covers the lower one.
     _Pin("AAK-MCP-APIFY-CVE-2026-46341-001", "@apify/actors-mcp-server",
-         ("@apify/actors-mcp-server",), (0, 9, 21), fix_label="0.9.21"),
+         ("@apify/actors-mcp-server",), (0, 10, 11), fix_label="0.10.11"),
     _Pin("AAK-MCP-AGENTICFLOW-CVE-2026-58195-001", "agentic-flow", ("agentic-flow",),
          (2, 0, 14), fix_label="2.0.14"),
     _Pin("AAK-MCP-HEALTHOMICS-CVE-2026-15415-001", "awslabs.aws-healthomics-mcp-server",
@@ -437,6 +458,25 @@ _PINS: tuple[_Pin, ...] = (
          ("mcp-florence2",), None,
          fix_label="no fixed release, by vendor decision — mitigate with an "
                    "SSRF-safe egress proxy / allow-list rather than an upgrade"),
+    # --- 2026-08-18 wave ---
+    #
+    # CodeWhale: two CVEs, one package, one fix version, so one rule with two pins —
+    # the CKAN precedent. CVE-2026-75858 (rlm_eval) and CVE-2026-75857
+    # (exec_shell_interact) are the same defect class in two tools: both return
+    # ApprovalRequirement::Auto, which the engine reads as "never prompt", so the
+    # user's --approval-policy is bypassed. GHSA-wrj3-vj8c-784f and GHSA-g29h-pfmp-qp9r
+    # both list >= 0.8.41, < 0.8.64 patched at 0.8.64.
+    #
+    # `deepseek-tui` is the same project before it was renamed: npm marks it deprecated
+    # ("use codewhale instead") and both advisories carry it as a separate affected row
+    # patched at 0.8.41 — which is where the codewhale line begins, so the rename is
+    # the boundary rather than a real fix. A pre-0.8.41 deepseek-tui is exposed and has
+    # no fixed release of its own; the upgrade path is the renamed package.
+    _Pin("AAK-MCP-CODEWHALE-CVE-2026-75858-001", "codewhale", ("codewhale",),
+         (0, 8, 64), fix_label="0.8.64", regexes=(_CODEWHALE_RE,)),
+    _Pin("AAK-MCP-CODEWHALE-CVE-2026-75858-001", "deepseek-tui", ("deepseek-tui",),
+         (0, 8, 41), fix_label="0.8.41 (deprecated — migrate to codewhale >= 0.8.64)",
+         regexes=(_DEEPSEEK_TUI_RE,)),
 )
 
 _CANDIDATE_NAMES = (
