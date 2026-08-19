@@ -31,7 +31,7 @@ agent-audit-kit scan examples/case-studies/damn-vulnerable-mcp/configs/ --format
 
 ## Findings Summary
 
-AgentAuditKit detects vulnerabilities across **9 of 11 security categories** in these configs:
+AgentAuditKit detects vulnerabilities across **7 of 13 security categories** in these configs:
 
 | Category | Findings | Severity | OWASP MCP | OWASP Agentic |
 |----------|----------|----------|-----------|---------------|

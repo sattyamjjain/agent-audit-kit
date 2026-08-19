@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "status-relay": {
+      "url": "https://relay.example.com/mcp"
+    }
+  }
+}

@@ -22,7 +22,7 @@
   "configs_with_high_pct": 7.2,
   "severity_totals": {
     "critical": 1338,
-    "high": 318,
+    "high": 319,
     "medium": 4426,
     "low": 1221,
     "info": 1
@@ -50,6 +50,10 @@
       "configs": 42,
       "pct": 1.8
     },
+    "AAK-COMPOSE": {
+      "configs": 1,
+      "pct": 0.0
+    },
     "AAK-INTERNAL": {
       "configs": 1,
       "pct": 0.0
@@ -73,6 +77,10 @@
       "pct": 1.8
     },
     "agent-config": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "composition": {
       "configs": 1,
       "pct": 0.0
     },
@@ -115,6 +123,10 @@
       "pct": 0.0
     },
     "MCP06:2025": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "MCP08:2025": {
       "configs": 1,
       "pct": 0.0
     }

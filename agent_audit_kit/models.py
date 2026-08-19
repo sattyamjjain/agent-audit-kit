@@ -49,6 +49,7 @@ class Category(Enum):
     A2A_PROTOCOL = "a2a-protocol"
     LEGAL_COMPLIANCE = "legal-compliance"
     MCP_SERVER_CARD = "mcp-server-card"
+    COMPOSITION = "composition"
 
 
 # Schema versioning — bump when new reference fields land on Finding /

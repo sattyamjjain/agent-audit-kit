@@ -11,7 +11,7 @@
   <a href="benchmarks/determinism/RESULTS.md"><img src="https://img.shields.io/badge/determinism-0%25%20variance%20(20%2F20)-brightgreen.svg" alt="Determinism: 0% variance across 20/20 runs"></a>
   <a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20HIGH%2FCRIT%20FP-0%2F1%20(n%3D1)-blue.svg" alt="Benign-slice HIGH/CRITICAL false-positive rate: 0/1, n=1"></a>
   <a href="docs/benchmarks/third-party-grading.md"><img src="https://img.shields.io/badge/third--party%20grade-see%20notes-lightgrey.svg" alt="Third-party grading notes"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-310-blue.svg" alt="Rules: 310"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-313-blue.svg" alt="Rules: 313"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -39,10 +39,10 @@ These are regenerated from `research/state-of-mcp-2026/results.json` by `scripts
 1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). This is measured, not just claimed: [20/20 identical runs → one shared SHA-256 finding-set digest, 0% variance](benchmarks/determinism/RESULTS.md). Scanners that route findings through an LLM judge can't guarantee a byte-identical re-run — so CI diffs, audit re-runs, and regression baselines stay stable here. No account, no telemetry. Precision is measured the same way, not asserted: we publish a reproducible, hand-adjudicated [benign-slice HIGH/CRITICAL false-positive rate](benchmarks/false_positive/RESULTS.md) — with a Wilson confidence interval and any offending rule filed as an issue.
 2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 12 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
-- **<!-- rule-count:total -->310<!-- /rule-count --> rules** across 12 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->313<!-- /rule-count --> rules** across 13 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
-- **<!-- scanner-count:total -->92<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
-- **Mechanical fix recipes: <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->310<!-- /rule-count --> rules (<!-- fix-recipe-coverage:pct -->3.5<!-- /fix-recipe-coverage -->%)** — `agent-audit-kit fix` applies these; the narrower `suggest --auto-pr` allow-list is the subset AAK will open a PR for. Deliberately low: a recipe is only added when the edit has exactly one correct form, so most rules stay advisory ([why, per fix shape](agent_audit_kit/autopr.py)).
+- **<!-- scanner-count:total -->93<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **Mechanical fix recipes: <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->313<!-- /rule-count --> rules (<!-- fix-recipe-coverage:pct -->3.5<!-- /fix-recipe-coverage -->%)** — `agent-audit-kit fix` applies these; the narrower `suggest --auto-pr` allow-list is the subset AAK will open a PR for. Deliberately low: a recipe is only added when the edit has exactly one correct form, so most rules stay advisory ([why, per fix shape](agent_audit_kit/autopr.py)).
   - Coverage is computed from the registry and verified in CI (`test_fix_recipe_coverage_is_canonical`), which also asserts every rule marked `auto_fixable` has a recipe that actually runs.
 - **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -148,8 +148,9 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->12<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (Annex III high-risk binding 2027-12-02, Annex I 2028-08-02 — AI Omnibus) |
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->15<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 discovery cards (`/.well-known/mcp/server-card.json`): tool-description poisoning in `tools[].description` (`AAK-MCP-CARD-001`, reuses the AAK-POISON detectors), declared-transport vs advertised-capability mismatch — remote transport with `authentication.required: false`, or `stdio` advertising a remote endpoint (`AAK-MCP-CARD-002`), missing / placeholder signature / provenance (`AAK-MCP-CARD-003`), and over-broad capability / wildcard-scope claims (`AAK-MCP-CARD-004`) |
+| **Composition** | <!-- category-count:COMPOSITION -->3<!-- /category-count --> | Risk that exists only between components, where each one passes on its own. An ordered 2- or 3-component path carrying untrusted input to network egress through something that reads secrets or local state, while no single component spans it (`AAK-COMPOSE-001`, CompoSkill **arXiv:2608.16246**); two or more skills sharing a writable path neither declares, which is the collusion channel a declared-capability union cannot see by construction (`AAK-COMPOSE-002`, ColluSkill **arXiv:2608.09732**); and a skill whose body or adjacent scripts exercise a wider capability than its manifest declares, which makes every chain through it look narrower than it is (`AAK-COMPOSE-003`). Paths are capped at three components, where CompoSkill's own attack-success numbers concentrate. Distinct from `AAK-AGENT-COMPOSE-001`, which is an unordered capability union over one container of skills; a composition finding stands down when any component is already reported at the same severity, so a chain is never reported twice |
 
-**<!-- rule-count:total -->310<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->313<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### MCP Server Card scanning (SEP-1649)
 
@@ -390,10 +391,10 @@ cross-reference, not a head-to-head benchmark.
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 14 |
-| **ASI02** | Tool Misuse | 45 |
+| **ASI02** | Tool Misuse | 47 |
 | **ASI03** | Memory Poisoning | 68 |
 | **ASI04** | Identity & Privilege Abuse | 64 |
-| **ASI05** | Cascading Failures | 44 |
+| **ASI05** | Cascading Failures | 45 |
 | **ASI06** | Unauthorized Capability Acquisition | 45 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 5 |
@@ -455,7 +456,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->310<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->313<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
 | Auditor-ready PDF compliance | **12 frameworks** | No | 0 | 0 |

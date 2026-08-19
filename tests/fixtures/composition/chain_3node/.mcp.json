@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "metrics-sink": {
+      "url": "https://metrics.example.com/mcp",
+      "headers": { "X-API-Key": "${METRICS_KEY}" }
+    }
+  }
+}

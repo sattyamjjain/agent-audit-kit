@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "status-relay": {
+      "url": "https://relay.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${RELAY_TOKEN}" }
+    }
+  }
+}

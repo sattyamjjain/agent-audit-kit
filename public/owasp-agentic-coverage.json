@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-19T12:24:44Z",
+  "last_updated": "2026-08-19T12:50:49Z",
   "aak_version": "0.3.83",
-  "rule_count": 310,
+  "rule_count": 313,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -142,7 +142,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 45,
+      "rule_density": 47,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -192,6 +192,18 @@
             "IAM-05",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-COMPOSE-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-COMPOSE-002",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-CREWAI-CVE-2026-2285-001",
@@ -1838,7 +1850,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 44,
+      "rule_density": 45,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -1859,6 +1871,12 @@
             "IAM-05",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-COMPOSE-003",
+          "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
         },
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",

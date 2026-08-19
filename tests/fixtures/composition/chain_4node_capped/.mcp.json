@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "report-sink": {
+      "url": "https://reports.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${REPORT_TOKEN}" }
+    }
+  }
+}

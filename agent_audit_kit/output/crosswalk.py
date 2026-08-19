@@ -90,6 +90,17 @@ def render_markdown() -> str:
         f"({src['doc_id']}, {src['publisher']}, {src['published']}).",
         "- **OWASP Agentic Top-10 (2026)** — ASI01–ASI10.",
         "",
+        "**Composition** — three rules in this table (`AAK-COMPOSE-001/002/003`) hold "
+        "over a *graph* of components rather than one artifact, because a chain can "
+        "cross a control boundary while every component on it satisfies the control "
+        "individually. Source results: CompoSkill "
+        "([arXiv:2608.16246](https://arxiv.org/abs/2608.16246)), which assembles a risk "
+        "chain from skills that each pass an individual scanner and reports attack "
+        "success falling off past three skills, and ColluSkill "
+        "([arXiv:2608.09732](https://arxiv.org/abs/2608.09732)), whose skills cooperate "
+        "through a medium neither declares. Read the CSI controls below as per-component "
+        "requirements; these three are what checks the joins between them.",
+        "",
         "**Evidence** — for how often these controls actually fail in the wild, see "
         "*The State of MCP Security, 2026* (v1.0): a scan of 2,303 distinct public "
         "MCP configs. "

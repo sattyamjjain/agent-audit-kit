@@ -89,13 +89,26 @@ PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\b(\d+)\s+compliance frameworks\b", re.I), "frameworks"),
     (re.compile(r"\*\*(\d+)\s+agent platforms\*\*", re.I), "platforms"),
     (re.compile(r"\b(\d+)\s+agent platforms\b", re.I), "platforms"),
+    # Category count. Unguarded until v0.3.84, when Category gained COMPOSITION --
+    # the third instance of the phrase-based blind spot, after "N existing rules"
+    # and "N registered scanners".
+    #
+    # Anchored on the headline "rules ... across N categories" form, which is how
+    # every current-state claim in the tree is actually written. A bare
+    # "N categories" pattern was tried first and is wrong: it matches "10/10
+    # categories" in the OWASP coverage pages (that 10 is the OWASP taxonomy's
+    # size, not AAK's), "all 11 security categories" in examples/, and
+    # "9 of 11 security categories" in a case study -- three statements about
+    # different things that a guard would have "fixed" into being false.
+    (re.compile(r"rules\*{0,2}\s+across\s+(\d+)\s+(?:security\s+)?categor(?:y|ies)", re.I), "categories"),
 )
 
 
 def canonical_counts() -> dict[str, int]:
-    """The five numbers current-state prose may claim, each computed from code."""
+    """The numbers current-state prose may claim, each computed from code."""
     from agent_audit_kit import SCANNER_COUNT, discovery
     from agent_audit_kit.cli import cli
+    from agent_audit_kit.models import Category
     from agent_audit_kit.output import pdf_report
     from agent_audit_kit.rules.builtin import RULES
 
@@ -105,6 +118,7 @@ def canonical_counts() -> dict[str, int]:
         "commands": len(cli.commands),
         "frameworks": len(pdf_report._FRAMEWORK_TITLES),
         "platforms": len(discovery.AGENT_CONFIGS),
+        "categories": len(list(Category)),
     }
 
 

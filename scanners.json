@@ -1,5 +1,5 @@
 {
-  "count": 92,
+  "count": 93,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -20,6 +20,10 @@
     {
       "module": "argv_toctou",
       "name": "Argv rebuilt after allowlist approval before spawn (CVE-2026-53822)"
+    },
+    {
+      "module": "composition",
+      "name": "Capability-graph composition (AAK-COMPOSE-001/002/003)"
     },
     {
       "module": "crewai_rce_chain",

@@ -870,6 +870,82 @@
       "title": "Anthropic Claude Code folder-trust bypass (CVE-2026-40068, npm <2.1.83)"
     },
     {
+      "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "composition",
+      "cve_references": [],
+      "description": "An ordered path of two or three components carries untrusted input to network egress, passing through one that reads secrets or local state, while no single component on the path holds all three roles. Each component therefore passes every rule that inspects it alone, and the exposure exists only because they were composed. This is the CompoSkill result (arXiv:2608.16246): a risk chain assembled from parts that each clear an individual scanner. Paths are capped at three components, which is where that paper's own attack-success numbers concentrate before longer chains degrade them, and beyond which the search cost grows as the node count to the power of the depth. Components are skills (`SKILL.md`) and MCP servers, and an edge exists where one component's declared output is another's declared input, or where both are registered together and the second accepts free-form text. Distinct from `AAK-AGENT-COMPOSE-001`, which asks whether an unordered set of skills spans a boundary: this asks whether a directed path carries data across one.",
+      "incident_references": [
+        "ARXIV-2608.16246",
+        "ARXIV-2608.09732"
+      ],
+      "limitations": "This is a static pass over declared configuration. It cannot resolve tool registration that happens at runtime, so a component added from a registry fetched at start-up is invisible to it, and a chain assembled at runtime from such components will not appear here. Capability comes from what a component declares, so an under-declared component makes its chains look narrower than they are - that gap is what AAK-COMPOSE-003 reports. Where components declare no explicit input/output wiring, edges come from co-registration, which over-approximates who can hand data to whom. It reasons about capability reachability, not proof of a data flow: it does not execute anything or evaluate a condition, so a reported chain is a path that exists, not one that is guaranteed to be taken. It stands down entirely when any component on the path is already reported by another rule, so a genuine chain can be hidden by an unrelated finding in the same file.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP08:2025"
+      ],
+      "remediation": "Break one link rather than hardening every component. In order of effectiveness: stop the first component's untrusted output from reaching the next automatically (require a human step, or a schema that cannot carry instructions); drop the egress component's reach to an allow-list of destinations; or split the chain across contexts so the components are never loaded together. Hardening the middle component alone does not help, because the chain re-forms around any replacement with the same capability.",
+      "rule_id": "AAK-COMPOSE-001",
+      "sarif_name": "CompositionChainToEgress",
+      "severity": "high",
+      "title": "Untrusted input reaches network egress through a 2- or 3-component chain that no single component would trip"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "composition",
+      "cve_references": [],
+      "description": "Two or more skills that load into the same context both reference the same writable filesystem path, and none of them declares a write capability or names that path as an output. An undeclared path both can reach is a channel between them: one writes what the other reads, with no interface either manifest describes and nothing in a per-skill review to notice. This is the ColluSkill shape (arXiv:2608.09732), where the cooperation is what carries the attack rather than any single skill's behaviour. A declared-capability union cannot see this by construction, because the relevant capability is precisely the one nobody declared.",
+      "incident_references": [
+        "ARXIV-2608.09732"
+      ],
+      "limitations": "This is a static pass over declared configuration. It cannot resolve tool registration that happens at runtime, so a component added from a registry fetched at start-up is invisible to it, and a chain assembled at runtime from such components will not appear here. Paths are read literally out of skill bodies and adjacent scripts, so a path built at runtime from a variable or an environment lookup is not seen, and two skills sharing a channel under different spellings of the same location will not be matched. It reports co-reference, not a proven write followed by a read.",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_mcp_references": [
+        "MCP08:2025"
+      ],
+      "remediation": "Decide whether the shared path is an interface or an accident. If the skills are meant to exchange data, declare it: name the path as an output of the writer and an input of the reader, so a reviewer and this scanner both see the coupling. If they are not, give each skill its own working directory. Do not resolve it by adding a write capability to one manifest and leaving the path shared - that documents the write without documenting the channel.",
+      "rule_id": "AAK-COMPOSE-002",
+      "sarif_name": "CompositionSharedUndeclaredState",
+      "severity": "high",
+      "title": "Two or more skills share an undeclared writable path"
+    },
+    {
+      "adversa_references": [
+        "ADV-SUPPLY-01"
+      ],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "composition",
+      "cve_references": [],
+      "description": "A skill's manifest declares one set of capabilities while its body or an adjacent script exercises a wider one - a network call, a shell block, a file write or a credential read the frontmatter does not admit to. This matters beyond the single skill: every composition rule builds its graph from manifests, so an under-declared component makes each chain through it look narrower than it is, and a chain that would otherwise be reported can be missed. It is reported as its own finding rather than folded into the chain rules because the fix is different - the manifest is wrong, whether or not any chain currently runs through it.",
+      "incident_references": [
+        "ARXIV-2608.16246"
+      ],
+      "limitations": "This is a static pass over declared configuration. It cannot resolve tool registration that happens at runtime, so a component added from a registry fetched at start-up is invisible to it, and a chain assembled at runtime from such components will not appear here. Body capability is detected by pattern, not by parsing, so it sees a literal `curl` or `subprocess` call and not one reached through an indirection or an imported helper. It reads only files inside the skill directory. A skill that documents a capability in prose without using it can be reported where the prose contains a matching literal.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Reconcile the manifest with the code. Either declare the capability the code actually uses, so reviewers and capability-based tooling see the real surface, or remove the code path if the narrower declaration was the intent. Prefer narrowing the code: a manifest widened to match an incidental `curl` grants that capability permanently.",
+      "rule_id": "AAK-COMPOSE-003",
+      "sarif_name": "CompositionUnderdeclaredCapability",
+      "severity": "medium",
+      "title": "A skill declares a narrower capability than its code exercises"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "AIS-07",

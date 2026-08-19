@@ -16,7 +16,7 @@ bash examples/run-all-examples.sh
 
 ## Vulnerable Configs
 
-11 intentionally vulnerable configurations covering all 11 security categories. Each directory contains the vulnerable files and an `expected-findings.json` listing the rules that should trigger.
+11 intentionally vulnerable configurations covering 10 of the 13 security categories. Each directory contains the vulnerable files and an `expected-findings.json` listing the rules that should trigger.
 
 | # | Example | Rules Triggered | OWASP MCP | OWASP Agentic | CVE Reference |
 |---|---------|----------------|-----------|---------------|---------------|

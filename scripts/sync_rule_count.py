@@ -146,6 +146,7 @@ _CATEGORY_DISPLAY = {
     "TRUST_BOUNDARY": "Trust Boundaries",
     "TRANSPORT_SECURITY": "Transport Security",
     "MCP_SERVER_CARD": "MCP Server Card",
+    "COMPOSITION": "Composition",
 }
 
 

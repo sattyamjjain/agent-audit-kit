@@ -43,6 +43,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("ide_task_rce", "VS Code IDE task/launch folder-open RCE", []),
     ("agent_trust_surface", "Agent config/skill auto-trust (headless -p in CI)", []),
     ("skill_composition", "Skill-set capability-union composition (AAK-AGENT-COMPOSE-001)", []),
+    ("composition", "Capability-graph composition (AAK-COMPOSE-001/002/003)", []),
     ("session_splice", "Session-scoped tool-call argument splicing (AAK-AGENT-COMPOSE-002)", []),
     ("langchain_vuln", "LangChain vulnerabilities", []),
     ("routines", "Claude Code routines", []),
@@ -261,15 +262,76 @@ def run_scan(
             for prefix in ignore_path_prefixes
         )
 
+    kept: list[Finding] = []
     for finding in all_findings:
         if finding.rule_id not in active_rules and finding.rule_id != "AAK-INTERNAL-SCANNER-FAIL":
             continue
         if _is_ignored(finding.file_path or ""):
             continue
-        result.findings.append(finding)
+        kept.append(finding)
+
+    result.findings.extend(_drop_covered_composition_findings(kept))
 
     result.files_scanned = len(all_scanned_files)
     result.scan_duration_ms = (time.monotonic() - start) * 1000
     _log(f"Scan complete: {result.files_scanned} files, {len(result.findings)} findings in {result.scan_duration_ms:.0f}ms")
 
     return result
+
+
+def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]:
+    """Stand a composition finding down when another rule already covers a component.
+
+    `AAK-COMPOSE-001` only earns its place by reporting a chain whose components
+    each pass every rule that inspects them alone. The moment one of those
+    components is independently reported at the same priority, the chain is no
+    longer invisible, and reporting it again turns one problem into two entries
+    pointing at the same files. A composition pass that double-reports is worse
+    than no composition pass at all.
+
+    This runs on the assembled finding list because that is the only place the
+    answer exists: a scanner sees `(project_root)` and nothing of what its peers
+    found, and re-deriving every rule's predicate inside the composition scanner
+    would be a second copy of the whole registry.
+
+    Suppression is by severity, not by presence. "Any finding at all on the node"
+    is the tempting rule and it is wrong: `AAK-MCP-ATTEST-001` (MEDIUM) fires on
+    virtually every MCP config, so presence-suppression would make every
+    MCP-server chain permanently unreportable while the guard still looked
+    correct. A component is treated as already covered only when it carries a
+    finding at or above the composition finding's own severity -- which is what
+    `AAK-MCP-001` (CRITICAL), `AAK-AGENT-COMPOSE-001` (HIGH) and
+    `AAK-TOXICFLOW-001` (HIGH) do, and what attestation and OAuth-metadata
+    hygiene do not. Component identity comes from `composition.suppression_keys`,
+    which knows a `SKILL.md` is one artifact while an MCP config holds many.
+    """
+    composition = [f for f in findings if f.category is Category.COMPOSITION]
+    if not composition:
+        return findings
+
+    try:
+        from agent_audit_kit.scanners.composition import covering_keys, suppression_keys
+    except ImportError:  # pragma: no cover - scanner is optional
+        return findings
+
+    # key -> highest severity any non-composition rule reported on it
+    covered: dict[str, int] = {}
+    for f in findings:
+        if f.category is Category.COMPOSITION:
+            continue
+        rank = f.severity.numeric()
+        for key in covering_keys(f.file_path or "", f.line_number):
+            if rank > covered.get(key, 0):
+                covered[key] = rank
+
+    if not covered:
+        return findings
+
+    def _is_covered(finding: Finding) -> bool:
+        own = finding.severity.numeric()
+        return any(covered.get(k, 0) >= own for k in suppression_keys(finding))
+
+    return [
+        f for f in findings
+        if f.category is not Category.COMPOSITION or not _is_covered(f)
+    ]
