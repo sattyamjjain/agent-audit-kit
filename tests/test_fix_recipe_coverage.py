@@ -173,3 +173,76 @@ def test_coverage_is_reported_not_inflated() -> None:
         f"len(RULES)={total} but RULE_COUNT={RULE_COUNT}"
     )
     assert 0 < fix_recipe_count() <= total
+
+
+def test_oauth_008_is_not_auto_fixable_and_the_reason_is_recorded() -> None:
+    """#607's largest remaining rule, decided against rather than left open.
+
+    `AAK-OAUTH-008` is the biggest single block of findings without a recipe, so
+    it is the obvious next candidate. It is also the one where a recipe would be
+    actively harmful, which is why the decision is pinned here instead of being
+    re-derived by whoever next reads the issue.
+    """
+    from agent_audit_kit.autopr import NON_MECHANICAL
+    from agent_audit_kit.rules.builtin import RULES
+
+    assert RULES["AAK-OAUTH-008"].auto_fixable is False
+    shapes = " ".join(shape for shape, _ in NON_MECHANICAL)
+    assert "AAK-OAUTH-008" in shapes, (
+        "the decision not to auto-fix AAK-OAUTH-008 must be recorded in "
+        "NON_MECHANICAL with its reason, or it reads as an oversight"
+    )
+
+
+def test_a_bare_prm_keyword_silences_oauth_008_without_fixing_anything() -> None:
+    """The demonstration behind the decision above.
+
+    `AAK-OAUTH-008` clears when the file mentions a PRM keyword. So the cheapest
+    "fix" a recipe could apply -- write `authorization_servers` into the config --
+    makes the finding vanish while the hardcoded credential it is complaining
+    about stays exactly where it was. This test exists so that anyone who later
+    proposes an auto-fix for this rule sees the failure mode rather than the
+    argument for it.
+    """
+    import json
+    from pathlib import Path
+
+    from agent_audit_kit.scanners.oauth_misconfig import scan
+
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        config = root / ".mcp.json"
+        config.write_text(json.dumps({
+            "mcpServers": {
+                "remote-api": {
+                    "url": "https://api.example.com/mcp",
+                    "headers": {"Authorization": "Bearer sk-live-abc123"},
+                }
+            }
+        }), encoding="utf-8")
+
+        before, _ = scan(root)
+        assert "AAK-OAUTH-008" in {f.rule_id for f in before}, (
+            "fixture no longer trips the rule, so the demonstration is vacuous"
+        )
+
+        # The minimal edit a mechanical recipe could make. Nothing is served, no
+        # authorization server is contacted, the credential is untouched.
+        config.write_text(json.dumps({
+            "mcpServers": {
+                "remote-api": {
+                    "url": "https://api.example.com/mcp",
+                    "headers": {"Authorization": "Bearer sk-live-abc123"},
+                    "authorization_servers": ["https://auth.example.com"],
+                }
+            }
+        }), encoding="utf-8")
+
+        after, _ = scan(root)
+        assert "AAK-OAUTH-008" not in {f.rule_id for f in after}, (
+            "the detector no longer clears on a bare PRM keyword — re-evaluate "
+            "whether a recipe is now safe, and update NON_MECHANICAL if so"
+        )
+        assert "sk-live-abc123" in config.read_text(encoding="utf-8"), (
+            "the credential must still be present: that is the whole point"
+        )

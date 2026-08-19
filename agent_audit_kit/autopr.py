@@ -73,6 +73,21 @@ NON_MECHANICAL: tuple[tuple[str, str], ...] = (
         "behaviour for any command relying on globbing or redirection.",
     ),
     (
+        "declare RFC 9728 Protected Resource Metadata discovery (AAK-OAUTH-008)",
+        "The only edit that silences the rule is one that fixes nothing. The "
+        "detector clears when the file mentions `authorization_servers` / "
+        "`oauth-protected-resource`, so writing that key into an MCP client "
+        "config makes the finding disappear while the hardcoded bearer token "
+        "sits untouched beside it -- the v0.3.78 failure exactly. A real fix "
+        "means serving metadata at `/.well-known/oauth-protected-resource` on "
+        "the resource server, naming an authorization server AAK has no way to "
+        "know, and moving the client onto a 401 `WWW-Authenticate` challenge. "
+        "None of that lives in the file the finding points at: the artifact that "
+        "must change is the server, and the artifact AAK would edit is the "
+        "client. Reported as #607's largest single remaining rule, and "
+        "deliberately left advisory.",
+    ),
+    (
         "swap a bind address from 0.0.0.0 to 127.0.0.1",
         "Mechanical to write, but it takes a reachable service off the network. "
         "Whether that is a fix or an outage is a deployment fact AAK cannot see, "
