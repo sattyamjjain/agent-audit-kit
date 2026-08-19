@@ -53,11 +53,27 @@ def load_description_template(text: str) -> str:
 
 
 def render() -> str:
-    """The final repo description with ``{RULE_COUNT}`` substituted."""
+    """The final repo description with every derivable count substituted.
+
+    Only ``{RULE_COUNT}`` was substituted until v0.3.84; the category and
+    framework counts sat in the template as literals. That is the same drift the
+    markdown guard exists to catch, in the one surface it cannot see -- and it
+    had already happened: the template still said "12 categories" after Category
+    gained COMPOSITION, so the rendered description was wrong the moment the
+    release job asked for it. Anything computable from code is substituted here
+    rather than typed into the template.
+    """
     from agent_audit_kit import RULE_COUNT
+    from agent_audit_kit.models import Category
+    from agent_audit_kit.output import pdf_report
 
     template = load_description_template(_METADATA.read_text(encoding="utf-8"))
-    return template.replace("{RULE_COUNT}", str(RULE_COUNT))
+    return (
+        template
+        .replace("{RULE_COUNT}", str(RULE_COUNT))
+        .replace("{CATEGORY_COUNT}", str(len(list(Category))))
+        .replace("{FRAMEWORK_COUNT}", str(len(pdf_report._FRAMEWORK_TITLES)))
+    )
 
 
 def main() -> int:
