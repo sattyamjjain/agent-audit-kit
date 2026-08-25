@@ -165,6 +165,58 @@ def build_rows(
     return rows, sorted(missing)
 
 
+class WindowStats(NamedTuple):
+    """Response latency over a trailing window, carried with its sample size.
+
+    ``n`` travels with the figure everywhere it is rendered. A median over three
+    CVEs is not a median, and a reader who cannot see the denominator has no way
+    to know which they are looking at.
+    """
+
+    window_days: int
+    n: int
+    median_days: float
+    p90_days: int
+    backlog_n: int
+    computed_on: date
+
+
+def window_stats(
+    window_days: int = 90, today: Optional[date] = None
+) -> Optional[WindowStats]:
+    """Median and p90 response latency for CVEs *published* in the last N days.
+
+    The window is keyed on publication rather than ship date on purpose: it
+    answers "for the CVEs disclosed recently, how fast did coverage land",
+    which is the question a reader has. Keying on ship date would let a burst of
+    backlog work make a bad quarter look fast.
+
+    Returns ``None`` when the window is empty, so a caller renders "no data"
+    rather than a statistic over nothing.
+    """
+    when = today or date.today()
+    try:
+        shipped, _ = parse_ledger(LEDGER.read_text(encoding="utf-8"))
+        published = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+    rows, _ = build_rows(shipped, published)
+    in_window = [r for r in rows if 0 <= (when - r.published).days <= window_days]
+    if not in_window:
+        return None
+
+    days = sorted(r.days for r in in_window)
+    return WindowStats(
+        window_days=window_days,
+        n=len(days),
+        median_days=round(statistics.median(days), 1),
+        p90_days=percentile_nearest_rank(days, 90),
+        backlog_n=sum(1 for d in days if d > _BACKLOG_DAYS),
+        computed_on=when,
+    )
+
+
 def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
     measured = [r.days for r in rows]
     lines: list[str] = []

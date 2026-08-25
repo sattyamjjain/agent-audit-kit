@@ -84,3 +84,11 @@ jobs:
       # files in scanners/. Cheap, and it is the invariant that decoupled once.
       - name: Scanner count matches the registry
         run: python scripts/sync_scanner_count.py --check
+
+      # The published coverage page states when its CVE-latency figure was
+      # computed. This fails once that date is more than a week old, which is
+      # the only way a stalled nightly workflow announces itself -- the same
+      # instrument the README's MCP Security Index line uses, so the two
+      # surfaces cannot disagree about what "current" means.
+      - name: Coverage page CVE-latency figure is not stale
+        run: python scripts/build_coverage_page.py --check

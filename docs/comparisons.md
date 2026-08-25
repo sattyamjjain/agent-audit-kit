@@ -131,7 +131,7 @@ coexisted, the README linked only this one, and the other two drifted unread._
 
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent | Agent Audit | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| **Rules** | <!-- rule-count:total -->320<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
+| **Rules** | <!-- rule-count:total -->321<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
 | MCP config scanning | Yes | No | Yes | No | No |
 | Hook injection detection | Yes | No | No | No | No |
 | Trust boundary analysis | Yes | No | No | No | Yes |
@@ -181,7 +181,7 @@ consumers can pick the right tool for their stack.
 |---|---|---|
 | License | MIT, OSS | Proprietary, Ultimate-tier paywall |
 | Distribution | PyPI + Marketplace + Docker + VS Code ext | GitLab CI / Premium offering only |
-| Rule count | <!-- rule-count:total -->320<!-- /rule-count --> | Not publicly disclosed |
+| Rule count | <!-- rule-count:total -->321<!-- /rule-count --> | Not publicly disclosed |
 | OWASP Agentic Top 10 mapping | Per-rule, public JSON manifest | Claimed; mapping not published |
 | MCP Top 10 mapping | Per-rule | Not advertised |
 | AICM (CSA) mapping | Yes | Not advertised |

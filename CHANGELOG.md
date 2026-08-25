@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.89] - 2026-08-25
+
+### Added
+
+- Rule AAK-MCP-TOOL-ARG-OSCMD-001 for CVE-2026-78430: a tool handler passing a
+  model-supplied argument into an OS command. Positive and negative fixtures.
+- The coverage page publishes median and p90 CVE-publication-to-rule-shipped days
+  over the trailing 90 days, with n, and fails the build when the figure is stale.
+
+### Changed
+
+- AAK-TAINT-001 is suppressed on any line where AAK-MCP-TOOL-ARG-OSCMD-001 fires.
+  Both are CRITICAL and both matched the same line, which reported one defect twice.
+- scripts/build_coverage_page.py takes --check, and main() no longer reads sys.argv
+  when called from Python. It parsed pytest's own flags and exited.
+
 ## [0.3.88] - 2026-08-24
 
 ### Fixed

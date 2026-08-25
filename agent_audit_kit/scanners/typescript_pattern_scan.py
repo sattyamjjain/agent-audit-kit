@@ -92,9 +92,78 @@ _DANGEROUS_SINKS: list[tuple[re.Pattern[str], str, str]] = [
 ]
 
 
+# ---- AAK-MCP-TOOL-ARG-OSCMD-001 (CVE-2026-78430) ---------------------------
+#
+# Narrower than AAK-TAINT-001 above, deliberately. That rule fires on ANY
+# child_process call in a file that mentions an MCP server, which says nothing
+# about how the command was built -- `execFile(bin, argv)` trips it just as
+# readily as `exec(`${bin} ${arg}`)`. Two further conditions have to hold here:
+#
+#   1. the file handles tool CALLS, not merely defines a server, and
+#   2. the command is COMPOSED at the call site -- a template literal carrying
+#      an interpolation, or a string concatenation -- or the call explicitly
+#      opts into a shell with `shell: true`.
+#
+# `execFile('ffmpeg', ['-i', input, '-f', format])` satisfies neither and stays
+# quiet. That is the negative fixture, and it is exactly the shape the rule's
+# remediation asks for, so the rule going quiet on it is the point rather than
+# a coverage gap.
+#
+# Still a pattern scan, not taint: it proves the command was composed at a
+# process boundary inside a tool handler, not that the interpolated value
+# reached it from the arguments object. The rule text says so.
+
+_TOOL_HANDLER_RE = re.compile(
+    r"\b(?:handleToolCall|CallToolRequestSchema|setRequestHandler"
+    r"|server\s*\.\s*tool|@tool)\b"
+    r"|['\"]tools/call['\"]"
+)
+
+# exec()/execSync() whose FIRST argument is built on the spot.
+_EXEC_COMPOSED_RE = re.compile(
+    r"\b(?:child_process\s*\.\s*)?exec(?:Sync)?\s*\(\s*"
+    r"(?:`[^`]*\$\{"                      # exec(`ffmpeg -f ${format}`)
+    r"|['\"][^'\"]*['\"]\s*\+"            # exec("ffmpeg -f " + format)
+    r"|[A-Za-z_$][\w$]*\s*\+)"            # exec(base + format)
+)
+
+# Any process API that opts into a shell. Split in two so the `shell: true`
+# may sit on a later line of the same call without the call itself drifting:
+# matching them jointly over a window would also fire on the line ABOVE the
+# call, whose window happens to contain both tokens.
+_PROC_CALL_OPEN_RE = re.compile(
+    r"\b(?:child_process\s*\.\s*)?"
+    r"(?:exec|execSync|execFile|execFileSync|spawn|spawnSync)\s*\("
+)
+_SHELL_TRUE_RE = re.compile(r"\bshell\s*:\s*true\b")
+
+_SHELL_OPT_LOOKAHEAD_LINES = 2
+
+_ARG_OSCMD_RULE = "AAK-MCP-TOOL-ARG-OSCMD-001"
+# The generic sink rule this one supersedes when both would fire on one line.
+_SUPERSEDED_RULE = "AAK-TAINT-001"
+
+
 def _is_mcp_server_file(source: str) -> bool:
     """Return True if the file contains MCP server patterns."""
     return bool(_MCP_SERVER_RE.search(source))
+
+
+def _is_tool_handler_file(source: str) -> bool:
+    """Return True if the file dispatches tool CALLS, not just defines a server.
+
+    A handler module (``src/tools/handlers.ts`` in CVE-2026-78430) need not
+    mention ``McpServer`` at all, so this is checked alongside
+    ``_is_mcp_server_file`` rather than after it.
+    """
+    return bool(_TOOL_HANDLER_RE.search(source))
+
+
+def _composes_shell_command(line: str, window: str) -> bool:
+    """Whether this line hands a shell-composed command to a process API."""
+    if _EXEC_COMPOSED_RE.search(line):
+        return True
+    return bool(_PROC_CALL_OPEN_RE.search(line) and _SHELL_TRUE_RE.search(window))
 
 
 def _scan_file(
@@ -103,7 +172,7 @@ def _scan_file(
 ) -> list[Finding]:
     """Scan a single TypeScript file for dangerous sink patterns.
 
-    Only files that contain MCP server patterns are scanned.
+    Only files that contain MCP server or tool-handler patterns are scanned.
 
     Args:
         source: The raw source text of the file.
@@ -112,19 +181,49 @@ def _scan_file(
     Returns:
         A list of findings for dangerous patterns found in the file.
     """
-    if not _is_mcp_server_file(source):
+    is_server = _is_mcp_server_file(source)
+    is_handler = _is_tool_handler_file(source)
+    if not (is_server or is_handler):
         return []
 
     findings: list[Finding] = []
     lines = source.splitlines()
 
-    for line_no, line in enumerate(lines, 1):
-        # Skip comment-only lines
-        stripped = line.lstrip()
-        if stripped.startswith("//") or stripped.startswith("*"):
-            continue
+    def _code_lines() -> list[tuple[int, str]]:
+        out = []
+        for line_no, line in enumerate(lines, 1):
+            stripped = line.lstrip()
+            if stripped.startswith("//") or stripped.startswith("*"):
+                continue
+            out.append((line_no, line))
+        return out
 
+    code = _code_lines()
+
+    # Pass 1 -- the specific rule, so pass 2 knows which lines it already owns.
+    owned: set[int] = set()
+    if is_handler:
+        for line_no, line in code:
+            window = "\n".join(lines[line_no - 1: line_no + _SHELL_OPT_LOOKAHEAD_LINES])
+            if _composes_shell_command(line, window):
+                owned.add(line_no)
+                findings.append(make_finding(
+                    _ARG_OSCMD_RULE,
+                    rel_path,
+                    "tool handler composes a shell command at the process "
+                    f"boundary (line {line_no}): {line.strip()[:120]}",
+                    line_no,
+                ))
+
+    # Pass 2 -- the generic sinks. AAK-TAINT-001 is dropped where the specific
+    # rule already reported: two findings on one line is the same defect twice.
+    if not is_server:
+        return findings
+
+    for line_no, line in code:
         for pattern, rule_id, description in _DANGEROUS_SINKS:
+            if rule_id == _SUPERSEDED_RULE and line_no in owned:
+                continue
             if pattern.search(line):
                 findings.append(make_finding(
                     rule_id,

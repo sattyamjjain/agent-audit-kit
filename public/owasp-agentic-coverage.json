@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-24T16:39:52Z",
-  "aak_version": "0.3.88",
-  "rule_count": 320,
+  "last_updated": "2026-08-25T11:23:13Z",
+  "aak_version": "0.3.89",
+  "rule_count": 321,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1884,7 +1884,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 49,
+      "rule_density": 50,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2193,6 +2193,17 @@
             "CVE-2026-40933"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TOOL-ARG-OSCMD-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-78430"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "IVS-04"
+          ]
         },
         {
           "id": "AAK-MCP-TOOL-UNSAFE-EVAL-001",
