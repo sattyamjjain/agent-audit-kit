@@ -145,28 +145,25 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          # PYTHONPATH=. so the render script can import agent_audit_kit from the
-          # checkout (the package is not installed in this job). Without it the
-          # step died with ModuleNotFoundError *before* the byte-compare, which is
-          # why a stale description survived three release cycles undetected.
-          expected="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
-          live="$(gh api "repos/$GITHUB_REPOSITORY" --jq '.description // ""')"
-          if [ "$live" != "$expected" ]; then
-            echo "::error title=Repo description is stale::Paste this into repo Settings > About (a CI token cannot set it): ${expected}"
-            echo "expected: ${expected}"
-            echo "live:     ${live}"
-            {
-              echo "### Repo description is stale — paste this into Settings > About"
-              echo ""
-              echo '```'
-              echo "${expected}"
-              echo '```'
-              echo ""
-              echo "live now: \`${live}\`"
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          echo "repo description liveness: live == rendered."
+          # One implementation of this comparison, in render_repo_metadata.py, so
+          # this job and the scheduled description-liveness.yml cannot drift apart
+          # -- which is the shape of bug that put a wrong description on the repo
+          # in the first place. PYTHONPATH=. so the script can import
+          # agent_audit_kit from the checkout; without it the step died with
+          # ModuleNotFoundError *before* the byte-compare, which is why a stale
+          # description survived three release cycles undetected.
+          PYTHONPATH=. python scripts/render_repo_metadata.py \
+            --check-live "$GITHUB_REPOSITORY" || {
+              expected="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
+              {
+                echo "### Repo description is stale — paste this into Settings > About"
+                echo ""
+                echo '```'
+                echo "${expected}"
+                echo '```'
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            }
 
   # --------------------------------------------------------------------------
   # Repo-wide count liveness (v0.3.72): the sibling of description-liveness for

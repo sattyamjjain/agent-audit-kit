@@ -37,14 +37,55 @@ def test_readme_pins_match_pyproject_version() -> None:
         )
 
 
-def test_description_string_includes_version_and_rule_count() -> None:
+def test_description_string_carries_every_derived_count() -> None:
+    """The canonical description states counts that are all substituted from code.
+
+    It used to assert the version and the literal "AgentAuditKit" too. Both were
+    properties of a *second*, competing description string that this module
+    composed itself — see the next test. The canonical one, the template in
+    `.github/repo-metadata.yml` that the release gate actually enforces and that
+    github.com actually serves, carries no version, so asserting one only pinned
+    the wrong string in place.
+    """
+    from agent_audit_kit.models import Category
+    from agent_audit_kit.output import pdf_report
+
     module = _load_module()
     desc = module._description_string()
-    version = module._read_version()
-    rule_count = module._read_rule_count()
-    assert version in desc
-    assert str(rule_count) in desc
-    assert "AgentAuditKit" in desc
+    assert str(module._read_rule_count()) in desc
+    assert str(len(list(Category))) in desc
+    assert str(len(pdf_report._FRAMEWORK_TITLES)) in desc
+    assert "MCP" in desc
+
+
+def test_the_writer_and_the_checker_agree_on_the_description() -> None:
+    """One canonical string, or the automation fights its own gate.
+
+    `sync-repo-metadata.yml` WRITES `sync_repo_metadata._description_string()`.
+    `description-liveness` in release.yml CHECKS against
+    `render_repo_metadata.render()`. Until 2026-09-01 those produced different
+    text, so a successful write would have set a description the very next
+    release rejected. It never surfaced only because the write step has never
+    run — it needs a METADATA_SYNC_TOKEN that does not exist. Two latent bugs
+    cancelling out is not the same as either one being fixed, and the day a
+    token is added is the day they stop cancelling.
+    """
+    import importlib.util
+    import sys as _sys
+
+    spec = importlib.util.spec_from_file_location(
+        "render_repo_metadata", REPO_ROOT / "scripts" / "render_repo_metadata.py"
+    )
+    assert spec is not None and spec.loader is not None
+    render_mod = importlib.util.module_from_spec(spec)
+    _sys.modules["render_repo_metadata"] = render_mod
+    spec.loader.exec_module(render_mod)
+
+    module = _load_module()
+    assert module._description_string() == render_mod.render(), (
+        "the description that gets written and the one that gets checked have "
+        "drifted apart again"
+    )
 
 
 def test_check_mode_passes_on_clean_tree() -> None:

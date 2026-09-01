@@ -125,13 +125,29 @@ def _check(target_ref: str, target_version: str) -> list[Path]:
 
 
 def _description_string() -> str:
-    version = _read_version()
-    rule_count = _read_rule_count()
-    return (
-        f"AgentAuditKit v{version} — security scanner for MCP-connected "
-        f"AI agent pipelines ({rule_count} rules across "
-        "OWASP Agentic Top 10 + MCP Top 10, CSA AICM, EU AI Act)."
+    """The canonical GitHub repo description.
+
+    Delegates to ``render_repo_metadata.render()`` rather than composing a second
+    string. Until 2026-09-01 it built its own, and the two disagreed: this module
+    is what ``sync-repo-metadata.yml`` would WRITE, while ``description-liveness``
+    in release.yml compares the live value against ``render_repo_metadata``. So
+    the automation and its own checker wanted different text, and the only reason
+    that never produced a permanently red gate is that the write step has never
+    run -- it needs a METADATA_SYNC_TOKEN that does not exist. Two latent bugs
+    were cancelling each other out.
+
+    ``.github/repo-metadata.yml`` holds the template; every count in it is
+    substituted from code there, so nothing needs re-deriving here.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_render_repo_metadata", Path(__file__).resolve().parent / "render_repo_metadata.py"
     )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return str(module.render())
 
 
 def main(argv: list[str] | None = None) -> int:

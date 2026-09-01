@@ -1,0 +1,43 @@
+name: Repo description liveness
+
+# The github.com repo description is the highest-leverage marketing surface here
+# (procurement reads it first) and the only claim surface no in-repo guard can
+# see. It is also the one nothing could fix automatically: editing it needs admin
+# rights GITHUB_TOKEN does not have, and no METADATA_SYNC_TOKEN is configured.
+#
+# It was checked only at release time, by a job inside release.yml. That is the
+# wrong clock. On 2026-08-31 the rule count went 326 -> 327 and 0.3.91 was never
+# released, so the only thing that would have noticed never ran and the
+# description stayed wrong. A check that can only fire during the event it is
+# meant to protect cannot report on the event failing to happen.
+#
+# So: daily. It still cannot fix the description -- it prints the exact string to
+# paste -- but "stale for a day" is now a red check instead of a thing somebody
+# eventually notices.
+
+on:
+  schedule:
+    # 06:47 UTC, four minutes after registry-parity so the two failures arrive
+    # separately and legibly rather than as one undifferentiated red morning.
+    - cron: "47 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  liveness:
+    name: Live description matches the rendered template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Compare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python scripts/render_repo_metadata.py \
+            --check-live "$GITHUB_REPOSITORY"
