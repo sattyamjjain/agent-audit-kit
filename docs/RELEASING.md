@@ -74,12 +74,28 @@ correct number. Future releases use the README-grep form.
 
 ## 5. CVE-gate hygiene
 
-Before tagging, close every open `cve-response` issue (the `sla-48h`
+Before tagging, **disposition** every open `cve-response` issue (the `sla-48h`
 label was retired with the 48h SLA in PR #432). The release workflow's
-**CVE-response gate** blocks the tag-push pipeline until they are all
-closed. Most are class-coverage dups of an earlier batch — close with the
-standard citation template (`CHANGELOG.cves.md` / class-detector path).
-Net-new shapes get a v(N+1) deferral comment with the rule-name pre-allocated.
+**CVE-response gate** blocks the tag-push pipeline on anything untriaged. Each
+issue ends in exactly one of:
+
+| Disposition | Action |
+|---|---|
+| rule shipped | close (`completed`), citing the rule and the `CHANGELOG.cves.md` row |
+| out of scope / unreachable | close (`not planned`) with the one-line reason, label `wontfix-static` |
+| in scope, rule queued | **stays open**, label `cve-deferred`, reason in a comment |
+
+`cve-deferred` does not block the gate. That exemption was added on 2026-09-01
+and it is not a loophole — it is the difference between "has this disclosure
+been looked at?" and "is the queue empty?". Those were the same question while
+every triage ended in a close, and they came apart when the watcher's 6-hour
+cron outran the triage rate: 27 issues open, so `count == 0` was a state the
+repo could not reach on purpose, and v0.3.91 sat declared-but-unpublished for a
+day. Untriaged issues still block exactly as before.
+
+The rule for using it honestly: label `cve-deferred` only when the issue has a
+disposition comment naming what is queued and why. A label without that comment
+turns the gate off rather than satisfying it.
 
 The cve-watcher dedup bug (issue #163) re-fires closed CVE IDs across
 daily cycles. Fix queued for v0.3.17.
