@@ -83,11 +83,19 @@ def test_failure_names_both_versions() -> None:
 
 
 def test_declared_version_matches_pyproject() -> None:
-    import tomllib
+    """Independent of the script's own regex, and without tomllib.
 
-    declared = mod.declared_version()
-    expected = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
-    assert declared == expected
+    `tomllib` is 3.11+, and this package supports 3.9 — the first cut of this test
+    used it and the release-time suite failed on the 3.9 matrix leg before
+    anything published, which is what that gate exists for.
+    """
+    import re as _re
+
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    project = text.split("[project]", 1)[1].split("\n[", 1)[0]
+    expected = _re.search(r'^version\s*=\s*"([^"]+)"', project, _re.MULTILINE)
+    assert expected is not None, "pyproject [project] has no version"
+    assert mod.declared_version() == expected.group(1)
 
 
 def test_newest_changelog_release_skips_unreleased() -> None:
