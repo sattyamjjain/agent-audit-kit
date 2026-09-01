@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **0.3.91 was written and never shipped, and nothing could see it.** pyproject
+  said 0.3.91, the CHANGELOG had a dated 0.3.91 section, the counts were synced,
+  the tests passed and main was pushed — while PyPI served 0.3.90. The proximate
+  cause was that the tag was never pushed (no `[skip ci]` on the bump commit;
+  `on: push: tags: ['v*']` would have fired; no release run exists to have failed
+  quietly — the workflow simply never ran). The **root cause** is that pushing it
+  could not have worked: the CVE-response gate refused to release while *any*
+  `cve-response` issue was open, and the watcher opens them on a 6-hour cron with
+  no back-pressure. The queue reached 27, so `count == 0` had stopped being a
+  state the repository could reach on purpose. The gate had quietly changed
+  meaning from "every disclosure has been looked at" to "never ship".
+- The gate now blocks on **untriaged** issues. `cve-deferred` marks one that has
+  been read, dispositioned in a comment and scheduled; anything without a
+  disposition still blocks exactly as before. `docs/RELEASING.md` §5 carries the
+  disposition table and says plainly that the label is only honest on an issue
+  that has the comment — a label without one turns the gate off rather than
+  satisfying it.
+- **Every version check this repo owned compared one in-repo surface to another.**
+  pyproject against `__version__`, the CHANGELOG heading against the newest tag,
+  the README's Action pin against both. All of them passed for a full day while
+  the declared version did not exist on PyPI. The repo can be perfectly
+  self-consistent about a version nobody can install, and was.
+  `scripts/check_registry_parity.py` compares the declared version to the
+  **registry**, and runs daily as well as on push — on push,
+  0.3.91-declared-vs-0.3.90-published is correct for ten minutes and a defect
+  after a day, the two states produce an identical diff, and a release that never
+  happens produces no push to check at all. The age clock is read from git rather
+  than the CHANGELOG's own date, so a back-dated heading cannot hide it. An
+  unreachable registry is a loud SKIP, never a silent pass.
+- **The repo description was checked on a clock that only ticks during a
+  release.** It read "326 rules" against a live count of 327 because the check
+  lives inside `release.yml` and 0.3.91 never released — the same root cause as
+  above, in a second surface. There is now a daily `description-liveness`
+  workflow.
+- **The description writer and its own checker disagreed about the text.**
+  `sync-repo-metadata.yml` writes `sync_repo_metadata._description_string()`,
+  which composed its own string; `description-liveness` compares against
+  `render_repo_metadata.render()`, which folds the template in
+  `.github/repo-metadata.yml`. A successful write would have set a description
+  the next release rejected. It never surfaced only because the write step has
+  never run — it needs a `METADATA_SYNC_TOKEN` that does not exist. Two latent
+  bugs were cancelling out. The writer now delegates to the renderer, one test
+  fails if they diverge, and the comparison itself moved into
+  `render_repo_metadata.py --check-live` so `release.yml` and the scheduled
+  workflow cannot drift apart either.
+- `render_repo_metadata.py` ignored its own command line: `main()` defaults argv
+  to `[]` for deterministic parsing under pytest, so `__main__` has to pass
+  `sys.argv[1:]` and did not — `--check-live` silently rendered instead of
+  checking. Third occurrence of this pattern in the repo, so it is now commented
+  where the next person will read it.
+
+### Changed
+
+- **The CVE watcher has a limit.** It filed one release-gating issue per CVE on a
+  6-hour cron with no upper bound and opened 27 in five days, eight of them one
+  product's advisory batch in a single run. At most 5 new issues per run, most
+  severe first, and none while 10+ untriaged issues are already open. The
+  pre-filter was deliberately left alone: all 27 were genuine MCP CVEs, so
+  tightening relevance would have dropped true positives to fix a rate problem.
+  The cap lives in `collect_new_cves`, not in the workflow step that creates
+  issues, because `state["filed_cves"]` records everything the function returns —
+  capping after the fact would mark held CVEs as filed and lose them. The NVD
+  window widened 48h → 7 days so a held CVE is still findable when the queue
+  drains; that is what separates back-pressure from data loss, and it has a test.
+- The 27-issue queue was triaged to 13: 10 closed as already covered by a shipped
+  rule (each confirmed by scanning a fixture of that shape, not asserted from the
+  rule title), 3 closed as unreachable, 1 closed as out of scope, and 13 left
+  open under `cve-deferred` with the queued work named. Two of the deferrals are
+  gaps the fixture testing found rather than assumed: `AAK-DNS-REBIND-001` does
+  not fire on Python FastMCP's `streamable_http_app()`, and `AAK-MCP-SSRF-001`
+  cannot fire on mcp-fetch because the SSRF guard is present and bypassed rather
+  than absent.
+
+
 ## [0.3.91] - 2026-08-31
 
 ### Added
