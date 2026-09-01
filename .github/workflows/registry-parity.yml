@@ -1,0 +1,50 @@
+name: Registry parity
+
+# Does the version this repository declares actually exist on PyPI?
+#
+# Every other version guard here compares one in-repo surface to another --
+# pyproject against __version__, the CHANGELOG heading against the newest tag,
+# the README's Action pin against both. On 2026-08-31 all of them passed while
+# PyPI served 0.3.90 and pyproject said 0.3.91, because none of them had any way
+# to look outside the repository. The repo was perfectly self-consistent about a
+# version nobody could install.
+#
+# BOTH triggers are load-bearing, and the schedule is the one that matters.
+# 0.3.91-declared against 0.3.90-published is correct for the ten minutes a
+# release takes and a defect after a day; on push those two states produce an
+# identical diff and only the clock separates them. A push-only gate cannot tell
+# them apart, and a release that never happens produces no push to check.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 06:43 UTC daily. Off the hour deliberately -- :00 is where every cron in
+    # the world lands. Daily because the window this guards is a calendar day.
+    - cron: "43 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Declared version exists on PyPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # The age check reads the commit that introduced the declared version
+          # into pyproject.toml, so the history has to be here. With a shallow
+          # clone git cannot answer and the script fails closed rather than
+          # assuming the release window is open.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Declared version vs the registry
+        run: python scripts/check_registry_parity.py

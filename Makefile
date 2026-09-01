@@ -14,7 +14,8 @@ RESULTS  := $(RESEARCH)/results.json
 .PHONY: report corpus report-check count-check test lint typecheck repo-description \
         cve-latency cve-latency-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
-        fp fp-check
+        fp fp-check \
+        registry-parity
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
 report:
@@ -85,6 +86,14 @@ remediation-corpus:
 ## this target is for regenerating locally without running the suite.
 remediation-corpus-check:
 	@python scripts/gen_remediation_key_corpus.py --check
+
+## registry-parity: does the version we declare actually exist on PyPI? (network)
+## The only check here that looks OUTSIDE the repo. Every other version guard
+## compares one in-repo surface to another, and all of them passed on 2026-08-31
+## while 0.3.91 was declared and PyPI served 0.3.90. Also runs daily in CI --
+## the failure is time-based, so a push-only gate cannot see it.
+registry-parity:
+	@python scripts/check_registry_parity.py
 
 ## test: run the test suite
 test:
