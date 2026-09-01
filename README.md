@@ -536,7 +536,7 @@ Provides inline diagnostics on file save with quick-fix suggestions.
 Public leaderboard of MCP servers, published at
 **[sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/)**.
 
-<!-- index-cadence -->Last published snapshot: **2026-08-24** (3 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
+<!-- index-cadence -->Last published snapshot: **2026-08-31** (4 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
 
 > **On the schedule.** The Monday crawl was dying on `HTTP 429` — the status the
 > GitHub Search API returns for a secondary rate limit, and the one its retry path

@@ -310,25 +310,38 @@ def test_render_runs_without_the_package_installed() -> None:
     """`python scripts/x.py` puts *scripts/* on sys.path, not the repo root.
 
     So `from agent_audit_kit import RULE_COUNT` fails in any CI job that has not
-    pip-installed the package — which is most of them. release.yml works around
-    it with `PYTHONPATH=.` and a comment saying the omission "is why a stale
+    pip-installed the package — which is most of them. release.yml works around it
+    with `PYTHONPATH=.` and a comment saying the omission "is why a stale
     description survived three release cycles undetected". sync-repo-metadata.yml
     had no such workaround, so the moment `sync_repo_metadata --description`
     started delegating to this module (2026-09-01) that job began dying with
     ModuleNotFoundError — it failed the v0.3.91 release run.
 
-    `-S` skips site processing, so the editable install's .pth is not read and
-    the package is reachable only via the module's own sys.path insertion. That
-    makes this a real reproduction rather than a restatement: without the
-    insertion it raises ModuleNotFoundError, verified.
+    The subprocess drops exactly one entry — the repo root, which is how an
+    editable install makes the package importable — and keeps site-packages, so
+    the package's own dependencies still resolve. `python -S` was the first
+    attempt and was wrong: it removes every third-party package too, so the test
+    passed locally and failed in CI for a reason that had nothing to do with what
+    it was checking.
     """
     import subprocess
     import sys as _sys
 
-    for args in (
-        [_sys.executable, "-S", "scripts/render_repo_metadata.py"],
-        [_sys.executable, "-S", "scripts/sync_repo_metadata.py", "--description"],
+    driver = (
+        "import runpy, sys;"
+        "root = sys.argv.pop(1);"
+        "sys.path[:] = [p for p in sys.path if p and p.rstrip('/') != root];"
+        "runpy.run_path(sys.argv.pop(1), run_name='__main__')"
+    )
+    for script, extra in (
+        ("scripts/render_repo_metadata.py", []),
+        ("scripts/sync_repo_metadata.py", ["--description"]),
     ):
-        out = subprocess.run(args, cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
-        assert out.returncode == 0, f"{args[1:]} failed without the package installed:\n{out.stderr}"
+        out = subprocess.run(
+            [_sys.executable, "-c", driver, str(REPO_ROOT), script, *extra],
+            cwd=REPO_ROOT, capture_output=True, text=True, timeout=60,
+        )
+        assert out.returncode == 0, (
+            f"{script} failed with the repo root off sys.path:\n{out.stderr}"
+        )
         assert "rules across" in out.stdout, out.stdout
