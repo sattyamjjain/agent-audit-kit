@@ -299,3 +299,36 @@ def test_frozen_docs_are_excluded_from_the_version_rewrite() -> None:
     selected = {p.as_posix() for p in _iter_docs()}
     assert not any("docs/launch/" in p for p in selected)
     assert not any("docs/presets/" in p for p in selected)
+
+
+# ---------------------------------------------------------------------------
+# The scripts must run in a job that has not installed the package
+# ---------------------------------------------------------------------------
+
+
+def test_render_runs_without_the_package_installed() -> None:
+    """`python scripts/x.py` puts *scripts/* on sys.path, not the repo root.
+
+    So `from agent_audit_kit import RULE_COUNT` fails in any CI job that has not
+    pip-installed the package — which is most of them. release.yml works around
+    it with `PYTHONPATH=.` and a comment saying the omission "is why a stale
+    description survived three release cycles undetected". sync-repo-metadata.yml
+    had no such workaround, so the moment `sync_repo_metadata --description`
+    started delegating to this module (2026-09-01) that job began dying with
+    ModuleNotFoundError — it failed the v0.3.91 release run.
+
+    `-S` skips site processing, so the editable install's .pth is not read and
+    the package is reachable only via the module's own sys.path insertion. That
+    makes this a real reproduction rather than a restatement: without the
+    insertion it raises ModuleNotFoundError, verified.
+    """
+    import subprocess
+    import sys as _sys
+
+    for args in (
+        [_sys.executable, "-S", "scripts/render_repo_metadata.py"],
+        [_sys.executable, "-S", "scripts/sync_repo_metadata.py", "--description"],
+    ):
+        out = subprocess.run(args, cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+        assert out.returncode == 0, f"{args[1:]} failed without the package installed:\n{out.stderr}"
+        assert "rules across" in out.stdout, out.stdout

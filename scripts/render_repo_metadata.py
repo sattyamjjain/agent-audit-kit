@@ -71,6 +71,19 @@ def render() -> str:
     release job asked for it. Anything computable from code is substituted here
     rather than typed into the template.
     """
+    # Put the repo root on sys.path ourselves rather than requiring every caller
+    # to remember `PYTHONPATH=.`. Running `python scripts/x.py` puts *scripts/* on
+    # sys.path, not the root, so the import below fails in any job that has not
+    # installed the package -- which is most of them. release.yml carries a
+    # PYTHONPATH= for exactly this reason and a comment saying the omission "is
+    # why a stale description survived three release cycles undetected";
+    # sync-repo-metadata.yml did not, and the moment this module became a
+    # dependency of `sync_repo_metadata --description` that job started dying with
+    # ModuleNotFoundError. Fixing it here fixes it for every caller, present and
+    # future, instead of once per workflow.
+    if str(_REPO) not in sys.path:
+        sys.path.insert(0, str(_REPO))
+
     from agent_audit_kit import RULE_COUNT
     from agent_audit_kit.models import Category
     from agent_audit_kit.output import pdf_report

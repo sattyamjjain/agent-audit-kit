@@ -54,6 +54,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails if they diverge, and the comparison itself moved into
   `render_repo_metadata.py --check-live` so `release.yml` and the scheduled
   workflow cannot drift apart either.
+- `render_repo_metadata.py` could not import the package it reads counts from
+  unless the caller set `PYTHONPATH=.`. `python scripts/x.py` puts *scripts/* on
+  `sys.path`, not the repo root, so `from agent_audit_kit import RULE_COUNT`
+  fails in any job that has not pip-installed the package. `release.yml` carried
+  a `PYTHONPATH=` workaround and a comment calling the omission the reason "a
+  stale description survived three release cycles undetected";
+  `sync-repo-metadata.yml` had none, so making it a dependency of
+  `sync_repo_metadata --description` broke that job in the v0.3.91 release run.
+  The module now puts the repo root on `sys.path` itself, which fixes it for
+  every caller instead of once per workflow. Regression test runs both scripts
+  under `python -S`, so the editable install's `.pth` is not read and the
+  reproduction is real — without the fix it raises `ModuleNotFoundError`.
 - `render_repo_metadata.py` ignored its own command line: `main()` defaults argv
   to `[]` for deterministic parsing under pytest, so `__main__` has to pass
   `sys.argv[1:]` and did not — `--check-live` silently rendered instead of
