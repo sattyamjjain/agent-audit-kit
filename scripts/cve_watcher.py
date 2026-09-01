@@ -47,6 +47,37 @@ KEYWORDS = (
 CHANGELOG_PATH = Path("CHANGELOG.cves.md")
 STATE_PATH = Path(".aak/cve-watcher-state.json")
 
+# ---------------------------------------------------------------------------
+# Back-pressure (2026-09-01).
+#
+# This watcher runs every 6 hours and, until now, filed one release-gating issue
+# per new CVE with no upper bound. Between 2026-08-26 and 2026-09-01 it opened 27
+# -- eight of them one product's advisory batch landing in a single run -- and
+# because the release gate blocked on any open cve-response issue, the queue
+# outrunning the triage rate meant the repo could not ship at all. v0.3.91 sat
+# written and unpublished for a day.
+#
+# The pre-filter is NOT the problem and was deliberately left alone: every one of
+# those 27 was a genuine MCP CVE, so tightening `is_relevant` would have dropped
+# true positives to fix a rate problem. An automated issue-opener needs a limit,
+# not a narrower definition of what matters.
+#
+# Two limits, both env-overridable:
+#   * MAX_NEW_PER_RUN  -- one advisory batch cannot become one day's backlog.
+#   * MAX_OPEN_UNTRIAGED -- when the queue is already deep, stop adding to it.
+#     Deferred issues do not count: they have been read and scheduled, and the
+#     release gate ignores them too.
+#
+# Nothing is dropped. `state["filed_cves"]` only ever records what is actually
+# emitted, so a CVE held back is simply found again on a later run and deduped
+# against the ledger, the state file, and every open and closed issue. That is
+# also why the NVD window widened from 48h to 7 days: a held-back CVE has to
+# still be inside the query window when the queue drains, or back-pressure would
+# quietly become data loss.
+MAX_NEW_PER_RUN = int(os.environ.get("AAK_CVE_MAX_NEW_PER_RUN", "5"))
+MAX_OPEN_UNTRIAGED = int(os.environ.get("AAK_CVE_MAX_OPEN_UNTRIAGED", "10"))
+DEFERRED_LABEL = "cve-deferred"
+
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}")
 
 
@@ -178,7 +209,48 @@ def is_relevant(description: str) -> bool:
     return bool(_RELEVANCE_RE.search(description or ""))
 
 
-def _fetch(keyword: str, window_hours: int = 48) -> list[dict]:
+def open_untriaged_count(owner_repo: str | None, token: str | None) -> int:
+    """Open ``cve-response`` issues that carry no ``cve-deferred`` label.
+
+    The same population the release gate blocks on, so the watcher throttles
+    against the number that actually stops a release rather than against the raw
+    queue depth. Returns 0 when the API cannot be reached: back-pressure must
+    never be the reason a disclosure goes unfiled.
+    """
+    if not owner_repo or not token:
+        return 0
+    count = 0
+    page = 1
+    while page <= 20:
+        url = (
+            f"https://api.github.com/repos/{owner_repo}/issues"
+            f"?state=open&labels=cve-response&per_page=100&page={page}"
+        )
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "agent-audit-kit cve-watcher",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                batch = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            sys.stderr.write(f"cve-watcher: cannot count open issues ({exc})\n")
+            return 0
+        if not batch:
+            break
+        for issue in batch:
+            labels = {lbl.get("name") for lbl in (issue.get("labels") or [])}
+            if DEFERRED_LABEL not in labels:
+                count += 1
+        page += 1
+    return count
+
+
+def _fetch(keyword: str, window_hours: int = 168) -> list[dict]:
     now = datetime.now(timezone.utc)
     start = (now - timedelta(hours=window_hours)).strftime("%Y-%m-%dT%H:%M:%S.000")
     end = now.strftime("%Y-%m-%dT%H:%M:%S.000")
@@ -270,6 +342,32 @@ def collect_new_cves(
                 continue
             seen.add(cve_id)
             results.append(entry)
+
+    # --- back-pressure ------------------------------------------------------
+    # Applied HERE, not in the workflow's issue-creating step, because
+    # `filed_cves` below records everything this function returns. A cap applied
+    # after the fact would mark held-back CVEs as filed and lose them silently --
+    # the opposite of the intent.
+    if results:
+        backlog = open_untriaged_count(owner_repo, github_token)
+        if backlog >= MAX_OPEN_UNTRIAGED:
+            sys.stderr.write(
+                f"cve-watcher: {backlog} untriaged cve-response issue(s) already "
+                f"open (limit {MAX_OPEN_UNTRIAGED}); holding "
+                f"{len(results)} new CVE(s) until the queue drains: "
+                f"{', '.join(e['id'] for e in results)}\n"
+            )
+            return [], state
+        if len(results) > MAX_NEW_PER_RUN:
+            # Most severe first, so a cap keeps the ones worth waking up for.
+            results.sort(key=lambda e: (e.get("cvss") or 0.0), reverse=True)
+            held = results[MAX_NEW_PER_RUN:]
+            results = results[:MAX_NEW_PER_RUN]
+            sys.stderr.write(
+                f"cve-watcher: capped at {MAX_NEW_PER_RUN} new issue(s) this run; "
+                f"holding {len(held)} for a later run: "
+                f"{', '.join(e['id'] for e in held)}\n"
+            )
 
     if results:
         state["filed_cves"] = sorted(filed | {e["id"] for e in results})
