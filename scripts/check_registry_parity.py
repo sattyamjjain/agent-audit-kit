@@ -131,16 +131,30 @@ def is_one_patch_ahead(declared: str, published: str) -> bool:
 
 
 def declared_since(version: str) -> date | None:
-    """Commit date of the change that introduced ``version`` into pyproject.toml.
+    """Commit date that first INTRODUCED ``version`` into pyproject.toml.
 
     This is the clock the age check runs on. Reading it from git rather than from
     the CHANGELOG's own date means a back-dated or forgotten heading cannot hide
     how long the declaration has actually been sitting there.
+
+    The oldest matching commit, not the newest, and that is load-bearing. ``-S``
+    is a pickaxe: it matches every commit where the *count* of the string changed,
+    which includes the commit that DELETED it. Taking the newest therefore dated
+    0.3.91 to the day it was replaced rather than the day it was declared, and the
+    age reset to zero. On a gate whose entire job is "declared more than a day ago
+    and still not on the registry", a clock that any later edit can reset is a
+    silent failure path: the check keeps passing and says "release in flight".
+    Observed for real when 0.3.92 landed and declared_since("0.3.91") jumped from
+    2026-08-31 to 2026-09-02.
+
+    A version introduced, removed and reintroduced dates to the first
+    introduction. That is the conservative answer, and conservative here means the
+    gate is more willing to fire, not less.
     """
     try:
         out = subprocess.run(
             [
-                "git", "-C", str(REPO_ROOT), "log", "-1", "--format=%cI",
+                "git", "-C", str(REPO_ROOT), "log", "--format=%cI",
                 "-S", f'version = "{version}"', "--", "pyproject.toml",
             ],
             capture_output=True, text=True, timeout=20,
@@ -149,8 +163,9 @@ def declared_since(version: str) -> date | None:
         return None
     if out.returncode != 0 or not out.stdout.strip():
         return None
+    oldest = out.stdout.strip().splitlines()[-1]
     try:
-        return datetime.fromisoformat(out.stdout.strip()).date()
+        return datetime.fromisoformat(oldest).date()
     except ValueError:
         return None
 

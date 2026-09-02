@@ -131,6 +131,42 @@ def test_declared_since_reads_git_not_the_changelog() -> None:
     assert since is None or isinstance(since, date)
 
 
+def test_declared_since_dates_the_introduction_not_the_removal() -> None:
+    """A silent failure path, found by bumping to 0.3.92.
+
+    ``git log -S`` is a pickaxe: it matches every commit where the *count* of the
+    string changed, and that includes the commit that deleted it. Taking the
+    newest match dated 0.3.91 to the day it was replaced instead of the day it was
+    declared, and the age reset to zero. On a gate whose whole job is "declared
+    more than a day ago and still not on the registry", a clock any later edit can
+    reset means the check keeps passing and reports a release in flight.
+
+    Both versions below have been added and later removed, so each one exercises
+    the bug. The assertion is against git itself rather than a hardcoded date, so
+    it keeps working as history grows.
+    """
+    import subprocess
+
+    for version in ("0.3.90", "0.3.91"):
+        log = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "log", "--format=%cs",
+             "-S", f'version = "{version}"', "--", "pyproject.toml"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if log.returncode != 0 or not log.stdout.strip():
+            pytest.skip(f"git has no history for {version}")
+        dates = log.stdout.strip().splitlines()
+        if len(dates) < 2:
+            continue  # not yet removed, so the bug cannot show here
+        introduced, removed = dates[-1], dates[0]
+        assert introduced != removed
+        assert mod.declared_since(version) == date.fromisoformat(introduced), (
+            f"{version} dated to its removal ({removed}) instead of its "
+            f"introduction ({introduced}) — the age clock resets and the gate "
+            f"stops biting"
+        )
+
+
 # ---------------------------------------------------------------------------
 # The script as CI runs it
 # ---------------------------------------------------------------------------
