@@ -8237,6 +8237,100 @@ _r(
 
 
 # ---------------------------------------------------------------------------
+# Three guards that were present and wrong (2026-09-02 wave)
+#
+# Each of these has a near neighbour in the corpus that does not cover it, and in
+# every case the difference is the same shape: the defence exists, so a detector
+# keyed on "the defence is missing" stays quiet. Checked by scanning each
+# disclosed shape against the whole engine before writing a rule -- nothing fired
+# for any of the three. See the scanner docstrings for which neighbour was
+# considered and why it falls short.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-SSRF-BRACKETED-HOST-001",
+    "SSRF guard classifies an IPv6 hostname it never unbracketed",
+    "A URL allow-list reads `.hostname` from a parsed URL and passes it to an "
+    "IP-classification call, without removing the brackets WHATWG keeps around an "
+    "IPv6 literal. `net.isIP(\"[::1]\")` returns 0, so the branch holding the "
+    "private-address checks never runs and the guard falls through to its "
+    "default-allow tail. A caller asking for `http://[::1]/` reaches loopback "
+    "through a check written to stop exactly that. The guard being present is why "
+    "the missing-allow-list rules stay silent on it.",
+    Severity.HIGH,
+    Category.TRANSPORT_SECURITY,
+    "Strip the surrounding brackets before classifying the host, and make the "
+    "guard default to deny rather than allow when classification fails.",
+    sarif_name="SsrfBracketedHostBypass",
+    cve_references=["CVE-2026-80347"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+    aicm_references=["IVS-04", "AIS-08"],
+    limitations=(
+        "JS/TS only. Python's urlsplit().hostname already strips the brackets, so "
+        "the same code shape is not vulnerable there and is deliberately not "
+        "flagged. Reads one file at a time, so a guard whose bracket handling "
+        "lives in an imported helper is not seen."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOOLS-LIST-UNBOUNDED-001",
+    "MCP tool catalogue built from an upstream response with no cap",
+    "An MCP client or aggregator assembles its tool catalogue from what upstream "
+    "servers return, with no bound on the number of tools or the size of a schema. "
+    "The size of the allocation is then chosen by whoever controls the upstream, "
+    "not by this process. Distinct from an unbounded *request body*: that value "
+    "arrives from the caller, this one arrives from the server being aggregated, "
+    "and a body-size limit does not touch it.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Cap the number of tools accepted from any single upstream and reject "
+    "oversized descriptions and schemas before building the catalogue.",
+    sarif_name="McpToolsListUnbounded",
+    cve_references=["CVE-2026-84289"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-DOS-01"],
+    limitations=(
+        "Detects the absence of any bound in the same file as the catalogue "
+        "builder. A cap enforced in a wrapper or by the transport layer is not "
+        "seen, and a slice, a length check, a max_* constant or a break in the "
+        "loop all clear the finding."
+    ),
+)
+
+_r(
+    "AAK-APPROVAL-PARSER-DESYNC-001",
+    "Command-safety parser and the executing shell disagree about a token",
+    "An agent decides whether a command needs human approval by parsing it, then "
+    "hands it to a PowerShell-family interpreter, without handling the "
+    "stop-parsing token `--%`. pwsh re-reads everything after `--%` verbatim, so "
+    "the command that was classified is not the command that runs and the "
+    "approval prompt is skipped. Neither truncation nor a rebuilt argv is "
+    "involved: the checker and the shell read the same bytes and disagree about "
+    "what they mean, which is a third route to the same bypass.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Reject `--%` (and any token that suspends the interpreter's own parsing) "
+    "before classifying a command, or pass an argv straight to the interpreter "
+    "instead of a shell-parsed command string.",
+    sarif_name="ApprovalParserDesync",
+    cve_references=["CVE-2026-19591"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Covers the PowerShell stop-parsing token specifically, not every shell's "
+        "escaping grammar. A gate in front of bash or cmd is not flagged, because "
+        "claiming to know every shell's parser is a claim a pattern scan cannot "
+        "make. Any mention of `--%` or stop-parsing in the file clears it."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 

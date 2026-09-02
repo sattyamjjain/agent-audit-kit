@@ -16,6 +16,34 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-02: three guards that were present and wrong
+
+The queue was 16. Every one was read against NVD, in CVSS order, and put in exactly
+one bucket: three NEW-RULE, twelve DEFERRED with a target date, one OUT-OF-SCOPE.
+
+The three that got rules have the same shape as each other, and it is not the shape
+the corpus was built for. Every SSRF rule here asks whether an allow-list exists.
+Every DoS rule asks whether a size limit exists. Every approval rule asks whether a
+check exists. In all three of these the thing exists. It is just wrong, and a
+detector keyed on absence cannot see a defence that is present and broken.
+
+Each shape was scanned against the whole engine before a rule was written. Nothing
+fired for any of the three, so no existing rule was extended and none was
+duplicated.
+
+Two deferrals stayed deferrals for the opposite reason. CVE-2026-81102 and
+CVE-2026-37006 need `AAK-DNS-REBIND-001` and the transport rules widened to Python
+FastMCP and to WebSocket. Those are the same claims over a language and a transport
+the detectors do not currently read, so they get a scanner path, not a second rule
+id.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-80347 (`mcp-fetch`, CWE-918, CVSS 3.1 7.5 - `isSafeUrl` reads `.hostname` off a parsed URL, which keeps the brackets WHATWG puts round an IPv6 literal, and hands `[::1]` to `net.isIP`, which returns 0 for a bracketed value; the private-address branch is skipped and the guard falls through to its default-allow tail) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-80347) | **In scope, rule shipped** `AAK-SSRF-BRACKETED-HOST-001` (TRANSPORT_SECURITY, **HIGH**). The allow-list is present, which is why `AAK-MCP-SSRF-001` (no allow-list) and `AAK-LANGCHAIN-SSRF-REDIR-001` (redirect past a guard) both stay silent - verified by scanning the shape, not inferred. **JS/TS only**: Python's `urlsplit().hostname` strips the brackets before you see them, so the same code is not vulnerable there and is deliberately not flagged. Single-file pattern detection, no data flow. Benign fixture is the same guard calling `.replace(/^\[\|\]$/g, "")` first. (#649) | 2026-09-02 |
+| CVE-2026-84289 (`hermes-agent` <= 0.18.2, CWE-400 + CWE-789, CVSS 3.1 4.3 / CVSS 4.0 2.1 - `list_tools` in `tools/mcp_tool.py` reads every tool an upstream server returns into memory and builds a catalogue from it, with no bound on tool count or schema size) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-84289) | **In scope, rule shipped** `AAK-MCP-TOOLS-LIST-UNBOUNDED-001` (MCP_CONFIG, **MEDIUM**). `AAK-MCP-016` looked like the match and is not: it bounds the **inbound request body**, and this allocation is driven by the **upstream response**, a value arriving from the other direction that no body-size limit touches. A test asserts `AAK-MCP-016` does not fire on this shape, so if that ever changes somebody has to decide which rule owns it rather than both firing. Any bound clears it - a slice, a length check, a `max_*`, a `break`. (#681) | 2026-09-02 |
+| CVE-2026-19591 (OpenAI Codex CLI / Codex Desktop, CWE-150 - the command-safety parser interpreted PowerShell's stop-parsing token `--%` differently from PowerShell itself, so a command classified as safe ran a different command; a file-writing git command executes with no approval prompt and can rewrite Codex's own configuration, which is loaded on the next start) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-19591) · [upstream PR](https://github.com/openai/codex/pull/22643) | **In scope, rule shipped** `AAK-APPROVAL-PARSER-DESYNC-001` (TRUST_BOUNDARY, **HIGH**). A third route to an approval bypass, and the two near neighbours cover the other two: `AAK-POLICY-TRUNCATION-001` needs the value **cut to a fixed length**, `AAK-MCP-ARGV-TOCTOU-001` needs the argv **rebuilt after** the check. Here it is neither - the checker and the shell read the same bytes and disagree. **Scope stated rather than implied**: this knows one interpreter's stop-parsing token, not every shell's grammar, and a gate in front of bash is not flagged. Claiming to know every shell's parser is a claim a pattern scan cannot make. (#679) | 2026-09-02 |
+| CVE-2026-81846 (runZero Platform MCP service, CWE-639, CVSS 3.1 3.5 - authorization bypass through a user-controlled key, fixed server-side in 5.1.260826.0) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-81846) · [advisory](https://www.runzero.com/advisories/runzero-mcp-findings-summaries-data-leak-cve-2026-81846) | **Out of scope** - and a genuine MCP surface, which is why it is written down rather than waved off. runZero Platform is a hosted product: `runzero` resolves on neither npm nor PyPI, there is no `@runzero/mcp`, and the fix landed on the vendor's side. Nothing in a user's own repository can be pinned, patched or detected for it. Re-triageable if runZero ever ships a self-hosted MCP component through a registry this scanner reads. (#680) | 2026-09-02 |
+
 ## 2026-08-31: the credential that points the wrong way
 
 A CVSS 10.0 that the project's own no-auth rule read as authenticated.
