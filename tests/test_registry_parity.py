@@ -55,7 +55,12 @@ mod = _load()
 def test_decision_table(
     declared: str, published: str, today: date, expected: bool, because: str
 ) -> None:
-    ok, why = mod.evaluate(declared, published, today=today)
+    # The CHANGELOG version is injected, not read off disk: this is a table about
+    # a declared/published pair and the repository's own version must not be a
+    # hidden third input to it.
+    ok, why = mod.evaluate(
+        declared, published, today=today, changelog_version=declared
+    )
     assert ok is expected, f"{because}: {why}"
 
 
@@ -64,7 +69,9 @@ def test_the_state_that_motivated_this() -> None:
 
     Every in-repo guard passed on this. This one must not.
     """
-    ok, why = mod.evaluate("0.3.91", "0.3.90", today=date(2026, 9, 2))
+    ok, why = mod.evaluate(
+        "0.3.91", "0.3.90", today=date(2026, 9, 2), changelog_version="0.3.91"
+    )
     assert not ok
     assert "0.3.91" in why and "0.3.90" in why, "both versions must be named"
     assert "did not happen" in why
@@ -73,7 +80,9 @@ def test_the_state_that_motivated_this() -> None:
 def test_failure_names_both_versions() -> None:
     """A failure that prints one version makes the reader go look up the other."""
     for declared, published in [("0.3.92", "0.3.90"), ("0.3.89", "0.3.90")]:
-        _, why = mod.evaluate(declared, published, today=date(2026, 9, 1))
+        _, why = mod.evaluate(
+            declared, published, today=date(2026, 9, 1), changelog_version=declared
+        )
         assert declared in why and published in why
 
 
@@ -120,6 +129,42 @@ def test_declared_since_reads_git_not_the_changelog() -> None:
     """The clock comes from git so a back-dated heading cannot hide the age."""
     since = mod.declared_since(mod.declared_version())
     assert since is None or isinstance(since, date)
+
+
+def test_declared_since_dates_the_introduction_not_the_removal() -> None:
+    """A silent failure path, found by bumping to 0.3.92.
+
+    ``git log -S`` is a pickaxe: it matches every commit where the *count* of the
+    string changed, and that includes the commit that deleted it. Taking the
+    newest match dated 0.3.91 to the day it was replaced instead of the day it was
+    declared, and the age reset to zero. On a gate whose whole job is "declared
+    more than a day ago and still not on the registry", a clock any later edit can
+    reset means the check keeps passing and reports a release in flight.
+
+    Both versions below have been added and later removed, so each one exercises
+    the bug. The assertion is against git itself rather than a hardcoded date, so
+    it keeps working as history grows.
+    """
+    import subprocess
+
+    for version in ("0.3.90", "0.3.91"):
+        log = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "log", "--format=%cs",
+             "-S", f'version = "{version}"', "--", "pyproject.toml"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if log.returncode != 0 or not log.stdout.strip():
+            pytest.skip(f"git has no history for {version}")
+        dates = log.stdout.strip().splitlines()
+        if len(dates) < 2:
+            continue  # not yet removed, so the bug cannot show here
+        introduced, removed = dates[-1], dates[0]
+        assert introduced != removed
+        assert mod.declared_since(version) == date.fromisoformat(introduced), (
+            f"{version} dated to its removal ({removed}) instead of its "
+            f"introduction ({introduced}) — the age clock resets and the gate "
+            f"stops biting"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -174,3 +219,26 @@ def test_wired_into_ci() -> None:
     text = "\n".join(w.read_text(encoding="utf-8") for w in referencing)
     assert "schedule:" in text, "must run on a schedule, not only on push"
     assert "push:" in text, "must also run on push"
+
+
+def test_a_changelog_that_names_another_version_fails() -> None:
+    """The injected path must still enforce the check it was extracted from.
+
+    Making the value injectable is only safe if injecting the wrong one still
+    fails; otherwise the extraction quietly removed a condition.
+    """
+    ok, why = mod.evaluate(
+        "0.3.92", "0.3.91", today=date(2026, 9, 2), changelog_version="0.3.91"
+    )
+    assert not ok
+    assert "0.3.91, not 0.3.92" in why
+
+
+def test_default_still_reads_the_changelog() -> None:
+    """Left alone, the function behaves exactly as it did before."""
+    newest = mod.newest_changelog_release()
+    assert newest is not None
+    ok, _ = mod.evaluate(
+        newest[0], newest[0], today=date(2026, 9, 2)
+    )
+    assert ok

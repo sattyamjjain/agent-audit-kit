@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-08-31T08:17:12Z",
-  "aak_version": "0.3.91",
-  "rule_count": 327,
+  "last_updated": "2026-09-02T06:19:20Z",
+  "aak_version": "0.3.92",
+  "rule_count": 330,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -142,7 +142,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 47,
+      "rule_density": 48,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -168,6 +168,14 @@
             "AIS-07",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-APPROVAL-PARSER-DESYNC-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-19591"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-ASTROMCP-SQLI-CVE-2026-7591-001",
@@ -1917,7 +1925,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 53,
+      "rule_density": 54,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2284,6 +2292,14 @@
           ]
         },
         {
+          "id": "AAK-MCP-TOOLS-LIST-UNBOUNDED-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-84289"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-TUNNEL-001",
           "severity": "critical",
           "cve_references": [],
@@ -2378,7 +2394,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 45,
+      "rule_density": 46,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2758,6 +2774,17 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": [
+            "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-SSRF-BRACKETED-HOST-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-80347"
+          ],
+          "aicm_references": [
+            "AIS-08",
             "IVS-04"
           ]
         },

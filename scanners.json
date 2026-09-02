@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 95,
+  "count": 98,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -21,6 +21,10 @@
     {
       "module": "agentic_skills",
       "name": "OWASP Agentic Skills Top 10 (AAK-AST02/04/10)"
+    },
+    {
+      "module": "approval_parser_desync",
+      "name": "Command-safety parser vs PowerShell stop-parsing token (CVE-2026-19591)"
     },
     {
       "module": "argv_toctou",
@@ -223,6 +227,10 @@
       "name": "MCP tool-gate list-vs-call enforcement asymmetry (CVE-2026-46519)"
     },
     {
+      "module": "mcp_tools_list_unbounded",
+      "name": "MCP tool catalogue built from an unbounded upstream response (CVE-2026-84289)"
+    },
+    {
       "module": "mcp_transport_session_unauth",
       "name": "MCP HTTP transport on every interface with no caller credential (CVE-2026-82456)"
     },
@@ -321,6 +329,10 @@
     {
       "module": "splunk_mcp_config",
       "name": "splunk-mcp-server config-side token-leak (CVE-2026-20205)"
+    },
+    {
+      "module": "ssrf_bracketed_host",
+      "name": "SSRF guard classifies a bracketed IPv6 hostname (CVE-2026-80347)"
     },
     {
       "module": "ssrf_patterns",

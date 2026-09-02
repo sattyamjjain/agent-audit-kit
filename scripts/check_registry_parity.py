@@ -131,16 +131,30 @@ def is_one_patch_ahead(declared: str, published: str) -> bool:
 
 
 def declared_since(version: str) -> date | None:
-    """Commit date of the change that introduced ``version`` into pyproject.toml.
+    """Commit date that first INTRODUCED ``version`` into pyproject.toml.
 
     This is the clock the age check runs on. Reading it from git rather than from
     the CHANGELOG's own date means a back-dated or forgotten heading cannot hide
     how long the declaration has actually been sitting there.
+
+    The oldest matching commit, not the newest, and that is load-bearing. ``-S``
+    is a pickaxe: it matches every commit where the *count* of the string changed,
+    which includes the commit that DELETED it. Taking the newest therefore dated
+    0.3.91 to the day it was replaced rather than the day it was declared, and the
+    age reset to zero. On a gate whose entire job is "declared more than a day ago
+    and still not on the registry", a clock that any later edit can reset is a
+    silent failure path: the check keeps passing and says "release in flight".
+    Observed for real when 0.3.92 landed and declared_since("0.3.91") jumped from
+    2026-08-31 to 2026-09-02.
+
+    A version introduced, removed and reintroduced dates to the first
+    introduction. That is the conservative answer, and conservative here means the
+    gate is more willing to fire, not less.
     """
     try:
         out = subprocess.run(
             [
-                "git", "-C", str(REPO_ROOT), "log", "-1", "--format=%cI",
+                "git", "-C", str(REPO_ROOT), "log", "--format=%cI",
                 "-S", f'version = "{version}"', "--", "pyproject.toml",
             ],
             capture_output=True, text=True, timeout=20,
@@ -149,8 +163,9 @@ def declared_since(version: str) -> date | None:
         return None
     if out.returncode != 0 or not out.stdout.strip():
         return None
+    oldest = out.stdout.strip().splitlines()[-1]
     try:
-        return datetime.fromisoformat(out.stdout.strip()).date()
+        return datetime.fromisoformat(oldest).date()
     except ValueError:
         return None
 
@@ -167,14 +182,27 @@ def _emit(level: str, message: str) -> None:
     print(f"registry-parity: {level.upper()}: {message}", file=sys.stderr)
 
 
+_LOOKUP = object()
+
+
 def evaluate(
     declared: str,
     published: str,
     *,
     today: date,
     max_ahead_days: int = DEFAULT_MAX_AHEAD_DAYS,
+    changelog_version: object = _LOOKUP,
 ) -> tuple[bool, str]:
-    """Return ``(ok, explanation)`` for one declared/published pair."""
+    """Return ``(ok, explanation)`` for one declared/published pair.
+
+    ``changelog_version`` is injectable so the decision table can be exercised
+    without the repository's own CHANGELOG being part of the input. It was not,
+    and the consequence showed up immediately: bumping the declared version to
+    0.3.92 broke three tests about the 0.3.91/0.3.90 pair, because a function
+    documented as evaluating "one declared/published pair" was quietly reading a
+    third value off disk. Left at its default it looks the file up exactly as
+    before.
+    """
     if declared == published:
         return True, f"declared {declared} == published {declared}"
 
@@ -193,9 +221,13 @@ def evaluate(
             f"correct the declaration."
         )
 
-    newest = newest_changelog_release()
-    if newest is None or newest[0] != declared:
-        stated = "none" if newest is None else newest[0]
+    if changelog_version is _LOOKUP:
+        found = newest_changelog_release()
+        stated_version = None if found is None else found[0]
+    else:
+        stated_version = changelog_version  # type: ignore[assignment]
+    if stated_version != declared:
+        stated = "none" if stated_version is None else stated_version
         return False, (
             f"declared {declared}, PyPI serves {published}. The CHANGELOG's "
             f"newest dated section names {stated}, not {declared}, so this does "
