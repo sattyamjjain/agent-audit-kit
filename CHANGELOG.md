@@ -7,7 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.92] - 2026-09-02
+
+### Added
+
+- Three rules. `AAK-SSRF-BRACKETED-HOST-001` for CVE-2026-80347,
+  `AAK-MCP-TOOLS-LIST-UNBOUNDED-001` for CVE-2026-84289, and
+  `AAK-APPROVAL-PARSER-DESYNC-001` for CVE-2026-19591. Rules 327 to 330. Scanners
+  95 to 98.
+
+  All three sit next to a rule that looks like it should already cover them. None
+  of them does, and the reason is the same every time. The defence is present, so
+  a detector keyed on the defence being missing stays quiet. mcp-fetch has an SSRF
+  allow-list. It hands `net.isIP` a bracketed IPv6 literal, which returns 0, so
+  the private-address branch never runs and the guard allows. Hermes bounds
+  nothing on the upstream tool catalogue, and `AAK-MCP-016` bounds the inbound
+  request body, which is a value arriving from the other direction. Codex parses a
+  command before approving it, and pwsh reads `--%` as stop-parsing, so the
+  command that was approved is not the command that runs.
+
+  Every shape was scanned against the whole engine before a rule was written.
+  Nothing fired for any of them. Each rule has a positive fixture and a benign
+  fixture, and the benign one is a single line different from the positive. Zero
+  hits on the 536-server benign slice, so the published false-positive rate is
+  unchanged and needed no re-adjudication.
+
+### Changed
+
+- Triaged all 16 open `cve-response` issues, CVSS descending, NVD entry read for
+  each. Three came out NEW-RULE and were written today. Twelve are DEFERRED with a
+  target date. One is OUT-OF-SCOPE and closed. The 13 that already carried
+  `cve-deferred` all had a disposition comment, but none carried a date, so all 13
+  were re-dispositioned with one.
+
+  The closed one is #680. runZero Platform's MCP service is a genuine MCP surface
+  and a genuine authorization bypass. It is also a hosted product. `runzero`
+  resolves on neither npm nor PyPI, and the fix landed server-side, so there is
+  nothing in a user's own repository to pin, patch, or detect.
+
+  Two deferrals stayed deferrals deliberately. #660 and #662 need an existing
+  detector widened, not a new rule id. `AAK-DNS-REBIND-001` does not fire on
+  Python FastMCP, and the transport rules do not recognise WebSocket. Giving
+  either shape its own rule id would report one defect class under two ids.
+
+  The three NEW-RULE issues stay open and carry no `cve-deferred`, so they keep
+  blocking the release gate until the rules merge. That is deliberate. Deferred
+  work and today's work are not the same thing.
+
+
+- **The CVE watcher has a limit.** It filed one release-gating issue per CVE on a
+  6-hour cron with no upper bound and opened 27 in five days, eight of them one
+  product's advisory batch in a single run. At most 5 new issues per run, most
+  severe first, and none while 10+ untriaged issues are already open. The
+  pre-filter was deliberately left alone: all 27 were genuine MCP CVEs, so
+  tightening relevance would have dropped true positives to fix a rate problem.
+  The cap lives in `collect_new_cves`, not in the workflow step that creates
+  issues, because `state["filed_cves"]` records everything the function returns —
+  capping after the fact would mark held CVEs as filed and lose them. The NVD
+  window widened 48h → 7 days so a held CVE is still findable when the queue
+  drains; that is what separates back-pressure from data loss, and it has a test.
+- The 27-issue queue was triaged to 13: 10 closed as already covered by a shipped
+  rule (each confirmed by scanning a fixture of that shape, not asserted from the
+  rule title), 3 closed as unreachable, 1 closed as out of scope, and 13 left
+  open under `cve-deferred` with the queued work named. Two of the deferrals are
+  gaps the fixture testing found rather than assumed: `AAK-DNS-REBIND-001` does
+  not fire on Python FastMCP's `streamable_http_app()`, and `AAK-MCP-SSRF-001`
+  cannot fire on mcp-fetch because the SSRF guard is present and bypassed rather
+  than absent.
+
 ### Fixed
+
+- The gate can no longer be switched off by labelling. `cve-deferred` exempts an
+  issue from the release gate, and docs/RELEASING.md §5 said the label is only
+  honest on an issue that has a disposition comment. That was prose, and prose
+  does not fail a build. Two tests now read the tracker and fail if a deferred
+  issue has no maintainer comment, or no `## Disposition` comment. When the
+  tracker cannot be read they skip and say they did not check, rather than
+  passing. The predicates are unit-tested on synthetic data, so the check still
+  holds on a machine with no network.
+- Verified the registry parity gate catches the defect it was written for.
+  Declared 0.3.91 against a registry serving 0.3.90, on the real git clock, exits
+  1 and prints both versions. A wrong declared version fails. A registry ahead of
+  the repository fails. An unreachable registry warns that it did not compare. No
+  defect in the failure path, so nothing needed fixing there.
 
 - **0.3.91 was written and never shipped, and nothing could see it.** pyproject
   said 0.3.91, the CHANGELOG had a dated 0.3.91 section, the counts were synced,
@@ -71,28 +153,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `sys.argv[1:]` and did not — `--check-live` silently rendered instead of
   checking. Third occurrence of this pattern in the repo, so it is now commented
   where the next person will read it.
-
-### Changed
-
-- **The CVE watcher has a limit.** It filed one release-gating issue per CVE on a
-  6-hour cron with no upper bound and opened 27 in five days, eight of them one
-  product's advisory batch in a single run. At most 5 new issues per run, most
-  severe first, and none while 10+ untriaged issues are already open. The
-  pre-filter was deliberately left alone: all 27 were genuine MCP CVEs, so
-  tightening relevance would have dropped true positives to fix a rate problem.
-  The cap lives in `collect_new_cves`, not in the workflow step that creates
-  issues, because `state["filed_cves"]` records everything the function returns —
-  capping after the fact would mark held CVEs as filed and lose them. The NVD
-  window widened 48h → 7 days so a held CVE is still findable when the queue
-  drains; that is what separates back-pressure from data loss, and it has a test.
-- The 27-issue queue was triaged to 13: 10 closed as already covered by a shipped
-  rule (each confirmed by scanning a fixture of that shape, not asserted from the
-  rule title), 3 closed as unreachable, 1 closed as out of scope, and 13 left
-  open under `cve-deferred` with the queued work named. Two of the deferrals are
-  gaps the fixture testing found rather than assumed: `AAK-DNS-REBIND-001` does
-  not fire on Python FastMCP's `streamable_http_app()`, and `AAK-MCP-SSRF-001`
-  cannot fire on mcp-fetch because the SSRF guard is present and bypassed rather
-  than absent.
 
 
 ## [0.3.91] - 2026-08-31

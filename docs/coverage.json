@@ -633,6 +633,29 @@
       "title": "MCP server built on the upstream SDK without STDIO sanitizer"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-19591"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-APPROVAL-PARSER-DESYNC-001",
+      "severity": "high",
+      "title": "Command-safety parser and the executing shell disagree about a token"
+    },
+    {
       "category": "agentic-skill",
       "cve_references": [],
       "eu_ai_act": [
@@ -5081,6 +5104,31 @@
       "title": "MCP tool gate enforced in tools/list but not tools/call"
     },
     {
+      "category": "mcp-config",
+      "cve_references": [
+        "CVE-2026-84289"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Filter and monitor output pipelines and chained execution (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-TOOLS-LIST-UNBOUNDED-001",
+      "severity": "medium",
+      "title": "MCP tool catalogue built from an upstream response with no cap"
+    },
+    {
       "category": "transport-security",
       "cve_references": [
         "CVE-2026-82456"
@@ -6549,6 +6597,25 @@
     {
       "category": "transport-security",
       "cve_references": [
+        "CVE-2026-80347"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-SSRF-BRACKETED-HOST-001",
+      "severity": "high",
+      "title": "SSRF guard classifies an IPv6 hostname it never unbracketed"
+    },
+    {
+      "category": "transport-security",
+      "cve_references": [
         "CVE-2026-41488",
         "CVE-2026-53708"
       ],
@@ -7343,66 +7410,66 @@
       "composition": 3,
       "hook-injection": 17,
       "legal-compliance": 12,
-      "mcp-config": 65,
+      "mcp-config": 66,
       "mcp-server-card": 4,
       "secret-exposure": 18,
       "supply-chain": 101,
       "taint-analysis": 14,
       "tool-poisoning": 30,
-      "transport-security": 14,
-      "trust-boundary": 15
+      "transport-security": 15,
+      "trust-boundary": 16
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 109,
+      "Art. 10 - Data Governance": 110,
       "Art. 13 - Transparency": 31,
       "Art. 14 - Human Oversight": 39,
-      "Art. 15 - Robustness & Security": 194,
-      "Art. 9 - Risk Management": 113
+      "Art. 15 - Robustness & Security": 195,
+      "Art. 9 - Risk Management": 115
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 72,
-      "Constrain and sandbox tool execution (p.11)": 100,
-      "Design for boundaries (p.10)": 176,
-      "Filter and monitor output pipelines and chained execution (p.12)": 74,
+      "Constrain and sandbox tool execution (p.11)": 102,
+      "Design for boundaries (p.10)": 178,
+      "Filter and monitor output pipelines and chained execution (p.12)": 75,
       "Instrument for logging and detection (p.13)": 34,
       "Scan local network for open or vulnerable MCP servers (p.14)": 143,
       "Sign and verify MCP messages (p.12)": 142,
       "Track and patch MCP related vulnerabilities (p.13)": 83,
-      "Validate parameters (p.11)": 104
+      "Validate parameters (p.11)": 106
     },
     "by_owasp_agentic": {
       "ASI01": 14,
-      "ASI02": 47,
+      "ASI02": 48,
       "ASI03": 73,
       "ASI04": 66,
-      "ASI05": 53,
-      "ASI06": 45,
+      "ASI05": 54,
+      "ASI06": 46,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
       "ASI10": 21
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 81,
+      "MCP01:2025": 82,
       "MCP02:2025": 14,
       "MCP03:2025": 33,
       "MCP04:2025": 40,
       "MCP05:2025": 56,
-      "MCP06:2025": 16,
+      "MCP06:2025": 17,
       "MCP07:2025": 34,
       "MCP08:2025": 7,
-      "MCP09:2025": 27,
+      "MCP09:2025": 28,
       "MCP10:2025": 11
     },
     "by_severity": {
       "critical": 76,
-      "high": 155,
+      "high": 157,
       "info": 5,
       "low": 9,
-      "medium": 82
+      "medium": 83
     },
-    "total_cves_covered": 177,
-    "total_rules": 327
+    "total_cves_covered": 180,
+    "total_rules": 330
   },
   "tool": "agent-audit-kit"
 }
