@@ -38,6 +38,16 @@ jobs:
         run: mypy agent_audit_kit/ --ignore-missing-imports
 
       - name: Run tests
+        # GH_TOKEN so the cve-deferred gate tests in
+        # tests/test_cve_watcher_backpressure.py can actually read the tracker.
+        # Without it they skip, and a check that only runs where somebody
+        # remembered to export a token protects nothing -- which is the same
+        # mistake as writing the rule in prose in RELEASING.md and calling it
+        # enforced. They skip (never fail) when the API is unreachable, so an
+        # outage or a fork with no issue access degrades to "not checked"
+        # rather than to a red build.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pytest -v --tb=short
 
       - name: Self-scan (verify CLI works)
