@@ -167,14 +167,27 @@ def _emit(level: str, message: str) -> None:
     print(f"registry-parity: {level.upper()}: {message}", file=sys.stderr)
 
 
+_LOOKUP = object()
+
+
 def evaluate(
     declared: str,
     published: str,
     *,
     today: date,
     max_ahead_days: int = DEFAULT_MAX_AHEAD_DAYS,
+    changelog_version: object = _LOOKUP,
 ) -> tuple[bool, str]:
-    """Return ``(ok, explanation)`` for one declared/published pair."""
+    """Return ``(ok, explanation)`` for one declared/published pair.
+
+    ``changelog_version`` is injectable so the decision table can be exercised
+    without the repository's own CHANGELOG being part of the input. It was not,
+    and the consequence showed up immediately: bumping the declared version to
+    0.3.92 broke three tests about the 0.3.91/0.3.90 pair, because a function
+    documented as evaluating "one declared/published pair" was quietly reading a
+    third value off disk. Left at its default it looks the file up exactly as
+    before.
+    """
     if declared == published:
         return True, f"declared {declared} == published {declared}"
 
@@ -193,9 +206,13 @@ def evaluate(
             f"correct the declaration."
         )
 
-    newest = newest_changelog_release()
-    if newest is None or newest[0] != declared:
-        stated = "none" if newest is None else newest[0]
+    if changelog_version is _LOOKUP:
+        found = newest_changelog_release()
+        stated_version = None if found is None else found[0]
+    else:
+        stated_version = changelog_version  # type: ignore[assignment]
+    if stated_version != declared:
+        stated = "none" if stated_version is None else stated_version
         return False, (
             f"declared {declared}, PyPI serves {published}. The CHANGELOG's "
             f"newest dated section names {stated}, not {declared}, so this does "

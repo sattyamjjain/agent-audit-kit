@@ -145,3 +145,143 @@ def test_the_prefilter_was_left_alone() -> None:
     assert mod.is_relevant("An MCP server exposes a tool over HTTP.")
     assert mod.is_relevant("Model Context Protocol server path traversal.")
     assert not mod.is_relevant("A wordpress plugin escalation with no agent surface.")
+
+
+# ---------------------------------------------------------------------------
+# The gate must not be disableable by labelling alone
+# ---------------------------------------------------------------------------
+#
+# `cve-deferred` exempts an issue from the release gate. docs/RELEASING.md §5:
+#
+#     The rule for using it honestly: label `cve-deferred` only when the issue
+#     has a disposition comment naming what is queued and why. A label without
+#     that comment turns the gate off rather than satisfying it.
+#
+# That was prose, and prose does not fail a build. Labelling thirteen issues and
+# writing nothing would have re-opened exactly the hole the gate was rewritten to
+# close, and every check in the repository would still have been green.
+#
+# These two tests read the live tracker. When it cannot be read they SKIP with a
+# reason rather than passing quietly: an unchecked tracker must not look like a
+# clean one. That is the same rule check_registry_parity.py follows for an
+# unreachable registry, and for the same reason.
+
+_MAINTAINER = {"OWNER", "MEMBER", "COLLABORATOR"}
+
+
+def _label(issue: dict) -> str:
+    return f"#{issue.get('number')} {issue.get('title', '')}".strip()
+
+
+def without_maintainer_comment(issues: list[dict]) -> list[str]:
+    """Deferred issues nobody with write access has written on."""
+    return [
+        _label(i) for i in issues
+        if not any(
+            (c.get("authorAssociation") or "").upper() in _MAINTAINER
+            for c in (i.get("comments") or [])
+        )
+    ]
+
+
+def without_disposition_comment(issues: list[dict]) -> list[str]:
+    """Deferred issues with no `## Disposition` comment on them."""
+    return [
+        _label(i) for i in issues
+        if not any(
+            (c.get("body") or "").lstrip().startswith("## Disposition")
+            for c in (i.get("comments") or [])
+        )
+    ]
+
+
+def _deferred_issues() -> list[dict]:
+    """Open `cve-deferred` issues with their comments, or skip if unreadable."""
+    import json
+    import shutil
+    import subprocess
+
+    if shutil.which("gh") is None:
+        pytest.skip("gh CLI not available — the tracker was NOT checked")
+    out = subprocess.run(
+        [
+            "gh", "issue", "list", "--repo", "sattyamjjain/agent-audit-kit",
+            "--label", "cve-deferred", "--state", "open", "--limit", "100",
+            "--json", "number,title,comments",
+        ],
+        capture_output=True, text=True, timeout=120,
+    )
+    if out.returncode != 0:
+        pytest.skip(
+            "could not read the tracker "
+            f"({out.stderr.strip()[:120]}) — it was NOT checked, this is not a pass"
+        )
+    try:
+        return json.loads(out.stdout)
+    except ValueError:
+        pytest.skip("tracker response was not JSON — it was NOT checked")
+
+
+def test_every_deferred_issue_has_a_maintainer_comment() -> None:
+    """A `cve-deferred` label on an issue nobody wrote on is the gate switched off.
+
+    The watcher opens these issues as github-actions[bot]. A maintainer comment is
+    the minimum evidence that a human looked before the label was applied.
+    """
+    issues = _deferred_issues()
+    if not issues:
+        return  # nothing deferred is a legitimate state
+    naked = without_maintainer_comment(issues)
+    assert not naked, (
+        "cve-deferred applied with no maintainer comment, which exempts these "
+        "from the release gate without anyone having dispositioned them:\n  "
+        + "\n  ".join(naked)
+    )
+
+
+def test_every_deferred_issue_has_a_disposition_comment() -> None:
+    """The stricter half of §5: the comment has to be a disposition.
+
+    A maintainer replying "ack" satisfies the letter of the rule above and none of
+    its intent. The disposition heading is the repo's existing convention, used by
+    every triage since 2026-08-25.
+    """
+    issues = _deferred_issues()
+    if not issues:
+        return
+    undispositioned = without_disposition_comment(issues)
+    assert not undispositioned, (
+        "cve-deferred applied without a `## Disposition:` comment — "
+        "docs/RELEASING.md §5 calls this turning the gate off rather than "
+        "satisfying it:\n  " + "\n  ".join(undispositioned)
+    )
+
+
+def test_the_gate_check_bites_on_synthetic_data() -> None:
+    """Covers the predicates when the tracker cannot be read.
+
+    The two tests above skip without network, and a check that only runs where
+    the network is available protects nothing on the machine where somebody is
+    actually applying the label. These assertions hold everywhere.
+    """
+    bot_only = {
+        "number": 1, "title": "CVE-response: CVE-0000-1",
+        "comments": [{"authorAssociation": "NONE", "body": "opened by the watcher"}],
+    }
+    acked = {
+        "number": 2, "title": "CVE-response: CVE-0000-2",
+        "comments": [{"authorAssociation": "OWNER", "body": "ack, will look"}],
+    }
+    dispositioned = {
+        "number": 3, "title": "CVE-response: CVE-0000-3",
+        "comments": [{"authorAssociation": "OWNER", "body": "## Disposition: DEFERRED\n\nTarget: 2026-09-09."}],
+    }
+
+    # A label with only the bot's own text on it is the gate switched off.
+    assert without_maintainer_comment([bot_only]) == ["#1 CVE-response: CVE-0000-1"]
+    assert without_maintainer_comment([acked, dispositioned]) == []
+
+    # "ack" clears the maintainer bar and fails the disposition bar, which is the
+    # whole reason the second check exists.
+    assert without_disposition_comment([acked]) == ["#2 CVE-response: CVE-0000-2"]
+    assert without_disposition_comment([dispositioned]) == []
