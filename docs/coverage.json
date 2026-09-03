@@ -1085,7 +1085,8 @@
         "CVE-2025-66414",
         "CVE-2025-66416",
         "CVE-2026-35568",
-        "CVE-2026-35577"
+        "CVE-2026-35577",
+        "CVE-2026-81102"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance",
@@ -7162,7 +7163,7 @@
       ],
       "rule_id": "AAK-TRANSPORT-001",
       "severity": "critical",
-      "title": "MCP server uses HTTP instead of HTTPS"
+      "title": "MCP server uses a cleartext transport (http:// or ws://)"
     },
     {
       "category": "transport-security",
@@ -7468,7 +7469,7 @@
       "low": 9,
       "medium": 83
     },
-    "total_cves_covered": 180,
+    "total_cves_covered": 181,
     "total_rules": 330
   },
   "tool": "agent-audit-kit"

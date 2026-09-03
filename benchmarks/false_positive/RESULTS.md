@@ -1,7 +1,7 @@
 # Benign-slice HIGH/CRITICAL false-positive rate — AgentAuditKit
 
 > Generated from `benchmarks/false_positive/run.py` over a benign slice derived
-> by `corpus.py`. Run date **2026-08-24**. Offline, deterministic, no LLM.
+> by `corpus.py`. Run date **2026-09-03**. Offline, deterministic, no LLM.
 > Reproduce: `make fp` (or `python benchmarks/false_positive/run.py`).
 > The slice itself is committed as [`benign-slice.json`](benign-slice.json), so
 > which servers were measured is checkable without running anything.
@@ -9,50 +9,58 @@
 ## Headline
 
 On a **536-config benign slice** of public MCP servers, AgentAuditKit produces
-**4 HIGH/CRITICAL findings** (0.8% of the slice). Hand-adjudicated: **2 false
-positives, 1 true positive, 1 ambiguous**.
+**1 HIGH/CRITICAL finding** (0.2% of the slice). Hand-adjudicated: **0 false
+positives, 1 true positive**.
 
-**Benign-slice HIGH/CRITICAL false-positive rate = 2 / 4 = 50.0%** (Wilson 95%
-CI **[15.0%, 85.0%]**).
+**Benign-slice HIGH/CRITICAL false-positive rate = 0 / 1 = 0.0%** (Wilson 95%
+CI **[0.0%, 79.3%]**).
 
-The untuned measurement was **4 / 6 = 66.7%**, published first in its own commit
-and kept in [`triage.md`](triage.md) and the history table below. Both remaining
-false positives are attributable to the corpus rather than the scanner, and the
-section on root causes says which is which.
+The interval is wide because the denominator is 1, and it is quoted rather than
+buried: a 0.0% point estimate on a single adjudicated finding is not evidence
+that the scanner is never wrong. What the run does establish is narrower and
+still worth having — across 536 curated benign configs the scanner raised
+exactly one high-severity finding, and that finding was correct.
 
-That is a large regression against the 0.0% published on 2026-07-22, and the
-reason is worth stating first: **the 0.0% was never re-measured after the corpus
-grew.** The manifest went from 1,374 to 1,641 registry servers and the benign
-slice from 368 to 536, and nothing re-ran the benchmark. The published number
-described a slice that no longer existed. There is now a drift guard
+**No rule changed in this run.** The 2026-08-24 measurement left 2 false
+positives and 1 ambiguous verdict, and all three were corpus-attributable: root
+cause B below. Regenerating the manifest from the same cached 2026-07-26
+registry snapshot clears all three. 3 of 1,641 configs change, 0 `auth_mode`s
+change, the slice stays at 536, and `AAK-MCP-001` is untouched — so the rate
+moves for exactly one reason, which is what the previous run said it wanted and
+deliberately would not bundle.
+
+The 2026-08-24 pair of numbers (untuned **4 / 6 = 66.7%**, post-fix
+**2 / 4 = 50.0%**) stays in [`triage.md`](triage.md) and the history table below.
+That run was itself a large regression against the 0.0% published on 2026-07-22,
+for a reason worth keeping on the record: **the 0.0% was never re-measured after
+the corpus grew.** The manifest went from 1,374 to 1,641 registry servers and the
+benign slice from 368 to 536, and nothing re-ran the benchmark. The published
+number described a slice that no longer existed. There is now a drift guard
 (`make fp-check`) so that cannot recur silently.
-
-The untuned number was measured, adjudicated, and committed **before** any rule
-was changed, so the record shows what the scanner actually did rather than only
-what it did after being adjusted. This file reports the post-fix state; the
-commit immediately preceding it reports the pre-fix state.
 
 ### How to read the badge
 
-The README badge reads `benign-slice 536 configs · HIGH/CRIT FP 2/4`. The two
+The README badge reads `benign-slice 536 configs · HIGH/CRIT FP 0/1`. The two
 numbers answer different questions and both are needed:
 
 - **536** is how many benign configs were scanned. This is the sample size of
   the *measurement*.
-- **2/4** is how many of the HIGH/CRITICAL findings raised on those 536 configs
+- **0/1** is how many of the HIGH/CRITICAL findings raised on those 536 configs
   were wrong. The denominator is small because the scanner is quiet on benign
-  input — 4 high-severity findings across 536 configs — not because little was
+  input — 1 high-severity finding across 536 configs — not because little was
   tested.
 
-That small denominator is also why the ratio moves oddly: the fix removed 2
-findings from the numerator *and* the denominator, so the rate fell 66.7% → 50.0%
-while the number of wrong findings halved, 4 → 2. The absolute count is the more
-informative figure at this scale, which is why the badge carries both.
+The ratio is back to `0/1`, and that string has been wrong on this badge before,
+so it is worth being explicit about what is different. The 2026-07-22 badge read
+`0/1 (n=1)`, which reads as "one thing was tested." It was not: 368 configs were
+tested and exactly one high-severity finding came out of them. The label now
+carries the slice size, so the badge says `benign-slice 536 configs` next to
+`HIGH/CRIT FP 0/1` and the sample size is not recoverable only by opening this
+file. The failure that badge had was presentational; the number was right.
 
-The previous badge read `0/1 (n=1)`, which reads as "one thing was tested." It
-was not: 368 configs were tested and exactly one high-severity finding came out
-of them. The badge is now explicit about both figures because that phrasing
-misled every reader who did not open this file, which is the point of a badge.
+At this scale the absolute count is the more informative figure, which is why
+the badge carries both. One adjudicated finding is a thin denominator, and the
+Wilson interval above is the honest width that goes with it.
 
 ## Method
 
@@ -115,43 +123,63 @@ drifts from a fresh derivation.
 
 | Severity | Findings |
 |----------|---------:|
-| critical | 4 |
+| critical | 1 |
 | high | 0 |
 | medium | 665 |
-| low | 489 |
+| low | 492 |
 
 ### Noisiest rules overall (all severities)
 
 | Rule | Severity | Findings | Note |
 |------|:--------:|---------:|------|
 | `AAK-MCP-ATTEST-001` | MEDIUM | 536 | Advisory-posture rule — fires on every config (no attestation); excluded from the report headline as advisory. |
-| `AAK-OAUTH-008` | LOW | 366 | Expected on static-credential servers (no RFC 9728 discovery). |
+| `AAK-OAUTH-008` | LOW | 369 | Expected on static-credential servers (no RFC 9728 discovery). |
 | `AAK-MCP-005` | MEDIUM | 123 | `npx`/`uvx` fetch-and-execute — a real supply-chain pattern, MEDIUM. |
 | `AAK-MCP-007` | LOW | 123 | Advisory-posture. |
-| `AAK-MCP-001` | **CRITICAL** | 4 | The only HIGH/CRITICAL rule that fired — adjudicated below. |
+| `AAK-MCP-006` | MEDIUM | 4 | Advisory-posture. |
+| `AAK-MCP-001` | **CRITICAL** | 1 | The only HIGH/CRITICAL rule that fired — adjudicated below. |
+
+Total findings are unchanged at 1,158: the corpus fix moved 3 findings rather
+than removing them. The three configs that regained their declared
+`Authorization` header stopped firing `AAK-MCP-001` (CRITICAL, 4 → 1) and
+started firing `AAK-OAUTH-008` (LOW, 366 → 369), which is the expected posture
+finding for a static-credential server with no RFC 9728 discovery. The scanner
+did not go quieter; it went **more accurate**, and the severity mix is the
+evidence.
 
 The MEDIUM count is inflated by one advisory rule (`AAK-MCP-ATTEST-001`) that
 fires on 100% of configs by design; it is not an exploitable misconfiguration.
 Only `AAK-MCP-001` produced HIGH/CRITICAL findings, so it is the whole of the FP
 surface here — as it was in both previous runs.
 
-## Adjudication (single rater, 2026-08-24)
+## Adjudication (single rater, 2026-09-03)
 
 Full table in [`triage.md`](triage.md). Summary:
 
 | # | Rule | Config | Verdict | Reason |
 |--:|------|--------|:------:|--------|
 | 1 | `AAK-MCP-001` | `ai.spala/public-mcp` | TP | Only header is `Accept`; genuinely no auth (server named `public-mcp`). |
-| 2 | `AAK-MCP-001` | `co.curie/commerce` | **FP** | Server declares `Authorization` (`isSecret`) on remote 1; only remote 0 was converted. |
-| 3 | `AAK-MCP-001` | `co.huggingface/hf-mcp-server` | **FP** | Same: `Authorization` on remote 1; remote 0 is the `?login` OAuth entry point. |
-| 4 | `AAK-MCP-001` | `app.thoughtspot/mcp-server` | ambiguous | Snapshot says `static-credential` at v1.0.1; the live registry has moved to v0.5.0, so the July record cannot be re-verified. |
 
-Cleared by the fix in this run, and recorded in [`triage.md`](triage.md):
-`ai.velarion/company-intelligence` (`X-Velarion-Agent-Token`) and
-`br.com.signdocs/mcp-server` (`X-SignDocs-Client-Id` + `-Client-Secret`).
+One finding, one verdict. The three entries that made up the 2026-08-24
+denominator are gone from the numerator *and* the denominator, because the
+configs they fired on no longer misrepresent their servers:
 
-Findings 4 and 5 were verified against the **live** MCP Registry at the same
-version as the snapshot, so the auth they declare is a fact and not an inference.
+| Was | Config | 2026-08-24 verdict | Now |
+|----:|--------|:------------------:|-----|
+| 2 | `co.curie/commerce` | **FP** | No longer fires — config carries the `Authorization` header the server declares on remote 1. |
+| 3 | `co.huggingface/hf-mcp-server` | **FP** | No longer fires — same; remote 0 is the `?login` OAuth entry point. |
+| 4 | `app.thoughtspot/mcp-server` | ambiguous | No longer fires — the record resolves to the `/bearer/mcp` remote, which declares `Authorization` + `X-TS-Host`. |
+
+The ambiguous verdict is worth a line of its own. It was ambiguous because the
+July snapshot could not be re-verified against a live registry that had since
+moved on. Re-deriving from the **cached snapshot** rather than from the live
+registry settles it without needing the live record at all: the auth was in the
+July data the whole time, on a remote the converter was not reading.
+
+Cleared by the earlier 2026-08-24 rule fix, and recorded in
+[`triage.md`](triage.md): `ai.velarion/company-intelligence`
+(`X-Velarion-Agent-Token`) and `br.com.signdocs/mcp-server`
+(`X-SignDocs-Client-Id` + `-Client-Secret`).
 
 ### Two root causes, and only one of them is the scanner
 
@@ -166,19 +194,38 @@ nothing else** (1,046 → 1,044 firing, 0 newly firing), so it did not buy a low
 false-positive rate with false negatives. A bare `client_id` and
 `X-CSRF-Token`/`X-XSRF-Token` are deliberately still *not* treated as auth.
 
-**B. Benchmark gap — fixed forward, not retroactively (the 2 remaining FPs).**
-`fetch_registry._to_config()` builds the scannable config from `remotes[0]` only.
+**B. Benchmark gap — CLOSED in this run (the 2 FPs and the 1 ambiguous).**
+`fetch_registry._to_config()` built the scannable config from `remotes[0]` only.
 A server that publishes an anonymous or login entry point first and its
-credentialled endpoint second loses its declared auth in conversion. AAK is then
-correct about the config it was handed and wrong about the server. This has been
-listed under Limitations since 2026-07-20; these are the first findings it has
-actually produced. They are counted as false positives rather than excused,
-because the finding text makes a claim about the *server* — but the fix belongs
-in the corpus builder, not the rule. `_to_config()` now converts the first remote
-that *declares headers*; the committed manifest predates that and these clear on
-the next `make corpus` refresh. Regenerating 1,641 records inside a precision fix
-would move the number for two reasons at once and make the improvement
-unauditable, so it is deliberately not bundled here.
+credentialled endpoint second lost its declared auth in conversion. AAK was then
+correct about the config it was handed and wrong about the server. That is why
+these were counted as false positives rather than excused: the finding text
+makes a claim about the *server*.
+
+`_to_config()` was fixed on 2026-08-24 to convert the first remote that
+*declares headers*, but the committed manifest predated the fix, and the
+regeneration was deliberately held back so that a precision fix and a corpus
+refresh would not move the number at the same time. This run does the
+regeneration on its own, and the deferral is what makes it auditable.
+
+The refresh is re-derived from the **cached 2026-07-26 registry pages** — the
+same snapshot the committed manifest was built from — not from the live
+registry. That matters for comparability: `fetched_at` stays 2026-07-26, the
+upstream server count stays 1,641, the benign slice stays 536, and the only
+thing that moves is the conversion. Measured across the whole corpus the change
+touches **3 of 1,641 configs and 0 `auth_mode`s**, and the patched manifest was
+asserted equal to a full re-derivation from cache, so nothing else drifted in
+under cover of the fix.
+
+The three: `co.curie/commerce` and `co.huggingface/hf-mcp-server` each declare
+`Authorization` on remote 1, and `app.thoughtspot/mcp-server` resolves to a
+`/bearer/mcp` remote declaring `Authorization` + `X-TS-Host`.
+
+`tests/test_registry_corpus_auth_consistency.py` now asserts the invariant that
+would have caught this from the committed data alone: **no server labelled
+`static-credential` may have a config with no auth header.** That is the guard
+the class was missing — `_to_config` and `_auth_mode` read the same record and
+disagreed about it, and nothing compared their answers.
 
 ## Limitations (stated plainly)
 
@@ -213,3 +260,4 @@ unauditable, so it is deliberately not bundled here.
 | 2026-07-22 | 368 | 1 | 0 / 1 | 0.0% | Post-#475: `X-*-Key` family recognised. |
 | 2026-08-24 | 536 | 6 | 4 / 6 | 66.7% | Slice grew 368→536; `-Token`/`-Secret` families unrecognised, plus 2 first-remote conversion artifacts. **Untuned.** |
 | 2026-08-24 (post-fix) | 536 | 4 | 2 / 4 | 50.0% | Header family extended to `-token`/`-secret`. Both remaining FPs are corpus conversion artifacts that clear on the next `make corpus`. |
+| 2026-09-03 | 536 | 1 | 0 / 1 | 0.0% | Corpus regenerated from the cached 2026-07-26 snapshot with the fixed `_to_config`. **No rule changed.** 3/1,641 configs moved, 0 `auth_mode`s; the 2 FPs and the 1 ambiguous all clear. Wilson 95% CI [0.0%, 79.3%]. |

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gpt-researcher": {
+      "type": "websocket",
+      "url": "wss://research.example.com/ws/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RESEARCH_TOKEN}"
+      }
+    }
+  }
+}

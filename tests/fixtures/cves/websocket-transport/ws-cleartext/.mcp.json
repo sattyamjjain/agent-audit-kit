@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gpt-researcher": {
+      "type": "websocket",
+      "url": "ws://research.example.com/ws/mcp"
+    }
+  }
+}

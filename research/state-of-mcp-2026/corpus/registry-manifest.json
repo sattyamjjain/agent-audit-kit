@@ -19395,7 +19395,11 @@
         "mcpServers": {
           "mcp-server": {
             "type": "http",
-            "url": "https://agent.thoughtspot.app/mcp"
+            "url": "https://agent.thoughtspot.app/bearer/mcp",
+            "headers": {
+              "Authorization": "${SECRET}",
+              "X-TS-Host": "${SECRET}"
+            }
           }
         }
       }
@@ -24899,7 +24903,10 @@
         "mcpServers": {
           "commerce": {
             "type": "sse",
-            "url": "https://chat.curie.app/api/mcp/global"
+            "url": "https://chat.curie.app/api/mcp/{shop_id}",
+            "headers": {
+              "Authorization": "${SECRET}"
+            }
           }
         }
       }
@@ -25094,7 +25101,10 @@
         "mcpServers": {
           "hf-mcp-server": {
             "type": "http",
-            "url": "https://huggingface.co/mcp?login"
+            "url": "https://huggingface.co/mcp",
+            "headers": {
+              "Authorization": "${SECRET}"
+            }
           }
         }
       }

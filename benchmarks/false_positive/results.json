@@ -1,21 +1,21 @@
 {
   "benign_slice_n": 536,
   "benign_slice_predicate": "official MCP Registry latest-version server AND status=active AND auth_mode in {static-credential, header-nonsecret, local-stdio} AND not in AAK's shipped CVE/advisory feed (vuln_db.json + CVE-pin package names)",
-  "configs_with_high_critical": 4,
-  "finding_set_digest": "bcaa7926c76353842e3940c5d72ff9a6517c691da7161866e90949e29c453571",
+  "configs_with_high_critical": 1,
+  "finding_set_digest": "031300fd8e5125023a199c1fac0f7b037a6b2b42c13ad5d564107140f09d3fac",
   "findings_per_config": 2.16,
-  "high_critical_config_rate": 0.0075,
-  "high_critical_findings": 4,
+  "high_critical_config_rate": 0.0019,
+  "high_critical_findings": 1,
   "rule_family_buckets": {
-    "AAK-MCP": 790,
-    "AAK-OAUTH": 366,
+    "AAK-MCP": 787,
+    "AAK-OAUTH": 369,
     "AAK-TRANSPORT": 2
   },
   "severity_buckets": {
-    "critical": 4,
+    "critical": 1,
     "high": 0,
     "info": 0,
-    "low": 489,
+    "low": 492,
     "medium": 665
   },
   "tool": "agent-audit-kit",
@@ -25,29 +25,11 @@
       "evidence": "Server 'public-mcp' URL: https://mcp.spala.ai/mcp \u2014 no authentication headers",
       "rule_id": "AAK-MCP-001",
       "severity": "critical"
-    },
-    {
-      "config": "app.thoughtspot/mcp-server",
-      "evidence": "Server 'mcp-server' URL: https://agent.thoughtspot.app/mcp \u2014 no authentication headers",
-      "rule_id": "AAK-MCP-001",
-      "severity": "critical"
-    },
-    {
-      "config": "co.curie/commerce",
-      "evidence": "Server 'commerce' URL: https://chat.curie.app/api/mcp/global \u2014 no authentication headers",
-      "rule_id": "AAK-MCP-001",
-      "severity": "critical"
-    },
-    {
-      "config": "co.huggingface/hf-mcp-server",
-      "evidence": "Server 'hf-mcp-server' URL: https://huggingface.co/mcp?login \u2014 no authentication headers",
-      "rule_id": "AAK-MCP-001",
-      "severity": "critical"
     }
   ],
   "top_noisy_high_critical_rules": [
     {
-      "high_critical_findings": 4,
+      "high_critical_findings": 1,
       "rule_id": "AAK-MCP-001",
       "severity": "critical",
       "title": "Remote MCP server without authentication"
@@ -61,7 +43,7 @@
       "title": "MCP server admitted without attestation"
     },
     {
-      "findings": 366,
+      "findings": 369,
       "rule_id": "AAK-OAUTH-008",
       "severity": "low",
       "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery"
@@ -80,9 +62,9 @@
     },
     {
       "findings": 4,
-      "rule_id": "AAK-MCP-001",
-      "severity": "critical",
-      "title": "Remote MCP server without authentication"
+      "rule_id": "AAK-MCP-006",
+      "severity": "medium",
+      "title": "MCP server command uses relative path"
     }
   ],
   "total_findings": 1158

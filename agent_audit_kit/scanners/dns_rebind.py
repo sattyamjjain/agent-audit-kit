@@ -19,6 +19,26 @@ Two detections:
    `StreamableHTTP*` usage in Python/TS without a Host-header
    allow-list (`TrustedHostMiddleware`, `allowed_hosts=`,
    `validate_host`, `allowedHosts:`).
+
+CVE-2026-81102 (2026-08-27) is the same defect reached through the
+Python **FastMCP** wrapper rather than the raw transport class. The Dash
+MCP server bound its listener to loopback and never checked the `Host` a
+request named, so a rebound name still reached it. Binding to loopback is
+not the control here — the Host allow-list is — which is why an explicit
+`host="127.0.0.1"` does not clear this rule.
+
+FastMCP names none of the tokens above: it is constructed as
+`FastMCP(...)` and selects its transport with `run(transport="streamable-http")`,
+where the transport is a **hyphenated string literal** and `streamable_http`
+(underscore) never appears. The pattern check therefore read straight past
+every FastMCP server. That is a language/framework shape the detector did
+not read, not a second defect, so it is folded into this rule rather than
+given a new id.
+
+**stdio is deliberately not flagged.** FastMCP defaults to stdio, and a
+stdio server has no listener to rebind onto — the advisory says only the
+network mode was reachable. A network transport must be selected
+explicitly for this to fire.
 """
 
 from __future__ import annotations
@@ -47,6 +67,30 @@ _REQ_LINE_RE = re.compile(
 
 _PY_STREAMABLE_RE = re.compile(
     r"\b(StreamableHTTPSessionManager|streamable_http|StreamableHTTPServerTransport)\b"
+)
+
+# FastMCP (`mcp.server.fastmcp` and the standalone `fastmcp` package) wraps the
+# same StreamableHTTP transport, so the defect is identical while none of the
+# markers above appear. Construction alone is not enough — see below.
+_PY_FASTMCP_RE = re.compile(r"\bFastMCP\s*\(")
+
+# ...it must also select a NETWORK transport. FastMCP defaults to stdio, which
+# has no listener to rebind onto, so requiring an explicit network transport is
+# what keeps this from firing on every FastMCP server in existence.
+# `streamable_http_app` / `sse_app` are the ASGI-app accessors; note
+# `streamable_http_app` does NOT match `\bstreamable_http\b` above, because the
+# trailing `_app` leaves no word boundary.
+_PY_FASTMCP_NET_RE = re.compile(
+    r"""
+    (?:
+        transport\s*=\s*["\'](?:streamable[-_]http|sse|http)["\']
+      | \.\s*streamable_http_app\s*\(
+      | \.\s*sse_app\s*\(
+      | \brun_streamable_http_async\s*\(
+      | \brun_sse_async\s*\(
+    )
+    """,
+    re.VERBOSE | re.IGNORECASE,
 )
 
 _TS_STREAMABLE_RE = re.compile(
@@ -258,6 +302,23 @@ def _check_java_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
 # ---------------------------------------------------------------------------
 
 
+def _py_transport_marker(text: str) -> tuple[str, str] | None:
+    """``(evidence_label, literal_to_locate)`` for a Python network MCP transport.
+
+    Two shapes reach the same StreamableHTTP transport: the raw SDK classes, and
+    a `FastMCP` server told to run over a network transport. Returns ``None`` for
+    stdio FastMCP servers and for files that expose no server at all.
+    """
+    m = _PY_STREAMABLE_RE.search(text)
+    if m:
+        return m.group(0), m.group(0)
+    if _PY_FASTMCP_RE.search(text):
+        n = _PY_FASTMCP_NET_RE.search(text)
+        if n:
+            return f"FastMCP {n.group(0).strip()}", n.group(0)
+    return None
+
+
 def _has_host_allowlist(text: str) -> bool:
     stripped = _strip_comments(text)
     return bool(_HOST_ALLOWLIST_RE.search(stripped))
@@ -287,12 +348,18 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
         if _has_host_allowlist(text):
             project_has_allowlist = True
 
-        marker_re = _PY_STREAMABLE_RE if path.suffix in _PY_EXTS else _TS_STREAMABLE_RE
-        m = marker_re.search(text)
-        if m is None:
-            continue
-        line = find_line_number(text, m.group(0))
-        candidates.append((path, m.group(0), line))
+        if path.suffix in _PY_EXTS:
+            hit = _py_transport_marker(text)
+            if hit is None:
+                continue
+            label, literal = hit
+        else:
+            m = _TS_STREAMABLE_RE.search(text)
+            if m is None:
+                continue
+            label = literal = m.group(0)
+        line = find_line_number(text, literal)
+        candidates.append((path, label, line))
 
     if project_has_allowlist or not candidates:
         return findings
@@ -305,8 +372,8 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
             rel,
             f"{marker} transport exposed without a Host-header allow-list — "
             "DNS-rebinding (CVE-2025-66414 / CVE-2025-66416 / CVE-2026-35568 / "
-            "CVE-2026-35577) lets a malicious browser page reach a loopback "
-            "MCP server.",
+            "CVE-2026-35577 / CVE-2026-81102) lets a malicious browser page "
+            "reach a loopback MCP server.",
             line_number=line,
         ))
     return findings

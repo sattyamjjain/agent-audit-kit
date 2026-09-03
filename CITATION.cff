@@ -53,7 +53,7 @@ preferred-citation:
     A static scan of 2,303 distinct public Model Context Protocol server
     configurations, collected 2026-07-26 from GitHub-crawled .mcp.json files and
     the official MCP Registry. Findings include 0 of 2,303 configs serving RFC 9728
-    Protected Resource Metadata discovery, 52.2% (1,203) declaring a remote server
-    with no authentication, and 100% (421 of 421) of inline-auth remote configs
+    Protected Resource Metadata discovery, 52.1% (1,200) declaring a remote server
+    with no authentication, and 100% (424 of 424) of inline-auth remote configs
     hardcoding a static credential. Offline and deterministic; reproducible from the
     committed corpus manifest with `make report`.
