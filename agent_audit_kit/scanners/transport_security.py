@@ -17,10 +17,24 @@ _MCP_CONFIG_FILES: list[str] = [
     "mcp.json",
 ]
 
-# ---- AAK-TRANSPORT-001: HTTP URLs (excluding localhost / loopback) ----
-_HTTP_URL_RE = re.compile(r"^http://", re.IGNORECASE)
+# ---- AAK-TRANSPORT-001: cleartext URLs (excluding localhost / loopback) ----
+#
+# Applies to the two cleartext remote schemes MCP is carried over: `http://`
+# and `ws://`. `ws://` is not a lesser case of the same defect -- it is the
+# same defect. A WebSocket handshake over `ws://` is an unencrypted HTTP
+# upgrade, so credentials in the handshake headers and every frame after it
+# are on the wire in clear, exactly as with `http://`. `wss://` is the
+# encrypted counterpart and is not flagged, as `https://` is not.
+#
+# This read `^http://` only until v0.3.93, so a `ws://` MCP server was silently
+# exempt from the project's cleartext-transport rule while the byte-identical
+# `http://` server was CRITICAL. Found via CVE-2026-37006 (gpt-researcher
+# WebSocket endpoint); see tests/test_cve_2026_37006_websocket_transport.py.
+#
+# stdio has no URL and is out of scope for this rule by construction.
+_CLEARTEXT_URL_RE = re.compile(r"^(?:http|ws)://", re.IGNORECASE)
 _LOCALHOST_RE = re.compile(
-    r"^http://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(:\d+)?(/|$)",
+    r"^(?:http|ws)://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(:\d+)?(/|$)",
     re.IGNORECASE,
 )
 
@@ -68,12 +82,15 @@ def _check_server(
     env: dict[str, Any] = server_cfg.get("env", {})
     transport: str = server_cfg.get("transport", "")
 
-    # AAK-TRANSPORT-001: HTTP (not HTTPS), excluding localhost
-    if url and _HTTP_URL_RE.match(url) and not _LOCALHOST_RE.match(url):
+    # AAK-TRANSPORT-001: cleartext http:// or ws://, excluding loopback
+    if url and _CLEARTEXT_URL_RE.match(url) and not _LOCALHOST_RE.match(url):
+        scheme = url.split("://", 1)[0].lower()
+        secure = "wss" if scheme == "ws" else "https"
         findings.append(make_finding(
             "AAK-TRANSPORT-001",
             rel_path,
-            f"Server '{server_name}' URL: {url}",
+            f"Server '{server_name}' URL: {url} — cleartext {scheme}:// "
+            f"(use {secure}://)",
             find_line_number(raw_text, url),
         ))
 

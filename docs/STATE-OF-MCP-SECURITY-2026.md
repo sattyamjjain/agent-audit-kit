@@ -32,7 +32,7 @@ A reproducible, offline data run over **2,303 distinct public MCP server configs
 content) already exists — see
 [`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md)
 and the raw [`results.json`](../research/state-of-mcp-2026/results.json). Headline
-from that run: **<!-- report:noauth-pct -->52.2<!-- /report -->% (<!-- report:noauth-n -->1,203<!-- /report -->/2,303) declare a remote server with no authentication,
+from that run: **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) declare a remote server with no authentication,
 0% use RFC 9728 Protected-Resource-Metadata discovery, and 100% (421/421) of
 inline-auth remote configs hardcode a static credential.**
 

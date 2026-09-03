@@ -7,6 +7,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.93] - 2026-09-03
+
+### Fixed
+
+- **The benign-slice false-positive rate was 50%, and no rule was at fault.** The
+  published badge read `2/4 (50.0%)` on a 536-config slice. Re-adjudicating the four
+  HIGH/CRITICAL findings against primary data — the cached registry pages the corpus
+  was built from — found no rule defect at all. All four were `AAK-MCP-001` ("remote
+  MCP server without authentication"), and the rule was correct about every config it
+  was handed. The configs were wrong.
+
+  The mechanism is a disagreement inside the corpus builder that nothing compared.
+  `fetch_registry._auth_mode()` looks across **every** remote a registry record
+  publishes and reports `static-credential` if any of them declares a secret header.
+  `_to_config()` built the scannable config from `remotes[0]` **only**. A server that
+  publishes an anonymous or login entry point first and its credentialled endpoint
+  second was therefore labelled `static-credential` while being handed to the scanner
+  with no auth on it at all. `co.curie/commerce` and `co.huggingface/hf-mcp-server`
+  each declare `Authorization` on remote 1; `app.thoughtspot/mcp-server` resolves to a
+  `/bearer/mcp` remote declaring `Authorization` + `X-TS-Host`.
+
+  `_to_config()` was fixed on 2026-08-24 to prefer the first remote that declares
+  headers, but the committed manifest predated the fix and went on carrying the broken
+  configs while every test passed. `RESULTS.md` deliberately did not bundle the
+  regeneration into a precision fix, so the number would not move for two reasons at
+  once. This is that regeneration, on its own.
+
+  Re-derived from the same cached 2026-07-26 registry snapshot rather than from the
+  live registry, so the slice size and the fetch date are unchanged and the two runs
+  are directly comparable. **3 of 1,641 configs change, 0 `auth_mode`s change**, and
+  the patched manifest was asserted equal to a full re-derivation. Total findings are
+  unchanged at 1,158: the three configs stopped firing `AAK-MCP-001` (CRITICAL) and
+  started firing `AAK-OAUTH-008` (LOW), the expected posture finding for a
+  static-credential server with no RFC 9728 discovery. The scanner did not go quieter,
+  it went more accurate, and the severity mix is the evidence.
+
+  **Benign-slice HIGH/CRITICAL false-positive rate: 2/4 (50.0%) → 0/1 (0.0%)**; Wilson
+  95% CI [15.0%, 85.0%] → [0.0%, 79.3%]. The interval is wide because the denominator
+  is 1, and it is published rather than buried — a 0.0% point estimate on one
+  adjudicated finding is not evidence that the scanner is never wrong. No rule
+  severity was downgraded and no matcher was narrowed: the standing true positive
+  (`ai.spala/public-mcp`) still fires, and a test asserts it, because a lower
+  false-positive rate bought with a false negative is not an improvement.
+
+  `tests/test_registry_corpus_auth_consistency.py` is the guard the class was missing:
+  **no server labelled `static-credential` may have a config with no auth header.** It
+  reads only committed data, so it fails on a stale manifest even when `_to_config`
+  itself is correct — which is exactly the state that shipped.
+
+  The corrected corpus moves the State of MCP Security 2026 headline by those same
+  three configs: critical 1,215 → 1,212 (52.8% → 52.6%), no-auth 1,203 → 1,200 (52.2%
+  → 52.1%), inline-auth 421 → 424 (still 100%). README, REPORT.md, PREVALENCE.md,
+  CITATION.cff, `docs/STATE-OF-MCP-SECURITY-2026.md` and
+  `docs/DISTRIBUTION-CHECKLIST.md` all follow.
+
+- **`AAK-DNS-REBIND-001` read straight past every Python FastMCP server**
+  (CVE-2026-81102, #660). The Dash MCP server bound its listener to loopback and never
+  checked the `Host` a request named, so a name rebound to loopback still reached it
+  and could drive its tools under the credential the server holds. The detector matched
+  `StreamableHTTPSessionManager`, `streamable_http` and `StreamableHTTPServerTransport`.
+  FastMCP names none of them: it is built as `FastMCP(...)` and selects its transport
+  with `run(transport="streamable-http")` — a **hyphenated string literal**, where the
+  detector looked for `streamable_http` with an underscore.
+
+  Extended, not duplicated. Same rule id, same mitigation marker (`allowed_hosts=`
+  already covered FastMCP's `TransportSecuritySettings`), same remediation, following
+  the 2026-09-02 triage note that these are "the same claims over a language and a
+  transport the detectors do not currently read, so they get a scanner path, not a
+  second rule id". **stdio is deliberately not flagged**: FastMCP defaults to stdio, a
+  stdio server has no listener to rebind onto, and the advisory says only the network
+  mode was reachable — requiring an explicit network transport is what keeps this from
+  firing on essentially every FastMCP server written. **Binding to loopback is not a
+  mitigation** and does not clear the rule, because CVE-2026-81102 was loopback-bound;
+  the Host allow-list is the control. Fixtures: `python-fastmcp-unguarded` fires,
+  `python-fastmcp-guarded` and `python-fastmcp-stdio` stay silent, and every
+  pre-existing fixture keeps its verdict.
+
+- **The transport rules did not recognise WebSocket, and did not say which transports
+  they covered** (CVE-2026-37006, #662). Measured rather than assumed: `AAK-MCP-001`
+  already treated a `ws://` URL as remote and unauthenticated, so the unauthenticated
+  half was covered. `AAK-TRANSPORT-001` (cleartext transport) was not — it matched
+  `^http://` only, so a `ws://` MCP server was silently exempt from the project's
+  cleartext-transport rule while a byte-identical `http://` server was CRITICAL.
+  `ws://` is not a milder form of the defect: the handshake is an unencrypted HTTP
+  upgrade, so its headers and every frame after it are on the wire in clear. `wss://`
+  is the encrypted counterpart and is not flagged, and the loopback carve-out now
+  applies to both schemes rather than one.
+
+  The second half of the gap was documentation. `AAK-TRANSPORT-001` through `-004` each
+  now state **which transports they apply to and which they do not**, including where
+  stdio stands, instead of leaving a reader to infer "stdio or http" from a regex —
+  which is how WebSocket went unread across four rules at once. A test asserts every
+  rule in the family carries both statements. `AAK-TRANSPORT-001`'s title changes to
+  "MCP server uses a cleartext transport (http:// or ws://)", because the old title
+  named only one of the two schemes it now reads.
+
 ## [0.3.92] - 2026-09-02
 
 ### Added

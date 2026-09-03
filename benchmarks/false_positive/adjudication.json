@@ -1,13 +1,10 @@
 {
   "_comment": "Human adjudication of the benign-slice HIGH/CRITICAL findings. run.py deliberately does NOT write this: the false-positive rate is a human judgement, and a harness that labelled its own findings would be measuring nothing. Verdict rule (see triage.md): rate = false_positive / adjudicated; ambiguous counts in the denominator only.",
-  "run_date": "2026-08-24",
+  "run_date": "2026-09-03",
   "rater": "single rater (maintainer)",
   "tuned": true,
-  "tuned_note": "Post-fix re-measurement. The scanner-attributable false positives (X-Velarion-Agent-Token, X-SignDocs-Client-Secret) are cleared by extending the AAK-MCP-001 credential-header family to the -token/-secret suffixes. The remaining false positives are corpus-attributable: fetch_registry._to_config() converted remotes[0] only, and the committed manifest predates that fix, so they clear on the next 'make corpus' refresh rather than now. The untuned 4/6 is recorded in triage.md and in the RESULTS.md history table.",
+  "tuned_note": "Corpus-side fix, no rule change. The 2026-08-24 run left two false positives and one ambiguous verdict, all three attributable to the corpus builder rather than to any rule: fetch_registry._to_config() converted remotes[0] only, so a server publishing an anonymous or login entry point first lost its declared auth in conversion and was handed to the scanner as a credential-less config. _to_config() was fixed at the time, but the committed manifest predated the fix and RESULTS.md deliberately did not bundle the regeneration into a precision fix. This run regenerates the manifest from the same cached 2026-07-26 registry snapshot, so the slice size (536) and the fetch date are unchanged and the two runs are directly comparable. Exactly 3 of 1,641 configs change and 0 auth_modes change; the patched manifest was asserted equal to a full re-derivation. AAK-MCP-001 is unmodified - it was correct about every config it was handed. The single remaining HIGH/CRITICAL finding is the true positive that has been stable across every run since 2026-07-20.",
   "verdicts": [
-    {"config": "ai.spala/public-mcp", "rule_id": "AAK-MCP-001", "verdict": "true_positive"},
-    {"config": "co.curie/commerce", "rule_id": "AAK-MCP-001", "verdict": "false_positive", "cause": "corpus-first-remote-only"},
-    {"config": "co.huggingface/hf-mcp-server", "rule_id": "AAK-MCP-001", "verdict": "false_positive", "cause": "corpus-first-remote-only"},
-    {"config": "app.thoughtspot/mcp-server", "rule_id": "AAK-MCP-001", "verdict": "ambiguous", "cause": "snapshot-live-drift"}
+    {"config": "ai.spala/public-mcp", "rule_id": "AAK-MCP-001", "verdict": "true_positive"}
   ]
 }

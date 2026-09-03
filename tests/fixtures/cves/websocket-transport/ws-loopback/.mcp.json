@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "gpt-researcher": {
+      "type": "websocket",
+      "url": "ws://127.0.0.1:8000/ws/mcp",
+      "headers": {
+        "Authorization": "Bearer ${RESEARCH_TOKEN}"
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-02T06:19:20Z",
-  "aak_version": "0.3.92",
+  "last_updated": "2026-09-03T17:43:51Z",
+  "aak_version": "0.3.93",
   "rule_count": 330,
   "coverage": [
     {
@@ -1337,7 +1337,8 @@
             "CVE-2025-66414",
             "CVE-2025-66416",
             "CVE-2026-35568",
-            "CVE-2026-35577"
+            "CVE-2026-35577",
+            "CVE-2026-81102"
           ],
           "aicm_references": [
             "CEK-08",

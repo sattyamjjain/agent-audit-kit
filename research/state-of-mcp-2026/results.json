@@ -10,21 +10,21 @@
   "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 634,
-    "B": 1424,
+    "A": 637,
+    "B": 1421,
     "C": 111,
     "D": 49,
     "F": 85
   },
-  "configs_with_critical": 1215,
-  "configs_with_critical_pct": 52.8,
+  "configs_with_critical": 1212,
+  "configs_with_critical_pct": 52.6,
   "configs_with_high": 165,
   "configs_with_high_pct": 7.2,
   "severity_totals": {
-    "critical": 1336,
+    "critical": 1333,
     "high": 319,
     "medium": 4426,
-    "low": 1221,
+    "low": 1224,
     "info": 1
   },
   "transport_distribution": {
@@ -39,8 +39,8 @@
       "pct": 99.8
     },
     "AAK-OAUTH": {
-      "configs": 421,
-      "pct": 18.3
+      "configs": 424,
+      "pct": 18.4
     },
     "AAK-SECRET": {
       "configs": 70,
@@ -95,8 +95,8 @@
       "pct": 99.8
     },
     "MCP01:2025": {
-      "configs": 489,
-      "pct": 21.2
+      "configs": 492,
+      "pct": 21.4
     },
     "MCP03:2025": {
       "configs": 450,
@@ -133,9 +133,9 @@
   },
   "auth_profile_2026_07_28": {
     "no_authentication": {
-      "n": 1203,
+      "n": 1200,
       "denominator": 2303,
-      "pct": 52.2
+      "pct": 52.1
     },
     "rfc9728_prm_discovery": {
       "n": 0,
@@ -148,8 +148,8 @@
       "pct": 71.6
     },
     "remote_auth_static_credential": {
-      "n": 421,
-      "denominator": 421,
+      "n": 424,
+      "denominator": 424,
       "pct": 100.0
     },
     "sse_transport_stateless_break_proxy": {
@@ -168,8 +168,8 @@
       "rule_id": "AAK-MCP-001",
       "title": "Remote MCP server without authentication",
       "severity": "critical",
-      "configs": 1203,
-      "config_pct": 52.2
+      "configs": 1200,
+      "config_pct": 52.1
     },
     {
       "rule_id": "AAK-MCP-005",
@@ -182,8 +182,8 @@
       "rule_id": "AAK-OAUTH-008",
       "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery",
       "severity": "low",
-      "configs": 421,
-      "config_pct": 18.3
+      "configs": 424,
+      "config_pct": 18.4
     },
     {
       "rule_id": "AAK-MCP-006",

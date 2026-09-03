@@ -1559,12 +1559,20 @@ _r(
 
 _r(
     "AAK-TRANSPORT-001",
-    "MCP server uses HTTP instead of HTTPS",
-    "An MCP server URL uses HTTP instead of HTTPS, exposing all traffic "
-    "including credentials to interception.",
+    "MCP server uses a cleartext transport (http:// or ws://)",
+    "An MCP server URL uses a cleartext scheme, exposing all traffic "
+    "including credentials to interception. "
+    "**Applies to: `http://` and `ws://`.** A `ws://` handshake is an "
+    "unencrypted HTTP upgrade, so it is the same defect and not a milder "
+    "one -- the handshake headers and every frame after them are on the "
+    "wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), "
+    "or `stdio` (no URL, no network hop).** Loopback URLs "
+    "(`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) are excluded on either "
+    "scheme, since the traffic does not leave the host.",
     Severity.CRITICAL,
     Category.TRANSPORT_SECURITY,
-    "Use HTTPS for all remote MCP server connections.",
+    "Use `https://` for remote HTTP/SSE/Streamable-HTTP servers and "
+    "`wss://` for remote WebSocket servers.",
     sarif_name="McpHttpNotHttps",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
@@ -1575,7 +1583,12 @@ _r(
     "AAK-TRANSPORT-002",
     "TLS certificate validation disabled",
     "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, "
-    "enabling MITM attacks.",
+    "enabling MITM attacks. "
+    "**Applies to: every TLS-bearing transport -- `https://`, `wss://`, and "
+    "TLS-wrapped SSE/Streamable HTTP.** The setting is read from the server's "
+    "`env` block rather than its URL, so it is transport-independent: it "
+    "disables peer verification for whatever the process connects to. "
+    "**Does not apply to: `stdio`** (no TLS peer to verify).",
     Severity.HIGH,
     Category.TRANSPORT_SECURITY,
     "Remove TLS validation overrides. Use proper certificate management.",
@@ -1589,7 +1602,12 @@ _r(
     "AAK-TRANSPORT-003",
     "Deprecated SSE transport in use",
     "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of "
-    "Streamable HTTP.",
+    "Streamable HTTP. "
+    "**Applies to: `sse` only** -- matched from an explicit "
+    "`\"transport\": \"sse\"` or a `/sse` path in the URL. "
+    "**Does not apply to: `stdio`, `http`/`streamable-http`, or `ws`/`wss`.** "
+    "WebSocket is a different transport, not a deprecated one: it is outside "
+    "this rule rather than silently passing it.",
     Severity.MEDIUM,
     Category.TRANSPORT_SECURITY,
     "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).",
@@ -1603,7 +1621,13 @@ _r(
     "AAK-TRANSPORT-004",
     "Session token in URL query parameter",
     "A session token or API key is passed as a URL query parameter, risking exposure "
-    "in logs and referrer headers.",
+    "in logs and referrer headers. "
+    "**Applies to: every URL-bearing transport -- `http`/`https`, `ws`/`wss`, "
+    "and SSE/Streamable HTTP**, including loopback URLs, since the exposure is "
+    "the URL being written down (proxy logs, shell history, referrer headers) "
+    "rather than the hop being observed. A WebSocket handshake URL is logged "
+    "by the same intermediaries as any other request line. "
+    "**Does not apply to: `stdio`** (no URL).",
     Severity.HIGH,
     Category.TRANSPORT_SECURITY,
     "Pass tokens in HTTP headers instead of URL query parameters.",
@@ -3875,13 +3899,27 @@ _r(
     "stdio-grade tools. The upstream patch adds a Host allow-list; "
     "downstream servers embedding StreamableHTTP must enforce one too. "
     "See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), "
-    "CVE-2026-35577 (Apollo).",
+    "CVE-2026-35577 (Apollo), CVE-2026-81102 (Python FastMCP). "
+    "Detection reads the raw SDK transport classes and, since v0.3.93, the "
+    "Python **FastMCP** wrapper when it is told to run over a network "
+    "transport (`run(transport=\"streamable-http\"/\"sse\")`, "
+    "`streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are "
+    "deliberately not flagged**: FastMCP defaults to stdio and a stdio server "
+    "has no listener to rebind onto. **Binding to loopback is not a "
+    "mitigation** and does not clear this rule -- CVE-2026-81102 was loopback-"
+    "bound; the Host allow-list is the control. Single-file pattern detection "
+    "with a project-wide mitigation check: one allow-list anywhere in the tree "
+    "clears every candidate, so a server whose middleware lives in a separate "
+    "package that is not scanned together will read as mitigated.",
     Severity.CRITICAL,
     Category.TRANSPORT_SECURITY,
     "Wrap the StreamableHTTP app with a Host-header allow-list. In "
     "Starlette / FastAPI attach `TrustedHostMiddleware(allowed_hosts=...)`; "
     "in Node attach an `allowedHosts:` option or a Host middleware; in "
     "Java/Apollo enable `HostHeaderFilter` / `allowedHosts` config. "
+    "In Python FastMCP pass "
+    "`transport_security=TransportSecuritySettings(allowed_hosts=[...])` "
+    "when constructing the server, or run it over stdio. "
     "Alternatively upgrade the SDK to a patched version and pass through "
     "its host-validation option.",
     sarif_name="McpStreamableHttpDnsRebind",
@@ -3890,6 +3928,7 @@ _r(
         "CVE-2025-66416",
         "CVE-2026-35568",
         "CVE-2026-35577",
+        "CVE-2026-81102",
     ],
     owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI04"],
