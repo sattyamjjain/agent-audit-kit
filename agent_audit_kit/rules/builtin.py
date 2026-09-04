@@ -180,6 +180,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-AGENTICMAIL-CVE-2026-57495-001": ["AIS-07", "AIS-12", "STA-08"],
     "AAK-MCP-STATA-CVE-2026-47708-001": ["AIS-08", "IAM-05", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-65594-001": ["IAM-01", "IAM-16", "STA-08"],
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-SEQTHINKING-CVE-2026-81845-001": ["AIS-08", "STA-08"],
     "AAK-MCP-AWSAPIMCP-CVE-2026-16584-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-AMAZONMQ-CVE-2026-18655-001": ["DSP-17", "STA-08", "IVS-04"],
     "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001": ["STA-08", "AIS-07", "DSP-04"],
@@ -7040,8 +7042,9 @@ _r(
 
 _r(
     "AAK-MCP-N8N-CVE-2026-72768-001",
-    "n8n < 2.34.1 (MCP Client SSRF bypass, node-schema loader RCE, cross-project "
-    "credential reference)",
+    "n8n < 2.35.4 / 2.36.x < 2.36.2 (MCP Client SSRF bypass, node-schema loader "
+    "RCE, cross-project credential reference, inline sub-workflow credential "
+    "exfiltration)",
     "Three MCP-surface defects in `n8n`, carried by one pin because they share a "
     "package and the highest fix version covers all of them. Before 2.32.1 the MCP "
     "Client node bypasses server-side-request-forgery protection: an authenticated "
@@ -7055,24 +7058,113 @@ _r(
     "`create_workflow_from_code` tool skips credential validation when the "
     "authentication type is an expression, letting a holder of a valid MCP Bearer "
     "API key persist unauthorized cross-project credential references "
-    "(CVE-2026-77073). A project pinning `n8n` below 2.34.1, or leaving it "
-    "unpinned, is exposed to at least one of these. Distinct from the earlier n8n "
-    "credential-domain-bypass and OAuth two-branch-fix pins the scanner already "
-    "carries; this is the highest of its three n8n floors.",
+    "(CVE-2026-77073). Before 2.35.4, and on the 2.36.x line before 2.36.2, nodes "
+    "that execute an inline sub-workflow (the Workflow Tool node) accept a "
+    "credential reference in their inline workflow JSON without checking that "
+    "the author owns it; MCP is one of the named write paths, so a shared-workflow "
+    "editor persists a node naming somebody else's credential and the secret is "
+    "resolved and exfiltrated when the workflow later runs under an identity that "
+    "holds it (CVE-2026-85166). A project pinning `n8n` below 2.35.4, or on "
+    "2.36.0/2.36.1, or leaving it unpinned, is exposed to at least one of these — "
+    "note that 2.36.0 and 2.36.1 sort *above* the 2.35.4 floor and are still "
+    "affected, which is why this pin carries a second arm for the 2.36.x line. "
+    "Distinct from the earlier n8n credential-domain-bypass and OAuth "
+    "two-branch-fix pins the scanner already carries; this is the highest of its "
+    "three n8n floors.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `n8n` to >= 2.34.1 and pin it — that floor clears all three. Route the "
+    "Upgrade `n8n` to >= 2.35.4 and pin it, or to >= 2.36.2 if you are on the "
+    "2.36.x line — 2.36.0 and 2.36.1 are newer than 2.35.4 and still affected, so "
+    "\"at least 2.35.4\" is not sufficient on that branch. Route the "
     "MCP Client node's outbound requests through n8n's SSRF protection so a workflow "
     "author cannot reach internal or blocked hosts, and segment the n8n runner from "
     "sensitive internal services. Treat `global:member` as a privileged role until "
     "you are past 2.33.4, since the node-schema loader reaches code execution from "
     "it, and audit workflows for credential references that cross project "
-    "boundaries.",
+    "boundaries — including inside the inline workflow JSON of sub-workflow nodes, "
+    "which is where CVE-2026-85166 hides one.",
     sarif_name="N8nMcpClientNodeSsrfBypass",
-    cve_references=["CVE-2026-72768", "CVE-2026-77068", "CVE-2026-77073"],
+    cve_references=["CVE-2026-72768", "CVE-2026-77068", "CVE-2026-77073", "CVE-2026-85166"],
     owasp_mcp_references=["MCP09:2025", "MCP04:2025"],
     owasp_agentic_references=["ASI06", "ASI05"],
     adversa_references=["ADV-SSRF-01"],
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-27..31 CVE-response wave, deferred 2026-09-03 and shipped 2026-09-04.
+# Detector: mcp_cve_pins_2026_07. Both were held under `cve-deferred` with a dated
+# target and released by a registry lookup, not by the clock.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001",
+    "@samanhappy/mcphub < 1.0.32 (eight MCP gateway authorization + SSRF defects)",
+    "MCPHub is a self-hosted gateway that fronts many MCP servers behind one "
+    "endpoint, so a defect in its authorization layer is a defect in every server "
+    "behind it. Eight advisories landed against it in one batch "
+    "(CVE-2026-79743 through CVE-2026-79750) and they are carried by one pin "
+    "because they share a package and the highest fix version covers all of them. "
+    "The batch is mostly missing authorization on mutating routes: "
+    "`PUT /api/system-config` performs no authorization check at all (< 1.0.29); "
+    "the prompt and resource controllers do no role checking on their mutating "
+    "POST/PUT routes (< 1.0.32); a bearer key scoped to `servers` is accepted "
+    "against a group route it should not reach (< 1.0.31); and non-admin server "
+    "ownership scoping is enforced on list views and config edits but not "
+    "everywhere (< 1.0.30). The remaining three are execution and egress: the "
+    "`POST /api/servers` and `PUT /api/servers/:name` endpoints create MCP server "
+    "entries whose command is executed (< 0.12.15, CVSS 9.9), the MCPB file-upload "
+    "handler trusts the `name` field of a `manifest.json` read out of an uploaded "
+    "ZIP (< 0.12.13), and the SSRF guard in `src/utils/ssrf.ts` uses a custom "
+    "`isBlockedIpv6` that does not cover the address forms it needs to, so an "
+    "authenticated non-admin registers a server pointing at an internal URL and "
+    "reads the response back through the hub (< 1.0.32). A project pinning "
+    "`@samanhappy/mcphub` below 1.0.32, or leaving it unpinned, is exposed to at "
+    "least one of these. Note that PyPI `mcphub` is an unrelated project by a "
+    "different author on a 0.1.x line; this rule matches the scoped npm name only "
+    "and will not fire on it.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@samanhappy/mcphub` to >= 1.0.32 and pin it — that floor clears all "
+    "eight. Until you are past it, treat every authenticated MCPHub user as able "
+    "to reach the mutating admin routes: put the hub behind an authenticating "
+    "proxy, restrict who may create or update server entries at all (that route "
+    "reaches command execution), and place the hub on a network segment with no "
+    "route to internal services so the SSRF guard is not the only control.",
+    sarif_name="McpHubGatewayAuthorizationBypass",
+    cve_references=[
+        "CVE-2026-79743", "CVE-2026-79744", "CVE-2026-79745", "CVE-2026-79746",
+        "CVE-2026-79747", "CVE-2026-79748", "CVE-2026-79749", "CVE-2026-79750",
+    ],
+    owasp_mcp_references=["MCP01:2025", "MCP09:2025"],
+    owasp_agentic_references=["ASI04", "ASI06"],
+    adversa_references=["ADV-AUTH-01", "ADV-SSRF-01"],
+)
+
+
+_r(
+    "AAK-MCP-SEQTHINKING-CVE-2026-81845-001",
+    "mcp-sequential-thinking <= 0.5.0 (session import/export path traversal)",
+    "`mcp-sequential-thinking` (PyPI, arben-adm) up to and including 0.5.0 takes a "
+    "`file_path` argument on the `import_session` and `export_session` tools in "
+    "`mcp_sequential_thinking/server.py` and does not confine it to a session "
+    "directory, so a caller reaches arbitrary paths on the host — reading files "
+    "back through an import, or writing them through an export. Both are ordinary "
+    "MCP tools, so the caller is whatever can drive the server, which in an agent "
+    "pipeline includes anything that can steer tool selection. Fixed in 0.6.0 "
+    "(patch 2fad3ee); the exploit is public. Treat <= 0.5.0 and unpinned as "
+    "exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-sequential-thinking` to >= 0.6.0 and pin it. If you cannot "
+    "upgrade yet, disable the `import_session` / `export_session` tools rather "
+    "than relying on the caller to send a well-behaved path, and run the server "
+    "as a user with no read access to anything outside its session directory.",
+    sarif_name="McpSequentialThinkingSessionPathTraversal",
+    cve_references=["CVE-2026-81845"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
 )
 
 

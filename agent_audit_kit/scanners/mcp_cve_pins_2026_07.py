@@ -168,6 +168,22 @@ _N8N_RE = re.compile(r"(?<![\w./-])n8n(?![\w-])" + _VER_OPT, re.IGNORECASE)
 # manifest depending on it stays quiet; the bounded form keeps this off
 # `browse-mcp-client`-style siblings.
 _BROWSE_MCP_RE = re.compile(r"(?<![\w./-])browse-mcp(?![\w-])" + _VER_OPT, re.IGNORECASE)
+# MCPHub. Keyed on the SCOPED npm name and never on the bare token, because
+# `mcphub` on PyPI is a different project by a different author: npm
+# `@samanhappy/mcphub` is a self-hosted MCP gateway on the 1.0.x line (latest
+# 1.0.34), PyPI `mcphub` is Cognitive-Stack's framework-integration library on
+# 0.1.x (latest 0.1.11). A bare-token pin would report a 1.0.32 floor against a
+# package whose highest release is 0.1.11 -- every dependent flagged, forever,
+# for someone else's CVE. This is the `mcp-shell` failure mode the deferral was
+# held open to avoid, and confirming the two identities is what released it.
+_MCPHUB_RE = re.compile(
+    r"(?<![\w./-])@samanhappy/mcphub(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `mcp-sequential-thinking` (PyPI, arben-adm). Bounded on the right so it stays
+# off any `mcp-sequential-thinking-*` sibling.
+_SEQTHINKING_RE = re.compile(
+    r"(?<![\w./-])mcp-sequential-thinking(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
 
 
 @dataclass(frozen=True)
@@ -389,8 +405,22 @@ _PINS: tuple[_Pin, ...] = (
     # would then report the same dependency five times. CVE-2026-77068 names two
     # lines ("before 2.33.4 and 2.34.x before 2.34.1"); a single 2.34.1 floor covers
     # both, and CVE-2026-77073 is "before 2.34.1" outright.
-    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 34, 1),
-         fix_label="2.34.1", regexes=(_N8N_RE,)),
+    # Floor moved again, 2.34.1 -> 2.35.4, for CVE-2026-85166: inline sub-workflow
+    # JSON (the Workflow Tool node) is persisted without validating that the caller
+    # owns the credentials it references, and MCP is one of the named write paths,
+    # so a shared-workflow editor plants a node that resolves someone else's secret
+    # when the workflow next runs under an identity holding it.
+    #
+    # Two arms, not one, and the second is the whole point. NVD reads "before
+    # 2.35.4 and 2.36.x before 2.36.2" -- a lone 2.35.4 floor clears 2.36.0 and
+    # 2.36.1, which are *vulnerable*, because they sort above it. That is the shape
+    # already used for CVE-2026-65594 above: same rule_id, one arm per fix line,
+    # the second bounded by `introduced` so 2.36.2+ clears and nothing below 2.36.0
+    # ever reaches it. Both fix versions are published on npm (latest 2.37.10).
+    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 35, 4),
+         fix_label="2.35.4", regexes=(_N8N_RE,)),
+    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 36, 2),
+         introduced=(2, 36, 0), fix_label="2.36.2", regexes=(_N8N_RE,)),
     # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
     # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
     # and no authentication. `POST /api/execute` (the `prompt` body field) and
@@ -574,6 +604,21 @@ _PINS: tuple[_Pin, ...] = (
          ("sublinear-time-solver",), (1, 6, 0), fix_label="1.6.0"),
     _Pin("AAK-MCP-SUBLINEAR-CVE-2026-55609-001", "consciousness-explorer",
          ("consciousness-explorer",), (1, 1, 2), fix_label="1.1.2"),
+    # --- 2026-08-27..31 wave (deferred 2026-09-03, shipped 2026-09-04) ---
+    # Two pins closing nine watcher-filed issues. Both were held under
+    # `cve-deferred` with a dated target rather than shipped blind, and both were
+    # released by a registry lookup rather than by the clock.
+    #
+    # MCPHub: eight advisories against one product (CVE-2026-79743..79750), fixed
+    # across 0.12.13, 0.12.15, 1.0.29, 1.0.30, 1.0.31 and 1.0.32. One floor at the
+    # highest of those covers all eight, which is why this is one pin and not
+    # eight: reporting a single dependency eight times is noise, not coverage.
+    _Pin("AAK-MCP-MCPHUB-CVE-2026-79748-001", "@samanhappy/mcphub",
+         ("@samanhappy/mcphub",), (1, 0, 32), fix_label="1.0.32",
+         regexes=(_MCPHUB_RE,)),
+    _Pin("AAK-MCP-SEQTHINKING-CVE-2026-81845-001", "mcp-sequential-thinking",
+         ("mcp-sequential-thinking",), (0, 6, 0), fix_label="0.6.0",
+         regexes=(_SEQTHINKING_RE,)),
 )
 
 _CANDIDATE_NAMES = (

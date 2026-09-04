@@ -5,7 +5,7 @@
 
 **AgentAuditKit** (version tracked in `pyproject.toml` / `agent_audit_kit.__version__`) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
 
-- **330 rules** across 14 security categories
+- **332 rules** across 14 security categories
 - **98 scanner modules** including AST-based Python taint analysis plus regex dangerous-sink pattern scanners for TypeScript/JavaScript and Rust (pattern matching, not taint flow)
 - **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -84,7 +84,7 @@ agent_audit_kit/
   vuln_db.py, advisories.py, feeds/, watch.py   # CVE DB, advisories, live feeds, watch/watch-cve
   coverage.py, bundle.py         # Framework coverage; signed rule-bundle export/verify
   rules/
-    builtin.py         # 330 RuleDefinition entries (rule registry)
+    builtin.py         # 332 RuleDefinition entries (rule registry)
   scanners/            # 98 registered scanners (100 .py files on disk — the registry is authoritative)
     mcp_config.py      # MCP configuration checks
     hook_injection.py  # Hook injection detection
@@ -148,7 +148,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 ## Detected Patterns
 
 - **Scanner registry**: `engine.py` lazy-builds a list of `ScannerRegistration` dataclasses; each wraps a `scan_fn` callable. New scanners are registered via try/except ImportError blocks for backward compatibility.
-- **Rule registry**: `rules/builtin.py` defines all 330 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
+- **Rule registry**: `rules/builtin.py` defines all 332 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper.
 - **Counts are generated, never hand-typed**: `agent_audit_kit/__init__.py` holds `RULE_COUNT` / `SCANNER_COUNT`; `scripts/sync_rule_count.py` and `scripts/sync_scanner_count.py` regenerate them. `scripts/check_counts.py` (`make count-check`) fails if any tracked `*.md` — **including this file** — carries a stale count. Regenerate; do not hand-fix. Dated/historical docs are exempted via the exclusion list in `check_counts.py`.
 - **The guard is phrase-based, not number-based**: `check_counts.py` only checks counts written in one of its `PATTERNS` phrasings (`"N rules across"`, `"N scanner modules"`, `"N registered scanners"`, `"N CLI commands"`, ...). A count phrased any other way is never looked at and rots silently while `make count-check` reports clean — the `registered scanners` line in this file sat at a stale value for exactly that reason until its pattern was added. When prose needs a new count phrasing, reuse a guarded one or add it to `PATTERNS` in `scripts/check_counts.py`; that tuple is the single source, and `tests/test_rule_count_sync.py` imports `find_stale_counts()` rather than mirroring it.
 - **Count invariants under test**: `tests/test_repo_metadata_sync.py` asserts `SCANNER_COUNT` equals the real `engine._build_registry()` size, so the scanner constant tracks the registry, not the file count in `scanners/`.

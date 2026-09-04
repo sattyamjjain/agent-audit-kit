@@ -7,8 +7,16 @@
 # "How to cite this report" section states the same version, date and corpus size,
 # so a reader cannot get two different answers depending on where they looked.
 #
-# Bump `version` and `date-released` with each release; bump the report's
-# `preferred-citation.version` only when a number in the report changes.
+# `version` and `date-released` are GENERATED — do not hand-edit them. They are
+# written by `scripts/sync_repo_metadata.py --write` from pyproject's version and
+# the CHANGELOG heading for that version, and `--check` fails the build when they
+# drift. This comment used to read "bump them with each release", which is an
+# instruction to a human and was duly obeyed until it wasn't: the file sat at
+# 0.3.83 / 2026-08-17 while the repo shipped 0.3.93.
+#
+# The report's `preferred-citation.version` below is NOT generated and stays
+# hand-managed: it moves only when a number in the report changes, which is a
+# different event from shipping software.
 cff-version: 1.2.0
 message: >-
   If you use AgentAuditKit or cite its measurements, please cite the
@@ -26,8 +34,8 @@ authors:
 repository-code: "https://github.com/sattyamjjain/agent-audit-kit"
 url: "https://github.com/sattyamjjain/agent-audit-kit"
 license: MIT
-version: "0.3.83"
-date-released: "2026-08-17"
+version: "0.3.94"
+date-released: "2026-09-04"
 keywords:
   - model-context-protocol
   - mcp
