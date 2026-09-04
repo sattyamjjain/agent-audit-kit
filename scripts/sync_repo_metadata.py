@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
 """Sync repo-level metadata with the shipped release.
 
-Two jobs:
+Three jobs:
 
 1. Rewrite every `sattyamjjain/agent-audit-kit@vX.Y.Z` reference in
    README.md + docs/**/*.md to the version recorded in pyproject.toml.
-2. Generate the target GitHub repo-description string so CI can
+2. Keep CITATION.cff's `version` / `date-released` on the shipped release.
+3. Generate the target GitHub repo-description string so CI can
    `gh repo edit --description "$(python scripts/sync_repo_metadata.py --description)"`.
+
+On (2): CITATION.cff carried a comment reading "Bump `version` and `date-released`
+with each release", which is an instruction to a human and was therefore obeyed
+until it wasn't. It sat at 0.3.83 / 2026-08-17 while the repo shipped 0.3.93 --
+ten releases of drift on the file GitHub renders as "Cite this repository", i.e.
+the one surface whose entire purpose is telling a stranger which version they
+measured. Nothing checked it: test_version_consistency covers pyproject,
+__version__, the README pins and the tag, and stops there.
+
+Neither field is hand-written now. `version` comes from pyproject, and
+`date-released` from the CHANGELOG's dated heading for exactly that version --
+the release date is already written down there, so asking a human to retype it
+somewhere else only creates a second place to be wrong.
+
 
 Pre-commit use: `python scripts/sync_repo_metadata.py --check` exits
 non-zero if README / docs disagree with the live pyproject version.
@@ -46,6 +61,66 @@ _PRECOMMIT_BLOCK_RE = re.compile(
     r"v\d+\.\d+\.\d+"
 )
 _HISTORY_STEM_RE = re.compile(r"release-notes-v\d+\.\d+\.\d+")
+
+CITATION = REPO_ROOT / "CITATION.cff"
+CHANGELOG = REPO_ROOT / "CHANGELOG.md"
+
+# Top-level keys only. `preferred-citation` carries its own `version: "1.0"` (the
+# report's, which moves when a measurement changes, not when the software ships),
+# so an unanchored pattern would rewrite the report's identity on every release --
+# the exact confusion the file's header comment exists to prevent.
+_CFF_VERSION_RE = re.compile(r'(?m)^version:\s*"[^"]*"')
+_CFF_DATE_RE = re.compile(r'(?m)^date-released:\s*"[^"]*"')
+
+
+def _release_date(version: str) -> str | None:
+    """The date on the CHANGELOG heading for ``version``, or None if undated.
+
+    Returns None for a version that exists only under `## [Unreleased]`, which is
+    the honest answer: a release that has not happened has no release date, and
+    inventing today's would put a lie in the citation metadata.
+    """
+    if not CHANGELOG.is_file():
+        return None
+    m = re.search(
+        rf"^##\s*\[{re.escape(version)}\]\s*-\s*(\d{{4}}-\d{{2}}-\d{{2}})\s*$",
+        CHANGELOG.read_text(encoding="utf-8"),
+        re.MULTILINE,
+    )
+    return m.group(1) if m else None
+
+
+def _citation_drift(version: str) -> list[str]:
+    """Human-readable descriptions of every stale field in CITATION.cff."""
+    if not CITATION.is_file():
+        return []
+    text = CITATION.read_text(encoding="utf-8")
+    out: list[str] = []
+    m = _CFF_VERSION_RE.search(text)
+    if m and m.group(0) != f'version: "{version}"':
+        out.append(f"CITATION.cff {m.group(0)!r} should be 'version: \"{version}\"'")
+    date = _release_date(version)
+    d = _CFF_DATE_RE.search(text)
+    if date and d and d.group(0) != f'date-released: "{date}"':
+        out.append(
+            f"CITATION.cff {d.group(0)!r} should be 'date-released: \"{date}\"' "
+            f"(the CHANGELOG heading for {version})"
+        )
+    return out
+
+
+def _rewrite_citation(version: str) -> bool:
+    if not CITATION.is_file():
+        return False
+    text = CITATION.read_text(encoding="utf-8")
+    new = _CFF_VERSION_RE.sub(f'version: "{version}"', text, count=1)
+    date = _release_date(version)
+    if date:
+        new = _CFF_DATE_RE.sub(f'date-released: "{date}"', new, count=1)
+    if new != text:
+        CITATION.write_text(new, encoding="utf-8")
+        return True
+    return False
 
 
 def _read_version() -> str:
@@ -171,14 +246,18 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         drift = _check(target_ref, version)
-        if not drift:
+        cff = _citation_drift(version)
+        if not drift and not cff:
             return 0
-        sys.stderr.write(
-            "pin drift: docs reference a version other than "
-            f"{target_ref!r}:\n"
-        )
-        for doc in drift:
-            sys.stderr.write(f"  - {doc.relative_to(REPO_ROOT)}\n")
+        if drift:
+            sys.stderr.write(
+                "pin drift: docs reference a version other than "
+                f"{target_ref!r}:\n"
+            )
+            for doc in drift:
+                sys.stderr.write(f"  - {doc.relative_to(REPO_ROOT)}\n")
+        for line in cff:
+            sys.stderr.write(f"  - {line}\n")
         sys.stderr.write(
             "Run `python scripts/sync_repo_metadata.py --write` to fix.\n"
         )
@@ -193,6 +272,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"{doc.relative_to(REPO_ROOT)}: {n} rewrite(s) → {target_ref}\n"
             )
             total += n
+    if _rewrite_citation(version):
+        date = _release_date(version)
+        sys.stdout.write(
+            f"CITATION.cff: version → {version}"
+            + (f", date-released → {date}\n" if date else " (no dated CHANGELOG heading yet)\n")
+        )
+        total += 1
     if total == 0:
         sys.stdout.write("no changes needed.\n")
     return 0

@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.94] - 2026-09-04
+
+### Added
+
+- **Two rules, and the nine deferred CVEs they close.** Rules 331 and 332.
+  `AAK-MCP-MCPHUB-CVE-2026-79748-001` (SUPPLY_CHAIN, **CRITICAL**) and
+  `AAK-MCP-SEQTHINKING-CVE-2026-81845-001` (SUPPLY_CHAIN, **MEDIUM**).
+
+  Nine issues had sat under `cve-deferred` with dated targets. What released them
+  was not the clock, it was checking a registry, and in both cases the check
+  changed what got written.
+
+  **MCPHub** was held open on one question: is PyPI `mcphub` the same project as
+  npm `@samanhappy/mcphub`? It is not. The npm package is a self-hosted MCP
+  gateway on the 1.0.x line (latest 1.0.34); PyPI `mcphub` is Cognitive-Stack's
+  framework-integration library on 0.1.x (latest 0.1.11), different author,
+  different repository. That distinction is load-bearing rather than pedantic:
+  PyPI `mcphub` can never reach a 1.0.32 floor, so a bare-token pin would not
+  misfire occasionally — it would flag **every dependent, permanently**, for a CVE
+  in software they do not run. The pin is keyed on the scoped npm name and a test
+  asserts nothing fires on the PyPI package. Eight advisories
+  (CVE-2026-79743…79750) fixed across six versions, so one floor at the highest of
+  them covers all eight rather than reporting one dependency eight times.
+
+- **A second arm on the n8n pin, which is the part that would have been missed.**
+  `AAK-MCP-N8N-CVE-2026-72768-001`'s floor moves 2.34.1 → 2.35.4 for
+  CVE-2026-85166, and gains a second `introduced`-bounded arm at 2.36.2.
+
+  The advisory reads "before 2.35.4 **and** 2.36.x before 2.36.2". A single 2.35.4
+  floor clears 2.36.0 and 2.36.1 — versions that sort *above* it and are still
+  vulnerable — so the obvious one-line floor bump would have silently marked
+  vulnerable installs as patched. This is the same two-branch shape
+  CVE-2026-65594 already uses, so it stays one n8n rule id rather than becoming a
+  fourth. A test states the bug in the form it would have shipped in, so a later
+  "simplification" back to one arm fails loudly instead of going quiet.
+
+### Fixed
+
+- **`CITATION.cff` said 0.3.83 while the repo shipped 0.3.93.** Ten releases of
+  drift on the file GitHub renders as "Cite this repository" — the one surface
+  whose entire job is telling a stranger which version produced the numbers they
+  are about to quote.
+
+  It drifted for the ordinary reason. Its header comment read "Bump `version` and
+  `date-released` with each release", which is an instruction to a human, and
+  nothing read it: `test_version_consistency` enumerates four surfaces (pyproject,
+  `__version__`, the README pins, the newest tag) and stops there. Neither field
+  is hand-written now. `version` comes from pyproject and `date-released` from the
+  CHANGELOG heading for exactly that version — the release date is already written
+  down there, and asking a human to retype it elsewhere only creates a second
+  place to be wrong. `sync_repo_metadata.py --check` fails the build on drift.
+
+  The guard is anchored to the top-level key on purpose. `preferred-citation`
+  carries its own `version: "1.0"` — the *report's* identity, which moves when a
+  measurement changes, not when software ships — and an unanchored pattern would
+  stamp the package version over it on every release, silently claiming the report
+  had been revised. A test asserts the pattern matches exactly once.
+
 ## [0.3.93] - 2026-09-04
 
 ### Added

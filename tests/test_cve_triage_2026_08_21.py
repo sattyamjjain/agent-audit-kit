@@ -214,13 +214,24 @@ def test_n8n_floor_moved_rather_than_gaining_a_fifth_pin(tmp_path: Path) -> None
     report the same dependency five times, so the highest floor moved instead.
     2.33.5 is the band that proves the move: it cleared the old 2.32.1 floor and is
     still exposed.
+
+    Updated 2026-09-04: the claim under test is "no new *rule id* for n8n", not "no
+    second arm". CVE-2026-85166 fixes on two lines (< 2.35.4, and 2.36.x < 2.36.2),
+    so this rule now carries two arms the way AAK-MCP-N8N-CVE-2026-65594-001
+    already did. That is still one finding per dependency, which is what the test
+    was defending; asserting the arm *count* conflated the two.
     """
-    n8n_pins = [p for p in _PINS if p.rule_id == N8N_RULE]
-    assert len(n8n_pins) == 1
-    assert n8n_pins[0].floor == (2, 34, 1)
+    n8n_rule_ids = {p.rule_id for p in _PINS if p.display == "n8n"}
+    assert n8n_rule_ids == {
+        "AAK-MCP-N8N-CVE-2026-59207-001",
+        "AAK-MCP-N8N-CVE-2026-65594-001",
+        N8N_RULE,
+    }, "a fourth n8n rule id would report the same dependency one more time"
+    floors = {p.floor for p in _PINS if p.rule_id == N8N_RULE}
+    assert floors == {(2, 35, 4), (2, 36, 2)}
     assert N8N_RULE in _ids(tmp_path, "package.json", '{"dependencies":{"n8n":"2.33.5"}}')
     assert N8N_RULE not in _ids(
-        tmp_path, "package.json", '{"dependencies":{"n8n":"2.34.1"}}'
+        tmp_path, "package.json", '{"dependencies":{"n8n":"2.35.4"}}'
     )
 
 

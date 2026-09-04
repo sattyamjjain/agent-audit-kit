@@ -809,13 +809,20 @@ def test_n8n_72768_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_n8n_72768_patched_passes(tmp_path: Path) -> None:
-    """2.34.1, not 2.32.1.
+    """2.35.4, not 2.34.1, and not 2.32.1.
 
-    CVE-2026-77068 and CVE-2026-77073 moved this floor up. 2.32.1 fixed the SSRF
-    bypass alone and is still exposed to the node-schema loader RCE, so it belongs
-    in the positive case below rather than here.
+    This floor has moved twice. CVE-2026-77068 / CVE-2026-77073 took it to 2.34.1;
+    CVE-2026-85166 took it to 2.35.4. Every earlier "fixed" version is now a
+    positive case, which is the point of keeping them below rather than deleting
+    them: a project that upgraded once and stopped is the population this pin is
+    for.
     """
-    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.34.1"}}')
+    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.35.4"}}')
+
+
+def test_n8n_72768_prior_floor_is_now_exposed(tmp_path: Path) -> None:
+    """2.34.1 cleared this pin until 2026-09-04 and no longer does."""
+    assert _N8N_72768 in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.34.1"}}')
 
 
 def test_n8n_72768_old_fix_version_is_still_exposed(tmp_path: Path) -> None:

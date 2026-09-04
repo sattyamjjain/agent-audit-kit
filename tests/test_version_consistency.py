@@ -311,3 +311,81 @@ def test_changelog_top_version_reads_the_newest_dated_heading() -> None:
     assert top is not None, "CHANGELOG.md has no dated version heading"
     assert re.fullmatch(r"\d+\.\d+\.\d+", top)
     assert _semver(top) >= _semver(_pyproject_version()) or top == _pyproject_version()
+
+
+# ---------------------------------------------------------------------------
+# Surface 5: CITATION.cff (added 2026-09-04)
+#
+# The fence above enumerated four surfaces and stopped. CITATION.cff is a fifth,
+# and it is the one GitHub renders as "Cite this repository" -- the surface whose
+# whole job is telling a stranger which version produced the numbers they are
+# about to quote. It sat at 0.3.83 / 2026-08-17 while the repo shipped 0.3.93.
+#
+# It drifted for the ordinary reason: its header comment said "bump `version` and
+# `date-released` with each release", which is a note to a human, and nothing read
+# it. Both fields are generated now.
+# ---------------------------------------------------------------------------
+
+def _load_sync_repo_metadata():
+    import importlib.util
+    import sys as _sys
+
+    script = REPO_ROOT / "scripts" / "sync_repo_metadata.py"
+    assert script.is_file(), "scripts/sync_repo_metadata.py missing"
+    spec = importlib.util.spec_from_file_location("sync_repo_metadata", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    _sys.modules["sync_repo_metadata"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_citation_cff_version_matches_the_declared_version() -> None:
+    mod = _load_sync_repo_metadata()
+    assert mod._citation_drift(_pyproject_version()) == [], (
+        "CITATION.cff is stale; run `python scripts/sync_repo_metadata.py --write`"
+    )
+
+
+def test_citation_release_date_comes_from_the_changelog() -> None:
+    """The date is derived, not retyped.
+
+    The release date is already written on the CHANGELOG heading. Asking a human
+    to copy it into a second file only creates a second place to be wrong, which
+    is what the eight-month-old date in this file was.
+    """
+    mod = _load_sync_repo_metadata()
+    version = _pyproject_version()
+    date = mod._release_date(version)
+    if date is None:
+        pytest.skip(f"{version} has no dated CHANGELOG heading yet (unreleased)")
+    text = (REPO_ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    assert f'date-released: "{date}"' in text
+
+
+def test_the_guard_does_not_rewrite_the_reports_own_version() -> None:
+    """`preferred-citation.version` is the report's identity, not the software's.
+
+    It moves when a measurement changes, which is a different event from shipping
+    a release. An unanchored `version:` pattern would stamp the package version
+    over it on every publish -- silently making the citation claim the report was
+    revised when it was not. The file's own header comment exists to keep these
+    two apart, so the guard has to as well.
+    """
+    mod = _load_sync_repo_metadata()
+    text = (REPO_ROOT / "CITATION.cff").read_text(encoding="utf-8")
+    assert '  version: "1.0"' in text, "the report's version should be indented under preferred-citation"
+    assert len(mod._CFF_VERSION_RE.findall(text)) == 1, (
+        "the version pattern must match only the top-level key"
+    )
+    assert mod._CFF_VERSION_RE.search(text).group(0) == f'version: "{_pyproject_version()}"'
+
+
+def test_undated_version_yields_no_release_date() -> None:
+    """A version that exists only under `## [Unreleased]` has not been released.
+
+    Returning today's date there would put a plausible lie in citation metadata,
+    which is worse than leaving the old one: nobody audits a date that looks right.
+    """
+    mod = _load_sync_repo_metadata()
+    assert mod._release_date("99.99.99") is None

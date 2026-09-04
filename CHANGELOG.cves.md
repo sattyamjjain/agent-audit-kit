@@ -16,6 +16,38 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-04: the deferral queue, drained by two registry lookups
+
+Eleven issues carried `cve-deferred` with a dated target. Nine of them are closed
+here, and what unblocked them was not more time — it was checking a registry.
+
+The MCPHub batch (eight advisories against one product) was held on a single
+question: is PyPI `mcphub` the same project as npm `@samanhappy/mcphub`? It is
+not. The npm package is a self-hosted MCP gateway on the 1.0.x line (latest
+1.0.34); the PyPI package is Cognitive-Stack's framework-integration library on
+0.1.x (latest 0.1.11), different author, different repository. That matters more
+than it sounds: PyPI `mcphub` will never reach a 1.0.32 floor, so a bare-token pin
+would not misfire occasionally, it would flag **every dependent, permanently**,
+for a CVE in software they do not run. The pin is keyed on the scoped npm name and
+a test asserts nothing fires on the PyPI package.
+
+The n8n advisory carried the other kind of trap. CVE-2026-85166 reads "before
+2.35.4 **and** 2.36.x before 2.36.2", and a single floor at 2.35.4 clears 2.36.0
+and 2.36.1 — which sort above it and are still vulnerable. That is the same
+two-branch shape as CVE-2026-65594, so the pin gains a second `introduced`-bounded
+arm under the same rule id rather than a fourth n8n rule. A test states the bug in
+the form it would have shipped in, so a later "simplification" back to one arm
+fails loudly instead of going quiet.
+
+Two deferrals stay deferred. CVE-2026-81096's sandbox-escape half needs a detector
+class that does not exist yet (target 2026-09-30), and it is the only one left.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-79743 … CVE-2026-79750 (MCPHub, eight advisories in one batch - `PUT /api/system-config` with no authorization check (< 1.0.29); prompt/resource controllers with no role check on mutating routes (< 1.0.32); a `servers`-scoped bearer key accepted against a group route (< 1.0.31); non-admin ownership scoping enforced on list views but not everywhere (< 1.0.30); `POST /api/servers` creating server entries whose command is executed (< 0.12.15, CVSS 9.9); the MCPB upload handler trusting `manifest.json`'s `name` from an uploaded ZIP (< 0.12.13); and a custom `isBlockedIpv6` in `src/utils/ssrf.ts` that does not cover the address forms it needs to (< 1.0.32)) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-79748) | **In scope, rule shipped** `AAK-MCP-MCPHUB-CVE-2026-79748-001` (SUPPLY_CHAIN, **CRITICAL**): floor `@samanhappy/mcphub >= 1.0.32`, the highest of the eight fix versions, so one pin covers all eight rather than reporting one dependency eight times. **Keyed on the scoped npm name only** — PyPI `mcphub` is an unrelated project (Cognitive-Stack, 0.1.x) and a bare-token pin would flag its dependents forever for someone else's CVE. That identity question is what the deferral was held open on. (#671–#678) | 2026-09-04 |
+| CVE-2026-85166 (`n8n` < 2.35.4 and 2.36.x < 2.36.2 - nodes that execute an inline sub-workflow accept a credential reference in their inline workflow JSON without checking that the author owns it, and MCP is one of the named write paths, so a shared-workflow editor plants a node whose secret is resolved when the workflow later runs under an identity holding it) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-85166) | **In scope, existing pin floor moved** `AAK-MCP-N8N-CVE-2026-72768-001` from 2.34.1 to 2.35.4, **plus a second arm** at 2.36.2 bounded to `introduced=2.36.0`. The second arm is the whole point: 2.36.0 and 2.36.1 sort *above* 2.35.4 and are still affected, so a single floor would have read them as patched. Same shape as CVE-2026-65594's two-branch fix; still one n8n rule id, not a fourth. Both fix versions published on npm (latest 2.37.10). (#683) | 2026-09-04 |
+| CVE-2026-81845 (`mcp-sequential-thinking` <= 0.5.0, CVSS 3.1 6.3 - `import_session` / `export_session` in `mcp_sequential_thinking/server.py` take a `file_path` argument and do not confine it to a session directory, so a caller reads or writes arbitrary host paths; both are ordinary MCP tools, so the caller is anything that can steer tool selection) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-81845) | **In scope, rule shipped** `AAK-MCP-SEQTHINKING-CVE-2026-81845-001` (SUPPLY_CHAIN, **MEDIUM**): floor `mcp-sequential-thinking >= 0.6.0` (patch 2fad3ee, published on PyPI; latest 0.6.1). The straightforward one in this batch, and kept as the control that the other two are measured against. (#664) | 2026-09-04 |
+
 ## 2026-09-02: three guards that were present and wrong
 
 The queue was 16. Every one was read against NVD, in CVSS order, and put in exactly
