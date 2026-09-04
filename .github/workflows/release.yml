@@ -105,6 +105,13 @@ jobs:
       issues: read
       contents: read
     steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
       - name: Block release if UNTRIAGED cve-response issues exist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -135,6 +142,23 @@ jobs:
             exit 1
           fi
           echo "cve-response gate: clean — 0 untriaged cve-response issues ($deferred deferred)."
+
+      - name: Every cve-deferred issue must name a target date
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The step above lets `cve-deferred` switch the gate off. This one is
+          # the price of that exemption. Until 2026-09-04 the label's only
+          # obligation was a prose disposition comment and nothing read it, so
+          # "read, scheduled, will be covered" and "made to go away" were the
+          # same gesture. A deferral that names no date is the second one.
+          #
+          # Deliberately a separate step rather than folded into the jq above:
+          # the two failures want different fixes (triage it vs. date it), and a
+          # gate that says which is the one somebody can act on without opening
+          # the workflow file.
+          python scripts/check_cve_deferrals.py --repo "$GITHUB_REPOSITORY"
 
   # --------------------------------------------------------------------------
   # 0b. Loud, non-gating check: the live github.com description must byte-match

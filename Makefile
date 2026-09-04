@@ -15,7 +15,7 @@ RESULTS  := $(RESEARCH)/results.json
         cve-latency cve-latency-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
-        registry-parity
+        registry-parity cve-deferral-check
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
 report:
@@ -94,6 +94,14 @@ remediation-corpus-check:
 ## the failure is time-based, so a push-only gate cannot see it.
 registry-parity:
 	@python scripts/check_registry_parity.py
+
+## cve-deferral-check: every `cve-deferred` issue must name a target date (network, needs gh)
+## `cve-deferred` is the one label that switches the release gate off, and until
+## 2026-09-04 its only obligation was a prose comment nothing read -- so a deferral
+## and a silent drop were the same gesture. Runs inside the release gate; this target
+## is for checking the queue before you get there.
+cve-deferral-check:
+	@python scripts/check_cve_deferrals.py
 
 ## test: run the test suite
 test:

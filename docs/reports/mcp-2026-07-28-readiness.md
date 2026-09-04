@@ -1,13 +1,22 @@
 # MCP 2026-07-28 auth-profile readiness: a scan of 748 public MCP configs
 
-**Scan date:** 2026-07-18 · **Tool:** AgentAuditKit `--profile mcp-2026-07-28` · **Corpus:** 748 public `.mcp.json` configurations (`benchmarks/data/`)
+**Scan date:** 2026-07-18 · **Re-validated:** 2026-09-04 · **Tool:** AgentAuditKit `--profile mcp-2026-07-28` · **Corpus:** 748 public `.mcp.json` configurations (`benchmarks/data/`)
 
-> Status note: the MCP 2026-07-28 specification is a **release candidate** as of
-> this writing (RC locked 2026-05-21; final publication scheduled 2026-07-28).
-> The two requirements this report measures against — RFC 8707 Resource
-> Indicators and RFC 9728 Protected Resource Metadata — are already **MUST**s in
-> the *ratified* MCP 2025-11-25 authorization spec that the 07-28 profile builds
-> on, so the readiness question is live today.
+> **Still current, and now checked.** Every number below was re-derived from the
+> corpus on **2026-09-04** and all nine reproduce exactly: the corpus has not
+> changed since the July scan, and `AAK-OAUTH-006/007/008` are all still in the
+> registry. This is no longer a claim you have to take on trust —
+> `tests/test_readiness_report_is_current.py` asserts the table against a fresh
+> `scripts/mcp_2026_07_28_readiness.py` run, so the day the corpus grows, this
+> report fails CI instead of quietly becoming a confident wrong number.
+>
+> Status note: the MCP 2026-07-28 specification was a **release candidate** when
+> this report was written (RC locked 2026-05-21) and was published on
+> **2026-07-28**, before the re-validation above. The two requirements it
+> measures against — RFC 8707 Resource Indicators and RFC 9728 Protected Resource
+> Metadata — were already **MUST**s in the *ratified* MCP 2025-11-25
+> authorization spec that the 07-28 profile builds on, which is why the readiness
+> question was live before publication and remains live after it.
 
 ## Summary
 
@@ -104,9 +113,12 @@ A 2026-07-28-ready remote MCP deployment:
    server, and validates the RFC 9207 `iss` parameter on the authorization
    response.
 
-None of the 748 public configs are structured this way today. Re-running this
-scan on ratification day (2026-07-28) and on a rolling basis will show whether
-that changes.
+None of the 748 public configs are structured this way today. That promise of a
+rolling re-run is now kept by CI rather than by intention: the table is asserted
+against a fresh derivation on every test run, so a change in the corpus shows up
+as a failure the same day it lands. As of the 2026-09-04 re-validation, nothing
+has changed — publication of the spec on 2026-07-28 did not move the public
+config posture.
 
 ---
 

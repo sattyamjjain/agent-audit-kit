@@ -83,7 +83,16 @@ issue ends in exactly one of:
 |---|---|
 | rule shipped | close (`completed`), citing the rule and the `CHANGELOG.cves.md` row |
 | out of scope / unreachable | close (`not planned`) with the one-line reason, label `wontfix-static` |
-| in scope, rule queued | **stays open**, label `cve-deferred`, reason in a comment |
+| in scope, rule queued | **stays open**, label `cve-deferred`, dated disposition comment |
+
+A disposition comment carries three fields and nothing else, so the queue can be
+read by a person and by a script:
+
+```
+disposition:  NEW-RULE | DEFERRED | OUT-OF-SCOPE
+target date:  YYYY-MM-DD    (required for DEFERRED, omitted otherwise)
+reason:       one sentence
+```
 
 `cve-deferred` does not block the gate. That exemption was added on 2026-09-01
 and it is not a loophole — it is the difference between "has this disclosure
@@ -96,6 +105,23 @@ day. Untriaged issues still block exactly as before.
 The rule for using it honestly: label `cve-deferred` only when the issue has a
 disposition comment naming what is queued and why. A label without that comment
 turns the gate off rather than satisfying it.
+
+**And it has to say when.** That obligation used to be prose, checked by nobody.
+The 2026-08-31 wave honoured it — all ten of those deferrals carry a
+`**Target: YYYY-MM-DD.**` line — which is precisely why it took until 2026-09-04
+to notice that nothing enforced it. A deferral with no date is not a deferral;
+it is a silent drop wearing the one label that switches the gate off.
+`scripts/check_cve_deferrals.py` now runs inside the CVE-response gate and
+refuses the tag when a `cve-deferred` issue names no `target date:`. It accepts
+the older `**Target: …**` spelling too, because the obligation is *say when*,
+not *say when in the approved punctuation*.
+
+A target date in the **past** is listed on every run and fails nothing. Making it
+fatal was the obvious next step and is a trap: it would turn every scheduling
+note in the tree into a time bomb that detonates on an unrelated release, some
+morning nobody chose. Visibility at the moment somebody is already looking at the
+queue is the useful half; holding a tag hostage to a date typed a month ago is
+not.
 
 The cve-watcher dedup bug (issue #163) re-fires closed CVE IDs across
 daily cycles. Fix queued for v0.3.17.
