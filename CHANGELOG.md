@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.93] - 2026-09-03
+## [0.3.93] - 2026-09-04
+
+### Added
+
+- **`cve-deferred` now has to say when.** The label is the single thing that
+  switches the release gate off. It was added on 2026-09-01 for a good reason —
+  the watcher's 6-hour cron outran the triage rate, so `count == 0` became a
+  state the repo could not reach on purpose and v0.3.91 sat unpublished for a day
+  — and `docs/RELEASING.md` §5 asked deferrals to carry "a disposition comment
+  naming what is queued and why". Prose, read by nobody.
+
+  Every deferral in the 2026-08-31 wave did carry a `**Target: YYYY-MM-DD.**`
+  line, so the convention was real and working. That is exactly why nobody
+  noticed it was unenforced: a label whose only obligation is a convention is one
+  busy afternoon away from being a mute button, and a deferral with no date is
+  not a deferral, it is a silent drop with a label on it.
+
+  `scripts/check_cve_deferrals.py` runs inside the CVE-response gate and refuses
+  the tag when a `cve-deferred` issue names no target date. It accepts the older
+  `**Target: …**` spelling as well as the structured `target date:` field —
+  rejecting the prose form would have convicted ten issues that did the right
+  thing on the day the guard landed, teaching the one lesson a guard must never
+  teach. `.github/workflows/cve-deferral-date.yml` says the same thing at label
+  time, and deliberately does not strip the label: labelling first and writing
+  the disposition second is the natural order, and a bot that yanks the label out
+  from under that is a bot people route around. Warn there, refuse the tag here.
+
+  A target date in the **past** is listed on every run and fails nothing. Making
+  it fatal was the obvious next step and is a trap: it turns every scheduling
+  note in the tree into a time bomb that detonates during an unrelated release,
+  on a morning nobody chose.
+
+  All 14 open `cve-response` issues were dispositioned in the same pass. The four
+  untriaged ones: n8n CVE-2026-85166 deferred to a floor bump on the existing
+  `AAK-MCP-N8N-CVE-2026-72768-001` pin (2.35.4 and 2.36.2 are both published);
+  Helicone CVE-2026-85178 and two WordPress plugin advisories closed out of scope
+  on the boundary this repo has recorded five times before — the vulnerable code
+  is in a hosted platform server or a wordpress.org plugin, and the artifact that
+  *does* resolve on npm/PyPI (`helicone`, "a wrapper for the OpenAI API that logs
+  all requests") is a client SDK that does not contain it.
 
 ### Fixed
 
@@ -102,6 +141,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rule in the family carries both statements. `AAK-TRANSPORT-001`'s title changes to
   "MCP server uses a cleartext transport (http:// or ws://)", because the old title
   named only one of the two schemes it now reads.
+
+- **A standing report that read as current, checked by nothing.**
+  `docs/reports/mcp-2026-07-28-readiness.md` is written as a live artifact: no
+  historical banner, linked as a current finding, closing with a promise to
+  re-run "on ratification day (2026-07-28) and on a rolling basis". It was
+  generated once, in July, and never re-derived.
+
+  Its nine numbers all still reproduce exactly — the corpus has not moved and
+  `AAK-OAUTH-006/007/008` are all still in the registry. That is luck. The corpus
+  is a directory any PR may add to, and the day one does, the report becomes a
+  confident wrong number carrying a citation, which is worse than no report.
+  `tests/test_readiness_report_is_current.py` now asserts the rendered table
+  against a fresh `scripts/mcp_2026_07_28_readiness.py` run, so the promise of a
+  rolling re-run is kept by a test rather than by intention. It skips where
+  `benchmarks/data/` is absent — the corpus is gitignored, so a bare CI checkout
+  cannot measure the report at all and zeros there would mean "unmeasurable",
+  not "wrong". The guard therefore bites on a maintainer checkout and any job
+  that fetches the corpus, which is where a change to it can actually originate.
+  Written out rather than described as "guarded by CI", because that would claim
+  a gate the check does not have.
+
+  Its tense was wrong independently of its numbers. The report described the
+  2026-07-28 specification as a release candidate whose "final publication
+  [is] scheduled" — true when written, and read after that date, an artifact
+  that is wrong about the calendar invites a reader to discount the parts that
+  are right. It now records publication as having happened, carries a
+  **Re-validated: 2026-09-04** stamp, and a test fails if the "scheduled"
+  phrasing ever comes back.
+
+- **`Category` (12 members) in `CLAUDE.md`, while the enum had 14.** The fourth
+  instance of the same blind spot, after "N existing rules" (v0.3.72), "N
+  registered scanners" (v0.3.81) and the category count itself (v0.3.84).
+  `check_counts.py` matches phrasings, not numbers: the category pattern is
+  anchored on the headline "rules … across N categories" form, so it never looked
+  at the backticked-enum form, and the corroboration sweep reads `README.md` and
+  `docs/**` while this claim lives in `CLAUDE.md`. The result was one file
+  asserting "330 rules across 14 security categories" on line 8 and "`Category`
+  (12 members)" on line 137 with `make count-check` reporting clean — a count
+  wrong in the one file that tells the next reader the counts are guarded. The
+  number is corrected and the phrasing is now in `PATTERNS`, anchored on the
+  backticked symbol so it only ever matches a claim about the enum itself.
 
 ## [0.3.92] - 2026-09-02
 

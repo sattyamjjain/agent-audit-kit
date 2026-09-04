@@ -101,6 +101,17 @@ PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     # "9 of 11 security categories" in a case study -- three statements about
     # different things that a guard would have "fixed" into being false.
     (re.compile(r"rules\*{0,2}\s+across\s+(\d+)\s+(?:security\s+)?categor(?:y|ies)", re.I), "categories"),
+    # "`Category` (12 members)" in CLAUDE.md's Code Conventions block -- the
+    # fourth instance of the phrase blind spot, after "N existing rules",
+    # "N registered scanners" and the category count itself. The pattern above
+    # is anchored on the headline "rules ... across N categories" form, so it
+    # never looked at this one, and the corroboration sweep does not either --
+    # that sweep reads README.md and docs/**, and this claim lives in CLAUDE.md.
+    # The result was one file asserting "330 rules across 14 security
+    # categories" on line 8 and "Category (12 members)" on line 137 while
+    # count-check reported clean. Anchored on the backticked symbol so it only
+    # ever matches a claim about the enum itself, never a prose category count.
+    (re.compile(r"`Category`\s*\((\d+)\s+members?\)", re.I), "categories"),
     # "(97 .py files on disk - the registry is authoritative)" in CLAUDE.md. This
     # phrasing was unguarded and had drifted to 97 while the directory held 96 --
     # a count wrong in the one file that tells the next reader the counts are

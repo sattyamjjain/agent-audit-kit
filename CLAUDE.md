@@ -134,7 +134,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 - **Python 3.9+** (`requires-python = ">=3.9"`) — all files start with `from __future__ import annotations`
 - **Naming**: `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_SNAKE` for constants
 - **Data models**: `@dataclass` (stdlib), not Pydantic — `Finding`, `ScanResult`, `RuleDefinition`
-- **Enums**: `Severity` (5 levels) and `Category` (12 members) as `enum.Enum` with custom comparison operators
+- **Enums**: `Severity` (5 levels) and `Category` (14 members) as `enum.Enum` with custom comparison operators
 - **Type hints**: On all function signatures; `Optional[X]` for nullable, `list[str]` (lowercase generic)
 - **Imports**: `from __future__ import annotations` first, then stdlib, then third-party, then local
 - **CLI**: Click decorators, exit codes: 0=pass, 1=findings, 2=error
@@ -163,7 +163,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 ## Git Insights
 
 - **Recent focus**: CVE-wave triage and pinning (`fix(cve):`, per-wave PRs), replacing proximity heuristics with real data flow (STDIO cmd-injection, SSRF reachability), unauthenticated MCP sidecar dashboards, CVE-to-rule latency published as a guarded number
-- **Commit style**: Conventional commits — last 100: `chore` 43, `fix` 24, `feat` 14, `docs` 3, `test` 2. Non-conventional subjects are the long-form PR titles for substantive changes.
+- **Commit style**: Conventional commits — last 100: `chore` 43, `fix` 29, `docs` 6, `feat` 4, `test` 1. Non-conventional subjects are the long-form PR titles for substantive changes.
 - **Release discipline**: counts land via generated `chore(rule-count): auto-sync` commits; release jobs fail fast on a stale GitHub description, a bad docs URL, an open `cve-response` issue, or a derivable count that drifted
 - **Branch strategy**: Single `main` branch, PR-based workflow — merged subjects carry the PR number (`… (#606)`). Topic branches follow `feat/`, `fix/`, `chore/`.
 

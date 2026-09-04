@@ -17,7 +17,7 @@ vscode-extension/
   src/
     extension.ts       # Entry point — activate/deactivate, runs the CLI, publishes diagnostics
     sarifReader.ts     # SARIF → diagnostics. Wired up in v0.3.87 (see below)
-  package.json         # Manifest — contributes.configuration only; no commands declared
+  package.json         # Manifest — contributes.configuration + commands (all 3 declared)
   tsconfig.json        # TypeScript config
   README.md            # Marketplace-facing readme
   .vscodeignore        # Package exclusions
