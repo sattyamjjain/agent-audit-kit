@@ -8,7 +8,12 @@
 > registry. This is no longer a claim you have to take on trust —
 > `tests/test_readiness_report_is_current.py` asserts the table against a fresh
 > `scripts/mcp_2026_07_28_readiness.py` run, so the day the corpus grows, this
-> report fails CI instead of quietly becoming a confident wrong number.
+> report fails instead of quietly becoming a confident wrong number. That check
+> runs wherever the corpus is — a maintainer checkout, or any job that fetches
+> it — and **skips on a bare CI run, because `benchmarks/data/` is gitignored**.
+> Stated exactly rather than as "guarded by CI": it means whoever is in a
+> position to change the corpus cannot do it without being told, which is the
+> half that matters, and it is not the same as a gate on every push.
 >
 > Status note: the MCP 2026-07-28 specification was a **release candidate** when
 > this report was written (RC locked 2026-05-21) and was published on
@@ -114,11 +119,11 @@ A 2026-07-28-ready remote MCP deployment:
    response.
 
 None of the 748 public configs are structured this way today. That promise of a
-rolling re-run is now kept by CI rather than by intention: the table is asserted
-against a fresh derivation on every test run, so a change in the corpus shows up
-as a failure the same day it lands. As of the 2026-09-04 re-validation, nothing
-has changed — publication of the spec on 2026-07-28 did not move the public
-config posture.
+rolling re-run is now kept by a test rather than by intention: the table is
+asserted against a fresh derivation wherever the corpus is present, so a change
+in the corpus surfaces as a failure rather than as a stale paragraph. As of the
+2026-09-04 re-validation, nothing has changed — publication of the spec on
+2026-07-28 did not move the public config posture.
 
 ---
 

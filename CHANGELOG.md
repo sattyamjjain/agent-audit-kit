@@ -154,7 +154,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   confident wrong number carrying a citation, which is worse than no report.
   `tests/test_readiness_report_is_current.py` now asserts the rendered table
   against a fresh `scripts/mcp_2026_07_28_readiness.py` run, so the promise of a
-  rolling re-run is kept by CI rather than by intention.
+  rolling re-run is kept by a test rather than by intention. It skips where
+  `benchmarks/data/` is absent — the corpus is gitignored, so a bare CI checkout
+  cannot measure the report at all and zeros there would mean "unmeasurable",
+  not "wrong". The guard therefore bites on a maintainer checkout and any job
+  that fetches the corpus, which is where a change to it can actually originate.
+  Written out rather than described as "guarded by CI", because that would claim
+  a gate the check does not have.
 
   Its tense was wrong independently of its numbers. The report described the
   2026-07-28 specification as a release candidate whose "final publication

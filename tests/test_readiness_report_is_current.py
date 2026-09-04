@@ -25,8 +25,11 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REPORT = REPO_ROOT / "docs" / "reports" / "mcp-2026-07-28-readiness.md"
+CORPUS = REPO_ROOT / "benchmarks" / "data"
 
 
 def _load_readiness():
@@ -71,7 +74,22 @@ def _table_number(text: str, *needles: str) -> int:
 
 
 def test_every_number_in_the_report_reproduces() -> None:
-    """Nine published counts, each re-derived from the corpus this run."""
+    """Nine published counts, each re-derived from the corpus this run.
+
+    ``benchmarks/data/`` is gitignored, so a bare CI checkout has no corpus and
+    ``compute()`` would return zeros -- which is not the report being wrong, it is
+    the report being unmeasurable. Skipping there matches what every other
+    corpus-backed test in this suite does (``test_remediation_keys_are_real``,
+    ``test_composition``, ``test_transport_flip_remediation``).
+
+    Which does mean this guard bites where the corpus lives -- a maintainer
+    checkout, and any job that fetches it -- and not on a bare CI run. That is
+    worth stating plainly rather than letting the report imply a stronger promise
+    than it has: it is the difference between "nobody re-derives this" and "the
+    person holding the corpus cannot change it without being told".
+    """
+    if not CORPUS.is_dir() or not any(CORPUS.glob("*.json")):
+        pytest.skip("benchmarks/data not present in this checkout")
     live = asdict(_load_readiness().compute())
     text = _report_text()
 
