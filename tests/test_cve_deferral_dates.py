@@ -82,6 +82,24 @@ def test_legacy_prose_target_spelling_still_counts() -> None:
     assert mod.target_date(issue) == date(2026, 9, 9)
 
 
+@pytest.mark.parametrize("spelling", [
+    "deferred-until: 2026-09-30",
+    "deferred until: 2026-09-30",
+    "deferred_until: 2026-09-30",
+])
+def test_deferred_until_spelling_counts(spelling) -> None:
+    """The spelling a maintainer reaches for, because it names the label.
+
+    Added by alternation rather than by replacing `target date:`. Switching
+    outright was considered and rejected for the same reason the legacy prose
+    form is still accepted: it would have convicted every dated deferral in the
+    queue, teaching that the guard is wrong and worth routing around.
+    """
+    issue = _issue(20, comments=(spelling,))
+    assert mod.find_undated_deferrals([issue]) == []
+    assert mod.target_date(issue) == date(2026, 9, 30)
+
+
 def test_date_in_the_body_counts_too() -> None:
     issue = _issue(4, body="target date: 2026-10-01", comments=())
     assert mod.find_undated_deferrals([issue]) == []
