@@ -54,6 +54,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   funding manifest through a pointer in the repository, not a vendored copy.
   `.github/FUNDING.yml` is a different mechanism that it does not read.
 
+### Fixed
+
+- **Every SARIF `helpUri` pointed at a domain nobody has registered.**
+  `agent-audit-kit.dev` is NXDOMAIN — no NS, A or MX record — so the "more
+  info" link the GitHub Security tab offers on every finding this tool has ever
+  reported was dead, as was the SPDX `documentNamespace` on every SBOM it
+  emitted. SPDX does not require that namespace to resolve, but it does require
+  it to be under a namespace the creator controls, and an unregistered domain is
+  one a stranger can take.
+
+  Both now point at the published docs site, served from `gh-pages`.
+
+  Deep-linking every rule was the obvious fix and is wrong: 13 of 332 rules have
+  a hand-written page under `docs/rules/` and the rest do not, so per-rule URLs
+  everywhere would swap a link that fails uniformly for one that fails 96% of
+  the time — harder to notice, not better. A rule is deep-linked only when its
+  page exists; the other 319 get the rules index, which resolves for all of
+  them.
+
+  `docs/` is not shipped in the wheel, so the set of rules with pages is frozen
+  into the package by `scripts/sync_rule_doc_pages.py` and guarded by
+  `make count-check`. Adding `docs/rules/AAK-FOO-001.md` and re-running it
+  upgrades that rule's helpUri automatically.
+
 ### Changed
 
 - **`cli_modules/` is gone; `rule_lint.py` sits at the package root.** The

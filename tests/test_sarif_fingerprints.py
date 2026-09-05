@@ -3,7 +3,8 @@
 - partialFingerprints.primaryLocationLineHash is a SHA256 of (line content +
   rule ID), stable across unrelated line shifts, different when the line
   content changes.
-- helpUri per rule points at https://agent-audit-kit.dev/rules/<rule_id>.
+- helpUri per rule points at a URL that resolves: the rule's own docs page
+  when one exists, the published rules index otherwise.
 - results[].properties.security-severity mirrors the rule's severity score.
 """
 
@@ -14,6 +15,7 @@ import json
 from pathlib import Path
 
 from agent_audit_kit.models import Category, Finding, ScanResult, Severity
+from agent_audit_kit.output._rule_doc_pages import RULE_DOC_PAGES
 from agent_audit_kit.output.sarif import format_results
 
 
@@ -80,13 +82,39 @@ def test_partial_fingerprint_changes_when_line_content_changes(tmp_path: Path) -
     assert fp_a != fp_b
 
 
-def test_helpuri_per_rule_points_at_rules_subpath(tmp_path: Path) -> None:
+def _help_uri_for(tmp_path: Path, rule_id: str) -> str:
     (tmp_path / "s.py").write_text("x\n")
     sarif = json.loads(
-        format_results(_make_result("s.py", 1, rule_id="AAK-STDIO-001"), project_root=tmp_path)
+        format_results(_make_result("s.py", 1, rule_id=rule_id), project_root=tmp_path)
     )
-    rule = sarif["runs"][0]["tool"]["driver"]["rules"][0]
-    assert rule["helpUri"] == "https://agent-audit-kit.dev/rules/AAK-STDIO-001"
+    return sarif["runs"][0]["tool"]["driver"]["rules"][0]["helpUri"]
+
+
+def test_helpuri_deep_links_a_rule_that_has_a_docs_page(tmp_path: Path) -> None:
+    """AAK-TOXICFLOW-001 has docs/rules/AAK-TOXICFLOW-001.md, so it earns a
+    per-rule URL. The trailing slash is the canonical MkDocs directory URL."""
+    assert _help_uri_for(tmp_path, "AAK-TOXICFLOW-001") == (
+        "https://sattyamjjain.github.io/agent-audit-kit/docs/rules/AAK-TOXICFLOW-001/"
+    )
+
+
+def test_helpuri_falls_back_to_the_index_for_a_rule_with_no_page(tmp_path: Path) -> None:
+    """The other 319. Deep-linking these would produce a 404 per finding --
+    a link that fails 96% of the time is harder to notice than one that always
+    does, which is the failure this replaced."""
+    assert "AAK-STDIO-001" not in RULE_DOC_PAGES
+    assert _help_uri_for(tmp_path, "AAK-STDIO-001") == (
+        "https://sattyamjjain.github.io/agent-audit-kit/docs/rules/"
+    )
+
+
+def test_helpuri_never_points_at_an_unregistered_domain(tmp_path: Path) -> None:
+    """agent-audit-kit.dev is NXDOMAIN and was the helpUri base until 2026-09-05.
+
+    Pinned as a string rather than a network check: the test must fail if the
+    constant comes back, and must not depend on DNS to say so."""
+    for rule_id in ("AAK-TOXICFLOW-001", "AAK-STDIO-001"):
+        assert "agent-audit-kit.dev" not in _help_uri_for(tmp_path, rule_id)
 
 
 def test_result_carries_security_severity_score(tmp_path: Path) -> None:

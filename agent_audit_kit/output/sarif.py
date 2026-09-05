@@ -6,11 +6,23 @@ from pathlib import Path
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import Finding, ScanResult, Severity
+from agent_audit_kit.output._rule_doc_pages import RULE_DOC_PAGES
 from agent_audit_kit.rules.builtin import RULES
 
 # Public rule-doc URL per finding. Keep this stable — SARIF ingesters
 # cache helpUri and follow it from the GH Security tab.
-_HELP_URI_BASE = "https://agent-audit-kit.dev/rules"
+#
+# This pointed at agent-audit-kit.dev until 2026-09-05, on a domain that has
+# never been registered (NXDOMAIN: no NS, A or MX), so every "more info" link
+# the Security tab offered was dead. It now points at the published docs site,
+# which is served from the gh-pages branch and resolves.
+#
+# Deep-linking every rule was the tempting fix and is wrong: 13 of 332 rules
+# have a hand-written page and the rest do not, so per-rule URLs everywhere
+# would swap a link that fails uniformly for one that fails 96% of the time --
+# harder to notice, not better. Rules without a page get the index, which
+# resolves for all of them.
+_HELP_URI_BASE = "https://sattyamjjain.github.io/agent-audit-kit/docs/rules"
 
 SEVERITY_TO_LEVEL: dict[Severity, str] = {
     Severity.CRITICAL: "error",
@@ -27,6 +39,18 @@ SEVERITY_TO_SCORE: dict[Severity, str] = {
     Severity.LOW: "2.0",
     Severity.INFO: "0.5",
 }
+
+
+def _help_uri(rule_id: str) -> str:
+    """Deep-link a rule's own page when it has one, else the rules index.
+
+    Both forms resolve. The trailing slash matters: the docs site is MkDocs
+    with directory URLs, so `/rules/AAK-FOO-001` redirects and `/rules/
+    AAK-FOO-001/` is the canonical address an ingester should cache.
+    """
+    if rule_id in RULE_DOC_PAGES:
+        return f"{_HELP_URI_BASE}/{rule_id}/"
+    return f"{_HELP_URI_BASE}/"
 
 
 def _build_fingerprint(finding: Finding) -> str:
@@ -131,7 +155,7 @@ def _rule_to_sarif(rule_id: str, index: int) -> dict:  # noqa: ARG001
         "name": rule.sarif_name or rule.rule_id.replace("-", ""),
         "shortDescription": {"text": rule.title},
         "fullDescription": {"text": rule.description},
-        "helpUri": f"{_HELP_URI_BASE}/{rule.rule_id}",
+        "helpUri": _help_uri(rule.rule_id),
         "help": {
             "text": help_text,
             "markdown": help_markdown,

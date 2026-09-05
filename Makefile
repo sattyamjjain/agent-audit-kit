@@ -64,6 +64,7 @@ fp-check:
 count-check:
 	@PYTHONPATH=. python scripts/check_counts.py
 	@PYTHONPATH=. python scripts/sync_rule_count.py --check
+	@PYTHONPATH=. python scripts/sync_rule_doc_pages.py --check
 
 ## cve-latency: regenerate docs/cve-latency.md from the ledger (offline, deterministic)
 cve-latency:

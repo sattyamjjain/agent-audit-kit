@@ -279,7 +279,12 @@ def emit_spdx(project_root: Path) -> str:
         "dataLicense": "CC0-1.0",
         "SPDXID": doc_id,
         "name": project_root.name,
-        "documentNamespace": f"https://agent-audit-kit.dev/sbom/{doc_id}",
+        # SPDX 2.3 requires a unique absolute URI here and does not require it
+        # to resolve -- but it must be under a namespace the creator controls,
+        # or uniqueness is not actually guaranteed. agent-audit-kit.dev is not
+        # registered by anyone, so every SBOM this tool emitted was claiming a
+        # namespace a stranger could take.
+        "documentNamespace": f"https://sattyamjjain.github.io/agent-audit-kit/sbom/{doc_id}",
         "creationInfo": {
             "created": datetime.now(timezone.utc).isoformat(),
             "creators": [f"Tool: agent-audit-kit-{__version__}"],
