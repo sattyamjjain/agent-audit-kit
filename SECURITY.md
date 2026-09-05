@@ -4,10 +4,23 @@
 
 If you discover a security vulnerability in AgentAuditKit, please report it responsibly. **Do not open a public GitHub issue.**
 
-### Preferred Channels
+### Preferred Channel
 
-1. **Email:** [security@agentauditkit.io](mailto:security@agentauditkit.io)
-2. **GitHub Security Advisories:** [Report a vulnerability](https://github.com/sattyamjjain/agent-audit-kit/security/advisories/new)
+**GitHub Security Advisories** — [report a vulnerability privately](https://github.com/sattyamjjain/agent-audit-kit/security/advisories/new).
+
+This is the only channel that works today, and it is the one to use. Private
+vulnerability reporting is enabled on this repository, so the form is open to
+anyone with a GitHub account; the report stays private to you and the maintainer
+until an advisory is published.
+
+> **`security@agentauditkit.io` does not receive mail.** It has been listed here
+> as a contact, but `agentauditkit.io` has never been registered — it returns
+> NXDOMAIN, with no MX record — so anything sent there bounces. It is kept in
+> this document only to say so, because the address still appears in
+> `CODE_OF_CONDUCT.md` and throughout the changelog history, and a reader who
+> finds it there deserves to learn it is dead from the security policy rather
+> than from a bounce message. It will become live if and when the domain is
+> registered.
 
 ### What to Include
 

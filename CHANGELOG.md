@@ -56,6 +56,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Neither documented security-reporting channel worked.** `SECURITY.md` listed
+  `security@agentauditkit.io` first — a domain that has never been registered,
+  NXDOMAIN with no MX, so reports bounced — and GitHub Security Advisories
+  second, with private vulnerability reporting *disabled*, which makes
+  `/security/advisories/new` maintainer-only. A security scanner had no working
+  coordinated-disclosure path.
+
+  Private vulnerability reporting is now enabled, so the advisory form is open
+  to any GitHub account, and `SECURITY.md` leads with it. The dead address is
+  kept in the document only to state plainly that it bounces, because it still
+  appears in `CODE_OF_CONDUCT.md` and the changelog history and a reader who
+  finds it there should learn that from the policy rather than from a bounce.
+
 - **Every SARIF `helpUri` pointed at a domain nobody has registered.**
   `agent-audit-kit.dev` is NXDOMAIN — no NS, A or MX record — so the "more
   info" link the GitHub Security tab offers on every finding this tool has ever
