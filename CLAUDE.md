@@ -163,7 +163,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 ## Git Insights
 
 - **Recent focus**: CVE-wave triage and pinning (`fix(cve):`, per-wave PRs), replacing proximity heuristics with real data flow (STDIO cmd-injection, SSRF reachability), unauthenticated MCP sidecar dashboards, CVE-to-rule latency published as a guarded number
-- **Commit style**: Conventional commits — last 100: `chore` 43, `fix` 29, `docs` 6, `feat` 4, `test` 1. Non-conventional subjects are the long-form PR titles for substantive changes.
+- **Commit style**: Conventional commits — last 100 at time of writing: `chore` 42, `fix` 27, `docs` 6, `feat` 4, `refactor` 1, `test` 1, plus 18 long-form PR titles for substantive changes. This is a rolling window and drifts on every commit; `scripts/check_counts.py` cannot guard it, because a canonical entry derived from `git log` would fail `make count-check` on every commit. Recompute rather than trusting it.
 - **Release discipline**: counts land via generated `chore(rule-count): auto-sync` commits; release jobs fail fast on a stale GitHub description, a bad docs URL, an open `cve-response` issue, or a derivable count that drifted
 - **Branch strategy**: Single `main` branch, PR-based workflow — merged subjects carry the PR number (`… (#606)`). Topic branches follow `feat/`, `fix/`, `chore/`.
 
