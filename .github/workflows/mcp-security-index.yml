@@ -103,6 +103,17 @@ jobs:
           fi
           # .nojekyll so GitHub Pages serves the raw HTML
           touch pages_staging/.nojekyll
+          # FLOSS/fund manifest. .well-known/funding-manifest-urls (in the repo
+          # root) points at https://<pages>/funding.json, and this is the step
+          # that makes that URL exist.
+          #
+          # It has to be staged here rather than committed to gh-pages directly:
+          # the publish step below does `git init` on a fresh directory and
+          # `git push --force`, so gh-pages is rebuilt from nothing on every run
+          # and anything committed straight to the branch is destroyed by the
+          # next Monday's snapshot -- silently, with the manifest URL reverting
+          # to 404 and nothing reporting it.
+          cp funding.json pages_staging/funding.json
 
       - name: Publish to gh-pages
         run: |

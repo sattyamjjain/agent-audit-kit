@@ -1,0 +1,76 @@
+{
+  "version": "v1.0.0",
+  "$schema": "https://floss.fund/schema/v1.0.0/funding.schema.json#",
+  "entity": {
+    "type": "individual",
+    "role": "owner",
+    "name": "Sattyam Jain",
+    "email": "sattyamjain96@gmail.com",
+    "description": "Independent security engineer. Maintainer of AgentAuditKit, an offline security scanner for MCP-connected AI agent pipelines.",
+    "webpageUrl": {
+      "url": "https://sattyamjjain.github.io/agent-audit-kit/"
+    }
+  },
+  "projects": [
+    {
+      "guid": "agent-audit-kit",
+      "name": "AgentAuditKit",
+      "description": "Security scanner for MCP-connected AI agent pipelines - the \"npm audit\" for AI agents. 332 rules across 14 categories detect tool poisoning, prompt-injection sinks, unauthenticated MCP transports, leaked credentials and supply-chain risk in agent configs and code. Covers the OWASP Agentic Top 10 and MCP Top 10 in full, maps findings to 12 compliance frameworks including the EU AI Act and SOC 2, and tracks newly disclosed MCP CVEs into rules. Runs fully offline with zero cloud dependencies.",
+      "webpageUrl": {
+        "url": "https://sattyamjjain.github.io/agent-audit-kit/"
+      },
+      "repositoryUrl": {
+        "url": "https://github.com/sattyamjjain/agent-audit-kit",
+        "wellKnown": "https://raw.githubusercontent.com/sattyamjjain/agent-audit-kit/main/.well-known/funding-manifest-urls"
+      },
+      "licenses": [
+        "spdx:MIT"
+      ],
+      "tags": [
+        "security",
+        "artificial-intelligence",
+        "developer-tools",
+        "devops",
+        "software-engineering",
+        "privacy",
+        "programming"
+      ]
+    }
+  ],
+  "funding": {
+    "channels": [
+      {
+        "guid": "github-sponsors",
+        "type": "payment-provider",
+        "address": "https://github.com/sponsors/sattyamjjain",
+        "description": "GitHub Sponsors. Card and PayPal, handled by GitHub; no payment details reach the maintainer."
+      }
+    ],
+    "plans": [
+      {
+        "guid": "any-amount",
+        "status": "active",
+        "name": "Support ongoing maintenance",
+        "description": "Any amount, one-off or recurring. Funds the time that goes into triaging newly disclosed MCP CVEs and turning them into rules.",
+        "amount": 0,
+        "currency": "USD",
+        "frequency": "one-time",
+        "channels": [
+          "github-sponsors"
+        ]
+      },
+      {
+        "guid": "monthly-cve-triage",
+        "status": "active",
+        "name": "Monthly CVE triage",
+        "description": "Recurring support for the disclosed-CVE response loop: NVD watch, triage against published severity budgets, rule authoring and fixtures. Budgets and current queue depth are published in docs/cve-triage.md.",
+        "amount": 25,
+        "currency": "USD",
+        "frequency": "monthly",
+        "channels": [
+          "github-sponsors"
+        ]
+      }
+    ]
+  }
+}

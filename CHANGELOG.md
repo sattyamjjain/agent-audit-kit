@@ -50,9 +50,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tests/test_cve_ageing_gate.py` so the two cannot drift into an issue that
   carries `sev/high` while ageing as `sev/medium`.
 
-- **`.well-known/funding-manifest-urls`.** FLOSS/fund discovers a project's
-  funding manifest through a pointer in the repository, not a vendored copy.
-  `.github/FUNDING.yml` is a different mechanism that it does not read.
+- **`.well-known/funding-manifest-urls`, and the `funding.json` it points at.**
+  FLOSS/fund discovers a project's funding manifest through a pointer in the
+  repository and then fetches the manifest itself, which must return 200 and
+  validate against the v1.0.0 schema. `.github/FUNDING.yml` is a different
+  mechanism that it does not read.
+
+  The manifest is served from the GitHub Pages origin, which is the only origin
+  this project has. That forced its source into the repo root rather than a
+  hosted-elsewhere copy: gh-pages is rebuilt by `git init` + `git push --force`
+  on every snapshot, so a file committed to that branch is destroyed by the next
+  Monday's deploy. `mcp-security-index.yml` stages it instead, and a test fails
+  if that line is ever removed — otherwise the URL reverts to 404 silently.
+
+  One schema subtlety worth recording: any URL whose hostname differs from the
+  manifest's own needs a `wellKnown` proof-of-control pointer. An entity webpage
+  on `github.com` therefore cannot be used, because serving
+  `https://github.com/.well-known/…` is not possible. The entity and project
+  pages are the Pages origin; `repositoryUrl` is `github.com` by necessity and
+  carries the repo-file pointer, which is exactly what
+  `.well-known/funding-manifest-urls` is for.
 
 ### Fixed
 
