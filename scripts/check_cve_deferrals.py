@@ -48,17 +48,25 @@ from typing import Any, Iterable, Optional
 RESPONSE_LABEL = "cve-response"
 DEFERRED_LABEL = "cve-deferred"
 
-# Both spellings are accepted on purpose.
+# Three spellings are accepted on purpose.
 #
 #   target date: 2026-09-30      <- the structured field this guard asks for
 #   **Target: 2026-09-30.**      <- the prose form the 2026-08-31 wave used
+#   deferred-until: 2026-09-30   <- reads correctly next to the label name
 #
 # Rejecting the second would have marked ten correctly-dated deferrals as
 # violations on the day this landed, which would teach the exact lesson a guard
 # should never teach: that the guard is wrong and worth routing around. The
 # obligation is "say when", not "say when in my preferred punctuation".
+#
+# The third was added for the same reason, from the other direction: it is the
+# spelling a maintainer reaches for because it names the label, and a guard that
+# refuses it is one that has to be looked up before it can be satisfied. Adding
+# an alternation is cheaper than the lookup, and strictly cheaper than the
+# alternative considered -- switching to it outright, which would have convicted
+# every dated deferral already in the queue.
 _TARGET_RE = re.compile(
-    r"\btarget(?:\s+date)?\s*:\s*\**\s*(\d{4}-\d{2}-\d{2})",
+    r"\b(?:target(?:\s+date)?|deferred[-\s_]?until)\s*:\s*\**\s*(\d{4}-\d{2}-\d{2})",
     re.IGNORECASE,
 )
 
@@ -208,7 +216,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(
             f"::error ::cve-deferred gate: {len(undated)} deferred issue(s) name no "
             f"target date. `cve-deferred` exempts an issue from the release gate, so "
-            f"it has to say when. Add `target date: YYYY-MM-DD` to each:",
+            f"it has to say when. Add `target date: YYYY-MM-DD` (or "
+            f"`deferred-until: YYYY-MM-DD`) to each:",
             file=sys.stderr,
         )
         for row in undated:

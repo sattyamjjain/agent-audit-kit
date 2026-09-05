@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **An ageing gate for the CVE queue, and severity bands to age against.** The
+  release gate asks whether every disclosure has been *looked at* — a binary
+  question, answerable in one label. It cannot ask how long the queue has been
+  sitting, and it must not: a tag that could not be cut is exactly what made
+  `cve-deferred` the cheapest way out of it, and a second gate holding the same
+  lever would produce the second such label.
+
+  So the ageing check runs on its own daily cron in `cve-watcher.yml` (job
+  `age-gate`) and blocks nothing — not a tag, not a merge, not a publish. It is
+  a standing red check and that is the whole design.
+
+  - The watcher now applies a `sev/*` label when it opens an issue, parsed from
+    the CVSS score in the title: `sev/critical` (≥ 9.0), `sev/high` (7.0–8.9),
+    `sev/medium` (4.0–6.9), `sev/low` (< 4.0). A score that will not parse gets
+    `sev/unknown` and a note in the issue body saying so, rather than a guessed
+    band.
+  - Budgets, counted from issue creation: critical 3 days, high 7, medium 21,
+    low 60. `sev/unknown` is held to the *critical* budget — the disclosure
+    nobody has classified is the one that should surface fastest, and the fix
+    (correct the title) is cheap.
+  - `cve-deferred` now moves an issue between two accounting systems rather than
+    switching one off: exempt from its band's budget, judged against the date it
+    names. Holding a dated deferral to the budget as well would fail a correctly
+    deferred critical on day four regardless of what anyone did, scoring the
+    honest disposition and the dishonest one the same.
+  - `deferred-until: YYYY-MM-DD` joins `target date:` and the legacy
+    `**Target: …**` prose form as an accepted spelling. Added by alternation,
+    not by replacement — switching outright would have convicted every dated
+    deferral already in the queue.
+  - Past-due deferrals are now fatal on the cron, while `check_cve_deferrals.py`
+    continues only to report them at tag time. Same fact, two readings: one runs
+    where a scheduling note must not kill an unrelated release, the other does
+    not.
+  - `docs/cve-triage.md` publishes the bands, the budgets, the deferral rule and
+    the queue depth — the answer to "what is your triage latency".
+
+  The label applied in JS at creation and the budget enforced in Python on the
+  cron read the same title through the same regex, pinned byte-for-byte by
+  `tests/test_cve_ageing_gate.py` so the two cannot drift into an issue that
+  carries `sev/high` while ageing as `sev/medium`.
+
+- **`.well-known/funding-manifest-urls`.** FLOSS/fund discovers a project's
+  funding manifest through a pointer in the repository, not a vendored copy.
+  `.github/FUNDING.yml` is a different mechanism that it does not read.
+
 ## [0.3.94] - 2026-09-04
 
 ### Added
