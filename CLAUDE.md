@@ -71,7 +71,7 @@ docker build -t agent-audit-kit .
 ```
 agent_audit_kit/
   cli.py               # Click entry point (26 commands: 23 @cli.command + 3 @cli.group)
-  cli_modules/         # Helpers lifted out of cli.py (rule_lint.py)
+  rule_lint.py         # Rule-registry hygiene checks behind `aak rule lint`
   engine.py            # Scanner registry + orchestrator (run_scan)
   models.py            # Core dataclasses: Finding, ScanResult, Severity, Category
   scoring/             # Penalty-based scoring (100 → deductions per severity)

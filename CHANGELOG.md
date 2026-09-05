@@ -54,6 +54,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   funding manifest through a pointer in the repository, not a vendored copy.
   `.github/FUNDING.yml` is a different mechanism that it does not read.
 
+### Changed
+
+- **`cli_modules/` is gone; `rule_lint.py` sits at the package root.** The
+  package held one 108-line module against a 1,618-line `cli.py`, so it read as
+  a refactor that had stalled rather than a boundary anyone was working to. Its
+  stated purpose — keeping heavy imports out of CLI start-up — was never what
+  did the work: the laziness comes from the function-local import inside
+  `rule_lint_cmd`, which is unchanged and still function-local.
+
+  No public CLI surface changes: `aak rule lint` is byte-identical, and the
+  command count stays 26. The only breaking move is the internal import path
+  `agent_audit_kit.cli_modules.rule_lint` → `agent_audit_kit.rule_lint`.
+  Finishing the split instead is tracked in #700, which is explicitly allowed
+  to conclude that `cli.py` stays one file.
+
 ## [0.3.94] - 2026-09-04
 
 ### Added
