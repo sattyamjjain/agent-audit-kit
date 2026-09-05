@@ -1597,7 +1597,7 @@ def rule_cmd() -> None:
 @click.option("--rule", "rule_filter", default=None, help="Lint only this rule_id.")
 def rule_lint_cmd(ci: bool, rule_filter: str | None) -> None:
     """Validate the RuleDefinition registry against AAK metadata invariants."""
-    from agent_audit_kit.cli_modules.rule_lint import run_lint
+    from agent_audit_kit.rule_lint import run_lint
 
     violations = run_lint(rule_filter=rule_filter)
     if not violations:

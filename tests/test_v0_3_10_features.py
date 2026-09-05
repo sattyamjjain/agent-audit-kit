@@ -8,7 +8,7 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from agent_audit_kit.cli import cli
-from agent_audit_kit.cli_modules.rule_lint import run_lint
+from agent_audit_kit.rule_lint import run_lint
 from agent_audit_kit.scoring.aivss import annotate_sarif, score_finding
 from agent_audit_kit.scoring.aivss_schema import AIVSSScore
 from agent_audit_kit.translators.prisma_airs import (
