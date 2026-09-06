@@ -90,6 +90,15 @@ jobs:
       - name: Counts (prose + generated surfaces)
         run: make count-check
 
+      # The marker test can only see numbers that already carry a marker, so an
+      # unmarked second copy is invisible to it. That is not theoretical: four
+      # published sites stated 421/18.3% while results.json said 424/18.4% and
+      # the marker test was green throughout. This guard is the one that sees
+      # them. Here rather than in the matrix for the same reason as count-check:
+      # a named step says what broke.
+      - name: Report figures are marker-driven, not hand-typed
+        run: make report-figures-check
+
       # The scanner constant must equal the real registry size, not the number of
       # files in scanners/. Cheap, and it is the invariant that decoupled once.
       - name: Scanner count matches the registry

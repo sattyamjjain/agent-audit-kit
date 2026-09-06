@@ -7,7 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.95] - 2026-09-06
+
 ### Added
+
+- **An unmarked copy of a governed figure now fails the build.** This is the root
+  cause of the 421/424 split below. `tests/test_report_headline_numbers.py` locks
+  every `report:` marker to `results.json`, but it can only see numbers that
+  already carry a marker — a second, unmarked copy is structurally invisible to
+  it, and an unmarked copy is what writing prose produces.
+
+  `scripts/check_report_figures.py` closes that gap, wired into
+  `make report-figures-check` and run in CI beside `count-check`.
+
+  **It was verified red before the fix was applied.** Run against `main` with
+  only the generator modified and no document touched, it failed on exactly four
+  lines — `README.md:55`, `README.md:573`,
+  `docs/STATE-OF-MCP-SECURITY-2026.md:36` and
+  `research/state-of-mcp-2026/PREVALENCE.md:95` — while every existing marker
+  test stayed green throughout. A guard that is green on its first run has not
+  been shown to work.
+
+  Two decisions make it survivable rather than switched-off-in-a-week:
+
+  - **Matching is anchored to the claim, never to bare digits.** A first draft
+    used an un-anchored `N% (M)` pattern and matched all nine rows of REPORT.md's
+    top-misconfiguration table. The inline-auth ratio is now recognised only next
+    to the words "of inline-auth", the OAuth row only next to `AAK-OAUTH-008`. A
+    blanket "no integer outside a marker" rule would fire on every rule ID, RFC
+    number and version string in the tree.
+  - **`REPORT.md` is judged differently.** It is the source document the markers
+    are pinned *to* — prose-asserted, never generated — so an unmarked figure
+    there is expected and only a *disagreeing* one is reported. That is what
+    makes its `AAK-OAUTH-008` cell governed at all: no other test reads it, which
+    is how it drifted from PREVALENCE.md unnoticed.
+
+  A correct-but-unmarked value is reported too, and the message says why: a
+  hand-typed `424` is the same defect as a hand-typed `421`, one corpus run away
+  from being wrong.
 
 - **An ageing gate for the CVE queue, and severity bands to age against.** The
   release gate asks whether every disclosure has been *looked at* — a binary
@@ -73,6 +110,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`424` and `421` were both published, in the same repository, for the same
+  metric.** `results.json` says 424 of 424 inline-auth remote configs hardcode a
+  static credential, and 18.4% (424) for `AAK-OAUTH-008`. Two surfaces rendered
+  that from the marker generator. Four stated a literal beside it:
+
+  | Site | Published |
+  |---|---|
+  | `README.md:55` | `100% (421/421) of inline-auth …` |
+  | `README.md:573` | `100% (421/421) of inline-auth …` |
+  | `docs/STATE-OF-MCP-SECURITY-2026.md:36` | `100% (421/421) of inline-auth …` |
+  | `research/state-of-mcp-2026/PREVALENCE.md:95` | `… 421 … 18.3% …` |
+
+  The last contradicted `REPORT.md:37` — 18.4% (424) — inside the same
+  directory. All four are now wrapped in the `report:` markers
+  `scripts/sync_rule_count.py` already owns, and the values were written by
+  `make report` rather than typed. `AAK-OAUTH-008`'s count and share are new
+  governed keys (`oauth008-n`, `oauth008-pct`) sourced from
+  `top_misconfigurations`, so that row cannot be hand-edited back.
+
 - **Neither documented security-reporting channel worked.** `SECURITY.md` listed
   `security@agentauditkit.io` first — a domain that has never been registered,
   NXDOMAIN with no MX, so reports bounced — and GitHub Security Advisories
@@ -109,6 +165,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upgrades that rule's helpUri automatically.
 
 ### Changed
+
+- **`docs/STATE-OF-MCP-SECURITY-2026.md` is a pointer page, not a second report.**
+  It opened with "**Seed, not the final report.**" and carried a "**Stub for the
+  next corpus run.**" block, while `research/state-of-mcp-2026/REPORT.md` is v1.0
+  with a published date, a methods block, a citation section and a
+  `CITATION.cff` naming it `preferred-citation`. Two documents with the same
+  title, one self-labelled a stub, is the drift shape that produced the 421/424
+  split — and one of the four stale literals was sitting on the stub.
+
+  Reduced rather than deleted: four test modules and `scripts/sync_rule_count.py`
+  reference the path, and it carries material that exists nowhere else — the
+  generated framework crosswalk, the dated evidence anchors, and the
+  reserved-surface table for MCP final 2026-07-28. The stubbed corpus section and
+  the seed banner are gone, replaced by one marker-driven orientation figure and
+  a link to the report. It keeps its markers, so it stays in the marker-file
+  list. README's inbound link no longer calls it a "report seed".
+
+- **The CVE queue is dispositioned.** All eleven open `cve-response` issues now
+  carry `cve-deferred` with a target date, so `make cve-deferral-check` reports
+  eleven dated deferrals, the ageing gate is inside budget, and the release gate
+  counts zero untriaged blockers. #656 already carried `target date: 2026-09-30`
+  and needed no change — it was exempt legitimately, not on a technicality. The
+  2026-09-04/05 wave (#690–#699) sorted into three classes, and only one earns a
+  rule:
+
+  - **#693, #699** — an MCP server or webhook destination taken from
+    configuration and fetched server-side with no link-local/metadata guard. One
+    rule covers both products, so it is a class rather than a surface widening;
+    queued for design against fixtures rather than authored to clear a queue.
+  - **#691, #692** — DNS rebinding in IBM ContextForge, already detected by
+    `AAK-DNS-REBIND-001/002` and `AAK-MCP-SIDECAR-REBIND-001`. Needs a version
+    floor, not a second rule for a covered class.
+  - **#690, #694, #695, #696, #697, #698** — validator bugs inside third-party
+    server binaries. AAK scans a consumer's repository and cannot see them; a
+    rule claiming otherwise would fire on nothing real. Version floors only.
+    #695 is the instructive one: its impact — an attacker-written
+    `~/.cursor/mcp.json` — is already what the MCP-config scanners flag in the
+    repository that receives it.
 
 - **`cli_modules/` is gone; `rule_lint.py` sits at the package root.** The
   package held one 108-line module against a 1,618-line `cli.py`, so it read as

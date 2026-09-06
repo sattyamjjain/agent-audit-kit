@@ -114,7 +114,23 @@ def _expected() -> dict[str, float]:
         "inline-auth-d": float(auth["remote_auth_static_credential"]["denominator"]),
         "critical-pct": float(data["configs_with_critical_pct"]),
         "critical-n": float(data["configs_with_critical"]),
+        # PREVALENCE.md row 3 and REPORT.md's OAuth table state the same figure
+        # in opposite orders and disagreed -- 421 / 18.3% against 424 / 18.4% --
+        # in sibling files, because neither cell was marker-driven.
+        "oauth008-n": float(_top_misconfig(data, "AAK-OAUTH-008")["configs"]),
+        "oauth008-pct": float(_top_misconfig(data, "AAK-OAUTH-008")["config_pct"]),
     }
+
+
+def _top_misconfig(data: dict, rule_id: str) -> dict:
+    """One top_misconfigurations row by rule id; raises if the rule dropped out."""
+    for row in data["top_misconfigurations"]:
+        if row["rule_id"] == rule_id:
+            return row
+    raise AssertionError(
+        f"{rule_id} is no longer in results.json top_misconfigurations, but a "
+        f"surface still renders its figures"
+    )
 
 
 def test_readme_has_the_report_markers() -> None:

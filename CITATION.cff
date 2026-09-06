@@ -34,8 +34,8 @@ authors:
 repository-code: "https://github.com/sattyamjjain/agent-audit-kit"
 url: "https://github.com/sattyamjjain/agent-audit-kit"
 license: MIT
-version: "0.3.94"
-date-released: "2026-09-04"
+version: "0.3.95"
+date-released: "2026-09-06"
 keywords:
   - model-context-protocol
   - mcp

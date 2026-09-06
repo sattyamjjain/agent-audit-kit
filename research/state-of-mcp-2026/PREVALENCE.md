@@ -92,7 +92,7 @@ posture is. No penalty re-weighting is done in this report (that's a follow-up).
 |--:|---|:---:|--:|--:|
 | 1 | `AAK-MCP-001` — remote MCP server without authentication | **CRITICAL** | <!-- report:noauth-n -->1,200<!-- /report --> | <!-- report:noauth-pct -->52.1<!-- /report -->% |
 | 2 | `AAK-MCP-005` — `npx`/`uvx` fetch-and-execute remote packages | MEDIUM | 450 | 19.5% |
-| 3 | `AAK-OAUTH-008` — MCP OAuth surface with no RFC 9728 PRM discovery | LOW | 421 | 18.3% |
+| 3 | `AAK-OAUTH-008` — MCP OAuth surface with no RFC 9728 PRM discovery | LOW | <!-- report:oauth008-n -->424<!-- /report --> | <!-- report:oauth008-pct -->18.4<!-- /report -->% |
 | 4 | `AAK-MCP-006` — command uses a relative path | MEDIUM | 179 | 7.8% |
 | 5 | `AAK-MCP-003` — env exposes secrets to the tool process | HIGH | 70 | 3.0% |
 | 6 | `AAK-SECRET-007` — secret in MCP server env block | MEDIUM | 70 | 3.0% |

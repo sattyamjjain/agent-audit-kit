@@ -52,7 +52,7 @@ These are regenerated from `research/state-of-mcp-2026/results.json` by `scripts
 - **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`)
 - **MCP Security Index**: public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) ([snapshot dates](#mcp-security-index)) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
 - **CVE coverage**: newly disclosed MCP CVEs are triaged and turned into rules as they land — surfaced automatically by the NVD watcher ([`cve-watcher.yml`](.github/workflows/cve-watcher.yml)) and logged in [CHANGELOG.cves.md](CHANGELOG.cves.md). Per-severity triage budgets and the current queue depth are published in [docs/cve-triage.md](docs/cve-triage.md)
-- **OAuth / spec coverage**: the **2026-07-28 final auth profile** as a one-command check — `agent-audit-kit scan . --profile mcp-2026-07-28` runs RFC 9207 `iss` validation (`AAK-OAUTH-006`), RFC 8707 resource indicators (`AAK-OAUTH-007`), and RFC 9728 Protected-Resource-Metadata discovery (`AAK-OAUTH-008`). We scanned 2,303 distinct public MCP configs: **0 use RFC 9728 discovery; <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->) declare a remote server with no authentication; 100% (421/421) of inline-auth remote configs hardcode a static credential** — see the [State of MCP Security 2026](research/state-of-mcp-2026/REPORT.md) report, v1.0, [citable](research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report) (the earlier dated [2026-07-18 748-config readiness scan](docs/reports/mcp-2026-07-28-readiness.md) is a separate point-in-time artifact). The July 2026-07-28 deprecation/stateless pack stays labelled **release candidate** (the spec ratifies 2026-07-28); every cited SEP was re-verified in the [ratification reconciliation](CHANGELOG.cves.md)
+- **OAuth / spec coverage**: the **2026-07-28 final auth profile** as a one-command check — `agent-audit-kit scan . --profile mcp-2026-07-28` runs RFC 9207 `iss` validation (`AAK-OAUTH-006`), RFC 8707 resource indicators (`AAK-OAUTH-007`), and RFC 9728 Protected-Resource-Metadata discovery (`AAK-OAUTH-008`). We scanned 2,303 distinct public MCP configs: **0 use RFC 9728 discovery; <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->) declare a remote server with no authentication; <!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->424<!-- /report -->/<!-- report:inline-auth-d -->424<!-- /report -->) of inline-auth remote configs hardcode a static credential** — see the [State of MCP Security 2026](research/state-of-mcp-2026/REPORT.md) report, v1.0, [citable](research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report) (the earlier dated [2026-07-18 748-config readiness scan](docs/reports/mcp-2026-07-28-readiness.md) is a separate point-in-time artifact). The July 2026-07-28 deprecation/stateless pack stays labelled **release candidate** (the spec ratifies 2026-07-28); every cited SEP was re-verified in the [ratification reconciliation](CHANGELOG.cves.md)
 - **Spec-ahead coverage + standards crosswalk**: the two wedges a free hosted scanner can't match are **offline determinism** and **standards-provenance compliance evidence** — and AAK ships coverage for the **2026-07-28 MCP spec surface before it ratifies**. The spec-ahead pack (all static, deterministic, no LLM): `Mcp-Method`/`Mcp-Name` routable-header ↔ body desync (`AAK-MCP-ROUTING-DESYNC-001`, **SEP-2243**), MCP Apps UI iframe rendered without sandbox / sanitization (`AAK-MCP-APPS-001/002`, **SEP-1865**), and unbounded MCP Tasks with no quota/concurrency bound → task-flood DoS (`AAK-TASKS-004`, **SEP-2663**). Every rule is mapped, rule by rule, to the **NSA MCP Security CSI** control it evidences and its **OWASP Agentic Top-10 (2026)** item in the [standards crosswalk](docs/crosswalk/nsa-csi-owasp-agentic.md) — regenerate it any time with `agent-audit-kit report --framework standards-crosswalk`.
 - **Zero cloud dependencies** — runs fully offline, zero network calls in the default scan path
 
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.94
+      - uses: sattyamjjain/agent-audit-kit@v0.3.95
         id: scan
         with:
           fail-on: high
@@ -114,7 +114,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.94
+    rev: v0.3.95
     hooks:
       - id: agent-audit-kit
 ```
@@ -306,7 +306,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.94
+  - uses: sattyamjjain/agent-audit-kit@v0.3.95
     id: scan
     with:
       fail-on: high
@@ -409,7 +409,7 @@ agent-audit-kit --emit-coverage --format md      # human table
 
 - **Machine-readable:** [`docs/coverage.json`](docs/coverage.json) — per-rule rows
   + framework roll-ups + reserved slots for the 2026-07-28 MCP-final surfaces.
-- **Human report seed:** [`docs/STATE-OF-MCP-SECURITY-2026.md`](docs/STATE-OF-MCP-SECURITY-2026.md)
+- **Coverage & crosswalk reference:** [`docs/STATE-OF-MCP-SECURITY-2026.md`](docs/STATE-OF-MCP-SECURITY-2026.md)
   — the coverage table plus the "we scanned N public MCP servers, here's what
   breaks" corpus section.
 
@@ -570,7 +570,7 @@ GitHub crawl plus **1,641 official MCP Registry latest-version servers** (up 2.3
 from 710 in July as the registry grew), deduped by content and scanned offline and
 deterministically (scan date **2026-07-26**). Headline: **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) declare
 a remote server with no authentication, 0% use RFC 9728 Protected-Resource-Metadata
-discovery, 100% (421/421) of inline-auth configs hardcode a static credential, and
+discovery, <!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->424<!-- /report -->/<!-- report:inline-auth-d -->424<!-- /report -->) of inline-auth configs hardcode a static credential, and
 19.5% `npx`/`uvx`-fetch-and-execute unpinned remote packages** (the Shai-Hulud
 supply-chain blast radius, one `.mcp.json` away). 52.8% carry a critical finding.
 
@@ -655,7 +655,7 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # <!-- test-count:total -->2,152<!-- /test-count --> test functions
+pytest -v                          # <!-- test-count:total -->2,166<!-- /test-count --> test functions
 ruff check .                       # Lint
 mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan
