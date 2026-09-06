@@ -28,6 +28,14 @@ report:
 corpus:
 	python $(RESEARCH)/fetch_registry.py --target 5000
 
+## report-figures-check: fail if a governed report figure is stated outside a
+## `report:` marker. report-check guards results.json against the corpus; this
+## guards the published prose against results.json, which is the gap that let
+## `100% (421/421)` sit in the README while the data said 424 -- unmarked, so the
+## marker test could not see it.
+report-figures-check:
+	@PYTHONPATH=. python scripts/check_report_figures.py
+
 ## report-check: fail if results.json is not byte-identical to a fresh run (drift guard)
 report-check:
 	@python $(RESEARCH)/run_report.py --corpus $(CORPUS) --registry-manifest $(MANIFEST) --out /tmp/aak-report-check.json >/dev/null

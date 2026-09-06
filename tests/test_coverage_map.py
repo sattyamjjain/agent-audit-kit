@@ -18,7 +18,9 @@ from agent_audit_kit.rules.builtin import RULES
 
 REPO = Path(__file__).resolve().parent.parent
 COVERAGE_JSON = REPO / "docs" / "coverage.json"
-REPORT_SEED = REPO / "docs" / "STATE-OF-MCP-SECURITY-2026.md"
+# Reduced from a competing "report seed" to a coverage & crosswalk pointer
+# page on 2026-09-06; it still carries the generated rule-count anchor.
+COVERAGE_DOC = REPO / "docs" / "STATE-OF-MCP-SECURITY-2026.md"
 
 
 # ---------------------------------------------------------------------------
@@ -103,9 +105,9 @@ def test_committed_coverage_json_count_matches_registry() -> None:
 def test_report_seed_rule_count_anchor_matches_registry() -> None:
     import re
 
-    text = REPORT_SEED.read_text(encoding="utf-8")
+    text = COVERAGE_DOC.read_text(encoding="utf-8")
     anchors = re.findall(r"<!--\s*rule-count:total\s*-->(\d+)<!--\s*/rule-count\s*-->", text)
-    assert anchors, "report seed lost its rule-count anchor"
+    assert anchors, "the coverage reference lost its rule-count anchor"
     assert all(int(a) == len(RULES) for a in anchors)
 
 

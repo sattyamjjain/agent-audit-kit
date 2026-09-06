@@ -1,6 +1,6 @@
 """Per-rule framework coverage crosswalk — the source of truth for
-``agent-audit-kit --emit-coverage``, ``docs/coverage.json`` and the State-of-MCP
-report seed.
+``agent-audit-kit --emit-coverage``, ``docs/coverage.json`` and the coverage &
+crosswalk reference at ``docs/STATE-OF-MCP-SECURITY-2026.md``.
 
 For every rule in the built-in registry this emits: id, title, severity,
 category, the CVE(s) it covers, its OWASP MCP Top-10 slot, its OWASP Agentic

@@ -1,8 +1,12 @@
-# State of MCP Security 2026 — coverage & corpus (report seed)
+# MCP security coverage & crosswalk
 
-> **Seed, not the final report.** The coverage table below is generated from the
-> committed rule registry (`agent-audit-kit --emit-coverage`); the corpus section
-> is stubbed and cross-links the live data run. Regenerate with
+> **The corpus study is [`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md) (v1.0, citable).**
+> This page is not a second report and does not restate its findings. It covers
+> what only lives here: the framework crosswalk generated from the committed rule
+> registry, the dated evidence anchors, and the reserved-surface status table for
+> MCP final 2026-07-28.
+>
+> Regenerate the coverage data with
 > `python -c "from agent_audit_kit.output.coverage_map import render_json; open('docs/coverage.json','w').write(render_json())"`.
 
 AgentAuditKit ships **<!-- rule-count:total -->332<!-- /rule-count --> deterministic rules**,
@@ -25,22 +29,22 @@ the **EU AI Act** article it maps to. `docs/coverage.json` groups and counts by
 each framework. The NSA-CSI + OWASP-Agentic view is also in
 [`docs/crosswalk/nsa-csi-owasp-agentic.md`](crosswalk/nsa-csi-owasp-agentic.md).
 
-## We scanned N public MCP servers — here is what breaks
+## Corpus findings live in the report
 
-A reproducible, offline data run over **2,303 distinct public MCP server configs**
-(a GitHub crawl plus the official MCP Registry's latest-version servers, deduped by
-content) already exists — see
-[`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md)
-and the raw [`results.json`](../research/state-of-mcp-2026/results.json). Headline
-from that run: **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) declare a remote server with no authentication,
-0% use RFC 9728 Protected-Resource-Metadata discovery, and 100% (421/421) of
-inline-auth remote configs hardcode a static credential.**
+The data run over **2,303 distinct public MCP server configs** — a GitHub crawl
+plus the official MCP Registry's latest-version servers, deduped by content — is
+published in full as [`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md)
+(v1.0, with methods, limitations and a citation block), over the raw
+[`results.json`](../research/state-of-mcp-2026/results.json). Per-rule prevalence
+is in [`PREVALENCE.md`](../research/state-of-mcp-2026/PREVALENCE.md).
 
-> **Stub for the next corpus run.** Re-run the harness and drop the refreshed
-> "what breaks" table here: top misconfigurations by config-hit-rate, grade
-> distribution (A–F), auth-posture split (no-auth / bearer / OAuth 2.1 / unknown),
-> and transport split (stdio / SSE / streamable-HTTP). The frozen baseline for
-> before/after is [`mcp-security-baseline-v1.0`](research/mcp-security-baseline-v1.0.md).
+One figure for orientation, generated from the same data:
+**<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) of those configs declare a remote server with no authentication.**
+Everything else — grade distribution, auth-posture and transport splits, the top
+misconfigurations table — is in the report, and is deliberately not duplicated
+here. This page previously carried a stubbed "what breaks" section that competed
+with it; that is what let `100% (421/421)` sit on this page while the report said
+424.
 
 ## Evidence anchors (verified live 2026-07-24)
 

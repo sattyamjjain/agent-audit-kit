@@ -99,7 +99,29 @@ def report_headline_numbers() -> dict[str, str]:
         # 1,215 -- the same drift as the no-auth figure, one metric over.
         "critical-pct": f"{data['configs_with_critical_pct']:g}",
         "critical-n": _n(data["configs_with_critical"]),
+        # PREVALENCE.md's top-10 row 3 and REPORT.md's OAuth table state the same
+        # AAK-OAUTH-008 figure in opposite orders, and they disagreed: 421 / 18.3%
+        # against 424 / 18.4%, inside sibling files. Sourced from
+        # top_misconfigurations so the row cannot be typed by hand again.
+        "oauth008-n": _n(_top_misconfig(data, "AAK-OAUTH-008")["configs"]),
+        "oauth008-pct": f"{_top_misconfig(data, 'AAK-OAUTH-008')['config_pct']:g}",
     }
+
+
+def _top_misconfig(data: dict, rule_id: str) -> dict:
+    """One row of results.json's top_misconfigurations, by rule id.
+
+    Raises rather than defaulting: a missing row means the rule dropped out of
+    the top ten, and silently rendering a zero would publish a wrong figure that
+    still passes every marker check.
+    """
+    for row in data["top_misconfigurations"]:
+        if row["rule_id"] == rule_id:
+            return row
+    raise SystemExit(
+        f"sync_rule_count: {rule_id} is not in results.json top_misconfigurations; "
+        f"the surfaces that render its figures need revisiting"
+    )
 
 
 # Every file that carries `report:` markers. The README was the only one for a
