@@ -1,0 +1,2154 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Security scanner for MCP-connected AI agent pipelines">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/changelog/archive/CHANGELOG.cves/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>AAK CVE-to-Rule Ledger — archive (v0.3.58 and earlier) - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aak-cve-to-rule-ledger-archive-v0358-and-earlier" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AAK CVE-to-Rule Ledger — archive (v0.3.58 and earlier)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#2026-07-23-v0358" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2026-07-23 (v0.3.58)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-07-22-v0357" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2026-07-22 (v0.3.57)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-07-21-v0356" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2026-07-21 (v0.3.56)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dispositioned-2026-07-19-v0352" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dispositioned 2026-07-19 (v0.3.52)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mcp-2026-07-28-ratification-reconciliation-2026-07-16-v0350" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MCP 2026-07-28 ratification reconciliation — 2026-07-16 (v0.3.50)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0350-2026-07-18-2026-07-1517-wave" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.50 (2026-07-18) — 2026-07-15..17 wave
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0350-2026-07-16" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.50 (2026-07-16)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0349-2026-07-13" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.49 (2026-07-13)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0348-2026-07-08" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.48 (2026-07-08)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0347-2026-07-07" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.47 (2026-07-07)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0346-2026-07-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.46 (2026-07-06)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0322-2026-05-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.22 (2026-05-20)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0321-2026-05-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.21 (2026-05-19)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0320-2026-05-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.20 (2026-05-18)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0319-2026-05-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.19 (2026-05-17)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0318-2026-05-17" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.18 (2026-05-17)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0317-2026-05-10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.17 (2026-05-10)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0316-2026-05-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.16 (2026-05-09)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0315-2026-05-06" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.15 (2026-05-06)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0314-2026-05-05" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.14 (2026-05-05)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0313-2026-05-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.13 (2026-05-03)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v0312-2026-05-03" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.12 (2026-05-03)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v038-2026-04-27" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.8 (2026-04-27)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v037-2026-04-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.7 (2026-04-26)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v036-2026-04-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.6 (2026-04-26)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v035-2026-04-25" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.5 (2026-04-25)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v034-2026-04-24" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.4 (2026-04-24)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v033-2026-04-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.3 (2026-04-21)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v032-2026-04-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.2 (2026-04-20)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v031-2026-04-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.1 (2026-04-19)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shipped in v0.3.1 (2026-04-19)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ox-security-architectural-class-apr-16-2026-disclosure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ox Security architectural class (Apr 16 2026 disclosure)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shipped-in-v030" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shipped in v0.3.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-best-effort-no-committed-sla" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open (best-effort — no committed SLA)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="aak-cve-to-rule-ledger-archive-v0358-and-earlier">AAK CVE-to-Rule Ledger — archive (v0.3.58 and earlier)</h1>
+<p>Frozen CVE ledger history. Current entries live in <a href="../../../CHANGELOG.cves.md">/CHANGELOG.cves.md</a>. These sections were moved out on 2026-08-09 to keep the ledger reviewable; they are not edited further.</p>
+<hr />
+<h2 id="2026-07-23-v0358">2026-07-23 (v0.3.58)</h2>
+<p>Two <code>cve-response</code> issues triaged for the v0.3.58 cut — one new pin, one
+dispositioned.</p>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Reference</th>
+<th>AAK rule / disposition</th>
+<th>Triaged</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-65594 (n8n MCP Server Trigger — the OAuth 2.1 consent/token flow does not verify the authenticated user's access to the referenced workflow → member-level user self-approves consent for another user's workflow and runs it in the owner's project with the owner's credentials; affected 2.27.0–&lt;2.29.8 and 2.30.0–&lt;2.30.1)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-65594">NVD</a></td>
+<td><strong>Pinned</strong> <code>AAK-MCP-N8N-CVE-2026-65594-001</code> — two arms (mainline floor 2.29.8 introduced 2.27.0; 2.30.x floor 2.30.1 introduced 2.30.0). A distinct fix line from CVE-2026-59207 (2.27.4/2.28.1), so its own rule rather than a floor bump — the old pin must not false-positive the 2.28.x line, and this one must not miss it.</td>
+<td>2026-07-23</td>
+</tr>
+<tr>
+<td>CVE-2026-44192 (Ansible Lightspeed MCP server — path traversal via indirect prompt injection → writes files to unauthorized locations; MEDIUM 6.6)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-44192">NVD</a></td>
+<td><strong>Not pinnable</strong> — a Red Hat product component (Ansible Lightspeed), not a standalone npm/PyPI dependency a scanned project pins, and no fixed version is published (a floorless pin would false-positive after any future fix). Path-traversal / indirect-prompt-injection class. No rule.</td>
+<td>2026-07-23</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2026-07-22-v0357">2026-07-22 (v0.3.57)</h2>
+<p>Five <code>cve-response</code> issues triaged for the v0.3.57 cut — one new pin, one
+class-covered by an existing pin, three dispositioned with rationale.</p>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Reference</th>
+<th>AAK rule / disposition</th>
+<th>Triaged</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-47708 (MCP-for-Stata &lt; 1.17.3 — <code>log_file_name</code> interpolated into a Stata command string with no sanitization → arbitrary Stata <code>shell</code>/<code>python</code>/<code>erase</code> command injection)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-47708">NVD</a></td>
+<td><strong>Pinned</strong> <code>AAK-MCP-STATA-CVE-2026-47708-001</code> (fix floor <code>mcp-for-stata</code> 1.17.3)</td>
+<td>2026-07-22</td>
+</tr>
+<tr>
+<td>CVE-2026-47394 (PraisonAI &lt; 4.6.40 — incomplete fix of CVE-2026-44336; <code>workflow.show</code> + unvalidated <code>tools/call</code> kwargs → arbitrary file read)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-47394">NVD</a></td>
+<td><strong>Class-covered</strong> by the existing <code>AAK-MCP-PRAISONAI-CVE-2026-61427-001</code> pin (floor 4.6.78 ⊇ every &lt; 4.6.40 affected version); CVE added to the rule's <code>cve_references</code>.</td>
+<td>2026-07-22</td>
+</tr>
+<tr>
+<td>CVE-2026-50758 (next-ai-draw-io 0.4.13 — XSS via the <code>mcp</code> parameter)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-50758">NVD</a></td>
+<td><strong>Class-covered</strong> by the existing <code>AAK-NEXT-AI-DRAW-001</code> pin, which fires on <code>next-ai-draw-io &lt; 0.4.15</code> and so catches the affected 0.4.13. No separate rule (a DoS-titled pin should not carry an unrelated XSS CVE); no vendor fix version for the XSS is published.</td>
+<td>2026-07-22</td>
+</tr>
+<tr>
+<td>CVE-2026-15829 (googleapis/mcp-toolbox — <code>bigquery-forecast</code> SQL injection / <code>allowedDatasets</code> bypass)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15829">NVD</a></td>
+<td><strong>Not pinnable</strong> — mcp-toolbox is a Go binary (<code>googleapis/genai-toolbox</code>), not an npm/PyPI dependency a scanned project pins, and no fixed version is published. SQLi class; outside AAK's pin/config surface. No rule.</td>
+<td>2026-07-22</td>
+</tr>
+<tr>
+<td>CVE-2026-65056 (mcp-webresearch 0.1.7 — SSRF: <code>visit_page</code> validates URL scheme only, not private/reserved IP ranges → cloud-metadata/internal reach; HIGH 8.2)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-65056">NVD</a></td>
+<td><strong>Class-covered, not pinned</strong> — the caller-URL→fetch-without-allow-list pattern is exactly <code>AAK-MCP-SSRF-001</code> (CVE-2026-14748 anchor). No published fix version, so a version pin would false-positive after any future fix; tracked here instead.</td>
+<td>2026-07-22</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2026-07-21-v0356">2026-07-21 (v0.3.56)</h2>
+<p>Five <code>cve-response</code> issues triaged for the v0.3.56 cut — two pinned, three
+dispositioned with rationale.</p>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Reference</th>
+<th>AAK rule / disposition</th>
+<th>Triaged</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-46555 (whatsapp-mcp &lt; 0.2.1 — <code>whatsapp-bridge</code> unauthenticated loopback HTTP API + no Host validation + absolute <code>media_path</code> → arbitrary file exfil as WhatsApp attachments, DNS-rebinding; CVSS 7.7)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-46555">NVD</a></td>
+<td><strong>Pinned</strong> <code>AAK-MCP-WHATSAPP-CVE-2026-46555-001</code> (fix floor 0.2.1; fires on manifest/lockfile references below 0.2.1)</td>
+<td>2026-07-21</td>
+</tr>
+<tr>
+<td>CVE-2026-57495 (AgenticMail bridge-wake indirect prompt injection — external mail resumes the operator's Claude Code session with <code>permissionMode: bypassPermissions</code>, embedding attacker-controlled <code>from</code>/<code>subject</code>/<code>preview</code> into a fully-privileged agent)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-57495">NVD</a></td>
+<td><strong>Pinned</strong> <code>AAK-MCP-AGENTICMAIL-CVE-2026-57495-001</code> — one rule, per-package fix floors: <code>@agenticmail/claudecode</code> ≥ 0.2.39, <code>@agenticmail/codex</code> ≥ 0.1.33, <code>@agenticmail/core</code> ≥ 0.9.43, <code>@agenticmail/openclaw</code> ≥ 0.5.71</td>
+<td>2026-07-21</td>
+</tr>
+<tr>
+<td>CVE-2026-53378 (Linux kernel <code>drm/colorop</code> blob-property reference leak)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-53378">NVD</a></td>
+<td><strong>Out of scope</strong> — a Linux-kernel DRM reference-counting memory leak, not an MCP/agent artifact. Surfaced only because the NVD keyword feed matched; there is no AAK config/dependency surface. No rule.</td>
+<td>2026-07-21</td>
+</tr>
+<tr>
+<td>CVE-2026-55544 (NextCRM 0.12.1 — MCP campaign tools ignore the authenticated user ID → BOLA/IDOR across campaigns; fixed 0.12.2; CVSS 7.6)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-55544">NVD</a></td>
+<td><strong>Not pinnable</strong> — server-side broken-object-level-authorization in a self-hosted Next.js app (<code>nextcrm-app</code>), which is not an npm/PyPI dependency a scanned project pins, and the flaw has no client <code>.mcp.json</code> or dependency-manifest signal. Outside AAK's detection surface; no rule.</td>
+<td>2026-07-21</td>
+</tr>
+<tr>
+<td>CVE-2026-55550 (NextCRM 0.12.1 — MCP product tools skip role checks → any low-priv user mutates the shared catalog; fixed 0.12.3; CVSS 7.1)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-55550">NVD</a></td>
+<td><strong>Not pinnable</strong> — same class and app as CVE-2026-55544 (self-hosted server-side authorization logic). Outside AAK's detection surface; no rule.</td>
+<td>2026-07-21</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dispositioned-2026-07-19-v0352">Dispositioned 2026-07-19 (v0.3.52)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s) / disposition</th>
+<th>Dispositioned</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-16133 (LiuMengxuan04 MiniCode 0.1.0 — <code>child_process.spawn</code> command injection in <code>mcp.ts</code>)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-16133">NVD CVE-2026-16133</a> (MEDIUM, CVSS 5)</td>
+<td><strong>Class-covered</strong> by <code>AAK-MCP-STDIO-CMD-INJ-*</code> (TS/JS MCP stdio <code>child_process.spawn</code> command injection). Not pinned — GitHub-only project (0.1.0), no released fix (upstream PR pending), no matching npm/PyPI artifact.</td>
+<td>2026-07-19</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mcp-2026-07-28-ratification-reconciliation-2026-07-16-v0350">MCP 2026-07-28 ratification reconciliation — 2026-07-16 (v0.3.50)</h2>
+<p>The 2026-07-28 MCP specification is still a <strong>release candidate</strong> as of this
+date: the RC was locked on 2026-05-21 (milestone <code>2026-07-28-RC</code>) and the final,
+ratified spec publishes on <strong>2026-07-28</strong> (12 days out). Every AAK rule shipped
+in July for that spec is therefore <em>correctly</em> labelled "release candidate" — no
+rule is relabelled "ratified" ahead of publication. This attestation records that
+each rule's cited SEP number was re-verified against primary sources and is
+accurate; nothing needed correcting.</p>
+<p>Primary sources: <a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2596">SEP-2596 PR #2596</a>
+(labelled <code>final</code>, milestone <code>2026-07-28-RC</code>),
+<a href="https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2791">SEP-2577/2596 spec-incorporation PR #2791</a>,
+<a href="https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/">2026-07-28 RC blog</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Rule(s)</th>
+<th>Cited SEP(s)</th>
+<th>Verified meaning</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AAK-MCP-DEPRECATED-001..003</td>
+<td>SEP-2577 + SEP-2596</td>
+<td>SEP-2577 annotation-deprecates Roots/Sampling/Logging; SEP-2596 is the 12-month feature-lifecycle &amp; deprecation policy</td>
+<td>✓ accurate · RC label correct</td>
+</tr>
+<tr>
+<td>AAK-OAUTH-006</td>
+<td>SEP-2468 (RFC 9207)</td>
+<td><code>iss</code> authorization-response validation</td>
+<td>✓ accurate · RC label correct</td>
+</tr>
+<tr>
+<td>AAK-MCP-STATELESS-001</td>
+<td>SEP-2567, SEP-2575, SEP-1442</td>
+<td>session removal / stateless transport; optional initialization handshake</td>
+<td>✓ accurate · RC label correct</td>
+</tr>
+<tr>
+<td>AAK-MCP-STATELESS-002</td>
+<td>SEP-1686, SEP-2663</td>
+<td>experimental Tasks primitive → Tasks extension</td>
+<td>✓ accurate · RC label correct</td>
+</tr>
+</tbody>
+</table>
+<p>Separately, <strong>AAK-OAUTH-007</strong> (new in v0.3.50) is cited to the <strong>ratified</strong> MCP
+2025-11-25 authorization spec — RFC 8707 Resource Indicators are mandatory today
+(<code>resource</code> parameter on authorization + token requests; server-side audience
+validation), independent of the 2026-07-28 RC. It is not part of this RC
+reconciliation.</p>
+<h2 id="shipped-in-v0350-2026-07-18-2026-07-1517-wave">Shipped in v0.3.50 (2026-07-18) — 2026-07-15..17 wave</h2>
+<p>Response to a second 2026-07 disclosure wave (24 CVEs, issues #445–#468) the NVD
+watcher filed while the earlier backlog was being cleared. Fourteen CVEs cluster
+onto seven pinnable packages (many share one fix version) and ship as version-pins
+(<code>mcp_cve_pins_2026_07</code>, now 22 pins); one is covered by an existing pin; nine are
+dispositioned (PHP / GitHub Action / WordPress ecosystems, no vendor fix, or no NVD
+version data). Packages + floors verified against PyPI / npm; <code>mcp</code> and <code>n8n-mcp</code>
+pins use precise token regexes so they never trip <code>fastmcp</code> / <code>mcp-text-editor</code> /
+<code>n8n</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s) / disposition</th>
+<th>Shipped</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-52869 + CVE-2026-52870 + CVE-2026-59950 (MCP Python SDK <code>mcp</code> &lt; 1.28.1 — cross-client session injection, task cross-access, WebSocket no-Origin)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-52869">NVD CVE-2026-52869</a> (HIGH, CVSS 7.1)</td>
+<td><strong>AAK-MCP-SDK-CVE-2026-52869-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin <code>mcp</code> &gt;= 1.28.1)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-46339 + CVE-2026-49353 + CVE-2026-62312 (9Router <code>9router</code> &lt; 0.5.2 — unauthenticated MCP bridge → command exec / RCE)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-46339">NVD CVE-2026-46339</a> (CRITICAL, CVSS 10)</td>
+<td><strong>AAK-MCP-9ROUTER-CVE-2026-46339-001</strong> (NEW: CRITICAL, SUPPLY_CHAIN — pin <code>9router</code> &gt;= 0.5.2)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-54052 + CVE-2026-55608 (n8n-MCP <code>n8n-mcp</code> &lt; 2.57.4 — multi-tenant workflow-backup isolation bypass)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-54052">NVD CVE-2026-54052</a> (CRITICAL, CVSS 9.9)</td>
+<td><strong>AAK-MCP-N8NMCP-CVE-2026-54052-001</strong> (NEW: CRITICAL, SUPPLY_CHAIN — pin <code>n8n-mcp</code> &gt;= 2.57.4)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-44968 + CVE-2026-44970 + CVE-2026-44969 (dbt-mcp <code>dbt-mcp</code> &lt; 1.17.1 — dbt-flag injection into subprocess argv; tool-arg leakage via telemetry + file logging)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-44968">NVD CVE-2026-44968</a> (MEDIUM, CVSS 6.3)</td>
+<td><strong>AAK-MCP-DBTMCP-CVE-2026-44968-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin <code>dbt-mcp</code> &gt;= 1.17.1)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-46341 (Apify MCP <code>@apify/actors-mcp-server</code> &lt; 0.9.21 — <code>fetch-apify-docs</code> <code>startsWith()</code> allowlist bypass → SSRF)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-46341">NVD CVE-2026-46341</a> (MEDIUM, CVSS 6.1)</td>
+<td><strong>AAK-MCP-APIFY-CVE-2026-46341-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin <code>@apify/actors-mcp-server</code> &gt;= 0.9.21)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-58195 (Agentic-Flow <code>agentic-flow</code> &lt; 2.0.14 — MCP tool params interpolated into <code>execSync()</code> → OS command injection)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-58195">NVD CVE-2026-58195</a> (HIGH, CVSS 8.8)</td>
+<td><strong>AAK-MCP-AGENTICFLOW-CVE-2026-58195-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin <code>agentic-flow</code> &gt;= 2.0.14)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-15415 (AWS HealthOmics MCP <code>awslabs.aws-healthomics-mcp-server</code> &lt; 0.0.36 — <code>workflow_files</code> directory traversal writes outside the bundle dir)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15415">NVD CVE-2026-15415</a> (MEDIUM, CVSS 5.5)</td>
+<td><strong>AAK-MCP-HEALTHOMICS-CVE-2026-15415-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin &gt;= 0.0.36)</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-62208 (OpenClaw before 2026.6.5 — Authorization headers forwarded during MCP SSE redirects)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-62208">NVD CVE-2026-62208</a> (MEDIUM, CVSS 6.5)</td>
+<td><strong>Covered</strong> by <code>AAK-MCP-OPENCLAW-CVE-2026-62195-001</code> (fires &lt; 2026.6.6, which includes the &lt; 2026.6.5 affected range); CVE added to that rule's references</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-46512 / 46513 / 46514 / 46515 (Frogman headless-PBX MCP &lt; 1.6.2 / 1.6.3 — dialplan injection → Asterisk RCE, raw API-token storage, plaintext creds in audit log, PERM_READ over-exposure)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-46512">NVD CVE-2026-46512</a> (CRITICAL, CVSS 9.9)</td>
+<td><strong>Documented, not pinned</strong> — Frogman is a PHP application (<code>Tools/*.php</code>, <code>oc_*</code> tables); AAK's pin detector reads PyPI/npm manifests only</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-47751 (Claude Code Action &lt; 1.0.74 — checks out attacker PR head + auto-enables all project MCP servers from a malicious <code>.mcp.json</code> → runner RCE + secret exfil)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-47751">NVD CVE-2026-47751</a> (CVSS n/a)</td>
+<td><strong>Documented, not pinned</strong> — a GitHub Action pinned in <code>.github/workflows</code> (<code>uses: anthropics/claude-code-action@vX</code>), not a PyPI/npm manifest artifact</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-9810 (AI Copilot WordPress plugin &lt; 1.5.4 — OAuth token not bound to a WP user → unauth admin MCP-tool execution)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-9810">NVD CVE-2026-9810</a> (CVSS n/a)</td>
+<td><strong>Documented, not pinned</strong> — a WordPress/PHP plugin; unsupported ecosystem for the pin detector</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-57860 (ForgeCode <code>forgecode</code> — auto-loads + executes a repo's <code>.mcp.json</code> on startup with no confirmation → RCE from an untrusted repo)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-57860">NVD CVE-2026-57860</a> (HIGH, CVSS 7.8)</td>
+<td><strong>Documented, not pinned</strong> — NVD/advisory name no fixed version (design-level auto-exec); untrusted-<code>.mcp.json</code>-launch class</td>
+<td>2026-07-18</td>
+</tr>
+<tr>
+<td>CVE-2026-9135 + CVE-2026-7755 (IBM Langflow OSS — ToolGuard dynamic-CodeInput code injection bypassing <code>allow_custom_components=false</code>; RCE via incomplete MCP-config validation)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-9135">NVD CVE-2026-9135</a> (CRITICAL, CVSS 9.9)</td>
+<td><strong>Documented, not pinned</strong> — NVD published no CPE data and the affected range is ambiguous (<code>1.0.0</code>–<code>1.10.0</code> vs "up to 1.9.2"); will pin once the fixed version is confirmed (tracked)</td>
+<td>2026-07-18</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0350-2026-07-16">Shipped in v0.3.50 (2026-07-16)</h2>
+<p>Response to the 2026-07-13..15 disclosure wave (13 CVEs, issues #429–#442).
+Eight have a vendor fix + a pinnable PyPI/npm artifact and ship as version-pins
+(<code>mcp_cve_pins_2026_07</code>); five have no pinnable artifact, no vendor fix, or an
+unsupported ecosystem and are dispositioned below. Package names, fix floors, and
+(where NVD published CPE data) affected ranges were verified against PyPI / npm /
+NVD before shipping.</p>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s) / disposition</th>
+<th>Shipped</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-15643 (AWS HealthLake MCP <code>awslabs.healthlake-mcp-server</code> &lt; 0.0.14 — <code>next_token</code> pagination SSRF exfiltrates AWS temporary credentials to an attacker endpoint)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15643">NVD CVE-2026-15643</a> (HIGH, CVSS 7.3)</td>
+<td><strong>AAK-MCP-HEALTHLAKE-CVE-2026-15643-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin &gt;= 0.0.14)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-61427 (PraisonAI <code>praisonai</code> &lt; 4.6.78 — MCP HTTP-stream unauthenticated by default; <code>--api-key</code> defaults to None → <code>tools/list</code> + <code>tools/call</code>)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-61427">NVD CVE-2026-61427</a> (HIGH, CVSS 7.3)</td>
+<td><strong>AAK-MCP-PRAISONAI-CVE-2026-61427-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin &gt;= 4.6.78)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-58500 (MCP Appium <code>appium-mcp</code> &lt; 1.85.10 — <code>createLocatorGeneratorUI</code> HTML/JS injection → <code>window.parent.postMessage</code> invokes arbitrary MCP tools)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-58500">NVD CVE-2026-58500</a> (HIGH, CVSS 8.2)</td>
+<td><strong>AAK-MCP-APPIUM-CVE-2026-58500-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin &gt;= 1.85.10)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-45805 (Penpot MCP <code>@penpot/mcp</code> &lt; 2.15.0 — ReplServer on <code>0.0.0.0:4403</code> exposes unauthenticated <code>/execute</code> → JS RCE)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-45805">NVD CVE-2026-45805</a> (HIGH, CVSS 8.8)</td>
+<td><strong>AAK-MCP-PENPOT-CVE-2026-45805-001</strong> (NEW: CRITICAL, SUPPLY_CHAIN — pin &gt;= 2.15.0)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-62195 (OpenClaw <code>openclaw</code> 2026.5.20–&lt;2026.6.6 — MCP loopback authorization bypass lets lower-trust callers run owner-only tools)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-62195">NVD CVE-2026-62195</a> (HIGH, CVSS 8.3; NVD CPE <code>2026.5.20</code> &lt;= v &lt; <code>2026.6.6</code>)</td>
+<td><strong>AAK-MCP-OPENCLAW-CVE-2026-62195-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin &gt;= 2026.6.6, introduced 2026.5.20)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-49988 (Repomix <code>repomix</code> &lt; 1.14.1 — MCP <code>attach_packed_output</code>/<code>read_repomix_output</code> reads local files without the <code>runSecretLint()</code> boundary)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-49988">NVD CVE-2026-49988</a> (CVSS n/a)</td>
+<td><strong>AAK-MCP-REPOMIX-CVE-2026-49988-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin &gt;= 1.14.1)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-53512 + CVE-2026-53518 (Better Auth <code>better-auth</code> / <code>@better-auth/oauth-provider</code> &lt; 1.6.11 — refresh-token grant skips <code>client_secret</code>; auth-code non-atomic find-then-delete → code replay; both reachable via <code>mcp</code>/<code>oidcProvider</code> plugins)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-53512">NVD CVE-2026-53512</a> (CVSS n/a)</td>
+<td><strong>AAK-MCP-BETTERAUTH-CVE-2026-53512-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin &gt;= 1.6.11)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-61462 (mcp-gitlab — <code>job_id</code> path traversal in <code>build/index.js</code> redirects GitLab API calls using the operator PAT)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-61462">NVD CVE-2026-61462</a> (HIGH, CVSS 8.6)</td>
+<td><strong>Documented, not pinned</strong> — NVD has published no CPE/version data and the description names no fixed version; the "mcp-gitlab" npm name is ambiguous across several GitLab MCP servers. Will pin once the vendor fix version is confirmed (tracked).</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-15749 (mastergo-design <code>mastergo-magic-mcp</code> &lt;= 0.2.0 — <code>get-c2d.ts</code> <code>filePath</code> path traversal)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15749">NVD CVE-2026-15749</a> (MEDIUM, CVSS 5.3)</td>
+<td><strong>Documented, not pinned</strong> — no PyPI/npm artifact (GitHub-only TS project) and NVD notes the vendor has not responded / released no fix, so there is no floor to pin. Path-traversal-in-tool-arg class.</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-15750 (mastergo-design <code>mastergo-magic-mcp</code> &lt;= 0.2.0 — <code>get-component-link.ts</code> <code>url</code> SSRF)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15750">NVD CVE-2026-15750</a> (MEDIUM, CVSS 6.3)</td>
+<td><strong>Class-covered</strong> by <code>AAK-MCP-SSRF-001</code> (unvalidated tool-arg URL → fetch); no pinnable artifact / vendor fix</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-15751 (mastergo-design <code>mastergo-magic-mcp</code> &lt;= 0.2.0 — <code>component-workflow.md</code> <code>rootPath</code> path traversal)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15751">NVD CVE-2026-15751</a> (MEDIUM, CVSS 5.3)</td>
+<td><strong>Documented, not pinned</strong> — same package/disposition as CVE-2026-15749 (no artifact, no vendor fix)</td>
+<td>2026-07-16</td>
+</tr>
+<tr>
+<td>CVE-2026-15583 (Grafana MCP Server — <code>X-Grafana-URL</code> header confused-deputy exfiltrates the service-account token + SSRF to internal/metadata endpoints)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15583">NVD CVE-2026-15583</a> (HIGH, CVSS 8.6)</td>
+<td><strong>Documented, not pinned</strong> — <code>mcp-grafana</code> is a Go module; AAK's pin detector reads PyPI/npm manifests only. SSRF / confused-deputy class.</td>
+<td>2026-07-16</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0349-2026-07-13">Shipped in v0.3.49 (2026-07-13)</h2>
+<p>Batch response to the 2026-07-08..12 disclosure wave (13 CVEs). Eight have a
+vendor fix + a pinnable PyPI/npm artifact and ship as version-pins
+(<code>mcp_cve_pins_2026_07</code>); three have no pinnable artifact or a tractable version
+scheme and are dispositioned below. Latency ran past 48 hours for the earlier
+CVEs — this backlog accumulated between the v0.3.48 and v0.3.49 releases
+and is recorded honestly.</p>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s) / disposition</th>
+<th>Shipped</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-59822 + CVE-2026-59820 (LiteLLM &lt; 1.84.0 — MCP Streamable-HTTP auth bypass via empty <code>UserAPIKeyAuth()</code> fallback; skills-archive ZIP path traversal)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-59822">NVD CVE-2026-59822</a> (CVSS n/a)</td>
+<td><strong>AAK-MCP-LITELLM-CVE-2026-59822-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin <code>litellm</code> &gt;= 1.84.0)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-59723 (Cline &lt; 3.0.30 — Hub-dashboard <code>/browser</code> WebSocket accepts frames without Origin validation → workspace read + settings mutation + command exec)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-59723">NVD CVE-2026-59723</a> (HIGH, CVSS 8.8)</td>
+<td><strong>AAK-MCP-CLINE-CVE-2026-59723-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin <code>cline</code> &gt;= 3.0.30)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-15138 (tumf mcp-text-editor — <code>_validate_file_path</code> path traversal via <code>file_path</code>; NVD affected up to 1.0.2)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15138">NVD CVE-2026-15138</a> (MEDIUM, CVSS 6.3)</td>
+<td><strong>AAK-MCP-TEXTEDITOR-CVE-2026-15138-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin <code>mcp-text-editor</code> past 1.0.2)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-59207 (n8n &lt; 2.27.4 / 2.28.1 — AI-Agent MCP tool bypasses credential "Allowed HTTP Request Domains" → shared-credential exfil)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-59207">NVD CVE-2026-59207</a> (MEDIUM, CVSS 6.5)</td>
+<td><strong>AAK-MCP-N8N-CVE-2026-59207-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin <code>n8n</code> &gt;= 2.27.4 / 2.28.1)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-59726 (ruflo &lt; 3.16.3 — default docker-compose exposes MCP bridge <code>POST /mcp</code> unauthenticated → <code>tools/call</code> <code>terminal_execute</code> RCE, key theft, AgentDB poisoning)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-59726">NVD CVE-2026-59726</a> (CRITICAL, CVSS 10)</td>
+<td><strong>AAK-MCP-RUFLO-CVE-2026-59726-001</strong> (NEW: CRITICAL, SUPPLY_CHAIN — pin <code>ruflo</code> &gt;= 3.16.3)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-55604 + CVE-2026-55605 (@arikusi/deepseek-mcp-server 1.4.2–&lt;1.8.0 — process-global <code>SessionStore</code> accepts unbound <code>session_id</code> → session hijack; unauth <code>POST /mcp</code> HTTP transport)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-55604">NVD CVE-2026-55604</a> (HIGH, CVSS 8.6)</td>
+<td><strong>AAK-MCP-DEEPSEEK-CVE-2026-55604-001</strong> (NEW: HIGH, SUPPLY_CHAIN — pin <code>@arikusi/deepseek-mcp-server</code> &gt;= 1.8.0)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-61459 (MCP Server Kubernetes &lt; 3.9.0 — leading-dash <code>resourceType</code>/<code>name</code> bypass <code>assertNoDangerousFlags</code>, inject <code>--server</code> to redirect kubectl → bearer-token exfil → cluster compromise)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-61459">NVD CVE-2026-61459</a> (CRITICAL, CVSS 9.8)</td>
+<td><strong>AAK-MCP-K8S-CVE-2026-61459-001</strong> (NEW: CRITICAL, SUPPLY_CHAIN — pin <code>mcp-server-kubernetes</code> &gt;= 3.9.0)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-15501 (AstrBot ≤ 4.25.2 — <code>ToolsRoute.test_mcp_connection</code> fetches caller-supplied <code>mcp_server_config.url</code> → SSRF)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15501">NVD CVE-2026-15501</a> (MEDIUM, CVSS 6.3)</td>
+<td><strong>AAK-MCP-ASTRBOT-CVE-2026-15501-001</strong> (NEW: MEDIUM, SUPPLY_CHAIN — pin <code>astrbot</code> past 4.25.2)</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-15189 (aerostackdev aerostack-mcp — <code>upload_media</code> <code>media_url</code> SSRF; rolling release, no version, no PyPI/npm artifact)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-15189">NVD CVE-2026-15189</a> (MEDIUM, CVSS 6.3)</td>
+<td><strong>Class-covered</strong> by <code>AAK-MCP-SSRF-001</code> (unvalidated tool-arg URL → fetch); no pinnable artifact to add</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-54149 (MaxKB &lt; 2.10.0-lts — <code>.tool</code> import allows stdio transport with malicious commands → <code>MultiServerMCPClient</code> executes arbitrary system commands)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-54149">NVD CVE-2026-54149</a> (HIGH, CVSS 8.8)</td>
+<td><strong>Class-covered</strong> by <code>AAK-MCP-STDIO-CMD-INJ-*</code> (MCP stdio command-injection); MaxKB is a Docker app, no PyPI/npm artifact to pin</td>
+<td>2026-07-13</td>
+</tr>
+<tr>
+<td>CVE-2026-55405 (LangChain4j MariaDB / pgvector embedding stores — metadata-filter SQL injection via string-concatenated filter keys)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-55405">NVD CVE-2026-55405</a> (HIGH, CVSS 7.6)</td>
+<td><strong>Documented, not pinned</strong> — fixed in <code>langchain4j-mariadb</code>/<code>langchain4j-pgvector</code> 1.2.1-beta8 / 1.5.1-beta11 / 1.11.8-beta19 / 1.16.3-beta26; four parallel beta fix-lines can't be one semver floor and AAK has no Maven pin ecosystem yet (tracked)</td>
+<td>2026-07-13</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0348-2026-07-08">Shipped in v0.3.48 (2026-07-08)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-49471 (Serena MCP toolkit <code>serena-agent</code> &lt; 1.5.2 — unauthenticated Flask dashboard on a fixed port + DNS rebinding writes the agent's persistent memory, chained with <code>execute_shell_command</code> <code>shell=True</code> to RCE; CWE-306 + CWE-352)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-49471">NVD CVE-2026-49471</a> (HIGH, CVSS 8.3, published 2026-07-07)</td>
+<td><strong>AAK-MCP-SERENA-CVE-2026-49471-001</strong> (NEW: HIGH, MCP_CONFIG — version-pin, fires &lt; 1.5.2 / unpinned / unpinned <code>oraios/serena</code> launch ref)</td>
+<td>2026-07-08</td>
+<td>&lt;24h on NVD</td>
+</tr>
+<tr>
+<td>CVE-2026-14748 (AIAnytime Awesome-MCP-Server <code>mcp-wiki/wiki-summary</code> — SSRF: the <code>url</code> argument of the tool handler is fetched server-side with no host/scheme allow-list, CWE-918; rolling-release project, no fixed version)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-14748">NVD CVE-2026-14748</a> (MEDIUM, CVSS 6.3, published 2026-07-05)</td>
+<td><strong>AAK-MCP-SSRF-001</strong> (NEW: MEDIUM, MCP_CONFIG — <code>ast</code> param→fetch taint / regex fallback, fires on unvalidated tool-arg URL)</td>
+<td>2026-07-08</td>
+<td>~72h on NVD (past 48h target)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0347-2026-07-07">Shipped in v0.3.47 (2026-07-07)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-14471 (Amazon mcp-gateway-registry &lt; 1.0.13 — SQL injection: crafted <code>table_name</code> interpolated into an SQL identifier in the metrics-service retention policy, CWE-89)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-14471">NVD CVE-2026-14471</a> (HIGH, CVSS 8.1, published 2026-07-06)</td>
+<td><strong>AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001</strong> (NEW: HIGH, SUPPLY_CHAIN — version-pin, fires &lt; 1.0.13 / unpinned)</td>
+<td>2026-07-07</td>
+<td>&lt;24h on NVD</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0346-2026-07-06">Shipped in v0.3.46 (2026-07-06)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-58057 (Flowise &lt; 3.1.3 — case-sensitive NODE_OPTIONS denylist bypass → <code>node_options</code> on Windows → <code>NODE_OPTIONS --require</code> RCE)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-58057">NVD CVE-2026-58057</a> (CVSS 5.0, published 2026-06-28)</td>
+<td><strong>AAK-FLOWISE-001</strong> (pin floor bumped 3.1.2 → 3.1.3; 3.1.2 configs now flag)</td>
+<td>2026-07-06</td>
+<td>version-pin extension</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0322-2026-05-20">Shipped in v0.3.22 (2026-05-20)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>arXiv:2605.18401 — SkillsVote (Liu et al., Memtensor, 2026-05-18)</td>
+<td>Lifecycle governance for Agent Skills — evidence-gated update loop depends on per-execution outcome attribution</td>
+<td><strong>AAK-SKILL-LIFECYCLE-ATTRIBUTION-001</strong> (NEW: MEDIUM, research-grade — Python AST detector for @skill execute() functions that mutate persistent state but emit no outcome-attribution call. <strong>Honest scope</strong>: invented YAML schemas from the prompt — <code>requires_search</code>, <code>depends_on</code> — were NOT shipped; paper doesn't define them)</td>
+<td>2026-05-20</td>
+<td>&lt;72h on paper anchor</td>
+</tr>
+<tr>
+<td>arXiv:2605.18747 — Code as Agent Harness (Ning et al., 42 authors, 2026-05-18)</td>
+<td>Survey of 110+ papers + 23 systems naming "consistent shared state across multiple agents" as an explicit open challenge</td>
+<td><strong>AAK-AGENT-HARNESS-SHARED-STATE-001</strong> (NEW: MEDIUM, research-grade — Python AST detector for &gt;=2 Agent/Worker/Harness classes mutating a module-level mutable container without a lock primitive visible in scope)</td>
+<td>2026-05-20</td>
+<td>&lt;72h on paper anchor</td>
+</tr>
+<tr>
+<td>CVE-2026-2611 (MLflow 3.9.0 origin-validation bypass)</td>
+<td>NVD CVE-2026-2611 — <code>/ajax-api</code> CSRF via cross-origin requests</td>
+<td><strong>No named rule shipped</strong> — class-covered by <code>AAK-TRUST-001..005</code> (origin / CORS allowlist) + <code>AAK-OAUTH-001..005</code>. Pin-floor <code>mlflow&lt;3.9.1</code> named-row queued for v0.3.23+ if a fresh CVE warrants</td>
+<td>2026-05-20 (triage closure)</td>
+<td>class-coverage</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0321-2026-05-19">Shipped in v0.3.21 (2026-05-19)</h2>
+<table>
+<thead>
+<tr>
+<th>Incident / Anchor</th>
+<th>Reference</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Anthropic acquires Stainless (2026-05-18)</td>
+<td><a href="https://www.anthropic.com/news/anthropic-acquires-stainless">anthropic.com/news/anthropic-acquires-stainless</a> — Stainless is the API-spec-to-SDK / CLI / MCP-server generator, now under Anthropic stewardship</td>
+<td><strong>AAK-MCP-LINEAGE-STAINLESS-001</strong> (NEW: provenance / lineage detector, INFO severity — banner-regex + config-as-code detection. <strong>Provenance only</strong>: announcement makes no claim of bifurcated default-posture, AAK doesn't either)</td>
+<td>2026-05-19</td>
+<td>&lt;24h on the acquisition announcement</td>
+</tr>
+<tr>
+<td>CVE-2026-47090 + CVE-2026-47092 (Claude HUD)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-47090">NVD CVE-2026-47090</a> — OSC 8 hyperlink injection (MEDIUM); <a href="https://nvd.nist.gov/vuln/detail/CVE-2026-47092">NVD CVE-2026-47092</a> — <code>COMSPEC</code> command injection (HIGH)</td>
+<td><strong>No named pin shipped</strong> — Claude HUD has no published npm/PyPI surface; pin-floor SAST rule has no manifest to match. Runtime shapes are already covered by <code>AAK-LOG-INJECTION-001</code> (OSC 8 terminal escapes) + <code>AAK-MCP-STDIO-CMD-INJ-001..004</code> (env-var-controlled subprocess)</td>
+<td>2026-05-19 (triage closure)</td>
+<td>honest triage — class-covered for runtime shape; no pin possible without public package</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0320-2026-05-18">Shipped in v0.3.20 (2026-05-18)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>arXiv:2605.10067 — Metis (ICML 2026)</td>
+<td>Inference-time policy optimization within adversarial POMDP — closed-loop reasoning trajectories with refusal-feedback / scoring-string semantic gradient</td>
+<td><strong>AAK-METIS-REFUSAL-REFEED-001</strong> + <strong>AAK-METIS-SCORING-SINK-001</strong> (NEW: two research-grade MEDIUM rules; 3 speculative shapes from the original prompt deferred to v0.3.21+ pending defensive-side follow-up)</td>
+<td>2026-05-18</td>
+<td>Metis paper anchor — non-CVE academic; research-grade tier</td>
+</tr>
+<tr>
+<td>Issue #163 (internal) — cve-watcher dedup bug</td>
+<td>The cve-watcher's <code>state=open</code>-only issue lookup caused the same CVE IDs to re-fire as new tickets on each daily cycle (28+ dup closures across 2026-05-13 → 2026-05-18).</td>
+<td><strong>cve-watcher fix</strong> (not a rule — <code>scripts/cve_watcher.py:_open_issue_cves</code> renamed to <code>_all_issue_cves</code> and now queries <code>state=all</code> with pagination; closed-issue regression test added)</td>
+<td>2026-05-18</td>
+<td>5+ days from first observation to fix</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0319-2026-05-17">Shipped in v0.3.19 (2026-05-17)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-44717 (architectural class)</td>
+<td>Source-side generalization of yesterday's <code>mcp-calculate-server</code> pin to any MCP server with the same shape</td>
+<td><strong>AAK-MCP-TOOL-UNSAFE-EVAL-001</strong> (NEW: Python AST detector for <code>eval()</code>/<code>exec()</code> in <code>@mcp.tool</code> handlers)</td>
+<td>2026-05-17</td>
+<td>same-day as v0.3.18 named-pin row</td>
+</tr>
+<tr>
+<td>arXiv:2605.14312 — Hermes (EASE 2026)</td>
+<td>OpenAPI-to-MCP migration smell taxonomy (2,450 smells / 600 endpoints)</td>
+<td><strong>AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001</strong> + <strong>AAK-MCP-OPENAPI-BLOATED-PARAMS-001</strong> + <strong>AAK-MCP-OPENAPI-TANGLED-METHODS-001</strong> (NEW: 3-rule smell category + new scanner module + auto-detect of <code>openapi.{yaml,json}</code> in project tree)</td>
+<td>2026-05-17</td>
+<td>Hermes paper is the primary incident anchor; non-CVE academic research-driven category</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0318-2026-05-17">Shipped in v0.3.18 (2026-05-17)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-44717</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-44717">NVD 2026-05-15</a> — <code>mcp-calculate-server</code> &lt;0.1.1 routes MCP tool input through <code>eval()</code> (SymPy-backed, no <code>local_dict</code> pinning), CVSS 9.8 CRITICAL; patched in 0.1.1 (latest at ship: 1.0.0)</td>
+<td><strong>AAK-MCPCALC-CVE-2026-44717-PIN-001</strong> (NEW: PyPI pin-floor; broader source-detector for unsafe-eval in any <code>@mcp.tool</code> handler queued for v0.3.19)</td>
+<td>2026-05-17</td>
+<td>&lt;48h on NVD disclosure (within SLA)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0317-2026-05-10">Shipped in v0.3.17 (2026-05-10)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-26030</td>
+<td><a href="https://www.microsoft.com/en-us/security/blog/2026/05/07/prompts-become-shells-rce-vulnerabilities-ai-agent-frameworks/">MSRC 2026-05-07</a> — Microsoft Semantic Kernel <strong>Python SDK</strong> &lt;1.39.4 RCE in <code>InMemoryVectorStore</code> filter functionality (CVSS 9.9 CRITICAL); patched in <code>python-1.39.4</code></td>
+<td><strong>AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001</strong> (NEW: PyPI pin-floor) — companion CVE-2026-25592 (.NET SessionsPythonPlugin file-write) is out of scope, AAK doesn't scan NuGet</td>
+<td>2026-05-10</td>
+<td>&lt;72h on MSRC disclosure (within 48h SLA for the actionable Python SDK arm)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0316-2026-05-09">Shipped in v0.3.16 (2026-05-09)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-40068</td>
+<td>Anthropic Claude Code 2.1.x folder-trust determination uses git worktree <code>commondir</code> without validation; crafted commondir bypasses trust prompt. Vendor patched in 2.1.83 (2026-05-04). Pre-allocated rule-name from v0.3.15 triage of <a href="https://github.com/sattyamjjain/agent-audit-kit/issues/181">#181</a>.</td>
+<td><strong>AAK-CLAUDECODE-CVE-2026-40068-PIN-001</strong> (NEW: pin &lt;2.1.83 on the scoped npm package <code>@anthropic-ai/claude-code</code>) — closes the v0.3.15 deferral lane</td>
+<td>2026-05-09</td>
+<td>targeted follow-up: 5 days from v0.3.15 deferral to ship</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0315-2026-05-06">Shipped in v0.3.15 (2026-05-06)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2025-65720 (OX-MCP-2026-05-01 batch, sibling of v0.3.14 DocsGPT row)</td>
+<td><a href="https://www.ox.security/blog/mcp-supply-chain-advisory-rce-vulnerabilities-across-the-ai-ecosystem/">OX Security blog</a> — <code>assafelovic/gpt-researcher</code> MCP STDIO cmd-injection (transport-flip MITM); latest PyPI 0.14.8 (2026-03-13) predates disclosure, no upstream patch as of ship date</td>
+<td><strong>AAK-GPTRESEARCHER-MCP-STDIO-MITM-001</strong> (NEW: PyPI / npm / git pin + <code>gpt_researcher_transport_flip.py</code> config detector) — <em>secondary class coverage</em> via existing <code>AAK-MCP-STDIO-CMD-INJ-001</code> (Python receiver shape)</td>
+<td>2026-05-06</td>
+<td>targeted follow-up: closes Phase 2 row of the OX MCP 2026-05-01 batch (issue <a href="https://github.com/sattyamjjain/agent-audit-kit/issues/159">#159</a>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0314-2026-05-05">Shipped in v0.3.14 (2026-05-05)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OX-MCP-2026-05-01 (incident class)</td>
+<td><a href="https://www.ox.security/blog/mcp-supply-chain-advisory-rce-vulnerabilities-across-the-ai-ecosystem/">OX Security blog</a> + <a href="https://news.backbox.org/2026/05/01/200000-mcp-servers-expose-a-command-execution-flaw-that-anthropic-calls-a-feature/">BackBox news</a> — DocsGPT / GPT-Researcher / Agent-Zero / LettaAI / LiteLLM / LangFlow / Flowise / Bisheng / Langchain-Chatchat MCP-server cluster (transport-flip MITM into stdio cmd-injection class)</td>
+<td><strong>AAK-DOCSGPT-MCP-STDIO-MITM-001</strong> (NEW: product-named pin row + server-config transport-flip detector for DocsGPT) — <em>secondary class coverage</em> via existing <code>AAK-MCP-STDIO-CMD-INJ-001/002/003/004</code> + <code>AAK-STDIO-001</code> (shipped v0.3.6, 2026-04-26) covers GPT-Researcher / Agent-Zero / LettaAI / Flowise / Bisheng / Langchain-Chatchat receiver shapes</td>
+<td>2026-05-05</td>
+<td>&lt;96h on the 2026-05-01 disclosure for the <strong>product-named</strong> row (class coverage was already in place pre-disclosure)</td>
+</tr>
+<tr>
+<td>CVE-2026-26015</td>
+<td>Same OX writeup — DocsGPT-specific entry in the OX MCP-STDIO family table</td>
+<td><strong>AAK-DOCSGPT-MCP-STDIO-MITM-001</strong> (NEW: pin &lt;0.6.4 on npm/git+https + .mcp.json transport-flip detector)</td>
+<td>2026-05-05</td>
+<td>targeted follow-up: closes the CHANGELOG v0.3.12 carry-list 'OX/BackBox roundup' deferral</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0313-2026-05-03">Shipped in v0.3.13 (2026-05-03)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-7061</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-7061">NVD</a> — Toowiredd/chatgpt-mcp-server &lt;=0.1.0 OS command injection in docker.service.ts (HIGH 7.3); package is GitHub-only, no npm publish, no upstream patch as of ship date</td>
+<td><strong>AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001</strong> (pin-check on git+https / github: shorthand in package.json + companion class detector AAK-MCP-STDIO-CMD-INJ-002)</td>
+<td>2026-05-03</td>
+<td>targeted follow-up: closes the longest-open backlog item</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v0312-2026-05-03">Shipped in v0.3.12 (2026-05-03)</h2>
+<blockquote>
+<p>v0.3.11 was tagged but never published — the original tag carried a
+stale <code>pyproject.toml</code> so PyPI rejected the duplicate <code>0.3.10</code> wheel
+upload. The same content ships as v0.3.12 with a corrected manifest;
+v0.3.11 stays on the tags page as a permanent failed-release marker.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-7591</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-7591">NVD</a> — TimBroddin/astro-mcp-server &lt;=1.1.1 SQL injection in MCP-tool query construction (no upstream patch as of ship date)</td>
+<td><strong>AAK-ASTROMCP-SQLI-CVE-2026-7591-001</strong> (pin + TS/JS source detector)</td>
+<td>2026-05-03</td>
+<td>&lt;48h on NVD (disclosed 2026-05-01)</td>
+</tr>
+<tr>
+<td>CVE-2026-30623</td>
+<td><a href="https://github.com/BerriAI/litellm/releases">BerriAI/litellm</a> — patched in v1.83.7 (2026-04-30); already class-covered by <code>AAK-MCP-STDIO-CMD-INJ-001</code></td>
+<td><strong>AAK-LITELLM-CVE-2026-30623-PIN-001</strong> (auto-fixable pin floor)</td>
+<td>2026-05-03</td>
+<td>&lt;72h on BerriAI release</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v038-2026-04-27">Shipped in v0.3.8 (2026-04-27)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Comment-and-Control 2026-04-25 (CVSS 9.4)</td>
+<td><a href="https://oddguan.com/blog/comment-and-control-prompt-injection-credential-theft-claude-code-gemini-cli-github-copilot/">oddguan.com</a></td>
+<td><strong>AAK-PRTITLE-IPI-001</strong></td>
+<td>2026-04-27</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>arXiv 2604.20994 (2026-04-23, BFCL FHI)</td>
+<td><a href="https://arxiv.org/abs/2604.20994">arXiv</a></td>
+<td><strong>AAK-MCP-FHI-001</strong></td>
+<td>2026-04-27</td>
+<td>&lt;96h</td>
+</tr>
+<tr>
+<td>CVE-2026-27825 (CVSS 9.1)</td>
+<td><a href="https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html">The Hacker News</a></td>
+<td><strong>AAK-MCP-ATLASSIAN-CVE-2026-27825-001</strong></td>
+<td>2026-04-27</td>
+<td>targeted follow-up 5d</td>
+</tr>
+<tr>
+<td>CVE-2026-27826 (CVSS 8.2)</td>
+<td>The Hacker News (paired with 27825)</td>
+<td><strong>AAK-MCP-ATLASSIAN-CVE-2026-27826-001</strong></td>
+<td>2026-04-27</td>
+<td>same</td>
+</tr>
+<tr>
+<td>Wild-IPI corpus 2026-04-24</td>
+<td><a href="https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/">Help Net Security</a> · <a href="https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/">Infosec Mag</a></td>
+<td><strong>AAK-IPI-WILD-CORPUS-001</strong></td>
+<td>2026-04-27</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>CVE-2026-23744 (CVSS 9.8)</td>
+<td><a href="https://feedly.com/cve/CVE-2026-23744">feedly</a></td>
+<td><strong>AAK-MCP-INSPECTOR-CVE-2026-23744-001</strong> (vendored fork SAST)</td>
+<td>2026-04-27</td>
+<td>targeted follow-up</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v037-2026-04-26">Shipped in v0.3.7 (2026-04-26)</h2>
+<p>v0.3.7 was a release-mechanics patch (Dockerfile + global ignore_paths fixes). No new CVE coverage.</p>
+<h2 id="shipped-in-v036-2026-04-26">Shipped in v0.3.6 (2026-04-26)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-30615 / 30617 / 30623 / 22252 / 22688 / 33224 / 40933 / 6980</td>
+<td>OX MCP advisory hub (Apr 2026 reframe)</td>
+<td><strong>AAK-MCP-STDIO-CMD-INJ-001/002/003/004</strong> (Python/TS/Java/Rust)</td>
+<td>2026-04-26</td>
+<td>class-coverage release</td>
+</tr>
+<tr>
+<td>OX-MCP-2026-04-25 + Cloudflare MCP-defender (incidents)</td>
+<td><a href="https://blog.cloudflare.com/">Cloudflare blog</a>, OX MCP hub</td>
+<td><strong>AAK-MCP-MARKETPLACE-CONFIG-FETCH-001</strong></td>
+<td>2026-04-26</td>
+<td>&lt;24h</td>
+</tr>
+<tr>
+<td>CVE-2026-32211 (server-side variant)</td>
+<td><a href="https://dev.to/michael_onyekwere/cve-2026-32211-what-the-azure-mcp-server-flaw-means-for-your-agent-security-14db">DEV — Azure MCP missing-auth</a></td>
+<td><strong>AAK-AZURE-MCP-NOAUTH-001</strong></td>
+<td>2026-04-26</td>
+<td>sister to v0.3.5's AAK-AZURE-MCP-001</td>
+</tr>
+<tr>
+<td>CVE-2026-33626</td>
+<td>GHSA index — LMDeploy VL SSRF (NVD pending)</td>
+<td><strong>AAK-LMDEPLOY-VL-SSRF-001</strong></td>
+<td>2026-04-26</td>
+<td>&lt;48h on GHSA</td>
+</tr>
+<tr>
+<td>CVE-2026-20205 (config variant)</td>
+<td><a href="https://advisory.splunk.com/advisories/SVD-2026-0405">Splunk SVD-2026-0405</a></td>
+<td><strong>AAK-SPLUNK-MCP-TOKEN-LEAK-001</strong></td>
+<td>2026-04-26</td>
+<td>sister to v0.3.4's AAK-SPLUNK-TOKLOG-001</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v035-2026-04-25">Shipped in v0.3.5 (2026-04-25)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-41481</td>
+<td><a href="https://advisories.gitlab.com/pypi/langchain-text-splitters/GHSA-fv5p-p927-qmxr/">GLAD GHSA-fv5p-p927-qmxr</a> — langchain-text-splitters &lt; 1.1.2 SSRF redirect bypass (#61)</td>
+<td><strong>AAK-LANGCHAIN-SSRF-REDIR-001</strong></td>
+<td>2026-04-25</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>CVE-2026-41488</td>
+<td><a href="https://advisories.gitlab.com/pypi/langchain-openai/GHSA-r7w7-9xr2-qq2r/">GLAD GHSA-r7w7-9xr2-qq2r</a> — langchain-openai &lt; 1.1.14 TOCTOU / DNS rebinding (#62)</td>
+<td><strong>AAK-SSRF-TOCTOU-001</strong></td>
+<td>2026-04-25</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>CVE-2026-32211</td>
+<td><a href="https://dev.to/michael_onyekwere/cve-2026-32211-what-the-azure-mcp-server-flaw-means-for-your-agent-security-14db">DEV — Azure MCP missing-auth</a> — server-side default no-auth</td>
+<td><strong>AAK-AZURE-MCP-001</strong></td>
+<td>2026-04-25</td>
+<td>targeted follow-up 22d post-disclosure</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v034-2026-04-24">Shipped in v0.3.4 (2026-04-24)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2025-66414 / CVE-2025-66416</td>
+<td><a href="https://vulnerablemcp.info/vuln/cve-2025-66414-66416-dns-rebinding-mcp-sdks.html">vulnerablemcp.info</a> — Python MCP SDK DNS-rebinding</td>
+<td><strong>AAK-DNS-REBIND-001</strong> (pattern), <strong>AAK-DNS-REBIND-002</strong> (pin)</td>
+<td>2026-04-24</td>
+<td>&lt;72h (class-level coverage)</td>
+</tr>
+<tr>
+<td>CVE-2026-35568</td>
+<td><a href="https://advisories.gitlab.com/pkg/maven/io.modelcontextprotocol.sdk/mcp-core/CVE-2026-35568/">GitLab advisory</a> — Java <code>mcp-core</code> DNS-rebinding</td>
+<td>AAK-DNS-REBIND-001 / AAK-DNS-REBIND-002</td>
+<td>2026-04-24</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>CVE-2026-35577</td>
+<td><a href="https://www.sentinelone.com/vulnerability-database/cve-2026-35577/">SentinelOne</a> — <code>@apollo/mcp-server &lt; 1.7.0</code> DNS-rebinding</td>
+<td>AAK-DNS-REBIND-001 / AAK-DNS-REBIND-002</td>
+<td>2026-04-24</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>CVE-2026-20205</td>
+<td><a href="https://advisory.splunk.com/advisories/SVD-2026-0405">Splunk SVD-2026-0405</a> — splunk-mcp-server token cleartext in <code>_internal</code> index</td>
+<td><strong>AAK-SPLUNK-TOKLOG-001</strong></td>
+<td>2026-04-24</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>CVE-2026-40576</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-40576">NVD</a> — excel-mcp-server &lt;= 0.1.7 path traversal (#57)</td>
+<td><strong>AAK-EXCEL-MCP-001</strong></td>
+<td>2026-04-24</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>CVE-2026-40608</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-40608">NVD</a> — next-ai-draw-io &lt; 0.4.15 body-accumulation OOM (#58)</td>
+<td><strong>AAK-NEXT-AI-DRAW-001</strong></td>
+<td>2026-04-24</td>
+<td>&lt;72h</td>
+</tr>
+<tr>
+<td>GHA-IMMUTABLE-2026-04 (policy)</td>
+<td><a href="https://github.blog/news-insights/product-news/whats-coming-to-our-github-actions-2026-security-roadmap/">GitHub Blog</a></td>
+<td><strong>AAK-GHA-IMMUTABLE-001</strong></td>
+<td>2026-04-24</td>
+<td>pre-emptive scanner for downstream policy</td>
+</tr>
+</tbody>
+</table>
+<p>Deferred / closed without shipping: CVE-2026-31504 (#59, Linux kernel fanout UAF — out-of-scope for MCP scanner).</p>
+<h2 id="shipped-in-v033-2026-04-21">Shipped in v0.3.3 (2026-04-21)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-39313</td>
+<td><a href="https://advisories.gitlab.com/npm/mcp-framework/CVE-2026-39313/">GitLab advisory</a> — mcp-framework &lt; 0.2.22 HTTP-body DoS</td>
+<td><strong>AAK-MCPFRAME-001</strong></td>
+<td>2026-04-21</td>
+<td>5d (tracking issue → rule)</td>
+</tr>
+<tr>
+<td>CVE-2025-66335</td>
+<td><a href="http://www.mail-archive.com/dev@doris.apache.org/msg11406.html">Apache advisory</a> — apache-doris-mcp-server &lt; 0.6.1 SQL injection</td>
+<td><strong>AAK-DORIS-001</strong></td>
+<td>2026-04-21</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>OX-MCP-2026-04-15 (incident)</td>
+<td><a href="https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/">OX Security</a> · Anthropic declined to CVE</td>
+<td><strong>AAK-ANTHROPIC-SDK-001</strong> (SDK-level), AAK-STDIO-001 (sink-level)</td>
+<td>2026-04-21</td>
+<td>6d (design-class rule)</td>
+</tr>
+</tbody>
+</table>
+<p>Deferred to v0.3.4 pending NVD resolution (records unresolvable during 2026-04-21 cycle): CVE-2026-6599 (#47), CVE-2026-39861 (#53).</p>
+<h2 id="shipped-in-v032-2026-04-20">Shipped in v0.3.2 (2026-04-20)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE / Incident</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-33032 (MCPwn, KEV)</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-33032">NVD</a> — nginx-ui, CVSS 9.8</td>
+<td><strong>AAK-MCPWN-001</strong> (primary) · AAK-MCP-011/012/020 (secondary, retained)</td>
+<td>2026-04-20</td>
+<td>targeted follow-up 4d after PoC</td>
+</tr>
+<tr>
+<td>CVE-2026-40933</td>
+<td><a href="https://github.com/advisories/GHSA-c9gw-hvqq-f33r">GHSA-c9gw-hvqq-f33r</a> — Flowise MCP adapter, CVSS 10.0</td>
+<td>AAK-FLOWISE-001 (primary) · AAK-STDIO-001 (architectural class)</td>
+<td>2026-04-20</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>VERCEL-2026-04-19 (incident)</td>
+<td><a href="https://vercel.com/kb/bulletin/vercel-april-2026-security-incident">Vercel bulletin</a></td>
+<td>AAK-OAUTH-SCOPE-001, AAK-OAUTH-3P-001</td>
+<td>2026-04-20</td>
+<td>&lt;24h</td>
+</tr>
+<tr>
+<td>MCPWN-2026-04-16 (incident)</td>
+<td><a href="https://www.rapid7.com/blog/post/etr-cve-2026-33032-nginx-ui-missing-mcp-authentication/">Rapid7 ETR</a></td>
+<td>AAK-MCPWN-001</td>
+<td>2026-04-20</td>
+<td>4d (targeted)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="shipped-in-v031-2026-04-19">Shipped in v0.3.1 (2026-04-19)</h2>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2026-30615</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-30615">NVD</a> (Windsurf, CVSS 8.0)</td>
+<td>AAK-STDIO-001, AAK-WINDSURF-001</td>
+<td>2026-04-19</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>CVE-2026-35402</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-35402">NVD</a> (mcp-neo4j-cypher, CVSS 2.3)</td>
+<td>AAK-NEO4J-001</td>
+<td>2026-04-19</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>CVE-2026-35603</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-35603">NVD</a> (Claude Code Windows, CVSS 5.4)</td>
+<td>AAK-CLAUDE-WIN-001</td>
+<td>2026-04-19</td>
+<td>&lt;48h</td>
+</tr>
+<tr>
+<td>CVE-2026-6494</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-6494">NVD</a>  (AAP MCP log injection, CVSS 5.3)</td>
+<td>AAK-LOGINJ-001</td>
+<td>2026-04-19</td>
+<td>&lt;48h</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ox-security-architectural-class-apr-16-2026-disclosure">Ox Security architectural class (Apr 16 2026 disclosure)</h3>
+<p>AAK-STDIO-001 closes this whole family with a single AST-based
+detection in <code>scanners/stdio_injection.py</code>:</p>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Product</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2025-65720</td>
+<td>GPT Researcher</td>
+</tr>
+<tr>
+<td>CVE-2026-26015</td>
+<td>DocsGPT</td>
+</tr>
+<tr>
+<td>CVE-2026-30615</td>
+<td>Windsurf</td>
+</tr>
+<tr>
+<td>CVE-2026-30617</td>
+<td>Langchain-Chatchat</td>
+</tr>
+<tr>
+<td>CVE-2026-30618</td>
+<td>Fay Framework</td>
+</tr>
+<tr>
+<td>CVE-2026-30623</td>
+<td>LiteLLM</td>
+</tr>
+<tr>
+<td>CVE-2026-30624</td>
+<td>Agent Zero</td>
+</tr>
+<tr>
+<td>CVE-2026-30625</td>
+<td>Upsonic</td>
+</tr>
+<tr>
+<td>CVE-2026-33224</td>
+<td>Bisheng / Jaaz</td>
+</tr>
+</tbody>
+</table>
+<p>Source: <a href="https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/">https://www.ox.security/blog/the-mother-of-all-ai-supply-chains-critical-systemic-vulnerability-at-the-core-of-the-mcp/</a></p>
+<h2 id="shipped-in-v030">Shipped in v0.3.0</h2>
+<table>
+<thead>
+<tr>
+<th>CVE</th>
+<th>Advisory</th>
+<th>AAK rule(s)</th>
+<th>Shipped</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CVE-2025-59536</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2025-59536">NVD</a></td>
+<td>AAK-HOOK-RCE-001, AAK-HOOK-RCE-002, AAK-HOOK-RCE-003</td>
+<td>2026-04-18</td>
+<td>retroactive</td>
+</tr>
+<tr>
+<td>CVE-2026-33032</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-33032">NVD</a></td>
+<td>AAK-MCP-011, AAK-MCP-012, AAK-MCP-020</td>
+<td>2026-04-18</td>
+<td>retroactive</td>
+</tr>
+<tr>
+<td>CVE-2026-34070</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-34070">NVD</a></td>
+<td>AAK-LANGCHAIN-001, AAK-LANGCHAIN-002</td>
+<td>2026-04-18</td>
+<td>retroactive</td>
+</tr>
+<tr>
+<td>CVE-2025-68664</td>
+<td><a href="https://nvd.nist.gov/vuln/detail/CVE-2025-68664">NVD</a></td>
+<td>AAK-LANGCHAIN-003</td>
+<td>2026-04-18</td>
+<td>retroactive</td>
+</tr>
+</tbody>
+</table>
+<h2 id="open-best-effort-no-committed-sla">Open (best-effort — no committed SLA)</h2>
+<p><em>none — newly-filed <code>cve-response</code> issues are tracked here until triaged.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

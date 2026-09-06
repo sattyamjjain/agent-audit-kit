@@ -1,0 +1,2787 @@
+[
+  {
+    "slug": "dynokostya__just-works",
+    "name": "Dynokostya/just-works/.mcp.json.default",
+    "repo_url": "https://github.com/Dynokostya/just-works",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "packtpublishing__agentic-coding-with-claude-code",
+    "name": "PacktPublishing/Agentic-Coding-with-Claude-Code/Chapter01/.mcp.json.tavily",
+    "repo_url": "https://github.com/PacktPublishing/Agentic-Coding-with-Claude-Code",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "packtpublishing__agentic-coding-with-claude-code",
+    "name": "PacktPublishing/Agentic-Coding-with-Claude-Code/Chapter04/context-engineering-mcp/.mcp.json.tavily",
+    "repo_url": "https://github.com/PacktPublishing/Agentic-Coding-with-Claude-Code",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "chenghyang2001__agentic-coding-with-claude-code",
+    "name": "chenghyang2001/Agentic-Coding-with-Claude-Code/Chapter01/.mcp.json.tavily",
+    "repo_url": "https://github.com/chenghyang2001/Agentic-Coding-with-Claude-Code",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "chenghyang2001__agentic-coding-with-claude-code",
+    "name": "chenghyang2001/Agentic-Coding-with-Claude-Code/Chapter04/context-engineering-mcp/.mcp.json.tavily",
+    "repo_url": "https://github.com/chenghyang2001/Agentic-Coding-with-Claude-Code",
+    "grade": "A",
+    "score": 100,
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "no-findings",
+    "rule_hits": {},
+    "first_seen": ""
+  },
+  {
+    "slug": "00prabalk00__openroswarehouse",
+    "name": "00PrabalK00/OpenRosWarehouse",
+    "repo_url": "https://github.com/00PrabalK00/OpenRosWarehouse",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "assafwoo__homebrew-pandafilter",
+    "name": "AssafWoo/homebrew-pandafilter",
+    "repo_url": "https://github.com/AssafWoo/homebrew-pandafilter",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "mercurievv__scalasemantic",
+    "name": "MercurieVV/ScalaSemantic/.mcp.json.example",
+    "repo_url": "https://github.com/MercurieVV/ScalaSemantic",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "pierrekieffer__http-tanker",
+    "name": "PierreKieffer/http-tanker",
+    "repo_url": "https://github.com/PierreKieffer/http-tanker",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "aegntic__aegntic-mcp",
+    "name": "aegntic/aegntic-MCP/quick-data/.mcp.json.sample",
+    "repo_url": "https://github.com/aegntic/aegntic-MCP",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "agentcordon__agentcordon",
+    "name": "agentcordon/agentcordon/.mcp.json.pre-agentcordon",
+    "repo_url": "https://github.com/agentcordon/agentcordon",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "alessandro9110__speech-to-text-with-databricks",
+    "name": "alessandro9110/Speech-To-Text-With-Databricks/.mcp.json.bak",
+    "repo_url": "https://github.com/alessandro9110/Speech-To-Text-With-Databricks",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "axpolik__claude-code-d365fo-mcp",
+    "name": "axpolik/claude-code-d365fo-mcp",
+    "repo_url": "https://github.com/axpolik/claude-code-d365fo-mcp",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "brettmartin97__codegraph",
+    "name": "brettmartin97/codegraph",
+    "repo_url": "https://github.com/brettmartin97/codegraph",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "clssck__dataiku_mcp",
+    "name": "clssck/Dataiku_MCP",
+    "repo_url": "https://github.com/clssck/Dataiku_MCP",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "davebream__claude-of-alexandria",
+    "name": "davebream/claude-of-alexandria/.mcp.json.bak",
+    "repo_url": "https://github.com/davebream/claude-of-alexandria",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "disler__quick-data-mcp",
+    "name": "disler/quick-data-mcp/quick-data-mcp/.mcp.json.sample",
+    "repo_url": "https://github.com/disler/quick-data-mcp",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "keijiro__yamu",
+    "name": "keijiro/Yamu",
+    "repo_url": "https://github.com/keijiro/Yamu",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "mike-north__agentmonitors",
+    "name": "mike-north/AgentMonitors/experiments/channel-probe/.mcp.json",
+    "repo_url": "https://github.com/mike-north/AgentMonitors",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "pavelzbornik__whisperx-fastapi",
+    "name": "pavelzbornik/whisperX-FastAPI",
+    "repo_url": "https://github.com/pavelzbornik/whisperX-FastAPI",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "undergroundrap__uefn-toolbelt",
+    "name": "undergroundrap/UEFN-TOOLBELT/.mcp.json.template",
+    "repo_url": "https://github.com/undergroundrap/UEFN-TOOLBELT",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "unmateria__mcp-access",
+    "name": "unmateria/MCP-Access",
+    "repo_url": "https://github.com/unmateria/MCP-Access",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "vtrivedy__claude-banana-story-agent",
+    "name": "vtrivedy/claude-banana-story-agent/.mcp.json.template",
+    "repo_url": "https://github.com/vtrivedy/claude-banana-story-agent",
+    "grade": "A",
+    "score": 95,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "orcasecurity__orca-skills",
+    "name": "orcasecurity/orca-skills/.mcp.json.template",
+    "repo_url": "https://github.com/orcasecurity/orca-skills",
+    "grade": "A",
+    "score": 93,
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "2mawi2__para",
+    "name": "2mawi2/para/.mcp.json.template",
+    "repo_url": "https://github.com/2mawi2/para",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "bato21__kimunko",
+    "name": "Bato21/KimunKo",
+    "repo_url": "https://github.com/Bato21/KimunKo",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "devinosolutions__stealth-chrome-devtools-mcp",
+    "name": "DevinoSolutions/stealth-chrome-devtools-mcp/.mcp.json.bak-2026-07-31",
+    "repo_url": "https://github.com/DevinoSolutions/stealth-chrome-devtools-mcp",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "edgehop__edgehop",
+    "name": "EdgeHop/EdgeHop/.mcp.json.sample",
+    "repo_url": "https://github.com/EdgeHop/EdgeHop",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "junkdoge-joe__after-effects-mcp",
+    "name": "JUNKDOGE-JOE/after-effects-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/JUNKDOGE-JOE/after-effects-mcp",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "openwaggle__openwaggle",
+    "name": "OpenWaggle/OpenWaggle",
+    "repo_url": "https://github.com/OpenWaggle/OpenWaggle",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "raytracingon__cashbackcounter",
+    "name": "RayTracingON/CashbackCounter",
+    "repo_url": "https://github.com/RayTracingON/CashbackCounter",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "timothyvang__verdict-dfir",
+    "name": "TimothyVang/verdict-dfir/.mcp.json.docker",
+    "repo_url": "https://github.com/TimothyVang/verdict-dfir",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "cklose2000__pinescript-mcp-server",
+    "name": "cklose2000/pinescript-mcp-server/.mcp.json.windows.example",
+    "repo_url": "https://github.com/cklose2000/pinescript-mcp-server",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "cursey__regenny",
+    "name": "cursey/regenny",
+    "repo_url": "https://github.com/cursey/regenny",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "disler__nano-agent",
+    "name": "disler/nano-agent/.mcp.json.sample",
+    "repo_url": "https://github.com/disler/nano-agent",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "dismine__valentina",
+    "name": "dismine/valentina",
+    "repo_url": "https://github.com/dismine/valentina",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "gaoconggit__sharppad",
+    "name": "gaoconggit/SharpPad",
+    "repo_url": "https://github.com/gaoconggit/SharpPad",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "hashgraph-online__awesome-codex-plugins",
+    "name": "hashgraph-online/awesome-codex-plugins/plugins/kreuzberg-dev/plugins/plugins/crawlberg/.mcp.json",
+    "repo_url": "https://github.com/hashgraph-online/awesome-codex-plugins",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.chrome",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.playwright",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "kupzed__catatz",
+    "name": "kupzed/catatz",
+    "repo_url": "https://github.com/kupzed/catatz",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "lucaslorentz__durabletask-extensions",
+    "name": "lucaslorentz/durabletask-extensions",
+    "repo_url": "https://github.com/lucaslorentz/durabletask-extensions",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "mistralai__search-starter-app",
+    "name": "mistralai/search-starter-app/template/.mcp.json.jinja",
+    "repo_url": "https://github.com/mistralai/search-starter-app",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ready-to-release__eac",
+    "name": "ready-to-release/eac/templates/claude/setup/.mcp.json.template",
+    "repo_url": "https://github.com/ready-to-release/eac",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "sergeiledvanov__mcp-wise",
+    "name": "sergeiledvanov/mcp-wise/.mcp.json.stdio",
+    "repo_url": "https://github.com/sergeiledvanov/mcp-wise",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "slysik__nano-agent",
+    "name": "slysik/nano-agent/.mcp.json.sample",
+    "repo_url": "https://github.com/slysik/nano-agent",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "sumioshi__whatsapp-automation",
+    "name": "sumioshi/whatsapp-automation/.mcp.json.remote.example",
+    "repo_url": "https://github.com/sumioshi/whatsapp-automation",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "usrivastava92__gtv-desktop-remote",
+    "name": "usrivastava92/gtv-desktop-remote",
+    "repo_url": "https://github.com/usrivastava92/gtv-desktop-remote",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "wikilabs__editions",
+    "name": "wikilabs/editions/info-session-server/.mcp.json",
+    "repo_url": "https://github.com/wikilabs/editions",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "wrayboss__trading-jarvis-codex-plugin",
+    "name": "wrayboss/trading-jarvis-codex-plugin",
+    "repo_url": "https://github.com/wrayboss/trading-jarvis-codex-plugin",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "yintzuyuan__glyphs-info-mcp",
+    "name": "yintzuyuan/glyphs-info-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/yintzuyuan/glyphs-info-mcp",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zalom__plastic",
+    "name": "zalom/plastic",
+    "repo_url": "https://github.com/zalom/plastic",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zonuexe__riida",
+    "name": "zonuexe/riida",
+    "repo_url": "https://github.com/zonuexe/riida",
+    "grade": "A",
+    "score": 90,
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "newjerseystyle__plugin-mcts",
+    "name": "NewJerseyStyle/plugin-mcts",
+    "repo_url": "https://github.com/NewJerseyStyle/plugin-mcts",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "lancejames221b__agent-hivemind",
+    "name": "lancejames221b/agent-hivemind/.mcp.json.disabled",
+    "repo_url": "https://github.com/lancejames221b/agent-hivemind",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "liush2yuxjtu__shiyu-aro-ops-v0",
+    "name": "liush2yuxjtu/shiyu-aro-ops-v0/plugin/.mcp.json",
+    "repo_url": "https://github.com/liush2yuxjtu/shiyu-aro-ops-v0",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "louis49__melchizedek",
+    "name": "louis49/melchizedek/.mcp.json.template",
+    "repo_url": "https://github.com/louis49/melchizedek",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "samuelzxu__claude-evolve",
+    "name": "samuelzxu/claude-evolve/.mcp.json.plugin",
+    "repo_url": "https://github.com/samuelzxu/claude-evolve",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "weiserman__rap-skills",
+    "name": "weiserman/rap-skills/.mcp.json.template",
+    "repo_url": "https://github.com/weiserman/rap-skills",
+    "grade": "B",
+    "score": 85,
+    "critical": 0,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "cat-xierluo__legal-skills",
+    "name": "cat-xierluo/legal-skills/skills/yuandian-law-search/scripts/.mcp.json.example",
+    "repo_url": "https://github.com/cat-xierluo/legal-skills",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "sunyifeisb-art__legalwork",
+    "name": "sunyifeisb-art/legalwork/skills/yuandian-law-search/scripts/.mcp.json.example",
+    "repo_url": "https://github.com/sunyifeisb-art/legalwork",
+    "grade": "B",
+    "score": 83,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "projectliminality__dreamtalk",
+    "name": "ProjectLiminality/DreamTalk/.mcp.json.template",
+    "repo_url": "https://github.com/ProjectLiminality/DreamTalk",
+    "grade": "B",
+    "score": 80,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "disler__agent-sandboxes",
+    "name": "disler/agent-sandboxes/.mcp.json.sandbox",
+    "repo_url": "https://github.com/disler/agent-sandboxes",
+    "grade": "B",
+    "score": 80,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "fullstacktard__claude-workflow",
+    "name": "fullstacktard/claude-workflow/src/templates/.mcp.json.template",
+    "repo_url": "https://github.com/fullstacktard/claude-workflow",
+    "grade": "B",
+    "score": 80,
+    "critical": 0,
+    "high": 0,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "hashgraph-online__awesome-codex-plugins",
+    "name": "hashgraph-online/awesome-codex-plugins/plugins/Kanevry/session-orchestrator/.mcp.json",
+    "repo_url": "https://github.com/hashgraph-online/awesome-codex-plugins",
+    "grade": "B",
+    "score": 80,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "slysik__agent-sandboxes",
+    "name": "slysik/agent-sandboxes/.mcp.json.sandbox",
+    "repo_url": "https://github.com/slysik/agent-sandboxes",
+    "grade": "B",
+    "score": 80,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "vortiago__mcp-outline",
+    "name": "Vortiago/mcp-outline",
+    "repo_url": "https://github.com/Vortiago/mcp-outline",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "cklose2000__pinescript-mcp-server",
+    "name": "cklose2000/pinescript-mcp-server/.mcp.json.mac.example",
+    "repo_url": "https://github.com/cklose2000/pinescript-mcp-server",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "edbizarro__dotfiles",
+    "name": "edbizarro/dotfiles",
+    "repo_url": "https://github.com/edbizarro/dotfiles",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jmanhype__speckit",
+    "name": "jmanhype/speckit/.mcp.json.linear-example",
+    "repo_url": "https://github.com/jmanhype/speckit",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.shadcn",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "lucasgerads__spicelib-mcp",
+    "name": "lucasgerads/spicelib-mcp/.mcp.json.template",
+    "repo_url": "https://github.com/lucasgerads/spicelib-mcp",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "qut-dmrc__buttermilk",
+    "name": "qut-dmrc/buttermilk/.mcp.json.disabled",
+    "repo_url": "https://github.com/qut-dmrc/buttermilk",
+    "grade": "C",
+    "score": 78,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "doist__todoist-mcp",
+    "name": "Doist/todoist-mcp",
+    "repo_url": "https://github.com/Doist/todoist-mcp",
+    "grade": "C",
+    "score": 75,
+    "critical": 1,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "everruns__everruns",
+    "name": "everruns/everruns/plugins/everruns-dev/.mcp.json",
+    "repo_url": "https://github.com/everruns/everruns",
+    "grade": "C",
+    "score": 75,
+    "critical": 1,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "floodsung__gongzhonghao_agent_team",
+    "name": "floodsung/gongzhonghao_agent_team/investment_insights/.mcp.json",
+    "repo_url": "https://github.com/floodsung/gongzhonghao_agent_team",
+    "grade": "C",
+    "score": 75,
+    "critical": 0,
+    "high": 1,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.context7",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "C",
+    "score": 75,
+    "critical": 1,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.figma",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "C",
+    "score": 75,
+    "critical": 1,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "dycuong03__unity-agent-team",
+    "name": "dyCuong03/unity-agent-team/.mcp.json.template",
+    "repo_url": "https://github.com/dyCuong03/unity-agent-team",
+    "grade": "C",
+    "score": 73,
+    "critical": 0,
+    "high": 1,
+    "medium": 3,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-009": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "consiliency__code-index-mcp",
+    "name": "Consiliency/Code-Index-MCP/.mcp.json.docker",
+    "repo_url": "https://github.com/Consiliency/Code-Index-MCP",
+    "grade": "C",
+    "score": 70,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "consiliency__code-index-mcp",
+    "name": "Consiliency/Code-Index-MCP/.mcp.json.template",
+    "repo_url": "https://github.com/Consiliency/Code-Index-MCP",
+    "grade": "C",
+    "score": 70,
+    "critical": 1,
+    "high": 0,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "deepklarity__harness-kit",
+    "name": "deepklarity/harness-kit",
+    "repo_url": "https://github.com/deepklarity/harness-kit",
+    "grade": "C",
+    "score": 70,
+    "critical": 0,
+    "high": 0,
+    "medium": 6,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "friendsofshopware__shopmon",
+    "name": "FriendsOfShopware/shopmon",
+    "repo_url": "https://github.com/FriendsOfShopware/shopmon",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 1,
+    "medium": 4,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "disler__agentic-drop-zones",
+    "name": "disler/agentic-drop-zones/.mcp.json.sample",
+    "repo_url": "https://github.com/disler/agentic-drop-zones",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "petekp__claude-code-setup",
+    "name": "petekp/claude-code-setup/templates/.mcp.json.template",
+    "repo_url": "https://github.com/petekp/claude-code-setup",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "raffertyuy__github-copilot-prompts",
+    "name": "raffertyuy/github-copilot-prompts",
+    "repo_url": "https://github.com/raffertyuy/github-copilot-prompts",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 1,
+    "medium": 4,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "slysik__agentic-drop-zones",
+    "name": "slysik/agentic-drop-zones/.mcp.json.sample",
+    "repo_url": "https://github.com/slysik/agentic-drop-zones",
+    "grade": "D",
+    "score": 68,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "aniketwathore__agntspce",
+    "name": "AniketWathore/agntspce/.mcp.json.bak",
+    "repo_url": "https://github.com/AniketWathore/agntspce",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "automattic__wp-calypso",
+    "name": "Automattic/wp-calypso",
+    "repo_url": "https://github.com/Automattic/wp-calypso",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "agustincf__arcade1v1",
+    "name": "agustincf/Arcade1v1",
+    "repo_url": "https://github.com/agustincf/Arcade1v1",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "basalt-ai__cobalt",
+    "name": "basalt-ai/cobalt/packages/cobalt/templates/.mcp.json.template",
+    "repo_url": "https://github.com/basalt-ai/cobalt",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jmbish04__core-hassio",
+    "name": "jmbish04/core-hassio",
+    "repo_url": "https://github.com/jmbish04/core-hassio",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jmbish04__core-spam-filter",
+    "name": "jmbish04/core-spam-filter",
+    "repo_url": "https://github.com/jmbish04/core-spam-filter",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jmbish04__core-tail",
+    "name": "jmbish04/core-tail",
+    "repo_url": "https://github.com/jmbish04/core-tail",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jmbish04__core-workersai-proxy",
+    "name": "jmbish04/core-workersai-proxy",
+    "repo_url": "https://github.com/jmbish04/core-workersai-proxy",
+    "grade": "D",
+    "score": 66,
+    "critical": 0,
+    "high": 2,
+    "medium": 2,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "agentorchestrator__agentbase",
+    "name": "AgentOrchestrator/AgentBase",
+    "repo_url": "https://github.com/AgentOrchestrator/AgentBase",
+    "grade": "D",
+    "score": 65,
+    "critical": 1,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "khan__wonder-blocks",
+    "name": "Khan/wonder-blocks",
+    "repo_url": "https://github.com/Khan/wonder-blocks",
+    "grade": "D",
+    "score": 65,
+    "critical": 1,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-ATTEST-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "bitrise-io__bitrise-workflow-editor",
+    "name": "bitrise-io/bitrise-workflow-editor",
+    "repo_url": "https://github.com/bitrise-io/bitrise-workflow-editor",
+    "grade": "D",
+    "score": 65,
+    "critical": 1,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "tobilg__caddy-duckdb-module",
+    "name": "tobilg/caddy-duckdb-module",
+    "repo_url": "https://github.com/tobilg/caddy-duckdb-module",
+    "grade": "D",
+    "score": 65,
+    "critical": 1,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "aifundteam__genai-starter",
+    "name": "AIFundTeam/genai-starter/.mcp.json.template",
+    "repo_url": "https://github.com/AIFundTeam/genai-starter",
+    "grade": "D",
+    "score": 60,
+    "critical": 1,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "nickalus12__loom",
+    "name": "Nickalus12/Loom/claude/.mcp.json",
+    "repo_url": "https://github.com/Nickalus12/Loom",
+    "grade": "D",
+    "score": 60,
+    "critical": 0,
+    "high": 2,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "catlog22__maestro-flow",
+    "name": "catlog22/maestro-flow/.mcp.json.bak",
+    "repo_url": "https://github.com/catlog22/maestro-flow",
+    "grade": "D",
+    "score": 60,
+    "critical": 1,
+    "high": 0,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jnarowski__agentcmd",
+    "name": "jnarowski/agentcmd/.mcp.json.design",
+    "repo_url": "https://github.com/jnarowski/agentcmd",
+    "grade": "F",
+    "score": 53,
+    "critical": 1,
+    "high": 1,
+    "medium": 3,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "disler__agent-sandboxes",
+    "name": "disler/agent-sandboxes/apps/sandbox_agent_working_dir/.mcp.json.sandbox",
+    "repo_url": "https://github.com/disler/agent-sandboxes",
+    "grade": "F",
+    "score": 48,
+    "critical": 0,
+    "high": 3,
+    "medium": 4,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 2,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ivanzzeth__remote-signer",
+    "name": "ivanzzeth/remote-signer/.mcp.json.example",
+    "repo_url": "https://github.com/ivanzzeth/remote-signer",
+    "grade": "F",
+    "score": 48,
+    "critical": 0,
+    "high": 4,
+    "medium": 2,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-ATTEST-001": 1,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "slysik__agent-sandboxes",
+    "name": "slysik/agent-sandboxes/apps/sandbox_agent_working_dir/.mcp.json.sandbox",
+    "repo_url": "https://github.com/slysik/agent-sandboxes",
+    "grade": "F",
+    "score": 48,
+    "critical": 0,
+    "high": 3,
+    "medium": 4,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 2,
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "amadeusitgroup__otter",
+    "name": "AmadeusITGroup/otter/tools/llm/plugins/otter/.mcp.json",
+    "repo_url": "https://github.com/AmadeusITGroup/otter",
+    "grade": "F",
+    "score": 46,
+    "critical": 0,
+    "high": 2,
+    "medium": 6,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ahostbr__kuroryuu-public",
+    "name": "ahostbr/kuroryuu-public/.mcp.json.template",
+    "repo_url": "https://github.com/ahostbr/kuroryuu-public",
+    "grade": "F",
+    "score": 45,
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "yoshiiryo1__document-templates-for-aws",
+    "name": "YoshiiRyo1/document-templates-for-aws",
+    "repo_url": "https://github.com/YoshiiRyo1/document-templates-for-aws",
+    "grade": "F",
+    "score": 44,
+    "critical": 0,
+    "high": 3,
+    "medium": 4,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-MCP-ATTEST-001": 2,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "sithutun-mdy__fast-order",
+    "name": "SiThuTun-mdy/fast-order",
+    "repo_url": "https://github.com/SiThuTun-mdy/fast-order",
+    "grade": "F",
+    "score": 40,
+    "critical": 2,
+    "high": 0,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-001": 2,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "getsentry__sentry-mcp",
+    "name": "getsentry/sentry-mcp",
+    "repo_url": "https://github.com/getsentry/sentry-mcp",
+    "grade": "F",
+    "score": 40,
+    "critical": 2,
+    "high": 1,
+    "medium": 2,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-ATTEST-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "abilityai__agent-cornelius",
+    "name": "Abilityai/agent-cornelius/.mcp.json.template",
+    "repo_url": "https://github.com/Abilityai/agent-cornelius",
+    "grade": "F",
+    "score": 34,
+    "critical": 0,
+    "high": 3,
+    "medium": 6,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 3,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "coalesce-labs__catalyst",
+    "name": "coalesce-labs/catalyst/.mcp.json.template",
+    "repo_url": "https://github.com/coalesce-labs/catalyst",
+    "grade": "F",
+    "score": 34,
+    "critical": 0,
+    "high": 3,
+    "medium": 6,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 3,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "nft-maker-one__claude_course",
+    "name": "nft-maker-one/claude_course/day7_mcp/.mcp.json.bak",
+    "repo_url": "https://github.com/nft-maker-one/claude_course",
+    "grade": "F",
+    "score": 26,
+    "critical": 1,
+    "high": 3,
+    "medium": 4,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 1,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-SUPPLY-001": 2
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "nuxt__nuxt_com",
+    "name": "nuxt/nuxt.com",
+    "repo_url": "https://github.com/nuxt/nuxt.com",
+    "grade": "F",
+    "score": 25,
+    "critical": 3,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 3,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zhcndoc__nuxt",
+    "name": "zhcndoc/nuxt",
+    "repo_url": "https://github.com/zhcndoc/nuxt",
+    "grade": "F",
+    "score": 25,
+    "critical": 3,
+    "high": 0,
+    "medium": 3,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 3,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "miantiao-me__bm_md",
+    "name": "miantiao-me/bm.md",
+    "repo_url": "https://github.com/miantiao-me/bm.md",
+    "grade": "F",
+    "score": 24,
+    "critical": 1,
+    "high": 2,
+    "medium": 6,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 1,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 4,
+      "AAK-SUPPLY-001": 2,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "treylom__knowledge-manager",
+    "name": "treylom/knowledge-manager/.mcp.json.template",
+    "repo_url": "https://github.com/treylom/knowledge-manager",
+    "grade": "F",
+    "score": 24,
+    "critical": 0,
+    "high": 4,
+    "medium": 6,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 3,
+      "AAK-MCP-003": 1,
+      "AAK-MCP-ATTEST-001": 3,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "quazardous__nelson-mcp",
+    "name": "quazardous/nelson-mcp/.mcp.json-dist",
+    "repo_url": "https://github.com/quazardous/nelson-mcp",
+    "grade": "F",
+    "score": 20,
+    "critical": 2,
+    "high": 2,
+    "medium": 4,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 2,
+      "AAK-MCP-009": 2,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "solanabr__solana-ai-kit",
+    "name": "solanabr/solana-ai-kit",
+    "repo_url": "https://github.com/solanabr/solana-ai-kit",
+    "grade": "F",
+    "score": 18,
+    "critical": 0,
+    "high": 1,
+    "medium": 14,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 7,
+      "AAK-SUPPLY-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "huangjia2019__claude-code-engineering",
+    "name": "huangjia2019/claude-code-engineering/07-MCP/projects/01-basic-config/.mcp.json",
+    "repo_url": "https://github.com/huangjia2019/claude-code-engineering",
+    "grade": "F",
+    "score": 12,
+    "critical": 0,
+    "high": 4,
+    "medium": 8,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 4,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__ai-brainstorming",
+    "name": "Zenobia000/ai-brainstorming/.mcp.json.windows.example",
+    "repo_url": "https://github.com/Zenobia000/ai-brainstorming",
+    "grade": "F",
+    "score": 10,
+    "critical": 0,
+    "high": 3,
+    "medium": 12,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-006": 6,
+      "AAK-MCP-ATTEST-001": 6
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__auto-triz-x1c01",
+    "name": "Zenobia000/auto-triz-x1c01/.mcp.json.windows.example",
+    "repo_url": "https://github.com/Zenobia000/auto-triz-x1c01",
+    "grade": "F",
+    "score": 10,
+    "critical": 0,
+    "high": 3,
+    "medium": 12,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-006": 6,
+      "AAK-MCP-ATTEST-001": 6
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__claude-godzilla-z",
+    "name": "Zenobia000/claude-Godzilla-z/.mcp.json.windows.example",
+    "repo_url": "https://github.com/Zenobia000/claude-Godzilla-z",
+    "grade": "F",
+    "score": 10,
+    "critical": 0,
+    "high": 3,
+    "medium": 12,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-006": 6,
+      "AAK-MCP-ATTEST-001": 6
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "abilityai__agent-ruby",
+    "name": "Abilityai/agent-ruby/.mcp.json.template",
+    "repo_url": "https://github.com/Abilityai/agent-ruby",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 13,
+    "medium": 16,
+    "low": 13,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 8,
+      "AAK-MCP-007": 13,
+      "AAK-MCP-ATTEST-001": 8,
+      "AAK-SUPPLY-001": 13
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "andrewaltimit__template-repo",
+    "name": "AndrewAltimit/template-repo/.mcp.json.full",
+    "repo_url": "https://github.com/AndrewAltimit/template-repo",
+    "grade": "F",
+    "score": 0,
+    "critical": 8,
+    "high": 5,
+    "medium": 19,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-001": 4,
+      "AAK-MCP-009": 4,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-ATTEST-001": 18,
+      "AAK-TRANSPORT-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "dnyoussef__context-cascade",
+    "name": "DNYoussef/context-cascade/.mcp.json.archived",
+    "repo_url": "https://github.com/DNYoussef/context-cascade",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 9,
+    "medium": 24,
+    "low": 8,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 6,
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 8,
+      "AAK-MCP-ATTEST-001": 12,
+      "AAK-SUPPLY-001": 8
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "dnyoussef__context-cascade",
+    "name": "DNYoussef/context-cascade/.mcp.json.template",
+    "repo_url": "https://github.com/DNYoussef/context-cascade",
+    "grade": "F",
+    "score": 0,
+    "critical": 2,
+    "high": 3,
+    "medium": 8,
+    "low": 3,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 2,
+      "AAK-MCP-006": 2,
+      "AAK-MCP-005": 2,
+      "AAK-MCP-007": 3,
+      "AAK-MCP-ATTEST-001": 4,
+      "AAK-SUPPLY-001": 3
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__ai-brainstorming",
+    "name": "Zenobia000/ai-brainstorming/.mcp.json.linux.example",
+    "repo_url": "https://github.com/Zenobia000/ai-brainstorming",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 12,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__auto-triz-x1c01",
+    "name": "Zenobia000/auto-triz-x1c01/.mcp.json.linux.example",
+    "repo_url": "https://github.com/Zenobia000/auto-triz-x1c01",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 12,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "zenobia000__claude-godzilla-z",
+    "name": "Zenobia000/claude-Godzilla-z/.mcp.json.linux.example",
+    "repo_url": "https://github.com/Zenobia000/claude-Godzilla-z",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 7,
+    "medium": 12,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-003": 3,
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "aegntic__dailydoco",
+    "name": "aegntic/DAILYDOCO/.mcp.json.backup.scattered.20250605_024038",
+    "repo_url": "https://github.com/aegntic/DAILYDOCO",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 24,
+    "medium": 30,
+    "low": 23,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-005": 15,
+      "AAK-MCP-007": 23,
+      "AAK-MCP-ATTEST-001": 15,
+      "AAK-SUPPLY-001": 23
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "assafkip__huntkit",
+    "name": "assafkip/huntkit/.mcp.json.template",
+    "repo_url": "https://github.com/assafkip/huntkit",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 5,
+    "medium": 10,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 2,
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 5,
+      "AAK-SUPPLY-001": 2,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 2,
+      "AAK-MCP-APIFY-CVE-2026-46341-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "gavinmcfall__home-ops",
+    "name": "gavinmcfall/home-ops/.mcp.json.disabled",
+    "repo_url": "https://github.com/gavinmcfall/home-ops",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 4,
+    "medium": 8,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 5,
+      "AAK-SUPPLY-001": 4,
+      "AAK-MCP-GRAFANA-CVE-2026-19516-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ilandahan__aid",
+    "name": "ilandahan/AID/.mcp.json.mac",
+    "repo_url": "https://github.com/ilandahan/AID",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 10,
+    "medium": 12,
+    "low": 6,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 6,
+      "AAK-MCP-003": 4,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 6
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ilandahan__aid",
+    "name": "ilandahan/AID/.mcp.json.windows",
+    "repo_url": "https://github.com/ilandahan/AID",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 4,
+    "medium": 12,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 6,
+      "AAK-MCP-003": 4,
+      "AAK-MCP-ATTEST-001": 6
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "indranilbanerjee__socialforge",
+    "name": "indranilbanerjee/socialforge/.mcp.json.connectors-reference",
+    "repo_url": "https://github.com/indranilbanerjee/socialforge",
+    "grade": "F",
+    "score": 0,
+    "critical": 10,
+    "high": 0,
+    "medium": 12,
+    "low": 1,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 10,
+      "AAK-MCP-ATTEST-001": 10,
+      "AAK-TRANSPORT-003": 2,
+      "AAK-OAUTH-008": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "iterate__iterate",
+    "name": "iterate/iterate",
+    "repo_url": "https://github.com/iterate/iterate",
+    "grade": "F",
+    "score": 0,
+    "critical": 5,
+    "high": 0,
+    "medium": 5,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 5,
+      "AAK-MCP-ATTEST-001": 5
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "jpiece3__lead-magnet-quiz-workflow",
+    "name": "jpiece3/lead-magnet-quiz-workflow/.claude/.mcp.json.template",
+    "repo_url": "https://github.com/jpiece3/lead-magnet-quiz-workflow",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 9,
+    "medium": 16,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 8,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-003": 5,
+      "AAK-MCP-ATTEST-001": 8,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "minhnv0807__ai-business-skills",
+    "name": "minhnv0807/ai-business-skills",
+    "repo_url": "https://github.com/minhnv0807/ai-business-skills",
+    "grade": "F",
+    "score": 0,
+    "critical": 10,
+    "high": 0,
+    "medium": 10,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 10,
+      "AAK-MCP-ATTEST-001": 10
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "namastexlabs__automagik-tools",
+    "name": "namastexlabs/automagik-tools/.mcp.json.backup",
+    "repo_url": "https://github.com/namastexlabs/automagik-tools",
+    "grade": "F",
+    "score": 0,
+    "critical": 23,
+    "high": 23,
+    "medium": 25,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 1,
+      "AAK-MCP-001": 23,
+      "AAK-MCP-009": 22,
+      "AAK-MCP-ATTEST-001": 24
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "nilhemdot__bountystrike-community",
+    "name": "nilhemdot/bountystrike-community/.mcp.json.bak-20260528-234151",
+    "repo_url": "https://github.com/nilhemdot/bountystrike-community",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 1,
+    "medium": 30,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-004": 1,
+      "AAK-MCP-006": 14,
+      "AAK-MCP-ATTEST-001": 16
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "ortus-docs__coldbox-docs",
+    "name": "ortus-docs/coldbox-docs",
+    "repo_url": "https://github.com/ortus-docs/coldbox-docs",
+    "grade": "F",
+    "score": 0,
+    "critical": 7,
+    "high": 0,
+    "medium": 7,
+    "low": 0,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-001": 7,
+      "AAK-MCP-ATTEST-001": 7
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "perchfuruncle656__huntkit",
+    "name": "perchfuruncle656/huntkit/.mcp.json.template",
+    "repo_url": "https://github.com/perchfuruncle656/huntkit",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 5,
+    "medium": 10,
+    "low": 2,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-002": 1,
+      "AAK-MCP-006": 2,
+      "AAK-MCP-005": 3,
+      "AAK-MCP-007": 2,
+      "AAK-MCP-ATTEST-001": 5,
+      "AAK-SUPPLY-001": 2,
+      "AAK-MCP-STDIO-LAUNCHER-INJECT-001": 2,
+      "AAK-MCP-APIFY-CVE-2026-46341-001": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "plurigrid__asi",
+    "name": "plurigrid/asi/ies/music-topos/.mcp.json.bak",
+    "repo_url": "https://github.com/plurigrid/asi",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 4,
+    "medium": 11,
+    "low": 4,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-006": 1,
+      "AAK-MCP-005": 4,
+      "AAK-MCP-007": 4,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 4
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "tbuczen__larpilot",
+    "name": "tbuczen/LARPilot/.mcp.json.dist",
+    "repo_url": "https://github.com/tbuczen/LARPilot",
+    "grade": "F",
+    "score": 0,
+    "critical": 1,
+    "high": 11,
+    "medium": 14,
+    "low": 9,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 9,
+      "AAK-MCP-001": 1,
+      "AAK-MCP-009": 1,
+      "AAK-MCP-ATTEST-001": 7,
+      "AAK-SUPPLY-001": 9,
+      "AAK-MCP-SERENA-CVE-2026-49471-001": 1,
+      "AAK-TRANSPORT-003": 1
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  },
+  {
+    "slug": "thejackluo__weaive",
+    "name": "thejackluo/weaive/docs/setup/mcp-configs/.mcp.json.windows",
+    "repo_url": "https://github.com/thejackluo/weaive",
+    "grade": "F",
+    "score": 0,
+    "critical": 0,
+    "high": 8,
+    "medium": 12,
+    "low": 8,
+    "last_scanned": "2026-08-31T15:08:13.933580+00:00",
+    "disclosure_state": "embargoed",
+    "rule_hits": {
+      "AAK-MCP-005": 6,
+      "AAK-MCP-007": 8,
+      "AAK-MCP-ATTEST-001": 6,
+      "AAK-SUPPLY-001": 8
+    },
+    "first_seen": "2026-08-31T15:08:14+00:00"
+  }
+]

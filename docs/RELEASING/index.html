@@ -1,0 +1,724 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Security scanner for MCP-connected AI agent pipelines">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/RELEASING/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Releasing agent-audit-kit - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#releasing-agent-audit-kit" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Releasing agent-audit-kit
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session Transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-pre-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Pre-tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-post-tag-re-patch-the-github-repo-description" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Post-tag — re-PATCH the GitHub repo description
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cve-gate-hygiene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. CVE-gate hygiene
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="releasing-agent-audit-kit">Releasing agent-audit-kit</h1>
+<p>This file documents the manual + automated steps for cutting a release.
+The atomic claims-vs-code chain is enforced by <code>scripts/sync_*.py</code> (run
+by <code>.github/workflows/sync-rule-count.yml</code> and the local pre-commit
+hook). Most surfaces are anchor-pinned. <strong>One surface is not</strong> — see §3.</p>
+<h2 id="1-pre-tag">1. Pre-tag</h2>
+<ul>
+<li>Bump <code>pyproject.toml</code> <code>version</code>.</li>
+<li>Bump <code>agent_audit_kit/__init__.py</code> <code>__version__</code> (and re-Read after the bump
+  per the v0.3.11 lesson — the on-disk grep is the authoritative pin).</li>
+<li>~~Bump <code>tests/test_phase5.py</code> version assertion.~~ <strong>No longer needed</strong> (v0.3.88):
+  it derives from <code>pyproject.toml</code>. It used to be a hardcoded literal, so every
+  release hand-edited a test file — and the assertion could only disagree with a
+  bump that had already happened, never catch a missed one.</li>
+<li>Run <code>python3 scripts/sync_rule_count.py --regenerate</code>.</li>
+<li>Run <code>python3 scripts/sync_scanner_count.py</code>.</li>
+<li>Run <code>python3 scripts/sync_repo_metadata.py --write</code>.</li>
+<li>Re-grep <code>pyproject.toml</code> <code>^version</code> and <code>__init__.py</code> <code>__version__</code>. Both must read the new version.</li>
+<li><code>pytest -q &amp;&amp; ruff check . &amp;&amp; mypy agent_audit_kit/ &amp;&amp; agent-audit-kit rule lint</code>.</li>
+<li>Update <code>CHANGELOG.md</code> and <code>CHANGELOG.cves.md</code>.</li>
+</ul>
+<h2 id="2-tag">2. Tag</h2>
+<ul>
+<li><code>git tag vX.Y.Z &lt;merge-commit&gt;</code> after the PR is squash-merged.</li>
+<li><code>git push origin vX.Y.Z</code> triggers <code>release.yml</code>.</li>
+<li>Watch the 5 release jobs: CVE-response gate, Publish to PyPI, Push Docker image to GHCR, Rule bundle + SBOM (Sigstore), Create GitHub Release.</li>
+</ul>
+<h2 id="3-post-tag-re-patch-the-github-repo-description">3. Post-tag — re-PATCH the GitHub repo description</h2>
+<blockquote>
+<p>The GitHub repo <code>description</code> field is the highest-leverage marketing
+surface (procurement reviewers read it first) and is <strong>not</strong> wired into
+the sync scripts. It is a one-time-set field unless we re-set it on
+every release.</p>
+</blockquote>
+<p>After every tag push, re-PATCH the description so it matches the live
+RULE_COUNT and the canonical framework count — both read from code, never
+laundered from the README's own claim:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">RULES</span><span class="o">=</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"from agent_audit_kit import RULE_COUNT; print(RULE_COUNT)"</span><span class="k">)</span>
+<span class="c1"># Two distinct framework surfaces — do not confuse them:</span>
+<span class="c1">#   12 = `report --framework` PDF/text evidence packs</span>
+<span class="c1">#        (agent_audit_kit.output.pdf_report._FRAMEWORK_TITLES). This is the</span>
+<span class="c1">#        "N compliance frameworks" number the description should carry, and it</span>
+<span class="c1">#        is fenced against README/CLAUDE/docs prose in test_rule_count_sync.py.</span>
+<span class="c1">#    8 = agent_audit_kit.output.compliance.FRAMEWORKS — the smaller,</span>
+<span class="c1">#        control-mapped table behind `scan --compliance`. Do NOT use it here.</span>
+<span class="nv">FRAMEWORKS</span><span class="o">=</span><span class="k">$(</span>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">"from agent_audit_kit.output.pdf_report import _FRAMEWORK_TITLES; print(len(_FRAMEWORK_TITLES))"</span><span class="k">)</span>
+gh<span class="w"> </span>repo<span class="w"> </span>edit<span class="w"> </span>sattyamjjain/agent-audit-kit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--description<span class="w"> </span><span class="s2">"Static scanner for MCP-connected AI agent pipelines — </span><span class="si">${</span><span class="nv">RULES</span><span class="si">}</span><span class="s2"> rules across 14 categories, </span><span class="si">${</span><span class="nv">FRAMEWORKS</span><span class="si">}</span><span class="s2"> compliance frameworks, OWASP Agentic 10/10 + MCP 10/10, GitHub Action, SARIF, public CVE-to-rule ledger."</span>
+</code></pre></div>
+<p>This drift was observed at v0.3.15 ship time: the description still
+read "77 rules, 13 scanners" when the live RULE_COUNT was 193. Closing
+it requires either this manual step on every release or wiring it
+into <code>release.yml</code> as a post-publish job. Manual is acceptable until
+v0.4.0; wire it then.</p>
+<p><strong>v0.3.16 self-bug:</strong> the original <code>len(FRAMEWORKS)</code> form shipped here
+on 2026-05-09 returned 6 (dict size), not 12 (README claim). Fixed
+inline above; <code>gh repo edit</code> re-PATCH was redone post-tag with the
+correct number. Future releases use the README-grep form.</p>
+<h2 id="4-verify">4. Verify</h2>
+<ul>
+<li>PyPI index shows new version as <code>latest</code>. Index can lag the workflow's <code>Publish to PyPI: success</code> by 1–2 minutes; poll until propagated.</li>
+<li>GitHub Release published, non-draft, non-prerelease.</li>
+<li>GHCR Docker image pushed.</li>
+<li>Sigstore SBOM + bundle uploaded.</li>
+<li>README badges (rule count, framework count, version pin) all atomic.</li>
+<li>GitHub repo description re-PATCHED per §3.</li>
+</ul>
+<h2 id="5-cve-gate-hygiene">5. CVE-gate hygiene</h2>
+<p>Before tagging, <strong>disposition</strong> every open <code>cve-response</code> issue (the <code>sla-48h</code>
+label was retired with the 48h SLA in PR #432). The release workflow's
+<strong>CVE-response gate</strong> blocks the tag-push pipeline on anything untriaged. Each
+issue ends in exactly one of:</p>
+<table>
+<thead>
+<tr>
+<th>Disposition</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>rule shipped</td>
+<td>close (<code>completed</code>), citing the rule and the <code>CHANGELOG.cves.md</code> row</td>
+</tr>
+<tr>
+<td>out of scope / unreachable</td>
+<td>close (<code>not planned</code>) with the one-line reason, label <code>wontfix-static</code></td>
+</tr>
+<tr>
+<td>in scope, rule queued</td>
+<td><strong>stays open</strong>, label <code>cve-deferred</code>, dated disposition comment</td>
+</tr>
+</tbody>
+</table>
+<p>A disposition comment carries three fields and nothing else, so the queue can be
+read by a person and by a script:</p>
+<div class="highlight"><pre><span></span><code>disposition:  NEW-RULE | DEFERRED | OUT-OF-SCOPE
+target date:  YYYY-MM-DD    (required for DEFERRED, omitted otherwise)
+reason:       one sentence
+</code></pre></div>
+<p><code>cve-deferred</code> does not block the gate. That exemption was added on 2026-09-01
+and it is not a loophole — it is the difference between "has this disclosure
+been looked at?" and "is the queue empty?". Those were the same question while
+every triage ended in a close, and they came apart when the watcher's 6-hour
+cron outran the triage rate: 27 issues open, so <code>count == 0</code> was a state the
+repo could not reach on purpose, and v0.3.91 sat declared-but-unpublished for a
+day. Untriaged issues still block exactly as before.</p>
+<p>The rule for using it honestly: label <code>cve-deferred</code> only when the issue has a
+disposition comment naming what is queued and why. A label without that comment
+turns the gate off rather than satisfying it.</p>
+<p><strong>And it has to say when.</strong> That obligation used to be prose, checked by nobody.
+The 2026-08-31 wave honoured it — all ten of those deferrals carry a
+<code>**Target: YYYY-MM-DD.**</code> line — which is precisely why it took until 2026-09-04
+to notice that nothing enforced it. A deferral with no date is not a deferral;
+it is a silent drop wearing the one label that switches the gate off.
+<code>scripts/check_cve_deferrals.py</code> now runs inside the CVE-response gate and
+refuses the tag when a <code>cve-deferred</code> issue names no <code>target date:</code>. It accepts
+the older <code>**Target: …**</code> spelling too, because the obligation is <em>say when</em>,
+not <em>say when in the approved punctuation</em>.</p>
+<p>A target date in the <strong>past</strong> is listed on every run and fails nothing. Making it
+fatal was the obvious next step and is a trap: it would turn every scheduling
+note in the tree into a time bomb that detonates on an unrelated release, some
+morning nobody chose. Visibility at the moment somebody is already looking at the
+queue is the useful half; holding a tag hostage to a date typed a month ago is
+not.</p>
+<p>The cve-watcher dedup bug (issue #163) re-fires closed CVE IDs across
+daily cycles. Fix queued for v0.3.17.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
