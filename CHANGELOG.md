@@ -7,6 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.97] - 2026-09-08
+
+### Fixed
+
+- **A rule shipped yesterday overstated its own CVE.**
+  `AAK-MCP-KNOWNS-CVE-2026-86439-001` said the traversal reaches files "anywhere
+  the server process can reach". NVD does not say that. It says the traversal
+  reads, creates, overwrites and deletes files *outside the project directory*,
+  and then scopes the reach to "arbitrary Markdown files accessible to the server
+  process" — which follows from where the defect sits, in two Markdown-backed
+  stores (`internal/storage/doc_store.go`, `internal/storage/memory_store.go`).
+
+  The gap is small and the direction is what matters. This scanner's entire claim
+  is that a finding traces to something real; a rule that outruns its advisory is
+  one a reader cannot check. Found by re-reading NVD after shipping, not before,
+  so `tests/test_cve_deferral_queue_2026_09_08.py` now asserts the corrected
+  wording rather than leaving a comment. Description-only: no rule added, no rule
+  removed, count stays at 337.
+
+- **The dead security contact is gone from every live route.**
+  `security@agentauditkit.io` has never received mail — `agentauditkit.io` is
+  unregistered, NXDOMAIN with no MX — and `CODE_OF_CONDUCT.md` was still offering
+  it as the enforcement contact, so conduct reports bounced silently.
+
+  It now names `sattyamjain96@gmail.com`, the address already published in
+  `funding.json`, on a domain that accepts mail; GitHub's report-abuse form as the
+  route for a report that concerns the maintainer; and a pointer to `SECURITY.md`
+  because a vulnerability is not a conduct report. Both replacements were checked
+  before being written: gmail.com resolves with MX records, and the advisory form
+  returns HTTP 200 with private vulnerability reporting enabled on the repo.
+
+  `CHANGELOG.md` history is untouched, deliberately. Rewriting past entries to
+  hide the mistake would be worse than the mistake. `SECURITY.md` keeps the one
+  remaining live mention, and it is the explanation — updated here, because it
+  claimed the address "still appears in `CODE_OF_CONDUCT.md`", which stopped being
+  true in this release. The `mailto:`/domain exclusion in `link-check.yml` stays
+  and its comment now says why it is permanent rather than calling the address
+  "aspirational".
+
+- **`ROADMAP_2026.md` pointed at issue #22 as open work; #22 closed 2026-08-15.**
+  Annotated in the banner's own voice rather than silently updated — the file's
+  honesty is the asset, and a roadmap edited to look current is worth less than
+  one that says what it got wrong.
+
+  The annotation records something the bare issue state does not: #22 was closed
+  as completed, but only after being scoped down from "replace all regex scanners
+  with tree-sitter taint tracing across TS/JS, Python, Rust, Go" to a single
+  slice. That slice shipped and is `agent_audit_kit/scanners/_ts_stdio_taint.py`
+  — tree-sitter reachability for `AAK-MCP-STDIO-CMD-INJ-002` alone, with
+  `tree_sitter` optional and a proximity fallback. Rust was never in it and is
+  still a regex pattern scan, as `rust_pattern_scan.py` says in its own docstring.
+  So the "TS/Rust reachability rewrite" the roadmap line describes is not what
+  #22 delivered, and no open issue tracks the rest of it.
+
+### Changed
+
+- **CVE-response queue re-verified against NVD, not against its own issue bodies.**
+  Two issues remain open (#693, #699), both dated 2026-09-20 — the other ten
+  closed in v0.3.96. Both were checked at
+  `nvd.nist.gov/vuln/detail/<CVE-ID>` and both bodies match NVD verbatim, which
+  they should: `cve-watcher.yml` generates them from NVD's own `descriptions`
+  field. The check that mattered was whether the *disposition* described the same
+  defect, and re-reading sharpened the rule spec in a way worth recording:
+
+  - **#693 (CVE-2026-85666, OGX)** is a *guard-application asymmetry*, not a
+    missing guard. `validate_url_not_private()` exists and is applied to OGX's
+    other URL inputs — just not to `server_url`. That is the same class as
+    CVE-2026-33032 (auth middleware on `/mcp` but not `/mcp_message`) and
+    CVE-2026-46519 (gate checked in `tools/list` but not `tools/call`), both of
+    which this scanner already detects at other layers. It also forwards
+    attacker-supplied headers and bearer tokens to the chosen destination, so it
+    is credential exfiltration and not only topology enumeration.
+  - **#699 (CVE-2026-86122, Rowboat)** is *absence*: no destination validation at
+    all, and no correct sibling call to compare against.
+
+  A detector written for only one of those shapes misses the other. That is the
+  design problem the pair has been deferred on, and it is now stated on both
+  issues rather than implied.
+
+  Also verified, because a past run got it wrong and the correction is worth
+  confirming rather than assuming: **CVE-2026-33032 is described correctly
+  throughout this repo.** NVD describes twin endpoints where `/mcp` carries
+  `AuthRequired()` and `/mcp_message` carries only an IP allowlist that defaults
+  to empty and is treated as allow-all. The repo calls it middleware asymmetry
+  and empty-allowlist-as-allow-all, in `AAK-MCP-MIDDLEWARE-*`, README and
+  `mcp_auth_patterns.py`. It is not described as a `0.0.0.0` binding anywhere.
+
+
 ## [0.3.96] - 2026-09-08
 
 ### Changed

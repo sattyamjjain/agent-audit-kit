@@ -8597,9 +8597,11 @@ _r(
     "knowns (`knowns`, npm — knowns-dev) before 0.30.0 does not validate filesystem "
     "paths supplied in MCP tool arguments, so an attacker-controlled path containing "
     "directory-traversal sequences reads, creates, overwrites or deletes files "
-    "outside the project directory, anywhere the server process can reach "
-    "(CVE-2026-86439, CVSS 8.8). The affected code paths are the document and memory "
-    "stores. Fixed in v0.30.0; treat < 0.30.0 (and unpinned) as exposed.",
+    "outside the project directory (CVE-2026-86439, CVSS 8.8). NVD scopes the read "
+    "reach to \"arbitrary Markdown files accessible to the server process\", which "
+    "follows from where the defect sits: the document and memory stores "
+    "(`internal/storage/doc_store.go`, `internal/storage/memory_store.go`) are "
+    "Markdown-backed. Fixed in v0.30.0; treat < 0.30.0 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `knowns` to >= 0.30.0 and pin it. Resolve every path taken from a tool "

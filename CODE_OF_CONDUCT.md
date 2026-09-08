@@ -42,8 +42,16 @@ an individual is officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**security@agentauditkit.io**.
+reported to the maintainer at **sattyamjain96@gmail.com** — the address already
+published in [`funding.json`](funding.json), on a domain that accepts mail.
+
+If a report concerns the maintainer, or you would rather not write to them
+directly, [GitHub's report-abuse form](https://github.com/contact/report-abuse)
+reaches GitHub Trust & Safety instead of this project.
+
+Security vulnerabilities are not conduct reports and have their own private
+channel — see [`SECURITY.md`](SECURITY.md), or
+[report a vulnerability privately](https://github.com/sattyamjjain/agent-audit-kit/security/advisories/new).
 
 All complaints will be reviewed and investigated promptly and fairly.
 

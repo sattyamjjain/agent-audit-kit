@@ -245,3 +245,47 @@ def test_no_wave_rule_fires_on_a_patched_project(tmp_path: Path) -> None:
         json.dumps({"dependencies": {"knowns": "0.33.0"}}), encoding="utf-8"
     )
     assert not (_fired(tmp_path) & set(WAVE) | (_fired(tmp_path) & {LANGFLOW}))
+
+
+# ---------------------------------------------------------------------------
+# Threat-shape fidelity: the rule text must not outrun the advisory
+# ---------------------------------------------------------------------------
+
+def test_knowns_description_does_not_outrun_nvd() -> None:
+    """Shipped in v0.3.96 saying the traversal reaches files "anywhere the server
+    process can reach". NVD does not say that. It says the traversal reads,
+    creates, overwrites and deletes files *outside the project directory*, and
+    then scopes the reach to "arbitrary Markdown files accessible to the server
+    process" — which follows from the defect sitting in two Markdown-backed
+    stores.
+
+    The gap is small and the direction is what matters: a rule that overstates its
+    own CVE is a rule a reader cannot check against the advisory, and this scanner's
+    whole claim is that its findings trace to something real. Caught by re-reading
+    NVD after shipping, which is why the assertion exists rather than a comment.
+    """
+    d = RULES[KNOWNS].description
+    assert "anywhere the server process can reach" not in d
+    assert "outside the project directory" in d
+    assert "arbitrary Markdown files accessible to the server process" in d
+
+
+def test_tooluniverse_pin_does_not_claim_to_detect_the_defect() -> None:
+    """A pin says "this dependency is at a vulnerable version". It does not say
+    "we detect the sandbox escape". Where the two could be confused, the rule has
+    to say which one it is."""
+    r = RULES[TOOLUNIVERSE]
+    assert "detects" not in (r.description + r.remediation)
+    assert "Dependency-level detection only" in r.limitations
+    assert "not on the sandbox-escape pattern itself" in r.limitations
+
+
+def test_postgres_mcp_names_the_twin_only_to_exclude_it() -> None:
+    """`postgres-mcp-pro` appears in the description on purpose — a reader who
+    finds a same-named package on PyPI at a higher version needs to be told why
+    it is not the upgrade target. The failure mode is naming it in the
+    *remediation*, where it reads as advice."""
+    r = RULES[POSTGRES_MCP]
+    assert "postgres-mcp-pro" in r.description
+    assert "not treated here as a verified upgrade target" in r.description
+    assert "postgres-mcp-pro" not in r.remediation

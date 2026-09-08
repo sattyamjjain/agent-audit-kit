@@ -3,9 +3,12 @@ name: Link check
 # Catch a dead docs domain (the reason docs/CNAME -> docs.agentauditkit.io sat
 # broken for months) at build time instead of after the fact. Runs on doc
 # changes, on push to main, and weekly so a link that dies after merge still
-# fails a build. `mailto:` links are excluded on purpose: security@agentauditkit.io
-# is an aspirational contact whose domain is not registered yet, and we do not
-# want the contact address to block docs builds.
+# fails a build. The `mailto:` and `agentauditkit\.io` exclusions are deliberate
+# and permanent: that domain was never registered, and while it is no longer
+# offered as a contact route anywhere (v0.3.97), the string still appears in
+# CHANGELOG.md history and in SECURITY.md's note explaining that it is dead.
+# Those references are kept on purpose, so the exclusion has to stay or every
+# docs build fails on a domain we deliberately never resolve.
 #
 # The MCP Security Index staleness guard lives here too, for the same reason: it
 # is a claim in README.md that only the network can settle, and it decays

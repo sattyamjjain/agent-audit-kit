@@ -13,14 +13,22 @@ vulnerability reporting is enabled on this repository, so the form is open to
 anyone with a GitHub account; the report stays private to you and the maintainer
 until an advisory is published.
 
-> **`security@agentauditkit.io` does not receive mail.** It has been listed here
-> as a contact, but `agentauditkit.io` has never been registered — it returns
-> NXDOMAIN, with no MX record — so anything sent there bounces. It is kept in
-> this document only to say so, because the address still appears in
-> `CODE_OF_CONDUCT.md` and throughout the changelog history, and a reader who
-> finds it there deserves to learn it is dead from the security policy rather
-> than from a bounce message. It will become live if and when the domain is
-> registered.
+> **`security@agentauditkit.io` does not receive mail.** It was listed here as a
+> contact, but `agentauditkit.io` has never been registered — it returns NXDOMAIN,
+> with no MX record — so anything sent there bounced silently.
+>
+> As of v0.3.97 it is no longer offered as a route anywhere in this repository.
+> `CODE_OF_CONDUCT.md` now names a working conduct contact, and the only places
+> the string survives are the changelog history and the `mailto:`/domain
+> exclusion in `.github/workflows/link-check.yml` that keeps that history from
+> failing a link check. Those are deliberate: rewriting changelog entries to hide
+> a past mistake would be worse than the mistake.
+>
+> This paragraph is the one remaining live mention, and it exists so a reader who
+> greps the changelog, finds the address, and comes looking learns it is dead from
+> the security policy rather than from a bounce message. Nothing here is waiting
+> on a domain registration; the GitHub Security Advisories link above is the
+> channel.
 
 ### What to Include
 
