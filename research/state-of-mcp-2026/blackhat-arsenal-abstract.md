@@ -7,7 +7,7 @@
 > block by hand before pasting into the Arsenal CFP form.
 
 - **Track:** Arsenal (live tool demo)
-- **Tool:** AgentAuditKit — `pip install agent-audit-kit` · MIT · https://github.com/sattyamjjain/agent-audit-kit
+- **Tool:** AgentAuditKit — `pip install agent-audit-kit` · Apache-2.0 · https://github.com/sattyamjjain/agent-audit-kit
 - **Category:** AI/ML security · MCP · SAST / static analysis
 - **Demo length:** 20–40 min at a station
 
@@ -50,4 +50,4 @@ reproducible. AgentAuditKit is the deterministic, auditor-ready OSS alternative.
 ## Presenter / logistics
 
 - Requires: a laptop, no network (the point). Docker image + PyPI wheel available.
-- Prior disclosure: tool is public and MIT-licensed; no 0-day is dropped in this demo.
+- Prior disclosure: tool is public and Apache-2.0-licensed; no 0-day is dropped in this demo.

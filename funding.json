@@ -24,7 +24,7 @@
         "wellKnown": "https://raw.githubusercontent.com/sattyamjjain/agent-audit-kit/main/.well-known/funding-manifest-urls"
       },
       "licenses": [
-        "spdx:MIT"
+        "spdx:Apache-2.0"
       ],
       "tags": [
         "security",

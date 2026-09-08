@@ -27,7 +27,7 @@ Detects: hardcoded secrets, shell injection, tool poisoning, rug pulls, trust bo
 - Supports 10 agent platforms (Claude Code, Cursor, Copilot, Windsurf, Amazon Q, Gemini CLI, etc.)
 - SARIF 2.1.0 output for GitHub Code Scanning
 - Ships as GitHub Action, pre-commit hook, Docker image, and PyPI package
-- MIT licensed, fully offline, zero cloud dependencies
+- Apache-2.0 licensed, fully offline, zero cloud dependencies
 
 https://github.com/sattyamjjain/agent-audit-kit
 ```

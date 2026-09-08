@@ -7,7 +7,7 @@
   <a href="https://github.com/sattyamjjain/agent-audit-kit/actions/workflows/ci.yml"><img src="https://github.com/sattyamjjain/agent-audit-kit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="benchmarks/determinism/RESULTS.md"><img src="https://img.shields.io/badge/determinism-0%25%20variance%20(20%2F20)-brightgreen.svg" alt="Determinism: 0% variance across 20/20 runs"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20configs-HIGH%2FCRIT%20FP%200%2F1-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
   <a href="docs/benchmarks/third-party-grading.md"><img src="https://img.shields.io/badge/third--party%20grade-see%20notes-lightgrey.svg" alt="Third-party grading notes"></a>
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.95
+      - uses: sattyamjjain/agent-audit-kit@v0.3.96
         id: scan
         with:
           fail-on: high
@@ -114,7 +114,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.95
+    rev: v0.3.96
     hooks:
       - id: agent-audit-kit
 ```
@@ -306,7 +306,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.95
+  - uses: sattyamjjain/agent-audit-kit@v0.3.96
     id: scan
     with:
       fail-on: high
@@ -509,7 +509,7 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Reproducible finding set (same input → same digest) | **[Yes — 20/20 runs, 0% variance](benchmarks/determinism/RESULTS.md)** | Runtime governance | LLM-judge in path | LLM-assisted |
 | Healthcare-AI legal triggers | **Yes** (TN SB 1580, KS/WA/UT) | No | No | No |
 | Offline / zero cloud | **Yes** | Yes | No | Optional |
-| License | **MIT** | MIT | Proprietary | Proprietary |
+| License | **Apache-2.0** | MIT | Proprietary | Proprietary |
 
 **Microsoft AGT is an ally, not a competitor.** It governs agents at
 runtime; agent-audit-kit audits them at CI time and produces the PDF an
@@ -669,4 +669,4 @@ Report vulnerabilities via [GitHub Security Advisories](https://github.com/satty
 
 ## License
 
-[MIT](LICENSE)
+[Apache-2.0](LICENSE)

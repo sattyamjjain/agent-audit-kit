@@ -10,7 +10,7 @@ file an issue and we will correct it (best-effort — no fixed clock).
 
 | | agent-audit-kit | Microsoft AGT | Snyk Agent Scan (ex Invariant) | Semgrep Multimodal SAST | Lakera Guard |
 |---|---|---|---|---|---|
-| License | MIT | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
+| License | Apache-2.0 | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
 | Scope | Static scanner + compliance evidence | Runtime governance (policy engine + mesh) | Static + runtime (post-acquisition) | Multimodal SAST | Runtime guardrail |
 | Account / cloud required | No | No (but Azure-native paths) | Yes | Optional | Yes |
 | Cloud round-trip | No | No | Yes (findings leave your repo) | Optional | Yes |
@@ -179,7 +179,7 @@ consumers can pick the right tool for their stack.
 
 | Dimension | AgentAuditKit | GitLab Agentic SAST 18.11 |
 |---|---|---|
-| License | MIT, OSS | Proprietary, Ultimate-tier paywall |
+| License | Apache-2.0, OSS | Proprietary, Ultimate-tier paywall |
 | Distribution | PyPI + Marketplace + Docker + VS Code ext | GitLab CI / Premium offering only |
 | Rule count | <!-- rule-count:total -->337<!-- /rule-count --> | Not publicly disclosed |
 | OWASP Agentic Top 10 mapping | Per-rule, public JSON manifest | Claimed; mapping not published |

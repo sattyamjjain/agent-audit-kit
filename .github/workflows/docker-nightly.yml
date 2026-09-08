@@ -59,7 +59,7 @@ jobs:
             org.opencontainers.image.title=AgentAuditKit
             org.opencontainers.image.description=Security scanner for MCP-connected AI agent pipelines
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/agent-audit-kit
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

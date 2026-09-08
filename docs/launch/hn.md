@@ -24,7 +24,7 @@
 > + SOC 2 + ISO 27001 / 42001 + HIPAA + NIST AI RMF in one scan.
 >
 > agent-audit-kit is that. 337 deterministic rules. Zero cloud
-> dependencies, no auth required. MIT.
+> dependencies, no auth required. Apache-2.0.
 >
 > The leaderboard: we run the scanner weekly against 500 public MCP
 > servers and publish per-server grade cards. Findings are embargoed

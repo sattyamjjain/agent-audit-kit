@@ -7,6 +7,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.96] - 2026-09-08
+
+### Changed
+
+- **Relicensed from MIT to Apache License 2.0.** Apache-2.0 carries an express
+  patent grant (§3) and MIT does not. This is a security tool, and the
+  organisations that adopt one are the kind that ask. It stays fully open source
+  and nothing is gated; Apache-2.0 grants a superset of MIT's permissions.
+
+  Provenance was checked before applying rather than assumed. `git log` returns
+  six author identities: two belong to the maintainer (`sattyamjain96@gmail.com`
+  and the GitHub noreply address), two are this repo's own automation (`aak-bot`,
+  `agent-audit-kit-bot`), one is the company address `sattyam.jain@attri.ai`
+  — the same identity agent-airlock raised and confirmed as not employer-owned
+  before its own relicense — and one is `dependabot[bot]`. All 32
+  `Signed-off-by` trailers are dependabot's. Neither dependabot nor either bot
+  has authored a single commit touching `agent_audit_kit/`; their commits are
+  manifest bumps and generated count/coverage syncs. No third-party human has
+  authored source here. The `Co-authored-by: Claude` trailers are tooling
+  attribution, not a copyright claim.
+
+  `LICENSE` is the canonical Apache-2.0 text fetched from apache.org (202 lines,
+  sha256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`) with
+  the appendix boilerplate filled in as `Copyright 2026 Sattyam Jain`. The result
+  is byte-identical to agent-airlock's, sha256
+  `d102e62d1a9e4c6b5030334eb87c41e54ca35533e4bcbe5c6833e06cd29b33cb`.
+
+  Packaging metadata verified by building the wheel, not by reading the source:
+
+  ```
+  License-Expression: Apache-2.0
+  License-File: LICENSE
+  Classifier: License :: OSI Approved :: Apache Software License
+  ```
+
+  27 further edits move every downstream statement of the licence so nothing keeps
+  telling readers MIT: the contributor grant, the README badge and both comparison
+  rows, `CITATION.cff` (both the software and the report), the OCI
+  `image.licenses` label on the release and nightly Docker builds, `funding.json`'s
+  SPDX tag, the VS Code extension manifest, and the live outreach and research
+  drafts. Every edit asserts an exact single match before writing.
+
+  An inventory matching bare `MIT` reported 67 files; word-boundary matching cut
+  that to 29, because the rest were `LIMIT` / `COMMIT` / `SUBMIT` substrings.
+  Seven of the 29 keep their MIT strings deliberately: Microsoft AGT's licence in
+  the comparison tables and in `scripts/gen_coverage.py`, frozen history under
+  `docs/changelog/archive/` and `releases/`, the three dated drafts the repo's own
+  `check_counts.py` already treats as historical, upstream licences in
+  `tests/fixtures/LICENSES.md`, and the synthetic `package.json` payloads in
+  `tests/test_legal_compliance.py` — that last one is a test's *input data*, and
+  editing it would change what the test exercises.
+
+- **`scan` moved out of `cli.py`** into `agent_audit_kit/commands/scan.py`
+  (closes #701). `cli.py` was 1,618 lines for 23 top-level commands, of which
+  `scan` and its private `_run_scan` were 440 — a quarter of the file for one
+  command. `cli.py` is now 1,105 lines.
+
+  Behaviour is unchanged, verified rather than asserted: `scan --help` and
+  `cli --help` were captured from a clean `git worktree` at the pre-split commit
+  and again from the working tree through the same harness, and diff
+  byte-identically (sha256 `33aaf9c2288c43ce87a8` and `0bef561f95318d927cd3`).
+  The installed console script matches too.
+
+  `tests/test_cli_scan_extraction.py` locks the surface structurally — the full
+  parameter set, every option's help text, the defaults — rather than against a
+  golden `--help` capture, because rendered help also depends on terminal width
+  and the click version. It also asserts from the AST that no module under
+  `commands/` imports `cli`: that direction is a cycle, which is why the shared
+  constants moved to `commands/_common.py`. `cli` re-exports all eight names, so
+  `from agent_audit_kit.cli import SEVERITY_MAP` keeps resolving.
+
+### Added
+
+- **Nine `cve-response` issues close on five new dependency pins and one raised
+  floor** — #656, #690, #691, #692, #695, #696, #697, #698 and #703. Rule count
+  332 → 337. Full per-CVE detail in `CHANGELOG.cves.md`.
+
+  Every one of them had been deferred on the reading that a bug inside a
+  third-party server's own binary has no consumer-side signal. That is true of
+  the *defect* and false of the *dependency*, which is what this scanner has
+  pinned since the 2026-07 wave. Re-reading the queue against that distinction
+  released nine issues; three registry lookups then changed what shipping meant.
+
+  - `AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001` (**CRITICAL**) — `tooluniverse >= 1.3.0`.
+    Closes #656, open since 2026-08-27 at CVSS 10. The deferral was waiting on a
+    *generic* deny-list-sandbox detector; the CVE itself has had a vendor fix the
+    whole time. The rule's `limitations` says plainly that it is a dependency pin
+    and not a sandbox-escape detector, so the coverage claim stays honest, and the
+    detector is now tracked on its own issue where a date means something.
+  - `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001` (**HIGH**) —
+    `mcp-contextforge-gateway >= 1.0.9`. One floor, four CVEs, four issues. The
+    floor comes from IBM's bulletin: NVD carries no CPE range for CVE-2026-77822
+    and the project's GitHub advisory list stops at a v1.0.8 patched-version, so a
+    floor from either open source alone reports four vulnerable installs as patched.
+  - `AAK-MCP-POSTGRESMCP-CVE-2026-85620-001` (**HIGH**) — **no fixed release.**
+    Upstream's newest tag is v0.3.0 and crystaldba/postgres-mcp#178 is still open,
+    so the whole published 0.x line fires. The 0.4.0 floor exists to exclude the
+    unrelated npm `postgres-mcp` (1.0.x), not to promise a fix; PyPI
+    `postgres-mcp-pro` is deliberately not named as an upgrade target because it
+    declares no repository and is not referenced upstream. Remediation is a
+    least-privilege database role.
+  - `AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001` (**MEDIUM**) —
+    `awslabs.postgres-mcp-server >= 1.1.7`.
+  - `AAK-MCP-KNOWNS-CVE-2026-86439-001` (**HIGH**) — npm `knowns >= 0.30.0`,
+    `introduced=0.1.1` to resolve a one-version name collision with an unrelated
+    PyPI stub.
+  - `AAK-MCP-LANGFLOW-CVE-2026-12940-001` floor raised 1.11.0 → 1.11.3 for
+    CVE-2026-9186. The old floor was reporting 1.11.0, 1.11.1 and 1.11.2 as
+    patched while all three are affected.
+
+- One issue closes as out of scope: SiYuan (CVE-2026-85580, #694) ships as a
+  desktop binary and a Docker image. PyPI `siyuan` is a third-party API client and
+  npm `siyuan` is the plugin-API type package; both sit on version lines that never
+  approach 3.8.2, so a pin on either name would report a CVE in software the
+  dependent does not run.
+
+- Two deferrals remain, both dated **2026-09-20**: #693 and #699 are the same
+  unvalidated-MCP-destination SSRF class from two products, neither pinnable, so a
+  rule is the only response and it needs design against fixtures.
+
+### Fixed
+
+- `docs/cve-latency.md` regenerated: p90 2 → 4 days and slowest 7 → 12 days. That
+  is what a five-week CRITICAL costs, and the number is published rather than
+  smoothed.
+
+
 ## [0.3.95] - 2026-09-06
 
 ### Added

@@ -28,7 +28,7 @@ Show HN: I scanned 2,303 public MCP server configs — 52% expose a remote serve
 **First comment (post immediately, as author):**
 ```
 I run an open-source static scanner for MCP/agent configs (agent-audit-kit,
-MIT). I took 2,303 distinct public MCP configs — a GitHub crawl plus the official
+Apache-2.0). I took 2,303 distinct public MCP configs — a GitHub crawl plus the official
 MCP Registry's latest-version servers — and scanned each one offline and
 deterministically: no cloud, no LLM, same input gives the same result.
 
@@ -80,7 +80,7 @@ fetch-and-execute at launch (19.5%), secret inlined in the config env block
 
 Method and raw aggregate (results.json) are committed; there's an exact
 reproduce command (`make report`, offline + byte-deterministic). The scanner is
-open source (agent-audit-kit, MIT); I've kept the caveats in the report (sample
+open source (agent-audit-kit, Apache-2.0); I've kept the caveats in the report (sample
 skew, static over/under-count, inferred-from-config auth posture, N=2,303 is a
 sample).
 

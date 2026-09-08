@@ -6,7 +6,7 @@
 > [State-of-MCP-Security report](REPORT.md), issue #23). Every "measured" number
 > below comes from running
 > [AgentAuditKit](https://github.com/sattyamjjain/agent-audit-kit) (fully offline,
-> deterministic, MIT; the exact ruleset is the committed
+> deterministic, Apache-2.0; the exact ruleset is the committed
 > [`rules.json`](../../rules.json) bundle at this repo's HEAD) over a
 > content-deduplicated corpus of public MCP configs. Raw aggregate:
 > [`results.json`](results.json). External figures are attributed to their

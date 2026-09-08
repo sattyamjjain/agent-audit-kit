@@ -33,9 +33,9 @@ authors:
     alias: "sattyamjjain"
 repository-code: "https://github.com/sattyamjjain/agent-audit-kit"
 url: "https://github.com/sattyamjjain/agent-audit-kit"
-license: MIT
-version: "0.3.95"
-date-released: "2026-09-06"
+license: Apache-2.0
+version: "0.3.96"
+date-released: "2026-09-08"
 keywords:
   - model-context-protocol
   - mcp
@@ -55,7 +55,7 @@ preferred-citation:
   year: 2026
   month: 8
   version: "1.0"
-  license: MIT
+  license: Apache-2.0
   url: "https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md"
   abstract: >-
     A static scan of 2,303 distinct public Model Context Protocol server

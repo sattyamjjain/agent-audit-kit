@@ -1,6 +1,6 @@
 # The State of MCP Security, 2026
 
-**Report version 1.0** · **Published 2026-08-17** · **Scan date 2026-07-26** · **Corpus:** 2,303 distinct public MCP server configs · **Tool:** AgentAuditKit (offline, deterministic) · **Licence:** MIT (same as the tool)
+**Report version 1.0** · **Published 2026-08-17** · **Scan date 2026-07-26** · **Corpus:** 2,303 distinct public MCP server configs · **Tool:** AgentAuditKit (offline, deterministic) · **Licence:** Apache-2.0 (same as the tool)
 
 > **Stable identity.** Cite this document as *The State of MCP Security, 2026*,
 > version 1.0. The version changes only when a number in it changes; re-running the

@@ -94,7 +94,7 @@ Post same Tuesday as HN, ~1h after HN submission.
 > • VS Code Marketplace: agent-audit-kit
 > • GitHub Action: uses: sattyamjjain/agent-audit-kit@v0.3.87
 >
-> MIT. No strings.
+> Apache-2.0. No strings.
 
 ---
 

@@ -21,7 +21,7 @@ the #1 channel for this repo.
 >
 > We built agent-audit-kit, an OSS scanner: 337 deterministic rules,
 > SARIF + OWASP MCP Top 10 + compliance report for EU AI Act /
-> SOC 2 / ISO 27001 / HIPAA / NIST AI RMF. No auth, no cloud. MIT.
+> SOC 2 / ISO 27001 / HIPAA / NIST AI RMF. No auth, no cloud. Apache-2.0.
 >
 > Published the MCP Security Index — weekly leaderboard of 500 public
 > servers, per-server grade cards, 90-day coordinated disclosure

@@ -4,7 +4,7 @@
   "description": "Security scanner for MCP-connected AI agent pipelines",
   "version": "0.3.3",
   "publisher": "sattyamjjain",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/sattyamjjain/agent-audit-kit"
