@@ -429,8 +429,8 @@ cross-reference, not a head-to-head benchmark.
 | **ASI01** | Goal Hijack | 14 |
 | **ASI02** | Tool Misuse | 48 |
 | **ASI03** | Memory Poisoning | 73 |
-| **ASI04** | Identity & Privilege Abuse | 68 |
-| **ASI05** | Cascading Failures | 54 |
+| **ASI04** | Identity & Privilege Abuse | 72 |
+| **ASI05** | Cascading Failures | 55 |
 | **ASI06** | Unauthorized Capability Acquisition | 47 |
 | **ASI07** | Plan Injection | 9 |
 | **ASI08** | Agent Communication Poisoning | 5 |
@@ -655,7 +655,7 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # <!-- test-count:total -->2,186<!-- /test-count --> test functions
+pytest -v                          # <!-- test-count:total -->2,199<!-- /test-count --> test functions
 ruff check .                       # Lint
 mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan

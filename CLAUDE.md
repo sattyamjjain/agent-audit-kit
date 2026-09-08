@@ -70,7 +70,10 @@ docker build -t agent-audit-kit .
 
 ```
 agent_audit_kit/
-  cli.py               # Click entry point (26 commands: 23 @cli.command + 3 @cli.group)
+  cli.py               # Click entry point (26 commands: 22 @cli.command + 3 @cli.group + `scan`, added via add_command)
+  commands/            # Command bodies split out of cli.py (issue #701)
+    _common.py         # SEVERITY_MAP, FAIL_ON_CHOICES, EXIT_*, config helpers — cli re-exports all of them
+    scan.py            # The `scan` command + `_run_scan` (440 lines moved out of cli.py verbatim)
   rule_lint.py         # Rule-registry hygiene checks behind `aak rule lint`
   engine.py            # Scanner registry + orchestrator (run_scan)
   models.py            # Core dataclasses: Finding, ScanResult, Severity, Category

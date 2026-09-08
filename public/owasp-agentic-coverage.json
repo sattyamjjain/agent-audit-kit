@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-06T10:04:42Z",
+  "last_updated": "2026-09-08T09:04:46Z",
   "aak_version": "0.3.95",
-  "rule_count": 332,
+  "rule_count": 337,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1267,7 +1267,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 68,
+      "rule_density": 72,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1516,6 +1516,14 @@
           ]
         },
         {
+          "id": "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-85787"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-CARD-004",
           "severity": "medium",
           "cve_references": [],
@@ -1601,6 +1609,14 @@
           ]
         },
         {
+          "id": "AAK-MCP-KNOWNS-CVE-2026-86439-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-86439"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
           "severity": "critical",
           "cve_references": [
@@ -1609,7 +1625,8 @@
             "CVE-2026-17626",
             "CVE-2026-7646",
             "CVE-2026-8446",
-            "CVE-2026-9077"
+            "CVE-2026-9077",
+            "CVE-2026-9186"
           ],
           "aicm_references": [
             "AIS-07",
@@ -1706,6 +1723,14 @@
           ]
         },
         {
+          "id": "AAK-MCP-POSTGRESMCP-CVE-2026-85620-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-85620"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-PRAISONAI-CVE-2026-61427-001",
           "severity": "high",
           "cve_references": [
@@ -1791,6 +1816,14 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-46519"
+          ],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-81096"
           ],
           "aicm_references": []
         },
@@ -1956,7 +1989,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 54,
+      "rule_density": 55,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2202,6 +2235,17 @@
             "IVS-04",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-18486",
+            "CVE-2026-18489",
+            "CVE-2026-18905",
+            "CVE-2026-77822"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
