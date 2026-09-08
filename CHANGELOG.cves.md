@@ -16,6 +16,83 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-08: nine issues close on five pins, and three registry checks changed the fix
+
+The queue carried twelve open `cve-response` issues, eleven of them dated
+deferrals. Nine close here. Every one had been dispositioned as *"a bug inside a
+third-party server's own binary — AAK scans a consumer's repository and cannot
+see it."* That reading is right about the **defect** and wrong about the
+**dependency**, which is the thing this scanner has pinned since the 2026-07
+wave. Re-reading them against that distinction is what moved them, and then three
+registry lookups changed what shipping actually meant.
+
+**`postgres-mcp` has no fixed version.** The deferral said "version floor to
+0.3.1+". There is no 0.3.1: upstream's newest tag is v0.3.0 (2025-05-16) and
+crystaldba/postgres-mcp#178 — the security issue itself — is still open, so every
+published release of that distribution is affected. A floor pointing at a
+non-existent version would have told users to upgrade to nothing. Worse, PyPI
+carries a separate `postgres-mcp-pro` (0.4.0–0.4.2) with the product's marketing
+name and an identical summary string, no declared repository, and no reference
+from the upstream project — the obvious "fix" is a package we cannot identify, so
+the rule does not name it as an upgrade target. The remediation is a
+least-privilege database role instead, because restricted mode is what failed.
+
+**The `postgres-mcp` floor exists to exclude npm, not to promise a fix.** npm
+carries an unrelated `postgres-mcp` — a type-safe multi-database MCP server on the
+1.0.x line. Presence-only (`floor=None`) would have flagged every one of that
+project's dependents, permanently, for someone else's CVE: the MCPHub trap from
+the 2026-09-04 wave, arriving from the opposite direction. A 0.4.0 floor separates
+the two identities by version line, so the whole vulnerable 0.x distribution fires
+and the npm project never does. Both directions are asserted in tests.
+
+**ContextForge's floor is one release above what any open source states.**
+CVE-2026-77822 has no CPE range in NVD at all, and the project's GitHub advisory
+list stops at a `v1.0.8` patched-version. IBM's own bulletin says affected
+`<= v1.0.8`, fixed `v1.0.9`. Taking the floor from either open source alone ships
+one release short and reports four vulnerable installs as patched. One floor
+covers four CVEs and four issues.
+
+**Langflow's existing pin was quietly wrong.** `AAK-MCP-LANGFLOW-CVE-2026-12940-001`
+carried a 1.11.0 floor, correct for the six CVEs it already cited. CVE-2026-9186
+affects 1.0.0–1.11.2, so 1.11.0, 1.11.1 and 1.11.2 were being reported as patched
+while exposed. Raising the floor on the existing rule — rather than adding a
+second langflow pin that would report one dependency twice — is the `@apify`
+shape. The three versions are named in a test so a later "simplification" back to
+1.11.0 fails loudly.
+
+**#656 (CVSS 10) closes on the pin, and the detector it was waiting for is now
+its own issue.** ToolUniverse's unauthenticated `python_code_executor` sandbox
+escape has a vendor fix at 1.3.0 — bearer-token auth, loopback bind, hardened
+attribute checks. The pin is true today for anyone who depends on the package.
+The *generic* deny-list-sandbox detector the deferral was actually waiting on is
+a rule to design, not a CVE response, and it was holding a CRITICAL issue open for
+five weeks while nothing about that CVE remained unanswered. The rule's
+`limitations` field says plainly that this is a dependency pin and not a
+sandbox-escape detector, so the coverage claim stays honest.
+
+One issue closes as out of scope: SiYuan (CVE-2026-85580) ships as a desktop
+binary and a Docker image. PyPI `siyuan` (0.1.2) is a third-party API client and
+npm `siyuan` (1.2.7) is the plugin-API type package — neither is the application,
+and both are on version lines that never approach 3.8.2, so a pin on either name
+would be a claim about software the dependent does not run.
+
+Two deferrals stay, both dated 2026-09-20, and both for the same reason: #693 and
+#699 are one class — a destination taken from MCP configuration and fetched
+server-side with no link-local/metadata guard — and one rule covers both. Neither
+product is pinnable (OGX is identified by commit; Rowboat's PyPI and npm names are
+unrelated projects), so a rule is the only response, and it needs design against
+fixtures rather than a pattern bolted on to clear a queue.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-81096 (ToolUniverse <= 1.2.6, CVSS 10 - `python_code_executor` deny-lists attribute names while leaving the attribute-lookup builtins reachable, so a caller walks from a literal's class to its base and enumerates subclasses to reach `subprocess`; the HTTP and MCP servers bind every interface with debugging on and no authentication) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-81096) | **In scope, rule shipped** `AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001` (SUPPLY_CHAIN, **CRITICAL**): floor `tooluniverse >= 1.3.0`, the release that adds bearer-token auth, defaults the bind to loopback and hardens the attribute checks. The rule's `limitations` states it is a dependency pin, not a deny-list-sandbox detector; that detector is tracked separately. (#656) | 2026-09-08 |
+| CVE-2026-77822 / CVE-2026-18905 / CVE-2026-18486 / CVE-2026-18489 (IBM ContextForge MCP Gateway <= 1.0.8 - DNS-rebind SSRF via the A2A invoke endpoint and during tool invocation, improper jq-filter validation leaking credentials, and the Translate utility exposing data to the wrong session) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-77822) | **In scope, rule shipped** `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001` (SUPPLY_CHAIN, **HIGH**): floor `mcp-contextforge-gateway >= 1.0.9`. One floor, four CVEs, four issues. The floor comes from IBM's bulletin — NVD carries no CPE range for CVE-2026-77822 and the GitHub advisory list stops at v1.0.8, so either open source alone would have shipped one release short. (#691, #692, #696, #697) | 2026-09-08 |
+| CVE-2026-85620 (Postgres MCP Pro 0.3.0, CVSS 8.6 - restricted mode applies function-name validation to plain calls but not to `RangeFunction` nodes, so `pg_read_file` through FROM-clause syntax reads arbitrary files) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-85620) | **In scope, rule shipped** `AAK-MCP-POSTGRESMCP-CVE-2026-85620-001` (SUPPLY_CHAIN, **HIGH**): **no fixed release** — upstream issue #178 is open and v0.3.0 is still the newest tag, so the whole published 0.x line fires. The 0.4.0 floor exists to exclude the unrelated npm `postgres-mcp` (1.0.x), not to promise a fix; PyPI `postgres-mcp-pro` is deliberately not named as an upgrade target. Remediation is a least-privilege database role. (#690) | 2026-09-08 |
+| CVE-2026-85787 (awslabs postgres-mcp-server < 1.1.7, CVSS 6.5 - incomplete disallowed-input list in SQL validation lets crafted SQL write beyond read-only scope) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-85787) | **In scope, rule shipped** `AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001` (SUPPLY_CHAIN, **MEDIUM**): floor `awslabs.postgres-mcp-server >= 1.1.7`, the vendor's stated fix. (#698) | 2026-09-08 |
+| CVE-2026-86439 (knowns < 0.30.0, CVSS 8.8 - the MCP doc and memory tools take a filesystem path from tool arguments without confining it to the project directory, so traversal reads, creates, overwrites and deletes files anywhere the process can reach) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-86439) | **In scope, rule shipped** `AAK-MCP-KNOWNS-CVE-2026-86439-001` (SUPPLY_CHAIN, **HIGH**): floor npm `knowns >= 0.30.0`, `introduced=0.1.1`. The bound is a name-collision fix, not a range statement: PyPI carries an unrelated `knowns` whose only release is 0.1.0, and npm's history also starts at 0.1.0, so bounding at 0.1.1 trades npm's single 0.1.0 release for never flagging the stub — 86 of 87 real versions still fire. (#703) | 2026-09-08 |
+| CVE-2026-9186 (IBM Langflow OSS 1.0.0-1.11.2, CVSS 6.5 - a spoofed `X-Forwarded-For: 127.0.0.1` satisfies the localhost-only guard on MCP-config installation, so a remote authenticated attacker writes arbitrary IDE config files such as `~/.cursor/mcp.json`) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-9186) | **In scope, existing pin floor moved** `AAK-MCP-LANGFLOW-CVE-2026-12940-001` from 1.11.0 to 1.11.3. The old floor called 1.11.0, 1.11.1 and 1.11.2 patched while all three are affected. Same package, same rule id — a second langflow pin would report one dependency twice. Note the asymmetry: AAK cannot see Langflow's header-trust bug, but the *outcome* — an attacker-written `.cursor/mcp.json` — is exactly what the MCP-config scanners already flag in the repository that receives it. (#695) | 2026-09-08 |
+| CVE-2026-85580 (SiYuan < 3.8.2, CVSS 6.5 - case-sensitive path matching in the MCP file-access handler lets `PublishAccess.json` read the guarded `publishAccess.json` on Linux) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-85580) | **Out of scope, no pinnable artifact.** SiYuan ships as a desktop binary and a Docker image. PyPI `siyuan` (0.1.2) is a third-party API client and npm `siyuan` (1.2.7) is the plugin-API type package; neither is the application, and both sit on version lines that never approach 3.8.2, so a pin on either name would report a CVE in software the dependent does not run. Closed `not planned`. (#694) | 2026-09-08 |
+
 ## 2026-09-04: the deferral queue, drained by two registry lookups
 
 Eleven issues carried `cve-deferred` with a dated target. Nine of them are closed

@@ -7525,7 +7525,7 @@ _r(
 
 _r(
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
-    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.11.0)",
+    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.11.3)",
     "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to "
     "unauthenticated remote code execution through its MCP stdio launcher: the "
     "`DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, "
@@ -7538,18 +7538,25 @@ _r(
     "device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication "
     "bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host "
     "IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading "
-    "the JWT signing secret, the SQLite DB, and process env). Fixed at or before "
-    "1.11.0; treat < 1.11.0 (and unpinned) as exposed. Pre-1.0.0 releases predate "
-    "the MCP stdio launcher and are not in the affected range.",
+    "the JWT signing secret, the SQLite DB, and process env). A seventh, "
+    "CVE-2026-9186, raised the floor past those: Langflow OSS 1.0.0–1.11.2 trusts "
+    "a spoofed `X-Forwarded-For: 127.0.0.1` header to satisfy its localhost-only "
+    "guard on MCP-config installation, so a remote authenticated attacker writes "
+    "arbitrary IDE configuration files (`~/.cursor/mcp.json` and siblings) — which "
+    "1.11.0, 1.11.1 and 1.11.2 are all exposed to. Fixed at or before 1.11.3; "
+    "treat < 1.11.3 (and unpinned) as exposed. Pre-1.0.0 releases predate the MCP "
+    "stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `langflow` to >= 1.11.0 and pin it. Do not pass an attacker-influenced "
+    "Upgrade `langflow` to >= 1.11.3 and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
-    "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`.",
+    "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. "
+    "Derive the client address from the socket, not from a caller-supplied "
+    "`X-Forwarded-For` header, when gating localhost-only operations.",
     sarif_name="LangflowMcpStdioEnvInjectionRce",
     cve_references=[
         "CVE-2026-12940", "CVE-2026-17623", "CVE-2026-17626",
-        "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646",
+        "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
     ],
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI04"],
@@ -8464,6 +8471,145 @@ _r(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+
+_r(
+    "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001",
+    "ToolUniverse unauthenticated RCE via python_code_executor sandbox escape (<= 1.2.6)",
+    "ToolUniverse (`tooluniverse`, PyPI) through 1.2.6 runs caller-supplied Python "
+    "inside a sandbox that can be escaped, on a server that requires no "
+    "authentication (CVE-2026-81096, CVSS 10.0). The executor behind the "
+    "`python_code_executor` tool inspects submitted source against a deny-list of "
+    "attribute names and calls but leaves the attribute-lookup builtins available, "
+    "so a dunder attribute reached through a string lookup — or through a module "
+    "already permitted — lets a caller walk from a literal's class to its base and "
+    "enumerate subclasses until it holds a reference to `subprocess`. A per-call "
+    "argument also widens the import allow-list before the inspection runs. The HTTP "
+    "and MCP servers (`http_api_server.py`, `smcp_server.py`) bind every interface "
+    "with debugging enabled and no authentication, so any caller that reaches the "
+    "port executes code as the server process. 1.3.0 adds bearer-token "
+    "authentication, defaults the bind address to loopback, and hardens the "
+    "attribute checks. Treat < 1.3.0 (and unpinned) as exposed.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `tooluniverse` to >= 1.3.0 and pin it. Do not expose the code-executor "
+    "tool on a non-loopback interface, and require authentication in front of it — a "
+    "deny-list over attribute names is not a sandbox boundary.",
+    sarif_name="ToolUniversePythonExecutorSandboxEscape",
+    cve_references=["CVE-2026-81096"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-EXEC-01"],
+    limitations=(
+        "Dependency-level detection only: this fires on the pinned or unpinned "
+        "`tooluniverse` reference, not on the sandbox-escape pattern itself. A "
+        "general detector for deny-list-based Python sandboxes is tracked separately."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
+    "IBM ContextForge MCP Gateway: DNS-rebind SSRF, jq-filter and cross-session leaks (<= 1.0.8)",
+    "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below "
+    "1.0.8 carries four disclosed defects that one floor remediates. "
+    "CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint "
+    "`POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection "
+    "time — unlike every other egress path in the gateway — so an authenticated "
+    "low-privileged user reaches internal addresses by DNS rebinding and receives "
+    "the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class "
+    "during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq "
+    "filters are validated improperly, letting a remote authenticated attacker read "
+    "credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the "
+    "Translate utility exposes data elements to the wrong session, leaking across "
+    "sessions, at or below 1.0.8. Treat < 1.0.9 (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Where the gateway "
+    "makes outbound requests on behalf of a caller, resolve the destination once and "
+    "connect to the pinned IP rather than re-resolving the hostname after the "
+    "allow-list check.",
+    sarif_name="ContextForgeGatewayRebindAndSessionLeak",
+    cve_references=[
+        "CVE-2026-77822", "CVE-2026-18905", "CVE-2026-18486", "CVE-2026-18489",
+    ],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-NET-01"],
+)
+
+
+_r(
+    "AAK-MCP-POSTGRESMCP-CVE-2026-85620-001",
+    "Postgres MCP Pro restricted-mode bypass via FROM-clause functions (no fixed release)",
+    "Postgres MCP Pro (`postgres-mcp`, PyPI) 0.3.0 applies function-name validation "
+    "to plain function calls but not to `RangeFunction` nodes in FROM clauses, so "
+    "`pg_read_file` and its siblings reached through FROM-clause syntax read "
+    "arbitrary server-side files despite restricted (\"read-only\") mode "
+    "(CVE-2026-85620, CVSS 8.6). There is no fixed release: upstream's newest tag is "
+    "v0.3.0 and the security issue (crystaldba/postgres-mcp#178) is still open, so "
+    "every published version of this distribution is affected. The separate PyPI "
+    "name `postgres-mcp-pro` carries the product's marketing name and an identical "
+    "summary but declares no repository and is not referenced by the upstream "
+    "project — it is not treated here as a verified upgrade target. The unrelated "
+    "npm package of the same name (a multi-database MCP server on the 1.0.x line) is "
+    "not affected and does not fire.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no patched release to upgrade to. Stop relying on the server's "
+    "restricted mode as a security boundary: connect it with a least-privilege "
+    "PostgreSQL role that cannot execute `pg_read_file`, `pg_ls_dir` or "
+    "`COPY ... FROM PROGRAM`, and enforce read-only at the database rather than in "
+    "the MCP server's SQL validator.",
+    sarif_name="PostgresMcpRestrictedModeFromClauseBypass",
+    cve_references=["CVE-2026-85620"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-DATA-01"],
+)
+
+
+_r(
+    "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
+    "awslabs postgres-mcp-server: incomplete SQL disallowed-input list (< 1.1.7)",
+    "Amazon awslabs postgres-mcp-server (`awslabs.postgres-mcp-server`, PyPI) before "
+    "1.1.7 ships an incomplete list of disallowed inputs in its SQL validation "
+    "component, so crafted SQL placed in content that an authenticated user "
+    "interacts with can modify data beyond the server's read-only scope "
+    "(CVE-2026-85787, CVSS 6.5). Fixed in 1.1.7; treat < 1.1.7 (and unpinned) as "
+    "exposed.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `awslabs.postgres-mcp-server` to >= 1.1.7 and pin it. Enforce read-only "
+    "access with a least-privilege database role rather than relying on the server's "
+    "own statement filtering.",
+    sarif_name="AwslabsPostgresMcpSqlValidationGap",
+    cve_references=["CVE-2026-85787"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-DATA-01"],
+)
+
+
+_r(
+    "AAK-MCP-KNOWNS-CVE-2026-86439-001",
+    "knowns MCP doc/memory tools: path traversal outside the project directory (< 0.30.0)",
+    "knowns (`knowns`, npm — knowns-dev) before 0.30.0 does not validate filesystem "
+    "paths supplied in MCP tool arguments, so an attacker-controlled path containing "
+    "directory-traversal sequences reads, creates, overwrites or deletes files "
+    "outside the project directory, anywhere the server process can reach "
+    "(CVE-2026-86439, CVSS 8.8). The affected code paths are the document and memory "
+    "stores. Fixed in v0.30.0; treat < 0.30.0 (and unpinned) as exposed.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `knowns` to >= 0.30.0 and pin it. Resolve every path taken from a tool "
+    "argument and reject any result that escapes the project root before opening it.",
+    sarif_name="KnownsMcpPathTraversal",
+    cve_references=["CVE-2026-86439"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-DATA-01"],
+)
 
 
 def get_rule(rule_id: str) -> RuleDefinition:
