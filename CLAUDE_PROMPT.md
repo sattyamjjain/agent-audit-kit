@@ -81,7 +81,7 @@ This is the leaderboard-ownership growth play.
 
 1. **Crawler**: discovers MCP servers from `anthropics/claude-plugins-official`, `claudemarketplaces.com`, `aitmpl.com`, `buildwithclaude.com`, and the top 500 GitHub results for `topic:mcp-server`. Store in `benchmarks/crawler/`.
 2. **Scanner runner**: runs the full agent-audit-kit rule catalog against each MCP server weekly.
-3. **Index site**: publish `sattyamjjain.github.io/agent-audit-kit` as a static site (the `index.agentauditkit.dev` alternative this line used to offer is struck: `agentauditkit.io`/`.dev` were never registered, and the Pages origin is the one that resolves — see `SECURITY.md`) with per-server grades A–F, rule-hit breakdown, and week-over-week trends. Hosted on Cloudflare Pages.
+3. **Index site**: publish `sattyamjjain.github.io/agent-audit-kit` as a static site (this line used to offer a custom-domain alternative; that domain was never registered — see `SECURITY.md` — and the Pages origin is the one that resolves) with per-server grades A–F, rule-hit breakdown, and week-over-week trends. Hosted on Cloudflare Pages.
 4. **Disclosure policy**: every discovered vuln goes to the maintainer first with a 90-day disclosure window. Publish the policy at `docs/disclosure-policy.md` before crawling.
 5. **Weekly State of MCP Security** blog post summarizing new findings, trends, and the worst-graded servers. This is the Aider-leaderboard play.
 

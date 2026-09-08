@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Link check` had been red on `main` since 2026-09-06 and three releases
+  shipped over it.** Not a broken link — the same workflow carries the MCP
+  Security Index staleness guard, and `scripts/index_cadence.py --check` was
+  failing because the README's rendered cadence line said "2026-08-31 (4
+  snapshots)" while the live history had published a fifth on 2026-09-07. The
+  guard fires on the *mismatch*, not only on age, which is why 8 days inside a
+  10-day tolerance still failed.
+
+  Regenerated. Worth naming the reason it went unnoticed: the release workflow
+  gates on its own job list and does not depend on `Link check`, so a red
+  workflow on `main` never blocked a tag. Three releases went out with it red
+  because nothing looked, which is the same "a check nobody reads is not a check"
+  problem the CVE ageing gate was designed around.
+
+- `CLAUDE_PROMPT.md`'s note about the unregistered index domain rewritten to stop
+  restating the dead hostname; it points at `SECURITY.md` instead.
+
+
 ## [0.3.98] - 2026-09-08
 
 Clears the standing backlog: both deferred rule tasks are built, and the four
