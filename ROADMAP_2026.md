@@ -1,9 +1,17 @@
 # agent-audit-kit — Roadmap to Top 1% (April 2026)
 
-> **Historical snapshot — authored 2026-04-12, not updated.** This is the April
-> 2026 plan, kept because the reasoning is still useful and deleting it would be
-> the dishonest version. Read it as a record of what was intended, not as a
-> statement of where the project is.
+> **Historical snapshot — authored 2026-04-12; the plan is not maintained.** This
+> is the April 2026 plan, kept because the reasoning is still useful and deleting
+> it would be the dishonest version. Read it as a record of what was intended, not
+> as a statement of where the project is.
+>
+> "Not updated" is what this line said until 2026-09-08, and it was not quite
+> true: §2 item 2 was amended at v0.3.0 to record the scanner rename, and it now
+> carries a 2026-09-08 annotation about issue #22. So the accurate claim is
+> narrower — **nobody re-plans this file**, and its figures and goals are left
+> exactly as authored, but factual corrections are appended in place and dated
+> rather than folded in silently. A banner that overstates its own discipline is
+> the same class of defect as the ones it is here to disclose.
 >
 > Its headline goal — "1,000+ GitHub stars and reference-implementation status
 > for the OWASP MCP Top 10 project within 90 days" — was not met. Four months on

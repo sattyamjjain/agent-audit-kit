@@ -8614,6 +8614,88 @@ _r(
 )
 
 
+_r(
+    "AAK-MCP-DEST-UNVALIDATED-001",
+    "MCP-configured destination reaches an outbound fetch with no guard (absence or asymmetry)",
+    "A destination that arrives through MCP server / webhook configuration — "
+    "`server_url`, `webhook_url`, `mcp_server_url` and the like — is passed to an "
+    "outbound HTTP call without a destination check, so a caller who can write that "
+    "configuration steers the server at internal addresses and cloud metadata "
+    "endpoints (`http://169.254.169.254/`). Two disclosed shapes, one defect. "
+    "**Absence** (CVE-2026-86122, Rowboat through 0.9.1, CVSS 5.0): nothing in the "
+    "module resolves or range-checks a destination at all. **Asymmetry** "
+    "(CVE-2026-85666, OGX / ex-Llama Stack, CVSS 7.5): the guard exists and is "
+    "called — OGX applies `validate_url_not_private()` to its other URL inputs — "
+    "and is simply not applied to this one; on the default starter configuration, "
+    "which runs unauthenticated, that also forwards attacker-supplied headers and "
+    "bearer tokens to the chosen destination. The asymmetry arm is the higher-"
+    "precision signal, and it is the same class this scanner already detects at two "
+    "other layers: `AAK-MCPWN-001` (auth middleware present on one route but not "
+    "its twin) and `AAK-MCP-TOOLGATE-ASYMMETRY-001` (a gate enforced in "
+    "`tools/list` but not `tools/call`). Those two rules carry their own CVEs and "
+    "are named here as the family, not as coverage this rule provides.",
+    Severity.HIGH,
+    Category.MCP_CONFIG,
+    "Validate the destination on every path that can reach an outbound call, not on "
+    "the paths that happened to get a guard first. Resolve the host once, reject "
+    "private, loopback, link-local and metadata ranges on the *resolved IP*, and "
+    "connect to that pinned address. Where a guard already exists in the module, "
+    "the fix is usually to call it here too rather than to write a second one — and "
+    "never forward caller-supplied `Authorization` headers to a destination the "
+    "caller also chose.",
+    sarif_name="McpConfiguredDestinationUnvalidated",
+    cve_references=["CVE-2026-85666", "CVE-2026-86122"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-NET-01"],
+    limitations=(
+        "Python only, and scoped to configuration-shaped destination names. A "
+        "caller-supplied URL arriving as a tool *argument* is AAK-MCP-SSRF-001's "
+        "surface, not this rule's; bare `url` is deliberately not matched because it "
+        "is the most common identifier in any HTTP code."
+    ),
+)
+
+
+_r(
+    "AAK-SANDBOX-DENYLIST-001",
+    "Deny-list of names used as a Python sandbox boundary, with the lookup builtins still reachable",
+    "Caller-supplied Python is inspected against a deny-list of attribute and "
+    "builtin *names* held as strings, then executed in-process — while `getattr`, "
+    "`__getattribute__`, `vars` or `globals` remain reachable. A deny-list over "
+    "names is not a boundary when the name can be reached through a lookup: a "
+    "caller walks `literal.__class__.__base__.__subclasses__()` to a reference the "
+    "list never mentioned, and arrives at `subprocess` without typing any denied "
+    "token. ToolUniverse's `python_code_executor` is the exemplar "
+    "(CVE-2026-81096, CVSS 10.0, unauthenticated); RestrictedPython's `getattr` "
+    "bypass in mcp-context-forge (CVE-2026-53710) is the same defect in a "
+    "different product, which is what makes it a class. A deny-list that also "
+    "denies the lookup primitives is merely fragile; one that leaves them "
+    "reachable is bypassable by construction, and that is what this rule reports.",
+    Severity.CRITICAL,
+    Category.TRUST_BOUNDARY,
+    "Do not gate execution on a list of forbidden names. Run untrusted code in a "
+    "separate process with an OS-level boundary — a container, a seccomp profile, "
+    "or at minimum a subprocess with dropped privileges and no network — and treat "
+    "the in-process namespace as reachable in full. If in-process execution is "
+    "unavoidable, invert to an allow-list of permitted builtins and deny the "
+    "attribute-lookup primitives with it; and never let a per-call argument widen "
+    "the permitted set before the inspection runs, which is the second half of "
+    "CVE-2026-81096.",
+    sarif_name="DenylistSandboxLookupReachable",
+    cve_references=["CVE-2026-81096", "CVE-2026-53710"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-EXEC-01"],
+    limitations=(
+        "Python only, and requires all four signals together — a deny-list of "
+        "names, checked against a value, an in-process exec of that value, and a "
+        "still-reachable lookup primitive. An executor that isolates in a "
+        "subprocess never matches, by design: the submitted source is not run here."
+    ),
+)
+
+
 def get_rule(rule_id: str) -> RuleDefinition:
     """Retrieve a rule definition by its unique ID.
 

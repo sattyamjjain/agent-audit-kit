@@ -7,6 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.98] - 2026-09-08
+
+Clears the standing backlog: both deferred rule tasks are built, and the four
+loose ends flagged over the last two releases are closed. 337 → 339 rules,
+98 → 100 scanners. Both rules came out of the 2026-09-08 NVD triage and carry the
+fixtures that triage specified — neither is net-new surface invented to fill a
+release.
+
+### Added
+
+- **`AAK-MCP-DEST-UNVALIDATED-001`** (HIGH, MCP_CONFIG) — closes #693 and #699,
+  eight days ahead of their 2026-09-20 target. One rule, two arms, because
+  re-reading NVD showed the pair are the two ends of one defect rather than
+  duplicates:
+
+  - **Asymmetry** (CVE-2026-85666, OGX, 7.5): the guard *exists* and is called —
+    OGX applies `validate_url_not_private()` to its other URL inputs — and simply
+    is not applied to `server_url`. That is a within-file inconsistency, and the
+    same class this scanner already detects at two other layers (`AAK-MCPWN-001`,
+    `AAK-MCP-TOOLGATE-ASYMMETRY-001`). It is the higher-precision arm: the
+    negative case is a module that guards every destination, which is exactly
+    what it passes.
+  - **Absence** (CVE-2026-86122, Rowboat, 5.0): nothing guards anything, so there
+    is no correct sibling call to compare against and the asymmetry arm can never
+    fire.
+
+  Deliberately narrow, because ten `AAK-SSRF-*` rules already exist: the
+  destination must be configuration-shaped (`server_url`, `webhook_url`, …), the
+  file must be MCP-relevant, and guard recognition is *imported* from
+  `ssrf_toctou` rather than re-listed, so the two scanners cannot drift apart. A
+  caller-supplied URL arriving as a tool argument stays `AAK-MCP-SSRF-001`'s
+  surface, and the rule says so in its `limitations`.
+
+  `base_url` was in the destination vocabulary until the first self-scan fired it
+  on a `negative/` fixture whose whole job is to be clean. The fixture was right:
+  `base_url` in an API client is the service's own address, configured once and
+  not caller-steerable. Dropped rather than special-cased.
+
+- **`AAK-SANDBOX-DENYLIST-001`** (CRITICAL, TRUST_BOUNDARY) — closes #704, the
+  detector #656 was actually deferred for. Fires only when four signals combine:
+  a deny-list of dangerous *names* held as strings, checked against a value, an
+  in-process exec of that value, **and** a still-reachable lookup primitive
+  (`getattr`, `__getattribute__`, `vars`, `globals`). The fourth is what makes it
+  a defect rather than a style choice — a deny-list that also denies the lookups
+  is merely fragile; one that leaves them reachable is bypassable by construction.
+
+  The blocker named on #656 was precision: telling a deny-list sandbox from a
+  real one *without firing on every codebase that mentions `eval`*. Four
+  negatives hold that line, three of them #704's own acceptance list — an
+  allow-list sandbox, a subprocess-isolated executor, ordinary `eval` on trusted
+  input — plus the one that matters most here: a module that merely *mentions*
+  the vocabulary, which is what a security scanner's own rule text does. A test
+  runs the scanner over `agent_audit_kit/` itself and asserts zero findings.
+
+  Covers CVE-2026-81096 (ToolUniverse, CVSS 10) and CVE-2026-53710
+  (RestrictedPython `getattr` bypass in mcp-context-forge) — two products, which
+  is what makes it a class.
+
+### Fixed
+
+- **The documented scanner contract in `CLAUDE.md` was wrong.** It said `scan()`
+  returns `(findings, evaluated_rule_ids)`. The engine does
+  `all_scanned_files.update(files)` and reports `len(all_scanned_files)` as
+  `files_scanned`, so a scanner written to that contract would have inflated the
+  file count with rule-id strings. It returns **scanned file paths**.
+  `rules_evaluated` is computed separately from the active rule set and no
+  scanner contributes to it. Caught while writing the two scanners above, which
+  is exactly the audience the line misleads.
+
+- **`ROADMAP_2026.md`'s banner overstated its own discipline.** It said "not
+  updated"; §2 item 2 was amended at v0.3.0 and now carries a dated annotation.
+  Narrowed to what is true — nobody re-plans the file, and its figures and goals
+  are left as authored, but factual corrections are appended in place and dated.
+  A banner that overstates its own honesty is the same class of defect as the
+  ones it exists to disclose.
+
+- **`CLAUDE_PROMPT.md` offered `index.agentauditkit.dev` as an alternative host.**
+  Same unregistered-domain family as the security contact retired in v0.3.97.
+  Struck, pointing at the Pages origin that actually resolves.
+
+### Changed
+
+- **Branch cleanup: 17 stale branches removed, 5 of them after verifying their
+  content had landed.** Twelve were fully merged into `main`. The other five
+  showed as unmerged only because they were squash-merged, and each was checked
+  by artifact before deletion rather than by title — `.well-known/funding-manifest-urls`
+  and `scripts/check_cve_ageing.py` for `chore/cve-ageing-gate`, `scanners.json`
+  for `fix/release-unblock-and-derivable-claims`, and so on. That last one was
+  the reason this mattered: its head commit was "bump to 0.3.70", and merging it
+  would have walked the published version backwards by 27 releases.
+
+  `origin` now carries `main` and `gh-pages` and nothing else.
+
+
 ## [0.3.97] - 2026-09-08
 
 ### Fixed

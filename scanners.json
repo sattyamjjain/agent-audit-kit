@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 98,
+  "count": 100,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -41,6 +41,10 @@
     {
       "module": "deepseek_v4_tool_injection",
       "name": "DeepSeek V4 MoE-routed tool injection"
+    },
+    {
+      "module": "denylist_sandbox",
+      "name": "Deny-list used as a Python sandbox boundary (CVE-2026-81096)"
     },
     {
       "module": "dns_rebind",
@@ -145,6 +149,10 @@
     {
       "module": "mcp_deprecated_features",
       "name": "MCP 2026-07-28 deprecated features roots/sampling/logging (SEP-2577/2596)"
+    },
+    {
+      "module": "mcp_destination_guard",
+      "name": "MCP-configured destination unguarded: absence or guard-application asymmetry (CVE-2026-86122 / CVE-2026-85666)"
     },
     {
       "module": "mcp_env_placeholder_exfil",
