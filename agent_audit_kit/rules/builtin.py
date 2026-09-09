@@ -100,6 +100,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
     "AAK-MCPCALC-CVE-2026-44717-PIN-001": ["AIS-08", "STA-08", "IVS-04"],
+    "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001": ["STA-08", "IVS-04", "BCR-01"],
     "AAK-MCP-TOOL-UNSAFE-EVAL-001": ["AIS-08", "IVS-04"],
     "AAK-MCP-TOOL-ARG-OSCMD-001": ["AIS-08", "IVS-04"],
     "AAK-METIS-REFUSAL-REFEED-001": ["AIS-07", "AIS-12"],
@@ -8692,6 +8693,55 @@ _r(
         "names, checked against a value, an in-process exec of that value, and a "
         "still-reachable lookup primitive. An executor that isolates in a "
         "subprocess never matches, by design: the submitted source is not run here."
+    ),
+)
+
+
+_r(
+    "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001",
+    "MCP Kotlin SDK stdio read buffer grows without bound (CVE-2026-53937, 0.7.0–0.12.0)",
+    "The MCP Kotlin SDK (`io.modelcontextprotocol:kotlin-sdk`, and the "
+    "`kotlin-sdk-core` / `kotlin-sdk-jvm` artifacts that publish the same code) "
+    "from 0.7.0 through 0.12.0 appends every chunk received from the stdio "
+    "transport into a `kotlinx.io.Buffer` with no size cap. `ReadBuffer.append` "
+    "(`kotlin-sdk-core/src/commonMain/kotlin/io/modelcontextprotocol/kotlin/sdk/"
+    "shared/ReadBuffer.kt`) only extracts a frame once a `\\n` (0x0a) byte is "
+    "observed, so a peer that streams bytes and never sends a newline grows the "
+    "buffer indefinitely until the JVM — or the host process around it — is "
+    "OOM-killed. `StdioServerTransport` and `StdioClientTransport` amplify it: "
+    "both queue raw chunks through a `Channel<ByteArray>(Channel.UNLIMITED)` and "
+    "then call `readBuffer.append(chunk)` with neither backpressure nor a size "
+    "guard. CVE-2026-53937, CVSS 6.2 MEDIUM "
+    "(`AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`), CWE-400 + CWE-770. The impact is "
+    "availability only, and the attack vector is local because it arrives on "
+    "stdin — but it is pre-authentication, and the reach is remote wherever an "
+    "untrusted producer feeds that stdin: a host that exec's the server as a "
+    "subprocess and pipes bytes from a network peer, or a sidecar proxying an "
+    "HTTP endpoint onto the stdio transport. Fixed in 0.13.0. The affected range "
+    "starts at 0.7.0 because that is the first release of `kotlin-sdk-core`, "
+    "where the buffer lives — a module boundary, not the commit that introduced "
+    "the defect.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `io.modelcontextprotocol:kotlin-sdk` (or `kotlin-sdk-core` / "
+    "`kotlin-sdk-jvm`) to >= 0.13.0 and pin it. Until then, do not let an "
+    "untrusted producer write directly to an SDK stdio server's stdin: put a "
+    "framing proxy in front that enforces a maximum bytes-without-newline budget "
+    "and drops the peer when it is exceeded, and bound the queue between the "
+    "reader and the parser rather than using `Channel.UNLIMITED`.",
+    sarif_name="McpKotlinSdkStdioUnboundedReadBuffer",
+    cve_references=["CVE-2026-53937"],
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-RES-01"],
+    incident_references=["NVD-CVE-2026-53937"],
+    limitations=(
+        "Dependency-level detection on JVM manifests only — `build.gradle`, "
+        "`build.gradle.kts`, `gradle/libs.versions.toml` and `pom.xml`. A finding "
+        "requires a version that actually resolved into 0.7.0–0.12.0, so a dynamic "
+        "version (`0.+`, `latest.release`) or a `version.ref` pointing at a catalog "
+        "outside the scanned tree is deliberately not reported. It does not detect "
+        "the unbounded-buffer shape in first-party code."
     ),
 )
 

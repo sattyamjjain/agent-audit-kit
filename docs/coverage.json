@@ -5170,6 +5170,25 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-53937"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP10:2025 Dependency & Package Risks"
+      ],
+      "rule_id": "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001",
+      "severity": "medium",
+      "title": "MCP Kotlin SDK stdio read buffer grows without bound (CVE-2026-53937, 0.7.0\u20130.12.0)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-55609"
       ],
       "eu_ai_act": [
@@ -7655,14 +7674,14 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 108,
+      "supply-chain": 109,
       "taint-analysis": 14,
       "tool-poisoning": 30,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 117,
+      "Art. 10 - Data Governance": 118,
       "Art. 13 - Transparency": 31,
       "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 204,
@@ -7685,7 +7704,7 @@
       "ASI03": 73,
       "ASI04": 73,
       "ASI05": 56,
-      "ASI06": 47,
+      "ASI06": 48,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -7701,17 +7720,17 @@
       "MCP07:2025": 34,
       "MCP08:2025": 7,
       "MCP09:2025": 29,
-      "MCP10:2025": 11
+      "MCP10:2025": 12
     },
     "by_severity": {
       "critical": 79,
       "high": 161,
       "info": 5,
       "low": 9,
-      "medium": 85
+      "medium": 86
     },
-    "total_cves_covered": 203,
-    "total_rules": 339
+    "total_cves_covered": 204,
+    "total_rules": 340
   },
   "tool": "agent-audit-kit"
 }

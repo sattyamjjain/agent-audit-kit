@@ -6135,6 +6135,38 @@
     },
     {
       "adversa_references": [
+        "ADV-RES-01"
+      ],
+      "aicm_references": [
+        "STA-08",
+        "IVS-04",
+        "BCR-01"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-53937"
+      ],
+      "description": "The MCP Kotlin SDK (`io.modelcontextprotocol:kotlin-sdk`, and the `kotlin-sdk-core` / `kotlin-sdk-jvm` artifacts that publish the same code) from 0.7.0 through 0.12.0 appends every chunk received from the stdio transport into a `kotlinx.io.Buffer` with no size cap. `ReadBuffer.append` (`kotlin-sdk-core/src/commonMain/kotlin/io/modelcontextprotocol/kotlin/sdk/shared/ReadBuffer.kt`) only extracts a frame once a `\\n` (0x0a) byte is observed, so a peer that streams bytes and never sends a newline grows the buffer indefinitely until the JVM \u2014 or the host process around it \u2014 is OOM-killed. `StdioServerTransport` and `StdioClientTransport` amplify it: both queue raw chunks through a `Channel<ByteArray>(Channel.UNLIMITED)` and then call `readBuffer.append(chunk)` with neither backpressure nor a size guard. CVE-2026-53937, CVSS 6.2 MEDIUM (`AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`), CWE-400 + CWE-770. The impact is availability only, and the attack vector is local because it arrives on stdin \u2014 but it is pre-authentication, and the reach is remote wherever an untrusted producer feeds that stdin: a host that exec's the server as a subprocess and pipes bytes from a network peer, or a sidecar proxying an HTTP endpoint onto the stdio transport. Fixed in 0.13.0. The affected range starts at 0.7.0 because that is the first release of `kotlin-sdk-core`, where the buffer lives \u2014 a module boundary, not the commit that introduced the defect.",
+      "incident_references": [
+        "NVD-CVE-2026-53937"
+      ],
+      "limitations": "Dependency-level detection on JVM manifests only \u2014 `build.gradle`, `build.gradle.kts`, `gradle/libs.versions.toml` and `pom.xml`. A finding requires a version that actually resolved into 0.7.0\u20130.12.0, so a dynamic version (`0.+`, `latest.release`) or a `version.ref` pointing at a catalog outside the scanned tree is deliberately not reported. It does not detect the unbounded-buffer shape in first-party code.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP10:2025"
+      ],
+      "remediation": "Upgrade `io.modelcontextprotocol:kotlin-sdk` (or `kotlin-sdk-core` / `kotlin-sdk-jvm`) to >= 0.13.0 and pin it. Until then, do not let an untrusted producer write directly to an SDK stdio server's stdin: put a framing proxy in front that enforces a maximum bytes-without-newline budget and drops the peer when it is exceeded, and bound the queue between the reader and the parser rather than using `Channel.UNLIMITED`.",
+      "rule_id": "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001",
+      "sarif_name": "McpKotlinSdkStdioUnboundedReadBuffer",
+      "severity": "medium",
+      "title": "MCP Kotlin SDK stdio read buffer grows without bound (CVE-2026-53937, 0.7.0\u20130.12.0)"
+    },
+    {
+      "adversa_references": [
         "ADV-INJECT-04"
       ],
       "aicm_references": [
