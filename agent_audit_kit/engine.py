@@ -68,6 +68,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
      "MCP-configured destination unguarded: absence or guard-application asymmetry "
      "(CVE-2026-86122 / CVE-2026-85666)", []),
     ("denylist_sandbox", "Deny-list used as a Python sandbox boundary (CVE-2026-81096)", []),
+    ("jvm_mcp_sdk_pins", "JVM MCP SDK pins in Gradle / Maven manifests (CVE-2026-53937)", []),
     ("toxic_flow", "Toxic-flow source/sink pair scoring", []),
     ("mcp_stdio_params", "MCP StdioServerParameters config-to-spawn taint (OX-MCP-2026-04-25)", []),
     ("mcp_marketplace_fetch", "MCP marketplace-fetch → StdioServerParameters", []),

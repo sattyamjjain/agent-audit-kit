@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.99] - 2026-09-09
+
+### Added
+
+- **`AAK-MCP-STDIO-UNBOUNDED-BUFFER-001`** (MEDIUM, SUPPLY_CHAIN) — CVE-2026-53937,
+  closes #705. MCP Kotlin SDK 0.7.0–0.12.0 appends every stdio chunk into a
+  `kotlinx.io.Buffer` with no size cap and only extracts a frame once it sees a
+  `\n`, so a peer that streams bytes without ever sending a newline grows the
+  buffer until the JVM is OOM-killed. `StdioServerTransport` and
+  `StdioClientTransport` amplify it by queueing raw chunks through a
+  `Channel<ByteArray>(Channel.UNLIMITED)` with no backpressure. Fixed in 0.13.0.
+
+  **This is the repository's first JVM pin**, and it needed a new scanner rather
+  than a new row. `mcp_cve_pins_2026_07`'s `_CANDIDATE_NAMES` reads Python and npm
+  manifests only — its own docstring records what that costs, with the crates.io
+  twin of `codewhale` and "ArcadeDB on Maven" both listed as out of reach.
+  Widening that tuple would set roughly sixty unrelated package regexes loose on
+  `pom.xml` and `build.gradle` for one CVE. `jvm_mcp_sdk_pins.py` is the narrow
+  alternative: JVM manifests, MCP SDK coordinates, nothing else.
+
+  Version resolution is the substance. A JVM coordinate rarely carries its version
+  inline, so four forms resolve: a Gradle KTS `val`, a Groovy inline coordinate, a
+  version catalog's `version.ref` against `[versions]`, and Maven's `${property}`
+  against `<properties>`. The catalog arm shipped broken in its first draft and
+  the fixtures caught it — one regex with a lazy `[^\n]*?` and an optional
+  trailing version group matches with that group empty, so every catalog resolved
+  to "no version" and the arm silently never fired.
+
+  Boundaries came from Maven Central, not from advisory prose:
+  `io.modelcontextprotocol:kotlin-sdk-core` publishes **0.7.0 as its first
+  release**, so NVD's range start is a module-split boundary rather than the
+  commit that introduced the defect. Recorded in the rule so nobody later
+  "corrects" the floor down. No releases exist between 0.12.0 and 0.13.0, so one
+  floor covers the range with no second arm.
+
+  All three artifact names that publish the same code (`kotlin-sdk`,
+  `kotlin-sdk-core`, `kotlin-sdk-jvm`) are matched, and a manifest naming two of
+  them reports **once** — one dependency, not two.
+
+  Deliberately conservative: a finding requires a version that actually resolved
+  into 0.7.0–0.12.0. A dynamic version (`0.+`, `latest.release`) or a
+  `version.ref` pointing outside the scanned tree is not reported, and the rule's
+  `limitations` says so rather than leaving the reader to discover it.
+
+  Rules 339 → 340, scanners 100 → 101.
+
 ### Fixed
 
 - **`Link check` had been red on `main` since 2026-09-06 and three releases

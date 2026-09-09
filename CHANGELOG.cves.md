@@ -16,6 +16,43 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-09: the first JVM entry in the pin surface
+
+CVE-2026-53937 is the first CVE this repository has covered on a Gradle/Maven
+coordinate, and the reason it took a new module rather than a new row is worth
+recording. `mcp_cve_pins_2026_07` is the pin table, and its `_CANDIDATE_NAMES`
+reads Python and npm manifests only — its own docstring records the cost of that
+("the crates.io twin `codewhale-tui` has the same defect but Cargo manifests are
+not in `_CANDIDATE_NAMES`", and "ArcadeDB on Maven" sits in the handled-elsewhere
+list). Widening that tuple would put roughly sixty unrelated package regexes to
+work against `pom.xml` and `build.gradle` for the sake of one CVE, which buys
+false-positive surface rather than coverage. `jvm_mcp_sdk_pins.py` is the narrow
+alternative: JVM manifests, MCP SDK coordinates, nothing else.
+
+**Version resolution was the actual work.** A JVM coordinate rarely carries its
+version inline any more, so a matcher that only reads `group:artifact:version`
+would miss most real projects. Four forms are resolved: a Gradle KTS `val`, a
+Groovy inline coordinate, a version catalog's `version.ref` against
+`[versions]`, and Maven's `${property}` against `<properties>`. The catalog arm
+shipped broken in its first draft and was caught by the fixtures — one regex with
+a lazy `[^\n]*?` and an optional trailing version group matches happily with that
+group empty, so every catalog resolved to "no version" and the arm silently never
+fired. Splitting coordinate-match from version-match removed the ambiguity. That
+is the failure mode a fixture exists to catch, and it did.
+
+**Range boundaries came from Maven Central, not from the advisory prose.** NVD
+says "0.7.0 through 0.12.0"; `io.modelcontextprotocol:kotlin-sdk-core` publishes
+0.7.0 as its *first* release. The range does not start at 0.7.0 because the bug
+was introduced there — it starts there because that is where the module
+containing `ReadBuffer.kt` was split out. Recorded in the rule so nobody later
+"corrects" the floor down to 0.1.0 on the theory that older releases must also be
+affected. There are no releases between 0.12.0 and 0.13.0, so one floor covers
+the range with no second arm needed.
+
+| CVE | Reference | AAK rule / disposition | Triaged |
+|---|---|---|---|
+| CVE-2026-53937 (MCP Kotlin SDK 0.7.0–0.12.0, CVSS 6.2 - `ReadBuffer.append` writes every stdio chunk into a `kotlinx.io.Buffer` with no size cap and only extracts a frame on `\n`, so a peer that never sends a newline grows it until the JVM is OOM-killed; `StdioServerTransport` / `StdioClientTransport` amplify it by queueing raw chunks through a `Channel<ByteArray>(Channel.UNLIMITED)` with no backpressure) | [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-53937) | **In scope, rule shipped** `AAK-MCP-STDIO-UNBOUNDED-BUFFER-001` (SUPPLY_CHAIN, **MEDIUM**): floor `io.modelcontextprotocol:kotlin-sdk >= 0.13.0`, `introduced=0.7.0`, matching `kotlin-sdk`, `kotlin-sdk-core` and `kotlin-sdk-jvm` and reporting once per manifest. First JVM pin in the repository; new scanner `jvm_mcp_sdk_pins.py` reads `build.gradle`, `build.gradle.kts`, `gradle/libs.versions.toml` and `pom.xml`. (#705) | 2026-09-09 |
+
 ## 2026-09-08: nine issues close on five pins, and three registry checks changed the fix
 
 The queue carried twelve open `cve-response` issues, eleven of them dated

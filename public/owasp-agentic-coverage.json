@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-08T18:07:23Z",
-  "aak_version": "0.3.98",
-  "rule_count": 339,
+  "last_updated": "2026-09-09T16:20:40Z",
+  "aak_version": "0.3.99",
+  "rule_count": 340,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2488,7 +2488,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 47,
+      "rule_density": 48,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2728,6 +2728,18 @@
           "aicm_references": [
             "AIS-08",
             "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-53937"
+          ],
+          "aicm_references": [
+            "BCR-01",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {

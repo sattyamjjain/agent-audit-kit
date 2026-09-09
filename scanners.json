@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 100,
+  "count": 101,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -89,6 +89,10 @@
     {
       "module": "ipi_wild_corpus",
       "name": "Wild IPI payload corpus (2026-04-24)"
+    },
+    {
+      "module": "jvm_mcp_sdk_pins",
+      "name": "JVM MCP SDK pins in Gradle / Maven manifests (CVE-2026-53937)"
     },
     {
       "module": "langchain_prompt_loader",
