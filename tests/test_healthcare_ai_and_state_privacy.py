@@ -113,7 +113,7 @@ def test_state_privacy_ignores_non_policy_files(tmp_path: Path) -> None:
 
 
 def test_alabama_and_tennessee_framework_titles_registered() -> None:
-    for fw in ("alabama-dppa", "tennessee-sb1580"):
+    for fw in ("alabama-dppa", "tennessee-sb1580", "colorado-admt"):
         assert fw in _FRAMEWORK_TITLES
         assert _FRAMEWORK_TITLES[fw]
 
@@ -138,9 +138,20 @@ def test_alabama_report_mentions_hb351(tmp_path: Path) -> None:
     assert "Alabama Personal Data Protection Act" in text
 
 
+def test_colorado_report_mentions_sb26_189(tmp_path: Path) -> None:
+    (tmp_path / "privacy.md").write_text(
+        "# Privacy Policy\n\nWe process personal data.\n"
+    )
+    result = run_scan(tmp_path)
+    text = _text_report(result, "colorado-admt")
+    assert "Colorado SB 26-189" in text
+    # The retention duty is the one a reader has to act on before 2027-01-01.
+    assert "6-1-1702(4)" in text or "retention" in text.lower()
+
+
 def test_report_cli_accepts_new_frameworks(tmp_path: Path) -> None:
     runner = CliRunner()
-    for fw in ("alabama-dppa", "tennessee-sb1580"):
+    for fw in ("alabama-dppa", "tennessee-sb1580", "colorado-admt"):
         out = tmp_path / f"r-{fw}.txt"
         r = runner.invoke(
             cli,

@@ -1,10 +1,14 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 101,
+  "count": 102,
   "scanners": [
     {
       "module": "a2a_protocol",
       "name": "A2A protocol"
+    },
+    {
+      "module": "admt_documentation",
+      "name": "Colorado SB 26-189 ADMT developer documentation"
     },
     {
       "module": "agent_config",

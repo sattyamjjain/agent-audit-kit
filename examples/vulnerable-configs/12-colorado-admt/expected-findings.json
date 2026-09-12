@@ -1,0 +1,6 @@
+{
+  "_comment": "Colorado SB 26-189 (C.R.S. 6-1-1702) developer-documentation evidence. The .mcp.json declares an inference ('scores', 'approve or deny') over a 6-1-1701(6) covered domain ('loan applicants', 'lending'), which is what puts the documentation duty in play. MODEL_CARD.md names intended uses (6-1-1702(1)(a)) and stops there.",
+  "expectedRules": ["AAK-ADMT-002", "AAK-ADMT-003", "AAK-ADMT-004"],
+  "expectedMinFindings": 3,
+  "description": "Developer documentation exists but omits the categories of training data (6-1-1702(1)(b)), known limitations (1)(c), and any instruction for meaningful human review (1)(d). AAK-ADMT-001 does NOT fire here: a model card is present. These are evidence toward the duty, not a determination that it applies."
+}

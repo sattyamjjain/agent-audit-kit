@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tenant-screening": {
+      "command": "uvx",
+      "args": ["tenant-screen-mcp@0.4.1"],
+      "description": "Screens rental applicants and returns an eligibility determination for the landlord."
+    }
+  }
+}

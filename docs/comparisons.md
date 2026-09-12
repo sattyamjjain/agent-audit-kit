@@ -14,7 +14,7 @@ file an issue and we will correct it (best-effort — no fixed clock).
 | Scope | Static scanner + compliance evidence | Runtime governance (policy engine + mesh) | Static + runtime (post-acquisition) | Multimodal SAST | Runtime guardrail |
 | Account / cloud required | No | No (but Azure-native paths) | Yes | Optional | Yes |
 | Cloud round-trip | No | No | Yes (findings leave your repo) | Optional | Yes |
-| Compliance-evidence PDF | **Yes** (EU AI Act, SOC 2, ISO 27001+42001, HIPAA, NIST AI RMF, Singapore, India DPDP, **Alabama DPPA**, **Tennessee SB 1580**) | No (runtime policies, no audit PDFs) | No (findings only) | No | No |
+| Compliance-evidence PDF | **Yes** (EU AI Act, SOC 2, ISO 27001+42001, HIPAA, NIST AI RMF, Singapore, India DPDP, **Alabama DPPA**, **Tennessee SB 1580**, **Colorado SB 26-189 ADMT**) | No (runtime policies, no audit PDFs) | No (findings only) | No | No |
 | Regional / US-state compliance | Yes (India DPDP, Singapore, Alabama, Tennessee) | No | No | No | No |
 | Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No (proprietary) | No | No |
 | Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No (multi-model analysis) | Partial | No |
@@ -39,7 +39,7 @@ different layer:
 - **agent-audit-kit** runs at CI time and ship time. It's a **static
   scanner + compliance evidence** generator. You run it on a repo to
   catch issues before deployment and to produce auditor-ready PDFs
-  (EU AI Act Art. 15, ISO 42001, Alabama DPPA, Tennessee SB 1580, etc.).
+  (EU AI Act Art. 15, ISO 42001, Alabama DPPA, Tennessee SB 1580, Colorado SB 26-189 ADMT, etc.).
 - **Microsoft AGT** runs at **runtime**. Agent OS (policy engine),
   Agent Mesh (A2A comms), Agent Runtime (dynamic execution rings),
   Agent SRE (reliability), Agent Compliance (automated evidence
@@ -131,7 +131,7 @@ coexisted, the README linked only this one, and the other two drifted unread._
 
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent | Agent Audit | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| **Rules** | <!-- rule-count:total -->341<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
+| **Rules** | <!-- rule-count:total -->345<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
 | MCP config scanning | Yes | No | Yes | No | No |
 | Hook injection detection | Yes | No | No | No | No |
 | Trust boundary analysis | Yes | No | No | No | Yes |
@@ -181,7 +181,7 @@ consumers can pick the right tool for their stack.
 |---|---|---|
 | License | Apache-2.0, OSS | Proprietary, Ultimate-tier paywall |
 | Distribution | PyPI + Marketplace + Docker + VS Code ext | GitLab CI / Premium offering only |
-| Rule count | <!-- rule-count:total -->341<!-- /rule-count --> | Not publicly disclosed |
+| Rule count | <!-- rule-count:total -->345<!-- /rule-count --> | Not publicly disclosed |
 | OWASP Agentic Top 10 mapping | Per-rule, public JSON manifest | Claimed; mapping not published |
 | MCP Top 10 mapping | Per-rule | Not advertised |
 | AICM (CSA) mapping | Yes | Not advertised |

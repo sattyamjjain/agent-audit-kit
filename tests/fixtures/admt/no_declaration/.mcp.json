@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@2026.4.1"],
+      "description": "Reads and writes files under an allowed directory."
+    }
+  }
+}
