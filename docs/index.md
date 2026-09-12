@@ -24,6 +24,7 @@ agent-audit-kit scan .
 - **Auto-fix** for common misconfigurations
 - **Security scoring** with A-F grades and SVG badges
 - **SARIF output** for GitHub Code Scanning integration
+- **SBOM + VEX evidence pair** (`sbom`, `vex`) for CRA and EU AI Act bundles — see [VEX and SBOM](vex.md)
 - **Pre-commit hook** and **GitHub Action** for CI/CD
 
 ## Commands
@@ -37,3 +38,5 @@ agent-audit-kit scan .
 | `agent-audit-kit fix` | Auto-fix issues |
 | `agent-audit-kit score .` | Show security grade |
 | `agent-audit-kit update` | Update vulnerability DB |
+| `agent-audit-kit sbom .` | Emit a CycloneDX 1.5 / SPDX 2.3 SBOM |
+| `agent-audit-kit vex .` | Emit an OpenVEX exploitability document, joined to the SBOM on purl |

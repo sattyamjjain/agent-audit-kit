@@ -60,6 +60,12 @@ def _discover_mcp_packages(project_root: Path) -> list[dict]:
                     "version": version,
                     "purl": f"pkg:npm/{name_part}@{version}",
                     "mcp_server": server_name,
+                    # Which config declared this package. Not emitted in any
+                    # SBOM -- `emit_cyclonedx` and `emit_spdx` read only
+                    # name/version/purl/mcp_server -- but `output.vex` needs it
+                    # to tell whether a finding landed on the artifact that
+                    # declares this product.
+                    "source": name,
                 }
     return list(pkgs.values())
 

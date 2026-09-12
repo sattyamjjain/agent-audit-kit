@@ -46,10 +46,10 @@ These are regenerated from `research/state-of-mcp-2026/results.json` by `scripts
 - **Mechanical fix recipes: <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->340<!-- /rule-count --> rules (<!-- fix-recipe-coverage:pct -->3.2<!-- /fix-recipe-coverage -->%).** This is a scope decision, not coverage: **a recipe ships only where the remediation is deterministic and one-line** — exactly one correct edit, confirmable from the diff. Everything else stays advisory on purpose, because a fix that needs judgement is a fix that can be wrong silently. `agent-audit-kit fix` applies these; the narrower `suggest --auto-pr` allow-list is the subset AAK will open a PR for.
   <br>The rules with the most findings are the ones that fail that bar hardest, and the reasons are written down per fix shape in [`autopr.py`](agent_audit_kit/autopr.py): splitting a shell string into argv needs the shell's own parse; flipping a transport needs to know the server speaks the replacement; declaring RFC 9728 metadata needs an endpoint stood up on a different machine than the one being scanned. [`AAK-OAUTH-008` is the worked example](agent_audit_kit/autopr.py): the only edit that silences it leaves the credential in place, and a test performs that edit to prove it.
   - Coverage is computed from the registry and verified in CI (`test_fix_recipe_coverage_is_canonical`), which also asserts every rule marked `auto_fixable` has a recipe that actually runs.
-- **26 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
+- **27 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `vex`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (12 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`; plus `agent-audit-kit scan . --compliance mcp-2026-roadmap` for **MCP 2026 Roadmap (May 2026)** conformance (a scan-time mapping, not a PDF evidence pack)
-- **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`)
+- **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`), OpenVEX exploitability statements (`vex`) keyed by the same purls
 - **MCP Security Index**: public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) ([snapshot dates](#mcp-security-index)) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
 - **CVE coverage**: newly disclosed MCP CVEs are triaged and turned into rules as they land — surfaced automatically by the NVD watcher ([`cve-watcher.yml`](.github/workflows/cve-watcher.yml)) and logged in [CHANGELOG.cves.md](CHANGELOG.cves.md). Per-severity triage budgets and the current queue depth are published in [docs/cve-triage.md](docs/cve-triage.md)
 - **OAuth / spec coverage**: the **2026-07-28 final auth profile** as a one-command check — `agent-audit-kit scan . --profile mcp-2026-07-28` runs RFC 9207 `iss` validation (`AAK-OAUTH-006`), RFC 8707 resource indicators (`AAK-OAUTH-007`), and RFC 9728 Protected-Resource-Metadata discovery (`AAK-OAUTH-008`). We scanned 2,303 distinct public MCP configs: **0 use RFC 9728 discovery; <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->) declare a remote server with no authentication; <!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->424<!-- /report -->/<!-- report:inline-auth-d -->424<!-- /report -->) of inline-auth remote configs hardcode a static credential** — see the [State of MCP Security 2026](research/state-of-mcp-2026/REPORT.md) report, v1.0, [citable](research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report) (the earlier dated [2026-07-18 748-config readiness scan](docs/reports/mcp-2026-07-28-readiness.md) is a separate point-in-time artifact). The July 2026-07-28 deprecation/stateless pack stays labelled **release candidate** (the spec ratifies 2026-07-28); every cited SEP was re-verified in the [ratification reconciliation](CHANGELOG.cves.md)
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.3.99
+      - uses: sattyamjjain/agent-audit-kit@v0.4.0
         id: scan
         with:
           fail-on: high
@@ -114,7 +114,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.3.99
+    rev: v0.4.0
     hooks:
       - id: agent-audit-kit
 ```
@@ -208,6 +208,7 @@ _Note: Phase 2 scanners (`ssrf_patterns`, `oauth_misconfig`, `mcp_auth_patterns`
 | `agent-audit-kit export-rules --out rules.json` | Write deterministic rule bundle + SHA-256 (Sigstore-signable) |
 | `agent-audit-kit verify-bundle rules.json [--signature sig]` | Verify bundle digest or Sigstore signature |
 | `agent-audit-kit sbom . --format {cyclonedx,spdx}` | Emit CycloneDX 1.5 / SPDX 2.3 SBOM for MCP deps |
+| `agent-audit-kit vex .` | Emit an OpenVEX 0.2.0 exploitability document, joined to the SBOM on purl |
 | `agent-audit-kit report . --framework FRAMEWORK --format pdf` | Auditor-ready compliance report (EU AI Act / SOC 2 / ISO 27001 / HIPAA / NIST AI RMF) |
 | `agent-audit-kit install-precommit` | Add the hook to `.pre-commit-config.yaml` |
 
@@ -306,7 +307,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.3.99
+  - uses: sattyamjjain/agent-audit-kit@v0.4.0
     id: scan
     with:
       fail-on: high
@@ -640,6 +641,7 @@ Every `v*` release publishes:
 - **Docker image** on GHCR (`ghcr.io/sattyamjjain/agent-audit-kit:<tag>`) with SLSA provenance attestation. Provenance is attached by the release flow, so it covers **version tags**; the nightly rebuild that refreshes `:latest` and `:nightly` scans the image with Trivy but attaches no attestation, so pin a version tag if you need provenance
 - **Sigstore keyless-signed rule bundle** (`rules.json` + `rules.json.sha256`)
 - **CycloneDX + SPDX SBOM** (`sbom.cdx.json`, `sbom.spdx.json`)
+- **OpenVEX 0.2.0 exploitability document** (`vex.openvex.json`) — joins to the SBOM on purl; never claims `not_affected`, which needs a reachability justification a static scan cannot establish
 
 Verify a bundle:
 
@@ -655,7 +657,7 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # <!-- test-count:total -->2,253<!-- /test-count --> test functions
+pytest -v                          # <!-- test-count:total -->2,282<!-- /test-count --> test functions
 ruff check .                       # Lint
 mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan
