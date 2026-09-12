@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-09-12
+
+### Fixed
+
+Four stale facts in files the count guard could not see, found by a parallel
+audit of the supporting documentation rather than by the guards themselves.
+
+- **`funding.json` claimed 332 rules and 12 compliance frameworks** against a
+  live 348 and 14 — drifted by 16 rules with every guard reporting clean. It is
+  published to FLOSS/fund through `.well-known/funding-manifest-urls`, so it is
+  a public claim, and `scripts/check_counts.py` was scoped to tracked `*.md`
+  because that is where prose lives. This file's `description` is a paragraph of
+  prose inside a JSON string.
+
+  Two separate blind spots, both closed. The guard now reads
+  `EXTRA_TRACKED_FILES` in addition to markdown, and a new pattern covers
+  `N rules across M categories` — the sibling of the existing
+  `N rules across M scanners`. The categories number in that sentence was
+  already guarded; the rules number matched nothing, so one number in the
+  sentence was checked and the other was free to rot. Verified by reverting the
+  stale value and watching the guard fail, then restoring it.
+
+- **`SECURITY.md` listed `Latest release (0.3.x)` as the supported version**
+  while the project shipped 0.6.3. A security policy is a poor place to be two
+  minor versions stale, and it is one of the first files a reviewing
+  organisation opens.
+
+- **`CONTRIBUTING.md` step 5 told contributors to "Update `docs/rules.md` with
+  the new rule".** That file's rule table sits between
+  `BEGIN/END rules-summary` markers written by `scripts/sync_rule_count.py`, so
+  anyone following the instruction would hand-edit generated content and have
+  the next sync silently overwrite the work. It now says to regenerate, and
+  names the script.
+
+- **`.github/dependabot.yml` documented the ruff pin as `>=0.15,<0.16`** where
+  `pyproject.toml` says `>=0.15,<0.17`. A comment explaining a constraint that
+  is not the constraint in force.
+
+### Added
+
+- Five assertions in `tests/test_readme_contract.py` covering the above:
+  `funding.json`'s counts against the live registry, the guard extension that
+  makes that enforceable rather than a one-off correction, the
+  `rules across categories` phrasing, the `SECURITY.md` version line derived
+  from `__version__`, and the `CONTRIBUTING.md` instruction.
+
 ## [0.6.3] - 2026-09-12
 
 ### Changed

@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: "weekly"
     ignore:
-      # ruff's minor is pinned in pyproject.toml (`ruff>=0.15,<0.16`) so CI lint
+      # ruff's minor is pinned in pyproject.toml (`ruff>=0.15,<0.17`) so CI lint
       # stays reproducible. A new ruff minor adds rules that turn CI red without a
       # deliberate `ruff check --fix` adoption, so don't auto-propose the cap bump
       # (that was PR #494 — closed, failed all four `test` jobs). Adopting a newer

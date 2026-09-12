@@ -65,7 +65,10 @@ mypy agent_audit_kit
 2. Assign a unique rule ID following the pattern `AAK-<CATEGORY>-<NNN>`.
 3. Include `severity`, `message`, `remediation`, and `owasp_ref` fields.
 4. Add tests in `tests/` that cover both detection and non-detection cases.
-5. Update `docs/rules.md` with the new rule.
+5. Regenerate the docs, do not hand-edit them: `python scripts/sync_rule_count.py`
+   rewrites the rule table in `docs/rules.md` between its `BEGIN/END rules-summary`
+   markers, and the counts in `README.md` and `__init__.py`. Editing that table by
+   hand works until the next sync overwrites it.
 
 ## Pull Request Process
 

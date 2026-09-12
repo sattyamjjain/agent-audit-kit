@@ -211,3 +211,72 @@ def test_every_mkdocs_nav_target_exists() -> None:
     assert targets, "mkdocs nav has no page targets"
     missing = [t for t in targets if not (REPO / "docs" / t).is_file()]
     assert not missing, f"mkdocs nav points at missing pages: {missing}"
+
+
+# --------------------------------------------------------------------------
+# Surfaces outside the count guard's original scope
+# --------------------------------------------------------------------------
+
+
+def test_funding_manifest_counts_are_current() -> None:
+    """`funding.json` is published prose that no guard could see.
+
+    `scripts/check_counts.py` was scoped to tracked `*.md`, because that is
+    where prose lives. `funding.json`'s `description` is a paragraph of prose
+    inside a JSON string, published to FLOSS/fund via
+    `.well-known/funding-manifest-urls`. On 2026-09-12 it claimed "332 rules"
+    and "12 compliance frameworks" against a live 348 and 14 — drifted by 16
+    rules with every guard reporting clean, because none of them looked at it.
+    """
+    import json
+
+    from agent_audit_kit import RULE_COUNT
+    from agent_audit_kit.output.pdf_report import _FRAMEWORK_TITLES
+
+    text = (REPO / "funding.json").read_text(encoding="utf-8")
+    json.loads(text)  # it must also stay valid JSON
+    assert f"{RULE_COUNT} rules" in text, "funding.json states a stale rule count"
+    assert f"{len(_FRAMEWORK_TITLES)} compliance frameworks" in text
+
+
+def test_count_guard_sees_non_markdown_surfaces() -> None:
+    """The extension that makes the assertion above enforceable rather than
+    a one-off correction."""
+    import scripts.check_counts as cc
+
+    assert "funding.json" in cc.EXTRA_TRACKED_FILES
+
+
+def test_rules_across_categories_phrasing_is_guarded() -> None:
+    """Two numbers in one sentence, one of them guarded, is still a blind spot.
+
+    `N rules across M categories` had a pattern for M and none for N.
+    """
+    import scripts.check_counts as cc
+
+    probe = "332 rules across 14 categories"
+    keys = {key for pat, key in cc.PATTERNS for _ in pat.finditer(probe)}
+    assert any("rules" in k for k in keys), (
+        "the rules count in 'N rules across M categories' matches no pattern"
+    )
+
+
+def test_security_policy_names_the_current_major_minor() -> None:
+    """A security policy is the wrong place to be two minor versions stale."""
+    from agent_audit_kit import __version__
+
+    major_minor = ".".join(__version__.split(".")[:2])
+    text = (REPO / "SECURITY.md").read_text(encoding="utf-8")
+    assert f"{major_minor}.x" in text, (
+        f"SECURITY.md does not name the current {major_minor}.x line; it said "
+        "0.3.x at v0.6.3"
+    )
+
+
+def test_contributing_does_not_tell_people_to_hand_edit_generated_docs() -> None:
+    """`docs/rules.md`'s rule table sits between BEGIN/END rules-summary markers
+    written by `sync_rule_count.py`. A contributor following the old step 5
+    would edit it by hand and have the next sync overwrite the work."""
+    text = (REPO / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    assert "Update `docs/rules.md` with the new rule." not in text
+    assert "sync_rule_count.py" in text
