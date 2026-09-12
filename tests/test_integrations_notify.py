@@ -127,16 +127,86 @@ def test_slack_sink_raises_on_http_error() -> None:
 # -------------------- Stub sinks --------------------
 
 
-def test_pagerduty_sink_is_explicit_stub() -> None:
-    sink = PagerDutySink(routing_key="x", min_severity=Severity.CRITICAL)
-    with pytest.raises(NotImplementedError, match="v0.4.0 stub"):
+# These two used to assert `NotImplementedError, match="v0.4.0 stub"`. The
+# stubs promised v0.4.0 and were still stubs at v0.6.1; both ship as of v0.6.2,
+# so the tests now exercise the wire format instead of the promise.
+
+
+def _mock_urlopen(captured: list, body: bytes = b"{}"):
+    class _MockResp:
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+        def read(self) -> bytes: return body
+
+    def _fake(req, timeout=10):
+        captured.append((req.full_url, json.loads(req.data.decode("utf-8")), dict(req.headers)))
+        return _MockResp()
+    return _fake
+
+
+def test_pagerduty_sink_posts_one_trigger_event_per_finding() -> None:
+    captured: list = []
+    sink = PagerDutySink(routing_key="rk", min_severity=Severity.CRITICAL)
+    with patch("urllib.request.urlopen", side_effect=_mock_urlopen(captured)):
+        sent = sink.send([_mk_finding(Severity.CRITICAL)], _mk_result([]))
+    assert sent == 1
+    url, payload, _ = captured[0]
+    assert url == "https://events.pagerduty.com/v2/enqueue"
+    assert payload["routing_key"] == "rk"
+    assert payload["event_action"] == "trigger"
+    assert payload["payload"]["severity"] == "critical"
+
+
+def test_pagerduty_dedup_key_is_stable_across_runs() -> None:
+    """PagerDuty dedups on this. Without it, every CI run opens a new incident."""
+    captured: list = []
+    sink = PagerDutySink(routing_key="rk", min_severity=Severity.CRITICAL)
+    finding = _mk_finding(Severity.CRITICAL)
+    with patch("urllib.request.urlopen", side_effect=_mock_urlopen(captured)):
+        sink.send([finding], _mk_result([]))
+        sink.send([finding], _mk_result([]))
+    assert captured[0][1]["dedup_key"] == captured[1][1]["dedup_key"]
+    assert captured[0][1]["dedup_key"].startswith("aak:")
+
+
+def test_pagerduty_sink_requires_a_routing_key() -> None:
+    sink = PagerDutySink(routing_key="", min_severity=Severity.CRITICAL)
+    with pytest.raises(RuntimeError, match="routing_key"):
         sink.send([_mk_finding(Severity.CRITICAL)], _mk_result([]))
 
 
-def test_linear_sink_is_explicit_stub() -> None:
-    sink = LinearTicketSink(api_key="x", team_id="ENG", min_severity=Severity.HIGH)
-    with pytest.raises(NotImplementedError, match="v0.4.0 stub"):
-        sink.send([_mk_finding(Severity.HIGH)], _mk_result([]))
+def test_linear_sink_creates_one_issue_per_finding() -> None:
+    captured: list = []
+    sink = LinearTicketSink(api_key="lin_x", team_id="ENG", min_severity=Severity.HIGH)
+    with patch("urllib.request.urlopen", side_effect=_mock_urlopen(captured)):
+        sent = sink.send([_mk_finding(Severity.HIGH)], _mk_result([]))
+    assert sent == 1
+    url, payload, headers = captured[0]
+    assert url == "https://api.linear.app/graphql"
+    assert "IssueCreate" in payload["query"]
+    assert payload["variables"]["input"]["teamId"] == "ENG"
+    assert headers.get("Authorization") == "lin_x"
+
+
+def test_linear_sink_raises_on_graphql_errors_despite_http_200() -> None:
+    """GraphQL answers 200 with an `errors` array.
+
+    A bad team id or a revoked key looks like success to anything that only
+    checks the status code, which is the failure mode worth a test.
+    """
+    captured: list = []
+    body = b'{"errors":[{"message":"Team not found"}]}'
+    sink = LinearTicketSink(api_key="k", team_id="NOPE", min_severity=Severity.HIGH)
+    with patch("urllib.request.urlopen", side_effect=_mock_urlopen(captured, body)):
+        with pytest.raises(RuntimeError, match="Team not found"):
+            sink.send([_mk_finding(Severity.HIGH)], _mk_result([]))
+
+
+def test_linear_sink_requires_api_key_and_team_id() -> None:
+    with pytest.raises(RuntimeError, match="api_key and team_id"):
+        LinearTicketSink(api_key="", team_id="", min_severity=Severity.HIGH).send(
+            [_mk_finding(Severity.HIGH)], _mk_result([])
+        )
 
 
 # -------------------- load_notify_config --------------------
@@ -212,5 +282,7 @@ def test_run_notify_returns_per_sink_counts() -> None:
         sent = run_notify(result, cfg)
 
     assert sent["slack"] == 2
-    assert sent["pagerduty"] == -1  # NotImplementedError → recorded as -1
-    assert len(captured) == 1
+    # Was -1 (NotImplementedError). PagerDuty now posts, and only the one
+    # CRITICAL finding clears its min_severity.
+    assert sent["pagerduty"] == 1
+    assert len(captured) == 2

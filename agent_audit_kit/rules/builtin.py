@@ -4536,9 +4536,11 @@ _r(
     "`mcp_sdk` / `modelcontextprotocol` after a network-controlled "
     "source (`reqwest`, `serde_json::from_str`, `std::env::var`, "
     "`hyper::body`, `actix_web::web::Json`, `axum::extract::Json`). "
-    "Same OX MCP April-2026 class. NOTE: this rule is regex-only "
-    "until #22 lands tree-sitter-rust; expect ~10% false-positive rate "
-    "on macro-heavy code.",
+    "Same OX MCP April-2026 class. NOTE: this rule is regex-only, so "
+    "expect ~10% false-positive rate on macro-heavy code. It is a "
+    "proximity match, not Rust data-flow analysis. Issue #22 was closed on "
+    "2026-08-15 having shipped only a TypeScript slice, so there is no open "
+    "work item behind this and no reason to wait for one.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
     "Pin the `Command::new(...)` argument to a constant binary path "
@@ -4642,8 +4644,10 @@ _r(
     "Wrap the URL with the same SSRF guard you use for any other "
     "fetch: validate the resolved IP against an allow-list, disable "
     "redirects, and pin the resolved IP for the actual request. "
-    "Bump `lmdeploy` to the patched release (see GHSA for the exact "
-    "version once NVD enrichment lands).",
+    "Upgrade `lmdeploy` to >= 0.12.3 and pin it: versions below 0.12.3 "
+    "are affected (GHSA-6w67-hwm5-92mq). Exploitation was observed within "
+    "roughly twelve hours of the advisory, so treat an unpinned or older "
+    "install as urgent rather than routine.",
     sarif_name="LmdeployVlSsrf",
     cve_references=["CVE-2026-33626"],
     owasp_mcp_references=["MCP05:2025"],
@@ -5514,8 +5518,8 @@ _r(
     "agent run executes inside that fake-trusted scope. Patched in "
     "2.1.83 (released 2026-05-04). This pin-only rule fires on the "
     "scoped npm package `@anthropic-ai/claude-code` < 2.1.83 in any "
-    "consumer manifest. Pre-allocated rule-name from the v0.3.15 "
-    "triage of issue #181; ships in v0.3.16.",
+    "consumer manifest. Rule name was pre-allocated in the v0.3.15 "
+    "triage of issue #181 and shipped in v0.3.16.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Bump `@anthropic-ai/claude-code` to >=2.1.83 in any npm "

@@ -34,7 +34,7 @@ traversed out of the session directory. Fixed in 0.19.1.
 ## Detection
 
 Python is analysed with the stdlib `ast` taint mechanism the repo already uses
-(no new engine — issue #22's tree-sitter migration is separate). Per function:
+(no new engine — the tree-sitter work under issue #22 was a TypeScript slice and is closed). Per function:
 
 1. **Source** — a value read from a request header / bearer extraction
    (`request.headers.get("Authorization")`, `headers["authorization"]`), or a

@@ -22,8 +22,9 @@ Rules emitted:
 - AAK-MCP-STDIO-CMD-INJ-001 — language=python (AST)
 - AAK-MCP-STDIO-CMD-INJ-002 — language=typescript (regex+AST hybrid)
 - AAK-MCP-STDIO-CMD-INJ-003 — language=java (regex)
-- AAK-MCP-STDIO-CMD-INJ-004 — language=rust (regex; ~10% FP rate
-  on heavy macro use until #22 lands tree-sitter-rust)
+- AAK-MCP-STDIO-CMD-INJ-004 — language=rust (regex; ~10% FP rate on
+  heavy macro use). No tree-sitter-rust grammar, and none is pending:
+  #22 closed 2026-08-15 having shipped a TypeScript slice only.
 """
 
 from __future__ import annotations
@@ -284,7 +285,7 @@ def _walk_ts_proximity(text: str, path: Path, project_root: Path, scanned: set[s
 
 
 def _walk_ts(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
-    """Data-flow when the grammar is present, proximity when it is not (#22).
+    """Data-flow when the grammar is present, proximity when it is not.
 
     What the rule reports is identical either way — same rule_id, severity and
     framework mappings. Only the decision changed: reachability from a
@@ -429,8 +430,8 @@ def _walk_rust(text: str, path: Path, project_root: Path, scanned: set[str]) -> 
             "that imports `mcp_sdk` / `modelcontextprotocol` after a "
             "network-controlled source (reqwest, serde_json, env::var, "
             "hyper/actix/axum body extractors). OX MCP Apr-2026 class. "
-            "Note: regex-only pass; expect ~10% FP on macro-heavy code "
-            "until #22 lands tree-sitter-rust.",
+            "Note: regex-only pass; expect ~10% FP on macro-heavy code. "
+            "There is no tree-sitter-rust grammar and none is pending.",
             line_number=line,
         ))
         return findings

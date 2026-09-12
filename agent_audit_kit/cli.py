@@ -547,8 +547,11 @@ def watch_cmd(path: str, interval_seconds: int, webhook_url: str | None, once: b
     help="Run a scan and print which sinks would have been notified, without making network calls.",
 )
 def notify_cmd(path: str, config_path: str | None, dry_run: bool) -> None:
-    """Run a scan and dispatch findings to configured notification sinks
-    (Slack today; PagerDuty / Linear stubs in v0.4.0). Closes #66."""
+    """Run a scan and dispatch findings to configured notification sinks.
+
+    Slack incoming webhooks, PagerDuty Events API v2, and Linear GraphQL
+    issue creation. Closes #66.
+    """
     from agent_audit_kit.integrations import (
         load_notify_config,
         run_notify,
@@ -1131,11 +1134,25 @@ def rule_cmd() -> None:
 @rule_cmd.command("lint")
 @click.option("--ci", is_flag=True, default=False, help="Exit 1 on any violation.")
 @click.option("--rule", "rule_filter", default=None, help="Lint only this rule_id.")
-def rule_lint_cmd(ci: bool, rule_filter: str | None) -> None:
+@click.option("--incident", "incident_filter", default=None,
+              help="Lint only rules carrying this incident reference "
+                   "(e.g. OX-MCP-2026-05-01, DEADBUGZ-2026-09).")
+def rule_lint_cmd(ci: bool, rule_filter: str | None, incident_filter: str | None) -> None:
     """Validate the RuleDefinition registry against AAK metadata invariants."""
-    from agent_audit_kit.rule_lint import run_lint
+    from agent_audit_kit.rule_lint import rules_for_incident, run_lint
 
-    violations = run_lint(rule_filter=rule_filter)
+    if incident_filter:
+        covered = rules_for_incident(incident_filter)
+        if not covered:
+            click.echo(
+                f"rule lint: no rule carries incident {incident_filter!r}.", err=True
+            )
+            if ci:
+                sys.exit(EXIT_FINDINGS)
+            return
+        click.echo(f"incident {incident_filter}: {len(covered)} rule(s) — {', '.join(covered)}")
+
+    violations = run_lint(rule_filter=rule_filter, incident_filter=incident_filter)
     if not violations:
         click.echo("rule lint: clean.")
         return

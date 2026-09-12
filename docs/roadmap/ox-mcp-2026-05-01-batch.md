@@ -1,6 +1,6 @@
 # OX MCP 2026-05-01 batch — design doc
 
-**Status:** active (v0.3.14 → v0.3.16). **Owner:** maintainer.
+**Status:** closed 2026-09-12. Phases 1-2 and the LettaAI row shipped (`AAK-MCP-LETTA-CVE-2025-51482-001`); the `--incident` filter this document depends on shipped in v0.6.2. The two promotion items below — an umbrella `AAK-MCP-TRANSPORT-FLIP-001` and a `--strict` mode — were **not** built, and are recorded as not-built rather than left as open boxes on a doc marked active. **Owner:** maintainer.
 
 ## Source
 
@@ -62,4 +62,4 @@ Every per-vendor rule in this batch shares the same `incident_references=["OX-MC
 agent-audit-kit rule lint --incident OX-MCP-2026-05-01
 ```
 
-(That `--incident` filter is itself a v0.3.16 backlog item — until then, manual grep against `agent_audit_kit/rules/builtin.py`.)
+(The `--incident` filter shipped in v0.6.2. It was documented here as a v0.3.16 backlog item and stayed unimplemented for roughly forty releases, so this section handed readers a command that did not exist.)

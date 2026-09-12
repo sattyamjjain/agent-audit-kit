@@ -1,8 +1,8 @@
 """Notification sinks for AAK findings (Slack / PagerDuty / Linear).
 
-Closes #66 (Slack only in v0.3.13; PagerDuty + Linear are stubs that
-raise NotImplementedError to make the surface explicit until they
-ship in v0.4.0).
+Closes #66. All three sinks are implemented: Slack via incoming webhook,
+PagerDuty via Events API v2, Linear via the GraphQL IssueCreate mutation.
+PagerDuty and Linear were stubs from v0.3.13 until v0.6.2.
 """
 from __future__ import annotations
 
