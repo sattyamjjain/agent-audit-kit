@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-09-12
+
+### Changed
+
+- **README rewritten: 7,056 words to 1,300.** The 2026 median is 800-1,500 and a
+  reader decides in under thirty seconds. It was roughly five times too long,
+  and length was not the worst of it: **11 badges**, the first runnable command
+  at **line 69**, and bullets running eight to ten lines *defending a number*
+  before the reader knew what the tool did. The "Mechanical fix recipes: 11 of
+  348 (3.2%)" bullet argued its own scope for ten lines above the fold. That
+  reads as anxious. The content was good and is all still here; it was in the
+  wrong place.
+
+  The category table was the single biggest offender — its "What it detects"
+  cells ran past 2,000 characters each, one cell longer than a whole good
+  README. Compressed to a phrase per category, with the detail in the rule
+  reference.
+
+  Order now follows the inverted pyramid: name, badges, demo, `pip install` and
+  a scan inside the first screen, then what it finds, then why not a hosted
+  scanner, then the evidence.
+
+- **42 relative links removed from the README.** `pyproject.toml` sets
+  `readme = "README.md"`, so the README *is* the PyPI long description, and PyPI
+  does not resolve repository-relative paths. Every one of those 42 rendered as
+  a broken link on the page where someone decides whether to install. Verified
+  against the built wheel's `METADATA`: 0 remaining.
+
+- **`docs/` made navigable.** 55 markdown files with 9 in the mkdocs nav and 14
+  orphans at top level. That is *why* the README was overloaded: content piled
+  onto the front page because there was nowhere reachable to put it. The nav now
+  carries 23 pages in six groups, and the three remaining orphans are
+  intentionally internal stubs. New pages `docs/cli.md`, `docs/github-action.md`
+  and `docs/why.md` hold what left the README.
+
+- `Development Status :: 3 - Alpha` to `4 - Beta` in `pyproject.toml`. At v0.6.3
+  with 348 rules, signed releases and a published latency figure, Alpha was
+  inaccurate downward, and PyPI shows it. Added `Documentation` and `Changelog`
+  to `[project.urls]`, which PyPI renders as sidebar links.
+
+- Moved the OpenAI grant application to `docs/grants/`. `DEEP_ANALYSIS.md` and
+  `ROADMAP_2026.md` stay at root: both are wired into `check_counts.py`'s
+  exclusion list, a test and a workflow, so moving them buys a tidier listing at
+  the cost of guard churn.
+
+### Added
+
+- **`tests/test_readme_contract.py`** — 23 assertions, and the reason the
+  rewrite was safe to attempt.
+
+  Five scheduled jobs write into `README.md` by locating an HTML-comment
+  marker: `sync_rule_count.py`, `sync_scanner_count.py`, `sync_fp_badge.py`,
+  `gen_owasp_coverage.py` and `index_cadence.py`. **32 markers in 8 families.**
+  A prose edit that drops one takes that number out of automation.
+
+  Most fail loudly. `gen_owasp_coverage.py` does not: it returns False and
+  writes nothing when its markers are absent, has no `--check` mode, and its
+  tests only assert the module exits 0. Losing that marker would have frozen the
+  OWASP coverage table with nothing to notice — the same shape as the
+  release-time latency guard fixed in 0.5.2. It now has a test of its own.
+
+  The contract also holds the phrasings `check_counts.py` matches, so a future
+  reword cannot silently stop the count guard; asserts the README has no
+  relative link, because PyPI renders it; caps it at 2,500 words with a message
+  saying to move content to `docs/` rather than trim meaning; keeps Quick start
+  above line 40; and checks every docs link and mkdocs nav target resolves to a
+  file.
+
+  Verified by running all six writers twice and diffing: byte-identical.
+
 ## [0.6.2] - 2026-09-12
 
 Promises this project made in shipped code and then outlived. Found by a

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-audit-kit"
-version = "0.6.2"
+version = "0.6.3"
 description = "Security scanner for MCP-connected AI agent pipelines"
 readme = "README.md"
 license = "Apache-2.0"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["mcp", "security", "scanner", "ai-agents", "claude-code"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -72,6 +72,8 @@ aak = "agent_audit_kit.cli:cli"
 Homepage = "https://github.com/sattyamjjain/agent-audit-kit"
 Repository = "https://github.com/sattyamjjain/agent-audit-kit"
 Issues = "https://github.com/sattyamjjain/agent-audit-kit/issues"
+Documentation = "https://sattyamjjain.github.io/agent-audit-kit/"
+Changelog = "https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_audit_kit"]

@@ -16,13 +16,33 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started: getting-started.md
-  - Rule Reference: rules.md
-  - Session Transcripts: session-transcripts.md
-  - OWASP Mapping: owasp-mapping.md
-  - VEX and SBOM: vex.md
-  - CI/CD Integration: ci-cd.md
-  - GitLab CI: gitlab-ci.md
+  - Getting started:
+      - Getting started: getting-started.md
+      - CLI reference: cli.md
+      - Configuration & rule schema: rule-schema.md
+  - Rules & coverage:
+      - Rule reference: rules.md
+      - OWASP mapping: owasp-mapping.md
+      - OWASP Agentic coverage: owasp-agentic-coverage.md
+      - Session transcripts: session-transcripts.md
+  - Compliance & evidence:
+      - VEX and SBOM: vex.md
+      - Why it works this way: why.md
+  - CI/CD:
+      - GitHub Action: github-action.md
+      - CI/CD integration: ci-cd.md
+      - GitLab CI: gitlab-ci.md
+      - Azure Pipelines: azure-pipelines.md
+      - CircleCI: circleci.md
+  - Security & process:
+      - Disclosure policy: disclosure-policy.md
+      - CVE triage: cve-triage.md
+      - CVE-to-rule latency: cve-latency.md
+      - Releasing: RELEASING.md
+      - Metrics: metrics.md
+  - Research:
+      - State of MCP Security 2026: STATE-OF-MCP-SECURITY-2026.md
+      - Research log: research-log.md
   - Comparison: comparisons.md
 
 markdown_extensions:

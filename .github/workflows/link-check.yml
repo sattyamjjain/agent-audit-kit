@@ -46,7 +46,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -67,6 +67,21 @@ jobs:
       # repo — is also covered by tests/test_docs_links.py, which fails fast and
       # locally and does not depend on the network at all.
       #
+      # Links to this repository's own files are written as absolute
+      # blob/main URLs on purpose: README.md is the PyPI long_description, and
+      # PyPI does not resolve repo-relative paths. Checking them over the
+      # network is both weaker and wrong here -- weaker because GitHub answers
+      # 200 for paths that redirect, and wrong because a PR that adds a docs
+      # page and links to it 404s until the branch merges, which is how this
+      # exclusion came to be needed on 2026-09-12.
+      #
+      # They are checked instead against the working tree by
+      # tests/test_readme_contract.py::test_every_docs_site_link_has_a_source_page,
+      # which asserts every one of them resolves to a file that exists.
+      # linkedin.com is excluded because it answers 999 to every non-browser
+      # request -- its anti-bot status, not a dead link. It entered scope on
+      # 2026-09-12 when the grant application moved from the repo root into
+      # docs/, which lychee scans. The link itself resolves fine in a browser.
       # asciinema.org is excluded for the same reason, after the gentler fix was
       # tried and did not work: the README's demo embed times out from the runner
       # while answering 200 in ~0.9s from elsewhere, and raising --timeout from
