@@ -88,9 +88,26 @@ cannot actually guarantee uniqueness.
 
 ## Why now
 
-The EU Cyber Resilience Act's reporting obligations start on
-**11 December 2027**, and an SBOM alone does not answer the question a
-regulator or a customer actually asks, which is whether a listed component is
-exploitable in the product as shipped. VEX is the artifact that carries that
-answer, and it is worth having the emitter in place and honest well before the
-date rather than in the quarter it lands.
+The EU Cyber Resilience Act's reporting obligations are **already live**. Since
+**11 September 2026**, Article 14 of Regulation (EU) 2024/2847 requires a
+manufacturer to report an actively exploited vulnerability in a product with
+digital elements to ENISA and the coordinating CSIRT on a staged clock: an early
+warning within **24 hours** of becoming aware, a technical notification within
+**72 hours**, and a final report within **14 days**. It applies to products
+already on the EU market, not only to ones placed on it after that date. The
+Annex I obligations, including the machine-readable SBOM and CE marking, follow
+at **11 December 2027**.
+
+Those two dates are easy to collapse into one, and this page did exactly that
+until 2026-09-12: it named 11 December 2027 as the date reporting begins, which
+is wrong by fifteen months in the direction that lets a reader relax. The
+correct pair was already recorded elsewhere in this repository before the error
+was written.
+
+What the pair means in practice is that a 24-hour clock is the binding
+constraint today and an SBOM is not sufficient to answer it. An SBOM lists what
+you ship. The question a regulator or a customer actually asks under that clock
+is whether a listed component is exploitable in the product as shipped, and
+whether you can say so quickly and in a form they can machine-read. That is the
+question VEX answers, which is why the emitter exists and why it refuses to
+answer it with a status the scan did not establish.

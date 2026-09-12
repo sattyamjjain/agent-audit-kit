@@ -625,7 +625,7 @@ _r(
 # ---------------------------------------------------------------------------
 # AAK-MCP-STATELESS-001..004 — 2026-07-28 stateless-MCP migration
 #
-# The MCP 2026-07-28 spec release candidate makes the protocol stateless by
+# The ratified MCP 2026-07-28 spec makes the protocol stateless by
 # default: the `Mcp-Session-Id` header and the protocol-level session are
 # removed and replaced with explicit, server-minted state handles (SEP-2567),
 # while making the mandatory initialization handshake optional so stateless is
@@ -640,7 +640,7 @@ _r(
 # before the cutover.
 #
 # Sources:
-#   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+#   https://modelcontextprotocol.io/specification/2026-07-28/changelog
 #   https://modelcontextprotocol.io/seps/2567-sessionless-mcp
 #   https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1442
 #   https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2575
@@ -652,7 +652,7 @@ _r(
     "AAK-MCP-STATELESS-001",
     "Reliance on `Mcp-Session-Id` header / protocol-level session id",
     "Server or client code reads, writes, asserts, or constants the "
-    "`Mcp-Session-Id` header. The MCP 2026-07-28 spec release candidate "
+    "`Mcp-Session-Id` header. The ratified MCP 2026-07-28 spec "
     "removes the `Mcp-Session-Id` header and the protocol-level session, "
     "replacing them with explicit server-minted state handles (SEP-2567); "
     "SEP-1442 / SEP-2575 make the initialization handshake optional so "
@@ -678,7 +678,7 @@ _r(
     "AAK-MCP-STATELESS-002",
     "Use of removed `tasks/list` method",
     "Server or client code dispatches, handles, or names the `tasks/list` "
-    "JSON-RPC method. The MCP 2026-07-28 spec release candidate removes "
+    "JSON-RPC method. The ratified MCP 2026-07-28 spec removes "
     "`tasks/list` from the core because it cannot be scoped safely without "
     "the protocol-level session: the experimental Tasks primitive (SEP-1686) "
     "moves out of the core specification into the Extensions framework "
@@ -738,7 +738,7 @@ _r(
 # ---------------------------------------------------------------------------
 # AAK-MCP-DEPRECATED-001..003 — 2026-07-28 deprecated protocol features.
 #
-# The MCP 2026-07-28 spec release candidate is the first to ship a formal
+# The ratified MCP 2026-07-28 spec is the first to ship a formal
 # deprecation policy (SEP-2596): a minimum 12-month window between deprecation
 # and removal. Under it, SEP-2577 annotation-deprecates three core features —
 # `roots`, `sampling`, and `logging`. They remain functional in every spec
@@ -753,7 +753,7 @@ _r(
 # AAK-MCP-STATELESS-* pack (the session/tasks transport changes of the same RC).
 #
 # Sources:
-#   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+#   https://modelcontextprotocol.io/specification/2026-07-28/changelog
 #   https://modelcontextprotocol.io/seps/2577  (deprecate roots/sampling/logging)
 #   https://modelcontextprotocol.io/seps/2596  (12-month deprecation policy)
 # ---------------------------------------------------------------------------
@@ -764,7 +764,7 @@ _r(
     "Server or client code declares or exercises the `roots` capability — "
     "the `roots/list` request, the `notifications/roots/list_changed` "
     "notification, or the SDK aliases (`list_roots`, `ListRootsRequest`, "
-    "`send_roots_list_changed`). The MCP 2026-07-28 spec release candidate "
+    "`send_roots_list_changed`). The ratified MCP 2026-07-28 spec "
     "deprecates `roots` (SEP-2577) under the new 12-month deprecation policy "
     "(SEP-2596): it stays functional for at least a year but is on the "
     "removal path. Roots leaked the client's workspace layout to every "
@@ -785,7 +785,7 @@ _r(
     "Server or client code declares or exercises the `sampling` capability — "
     "the `sampling/createMessage` request, a `CreateMessageRequest` handler, "
     "or the SDK aliases (`create_message`, `.sampling.create`). The MCP "
-    "2026-07-28 spec release candidate deprecates `sampling` (SEP-2577) under "
+    "ratified 2026-07-28 spec deprecates `sampling` (SEP-2577) under "
     "the 12-month deprecation policy (SEP-2596). Server-initiated sampling "
     "made the server a privileged caller of the host LLM and had no clean "
     "stateless story; it is on the removal path. (Distinct from "
@@ -807,8 +807,8 @@ _r(
     "Server or client code declares or exercises the `logging` capability — "
     "the `logging/setLevel` request, the `notifications/message` log "
     "notification, or the SDK aliases (`set_level`, `SetLevelRequest`, "
-    "`LoggingMessageNotification`, `LoggingLevel`). The MCP 2026-07-28 spec "
-    "release candidate deprecates `logging` (SEP-2577) under the 12-month "
+    "`LoggingMessageNotification`, `LoggingLevel`). The ratified MCP 2026-07-28 spec "
+    "deprecates `logging` (SEP-2577) under the 12-month "
     "deprecation policy (SEP-2596). Protocol-level log-level control was "
     "redundant with host-side observability and is on the removal path.",
     Severity.MEDIUM,
@@ -2183,18 +2183,18 @@ _r(
 )
 
 # AAK-OAUTH-006 — RFC 9207 `iss` validation (MCP 2026-07-28 RC, SEP-2468).
-# The 2026-07-28 release candidate requires OAuth clients to validate the `iss`
+# The ratified 2026-07-28 spec requires OAuth clients to validate the `iss`
 # authorization-response parameter per RFC 9207, a low-cost mitigation for the
 # mix-up attack class that MCP's single-client / many-server pattern makes more
 # likely. A future spec version will require clients to reject responses that
-# omit `iss`. Source: blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+# omit `iss`. Source: modelcontextprotocol.io/specification/2026-07-28/changelog
 _r(
     "AAK-OAUTH-006",
     "OAuth client does not validate the `iss` authorization-response parameter (RFC 9207)",
     "An OAuth authorization-code client processes the authorization response / "
     "redirect callback (reads `code` and `state`, or exchanges the code at the "
     "token endpoint) but never references the `iss` parameter. The MCP "
-    "2026-07-28 spec release candidate (SEP-2468) requires clients to validate "
+    "ratified 2026-07-28 spec (SEP-2468) requires clients to validate "
     "`iss` on authorization responses per RFC 9207 — without it, an attacker "
     "who controls one authorization server in MCP's single-client / "
     "many-server deployment can mount an OAuth mix-up attack and have the "
@@ -2224,7 +2224,7 @@ _r(
 # MCP server can be replayed at another — the confused-deputy / audience-
 # confusion class the spec's "Access Token Privilege Restriction" section
 # forbids. This is a requirement of the current ratified spec, not a
-# 2026-07-28 release-candidate change. Source:
+# 2026-07-28 change. Source:
 #   https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization
 _r(
     "AAK-OAUTH-007",
@@ -8613,8 +8613,10 @@ _r(
     adversa_references=["ADV-EXEC-01"],
     limitations=(
         "Dependency-level detection only: this fires on the pinned or unpinned "
-        "`tooluniverse` reference, not on the sandbox-escape pattern itself. A "
-        "general detector for deny-list-based Python sandboxes is tracked separately."
+        "`tooluniverse` reference, not on the sandbox-escape pattern itself. The "
+        "pattern itself is covered by `AAK-SANDBOX-DENYLIST-001`, which shipped "
+        "for issue #704 and fires on a deny-list of names checked against a value "
+        "that is then executed in-process with a lookup primitive still reachable."
     ),
 )
 

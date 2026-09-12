@@ -1,6 +1,6 @@
 """AAK-MCP-STATELESS-001..004 — 2026-07-28 stateless-MCP migration.
 
-The MCP 2026-07-28 spec release candidate (locked 2026-05-21) makes the
+The ratified MCP 2026-07-28 spec (locked 2026-05-21) makes the
 protocol stateless by default:
 
 * SEP-2567: the protocol-level session and `Mcp-Session-Id` header are

@@ -1,6 +1,6 @@
 """MCP 2026-07-28 routable-header ↔ body desync scanner — AAK-MCP-ROUTING-DESYNC-001.
 
-The 2026-07-28 spec release candidate adds **routable request metadata** headers
+The ratified 2026-07-28 spec adds **routable request metadata** headers
 (SEP-2243): `Mcp-Method` and `Mcp-Name` let proxies / gateways route and
 pre-authorize a JSON-RPC call from the HTTP header without parsing the body.
 

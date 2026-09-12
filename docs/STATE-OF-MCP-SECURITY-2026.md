@@ -52,7 +52,7 @@ with it; that is what let `100% (421/421)` sit on this page while the report sai
   core (removes `initialize` + `Mcp-Session-Id`), per-request `_meta` metadata
   transport, MCP Apps (server-rendered HTML in a sandboxed iframe), the Tasks
   extension (tool calls answered with task handles), and full JSON Schema 2020-12
-  tool schemas. [RC announcement](https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/).
+  tool schemas. [Key Changes](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
 - **NSA MCP Security CSI** — *Model Context Protocol (MCP): Security Design
   Considerations for AI-Driven Automation*, U/OO/6030316-26 (NSA AISC, 2026-05-20).
   All 9 recommendation sections are crosswalked in `docs/coverage.json`.

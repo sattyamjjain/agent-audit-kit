@@ -1,6 +1,6 @@
 """MCP Apps (SEP-1865) UI-rendering scanner — AAK-MCP-APPS-001/002.
 
-The 2026-07-28 spec release candidate standardizes **MCP Apps** (SEP-1865): an
+The ratified 2026-07-28 spec standardizes **MCP Apps** (SEP-1865): an
 MCP server can ship interactive `text/html` **UI resources** (`ui://…`) that the
 host renders — typically inside an `<iframe>` — and wires to tools via
 `postMessage`. Server-provided UI is untrusted content running next to the user's
