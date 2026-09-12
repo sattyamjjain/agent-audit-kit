@@ -1,6 +1,6 @@
 """MCP 2026-07-28 deprecated-feature scanner — AAK-MCP-DEPRECATED-001..003.
 
-The MCP 2026-07-28 spec release candidate ships the protocol's first formal
+The ratified MCP 2026-07-28 spec ships the protocol's first formal
 deprecation policy (SEP-2596: a minimum 12-month window between deprecation and
 removal) and, under it, annotation-deprecates three core features via SEP-2577:
 
@@ -19,7 +19,7 @@ stdlib ``logging`` / ``logger.setLevel``): the MCP method strings
 type names are MCP-unique and fire on their own; the softer markers (SDK method
 aliases, a ``capabilities`` object key) require an MCP context in the file.
 
-Source: https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
+Source: https://modelcontextprotocol.io/specification/2026-07-28/changelog
 """
 
 from __future__ import annotations

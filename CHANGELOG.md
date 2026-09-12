@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-09-12
+
+### Fixed
+
+- **A drift guard that could not detect drift.** The `cve-latency` job in
+  `release.yml` ran `python scripts/cve_latency.py`, which *writes*
+  `docs/cve-latency.md`, immediately before running `--check` on it. The check
+  compared a freshly generated file against the ledger it had just been
+  generated from, so it passed by construction. The job has `contents: read` and
+  never committed anything, so the regeneration was discarded and the committed
+  doc was free to drift release after release. It had: on 2026-09-12 the
+  published figure was excluding **12 CVEs for want of a published date, seven of
+  them shipped that same day**.
+
+  This is the third guard in this repository found reporting clean while the
+  number it guards rotted, after `check_counts.py`'s phrase list and
+  `declared_since()`'s pickaxe. The shape is always the same: the check was
+  reading something other than the artifact users see.
+
+  The regenerate step is gone, so `--check` now tests the committed file.
+  `docs/data/cve-published.json` was refreshed from NVD and the doc regenerated.
+  The measured population went from **69 to 77 rows** and the undated exclusion
+  from 12 to 4; median response is **1.0 day**, p90 4 days. Including today's
+  wave improved the figure rather than worsening it, which is the point of
+  measuring rather than asserting.
+
+- **The CRA reporting date, which this project got wrong in v0.4.0.**
+  `docs/vex.md` said the Cyber Resilience Act's reporting obligations start on
+  11 December 2027. They started on **11 September 2026** — Article 14 of
+  Regulation (EU) 2024/2847, with a 24-hour early warning, 72-hour technical
+  notification and 14-day final report, applying to products already on the EU
+  market. 11 December 2027 is the Annex I date: machine-readable SBOM and CE
+  marking.
+
+  The error was wrong by fifteen months in the direction that lets a reader
+  relax, in a compliance tool, about a deadline that is now live. The correct
+  pair was already recorded in this file in the v0.3.65 entry before the v0.4.0
+  entry contradicted it. The v0.4.0 entry is left standing with a dated
+  correction appended beside it rather than rewritten, the same treatment
+  `ROADMAP_2026.md` gives its own unmet claims.
+
+- **The MCP 2026-07-28 specification is ratified, and the rules now say so.**
+  Twenty mentions across rule text, scanner docstrings, the preset and the
+  README called it a release candidate and cited the RC blog post. The labelling
+  was deliberate and the intent was recorded at the time: keep "release
+  candidate" "rather than being relabelled 'ratified' prematurely". The spec
+  published on 2026-07-28, so this is that relabelling, with citations moved to
+  `modelcontextprotocol.io/specification/2026-07-28/changelog`. Archived
+  changelogs and the dated readiness report keep their original wording.
+
+- **A limitation that forwarded readers to work which had already shipped.**
+  `AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001` said a general deny-list-sandbox
+  detector was "tracked separately". `AAK-SANDBOX-DENYLIST-001` shipped for
+  issue #704. It now names that rule.
+
+### Added
+
+- `tests/test_regulatory_dates.py` — eight assertions holding the above in
+  place, including one that fails if the release workflow ever regenerates the
+  latency doc before checking it, and one that caps how many CVEs the published
+  figure may silently exclude. Two of these exist because the claim was wrong in
+  a shipped release, not because it might one day be. The README carried a
+  present-tense "stays labelled release candidate" that only the new test found.
+
 ## [0.5.1] - 2026-09-12
 
 ### Fixed
@@ -173,6 +237,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Timing: the EU Cyber Resilience Act's reporting obligations start on
   11 December 2027, and an SBOM alone does not answer the question a regulator
   or customer actually asks.
+
+  > **Correction appended 2026-09-12.** The sentence above is wrong and is left
+  > standing rather than rewritten. CRA Article 14 reporting started
+  > **11 September 2026**, not 11 December 2027; the December 2027 date is the
+  > Annex I obligations including the machine-readable SBOM and CE marking. The
+  > correct pair was already recorded in this file, in the v0.3.65 entry, before
+  > this entry contradicted it. Corrected in `docs/vex.md` and guarded by
+  > `tests/test_regulatory_dates.py`.
 
 ### Changed
 

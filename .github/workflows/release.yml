@@ -253,16 +253,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Regenerate docs/cve-latency.md from the ledger
-        run: |
-          set -euo pipefail
-          # Offline and deterministic: reads only CHANGELOG.cves.md and the
-          # committed docs/data/cve-published.json, so an unchanged ledger
-          # regenerates byte-identically. Refreshing published dates from NVD
-          # is a separate, opt-in step (scripts/cve_latency.py --refresh) and is
-          # deliberately not run here.
-          python scripts/cve_latency.py
-
+      # There used to be a "Regenerate docs/cve-latency.md from the ledger" step
+      # here, running `python scripts/cve_latency.py` -- which WRITES the doc --
+      # immediately before the --check below. The check then compared the freshly
+      # written file against the ledger it had just been generated from, so it
+      # passed by construction and could not fail. The job has `contents: read`
+      # and never committed anything, so the regeneration was discarded and the
+      # committed doc was free to drift release after release. It did: on
+      # 2026-09-12 it was excluding 12 CVEs, 7 of them shipped that same day.
+      #
+      # This is the third guard in this repository found reporting clean while
+      # the number it guards rotted, after check_counts.py's phrase list and
+      # declared_since()'s pickaxe. The shape is always the same -- the check
+      # was reading something other than the artifact users see.
       - name: Fail if the committed doc drifted from the ledger
         run: |
           set -euo pipefail

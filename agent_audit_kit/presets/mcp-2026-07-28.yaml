@@ -12,8 +12,8 @@
 # Usage: agent-audit-kit scan . --profile mcp-2026-07-28
 #        agent-audit-kit scan . --preset  mcp-2026-07-28   (equivalent)
 #
-# Source: MCP authorization spec (2025-11-25) + the 2026-07-28 release-candidate
-# calendar (final publication 2026-07-28). No sibling-tool analogy.
+# Source: MCP authorization spec (2025-11-25) + the MCP 2026-07-28 specification,
+# ratified and published 2026-07-28. No sibling-tool analogy.
 name: mcp-2026-07-28
 description: >-
   MCP 2026-07-28 final auth-profile conformance: RFC 9207 iss-validation,
