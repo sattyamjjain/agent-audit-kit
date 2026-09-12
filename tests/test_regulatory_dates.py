@@ -217,3 +217,64 @@ def test_no_rule_claims_a_shipped_detector_is_tracked_separately() -> None:
             f"{rule_id} forwards to work that may have shipped; name the rule "
             "that covers it instead"
         )
+
+
+# --------------------------------------------------------------------------
+# Named incidents the rule set claims to answer
+# --------------------------------------------------------------------------
+
+
+def test_deadbugz_is_attached_to_the_rules_that_answer_it() -> None:
+    """Deadbugz (Adversa, September 2026) is a delayed tool-metadata rewrite.
+
+    `pin` + `verify` is the defence and was already shipping. A defence the
+    project holds but never names is a credibility gap, not a coverage gap.
+    """
+    from agent_audit_kit.rules.builtin import RULES
+
+    for rule_id in ("AAK-RUGPULL-001", "AAK-RUGPULL-002"):
+        assert "DEADBUGZ-2026-09" in RULES[rule_id].incident_references, rule_id
+
+
+def test_deadbugz_case_study_states_what_pinning_cannot_do() -> None:
+    """The case study must not oversell. A constant surface hiding changed
+    behaviour is outside what a static pin comparison detects."""
+    path = REPO / "examples" / "case-studies" / "deadbugz-delayed-metadata" / "README.md"
+    text = path.read_text(encoding="utf-8")
+    assert "What this does not claim" in text
+    assert "runtime" in text.lower()
+
+
+# --------------------------------------------------------------------------
+# The release automation that docs/RELEASING.md promised
+# --------------------------------------------------------------------------
+
+
+def test_release_workflow_sets_the_repo_description() -> None:
+    wf = (REPO / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert "REPO_ADMIN_TOKEN" in wf
+    assert "gh repo edit" in wf
+    # It must verify the write rather than trust it.
+    assert "--check-live" in wf
+
+
+def test_release_workflow_degrades_instead_of_failing_without_the_secret() -> None:
+    """A missing secret must not break a tag.
+
+    The branch is in shell rather than a step-level `if:` because the `secrets`
+    context is not dependable there, and a condition that silently evaluated
+    false would reintroduce the manual step while looking automated.
+    """
+    wf = (REPO / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    block = wf[wf.index("Set the repo description, or print it"):]
+    assert 'if [ -n "${GH_TOKEN:-}" ]; then' in block
+    assert "else" in block
+    assert "Paste repo description" in block
+
+
+def test_releasing_doc_no_longer_carries_an_unmet_deadline() -> None:
+    text = (REPO / "docs" / "RELEASING.md").read_text(encoding="utf-8")
+    assert "Manual is acceptable until\nv0.4.0; wire it then." not in text
+    assert "REPO_ADMIN_TOKEN" in text
+    # The unmet promise is recorded, not deleted.
+    assert "previously read" in text

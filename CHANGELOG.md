@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-12
+
+### Added
+
+- **Deadbugz named on the rules that answer it.** The Deadbugz campaign
+  (Adversa AI, September 2026) pushed a malicious MCP server that shipped two
+  innocuous tools, behaved for exactly three tool calls, then rewrote the
+  metadata it returned into instructions to hunt SSH keys, AWS credentials,
+  shell history and Kubernetes config.
+
+  No new rule was needed. `AAK-RUGPULL-001` and `AAK-RUGPULL-002` already
+  compare the live tool surface against a pin taken at approval, which is
+  exactly the window the campaign attacks, so both now carry
+  `DEADBUGZ-2026-09` and say what the campaign shape is. A defence the project
+  already holds but never names is a credibility gap rather than a coverage
+  gap, and the fix for that is a citation, not a rule.
+
+  `examples/case-studies/deadbugz-delayed-metadata/` shows the `pin` + `verify`
+  pair and is explicit that scheduling is the load-bearing part: a campaign that
+  waits three calls is invisible to a one-off check at install time. It also
+  states what pinning does **not** catch — a server whose advertised surface
+  stays constant while its behaviour does not — because this is a static
+  scanner with no runtime proxy in the trusted path. Rule count unchanged at
+  348.
+
+### Changed
+
+- **The repo description is set by the release, not by hand.**
+  `docs/RELEASING.md` said "Manual is acceptable until v0.4.0; wire it then."
+  It stayed manual through v0.4.0, v0.5.0 and v0.5.1, and on 2026-09-12 it was
+  set by hand three times in one day.
+
+  `release.yml`'s final job now renders the line from `RULE_COUNT` and, when a
+  `REPO_ADMIN_TOKEN` secret is present, sets it with `gh repo edit` and verifies
+  the result with the same `--check-live` comparison the liveness job runs,
+  rather than trusting the write. With no such secret it prints the line to the
+  step summary and the release still succeeds, so a missing secret degrades to
+  the previous behaviour instead of breaking a tag. `REPO_ADMIN_TOKEN` is a
+  fine-grained PAT with Administration: write; the default `GITHUB_TOKEN`
+  cannot set a repo description, which is why this was manual at all.
+
+  The branch is in shell rather than a step-level `if:`, because the `secrets`
+  context is not dependable in step conditions and a condition that silently
+  evaluated false would reintroduce the manual step while looking automated.
+  That is the failure mode this repository keeps finding in its own guards, most
+  recently in the latency check fixed in 0.5.2.
+
+  The unmet deadline is recorded in `docs/RELEASING.md` rather than deleted.
+
 ## [0.6.0] - 2026-09-12
 
 ### Added

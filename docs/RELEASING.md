@@ -52,10 +52,26 @@ PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/ag
 ```
 
 This drift was observed at v0.3.15 ship time: the description still
-read "77 rules, 13 scanners" when the live RULE_COUNT was 193. Closing
-it requires either this manual step on every release or wiring it
-into `release.yml` as a post-publish job. Manual is acceptable until
-v0.4.0; wire it then.
+read "77 rules, 13 scanners" when the live RULE_COUNT was 193.
+
+**Wired at v0.6.1.** The commands above are now the fallback, not the
+procedure. `release.yml`'s final job renders the line and, when a
+`REPO_ADMIN_TOKEN` secret is present, sets it with `gh repo edit` and verifies
+the result with the same `--check-live` comparison the liveness job runs. With
+no such secret the job prints the line to the step summary and the release still
+succeeds, so a missing secret degrades to the old behaviour rather than breaking
+a tag.
+
+`REPO_ADMIN_TOKEN` is a fine-grained PAT with **Administration: write** on this
+repository. The default `GITHUB_TOKEN` cannot set a repo description, which is
+the whole reason this was manual.
+
+This paragraph previously read "Manual is acceptable until v0.4.0; wire it
+then." It stayed manual through v0.4.0, v0.5.0 and v0.5.1, and on 2026-09-12 the
+description was set by hand three times in one day. A deadline a file sets for
+itself and then passes without comment is the same class of defect as the stale
+counts the sync scripts exist to prevent, so it is recorded here rather than
+quietly deleted.
 
 **v0.3.16 self-bug:** the original `len(FRAMEWORKS)` form shipped here
 on 2026-05-09 returned 6 (dict size), not 12 (README claim). Fixed
