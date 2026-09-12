@@ -39,17 +39,16 @@ RULE_COUNT and the canonical framework count — both read from code, never
 laundered from the README's own claim:
 
 ```bash
-RULES=$(python3 -c "from agent_audit_kit import RULE_COUNT; print(RULE_COUNT)")
-# Two distinct framework surfaces — do not confuse them:
-#   12 = `report --framework` PDF/text evidence packs
-#        (agent_audit_kit.output.pdf_report._FRAMEWORK_TITLES). This is the
-#        "N compliance frameworks" number the description should carry, and it
-#        is fenced against README/CLAUDE/docs prose in test_rule_count_sync.py.
-#    8 = agent_audit_kit.output.compliance.FRAMEWORKS — the smaller,
-#        control-mapped table behind `scan --compliance`. Do NOT use it here.
-FRAMEWORKS=$(python3 -c "from agent_audit_kit.output.pdf_report import _FRAMEWORK_TITLES; print(len(_FRAMEWORK_TITLES))")
+# Use the renderer. Do NOT retype the sentence: `scripts/render_repo_metadata.py`
+# is the single source the `description-liveness` job compares against, and the
+# hand-written command that used to live here drifted from it by one character
+# (an em-dash where the template has a full stop). Following the documented step
+# then produced a description that failed the guard -- observed at v0.4.0.
 gh repo edit sattyamjjain/agent-audit-kit \
-  --description "Static scanner for MCP-connected AI agent pipelines — ${RULES} rules across 14 categories, ${FRAMEWORKS} compliance frameworks, OWASP Agentic 10/10 + MCP 10/10, GitHub Action, SARIF, public CVE-to-rule ledger."
+  --description "$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
+
+# Verify with the same comparison the job runs, rather than by eye:
+PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit
 ```
 
 This drift was observed at v0.3.15 ship time: the description still
