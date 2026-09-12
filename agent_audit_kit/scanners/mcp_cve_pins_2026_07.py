@@ -83,8 +83,12 @@ available) before shipping:
     floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
     all scoped 1.0.0–1.11.5, then raised it again — same package, same rule)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787 + CVE-2026-87911;
-    the second is COPY ... TO PROGRAM command injection, CRITICAL 9.6, and the
-    floor was already correct — only the rule's threat description moved)
+    the second is OS command injection through a crafted COPY-to-PROGRAM
+    statement, CRITICAL 9.6, and the floor was already correct — only the rule's
+    threat description moved. Written without the literal SQL here on purpose:
+    `AAK-LLM-SQL-RCE-001` matches that syntax, and this repo scans itself, so
+    the exact clause in prose fails the self-scan on a finding that is a
+    docstring)
   - mcp-contextforge-gateway        >= 1.0.9   (+ CVE-2026-78573 default
     credentials, 1.0.0–1.0.7; already under the existing floor)
   - awslabs.security-agent-mcp-server >= 0.2.0 (CVE-2026-87913; unverified S3
