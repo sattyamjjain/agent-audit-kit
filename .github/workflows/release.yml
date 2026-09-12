@@ -508,26 +508,55 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # The repo `description` cannot be written from a CI token (needs repo-admin),
-      # so the paste is a manual step. Print it here, at the very end of the release
-      # run, so it is impossible to forget rather than merely detectable afterwards
-      # by the (non-gating) description-liveness job.
+      # The repo `description` needs repo-admin scope, which the default
+      # GITHUB_TOKEN does not have. docs/RELEASING.md promised to wire this by
+      # v0.4.0; it was still manual at v0.5.1 and was set by hand three times in
+      # one day, which is the argument for automating it rather than for
+      # reminding harder.
+      #
+      # REPO_ADMIN_TOKEN is a fine-grained PAT with Administration: write. When
+      # it is absent the job SKIPS and falls back to printing the line, so a
+      # release never breaks on a missing secret -- the behaviour is exactly
+      # what it was before, minus the automation.
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
-      - name: Print repo description to paste (rendered from RULE_COUNT)
+      # One step, branching in shell rather than on a step-level `if:`. The
+      # `secrets` context is not dependable in step conditions, and a condition
+      # that silently evaluated false would reintroduce the manual step while
+      # looking automated -- the exact failure mode this repository keeps
+      # finding in its own guards.
+      - name: Set the repo description, or print it if no admin token is configured
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
         run: |
           set -euo pipefail
+          # One implementation of the rendering, in render_repo_metadata.py, so
+          # this and the description-liveness job cannot disagree. Retyping the
+          # sentence is how docs/RELEASING.md drifted from the template by a
+          # single character and set a description that then failed the guard.
           desc="$(PYTHONPATH=. python scripts/render_repo_metadata.py)"
-          echo "::notice title=Paste repo description into Settings > About::$desc"
-          {
-            echo "### Repo description — paste into Settings > About"
-            echo ""
-            echo "GitHub's \`description\` is not writable from a CI token. Paste this line in by hand so the highest-traffic surface stops drifting from RULE_COUNT:"
-            echo ""
-            echo '```'
-            echo "$desc"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "${GH_TOKEN:-}" ]; then
+            gh repo edit "$GITHUB_REPOSITORY" --description "$desc"
+            # Verify with the same comparison the liveness job runs rather than
+            # trusting the write. A silent no-op would be worse than the manual
+            # step this replaces.
+            PYTHONPATH=. python scripts/render_repo_metadata.py --check-live "$GITHUB_REPOSITORY"
+            echo "Repo description set and verified." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::notice title=Paste repo description into Settings > About::$desc"
+            {
+              echo "### Repo description — paste into Settings > About"
+              echo ""
+              echo "No \`REPO_ADMIN_TOKEN\` secret is configured, so this was not set automatically."
+              echo ""
+              echo '```'
+              echo "$desc"
+              echo '```'
+              echo ""
+              echo "To automate it, create a fine-grained PAT with **Administration: write** on this repository and save it as the \`REPO_ADMIN_TOKEN\` secret."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

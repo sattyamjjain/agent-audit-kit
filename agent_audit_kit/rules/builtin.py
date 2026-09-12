@@ -1791,21 +1791,34 @@ _r(
     "AAK-RUGPULL-001",
     "Tool definition changed since last pin",
     "A tool's definition (name, description, or input schema) has changed since it was "
-    "last pinned. This could indicate a rug pull attack.",
+    "last pinned. This could indicate a rug pull attack. The Deadbugz campaign "
+    "(September 2026) is the shape this is for: an MCP server shipped two "
+    "innocuous tools, behaved for exactly three tool calls, then rewrote the "
+    "metadata it returned into instructions to hunt SSH keys, AWS credentials, "
+    "shell history and kubeconfig. Metadata that only turns hostile at runtime "
+    "defeats review by construction, because every check you run before "
+    "approving the server passes. A pin taken at approval and re-verified "
+    "afterwards is what closes that window, and this rule is that comparison.",
     Severity.CRITICAL,
     Category.TOOL_POISONING,
-    "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If suspicious, remove the server.",
+    "Review the changes. If legitimate, re-pin with 'agent-audit-kit pin'. If "
+    "suspicious, remove the server. Re-run 'agent-audit-kit verify' on a "
+    "schedule rather than only at install time: a campaign that waits N calls "
+    "before mutating is invisible to a one-off check at approval.",
     sarif_name="ToolDefinitionChanged",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-01"],
+    incident_references=["DEADBUGZ-2026-09"],
 )
 
 _r(
     "AAK-RUGPULL-002",
     "New tool added since last pin",
     "A new tool was added to an MCP server since the last pin. New tools should be "
-    "reviewed before approval.",
+    "reviewed before approval. The Deadbugz campaign (September 2026) added "
+    "capability after approval rather than at install time, which is why the "
+    "comparison has to run again after the server is already trusted.",
     Severity.HIGH,
     Category.TOOL_POISONING,
     "Review the new tool's definition and permissions. Pin if approved.",
@@ -1813,6 +1826,7 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-02"],
+    incident_references=["DEADBUGZ-2026-09"],
 )
 
 _r(
