@@ -32,6 +32,7 @@ bash examples/run-all-examples.sh
 | 10 | [Supply Chain Risks](vulnerable-configs/10-supply-chain-risks/) | AAK-SUPPLY-001/003/004, AAK-MCP-005/007 | MCP06, MCP10 | AG06 | — |
 | 11 | [Legal Compliance](vulnerable-configs/11-legal-compliance/) | AAK-LEGAL-001/002, AAK-SUPPLY-004 | — | — | — |
 | 12 | [Colorado ADMT Documentation](vulnerable-configs/12-colorado-admt/) | AAK-ADMT-002/003/004 | — | — | — |
+| 13 | [EU AI Act Art. 50 Transparency](vulnerable-configs/13-eu-ai-act-art50/) | AAK-AIACT50-001/002/003 | — | — | — |
 
 ## Case Studies
 

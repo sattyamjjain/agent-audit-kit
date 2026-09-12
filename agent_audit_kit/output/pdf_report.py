@@ -35,6 +35,7 @@ _FRAMEWORK_TITLES = {
     "alabama-dppa": "Alabama Personal Data Protection Act (HB 351, 2026)",
     "tennessee-sb1580": "Tennessee SB 1580 — Health Care AI (PRA)",
     "colorado-admt": "Colorado SB 26-189 — Automated Decision-Making Technology (eff. 2027-01-01)",
+    "eu-ai-act-art50": "EU AI Act — Article 50 Transparency Obligations (in force 2026-08-02)",
 }
 
 # Coarse mapping from AAK categories to framework control families.
@@ -174,6 +175,31 @@ _CATEGORY_TO_CONTROL = {
         "transport-security": "s.8(4) Reasonable security safeguards",
         "a2a-protocol": "s.8(7) Processor obligations",
         "legal-compliance": "s.5 DPDP Rules 2023 alignment",
+    },
+    # EU AI Act Article 50. Paragraph numbers read from the consolidated article
+    # on 2026-09-12: https://artificialintelligenceact.eu/article/50/
+    # In force since 2026-08-02 — unlike the Article 15 rows above, which the AI
+    # Omnibus deferred to 2027-12-02 (Annex III) and 2028-08-02 (Annex I).
+    # Every row is evidence toward a duty. Art. 50(1) exempts what is "obvious
+    # from context to a reasonably informed person", and 50(2) and 50(4) exempt
+    # assistive editing and artistic or editorially-reviewed work; none of those
+    # can be settled by reading a repository.
+    "eu-ai-act-art50": {
+        "mcp-config": "Art. 50(5) Clear and distinguishable, at first interaction",
+        "hook-injection": "Art. 50(1) Disclosure integrity: the notice a hook must not suppress",
+        "trust-boundary": "Art. 50(1) Informing the natural person interacting with the system",
+        "secret-exposure": "Art. 50(2) Provenance marking integrity (a marking signed with a leaked key proves nothing)",
+        "supply-chain": "Art. 50(2) Machine-readable marking across generation dependencies",
+        "agent-config": "Art. 50(1) System designed so the person is informed",
+        "tool-poisoning": "Art. 50(4) Disclosure that content is artificially generated or manipulated",
+        "taint-analysis": "Art. 50(2) Marking survives the transformation path to the output",
+        # No paragraph cited. Article 50 governs what is disclosed to a person,
+        # not how bytes move; the transport-security findings under it are
+        # supporting evidence for the integrity of a disclosure, not evidence of
+        # a transparency duty in their own right.
+        "transport-security": "Supporting evidence only (no Art. 50 paragraph governs transport)",
+        "a2a-protocol": "Art. 50(1) Disclosure obligation is not discharged by an upstream agent",
+        "legal-compliance": "Art. 50(1)-(2), (4)-(5) Transparency; 50(3) emotion recognition is not evidenced by this scanner",
     },
     # Colorado SB 26-189, C.R.S. part 17 of article 1 of title 6. Section numbers
     # read from the signed act on 2026-09-12:

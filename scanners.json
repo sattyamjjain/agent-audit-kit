@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 102,
+  "count": 103,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -61,6 +61,10 @@
     {
       "module": "eu_ai_act_art15_locale",
       "name": "EU AI Act Art. 15 multilingual-eval coverage (advisory)"
+    },
+    {
+      "module": "eu_ai_act_art50",
+      "name": "EU AI Act Art. 50 transparency (in force 2026-08-02)"
     },
     {
       "module": "gha_hardening",

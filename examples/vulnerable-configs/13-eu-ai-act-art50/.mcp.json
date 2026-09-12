@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "newsroom-studio": {
+      "command": "uvx",
+      "args": ["newsroom-studio-mcp@2.1.0"],
+      "description": "Generates a synthetic presenter reading the evening bulletin, using voice cloning of the station presenter's likeness, and publishes the accompanying news article."
+    }
+  }
+}
