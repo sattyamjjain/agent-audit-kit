@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "records": {
+      "command": "uvx",
+      "args": ["patient-records-mcp@2.1.0"],
+      "description": "Fetches and formats patient records for display."
+    }
+  }
+}

@@ -7,6 +7,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-12
+
+### Added
+
+- **Colorado SB 26-189 developer-documentation pack** — the framework
+  `colorado-admt`, the rule family `AAK-ADMT-001..004`, and the scanner
+  `agent_audit_kit/scanners/admt_documentation.py`. This is the first Colorado
+  surface in the repository; a case-insensitive grep for `colorado`, `ADMT` and
+  `SB 26-189` across a fresh clone of `main` returned nothing beforehand.
+
+  The statute is C.R.S. 6-1-1702, "Developer responsibilities - documentation",
+  enacted by SB 26-189 (signed 2026-05-14, Chapter 131). SECTION 5 of the act:
+  "Except as otherwise provided in subsection (2) of this section, this act takes
+  effect January 1, 2027", and "(3) This act applies to consequential decisions
+  made on or after January 1, 2027." Every section number in the pack was read
+  from the signed act on 2026-09-12
+  (https://leg.colorado.gov/bill_files/116489/download), not from a summary.
+
+  **The pack produces evidence toward a duty. It never determines that the duty
+  applies.** 6-1-1702 binds the developer of a "covered ADMT", which 6-1-1701(5)
+  defines as an ADMT used to materially influence a consequential decision. That
+  turns on whether the operator does business in Colorado and on facts about
+  deployment, none of which a static configuration scan reaches. Control rows are
+  phrased as evidence, the rule text says so in terms, and
+  `tests/test_admt_documentation.py` greps the rendered report for "compliant",
+  "conforms" and "certified" and asserts none appears.
+
+  **The trigger is the statute's own test.** 6-1-1702(3) limits the duty to an
+  ADMT "MARKETED, ADVERTISED, CONFIGURED, CONTRACTED, SOLD, OR LICENSED TO BE
+  USED TO MATERIALLY INFLUENCE A CONSEQUENTIAL DECISION", and 6-1-1702(5)
+  attaches it where the developer "INTENDED, DOCUMENTED, MARKETED, ADVERTISED,
+  CONFIGURED, OR CONTRACTED" it for that use. Both test what was *declared*, so
+  the scanner fires only where an MCP server description or a tool-decorated
+  function's name and docstring name both an inference and a 6-1-1701(6) covered
+  domain. Where nothing declares it, nothing is emitted.
+
+  One row deliberately carries no subsection. `a2a-protocol` has no developer
+  duty in 6-1-1702 behind it: 6-1-1703 is the deployer's retention duty and
+  6-1-1705 the consumer's human-review right, and neither binds the developer. A
+  control number there would cite a duty the row does not evidence, so the row
+  says what it is instead. A test holds that.
+
+  Covered domains come from 6-1-1701(6) verbatim: education, employment creating
+  an employer-employee relationship, the lease or purchase of residential real
+  estate in Colorado, financial or lending services, insurance, health care, and
+  essential government services and public benefits. **Legal services are not a
+  covered domain under this act**, and essential government services are, which
+  is a pair worth stating because the obvious reading of "consequential decision"
+  gets both backwards.
+
+  **12 to 13 frameworks.** 341 to 345 rules, 101 to 102 scanners. No existing
+  rule, report or output changed: `colorado-admt` is a new key in
+  `_FRAMEWORK_TITLES` and a new arm in `_CATEGORY_TO_CONTROL`, and the only edit
+  to an existing surface is one more entry in the `report --framework` choice
+  list.
+
+  This is a new control family rather than an extension of
+  `AAK-STATE-PRIVACY-001..003`. Those check a privacy policy for opt-out-of-sale
+  language, consumer rights and a controller contact, which is the CCPA lineage.
+  SB 26-189 is not that law: it is a documentation duty on the developer of a
+  technology, and it attaches whether or not any privacy policy exists.
+
+  Timing: the duty starts 2027-01-01.
+
+### Fixed
+
+- Three false positives found by scanning this repository with the new detector
+  before shipping it, each fixed in the vocabulary rather than by an ignore rule:
+  `hire` matched inside "acqui-hire" and `qualif` inside "qualified inbound"
+  (KILL-CRITERIA.md read as a declared lending surface), `premium` matched
+  "premium brandable domains" in a cached research page, and `admission` matched
+  "admission control" in this README. Both alternations now use a `(?<![\w-])`
+  lookbehind, the same bounding the CVE pin table uses on package names.
+
+  The larger fix was narrowing the declaration surface itself. An earlier draft
+  read whole files, which meant this scanner's own rule catalog — prose about
+  prior-authorization denials and insurance coverage decisions — read as a
+  declared covered-domain surface. Describing a decision system is not declaring
+  one, so declarations are now read only from MCP server descriptions and from
+  functions carrying a tool decorator, via AST rather than line matching.
+  `test_scanner_is_silent_on_this_repository` holds it.
+
 ## [0.4.0] - 2026-09-12
 
 ### Added

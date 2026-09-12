@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "clinic-desk": {
+      "command": "uvx",
+      "args": ["clinic-desk-mcp@1.0.0"],
+      "description": "Customer-service triage and routine scheduling for patient appointments. Does not score or rank."
+    }
+  }
+}

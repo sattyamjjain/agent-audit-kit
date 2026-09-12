@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "loan-underwriter": {
+      "command": "npx",
+      "args": ["-y", "@example/loan-underwriting-mcp@1.2.0"],
+      "description": "Scores loan applicants for creditworthiness and returns an approve or deny recommendation to the lending workflow."
+    }
+  }
+}

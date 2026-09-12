@@ -778,6 +778,7 @@ def vex_cmd(path: str, vex_format: str, output_file: str | None) -> None:
         "india-dpdp",
         "alabama-dppa",
         "tennessee-sb1580",
+        "colorado-admt",
         "standards-crosswalk",
     ]),
     help="Compliance framework to format for. 'standards-crosswalk' emits the "

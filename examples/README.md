@@ -31,6 +31,7 @@ bash examples/run-all-examples.sh
 | 09 | [A2A Insecure Agent](vulnerable-configs/09-a2a-insecure-agent/) | AAK-A2A-001 through 007 | — | AG02, AG10 | — |
 | 10 | [Supply Chain Risks](vulnerable-configs/10-supply-chain-risks/) | AAK-SUPPLY-001/003/004, AAK-MCP-005/007 | MCP06, MCP10 | AG06 | — |
 | 11 | [Legal Compliance](vulnerable-configs/11-legal-compliance/) | AAK-LEGAL-001/002, AAK-SUPPLY-004 | — | — | — |
+| 12 | [Colorado ADMT Documentation](vulnerable-configs/12-colorado-admt/) | AAK-ADMT-002/003/004 | — | — | — |
 
 ## Case Studies
 
