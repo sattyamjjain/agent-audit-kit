@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "underwriting": {
+      "command": "uvx",
+      "args": ["underwrite-mcp@1.0.0"],
+      "description": "Scores loan applicants and returns an approve or deny decision."
+    }
+  }
+}
