@@ -42,6 +42,7 @@ AWS_POSTGRES = "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001"
 KNOWNS = "AAK-MCP-KNOWNS-CVE-2026-86439-001"
 LANGFLOW = "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
 
+AWS_SEC_AGENT = "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001"
 WAVE = (TOOLUNIVERSE, CONTEXTFORGE, POSTGRES_MCP, AWS_POSTGRES, KNOWNS)
 
 
@@ -75,12 +76,18 @@ def test_rule_cites_its_cve(rule_id: str) -> None:
     assert RULES[rule_id].cve_references, f"{rule_id} cites no CVE"
 
 
-def test_contextforge_rule_cites_all_four_cves() -> None:
-    """One floor closes four issues; the rule has to say so, or three of the
-    four disclosures have no rule that names them."""
+def test_contextforge_rule_cites_all_five_cves() -> None:
+    """One floor closes five issues; the rule has to say so, or four of the
+    five disclosures have no rule that names them.
+
+    CVE-2026-78573 (default credentials, 1.0.0-1.0.7, CRITICAL 9.8) arrived on
+    2026-09-11 already below the 1.0.9 floor, so no version logic changed -- only
+    the rule text and its severity, which rose to CRITICAL.
+    """
     cves = set(RULES[CONTEXTFORGE].cve_references)
     assert cves == {
         "CVE-2026-77822", "CVE-2026-18905", "CVE-2026-18486", "CVE-2026-18489",
+        "CVE-2026-78573",
     }
 
 
@@ -179,18 +186,51 @@ def test_awslabs_postgres_floor(tmp_path: Path, version: str, fires: bool) -> No
 
 
 # ---------------------------------------------------------------------------
-# knowns — the one-version name collision
+# knowns — the one-version name collision, and the floor that went away
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("version,fires", [
-    ("0.29.1", True),   # the release the advisory cites
+    ("0.29.1", True),   # the release CVE-2026-86439 cites
     ("0.8.3", True),
     ("0.1.1", True),    # lowest npm release the introduced bound still covers
-    ("0.30.0", False),  # the fix
-    ("0.33.0", False),
+    ("0.30.0", True),   # CVE-2026-86439's fix, but CVE-2026-88938 still applies
+    ("0.33.0", True),   # newest published release, and itself affected
 ])
-def test_knowns_floor(tmp_path: Path, version: str, fires: bool) -> None:
+def test_knowns_fires_on_every_published_version(
+    tmp_path: Path, version: str, fires: bool
+) -> None:
+    """0.30.0 and 0.33.0 used to be asserted NOT to fire.
+
+    CVE-2026-88938 (2026-09-10) is scoped "through 0.33.0" and 0.33.0 is the
+    newest release on npm, so there is no version left that clears the rule. The
+    pin is presence-only and this test says so rather than being deleted: if a
+    fix ships and someone restores a floor, the new patched version belongs here
+    as a False.
+    """
     assert (KNOWNS in _npm(tmp_path, knowns=version)) is fires
+
+
+def test_knowns_pin_is_presence_only_because_no_fix_exists() -> None:
+    """The floor is None deliberately, not by omission."""
+    from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
+
+    pin = next(p for p in _PINS if p.rule_id == KNOWNS)
+    assert pin.floor is None
+    assert pin.introduced == (0, 1, 1), "the PyPI-stub bound must survive"
+
+
+def test_presence_only_pin_still_honours_its_introduced_bound() -> None:
+    """`_fires` returned True on `floor is None` before checking `introduced`.
+
+    That was unreachable while no presence-only pin carried the bound. `knowns`
+    is the first that does, and without the reordering the PyPI stub at 0.1.0
+    starts being flagged again for someone else's CVE.
+    """
+    from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, _fires
+
+    pin = next(p for p in _PINS if p.rule_id == KNOWNS)
+    assert _fires(pin, (0, 33, 0)) is True
+    assert _fires(pin, (0, 1, 0)) is False
 
 
 def test_knowns_does_not_fire_on_the_pypi_stub(tmp_path: Path) -> None:
@@ -219,7 +259,11 @@ def test_langflow_versions_the_old_floor_called_patched(tmp_path: Path, version:
 
 
 @pytest.mark.parametrize("version,fires", [
-    ("1.10.1", True), ("1.11.3", False), ("1.12.0", False), ("0.9.9", False),
+    # 1.11.3 was the floor until 2026-09-11. CVE-2026-85025 / CVE-2026-78575 /
+    # CVE-2026-81941 are all scoped 1.0.0-1.11.5, so it fires now and 1.11.6 is
+    # the release that clears the rule.
+    ("1.10.1", True), ("1.11.3", True), ("1.11.5", True),
+    ("1.11.6", False), ("1.12.0", False), ("0.9.9", False),
 ])
 def test_langflow_floor_bounds(tmp_path: Path, version: str, fires: bool) -> None:
     assert (LANGFLOW in _pypi(tmp_path, f"langflow=={version}")) is fires
@@ -238,13 +282,18 @@ def test_no_wave_rule_fires_on_a_patched_project(tmp_path: Path) -> None:
         "tooluniverse==1.4.1\n"
         "mcp-contextforge-gateway==1.0.10\n"
         "awslabs.postgres-mcp-server==1.2.0\n"
-        "langflow==1.12.0\n",
+        "langflow==1.12.0\n"
+        "awslabs.security-agent-mcp-server==0.2.1\n",
         encoding="utf-8",
     )
-    (tmp_path / "package.json").write_text(
-        json.dumps({"dependencies": {"knowns": "0.33.0"}}), encoding="utf-8"
-    )
-    assert not (_fired(tmp_path) & set(WAVE) | (_fired(tmp_path) & {LANGFLOW}))
+    # `knowns` is deliberately absent. It used to be pinned at 0.33.0 here as the
+    # patched version; CVE-2026-88938 covers through 0.33.0 with no fixed release,
+    # so no pin of it belongs in a "fully patched" fixture. Putting one back would
+    # make this test assert that a presence-only pin does not fire, which is the
+    # opposite of what that pin means.
+    patched = set(WAVE) | {LANGFLOW, AWS_SEC_AGENT}
+    patched.discard(KNOWNS)
+    assert not (_fired(tmp_path) & patched)
 
 
 # ---------------------------------------------------------------------------
@@ -289,3 +338,32 @@ def test_postgres_mcp_names_the_twin_only_to_exclude_it() -> None:
     assert "postgres-mcp-pro" in r.description
     assert "not treated here as a verified upgrade target" in r.description
     assert "postgres-mcp-pro" not in r.remediation
+
+
+# ---------------------------------------------------------------------------
+# AWS Security Agent MCP server — CVE-2026-87913 (2026-09-10 wave)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("version,fires", [
+    ("0.1.0", True), ("0.1.5", True),   # every pre-fix release
+    ("0.2.0", False),                   # the vendor fix
+    ("0.2.1", False),                   # newest at triage time
+])
+def test_aws_security_agent_floor(tmp_path: Path, version: str, fires: bool) -> None:
+    assert (AWS_SEC_AGENT in _pypi(
+        tmp_path, f"awslabs.security-agent-mcp-server=={version}")) is fires
+
+
+def test_aws_security_agent_fixtures_behave(tmp_path: Path) -> None:
+    root = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-87913-aws-security-agent-mcp"
+    assert AWS_SEC_AGENT in _fired(root / "vulnerable")
+    assert AWS_SEC_AGENT not in _fired(root / "patched")
+
+
+def test_aws_security_agent_remediation_says_upgrading_is_not_enough() -> None:
+    """NVD is explicit that the fix does not release a bucket name someone else
+    already registered. A remediation that stops at "upgrade" would leave the
+    reader exposed to exactly the disclosed attack."""
+    r = RULES[AWS_SEC_AGENT].remediation
+    assert "owned by your account" in r
+    assert "0.2.0" in r

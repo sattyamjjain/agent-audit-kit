@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-12T10:34:20Z",
+  "last_updated": "2026-09-12T10:58:45Z",
   "aak_version": "0.4.0",
-  "rule_count": 340,
+  "rule_count": 341,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1267,7 +1267,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 73,
+      "rule_density": 74,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1517,11 +1517,24 @@
         },
         {
           "id": "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
-          "severity": "medium",
+          "severity": "critical",
           "cve_references": [
-            "CVE-2026-85787"
+            "CVE-2026-85787",
+            "CVE-2026-87911"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-87913"
+          ],
+          "aicm_references": [
+            "DSP-10",
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-CARD-004",
@@ -1612,7 +1625,8 @@
           "id": "AAK-MCP-KNOWNS-CVE-2026-86439-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-86439"
+            "CVE-2026-86439",
+            "CVE-2026-88938"
           ],
           "aicm_references": []
         },
@@ -1624,7 +1638,10 @@
             "CVE-2026-17623",
             "CVE-2026-17626",
             "CVE-2026-7646",
+            "CVE-2026-78575",
+            "CVE-2026-81941",
             "CVE-2026-8446",
+            "CVE-2026-85025",
             "CVE-2026-9077",
             "CVE-2026-9186"
           ],
@@ -2247,12 +2264,13 @@
         },
         {
           "id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
-          "severity": "high",
+          "severity": "critical",
           "cve_references": [
             "CVE-2026-18486",
             "CVE-2026-18489",
             "CVE-2026-18905",
-            "CVE-2026-77822"
+            "CVE-2026-77822",
+            "CVE-2026-78573"
           ],
           "aicm_references": []
         },
