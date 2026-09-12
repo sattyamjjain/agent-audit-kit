@@ -14,9 +14,10 @@ This looks outside.
 
 The one legitimate state where declared != published is the minutes between the
 release commit landing and PyPI accepting the upload. That window is recognised
-narrowly — exactly one patch ahead, the CHANGELOG's newest dated section already
-naming it, and the declaration young enough to still be in flight. Everything
-else fails, loudly, with both versions printed.
+narrowly — the immediate next release (patch, minor or major, no skipping), the
+CHANGELOG's newest dated section already naming it, and the declaration young
+enough to still be in flight. Everything else fails, loudly, with both versions
+printed.
 
 The age check is the part a push-only gate cannot do. On push,
 0.3.91-declared-vs-0.3.90-published is correct for about ten minutes and a
@@ -130,6 +131,31 @@ def is_one_patch_ahead(declared: str, published: str) -> bool:
     return d[:2] == p[:2] and d[2] == p[2] + 1
 
 
+def is_next_release(declared: str, published: str) -> bool:
+    """True when ``declared`` is the immediate next release after ``published``.
+
+    Three shapes qualify: the next patch, the next minor at patch 0, and the
+    next major at minor and patch 0. Anything else skips a release and is drift.
+
+    This exists because the gate originally accepted only the patch shape, and
+    that held for the entire 0.3.x series -- every release this repo had ever
+    cut was a patch bump, so no input ever distinguished "the next release" from
+    "the next patch". The first minor bump (0.3.99 -> 0.4.0, the `vex` command)
+    failed the gate with "not a single patch apart, so this is not a release in
+    flight", which was false: it was a release in flight, on an axis the
+    predicate could not represent. The narrowness was aimed at a *skipped patch*
+    (0.3.90 -> 0.3.92), and that case still fails here.
+    """
+    d, p = _parse(declared), _parse(published)
+    if d is None or p is None:
+        return False
+    if d[:2] == p[:2] and d[2] == p[2] + 1:
+        return True
+    if d[0] == p[0] and d[1] == p[1] + 1 and d[2] == 0:
+        return True
+    return d[0] == p[0] + 1 and d[1] == 0 and d[2] == 0
+
+
 def declared_since(version: str) -> date | None:
     """Commit date that first INTRODUCED ``version`` into pyproject.toml.
 
@@ -214,11 +240,11 @@ def evaluate(
             f"that is not this one."
         )
 
-    if not is_one_patch_ahead(declared, published):
+    if not is_next_release(declared, published):
         return False, (
-            f"declared {declared}, PyPI serves {published} — not a single patch "
-            f"apart, so this is not a release in flight. Publish {declared} or "
-            f"correct the declaration."
+            f"declared {declared}, PyPI serves {published} — not the next release "
+            f"(patch, minor or major) after it, so this is not a release in "
+            f"flight. Publish {declared} or correct the declaration."
         )
 
     if changelog_version is _LOOKUP:

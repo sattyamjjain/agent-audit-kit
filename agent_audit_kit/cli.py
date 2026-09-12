@@ -683,13 +683,19 @@ def verify_bundle_cmd(bundle: str, sig_path: str | None) -> None:
         "SBOM format. `cyclonedx` + `spdx` are standard SBOMs; `aibom` "
         "emits a CycloneDX 1.5 AI/ML-BOM with machine-learning-model "
         "components, detected agent-platform SDKs, and rule-bundle "
-        "provenance properties."
+        "provenance properties. The companion exploitability document comes "
+        "from `agent-audit-kit vex` and joins to this one on purl."
     ),
 )
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None,
               help="Write SBOM to file (defaults to stdout).")
 def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
-    """Emit a CycloneDX 1.5 / SPDX 2.3 SBOM or a CycloneDX AI-BOM (`--format aibom`)."""
+    """Emit a CycloneDX 1.5 / SPDX 2.3 SBOM or a CycloneDX AI-BOM (`--format aibom`).
+
+    The companion exploitability document comes from `agent-audit-kit vex`,
+    which emits OpenVEX statements keyed by the same purls this SBOM uses, so
+    the two join on purl without a mapping table.
+    """
     from agent_audit_kit.output.sbom import emit_cyclonedx, emit_spdx
 
     project = Path(path)
@@ -711,6 +717,44 @@ def sbom_cmd(path: str, sbom_format: str, output_file: str | None) -> None:
     if output_file:
         Path(output_file).write_text(payload, encoding="utf-8")
         click.echo(f"SBOM written to {output_file}", err=True)
+    else:
+        click.echo(payload)
+
+
+@cli.command("vex")
+@click.version_option(version=__version__)
+@click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
+@click.option(
+    "--format",
+    "vex_format",
+    type=click.Choice(["openvex"]),
+    default="openvex",
+    help=(
+        "VEX format. Only `openvex` today; the flag exists so a CSAF arm can "
+        "be added later without a breaking change to the command's shape."
+    ),
+)
+@click.option("--output", "-o", "output_file", type=click.Path(), default=None,
+              help="Write the VEX document to file (defaults to stdout).")
+def vex_cmd(path: str, vex_format: str, output_file: str | None) -> None:
+    """Emit an OpenVEX v0.2.0 exploitability document for the scanned project.
+
+    Products are the same purls `agent-audit-kit sbom` emits, so the two
+    documents join on purl. Statuses are limited to `affected`, `fixed` and
+    `under_investigation`: `not_affected` needs a reachability justification a
+    static config scan cannot establish, so this emitter never claims it.
+
+    This is an evidence command, not a gate. It exits 0 on a clean emit
+    regardless of what the scan found.
+    """
+    from agent_audit_kit.output.vex import emit_openvex
+
+    project = Path(path)
+    result = run_scan(project)
+    payload = emit_openvex(project, result)
+    if output_file:
+        Path(output_file).write_text(payload, encoding="utf-8")
+        click.echo(f"VEX document written to {output_file}", err=True)
     else:
         click.echo(payload)
 

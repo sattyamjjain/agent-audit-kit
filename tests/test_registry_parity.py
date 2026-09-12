@@ -125,6 +125,54 @@ def test_one_patch_ahead() -> None:
     assert not mod.is_one_patch_ahead("garbage", "0.3.90")
 
 
+def test_next_release_accepts_a_minor_bump() -> None:
+    """0.3.99 -> 0.4.0 is a release in flight, not drift.
+
+    The gate accepted only the patch shape until the first minor bump, which it
+    rejected as "not a single patch apart". Every release in the 0.3.x series
+    was a patch bump, so no input had ever distinguished the two.
+    """
+    assert mod.is_next_release("0.4.0", "0.3.99")
+    assert mod.is_next_release("0.4.0", "0.3.90")
+    assert mod.is_next_release("1.0.0", "0.9.3")
+
+
+def test_next_release_still_accepts_the_patch_shape() -> None:
+    assert mod.is_next_release("0.3.91", "0.3.90")
+    assert mod.is_next_release("0.4.1", "0.4.0")
+
+
+def test_next_release_rejects_a_skipped_release() -> None:
+    """The narrowness the original predicate was aimed at is preserved."""
+    assert not mod.is_next_release("0.3.92", "0.3.90")   # skipped a patch
+    assert not mod.is_next_release("0.5.0", "0.3.99")    # skipped a minor
+    assert not mod.is_next_release("2.0.0", "0.3.99")    # skipped a major
+    assert not mod.is_next_release("0.4.1", "0.3.99")    # minor bump must start at .0
+    assert not mod.is_next_release("0.3.90", "0.3.90")   # equal is handled earlier
+    assert not mod.is_next_release("garbage", "0.3.90")
+
+
+def test_minor_bump_is_not_rejected_as_a_non_release() -> None:
+    """A minor bump must get past the shape check and on to the real ones.
+
+    Asserted on the message rather than on ``ok``: the later checks read the
+    CHANGELOG and git, so a bare ``ok`` here would be a test of the repository's
+    current state rather than of the shape predicate this covers.
+    """
+    _, why = mod.evaluate(
+        "0.4.0", "0.3.99", today=date(2026, 9, 12), changelog_version="0.4.0"
+    )
+    assert "not the next release" not in why
+
+
+def test_a_skipped_minor_is_still_rejected_as_a_non_release() -> None:
+    ok, why = mod.evaluate(
+        "0.5.0", "0.3.99", today=date(2026, 9, 12), changelog_version="0.5.0"
+    )
+    assert not ok
+    assert "not the next release" in why
+
+
 def test_declared_since_reads_git_not_the_changelog() -> None:
     """The clock comes from git so a back-dated heading cannot hide the age."""
     since = mod.declared_since(mod.declared_version())

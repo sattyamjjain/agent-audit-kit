@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-12
+
+### Added
+
+- **`agent-audit-kit vex`** and **`agent_audit_kit/output/vex.py`** — an OpenVEX
+  v0.2.0 exploitability document emitted beside the SBOM. This is the first VEX
+  or CSAF surface in the repository; nothing was extended.
+
+  The SBOM answers what you ship. This answers whether you are exploitable.
+  Products are the *same* purls `emit_cyclonedx` already emits, because both
+  call `_discover_mcp_packages`, so the two documents join on string equality
+  with no mapping table. Stdlib only, no new dependency, offline like the rest
+  of the tool.
+
+  **The emitter never writes `not_affected`, and that is structural rather than
+  a gap.** The spec requires a `not_affected` statement to carry a
+  `justification` from a closed enum — `component_not_present`,
+  `vulnerable_code_not_present`, `vulnerable_code_not_in_execute_path`,
+  `vulnerable_code_cannot_be_controlled_by_adversary`,
+  `inline_mitigations_already_exist` — or a free-text `impact_statement`. Every
+  one of those is a claim about runtime reachability or deployed mitigation. A
+  static read of dependency manifests and MCP config files establishes none of
+  them. Emitting it anyway is the exact failure the document exists to prevent:
+  a downstream consumer drops a real exposure from their queue because an
+  upstream tool asserted safety it never established. So where a human analyst
+  would write "not affected", this writes nothing. VEX has no completeness
+  requirement, and an absent statement asserts nothing. The reasoning sits in
+  the module docstring so it cannot be removed without an argument, and
+  `tests/test_vex.py` sweeps all 326 fixture directories asserting the string
+  never appears.
+
+  Two decisions worth recording, because both were traps:
+
+  - **The CVE universe is not drawn from findings alone.** A package pinned at
+    or above its fix floor produces no finding at all, so a findings-only
+    universe makes `fixed` unreachable by construction — and `fixed` is the
+    single most useful thing a VEX document can say. The universe is the union
+    of the CVEs the scan surfaced and the CVEs the pin table ties to a
+    discovered package. `tests/test_vex.py::test_fixed_is_reachable_without_any_finding`
+    pins this: the fixture it uses has zero CVE-carrying findings and still
+    emits two `fixed` statements.
+  - **Range decisions delegate to the scanner's own `_fires` predicate** rather
+    than reimplementing version comparison, so the VEX document and the scan
+    cannot disagree about what "vulnerable" means. The one place that must not
+    delegate is an unparseable version: `_fires` treats it as "fire", which is
+    right for a scanner that should warn and wrong for a document that would
+    then assert exposure it never established. That case is routed to
+    `under_investigation` before `_fires` is consulted. The `introduced` bound
+    is handled explicitly too — a version predating the affected range is
+    `not_affected`, which is refused, so the statement is dropped rather than
+    mislabelled `fixed`.
+
+  The document `@id` is a SHA-256 over the sorted (product purl, CVE, status)
+  triples, so the same tree and scan produce a byte-identical document and CI
+  re-runs do not churn the artifact. Ids are minted under the project's own
+  GitHub Pages origin rather than under `openvex.dev`, for the reason already
+  recorded against `documentNamespace` in `emit_spdx`: a namespace the emitter's
+  author does not control cannot guarantee uniqueness.
+
+  Timing: the EU Cyber Resilience Act's reporting obligations start on
+  11 December 2027, and an SBOM alone does not answer the question a regulator
+  or customer actually asks.
+
+### Changed
+
+- `sbom_cmd`'s docstring and `--format` help now name `agent-audit-kit vex` as
+  the companion exploitability document and state that the two join on purl.
+  **No existing output changed.** `_discover_mcp_packages` grew a `source` key
+  recording which config declared each package, which the VEX emitter needs to
+  tell whether a finding landed on the artifact that declares a product; no SBOM
+  emitter reads it, and `tests/test_vex.py::test_source_key_does_not_change_sbom_output`
+  asserts it never reaches CycloneDX or SPDX output.
+- Version bumped to 0.4.0 rather than 0.3.100: this adds a new public CLI
+  command, it is purely additive, and the patch series had run out at .99.
+
+### Docs
+
+- New `docs/vex.md` covering the three statuses, the refusal of `not_affected`,
+  the purl join, and a worked `sbom` + `vex` pair. Added to the mkdocs nav.
+- `docs/index.md` and `docs/ci-cd.md` gained the `sbom` + `vex` pair. Neither
+  file mentioned SBOM at all beforehand, so the commands were added together
+  rather than slotted beside an existing mention.
+
 ## [0.3.99] - 2026-09-09
 
 ### Added

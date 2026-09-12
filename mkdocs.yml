@@ -20,6 +20,7 @@ nav:
   - Rule Reference: rules.md
   - Session Transcripts: session-transcripts.md
   - OWASP Mapping: owasp-mapping.md
+  - VEX and SBOM: vex.md
   - CI/CD Integration: ci-cd.md
   - GitLab CI: gitlab-ci.md
   - Comparison: comparisons.md
