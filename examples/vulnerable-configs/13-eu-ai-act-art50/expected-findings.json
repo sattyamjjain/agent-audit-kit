@@ -1,0 +1,6 @@
+{
+  "_comment": "EU AI Act Article 50 transparency, in force since 2026-08-02. SKILL.md is a conversational surface with no AI-disclosure string (Art. 50(1)). The .mcp.json declares synthetic-presenter generation with no machine-readable provenance marking (Art. 50(2)) and a deep-fake likeness plus published news text with no artificiality disclosure (Art. 50(4)).",
+  "expectedRules": ["AAK-AIACT50-001", "AAK-AIACT50-002", "AAK-AIACT50-003"],
+  "expectedMinFindings": 3,
+  "description": "All three Article 50 duties this scanner evidences, in one project. These are evidence toward a duty, not a determination that the duty applies: Art. 50(1) exempts what is obvious from context, and 50(4) exempts artistic and editorially-reviewed work."
+}

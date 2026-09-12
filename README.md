@@ -11,7 +11,7 @@
   <a href="benchmarks/determinism/RESULTS.md"><img src="https://img.shields.io/badge/determinism-0%25%20variance%20(20%2F20)-brightgreen.svg" alt="Determinism: 0% variance across 20/20 runs"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20configs-HIGH%2FCRIT%20FP%200%2F1-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
   <a href="docs/benchmarks/third-party-grading.md"><img src="https://img.shields.io/badge/third--party%20grade-see%20notes-lightgrey.svg" alt="Third-party grading notes"></a>
-  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-345-blue.svg" alt="Rules: 345"></a>
+  <a href="#what-it-scans"><img src="https://img.shields.io/badge/rules-348-blue.svg" alt="Rules: 348"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_Agentic-10%2F10-green.svg" alt="OWASP Agentic: 10/10"></a>
   <a href="#frameworks--standards"><img src="https://img.shields.io/badge/OWASP_MCP-10%2F10-green.svg" alt="OWASP MCP: 10/10"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/"><img src="https://img.shields.io/badge/MCP_Security_Index-live-blue.svg" alt="MCP Security Index"></a>
@@ -37,18 +37,18 @@ These are regenerated from `research/state-of-mcp-2026/results.json` by `scripts
 **Two things it does that hosted scanners can't:**
 
 1. **Runs fully offline and deterministically.** Your code, configs, and secrets never leave the machine; the default scan path makes zero network calls, and the same input always yields the same finding (no model in the loop). This is measured, not just claimed: [20/20 identical runs → one shared SHA-256 finding-set digest, 0% variance](benchmarks/determinism/RESULTS.md). Scanners that route findings through an LLM judge can't guarantee a byte-identical re-run — so CI diffs, audit re-runs, and regression baselines stay stable here. No account, no telemetry. Precision is measured the same way, not asserted: we publish a reproducible, hand-adjudicated [benign-slice HIGH/CRITICAL false-positive rate](benchmarks/false_positive/RESULTS.md) — with a Wilson confidence interval and any offending rule filed as an issue.
-2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 13 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
+2. **Produces auditor-ready compliance-evidence packs.** SARIF for the GitHub Security tab plus PDF evidence reports mapped to 14 frameworks (EU AI Act, SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, and regional regimes) — what you hand an auditor, not just a list of findings.
 
-- **<!-- rule-count:total -->345<!-- /rule-count --> rules** across 14 security categories, covering the 2026 CVE wave
+- **<!-- rule-count:total -->348<!-- /rule-count --> rules** across 14 security categories, covering the 2026 CVE wave
   - Rule count is computed from the registry and verified in CI (`test_rule_count_is_canonical`).
-- **<!-- scanner-count:total -->102<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
-- **Remediation guidance: all <!-- rule-count:total -->345<!-- /rule-count --> of <!-- rule-count:total -->345<!-- /rule-count --> rules.** Every finding tells you what to change and why — that is the product, and it has no gap.
-- **Mechanical fix recipes: <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->345<!-- /rule-count --> rules (<!-- fix-recipe-coverage:pct -->3.2<!-- /fix-recipe-coverage -->%).** This is a scope decision, not coverage: **a recipe ships only where the remediation is deterministic and one-line** — exactly one correct edit, confirmable from the diff. Everything else stays advisory on purpose, because a fix that needs judgement is a fix that can be wrong silently. `agent-audit-kit fix` applies these; the narrower `suggest --auto-pr` allow-list is the subset AAK will open a PR for.
+- **<!-- scanner-count:total -->103<!-- /scanner-count --> scanner modules** including AST-based Python taint analysis and regex pattern scanners for TypeScript/JavaScript and Rust
+- **Remediation guidance: all <!-- rule-count:total -->348<!-- /rule-count --> of <!-- rule-count:total -->348<!-- /rule-count --> rules.** Every finding tells you what to change and why — that is the product, and it has no gap.
+- **Mechanical fix recipes: <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->348<!-- /rule-count --> rules (<!-- fix-recipe-coverage:pct -->3.2<!-- /fix-recipe-coverage -->%).** This is a scope decision, not coverage: **a recipe ships only where the remediation is deterministic and one-line** — exactly one correct edit, confirmable from the diff. Everything else stays advisory on purpose, because a fix that needs judgement is a fix that can be wrong silently. `agent-audit-kit fix` applies these; the narrower `suggest --auto-pr` allow-list is the subset AAK will open a PR for.
   <br>The rules with the most findings are the ones that fail that bar hardest, and the reasons are written down per fix shape in [`autopr.py`](agent_audit_kit/autopr.py): splitting a shell string into argv needs the shell's own parse; flipping a transport needs to know the server speaks the replacement; declaring RFC 9728 metadata needs an endpoint stood up on a different machine than the one being scanned. [`AAK-OAUTH-008` is the worked example](agent_audit_kit/autopr.py): the only edit that silences it leaves the credential in place, and a test performs that edit to prove it.
   - Coverage is computed from the registry and verified in CI (`test_fix_recipe_coverage_is_canonical`), which also asserts every rule marked `auto_fixable` has a recipe that actually runs.
 - **27 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `vex`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
-- **Compliance mapping** (13 frameworks): EU AI Act Art. 15 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)**, **Colorado SB 26-189 Automated Decision-Making Technology (C.R.S. 6-1-1702, effective 2027-01-01)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`; plus `agent-audit-kit scan . --compliance mcp-2026-roadmap` for **MCP 2026 Roadmap (May 2026)** conformance (a scan-time mapping, not a PDF evidence pack)
+- **Compliance mapping** (14 frameworks): EU AI Act Art. 15 + 50 + 55, SOC 2, ISO 27001, ISO/IEC 42001, HIPAA, NIST AI RMF, **NSA MCP Security CSI (U/OO/6030316-26, May 2026)**, Singapore Agentic AI, India DPDP 2023, **Alabama Personal Data Protection Act (HB 351, 2026)**, **Tennessee SB 1580 Health Care AI (PRA)**, **Colorado SB 26-189 Automated Decision-Making Technology (C.R.S. 6-1-1702, effective 2027-01-01)**, **EU AI Act Article 50 transparency (in force 2026-08-02)** — PDF reports via `agent-audit-kit report --format pdf --framework <name>`; plus `agent-audit-kit scan . --compliance mcp-2026-roadmap` for **MCP 2026 Roadmap (May 2026)** conformance (a scan-time mapping, not a PDF evidence pack)
 - **Supply chain**: deterministic rule bundle (`export-rules`), Sigstore-signed releases, CycloneDX + SPDX SBOM (`sbom`), OpenVEX exploitability statements (`vex`) keyed by the same purls
 - **MCP Security Index**: public leaderboard at [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/) ([snapshot dates](#mcp-security-index)) — per-server grade cards (A–F), 90-day [disclosure policy](docs/disclosure-policy.md)
 - **CVE coverage**: newly disclosed MCP CVEs are triaged and turned into rules as they land — surfaced automatically by the NVD watcher ([`cve-watcher.yml`](.github/workflows/cve-watcher.yml)) and logged in [CHANGELOG.cves.md](CHANGELOG.cves.md). Per-severity triage budgets and the current queue depth are published in [docs/cve-triage.md](docs/cve-triage.md)
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.5.2
+      - uses: sattyamjjain/agent-audit-kit@v0.6.0
         id: scan
         with:
           fail-on: high
@@ -114,7 +114,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.5.2
+    rev: v0.6.0
     hooks:
       - id: agent-audit-kit
 ```
@@ -147,13 +147,13 @@ agent-audit-kit scan examples/vulnerable-configs/04-hook-exfiltration/
 | **Hook Injection** | <!-- category-count:HOOK_INJECTION -->17<!-- /category-count --> | Hook RCE (CVE-2025-59536 class), `shell=True` + interpolation, pre-trust execution, network-capable hooks, credential exfiltration, VS Code `.vscode/tasks.json` `runOn: folderOpen` auto-execution (the keyv-worm vector — code runs before the workspace-trust prompt) with `command`/`args` shell-reach and `launch.json` `preLaunchTask` chaining (`AAK-IDE-TASK-001..003`) |
 | **Taint Analysis** | <!-- category-count:TAINT_ANALYSIS -->14<!-- /category-count --> | `@tool` param flows to shell/eval/SQL/SSRF/file/deserialization sinks (Python AST), `load_prompt()` user-path reachability, transport-flip MITM (DocsGPT + GPT-Researcher). SQL-injection sinks (`AAK-TAINT-005`) now detected in TypeScript/JS MCP servers too — interpolated/concatenated `.query()`/`.execute()`, `knex.raw`, Prisma `$queryRawUnsafe` — matching the Python + Rust scanners (OX MCP-SDK disclosure class). LLM-generated SQL executed on an RCE-capable DB role (`AAK-LLM-SQL-RCE-001`, **CVE-2026-25879**) — model output reaching `cursor.execute`/`text(...)`/`.query()` as the query itself with no allow-list, plus superuser/`COPY ... FROM PROGRAM`/`xp_cmdshell`/`FILE`-privilege connection roles that turn SQL injection into shell |
 | **Transport Security** | <!-- category-count:TRANSPORT_SECURITY -->15<!-- /category-count --> | HTTP endpoints, TLS disabled, deprecated SSE, tokens in URL query strings, transport body-size limits (CVE-2026-39313), SSRF redirect bypass (CVE-2026-41481), DNS-rebinding (CVE-2025-66414/66416, CVE-2026-35568/35577) |
-| **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->16<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Colorado SB 26-189 ADMT developer-documentation duties (intended uses, training-data categories, known limitations, human review, three-year retention), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (Annex III high-risk binding 2027-12-02, Annex I 2028-08-02 — AI Omnibus) |
+| **Legal Compliance** | <!-- category-count:LEGAL_COMPLIANCE -->19<!-- /category-count --> | Copyleft licenses (AGPL/SSPL), missing licenses, DMCA-flagged packages, India PII surface, US-state consumer privacy (Alabama HB 351, Tennessee SB 1580), Colorado SB 26-189 ADMT developer-documentation duties (intended uses, training-data categories, known limitations, human review, three-year retention), EU AI Act Article 50 transparency (AI-interaction disclosure, machine-readable synthetic-content marking, deep-fake disclosure), Singapore Agentic AI, healthcare AI triggers, EU AI Act Article 15 multilingual-eval coverage advisory (Annex III high-risk binding 2027-12-02, Annex I 2028-08-02 — AI Omnibus) |
 | **Trust Boundaries** | <!-- category-count:TRUST_BOUNDARY -->17<!-- /category-count --> | `enableAllProjectMcpServers`, API URL redirects, wildcard permissions, missing deny rules, missing allowlists, Claude Code folder-trust bypass (CVE-2026-40068) |
 | **MCP Server Card** | <!-- category-count:MCP_SERVER_CARD -->4<!-- /category-count --> | Static audit of SEP-1649 discovery cards (`/.well-known/mcp/server-card.json`): tool-description poisoning in `tools[].description` (`AAK-MCP-CARD-001`, reuses the AAK-POISON detectors), declared-transport vs advertised-capability mismatch — remote transport with `authentication.required: false`, or `stdio` advertising a remote endpoint (`AAK-MCP-CARD-002`), missing / placeholder signature / provenance (`AAK-MCP-CARD-003`), and over-broad capability / wildcard-scope claims (`AAK-MCP-CARD-004`) |
 | **Composition** | <!-- category-count:COMPOSITION -->3<!-- /category-count --> | Risk that exists only between components, where each one passes on its own. An ordered 2- or 3-component path carrying untrusted input to network egress through something that reads secrets or local state, while no single component spans it (`AAK-COMPOSE-001`, CompoSkill **arXiv:2608.16246**); two or more skills sharing a writable path neither declares, which is the collusion channel a declared-capability union cannot see by construction (`AAK-COMPOSE-002`, ColluSkill **arXiv:2608.09732**); and a skill whose body or adjacent scripts exercise a wider capability than its manifest declares, which makes every chain through it look narrower than it is (`AAK-COMPOSE-003`). Paths are capped at three components, where CompoSkill's own attack-success numbers concentrate. Distinct from `AAK-AGENT-COMPOSE-001`, which is an unordered capability union over one container of skills; a composition finding stands down when any component is already reported at the same severity, so a chain is never reported twice |
 | **Agentic Skills (AST10)** | <!-- category-count:AGENTIC_SKILL -->3<!-- /category-count --> | The statically decidable subset of the [OWASP Agentic Skills Top 10](#owasp-agentic-skills-top-10-ast10). A skill bundle pulling an external resource that nothing pins, so what it runs is whatever the source serves at the time (`AAK-AST02-001`, **AST02** + the pinning half of **AST07**); a deserialization tag in skill frontmatter that constructs an object while parsing, before any field is read and before the skill is invoked (`AAK-AST04-001`, **AST04** parsing layer, distinct from `AAK-SKILL-005` which reads frontmatter *values*); and a bundle whose platform manifests disagree about security metadata, so the platform loading the weaker one runs without a control the other declares (`AAK-AST10-001`, **AST10**). Three rules, not ten: AST06, AST08 and AST09 need runtime or organisational evidence a static scan cannot supply |
 
-**<!-- rule-count:total -->345<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
+**<!-- rule-count:total -->348<!-- /rule-count --> rules total.** Every finding includes severity, evidence, remediation, OWASP references, Adversa references, and CVE links where applicable.
 
 ### MCP Server Card scanning (SEP-1649)
 
@@ -307,7 +307,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.5.2
+  - uses: sattyamjjain/agent-audit-kit@v0.6.0
     id: scan
     with:
       fail-on: high
@@ -493,10 +493,10 @@ See [`docs/comparisons.md`](docs/comparisons.md) for a fully-sourced version. Ve
 | Feature | AgentAuditKit | Microsoft AGT | Snyk Agent Scan | Semgrep Multimodal |
 |---------|:---:|:---:|:---:|:---:|
 | Scope | Static scanner + compliance PDFs | Runtime governance | Static + runtime | Multimodal SAST |
-| Detection rules (static) | **<!-- rule-count:total -->345<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
+| Detection rules (static) | **<!-- rule-count:total -->348<!-- /rule-count -->** | Runtime policies, not rules | ~30 | LLM-assisted |
 | OWASP Agentic 10/10 | **Yes** | Yes | Partial | Partial |
 | OWASP MCP 10/10 | **Yes** | No (runtime-focused) | No | No |
-| Auditor-ready PDF compliance | **13 frameworks** | No | 0 | 0 |
+| Auditor-ready PDF compliance | **14 frameworks** | No | 0 | 0 |
 | Regional frameworks (IN/SG/AL/TN) | **Yes** | No | No | No |
 | Sigstore-signed rule bundle | **Yes** | SLSA provenance | No | No |
 | CycloneDX + SPDX SBOM output | **Yes** | No | No | No |
@@ -657,7 +657,7 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # <!-- test-count:total -->2,319<!-- /test-count --> test functions
+pytest -v                          # <!-- test-count:total -->2,342<!-- /test-count --> test functions
 ruff check .                       # Lint
 mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan

@@ -3369,6 +3369,108 @@ _r(
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
+# EU AI Act (Regulation (EU) 2024/1689) Article 50 — transparency obligations
+# for providers and deployers of certain AI systems. **In force since
+# 2026-08-02**, unlike the Article 15 high-risk duties this repository already
+# maps, which the AI Omnibus deferred to 2027-12-02 (Annex III) and 2028-08-02
+# (Annex I). Paragraph numbers read from the consolidated article on 2026-09-12:
+# https://artificialintelligenceact.eu/article/50/
+#
+# Evidence toward a duty, never a determination that the duty applies. Whether a
+# system is "intended to interact directly with natural persons", whether the
+# fact is "obvious from context to a reasonably informed person", and whether an
+# exemption is engaged are facts about a deployed product, not about a
+# repository. 50(3) — emotion recognition and biometric categorisation — has no
+# rule on purpose: there is no honest static signal for it, and guessing would
+# accuse a project under a duty it may not hold.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-AIACT50-001",
+    "Conversational agent surface with no AI-disclosure to the user",
+    "A persona, system prompt, chatbot or agent-card surface that converses "
+    "with a person carries no string telling that person they are interacting "
+    "with an AI system. Article 50(1) of the EU AI Act, in force since "
+    "2026-08-02, requires a provider to design such a system so the natural "
+    "persons concerned are informed, and 50(5) requires that clearly and "
+    "distinguishably at the latest at the first interaction. The paragraph "
+    "exempts cases obvious to a reasonably informed person, which is a fact "
+    "about the deployed product; this is evidence toward the duty, not a "
+    "determination that it applies or was breached.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "State in the agent's own surface that the user is talking to an AI, in a "
+    "form that reaches them at first interaction rather than in a policy page "
+    "they never open (Art. 50(5)). `AAK-HEALTHCARE-AI-004` is the same duty "
+    "scoped to clinical contexts, where several US state laws expect it too.",
+    sarif_name="EuAiActArt50NoInteractionDisclosure",
+    limitations=(
+        "Reads one file at a time. A disclosure rendered by the host "
+        "application, or injected by a framework outside this repository, is "
+        "not visible here. Art. 50(1)'s 'obvious from context' exemption cannot "
+        "be evaluated statically at all."
+    ),
+)
+
+
+_r(
+    "AAK-AIACT50-002",
+    "Synthetic media generation with no machine-readable provenance marking",
+    "A declared capability to generate synthetic audio, image, video or text "
+    "with no machine-readable marking of the output as artificially generated. "
+    "Article 50(2) of the EU AI Act, in force since 2026-08-02, requires "
+    "providers to mark such outputs in a machine-readable format, detectable as "
+    "artificially generated or manipulated, and to do so effectively and "
+    "interoperably so far as technically feasible. Assistive editing that does "
+    "not substantially alter the input data is exempt. Evidence toward the "
+    "duty, not a determination that it applies.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "Attach C2PA Content Credentials to generated media, or an equivalent "
+    "durable provenance signal such as SynthID for the modality you emit. "
+    "Art. 50(2) asks for machine-readable and interoperable, so a visible "
+    "caption alone does not answer it, and neither does a marking stripped by "
+    "the first re-encode in your own pipeline.",
+    sarif_name="EuAiActArt50NoSyntheticMarking",
+    limitations=(
+        "Detects the absence of a provenance marker in the same file that "
+        "declares the generation capability. Marking applied by a downstream "
+        "service, or by the model provider before the bytes reach this code, is "
+        "not seen."
+    ),
+)
+
+
+_r(
+    "AAK-AIACT50-003",
+    "Deep-fake or public-interest text generation with no artificiality disclosure",
+    "A declared capability to produce deep-fake image, audio or video content, "
+    "or to publish text intended to inform the public on matters of public "
+    "interest, with no disclosure that the content is artificially generated or "
+    "manipulated. Article 50(4) of the EU AI Act, in force since 2026-08-02, "
+    "places this on the deployer, and 50(5) requires the disclosure at the "
+    "latest at the time of first exposure. The paragraph exempts artistic, "
+    "creative, satirical and fictional work, and text that had human editorial "
+    "review with someone holding editorial responsibility. Evidence toward the "
+    "duty, not a determination that it applies.",
+    Severity.MEDIUM,
+    Category.LEGAL_COMPLIANCE,
+    "Disclose that the content is artificially generated or manipulated, at "
+    "first exposure and in the content's own presentation rather than in "
+    "terms of service. Where the work is artistic or satirical, Art. 50(4) "
+    "still expects the existence of generated content to be disclosed, in a way "
+    "that does not hamper enjoyment of the work.",
+    sarif_name="EuAiActArt50NoDeepfakeDisclosure",
+    limitations=(
+        "The 50(4) exemptions are assessed by the words a project uses about "
+        "itself: a file describing satire, fiction or human editorial review is "
+        "skipped entirely. That is deliberately generous, because the failure "
+        "mode of the opposite bias is accusing a newsroom of an offence."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
 # Colorado SB 26-189 (2026), C.R.S. 6-1-1702 "Developer responsibilities -
 # documentation". Signed 2026-05-14; SECTION 5 of the act takes it effect
 # 2027-01-01 and applies it to consequential decisions made on or after that

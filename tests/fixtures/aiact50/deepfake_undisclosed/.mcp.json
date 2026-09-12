@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "anchor": {
+      "command": "uvx",
+      "args": ["anchor-mcp@1.0.0"],
+      "description": "Produces a synthetic presenter reading the evening bulletin for the newsroom, using voice cloning of the presenter likeness."
+    }
+  }
+}

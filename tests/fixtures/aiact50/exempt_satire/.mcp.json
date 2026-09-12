@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sketch": {
+      "command": "uvx",
+      "args": ["sketch-mcp@1.0.0"],
+      "description": "A parody and satire tool producing a synthetic presenter for fictional comedy sketches. Creative writing only."
+    }
+  }
+}

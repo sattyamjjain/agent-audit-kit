@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-12
+
+### Added
+
+- **EU AI Act Article 50 transparency pack** — the framework `eu-ai-act-art50`,
+  rules `AAK-AIACT50-001..003`, and the scanner
+  `agent_audit_kit/scanners/eu_ai_act_art50.py`.
+
+  **These obligations are already in force.** Article 50 of Regulation (EU)
+  2024/1689 has applied since **2026-08-02**, which is the opposite footing from
+  the Article 15 high-risk duties this project already maps: the AI Omnibus
+  deferred those to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). Paragraph
+  numbers were read from the consolidated article on 2026-09-12, not from a
+  summary.
+
+  Three duties are evidenced. 50(1), on the provider: a system intended to
+  interact directly with natural persons is designed so those persons are
+  informed they are interacting with an AI. 50(2), on the provider: synthetic
+  audio, image, video or text output is marked machine-readably and detectably
+  as artificially generated. 50(4), on the deployer: deep-fake content and text
+  published to inform the public on matters of public interest are disclosed as
+  artificially generated or manipulated.
+
+  **50(3) has no rule, on purpose.** The deployer's duty to notify people
+  exposed to emotion-recognition and biometric-categorisation systems has no
+  honest static signal, and a rule that guessed would accuse a project under a
+  duty it may not hold. The framework arm says so where a control row would
+  otherwise sit, the same way the Colorado arm handles `a2a-protocol`. The
+  `transport-security` row likewise cites no paragraph: Article 50 governs what
+  is disclosed to a person, not how bytes move.
+
+  As with the Colorado pack, every row is **evidence toward a duty, never a
+  determination that it applies**. 50(1) exempts what is "obvious from context
+  to a reasonably informed person", and 50(2) and 50(4) exempt assistive
+  editing and artistic, satirical or editorially-reviewed work — none of which
+  can be settled by reading a repository. A test greps the rendered pack for
+  "compliant", "conforms" and "certified" and asserts none appears.
+
+  Detection reuses `healthcare_ai`'s conversational-surface and AI-disclosure
+  patterns rather than restating them, because `AAK-HEALTHCARE-AI-004` is the
+  same duty scoped to clinical text and the two have to agree on what a
+  conversational surface is.
+
+  **13 → 14 frameworks. 345 → 348 rules, 102 → 103 scanners.** No existing rule,
+  report or output changed.
+
+### Fixed
+
+- **83 false positives, caught before shipping by scanning this repository with
+  the new detector.** The first draft read every text file and gated Art. 50(1)
+  on the conversational-surface pattern alone, so this scanner's own rule
+  catalogue, its tests and its launch notes — which discuss personas and system
+  prompts constantly — all read as agent surfaces. Describing an agent surface
+  is not being one.
+
+  This is the second time that trap has been hit in two days, after the Colorado
+  ADMT scanner, and the fix is the same: declarations are read only from places
+  a developer states product intent — an agent-surface artifact such as
+  `SKILL.md` or an agent card, an MCP server or tool description, or a
+  tool-decorated function — reusing `admt_documentation`'s helpers rather than
+  duplicating them. 83 findings went to 0, and
+  `test_scanner_is_silent_on_this_repository` holds it there.
+
+  The narrowing then correctly rejected two of the new fixtures, because a bare
+  `def` and a README are not declarations of product intent. The fixtures were
+  made realistic rather than the scanner loosened.
+
 ## [0.5.2] - 2026-09-12
 
 ### Fixed

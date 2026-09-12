@@ -53,6 +53,7 @@ _OPTIONAL_SCANNERS: list[tuple[str, str, list[str]]] = [
     ("healthcare_ai", "Healthcare AI legal triggers", []),
     ("state_privacy", "US state consumer privacy", []),
     ("admt_documentation", "Colorado SB 26-189 ADMT developer documentation", []),
+    ("eu_ai_act_art50", "EU AI Act Art. 50 transparency (in force 2026-08-02)", []),
     ("stdio_injection", "Ox MCP STDIO command-injection", []),
     ("neo4j_cve", "mcp-neo4j-cypher CVE-2026-35402", []),
     ("log_injection", "MCP tool log-injection (CVE-2026-6494)", []),

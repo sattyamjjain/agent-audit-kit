@@ -653,6 +653,39 @@
       "title": "Agent Zero 0.9.8 MCP-config RCE (CVE-2026-30624, git-only pin)"
     },
     {
+      "category": "legal-compliance",
+      "cve_references": [],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [],
+      "owasp_mcp": [],
+      "rule_id": "AAK-AIACT50-001",
+      "severity": "medium",
+      "title": "Conversational agent surface with no AI-disclosure to the user"
+    },
+    {
+      "category": "legal-compliance",
+      "cve_references": [],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [],
+      "owasp_mcp": [],
+      "rule_id": "AAK-AIACT50-002",
+      "severity": "medium",
+      "title": "Synthetic media generation with no machine-readable provenance marking"
+    },
+    {
+      "category": "legal-compliance",
+      "cve_references": [],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [],
+      "owasp_mcp": [],
+      "rule_id": "AAK-AIACT50-003",
+      "severity": "medium",
+      "title": "Deep-fake or public-interest text generation with no artificiality disclosure"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [
@@ -7745,7 +7778,7 @@
       "agentic-skill": 3,
       "composition": 3,
       "hook-injection": 17,
-      "legal-compliance": 16,
+      "legal-compliance": 19,
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
@@ -7802,10 +7835,10 @@
       "high": 160,
       "info": 5,
       "low": 9,
-      "medium": 90
+      "medium": 93
     },
     "total_cves_covered": 211,
-    "total_rules": 345
+    "total_rules": 348
   },
   "tool": "agent-audit-kit"
 }
