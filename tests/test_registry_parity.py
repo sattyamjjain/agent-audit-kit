@@ -48,7 +48,16 @@ mod = _load()
         ("0.3.91", "0.3.90", date(2026, 9, 1), True, "one day — still the window"),
         ("0.3.91", "0.3.90", date(2026, 9, 2), False, "two days — did not happen"),
         ("0.3.92", "0.3.90", date(2026, 8, 31), False, "two patches — a release was skipped"),
-        ("0.4.0", "0.3.90", date(2026, 8, 31), False, "minor bump is not a patch window"),
+        # Was ("0.4.0", "0.3.90", ..., False, "minor bump is not a patch window").
+        # The gate accepted only a patch-shaped gap, which held for the whole
+        # 0.3.x series because every release in it was a patch bump. The first
+        # real minor bump (0.3.99 -> 0.4.0) was rejected as "not a release in
+        # flight", which was false. A skipped minor is still drift and is what
+        # this row now covers; the legitimate minor bump is covered by
+        # test_next_release_accepts_a_minor_bump and
+        # test_minor_bump_is_not_rejected_as_a_non_release, which inject their
+        # inputs instead of leaning on this repo's git history for a date.
+        ("0.5.0", "0.3.90", date(2026, 8, 31), False, "skipped minor — 0.4.x never published"),
         ("0.3.89", "0.3.90", date(2026, 9, 1), False, "registry ahead of the repo"),
     ],
 )
