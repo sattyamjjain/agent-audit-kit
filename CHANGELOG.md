@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-12
+
+### Fixed
+
+- **`admt_documentation` now reads MCP configs recursively**, as it already read
+  tool declarations. `_iter_files` uses rglob, so a covered-domain declaration in
+  a tool docstring was found anywhere in the tree, while the identical
+  declaration in an MCP server description was found only if the config sat at
+  the project root. The same project answered differently depending on which
+  surface carried the declaration, and a monorepo whose ADMT service lives in a
+  subdirectory was invisible.
+
+  Found by the 0.5.0 smoke test. Running the published wheel against
+  `examples/vulnerable-configs` rendered a valid pack that named the retention
+  duty and printed no conformity conclusion, which is what the smoke test
+  asserted, but contained no AAK-ADMT findings at all, because the declaration
+  sat one directory down in `12-colorado-admt/`. The assertions passed and the
+  feature was not exercised.
+
+  `test_a_declaration_in_a_subdirectory_is_found` and
+  `test_scanning_the_examples_root_reaches_the_colorado_fixture` hold it.
+
 ## [0.5.0] - 2026-09-12
 
 ### Added

@@ -204,13 +204,45 @@ def _declares_consequential_decision(text: str) -> bool:
     return bool(_INFERENCE_RE.search(text) and _COVERED_DOMAIN_RE.search(text))
 
 
+def _mcp_config_paths(project_root: Path) -> list[Path]:
+    """Every MCP config in the tree, not only the ones at the root.
+
+    Tool declarations are read recursively, because `_iter_files` uses rglob.
+    Reading MCP configs only at the project root made the same project answer
+    differently depending on which surface carried the declaration: a repository
+    whose ADMT service sits in a subdirectory was invisible, while the identical
+    declaration in a tool docstring was found. Caught by the 0.5.0 smoke test,
+    which scanned `examples/vulnerable-configs` and saw nothing because the
+    declaration was one directory down.
+    """
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for name in _MCP_CONFIG_NAMES:
+        path = project_root / name
+        if path.is_file() and path not in seen:
+            seen.add(path)
+            out.append(path)
+    basenames = {Path(name).name for name in _MCP_CONFIG_NAMES}
+    for path in sorted(project_root.rglob("*")):
+        if path in seen or not path.is_file() or path.name not in basenames:
+            continue
+        if any(part in SKIP_DIRS for part in path.parts):
+            continue
+        try:
+            if path.stat().st_size > _MAX_FILE_BYTES:
+                continue
+        except OSError:
+            continue
+        seen.add(path)
+        out.append(path)
+    return out
+
+
 def _mcp_descriptions(project_root: Path) -> list[tuple[str, str]]:
     """(relative path, declaration text) for MCP server names + descriptions."""
     out: list[tuple[str, str]] = []
-    for name in _MCP_CONFIG_NAMES:
-        path = project_root / name
-        if not path.is_file():
-            continue
+    for path in _mcp_config_paths(project_root):
+        name = str(path.relative_to(project_root))
         try:
             data = json.loads(_read(path))
         except (json.JSONDecodeError, ValueError):

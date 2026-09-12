@@ -89,6 +89,22 @@ def test_covered_domain_without_an_inference_emits_nothing() -> None:
     assert _ids(FIXTURES / "domain_without_inference") == []
 
 
+def test_a_declaration_in_a_subdirectory_is_found() -> None:
+    """MCP configs are read recursively, like tool declarations already were.
+
+    Reading them only at the project root made the same project answer
+    differently depending on which surface carried the declaration. The 0.5.0
+    smoke test scanned examples/vulnerable-configs and saw nothing, because the
+    declaration sat one directory down.
+    """
+    assert _ids(FIXTURES / "nested_declaration") == ["AAK-ADMT-001"]
+
+
+def test_scanning_the_examples_root_reaches_the_colorado_fixture() -> None:
+    fired = {r for r in _ids(EXAMPLES) if r.startswith("AAK-ADMT")}
+    assert fired == {"AAK-ADMT-002", "AAK-ADMT-003", "AAK-ADMT-004"}
+
+
 def test_licence_fixture_stays_clean() -> None:
     """11-legal-compliance is a licence fixture and must not gain ADMT findings."""
     assert _ids(EXAMPLES / "11-legal-compliance") == []
