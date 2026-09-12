@@ -82,6 +82,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version bumped to 0.4.0 rather than 0.3.100: this adds a new public CLI
   command, it is purely additive, and the patch series had run out at .99.
 
+### Security
+
+- **CVE queue drained: eight disclosures (#707–#714), one new rule.** Seven were
+  in scope; six needed no new rule because the pin table already covered the
+  packages. Full table in `CHANGELOG.cves.md`.
+
+  - `awslabs.postgres-mcp-server` — CVE-2026-87911 (CRITICAL 9.6). The 1.1.7
+    floor already covered it, so no version logic moved. What moved is the
+    rule's **threat description**: `COPY ... TO PROGRAM` OS command injection
+    reachable by an unauthenticated actor, not the read-only-scope bypass the
+    rule previously described. Severity MEDIUM → CRITICAL, and the remediation
+    now names the database role that stops it (`pg_execute_server_program`).
+  - `mcp-contextforge-gateway` — CVE-2026-78573 (CRITICAL 9.8), default
+    credentials at 1.0.0–1.0.7, already under the 1.0.9 floor. Severity
+    HIGH → CRITICAL.
+  - `langflow` — floor 1.11.3 → **1.11.6** for CVE-2026-85025 (CRITICAL 9.8),
+    CVE-2026-78575 and CVE-2026-81941 (both HIGH 8.8), all scoped 1.0.0–1.11.5.
+    The old floor was calling 1.11.3, 1.11.4 and 1.11.5 patched.
+  - `knowns` — CVE-2026-88938 is scoped "through 0.33.0" and 0.33.0 is the
+    newest release on npm, so **no fix exists** and the pin became
+    presence-only. This exposed a latent bug in `_fires`, which returned True on
+    `floor is None` before checking the `introduced` bound — unreachable while
+    no presence-only pin carried one. `knowns` is the first that does, and it
+    needs that bound to stay off an unrelated PyPI `knowns` stub. Reordered, with
+    no behaviour change for pins that have a floor.
+  - **New rule** `AAK-MCP-AWSSECAGENT-CVE-2026-87913-001` (MEDIUM, SUPPLY_CHAIN)
+    — `awslabs.security-agent-mcp-server` < 0.2.0 writes scan output to an S3
+    bucket whose ownership it never verifies, with a name derived from a public
+    account identifier. The remediation says plainly that upgrading is not
+    sufficient, because it does not release a bucket name someone else has
+    already registered. **340 → 341 rules.**
+  - #714 closed as out of scope: CVE-2026-89622 is a use-after-free in the Linux
+    kernel's `HID: mcp2221` driver. MCP2221 is a Microchip USB-to-I2C bridge
+    chip, unrelated to Model Context Protocol.
+
 ### Docs
 
 - New `docs/vex.md` covering the three statuses, the refusal of `not_affected`,

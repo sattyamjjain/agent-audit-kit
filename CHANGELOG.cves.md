@@ -16,6 +16,46 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-12: eight disclosures, one new rule
+
+The 2026-09-09..11 wave opened eight `cve-response` issues (#707–#714). Seven
+were in scope and six of those needed **no new rule**, because the pin table
+already covered the packages. Recorded because the reflex on a queue this size
+is to write eight rules.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-87911 | 9.6 | `awslabs.postgres-mcp-server` | Nothing in the version logic — the 1.1.7 floor already covered it. The rule's **threat description** changed: `COPY ... TO PROGRAM` OS command injection reachable by an unauthenticated actor, not the read-only-scope bypass the rule previously described. Severity MEDIUM → CRITICAL. | #707 |
+| CVE-2026-78573 | 9.8 | `mcp-contextforge-gateway` | Default credentials, 1.0.0–1.0.7, already under the 1.0.9 floor. Severity HIGH → CRITICAL. | #711 |
+| CVE-2026-85025 | 9.8 | `langflow` | Floor 1.11.3 → **1.11.6** | #710 |
+| CVE-2026-78575 | 8.8 | `langflow` | same floor | #712 |
+| CVE-2026-81941 | 8.8 | `langflow` | same floor | #713 |
+| CVE-2026-88938 | 6.5 | `knowns` | Floor **removed** — presence-only | #709 |
+| CVE-2026-87913 | 5.9 | `awslabs.security-agent-mcp-server` | **New rule** `AAK-MCP-AWSSECAGENT-CVE-2026-87913-001` | #708 |
+
+**#714 closed as out of scope.** CVE-2026-89622 is a use-after-free in the Linux
+kernel's `HID: mcp2221` driver. MCP2221 is a Microchip USB-to-I2C bridge chip.
+The acronym collides with Model Context Protocol and nothing else does. The
+watcher matched the string, which is the right bias for a watcher and the wrong
+answer for a rule.
+
+**`knowns` has no fix.** CVE-2026-88938 is scoped "through 0.33.0", and 0.33.0
+is the newest release on npm (published 2026-09-05). A floor would have been a
+fiction, so the pin became presence-only — the permanent state until upstream
+ships something, matching `postgres-mcp` and `mcp-florence2`. That exposed a
+latent bug: `_fires` returned True on `floor is None` **before** checking the
+`introduced` bound, which was unreachable while no presence-only pin carried
+one. `knowns` is the first that does, and it needs the 0.1.1 bound to stay off
+an unrelated PyPI `knowns` stub whose only release is 0.1.0. Without reordering
+the check, converting the pin would have revived a false positive that a comment
+in the table explicitly documents preventing.
+
+**Two floors were wrong in opposite directions.** Langflow's 1.11.3 was calling
+1.11.3, 1.11.4 and 1.11.5 patched when three advisories scope them as affected;
+1.11.6 exists and is the real floor. `knowns`' 0.30.0 was calling every release
+from 0.30.0 up patched when no patched release exists at all. Both were found by
+checking the registry rather than the advisory prose.
+
 ## 2026-09-09: the first JVM entry in the pin surface
 
 CVE-2026-53937 is the first CVE this repository has covered on a Gradle/Maven

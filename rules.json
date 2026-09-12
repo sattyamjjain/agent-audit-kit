@@ -3660,9 +3660,10 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-87911",
         "CVE-2026-85787"
       ],
-      "description": "Amazon awslabs postgres-mcp-server (`awslabs.postgres-mcp-server`, PyPI) before 1.1.7 ships an incomplete list of disallowed inputs in its SQL validation component, so crafted SQL placed in content that an authenticated user interacts with can modify data beyond the server's read-only scope (CVE-2026-85787, CVSS 6.5). Fixed in 1.1.7; treat < 1.1.7 (and unpinned) as exposed.",
+      "description": "Amazon awslabs postgres-mcp-server (`awslabs.postgres-mcp-server`, PyPI) before 1.1.7 carries two defects in the same SQL validation component, both cleared by one floor. CVE-2026-87911 (CRITICAL 9.6): the read-only enforcement does not stop a crafted `COPY ... TO PROGRAM` statement, so an unauthenticated actor who can place content that an authenticated user later processes executes operating-system commands on the host of a self-managed PostgreSQL server, in the server's default configuration. CVE-2026-85787 (MEDIUM 6.5): the disallowed-input list is incomplete, so crafted SQL reaching the same path modifies data beyond the server's read-only scope. The command-injection reading is the load-bearing one \u2014 a read-only *scope* bypass and OS command execution are different threats, and the remediation below addresses the latter. Fixed in 1.1.7; treat < 1.1.7 (and unpinned) as exposed.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -3672,11 +3673,41 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Upgrade `awslabs.postgres-mcp-server` to >= 1.1.7 and pin it. Enforce read-only access with a least-privilege database role rather than relying on the server's own statement filtering.",
+      "remediation": "Upgrade `awslabs.postgres-mcp-server` to >= 1.1.7 and pin it. Enforce read-only access with a least-privilege database role rather than relying on the server's own statement filtering: a role without `pg_execute_server_program` cannot run `COPY ... TO PROGRAM` even if the statement filter is bypassed.",
       "rule_id": "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001",
       "sarif_name": "AwslabsPostgresMcpSqlValidationGap",
+      "severity": "critical",
+      "title": "awslabs postgres-mcp-server: COPY TO PROGRAM command injection and SQL validation gap (< 1.1.7)"
+    },
+    {
+      "adversa_references": [
+        "ADV-DATA-01"
+      ],
+      "aicm_references": [
+        "STA-08",
+        "DSP-10",
+        "IVS-04"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-87913"
+      ],
+      "description": "AWS Security Agent MCP server (`awslabs.security-agent-mcp-server`, PyPI) before 0.2.0 does not verify that the S3 bucket it writes scan output to is owned by the caller's own account (CVE-2026-87913, MEDIUM 5.9). The bucket name is derived from a publicly known account identifier, so a third party who pre-registers that name receives the private source archive of every scanned workspace \u2014 including any credentials and infrastructure state the archive contains. Fixed in 0.2.0; treat < 0.2.0 (and unpinned) as exposed.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP03:2025"
+      ],
+      "remediation": "Upgrade `awslabs.security-agent-mcp-server` to >= 0.2.0 and pin it. Upgrading is not sufficient on its own: it does not release a bucket name a third party has already registered, so confirm the scan output bucket in your account is owned by your account, and treat anything already written to it as disclosed.",
+      "rule_id": "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001",
+      "sarif_name": "AwsSecurityAgentMcpBucketOwnership",
       "severity": "medium",
-      "title": "awslabs postgres-mcp-server: incomplete SQL disallowed-input list (< 1.1.7)"
+      "title": "awslabs security-agent-mcp-server: scan output written to an unverified S3 bucket (< 0.2.0)"
     },
     {
       "adversa_references": [
@@ -3964,9 +3995,10 @@
         "CVE-2026-77822",
         "CVE-2026-18905",
         "CVE-2026-18486",
-        "CVE-2026-18489"
+        "CVE-2026-18489",
+        "CVE-2026-78573"
       ],
-      "description": "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below 1.0.8 carries four disclosed defects that one floor remediates. CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint `POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection time \u2014 unlike every other egress path in the gateway \u2014 so an authenticated low-privileged user reaches internal addresses by DNS rebinding and receives the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq filters are validated improperly, letting a remote authenticated attacker read credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the Translate utility exposes data elements to the wrong session, leaking across sessions, at or below 1.0.8. Treat < 1.0.9 (and unpinned) as exposed.",
+      "description": "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below 1.0.8 carries four disclosed defects that one floor remediates. CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint `POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection time \u2014 unlike every other egress path in the gateway \u2014 so an authenticated low-privileged user reaches internal addresses by DNS rebinding and receives the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq filters are validated improperly, letting a remote authenticated attacker read credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the Translate utility exposes data elements to the wrong session, leaking across sessions, at or below 1.0.8. CVE-2026-78573 (CRITICAL 9.8): 1.0.0 through 1.0.7 ship default credentials, so a remote attacker gains administrative access outright \u2014 the floor already in place covers it, and it is recorded here rather than as a second rule because one upgrade remediates all five. Treat < 1.0.9 (and unpinned) as exposed.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -3976,11 +4008,11 @@
       "owasp_mcp_references": [
         "MCP06:2025"
       ],
-      "remediation": "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Where the gateway makes outbound requests on behalf of a caller, resolve the destination once and connect to the pinned IP rather than re-resolving the hostname after the allow-list check.",
+      "remediation": "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Change any credential that shipped as a default before doing anything else. Where the gateway makes outbound requests on behalf of a caller, resolve the destination once and connect to the pinned IP rather than re-resolving the hostname after the allow-list check.",
       "rule_id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
       "sarif_name": "ContextForgeGatewayRebindAndSessionLeak",
-      "severity": "high",
-      "title": "IBM ContextForge MCP Gateway: DNS-rebind SSRF, jq-filter and cross-session leaks (<= 1.0.8)"
+      "severity": "critical",
+      "title": "IBM ContextForge MCP Gateway: default credentials, DNS-rebind SSRF, jq-filter and cross-session leaks (<= 1.0.8)"
     },
     {
       "adversa_references": [
@@ -4666,9 +4698,10 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-86439"
+        "CVE-2026-86439",
+        "CVE-2026-88938"
       ],
-      "description": "knowns (`knowns`, npm \u2014 knowns-dev) before 0.30.0 does not validate filesystem paths supplied in MCP tool arguments, so an attacker-controlled path containing directory-traversal sequences reads, creates, overwrites or deletes files outside the project directory (CVE-2026-86439, CVSS 8.8). NVD scopes the read reach to \"arbitrary Markdown files accessible to the server process\", which follows from where the defect sits: the document and memory stores (`internal/storage/doc_store.go`, `internal/storage/memory_store.go`) are Markdown-backed. Fixed in v0.30.0; treat < 0.30.0 (and unpinned) as exposed.",
+      "description": "knowns (`knowns`, npm \u2014 knowns-dev) before 0.30.0 does not validate filesystem paths supplied in MCP tool arguments, so an attacker-controlled path containing directory-traversal sequences reads, creates, overwrites or deletes files outside the project directory (CVE-2026-86439, CVSS 8.8). NVD scopes the read reach to \"arbitrary Markdown files accessible to the server process\", which follows from where the defect sits: the document and memory stores (`internal/storage/doc_store.go`, `internal/storage/memory_store.go`) are Markdown-backed. Fixed in v0.30.0. CVE-2026-88938 (MEDIUM 6.5) then reopened the same class on a different tool: `knowns` **through 0.33.0** does not confine the `path` argument of the `code.find` MCP tool to the project root, so an agent session supplies an absolute path or traversal sequence and retrieves full file contents from anywhere the server process can read. 0.33.0 is the newest published release (npm, 2026-09-05) and is itself in the affected range, so **there is no fix floor to upgrade to** and this pin is presence-only: it fires on any referenced version. That is the permanent state until upstream ships a fix, not a placeholder \u2014 the same shape as the `postgres-mcp` and `mcp-florence2` pins in this table.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -4678,11 +4711,11 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Upgrade `knowns` to >= 0.30.0 and pin it. Resolve every path taken from a tool argument and reject any result that escapes the project root before opening it.",
+      "remediation": "No fixed release exists: 0.33.0 is the newest and is affected. Until upstream ships one, run `knowns` against a directory that contains nothing the agent session should not read, or drop it. When a fix lands, upgrade past 0.33.0 and pin it. The upstream fix has to resolve every path taken from a tool argument and reject any result that escapes the project root before opening it.",
       "rule_id": "AAK-MCP-KNOWNS-CVE-2026-86439-001",
       "sarif_name": "KnownsMcpPathTraversal",
       "severity": "high",
-      "title": "knowns MCP doc/memory tools: path traversal outside the project directory (< 0.30.0)"
+      "title": "knowns MCP doc/memory and code.find tools: path traversal outside the project directory (no fixed release)"
     },
     {
       "adversa_references": [
@@ -4760,9 +4793,12 @@
         "CVE-2026-8446",
         "CVE-2026-9077",
         "CVE-2026-7646",
-        "CVE-2026-9186"
+        "CVE-2026-9186",
+        "CVE-2026-85025",
+        "CVE-2026-78575",
+        "CVE-2026-81941"
       ],
-      "description": "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to unauthenticated remote code execution through its MCP stdio launcher: the `DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, `BASHOPTS`, and `PS4`, so an unauthenticated attacker can inject those environment variables into a launched stdio MCP server process and achieve arbitrary code execution (CVE-2026-12940, CVSS 9.8). The same 1.11.0 floor also remediates five further Langflow OSS CVEs disclosed for 1.0.0\u20131.10.3: CVE-2026-17623 (command-field RCE in MCP server configurations), CVE-2026-17626 (host-file read/modify via unfiltered Docker volume-mount and device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading the JWT signing secret, the SQLite DB, and process env). A seventh, CVE-2026-9186, raised the floor past those: Langflow OSS 1.0.0\u20131.11.2 trusts a spoofed `X-Forwarded-For: 127.0.0.1` header to satisfy its localhost-only guard on MCP-config installation, so a remote authenticated attacker writes arbitrary IDE configuration files (`~/.cursor/mcp.json` and siblings) \u2014 which 1.11.0, 1.11.1 and 1.11.2 are all exposed to. Fixed at or before 1.11.3; treat < 1.11.3 (and unpinned) as exposed. Pre-1.0.0 releases predate the MCP stdio launcher and are not in the affected range.",
+      "description": "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to unauthenticated remote code execution through its MCP stdio launcher: the `DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, `BASHOPTS`, and `PS4`, so an unauthenticated attacker can inject those environment variables into a launched stdio MCP server process and achieve arbitrary code execution (CVE-2026-12940, CVSS 9.8). The same 1.11.0 floor also remediates five further Langflow OSS CVEs disclosed for 1.0.0\u20131.10.3: CVE-2026-17623 (command-field RCE in MCP server configurations), CVE-2026-17626 (host-file read/modify via unfiltered Docker volume-mount and device-mapping args), CVE-2026-8446 (MCP composer OAuth authentication bypass), CVE-2026-9077 (writing arbitrary MCP server configurations into host IDE config files), and CVE-2026-7646 (`resources/read` path traversal reading the JWT signing secret, the SQLite DB, and process env). A seventh, CVE-2026-9186, raised the floor past those: Langflow OSS 1.0.0\u20131.11.2 trusts a spoofed `X-Forwarded-For: 127.0.0.1` header to satisfy its localhost-only guard on MCP-config installation, so a remote authenticated attacker writes arbitrary IDE configuration files (`~/.cursor/mcp.json` and siblings) \u2014 which 1.11.0, 1.11.1 and 1.11.2 are all exposed to. Three further IBM advisories then moved the floor again, all scoped 1.0.0 through 1.11.5: CVE-2026-85025 (CRITICAL 9.8) \u2014 unauthenticated arbitrary code execution and access to other users' chat sessions through publicly shared MCP project endpoints, because public-flow security restrictions and session isolation are both enforced improperly; CVE-2026-78575 (HIGH 8.8) \u2014 a remote authenticated attacker executes arbitrary commands through improperly validated command-line arguments in the MCP stdio server configuration; and CVE-2026-81941 (HIGH 8.8) \u2014 a non-administrative authenticated user runs OS commands at the application's privilege level by building a flow whose MCP Tools component uses a local stdio subprocess transport, bypassing both `LANGFLOW_CUSTOM_COMPONENT_ADMIN_ONLY` and `LANGFLOW_BLOCK_CODE_INTERPRETER_COMPONENTS`. Fixed in 1.11.6; treat < 1.11.6 (and unpinned) as exposed. Pre-1.0.0 releases predate the MCP stdio launcher and are not in the affected range.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -4772,11 +4808,11 @@
       "owasp_mcp_references": [
         "MCP10:2025"
       ],
-      "remediation": "Upgrade `langflow` to >= 1.11.3 and pin it. Do not pass an attacker-influenced environment through to a launched stdio MCP server; blocklist (or, better, allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. Derive the client address from the socket, not from a caller-supplied `X-Forwarded-For` header, when gating localhost-only operations.",
+      "remediation": "Upgrade `langflow` to >= 1.11.6 and pin it. Do not pass an attacker-influenced environment through to a launched stdio MCP server; blocklist (or, better, allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. Derive the client address from the socket, not from a caller-supplied `X-Forwarded-For` header, when gating localhost-only operations.",
       "rule_id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
       "sarif_name": "LangflowMcpStdioEnvInjectionRce",
       "severity": "critical",
-      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.11.3)"
+      "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.11.6)"
     },
     {
       "adversa_references": [

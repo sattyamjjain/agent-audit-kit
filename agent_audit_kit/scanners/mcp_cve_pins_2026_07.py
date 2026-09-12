@@ -76,9 +76,23 @@ available) before shipping:
   - postgres-mcp                    <= 0.3.0   (CVE-2026-85620; no fixed release —
     upstream issue #178 open, v0.3.0 still the newest tag)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787)
-  - knowns                          >= 0.30.0  (CVE-2026-86439; npm, knowns-dev)
-  - langflow                        >= 1.11.3  (CVE-2026-9186 raised the 1.11.0
-    floor of CVE-2026-12940 — same package, same rule)
+  - knowns                          presence-only (CVE-2026-86439 fixed in 0.30.0,
+    but CVE-2026-88938 is scoped "through 0.33.0" and 0.33.0 is the newest npm
+    release, so there is no floor left to pin to)
+  - langflow                        >= 1.11.6  (CVE-2026-9186 raised the 1.11.0
+    floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
+    all scoped 1.0.0–1.11.5, then raised it again — same package, same rule)
+  - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787 + CVE-2026-87911;
+    the second is OS command injection through a crafted COPY-to-PROGRAM
+    statement, CRITICAL 9.6, and the floor was already correct — only the rule's
+    threat description moved. Written without the literal SQL here on purpose:
+    `AAK-LLM-SQL-RCE-001` matches that syntax, and this repo scans itself, so
+    the exact clause in prose fails the self-scan on a finding that is a
+    docstring)
+  - mcp-contextforge-gateway        >= 1.0.9   (+ CVE-2026-78573 default
+    credentials, 1.0.0–1.0.7; already under the existing floor)
+  - awslabs.security-agent-mcp-server >= 0.2.0 (CVE-2026-87913; unverified S3
+    bucket ownership for scan output)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -342,8 +356,8 @@ _PINS: tuple[_Pin, ...] = (
     # the `@apify` shape; a second pin on the name would report one dependency
     # twice.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
-         (1, 11, 3), introduced=(1, 0, 0),
-         fix_label="1.11.3 (affected 1.0.0–1.11.2)"),
+         (1, 11, 6), introduced=(1, 0, 0),
+         fix_label="1.11.6 (affected 1.0.0–1.11.5)"),
     # --- 2026-08-01 wave ---
     # gemini-bridge (PyPI) 1.0.0–1.3.0: `consult_gemini_with_files` inline mode reads
     # any file path in the `files` argument without confining it to the working
@@ -729,9 +743,22 @@ _PINS: tuple[_Pin, ...] = (
     # Bounding at 0.1.1 keeps the pin off the PyPI stub at the cost of npm's single
     # 0.1.0 release -- the cheaper of the two errors, since 86 of the real
     # project's 87 published versions still fire.
-    _Pin("AAK-MCP-KNOWNS-CVE-2026-86439-001", "knowns", ("knowns",), (0, 30, 0),
-         introduced=(0, 1, 1), fix_label="0.30.0",
+    # CVE-2026-88938 (2026-09-10) reopened the same class on the `code.find` tool
+    # and is scoped "through 0.33.0" -- which is the newest published release
+    # (npm, 2026-09-05). There is no fixed version to pin to, so the floor drops to
+    # None and the pin becomes presence-only. That is the permanent state until
+    # upstream ships a fix, the same as `postgres-mcp` and `mcp-florence2` above.
+    # The 0.1.1 `introduced` bound still matters and is still honoured -- see the
+    # ordering note in `_fires`.
+    _Pin("AAK-MCP-KNOWNS-CVE-2026-86439-001", "knowns", ("knowns",), None,
+         introduced=(0, 1, 1), fix_label="no fixed release (0.33.0 is newest and affected)",
          regexes=(_KNOWNS_RE,)),
+    # --- 2026-09-10..11 wave ---
+    # AWS Security Agent MCP server (PyPI) before 0.2.0 writes scan output to an S3
+    # bucket it never verifies the ownership of, and the bucket name derives from a
+    # publicly known account id. Vendor fix is 0.2.0; latest is 0.2.1.
+    _Pin("AAK-MCP-AWSSECAGENT-CVE-2026-87913-001", "awslabs.security-agent-mcp-server",
+         ("awslabs.security-agent-mcp-server",), (0, 2, 0), fix_label="0.2.0"),
 )
 
 _CANDIDATE_NAMES = (
@@ -744,15 +771,24 @@ _MAX_FILE_BYTES = 2_000_000
 
 
 def _fires(pin: _Pin, version: _Ver | None) -> bool:
+    # `introduced` is checked FIRST, before the presence-only shortcut. It used to
+    # sit last, which was unreachable for a presence-only pin (`floor is None`
+    # returned True immediately) -- harmless only for as long as no presence-only
+    # pin carried an `introduced` bound. `knowns` is the first that does: it is
+    # presence-only because CVE-2026-88938 has no fixed release, and it needs the
+    # 0.1.1 bound to stay off the unrelated PyPI `knowns` stub whose only release
+    # is 0.1.0. Without this ordering that false positive comes straight back.
+    #
+    # No behaviour changes for the pins that have a floor: `introduced` is always
+    # below `floor`, so a version at or above the floor is also at or above
+    # `introduced`, and the early return yields what the old order did.
+    if version is not None and pin.introduced is not None and version < pin.introduced:
+        return False
     if pin.floor is None:
         return True
     if version is None:
         return True
-    if version >= pin.floor:
-        return False
-    if pin.introduced is not None and version < pin.introduced:
-        return False
-    return True
+    return version < pin.floor
 
 
 def _candidate_files(project_root: Path) -> list[Path]:

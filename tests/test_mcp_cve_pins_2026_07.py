@@ -608,14 +608,15 @@ def test_langflow_in_affected_range_fires(tmp_path: Path) -> None:
 
 
 def test_langflow_patched_passes(tmp_path: Path) -> None:
-    # Floor moved 1.11.0 -> 1.11.3 on 2026-09-08 for CVE-2026-9186, which affects
-    # 1.0.0-1.11.2. This assertion used to name 1.11.0 and was correct for the six
-    # CVEs the rule cited then; it is wrong for the seventh. The version moved
-    # rather than the test being deleted, because "the patched release does not
-    # fire" is still the property worth holding. 1.11.0/1.11.1/1.11.2 are asserted
-    # to fire in tests/test_cve_deferral_queue_2026_09_08.py.
+    # Floor moved 1.11.0 -> 1.11.3 on 2026-09-08 for CVE-2026-9186 (affects
+    # 1.0.0-1.11.2), then 1.11.3 -> 1.11.6 on 2026-09-12 for CVE-2026-85025,
+    # CVE-2026-78575 and CVE-2026-81941 (all scoped 1.0.0-1.11.5). The version in
+    # this assertion moves each time rather than the test being deleted, because
+    # "the patched release does not fire" is still the property worth holding.
+    # The versions the old floors called patched are asserted to fire in
+    # tests/test_cve_deferral_queue_2026_09_08.py.
     assert "AAK-MCP-LANGFLOW-CVE-2026-12940-001" not in _ids(
-        tmp_path, "requirements.txt", "langflow==1.11.3\n"
+        tmp_path, "requirements.txt", "langflow==1.11.6\n"
     )
 
 
