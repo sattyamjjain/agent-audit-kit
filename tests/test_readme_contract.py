@@ -178,15 +178,30 @@ def test_quick_start_is_near_the_top() -> None:
 
 def test_every_docs_site_link_has_a_source_page() -> None:
     """A 404 from the front page is worse than a missing link."""
-    base = "https://sattyamjjain.github.io/agent-audit-kit/"
-    # Only a trailing-slash URL is a docs page. The generated index-cadence
-    # block links to `/data/history.json` on the same origin, which is a data
-    # file published by the site build, not a page with a source .md.
-    slugs = set(re.findall(re.escape(base) + r"([a-z0-9-]+)/(?=[)\s\]])", _text()))
-    for slug in slugs:
-        assert (REPO / "docs" / f"{slug}.md").is_file(), (
-            f"README links to {base}{slug}/ but docs/{slug}.md does not exist"
+    # Docs are linked as GitHub blob URLs, not mkdocs-site URLs. The GitHub
+    # Pages origin serves the MCP Security Index, and no workflow runs mkdocs,
+    # so `…github.io/agent-audit-kit/getting-started/` is a 404 today -- as the
+    # link check proved when this README first used that form.
+    blob = "https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/"
+    pages = set(re.findall(re.escape(blob) + r"([A-Za-z0-9_./-]+\.md)", _text()))
+    assert pages, "README links to no docs page at all"
+    for page in pages:
+        assert (REPO / "docs" / page).is_file(), (
+            f"README links to docs/{page} which does not exist"
         )
+
+
+def test_readme_does_not_link_to_the_unpublished_docs_site() -> None:
+    """`sattyamjjain.github.io/agent-audit-kit/` is the MCP Security Index.
+
+    No workflow runs mkdocs, so every `…/<page>/` URL under that origin 404s.
+    The Index root and its `/data/` files are fine.
+    """
+    bad = re.findall(
+        r"https://sattyamjjain\.github\.io/agent-audit-kit/([a-z0-9-]+)/(?=[)\s\]])",
+        _text(),
+    )
+    assert not bad, f"these link to the unpublished mkdocs site: {sorted(set(bad))}"
 
 
 def test_every_mkdocs_nav_target_exists() -> None:

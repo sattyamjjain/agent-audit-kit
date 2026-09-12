@@ -56,9 +56,9 @@ In CI:
 
 The action writes SARIF; upload it with `github/codeql-action/upload-sarif`
 to land findings in the GitHub Security tab. Full
-[GitHub Action reference](https://sattyamjjain.github.io/agent-audit-kit/github-action/) ·
-[CLI reference](https://sattyamjjain.github.io/agent-audit-kit/cli/) ·
-[pre-commit hook](https://sattyamjjain.github.io/agent-audit-kit/ci-cd/).
+[GitHub Action reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/github-action.md) ·
+[CLI reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md) ·
+[pre-commit hook](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/ci-cd.md).
 
 ## What it finds
 
@@ -82,7 +82,7 @@ to land findings in the GitHub Security tab. Full
 | **Agentic Skills** | <!-- category-count:AGENTIC_SKILL -->3<!-- /category-count --> | OWASP Agentic Skills Top 10 surface in skill bundles |
 
 Every finding carries severity, evidence, a file and line, and remediation.
-Full detail per rule is in the [rule reference](https://sattyamjjain.github.io/agent-audit-kit/rules/).
+Full detail per rule is in the [rule reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules.md).
 
 ## Why not a hosted scanner
 
@@ -130,7 +130,7 @@ agent-audit-kit vex  . -o vex.openvex.json
 
 Every control row cites a real clause, and a row the scanner cannot evidence
 says so instead of printing a tick. Full list of the <!-- rule-count:total -->348<!-- /rule-count -->
-rules mapped to 14 frameworks: [compliance reference](https://sattyamjjain.github.io/agent-audit-kit/owasp-mapping/).
+rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/owasp-mapping.md).
 
 ### OWASP Agentic Top 10 coverage
 
@@ -181,16 +181,16 @@ decision, not a coverage gap: a recipe ships only where the remediation is
 **deterministic and one-line** — exactly one correct edit, confirmable from the
 diff. Everything else stays advisory on purpose, because a fix that needs
 judgement is a fix that can be wrong silently. [Why the rest stay
-advisory](https://sattyamjjain.github.io/agent-audit-kit/why/).
+advisory](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/why.md).
 
 ## Documentation
 
-[Getting started](https://sattyamjjain.github.io/agent-audit-kit/getting-started/) ·
-[CLI reference](https://sattyamjjain.github.io/agent-audit-kit/cli/) ·
-[Rule reference](https://sattyamjjain.github.io/agent-audit-kit/rules/) ·
-[CI/CD](https://sattyamjjain.github.io/agent-audit-kit/ci-cd/) ·
-[Comparison with other scanners](https://sattyamjjain.github.io/agent-audit-kit/comparisons/) ·
-[Full docs](https://sattyamjjain.github.io/agent-audit-kit/)
+[Getting started](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/getting-started.md) ·
+[CLI reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md) ·
+[Rule reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/rules.md) ·
+[CI/CD](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/ci-cd.md) ·
+[Comparison with other scanners](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/comparisons.md) ·
+[All documentation](https://github.com/sattyamjjain/agent-audit-kit/tree/main/docs)
 
 ## Contributing
 
