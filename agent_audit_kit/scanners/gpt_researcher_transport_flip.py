@@ -4,9 +4,13 @@ Mirrors `agent_audit_kit/scanners/docsgpt_transport_flip.py` (v0.3.14)
 shape against `gpt-researcher` / `assafelovic/gpt-researcher` named
 configs. Phase 2 of the OX MCP 2026-05-01 batch (issue #159).
 
-The umbrella generalization to a vendor-agnostic
-`AAK-MCP-TRANSPORT-FLIP-001` ships in v0.3.16 (issue #162); until
-then per-vendor scanners stay parallel.
+This docstring promised that an umbrella generalization to a vendor-agnostic
+`AAK-MCP-TRANSPORT-FLIP-001` would ship in v0.3.16 under issue #162. **It was
+never built.** No such rule exists in the registry, and the per-vendor scanners
+have stayed parallel for roughly forty releases since. That is the steady state
+rather than a pending migration, and it is recorded here so a reader does not
+plan around an umbrella rule that is not coming. `docs/roadmap/ox-mcp-2026-05-01-batch.md`
+records the same item as not-built.
 
 Detector contract:
     scan(project_root) -> (list[Finding], set[str])

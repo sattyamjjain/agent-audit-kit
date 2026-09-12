@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sattyamjjain/agent-audit-kit@v0.6.1
+      - uses: sattyamjjain/agent-audit-kit@v0.6.2
         id: scan
         with:
           fail-on: high
@@ -114,7 +114,7 @@ aak scan .
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.6.1
+    rev: v0.6.2
     hooks:
       - id: agent-audit-kit
 ```
@@ -307,7 +307,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.6.1
+  - uses: sattyamjjain/agent-audit-kit@v0.6.2
     id: scan
     with:
       fail-on: high
@@ -657,7 +657,7 @@ agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
 git clone https://github.com/sattyamjjain/agent-audit-kit
 cd agent-audit-kit
 pip install -e ".[dev]"
-pytest -v                          # <!-- test-count:total -->2,347<!-- /test-count --> test functions
+pytest -v                          # <!-- test-count:total -->2,356<!-- /test-count --> test functions
 ruff check .                       # Lint
 mypy agent_audit_kit/              # Type check
 agent-audit-kit scan .             # Self-scan

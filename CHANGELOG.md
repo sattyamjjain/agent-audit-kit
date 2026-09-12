@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-09-12
+
+Promises this project made in shipped code and then outlived. Found by a
+parallel sweep of the repository's own commitment surface.
+
+### Added
+
+- **PagerDuty and Linear notification sinks are implemented.** Both shipped in
+  v0.3.13 as `NotImplementedError` stubs whose docstrings said "full impl ships
+  in v0.4.0". They were still stubs at v0.6.1, two minor versions past that, and
+  `notify.py`'s module docstring had told users to build their
+  `.aak-notify.yaml` against the shape "ahead of v0.4.0" — so anyone who
+  followed that had a config that raised at runtime.
+
+  PagerDuty posts one Events API v2 `trigger` per finding with a `dedup_key` of
+  `aak:<rule_id>:<location>`, so a rule that keeps firing updates one incident
+  instead of opening a new one on every CI run. Linear creates one issue per
+  finding via the GraphQL `IssueCreate` mutation, and raises on a GraphQL
+  `errors` array, because that API answers 200 with an error body and a bad team
+  id would otherwise look like success. Both share a `_post_json` helper that
+  carries the server's response text into the exception; stdlib only, no new
+  dependency.
+
+  Linear has no dedup key, so re-running creates duplicate issues. That is
+  stated in the docstring rather than worked around: a client-side
+  search-before-create would race in CI and silently drop findings when it
+  guessed wrong.
+
+- **`agent-audit-kit rule lint --incident`.**
+  `docs/roadmap/ox-mcp-2026-05-01-batch.md` documented this as the
+  source-of-truth check for a disclosure batch and told readers to grep by hand
+  "until then". It had never been built, and the doc's Status line still read
+  "active (v0.3.14 → v0.3.16)" roughly forty releases later, handing readers a
+  command that did not exist. The filter now works, case-insensitively, and that
+  doc is marked closed with the two items that were never built recorded as
+  not-built rather than left as open boxes.
+
+### Fixed
+
+- **`AAK-LMDEPLOY-VL-SSRF-001` now names a version.** Its remediation read "see
+  GHSA for the exact version once NVD enrichment lands" from 2026-04-25 until
+  today — four and a half months and roughly ninety releases — on a CVE that was
+  exploited in the wild within about twelve hours of disclosure. It now says
+  upgrade to >= 0.12.3, cites GHSA-6w67-hwm5-92mq, and says the exposure is
+  urgent rather than routine. A remediation that points somewhere else is not a
+  remediation.
+
+- **User-facing rule text no longer tells readers to wait for closed issue #22.**
+  `AAK-MCP-STDIO-CMD-INJ-004`'s description said the Rust pass is regex-only
+  "until #22 lands tree-sitter-rust", and that text ships in `rules.json`. Issue
+  #22 closed on 2026-08-15 having delivered a TypeScript slice only; Rust was
+  never in it. The rule now states the limitation as the steady state and says
+  there is no open work item behind it. Same correction in
+  `mcp_stdio_params.py` and two deep-dive doc pages.
+
+- **Three more version promises that had passed**, all found by the new guard
+  rather than by reading: a rule description saying a rule "ships in v0.3.16"
+  when it had, a `supply_chain` comment in the same tense, and — the real one —
+  `gpt_researcher_transport_flip.py` promising that a vendor-agnostic
+  `AAK-MCP-TRANSPORT-FLIP-001` umbrella "ships in v0.3.16 (issue #162)". **No
+  such rule exists.** It was never built, the per-vendor scanners have stayed
+  parallel ever since, and the docstring now says so rather than describing a
+  migration that is not coming.
+
+- **`docs/RELEASING.md` said the cve-watcher dedup fix (#163) was "queued for
+  v0.3.17".** It shipped in v0.3.20, three patch releases later;
+  `scripts/cve_watcher.py` has said so in a comment the whole time.
+
+### Added (tests)
+
+- Six assertions in `tests/test_regulatory_dates.py`, including one that fails
+  on any *live* `ships in vX.Y.Z` promise in shipped code whose version has
+  passed. It found three of the six items above on its first run. It
+  deliberately permits "would ship in ... it was never built" and "shipped in",
+  because an accurate description of a broken promise has to stay sayable — the
+  same present-tense-versus-history distinction the release-candidate guard
+  draws, and one this test's own first version got wrong.
+
 ## [0.6.1] - 2026-09-12
 
 ### Added

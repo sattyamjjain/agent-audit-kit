@@ -278,3 +278,100 @@ def test_releasing_doc_no_longer_carries_an_unmet_deadline() -> None:
     assert "REPO_ADMIN_TOKEN" in text
     # The unmet promise is recorded, not deleted.
     assert "previously read" in text
+
+
+# --------------------------------------------------------------------------
+# Version promises made in shipped code
+# --------------------------------------------------------------------------
+
+
+def test_no_shipped_code_promises_a_version_that_has_passed() -> None:
+    """`notify.py` shipped PagerDuty and Linear stubs saying "full impl ships
+    in v0.4.0". They were still stubs at v0.6.1, and the module docstring had
+    told users to build `.aak-notify.yaml` against the shape "ahead of v0.4.0",
+    so anyone who did had a config that raised at runtime.
+
+    A stub is a reasonable thing to ship. A stub carrying a version promise it
+    then outlives is not.
+    """
+    from agent_audit_kit import __version__
+
+    current = tuple(int(p) for p in __version__.split(".")[:3])
+    offenders = []
+    for path in _prose_files():
+        if path.suffix != ".py":
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        # Present tense only. "would ship in v0.3.16 ... it was never built" and
+        # "shipped in v0.3.6" are accurate descriptions of history and have to
+        # stay sayable; "ships in vX.Y.Z" is the live commitment. Same
+        # distinction the release-candidate guard above draws, and it was this
+        # test's own first version that blurred it.
+        for m in re.finditer(r"\bships in v(\d+)\.(\d+)\.(\d+)", text):
+            promised = tuple(int(g) for g in m.groups())
+            if promised <= current:
+                offenders.append(f"{path.relative_to(REPO)}: {m.group(0)}")
+    assert not offenders, (
+        "code promises a version that has already shipped: " + str(offenders)
+    )
+
+
+def test_the_notify_sinks_are_all_implemented() -> None:
+    from agent_audit_kit.integrations.notify import (
+        LinearTicketSink,
+        PagerDutySink,
+        SlackSink,
+    )
+
+    for cls in (SlackSink, PagerDutySink, LinearTicketSink):
+        assert "NotImplementedError" not in (cls.send.__doc__ or "")
+        assert cls.send is not __import__(
+            "agent_audit_kit.integrations.notify", fromlist=["NotifySink"]
+        ).NotifySink.send, f"{cls.__name__} never overrode send"
+
+
+# --------------------------------------------------------------------------
+# References to work that was closed without shipping
+# --------------------------------------------------------------------------
+
+
+def test_no_user_facing_text_waits_on_closed_issue_22() -> None:
+    """#22 closed 2026-08-15 having shipped a TypeScript slice only.
+
+    Rule text saying "until #22 lands tree-sitter-rust" told users to wait for
+    something that will not arrive, and it shipped in `rules.json`.
+    """
+    from agent_audit_kit.rules.builtin import RULES
+
+    blob = " ".join(
+        f"{r.description} {r.remediation} {r.limitations}" for r in RULES.values()
+    )
+    assert "until #22 lands" not in blob
+    for path in (REPO / "docs" / "rules").glob("*.md"):
+        assert "until #22 lands" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_lmdeploy_remediation_names_a_version() -> None:
+    """It read "see GHSA for the exact version once NVD enrichment lands" for
+    four and a half months, on a CVE exploited within ~12 hours of disclosure.
+    A remediation that points somewhere else is not a remediation."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    rule = RULES["AAK-LMDEPLOY-VL-SSRF-001"]
+    assert "0.12.3" in rule.remediation
+    assert "once NVD enrichment lands" not in rule.remediation
+
+
+def test_rule_lint_incident_filter_exists() -> None:
+    """`docs/roadmap/ox-mcp-2026-05-01-batch.md` documented this command as the
+    source-of-truth check for a disclosure batch. It did not exist."""
+    from agent_audit_kit.rule_lint import rules_for_incident, run_lint
+
+    covered = rules_for_incident("OX-MCP-2026-05-01")
+    assert covered, "the batch this filter was written for has no rules"
+    assert run_lint(incident_filter="OX-MCP-2026-05-01") == []
+    # Case-insensitive: incident ids are quoted in prose with varying case.
+    assert rules_for_incident("ox-mcp-2026-05-01") == covered

@@ -138,5 +138,8 @@ morning nobody chose. Visibility at the moment somebody is already looking at th
 queue is the useful half; holding a tag hostage to a date typed a month ago is
 not.
 
-The cve-watcher dedup bug (issue #163) re-fires closed CVE IDs across
-daily cycles. Fix queued for v0.3.17.
+The cve-watcher dedup bug (issue #163) re-fired closed CVE IDs across
+daily cycles. **Fixed in v0.3.20** — `scripts/cve_watcher.py` now queries
+`state=all` so a closed issue still suppresses a re-file. This line read
+"Fix queued for v0.3.17" until 2026-09-12, three patch releases after the fix
+had actually shipped.

@@ -12,7 +12,7 @@
 
 ## Caveat
 
-**Regex-only pass until #22 lands tree-sitter-rust.** Expect ~10%
+**Regex-only pass; there is no tree-sitter-rust grammar and none is pending.** Expect ~10%
 false-positive rate on macro-heavy codebases. Document false positives
 on the issue tracker so the AST migration test corpus grows.
 

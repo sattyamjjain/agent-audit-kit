@@ -1,9 +1,13 @@
 """Notification sinks for AAK findings.
 
-Closes #66 (minimal v0.3.13 surface: SlackSink only). PagerDuty and
-Linear sinks are explicit `NotImplementedError` stubs — the public
-shape is defined now so consumers can build their `.aak-notify.yaml`
-ahead of v0.4.0, but the wire-up only ships for Slack today.
+Closes #66. All three sinks -- Slack, PagerDuty and Linear -- are implemented.
+
+PagerDuty and Linear shipped as `NotImplementedError` stubs in v0.3.13 whose
+docstrings promised a full implementation in v0.4.0. They were still stubs at v0.6.1,
+two minor versions past that, and this docstring had told users to build their
+`.aak-notify.yaml` against the shape "ahead of v0.4.0" -- so anyone who did had
+a config that raised at runtime. A stub is a reasonable thing to ship; a stub
+carrying a version promise it then outlives is not.
 
 Why ship Slack first: incoming-webhooks are a single POST with an HMAC-
 free shared secret, which keeps the v0.3.13 surface small and reviewable.
@@ -17,10 +21,10 @@ Config schema (.aak-notify.yaml at project root):
       - kind: slack
         webhook_url_env: SLACK_WEBHOOK_URL
         min_severity: high
-      - kind: pagerduty   # stub — raises NotImplementedError when invoked
+      - kind: pagerduty   # Events API v2; dedups on rule_id + location
         routing_key_env: PD_ROUTING_KEY
         min_severity: critical
-      - kind: linear      # stub — raises NotImplementedError when invoked
+      - kind: linear      # GraphQL IssueCreate; one issue per finding
         api_key_env: LINEAR_API_KEY
         team_id: ENG
         min_severity: medium
@@ -81,6 +85,42 @@ _SLACK_EMOJI: dict[Severity, str] = {
     Severity.LOW: ":large_blue_circle:",
     Severity.INFO: ":information_source:",
 }
+
+
+# PagerDuty Events API v2 accepts exactly these four.
+_PAGERDUTY_SEVERITY: dict[Severity, str] = {
+    Severity.CRITICAL: "critical",
+    Severity.HIGH: "error",
+    Severity.MEDIUM: "warning",
+    Severity.LOW: "info",
+    Severity.INFO: "info",
+}
+
+
+def _post_json(url: str, payload: dict, headers: dict, who: str) -> Any:
+    """POST JSON and return the decoded body, or raise with the server's text.
+
+    Shared by every sink so a failure reads the same regardless of which one
+    hit it, and so the error carries the response body. A sink that raised a
+    bare HTTPError would tell an operator the request failed and not why.
+    """
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = resp.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(
+            f"{who} returned {exc.code}: {exc.read().decode('utf-8', 'replace')}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"{who} unreachable: {exc.reason}") from exc
+    if not raw:
+        return None
+    try:
+        return json.loads(raw.decode("utf-8", "replace"))
+    except ValueError:
+        return None
 
 
 @dataclass
@@ -150,31 +190,112 @@ class SlackSink(NotifySink):
 
 @dataclass
 class PagerDutySink(NotifySink):
-    """PagerDuty Events API v2 sink. Stub — full impl ships in v0.4.0."""
+    """Post AAK findings to PagerDuty as Events API v2 alerts.
+
+    One `trigger` event per finding rather than one per scan. PagerDuty
+    deduplicates on `dedup_key`, so a rule that keeps firing on the same file
+    updates a single incident instead of opening a new one on every CI run,
+    which is the behaviour that makes this usable in a pipeline at all.
+    """
     routing_key: str = ""
     kind: str = "pagerduty"
 
     def send(self, findings: list[Finding], result: ScanResult) -> int:
-        raise NotImplementedError(
-            "PagerDuty sink is a v0.4.0 stub — file an issue at "
-            "https://github.com/sattyamjjain/agent-audit-kit/issues "
-            "if you need this in v0.3.x."
-        )
+        gated = [f for f in findings if _SEVERITY_ORDER[f.severity] >= _SEVERITY_ORDER[self.min_severity]]
+        if not gated:
+            return 0
+        if not self.routing_key:
+            raise RuntimeError("PagerDuty sink needs a routing_key (Events API v2 integration key).")
+
+        for finding in gated:
+            location = finding.file_path
+            if finding.line_number:
+                location += f":{finding.line_number}"
+            payload = {
+                "routing_key": self.routing_key,
+                "event_action": "trigger",
+                # Stable across runs: same rule, same location => same incident.
+                "dedup_key": f"aak:{finding.rule_id}:{location}",
+                "payload": {
+                    "summary": f"{finding.rule_id} — {finding.title}",
+                    "source": location,
+                    "severity": _PAGERDUTY_SEVERITY.get(finding.severity, "warning"),
+                    "component": finding.category.value,
+                    "custom_details": {
+                        "evidence": finding.evidence,
+                        "remediation": finding.remediation,
+                        "cve_references": finding.cve_references,
+                    },
+                },
+            }
+            _post_json(
+                "https://events.pagerduty.com/v2/enqueue",
+                payload,
+                {"Content-Type": "application/json"},
+                "PagerDuty Events API",
+            )
+        return len(gated)
 
 
 @dataclass
 class LinearTicketSink(NotifySink):
-    """Linear ticket-creation sink. Stub — full impl ships in v0.4.0."""
+    """Create one Linear issue per finding via the GraphQL API.
+
+    Linear has no dedup key, so re-running this against the same findings
+    creates duplicate issues. That is stated rather than worked around: a
+    client-side search-before-create would race in CI and silently drop
+    findings when it guessed wrong. Gate it on `min_severity` and run it from
+    one place.
+    """
     api_key: str = ""
     team_id: str = ""
     kind: str = "linear"
 
     def send(self, findings: list[Finding], result: ScanResult) -> int:
-        raise NotImplementedError(
-            "Linear sink is a v0.4.0 stub — file an issue at "
-            "https://github.com/sattyamjjain/agent-audit-kit/issues "
-            "if you need this in v0.3.x."
+        gated = [f for f in findings if _SEVERITY_ORDER[f.severity] >= _SEVERITY_ORDER[self.min_severity]]
+        if not gated:
+            return 0
+        if not self.api_key or not self.team_id:
+            raise RuntimeError("Linear sink needs both api_key and team_id.")
+
+        mutation = (
+            "mutation IssueCreate($input: IssueCreateInput!) "
+            "{ issueCreate(input: $input) { success issue { identifier } } }"
         )
+        for finding in gated:
+            location = finding.file_path
+            if finding.line_number:
+                location += f":{finding.line_number}"
+            body = (
+                f"**Severity:** {finding.severity.name}\n"
+                f"**Location:** `{location}`\n"
+                f"**Evidence:** {finding.evidence}\n\n"
+                f"**Fix:** {finding.remediation}\n"
+            )
+            if finding.cve_references:
+                body += f"\n**CVEs:** {', '.join(finding.cve_references)}\n"
+            payload = {
+                "query": mutation,
+                "variables": {
+                    "input": {
+                        "teamId": self.team_id,
+                        "title": f"{finding.rule_id} — {finding.title}",
+                        "description": body,
+                    }
+                },
+            }
+            response = _post_json(
+                "https://api.linear.app/graphql",
+                payload,
+                {"Content-Type": "application/json", "Authorization": self.api_key},
+                "Linear GraphQL API",
+            )
+            # GraphQL answers 200 with an `errors` array rather than an HTTP
+            # error, so a bad team id or a revoked key looks like success to
+            # anything that only checks the status code.
+            if isinstance(response, dict) and response.get("errors"):
+                raise RuntimeError(f"Linear GraphQL API returned errors: {response['errors']}")
+        return len(gated)
 
 
 @dataclass
@@ -258,8 +379,11 @@ def run_notify(result: ScanResult, config: NotifyConfig) -> dict[str, int]:
         try:
             count = sink.send(result.findings, result)
         except NotImplementedError:
-            # Stub sink — record as -1 so the caller can distinguish
-            # "no findings met threshold" (0) from "sink not implemented" (-1).
+            # No sink raises this any more -- PagerDuty and Linear were the
+            # last two and both ship as of v0.6.2. The arm stays because
+            # NotifySink.send still raises it, so a third-party sink subclass
+            # that forgets to override send reports -1 rather than crashing
+            # every other sink in the same dispatch.
             sent[sink.kind] = -1
             continue
         sent[sink.kind] = count

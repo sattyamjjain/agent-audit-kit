@@ -1323,7 +1323,7 @@ def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
 #      reject `transport=stdio` overrides post-handshake).
 #
 # Architectural class is already covered by AAK-MCP-STDIO-CMD-INJ-001/
-# 002/003/004 + AAK-STDIO-001 (ships in v0.3.6, see _OX_MCP_STDIO_CVES);
+# 002/003/004 + AAK-STDIO-001 (shipped in v0.3.6, see _OX_MCP_STDIO_CVES);
 # this rule adds the product-named pin row consumers expect when
 # grepping CHANGELOG.cves.md for "DocsGPT".
 # Closes the OX MCP 2026-05-01 batch carry-list item from v0.3.12.

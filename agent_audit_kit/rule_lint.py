@@ -95,14 +95,45 @@ def _violations_for(rule_id: str, rule: Any) -> list[dict[str, str]]:
     return out
 
 
-def run_lint(*, rule_filter: str | None = None) -> list[dict[str, str]]:
-    """Run rule-lint over the registry, return list of violations."""
+def run_lint(
+    *,
+    rule_filter: str | None = None,
+    incident_filter: str | None = None,
+) -> list[dict[str, str]]:
+    """Run rule-lint over the registry, return list of violations.
+
+    Args:
+        rule_filter: Lint only this rule_id.
+        incident_filter: Lint only rules carrying this incident reference,
+            matched case-insensitively against `RuleDefinition.incident_references`.
+            `docs/roadmap/ox-mcp-2026-05-01-batch.md` documented this filter as
+            the source-of-truth check for a disclosure batch, and told readers to
+            grep by hand "until then". It had been absent for roughly forty
+            releases.
+
+    Returns:
+        A list of violation dicts, each with `rule_id` and `message`.
+    """
     out: list[dict[str, str]] = []
+    wanted = incident_filter.casefold() if incident_filter else None
     for rid, rule in RULES.items():
         if rule_filter and rid != rule_filter:
             continue
+        if wanted is not None:
+            refs = [r.casefold() for r in getattr(rule, "incident_references", [])]
+            if wanted not in refs:
+                continue
         out.extend(_violations_for(rid, rule))
     return out
 
 
-__all__ = ["run_lint"]
+def rules_for_incident(incident: str) -> list[str]:
+    """Rule ids carrying `incident` in their incident_references."""
+    wanted = incident.casefold()
+    return sorted(
+        rid for rid, rule in RULES.items()
+        if wanted in [r.casefold() for r in getattr(rule, "incident_references", [])]
+    )
+
+
+__all__ = ["run_lint", "rules_for_incident"]
