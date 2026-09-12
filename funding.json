@@ -15,7 +15,7 @@
     {
       "guid": "agent-audit-kit",
       "name": "AgentAuditKit",
-      "description": "Security scanner for MCP-connected AI agent pipelines - the \"npm audit\" for AI agents. 332 rules across 14 categories detect tool poisoning, prompt-injection sinks, unauthenticated MCP transports, leaked credentials and supply-chain risk in agent configs and code. Covers the OWASP Agentic Top 10 and MCP Top 10 in full, maps findings to 12 compliance frameworks including the EU AI Act and SOC 2, and tracks newly disclosed MCP CVEs into rules. Runs fully offline with zero cloud dependencies.",
+      "description": "Security scanner for MCP-connected AI agent pipelines - the \"npm audit\" for AI agents. 348 rules across 14 categories detect tool poisoning, prompt-injection sinks, unauthenticated MCP transports, leaked credentials and supply-chain risk in agent configs and code. Covers the OWASP Agentic Top 10 and MCP Top 10 in full, maps findings to 14 compliance frameworks including the EU AI Act and SOC 2, and tracks newly disclosed MCP CVEs into rules. Runs fully offline with zero cloud dependencies.",
       "webpageUrl": {
         "url": "https://sattyamjjain.github.io/agent-audit-kit/"
       },

@@ -60,7 +60,7 @@ project for it — run your own review in parallel.
 
 | Version | Supported |
 |---------|-----------|
-| Latest release (0.3.x) | Yes |
+| Latest release (0.6.x) | Yes |
 | Older releases | No |
 
 Only the latest release receives security updates. We recommend always running the most recent version.

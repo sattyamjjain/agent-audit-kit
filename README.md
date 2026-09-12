@@ -38,7 +38,7 @@ As a pre-commit hook:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.6.3
+    rev: v0.6.4
     hooks:
       - id: agent-audit-kit
 ```
@@ -47,7 +47,7 @@ In CI:
 
 ```yaml
 # .github/workflows/agent-security.yml
-- uses: sattyamjjain/agent-audit-kit@v0.6.3
+- uses: sattyamjjain/agent-audit-kit@v0.6.4
   with:
     severity: medium
     fail-on: high
@@ -172,7 +172,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->103<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->2,368<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->2,373<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->348<!-- /rule-count --> rules

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Repo-wide guard: no stale current-state count in any tracked ``*.md``.
+"""Repo-wide guard: no stale current-state count in any tracked ``*.md``,
+plus the non-markdown surfaces listed in ``EXTRA_TRACKED_FILES``.
 
 The `<!-- rule-count:total -->` / `<!-- scanner-count:total -->` markers and the
 `test_no_stale_hardcoded_counts_in_prose` fence only covered README / CLAUDE /
@@ -69,6 +70,13 @@ PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\b(\d+)\s+deterministic rules\b", re.I), "rules"),
     (re.compile(r"\brule\s*\((\d+)\s+total\b", re.I), "rules"),
     (re.compile(r"\b(\d+)\s+rules across (\d+)\s+scanners?\b", re.I), "rules+scanners"),
+    # "N rules across M categories" -- the sibling of the line above, and the
+    # phrasing `funding.json` uses. The categories pattern below already caught
+    # the M; nothing caught the N, so funding.json sat at 332 rules against a
+    # live 348 while every guard reported clean. Two numbers in one sentence,
+    # one of them guarded, is the same blind spot as an unguarded phrasing.
+    (re.compile(r"\b(\d+)\s+rules across (\d+)\s+(?:security\s+)?categor(?:y|ies)\b", re.I),
+     "rules+categories"),
     (re.compile(r"\b(\d+)\s+detection rules\b", re.I), "rules"),
     (re.compile(r"with (\d+) rules\b", re.I), "rules"),
     # "understand the N existing rules" (CLAUDE_PROMPT.md) — the phrasing that
@@ -146,6 +154,23 @@ def canonical_counts() -> dict[str, int]:
     }
 
 
+# Tracked non-markdown surfaces that state a current-state count in prose.
+#
+# The guard was scoped to `*.md` because that is where prose lives. `funding.json`
+# is the exception that proves the scoping wrong: its `description` is a
+# paragraph of marketing prose inside a JSON string, it is published to
+# FLOSS/fund via `.well-known/funding-manifest-urls`, and on 2026-09-12 it still
+# claimed "332 rules" and "12 compliance frameworks" against a live 348 and 14.
+# It had drifted by 16 rules and two frameworks with every guard reporting clean,
+# because no guard could see it.
+#
+# The fix is the one this repository keeps arriving at: when a surface rots
+# because nothing looked at it, make something look.
+EXTRA_TRACKED_FILES: tuple[str, ...] = (
+    "funding.json",
+)
+
+
 def _tracked_markdown() -> list[str]:
     out = subprocess.run(
         ["git", "-C", str(REPO_ROOT), "ls-files", "*.md"],
@@ -183,7 +208,7 @@ def find_stale_counts() -> list[str]:
     changelog / historical exclusions."""
     counts = canonical_counts()
     failures: list[str] = []
-    for rel in _tracked_markdown():
+    for rel in [*_tracked_markdown(), *EXTRA_TRACKED_FILES]:
         if is_excluded(rel):
             continue
         path = REPO_ROOT / rel
