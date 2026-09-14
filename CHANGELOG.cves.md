@@ -44,6 +44,38 @@ correctly-fixed server in the corpus.
 
 Dispositioned at 2026-09-14T12:52:09Z, shipped in v0.6.5.
 
+### CVE-2026-90898 (#729) is deferred, not covered
+
+A third issue opened the same day, after the two above were already in flight:
+CVE-2026-90898 (maximhq/bifrost, CVSS 9.8, CWE-284/306). Bifrost registers MCP
+clients through a management API; a stdio client is a command plus args, and
+the gateway starts that program the moment the client is added. The default is
+`governance.auth_config.is_enabled=false`, so one unauthenticated
+`POST /api/mcp/client` runs a program as the gateway user. Fixed in
+`transports/v2.1.0`.
+
+The shape is one this project already describes in three places:
+`AAK-MCP-011` (remote MCP handler with no auth middleware),
+`AAK-MCP-HTTP-NOAUTH-SERVER-001` (network-bound MCP transport with no inbound
+credential), and the `AAK-MCP-STDIO-CMD-INJ-00x` family (stdio client
+parameters built from network-controlled input).
+
+None of them fire on it. That was measured, not assumed: a faithful Bifrost
+shaped project, a Go handler that decodes a JSON body and calls
+`exec.Command(req.StdioCommand, req.StdioArgs...)` beside a config with
+`is_enabled: false` and an `0.0.0.0` bind, produces **zero findings** from a
+full `run_scan`. The STDIO family has Python, TypeScript, Java and Rust arms
+and no Go arm; the no-auth config pass wants a placeholder secret rather than
+an auth-disabled flag; and there is no `go.mod` pin surface, so the fixed
+version cannot be asserted either.
+
+So the CVE is **not** added to those rules' `cve_references`. Recording
+coverage that does not exist is worse in a scanner than recording none: it is
+the same class of drift as a stale count, except the number that rots is a
+security claim. #729 is labelled `cve-deferred` with a target date, and the
+missing Go arm is tracked separately.
+
+
 ## 2026-09-12: eight disclosures, one new rule
 
 The 2026-09-09..11 wave opened eight `cve-response` issues (#707–#714). Seven
