@@ -1449,12 +1449,19 @@ _r(
 _r(
     "AAK-TAINT-001",
     "Tool parameter flows to shell command",
-    "A @tool function parameter is passed to os.system(), subprocess, or similar "
-    "shell execution functions without sanitization.",
+    "A @tool function parameter is passed to os.system(), os.popen(), a "
+    "blocking subprocess call, subprocess.getoutput() or "
+    "asyncio.create_subprocess_shell() without sanitization. "
+    "CVE-2026-90617 (GH05TCREW PentestAgent) is the 2026 exemplar: the "
+    "`run_task` MCP tool hands its caller-supplied task string to "
+    "`asyncio.create_subprocess_shell` through LocalRuntime, reachable "
+    "remotely because the same server binds 0.0.0.0 with no credential "
+    "(that half is AAK-MCP-HTTP-NOAUTH-SERVER-001).",
     Severity.CRITICAL,
     Category.TAINT_ANALYSIS,
     "Sanitize all inputs. Use subprocess with shell=False and explicit argument lists.",
     sarif_name="TaintShellInjection",
+    cve_references=["CVE-2026-90617"],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
@@ -5942,6 +5949,18 @@ _r(
     cve_references=[
         "CVE-2026-44895", "CVE-2026-44830", "CVE-2026-50287", "CVE-2026-23744",
         "CVE-2026-49257", "CVE-2026-48989",
+        # 2026-09-14 wave. CVE-2026-90617 (PentestAgent) is scored for its
+        # os-command-injection consequence, but upstream issue #90 names the
+        # root cause as this shape: `--host` defaulting to 0.0.0.0 on an MCP
+        # HTTP server with no auth middleware, which is what makes `run_task`
+        # reachable at all. The sink half is AAK-TAINT-001.
+        "CVE-2026-90617",
+        # CVE-2026-38924 (Oraios AI Serena < 1.0.0) is the plain form of this
+        # rule with nothing else attached: the MCP server's HTTP-mode listen
+        # address was 0.0.0.0. Upstream fixed it by changing the default to
+        # localhost (commit b00ae292, "The previous default 0.0.0.0 was a
+        # potential security hazard"). No new rule: shape already owned here.
+        "CVE-2026-38924",
     ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],

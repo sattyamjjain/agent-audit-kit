@@ -16,6 +16,34 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-14: two disclosures, no new rules
+
+Both `cve-response` issues from this wave (#727, #728) map onto rules that
+already existed. They are recorded together because they arrived looking like
+two different bugs and are largely one: an MCP server on an HTTP transport,
+bound to every interface, with nothing asking the caller who they are.
+
+CVE-2026-90617 is the one that needed code. It is filed as os command
+injection, and it is that, but upstream issue #90 puts the root cause first:
+`interface/main.py` defaults `--host` to `0.0.0.0` and the Streamable-HTTP
+transport is built with no middleware, which is what makes `run_task`
+reachable at all. So the CVE is attached to both halves. Reaching the sink
+also exposed a real gap: `AAK-TAINT-001` has always claimed "os.system(),
+subprocess, or similar shell execution functions", but its sink set held only
+the blocking `subprocess` spellings, so `asyncio.create_subprocess_shell`, the
+call PentestAgent actually uses, went straight through it. That set now
+carries the asyncio form and the two `subprocess` shell helpers.
+`asyncio.create_subprocess_exec` is deliberately still not a sink: it takes an
+argv list and never reaches a shell, so treating it as one would report every
+correctly-fixed server in the corpus.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-90617 | 7.3 | `pentestagent` (rolling release, no pinnable version) | No new rule. `CVE-2026-90617` -> `AAK-TAINT-001` (parameter to shell sink) and `-> AAK-MCP-HTTP-NOAUTH-SERVER-001` (the unauthenticated 0.0.0.0 transport that makes it reachable). `AAK-TAINT-001` gained `asyncio.create_subprocess_shell`, `subprocess.getoutput` and `subprocess.getstatusoutput` as sinks, because it did not fire on the real shape. Positive and negative fixtures added. | #728 |
+| CVE-2026-38924 | 2.9 | `serena` (Oraios AI, before 1.0.0) | No new rule and no detector change. `CVE-2026-38924` -> `AAK-MCP-HTTP-NOAUTH-SERVER-001`. The rule is shape-based rather than vendor-gated, so a Serena-style entry point already satisfied its bind-all-plus-no-auth predicate; verified with a fixture rather than assumed. Upstream fixed it by defaulting to localhost (commit b00ae292). | #727 |
+
+Dispositioned at 2026-09-14T12:52:09Z, shipped in v0.6.5.
+
 ## 2026-09-12: eight disclosures, one new rule
 
 The 2026-09-09..11 wave opened eight `cve-response` issues (#707–#714). Seven

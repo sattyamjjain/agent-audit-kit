@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.5] - 2026-09-14
+
+### Fixed
+
+The 2026-09-14 CVE queue, dispositioned against rules that already existed.
+Neither disclosure got a rule of its own, and the reason is recorded in
+`CHANGELOG.cves.md` rather than inferred from the diff.
+
+- **`AAK-TAINT-001` did not fire on the shape it advertises.** The rule has
+  always described "os.system(), subprocess, or similar shell execution
+  functions", but its sink set listed only the blocking `subprocess`
+  spellings. `asyncio.create_subprocess_shell` was not in it, which is the
+  call CVE-2026-90617 (GH05TCREW PentestAgent, CVSS 7.3) actually reaches:
+  the `run_task` MCP tool hands a caller-supplied string to it through
+  LocalRuntime. A positive fixture built on the real upstream shape stayed
+  silent, so the detector was fixed rather than the fixture.
+
+  The sink set now also carries `subprocess.getoutput` and
+  `subprocess.getstatusoutput`, which were missing for the same reason.
+  `asyncio.create_subprocess_exec` is deliberately excluded: it takes an argv
+  list and never reaches a shell, so making it a sink would report every
+  correctly-fixed server. The benign-slice false-positive benchmark is
+  unchanged at 0 of 1 across 536 servers.
+
+### Added
+
+- **CVE-2026-90617 mapped to both of its halves.** Upstream issue #90 names
+  the root cause as an MCP HTTP server defaulting `--host` to `0.0.0.0` with
+  no auth middleware, which is what makes `run_task` reachable. The CVE is
+  therefore attached to `AAK-MCP-HTTP-NOAUTH-SERVER-001` as well as to
+  `AAK-TAINT-001`, with fixtures covering both.
+
+- **CVE-2026-38924 (Oraios AI Serena before 1.0.0, CVSS 2.9) mapped to
+  `AAK-MCP-HTTP-NOAUTH-SERVER-001`.** The HTTP-mode listen address was
+  `0.0.0.0`; upstream changed the default to localhost in commit b00ae292.
+  That rule is shape-based rather than gated to a named vendor dependency, so
+  a Serena-style entry point already satisfied its predicate. Confirmed with a
+  fixture rather than assumed, and no rule family was created for it.
+
 ## [0.6.4] - 2026-09-12
 
 ### Fixed

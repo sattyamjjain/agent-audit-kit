@@ -3983,11 +3983,13 @@
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-23744",
+        "CVE-2026-38924",
         "CVE-2026-44830",
         "CVE-2026-44895",
         "CVE-2026-48989",
         "CVE-2026-49257",
-        "CVE-2026-50287"
+        "CVE-2026-50287",
+        "CVE-2026-90617"
       ],
       "eu_ai_act": [
         "Art. 15 - Robustness & Security"
@@ -7213,7 +7215,9 @@
     },
     {
       "category": "taint-analysis",
-      "cve_references": [],
+      "cve_references": [
+        "CVE-2026-90617"
+      ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
         "Art. 15 - Robustness & Security"
@@ -7837,7 +7841,7 @@
       "low": 9,
       "medium": 93
     },
-    "total_cves_covered": 211,
+    "total_cves_covered": 213,
     "total_rules": 348
   },
   "tool": "agent-audit-kit"

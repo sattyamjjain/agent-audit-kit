@@ -29,6 +29,18 @@ _SINKS: dict[str, set[tuple[str | None, str]]] = {
         ("subprocess", "Popen"),
         ("subprocess", "check_output"),
         ("subprocess", "check_call"),
+        # Shell-executing primitives the rule's own description already claims
+        # ("os.system(), subprocess, or similar shell execution functions")
+        # but the set omitted. `asyncio.create_subprocess_shell` is the sink in
+        # CVE-2026-90617: PentestAgent's `run_task` tool hands a caller-supplied
+        # string to it through LocalRuntime, and the rule stayed silent on the
+        # real shape because only the blocking `subprocess` spellings were here.
+        # `asyncio.create_subprocess_exec` is deliberately absent: it takes an
+        # argv list and never reaches a shell, so it is the fixed form, not a
+        # sink. Same split as `subprocess.run(..., shell=True)` vs a list.
+        ("asyncio", "create_subprocess_shell"),
+        ("subprocess", "getoutput"),
+        ("subprocess", "getstatusoutput"),
     },
     "AAK-TAINT-002": {
         (None, "eval"),

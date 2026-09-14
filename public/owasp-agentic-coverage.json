@@ -1,7 +1,7 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-12T17:36:34Z",
-  "aak_version": "0.6.4",
+  "last_updated": "2026-09-14T12:54:52Z",
+  "aak_version": "0.6.5",
   "rule_count": 348,
   "coverage": [
     {
@@ -905,11 +905,13 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-23744",
+            "CVE-2026-38924",
             "CVE-2026-44830",
             "CVE-2026-44895",
             "CVE-2026-48989",
             "CVE-2026-49257",
-            "CVE-2026-50287"
+            "CVE-2026-50287",
+            "CVE-2026-90617"
           ],
           "aicm_references": []
         },
@@ -2464,7 +2466,9 @@
         {
           "id": "AAK-TAINT-001",
           "severity": "critical",
-          "cve_references": [],
+          "cve_references": [
+            "CVE-2026-90617"
+          ],
           "aicm_references": [
             "AIS-07"
           ]
