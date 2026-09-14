@@ -77,6 +77,10 @@ Changelog = "https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_audit_kit"]
+# Nested CLAUDE.md files (agent_audit_kit/scanners/CLAUDE.md) are Claude Code
+# memory for contributors, not package data. Hatch ships every non-ignored file
+# under the package directory, so without this they would land in the wheel.
+exclude = ["**/CLAUDE.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
