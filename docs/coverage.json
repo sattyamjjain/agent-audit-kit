@@ -3135,6 +3135,8 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-73496",
+        "CVE-2026-73497",
         "CVE-2026-73498"
       ],
       "eu_ai_act": [
@@ -3602,7 +3604,8 @@
       "cve_references": [
         "CVE-2026-44968",
         "CVE-2026-44969",
-        "CVE-2026-44970"
+        "CVE-2026-44970",
+        "CVE-2026-55837"
       ],
       "eu_ai_act": [
         "Art. 13 - Transparency",
@@ -4202,6 +4205,29 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-55235"
+      ],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001",
+      "severity": "medium",
+      "title": "langgraph-api < 0.10.0 (loopback webhook bypasses per-user authorization)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-71433"
       ],
       "eu_ai_act": [
@@ -4227,7 +4253,8 @@
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-48121"
+        "CVE-2026-48121",
+        "CVE-2026-55253"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance",
@@ -4735,6 +4762,7 @@
         "CVE-2026-55529",
         "CVE-2026-55531",
         "CVE-2026-55532",
+        "CVE-2026-57124",
         "CVE-2026-61427"
       ],
       "eu_ai_act": [
@@ -7854,7 +7882,7 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 111,
+      "supply-chain": 112,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
@@ -7864,24 +7892,24 @@
       "Art. 10 - Data Governance": 120,
       "Art. 13 - Transparency": 32,
       "Art. 14 - Human Oversight": 40,
-      "Art. 15 - Robustness & Security": 206,
+      "Art. 15 - Robustness & Security": 207,
       "Art. 9 - Risk Management": 119
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 81,
       "Constrain and sandbox tool execution (p.11)": 105,
-      "Design for boundaries (p.10)": 181,
+      "Design for boundaries (p.10)": 182,
       "Filter and monitor output pipelines and chained execution (p.12)": 77,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 152,
-      "Sign and verify MCP messages (p.12)": 151,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 153,
+      "Sign and verify MCP messages (p.12)": 152,
       "Track and patch MCP related vulnerabilities (p.13)": 92,
       "Validate parameters (p.11)": 109
     },
     "by_owasp_agentic": {
       "ASI01": 15,
       "ASI02": 49,
-      "ASI03": 73,
+      "ASI03": 74,
       "ASI04": 75,
       "ASI05": 56,
       "ASI06": 48,
@@ -7896,7 +7924,7 @@
       "MCP03:2025": 38,
       "MCP04:2025": 40,
       "MCP05:2025": 58,
-      "MCP06:2025": 19,
+      "MCP06:2025": 20,
       "MCP07:2025": 34,
       "MCP08:2025": 7,
       "MCP09:2025": 29,
@@ -7907,10 +7935,10 @@
       "high": 161,
       "info": 5,
       "low": 9,
-      "medium": 94
+      "medium": 95
     },
-    "total_cves_covered": 214,
-    "total_rules": 351
+    "total_cves_covered": 220,
+    "total_rules": 352
   },
   "tool": "agent-audit-kit"
 }

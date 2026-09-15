@@ -3650,7 +3650,9 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-73498"
+        "CVE-2026-73498",
+        "CVE-2026-73496",
+        "CVE-2026-73497"
       ],
       "description": "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, before 0.22.0 passes the client-supplied `file_path` argument of `confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py`, without routing it through `validate_safe_path`. An authenticated MCP client can therefore read any file the server process can reach and exfiltrate it to Confluence as an attachment. Because the tool is agent-callable, untrusted content that induces an agent to call it reaches the same primitive, disclosing server environment material such as `CONFLUENCE_API_TOKEN` and other credentials (CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
       "incident_references": [],
@@ -4202,7 +4204,8 @@
       "cve_references": [
         "CVE-2026-44968",
         "CVE-2026-44970",
-        "CVE-2026-44969"
+        "CVE-2026-44969",
+        "CVE-2026-55837"
       ],
       "description": "`dbt-mcp` before 1.17.1 appends unsanitized `node_selection` / `resource_type` values to the dbt subprocess argv, letting an MCP client inject dbt global flags such as `--profiles-dir` / `--project-dir` / `--target` into `subprocess.Popen` even with `shell=False` (CVE-2026-44968); it also emits every tool call's full arguments (`sql_query`, `vars`, `node_selection`) through telemetry (CVE-2026-44970, on by default) and file logging (CVE-2026-44969) without redaction. Treat < 1.17.1 (and unpinned) as exposed.",
       "incident_references": [],
@@ -4965,6 +4968,30 @@
       "title": "Langflow MCP stdio launcher env-var-injection RCE (1.0.0\u2013<1.11.6)"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-55235"
+      ],
+      "description": "`langgraph-api` before 0.10.0 lets a run or cron name a *relative* webhook target, delivered over an in-process loopback transport that the authentication middleware treats as internal: the external auth context is never applied. In a deployment that separates threads and runs by per-user authorization, an authenticated user can aim a webhook at the server's own thread and run routes and create a run on, or modify, another user's thread, pulling some of the targeted thread's metadata into the created run record (CVE-2026-55235, MEDIUM CVSS 5.9). Fixed in 0.10.0. The fix does not make loopback delivery safe in general: a deployment that deliberately re-enables it still carries unauthenticated webhooks and must restrict them to controlled same-process routes.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP06:2025"
+      ],
+      "remediation": "Upgrade `langgraph-api` to 0.10.0 or later. If loopback webhook delivery is re-enabled deliberately, restrict the targets to a controlled same-process allowlist and do not treat a transport being in-process as an authorization decision.",
+      "rule_id": "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001",
+      "sarif_name": "McpLangGraphApiWebhookAuthBypass",
+      "severity": "medium",
+      "title": "langgraph-api < 0.10.0 (loopback webhook bypasses per-user authorization)"
+    },
+    {
       "adversa_references": [
         "ADV-SUPPLY-01"
       ],
@@ -5006,7 +5033,8 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-48121"
+        "CVE-2026-48121",
+        "CVE-2026-55253"
       ],
       "description": "`@langchain/langgraph-checkpoint-mongodb` (the LangGraph.js MongoDB CheckpointSaver) at 1.3.0 and below passes checkpoint identifiers (`thread_id`, `checkpoint_ns`, `checkpoint_id`) from `config.configurable` into MongoDB `find()` queries in `MongoDBSaver.getTuple()` without type enforcement. An attacker who supplies an object payload (e.g. the MongoDB operators `$gt` / `$ne`) instead of a string has it interpreted as a query operator, bypassing thread scoping and leaking checkpoints, including pending writes, across tenants (CVE-2026-48121, CVSS 6.7). Fixed in 1.3.1; treat <= 1.3.0 (and unpinned) as exposed.",
       "incident_references": [],
@@ -5640,7 +5668,8 @@
         "CVE-2026-48168",
         "CVE-2026-55532",
         "CVE-2026-55529",
-        "CVE-2026-55531"
+        "CVE-2026-55531",
+        "CVE-2026-57124"
       ],
       "description": "PraisonAI before 4.6.78 exposes the MCP HTTP-stream transport without authentication by default: `praisonai mcp serve --transport http-stream` defaults `--api-key` to None and only enforces Authorization/Bearer checks when a key is configured, so an unauthenticated client can initialize a session, enumerate tools (`tools/list`), and invoke them (`tools/call`); arguments are also forwarded without validating the advertised inputSchema (CVE-2026-61427, CVSS 7.3). The same pin also covers CVE-2026-47394 \u2014 an arbitrary-file-read path traversal via `workflow.show` (and the dispatcher's unvalidated `**kwargs` from `tools/call`), an incomplete prior path-handling fix that was fully closed only in 4.6.40. The same floor also covers CVE-2026-48168 (CVSS 10, fixed 4.6.40): a command injection in PraisonAI's bundled Claude GitHub Actions workflow that splices an attacker-controlled pull-request branch name into a Bash `run:` block, with any `@claude` comment able to trigger the job, so a fork PR reaches arbitrary execution in the Actions runner. The 4.6.78 floor is the highest of the three, so a project pinned below it is exposed to all of them. Default bind is 127.0.0.1, so remote reach needs a network bind. Treat < 4.6.78 (and unpinned) as exposed.",
       "incident_references": [],

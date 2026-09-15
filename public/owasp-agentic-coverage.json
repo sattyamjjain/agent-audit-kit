@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-15T17:31:15Z",
-  "aak_version": "0.6.5",
-  "rule_count": 351,
+  "last_updated": "2026-09-15T18:38:49Z",
+  "aak_version": "0.6.6",
+  "rule_count": 352,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -663,7 +663,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 73,
+      "rule_density": 74,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -939,6 +939,14 @@
             "IAM-01",
             "IVS-04"
           ]
+        },
+        {
+          "id": "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-55235"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-N8N-CVE-2026-65594-001",
@@ -1689,7 +1697,8 @@
           "id": "AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
           "severity": "medium",
           "cve_references": [
-            "CVE-2026-48121"
+            "CVE-2026-48121",
+            "CVE-2026-55253"
           ],
           "aicm_references": [
             "AIS-07",
@@ -1778,6 +1787,7 @@
             "CVE-2026-55529",
             "CVE-2026-55531",
             "CVE-2026-55532",
+            "CVE-2026-57124",
             "CVE-2026-61427"
           ],
           "aicm_references": [
@@ -2269,6 +2279,8 @@
           "id": "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-73496",
+            "CVE-2026-73497",
             "CVE-2026-73498"
           ],
           "aicm_references": []
@@ -3185,7 +3197,8 @@
           "cve_references": [
             "CVE-2026-44968",
             "CVE-2026-44969",
-            "CVE-2026-44970"
+            "CVE-2026-44970",
+            "CVE-2026-55837"
           ],
           "aicm_references": [
             "AIS-07",

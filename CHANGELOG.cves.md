@@ -16,6 +16,34 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-16: ten disclosures, one new rule, four out of scope
+
+The watcher opened ten `cve-response` issues across 2026-09-14 and 09-15
+(#732-#741). Six were in scope. The four that were not are the more
+interesting half.
+
+**Four Apache Storm advisories, out of scope.** CVE-2026-82439 (DRPC memory
+exhaustion), CVE-2026-82428 (blob-key collision), CVE-2026-82427
+(`topology.blobstore.map` path traversal) and CVE-2026-82429 (setuid
+worker-launcher TOCTOU) are all Apache Storm, a distributed stream processor.
+None of it is MCP or an agent pipeline. They matched because every one of those
+advisories credits "the ASF, found using Claude agents to study the security of
+open-source projects": the watcher matched the word "agents" in an
+acknowledgement line. That is the same collision as CVE-2026-89622, where
+MCP2221, a Microchip USB-to-I2C bridge, matched on the acronym. Right bias for
+a watcher, wrong answer for a rule, and no rule records them.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-57124 | 9.8 | `praisonai` | No new rule. Unauthenticated `POST /api/mcp/connect` with caller-controlled `command`/`args` into `StdioMCPClient` and a 0.0.0.0 bind, which is `AAK-MCP-PRAISONAI-CVE-2026-61427-001`'s own shape. Fixed 4.6.59, below the existing 4.6.78 floor, so every affected version already fires. Recorded in `cve_references`. | #732 |
+| CVE-2026-73496 | 7.7 | `mcp-atlassian` | No new rule. Same unconfined `file_path`, this time in `jira_update_issue`. Fixed 0.22.0, the existing floor exactly. | #737 |
+| CVE-2026-73497 | 6.5 | `mcp-atlassian` | No new rule. `X-Atlassian-*-Url` resolved at middleware time and again at connect time with no IP pinning, so a rebinding name reaches cloud metadata. Same 0.22.0 fix release. | #740 |
+| CVE-2026-55837 | 6.8 | `dbt-mcp` | **Floor raised 1.17.1 to 1.20.0.** The local OAuth helper serves `GET /dbt_platform_context` unauthenticated with no Host validation, handing access and refresh tokens to anything reaching `127.0.0.1:6785`, and the missing `TrustedHostMiddleware` opens it to DNS rebinding. The fix is above the old floor, so 1.17.1 through 1.19.x were vulnerable and silent: this is the case a `cve_references` line cannot cover. | #739 |
+| CVE-2026-55253 | 7.7 | `langgraph-checkpoint-mongodb`, `langgraph-store-mongodb` | **Two new pins on the existing rule.** The same `$`-prefixed-key NoSQL injection as CVE-2026-48121, but in the PyPI distributions; the existing pin names the npm `@langchain/...` package and could not see either. Floors 0.3.0 and 0.4.0. | #738 |
+| CVE-2026-55235 | 5.9 | `langgraph-api` | **New rule** `AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001`. A relative webhook target delivered over the in-process loopback transport skips the external auth context, so an authenticated user can create or modify a run on another user's thread. Floor 0.10.0. | #741 |
+
+Dispositioned at 2026-09-15T18:38:33Z, shipped in v0.6.6.
+
 ## 2026-09-14: two disclosures, no new rules
 
 Both `cve-response` issues from this wave (#727, #728) map onto rules that

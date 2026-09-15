@@ -284,8 +284,12 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="0.5.2"),
     _Pin("AAK-MCP-N8NMCP-CVE-2026-54052-001", "n8n-mcp", ("n8n-mcp",), (2, 57, 4),
          fix_label="2.57.4", regexes=(_N8N_MCP_RE,)),
-    _Pin("AAK-MCP-DBTMCP-CVE-2026-44968-001", "dbt-mcp", ("dbt-mcp",), (1, 17, 1),
-         fix_label="1.17.1"),
+    # Floor raised 1.17.1 -> 1.20.0 on 2026-09-16 for CVE-2026-55837: the local
+    # OAuth helper serves GET /dbt_platform_context unauthenticated with no Host
+    # validation, handing out access and refresh tokens. 1.17.1 through 1.19.x
+    # were vulnerable and, at the old floor, silent.
+    _Pin("AAK-MCP-DBTMCP-CVE-2026-44968-001", "dbt-mcp", ("dbt-mcp",), (1, 20, 0),
+         fix_label="1.20.0"),
     # Floor moved 0.9.21 -> 0.10.11 for CVE-2026-50143 (Actor path-authority token
     # leak). Same package, same rule: a second pin on the same name would report the
     # one dependency twice, and the higher floor already covers the lower one.
@@ -384,6 +388,23 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
          "@langchain/langgraph-checkpoint-mongodb",
          ("@langchain/langgraph-checkpoint-mongodb",), (1, 3, 1), fix_label="1.3.1"),
+    # CVE-2026-55253 (HIGH 7.7) is the same defect in the *PyPI* distributions,
+    # which the npm pin above does not see: MongoDBSaver.list/alist and
+    # MongoDBStore.search fold caller-controlled filter dicts into the query
+    # without recursively rejecting `$`-prefixed keys, so `$regex` / `$where`
+    # defeat the equality filter a multi-tenant deployment relies on. Two
+    # packages, two fix releases, so two pins rather than one.
+    _Pin("AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+         "langgraph-checkpoint-mongodb",
+         ("langgraph-checkpoint-mongodb",), (0, 3, 0), fix_label="0.3.0"),
+    _Pin("AAK-MCP-LANGGRAPH-MONGO-CVE-2026-48121-001",
+         "langgraph-store-mongodb",
+         ("langgraph-store-mongodb",), (0, 4, 0), fix_label="0.4.0"),
+    # langgraph-api < 0.10.0: a relative webhook target delivered over the
+    # in-process loopback transport skips the external auth context, so an
+    # authenticated user can create or modify a run on another user's thread.
+    _Pin("AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001", "langgraph-api",
+         ("langgraph-api",), (0, 10, 0), fix_label="0.10.0"),
     # --- 2026-08-06 wave ---
     # awslabs.documentdb-mcp-server (PyPI) < 1.0.12: write-capable aggregation
     # pipeline stages bypass read-only-mode enforcement → unauthorized writes

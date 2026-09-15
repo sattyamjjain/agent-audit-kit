@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-09-16
+
 ### Fixed
 
 - **A run whose scanner crashed no longer reports success (#743).** One invalid
@@ -45,6 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   become a phrase matcher.
 
 ### Added
+
+- **The 2026-09-16 CVE queue, dispositioned (#732-#741).** Ten watcher issues:
+  four Apache Storm advisories closed as out of scope (they matched on the word
+  "agents" in a credit line, the same collision as MCP2221), three recorded
+  against floors that already covered them, one floor raised (`dbt-mcp` 1.17.1
+  to 1.20.0, since 1.17.1 through 1.19.x were vulnerable and silent), two new
+  pins for the PyPI LangGraph MongoDB packages the npm pin could not see, and
+  one new rule `AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001`.
 
 - **`AAK-SKILL-006`**, hidden instruction in a `SKILL.md` body. `AAK-AGENT-005`
   has flagged HTML-comment payloads in named instruction files since v0.2, but
