@@ -49,9 +49,15 @@ def test_rules_are_registered() -> None:
     assert "GHSA-76pc-mqxp-3rq5" in RULES[NOAUTH_RULE].incident_references
 
 
-def test_scan_reports_both_rules_as_evaluated(tmp_path: Path) -> None:
-    _, evaluated = scan(tmp_path)
-    assert evaluated == {NOAUTH_RULE, REBIND_RULE}
+def test_scan_reports_scanned_files_not_rule_ids(tmp_path: Path) -> None:
+    """The second tuple element is scanned file paths, not rule ids (#743).
+
+    This test used to assert the opposite. The engine unions that set into
+    ``files_scanned``, so returning rule ids made an empty directory report
+    files it never opened, and rule coverage is computed separately from the
+    active rule set regardless.
+    """
+    assert scan(tmp_path)[1] == set()
 
 
 # --------------------------------------------------------------------------

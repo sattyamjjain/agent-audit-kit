@@ -8566,6 +8566,33 @@ _r(
 
 
 _r(
+    "AAK-MCP-CONFIG-MALFORMED-001",
+    "MCP server entry has a field of the wrong type",
+    "An `mcpServers` entry declares a field whose type does not match the MCP "
+    "client schema -- most often `args` as a scalar instead of a list of "
+    "strings. Clients disagree about what to do with it: some coerce, some "
+    "ignore the field, some refuse to start the server. A config that one "
+    "client launches and another silently drops is a security fact, not a "
+    "cosmetic one, because the reviewed configuration and the running "
+    "configuration stop being the same thing. AAK's own composition pass "
+    "crashed on `\"args\": 42` (issue #743), which is how this was found: the "
+    "scan reported a clean project because the scanner that would have "
+    "objected died before it could.",
+    Severity.MEDIUM,
+    Category.MCP_CONFIG,
+    "Give the field the type the MCP schema defines: `args` must be a list of "
+    "strings (`[\"--port\", \"8080\"]`, not `8080`). Validate agent configs in "
+    "CI so a client-specific coercion never decides what runs.",
+    sarif_name="McpConfigMalformedField",
+    # Tool/launch integrity: when clients disagree about how to coerce a field,
+    # the server that runs is not necessarily the server that was reviewed.
+    # Deliberately no AICM or CVE row -- this rule evidences neither, and a tick
+    # a scanner cannot substantiate is worse than a blank.
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+)
+
+_r(
     "AAK-INTERNAL-SCANNER-FAIL",
     "Scanner module raised an exception",
     "A scanner module crashed during execution. The scan continued with the "

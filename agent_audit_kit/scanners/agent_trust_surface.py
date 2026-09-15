@@ -169,15 +169,14 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         project_root: The root directory of the project to scan.
 
     Returns:
-        A tuple of (findings, set of rule ids this scanner evaluates).
+        A tuple of (findings, set of scanned file paths relative to
+        ``project_root``). This used to return the rule ids the scanner
+        evaluates, which the engine unions into ``files_scanned`` -- so an
+        empty directory reported four files that do not exist (issue #743).
+        Rule coverage is computed separately, from the active rule set.
     """
     findings: list[Finding] = []
-    evaluated = {
-        "AAK-AGENT-TRUST-001",
-        "AAK-AGENT-TRUST-002",
-        "AAK-AGENT-TRUST-003",
-        "AAK-AGENT-TRUST-004",
-    }
+    scanned: set[str] = set()
 
     surfaces = _present_surfaces(project_root)
     surface_note = (
@@ -192,6 +191,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         text = _read(wf)
         if not text:
             continue
+        scanned.add(wf.relative_to(project_root).as_posix())
         hit = _headless_hit(text)
         if not hit:
             continue
@@ -232,6 +232,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         text = _read(p)
         if not text:
             continue
+        scanned.add(rel_name)
         m = _TRUST_FLAG_RE.search(text)
         if m:
             findings.append(
@@ -261,6 +262,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         text = _read(p)
         if not text:
             continue
+        scanned.add(p.relative_to(project_root).as_posix())
         m = _SHELL_PAYLOAD_RE.search(text)
         if m:
             findings.append(
@@ -275,4 +277,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 )
             )
 
-    return findings, evaluated
+    return findings, scanned

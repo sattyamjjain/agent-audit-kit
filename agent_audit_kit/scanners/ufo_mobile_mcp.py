@@ -173,10 +173,13 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         project_root: The root directory of the project to scan.
 
     Returns:
-        A tuple of (list of findings, set of evaluated rule IDs).
+        A tuple of (findings, set of scanned file paths relative to
+        ``project_root``). Used to return the rule id instead, which the
+        engine unions into ``files_scanned`` (issue #743).
     """
     findings: list[Finding] = []
-    evaluated = {_RULE_ID}
+    scanned: set[str] = set()
+    # `seen` de-duplicates *reported* files; `scanned` counts every file read.
     seen: set[str] = set()
 
     for path in sorted(project_root.rglob("*")):
@@ -201,6 +204,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             raw = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
+        scanned.add(path.relative_to(project_root).as_posix())
 
         why = None
         if is_dep:
@@ -241,4 +245,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             anchor,
         ))
 
-    return findings, evaluated
+    return findings, scanned

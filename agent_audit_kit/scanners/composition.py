@@ -315,7 +315,18 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
                 continue
             url = cfg.get("url") or cfg.get("serverUrl") or ""
             command = cfg.get("command") or ""
-            args = [str(a) for a in (cfg.get("args") or []) if isinstance(a, (str, int))]
+            # A non-list `args` (e.g. `"args": 42`) used to raise TypeError here
+            # and take the whole scanner down, which the engine then recorded at
+            # INFO and the run exited 0 on (issue #743). The malformed value is
+            # reported by AAK-MCP-CONFIG-MALFORMED-001 in the mcp_config scanner,
+            # which owns config validity; this pass only has to not crash, and to
+            # treat an unusable argv as absent rather than guessing at it.
+            raw_args = cfg.get("args")
+            args = (
+                [str(a) for a in raw_args if isinstance(a, (str, int))]
+                if isinstance(raw_args, list)
+                else []
+            )
             env = cfg.get("env") if isinstance(cfg.get("env"), dict) else {}
 
             surface = " ".join([str(name), str(command), " ".join(args)])

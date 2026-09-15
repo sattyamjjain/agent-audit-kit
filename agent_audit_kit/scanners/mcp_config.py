@@ -301,6 +301,38 @@ def _check_server(
     return findings
 
 
+# Fields whose MCP-schema type every client agrees on. `args` as a scalar is the
+# shape reported in issue #743; it crashed the composition pass rather than
+# being reported, so the run exited 0 on a config no client would agree about.
+_EXPECTED_FIELD_TYPES: dict[str, tuple[type, ...]] = {
+    "args": (list,),
+    "command": (str,),
+    "env": (dict,),
+    "url": (str,),
+}
+
+
+def _check_malformed_fields(
+    server_name: str, server_cfg: dict, rel_path: str, raw_text: str
+) -> list[Finding]:
+    """AAK-MCP-CONFIG-MALFORMED-001: a server field with the wrong JSON type."""
+    findings: list[Finding] = []
+    for field, expected in sorted(_EXPECTED_FIELD_TYPES.items()):
+        if field not in server_cfg:
+            continue
+        value = server_cfg[field]
+        if value is None or isinstance(value, expected):
+            continue
+        findings.append(_make_finding(
+            "AAK-MCP-CONFIG-MALFORMED-001", rel_path,
+            f"server {server_name!r} declares {field!r} as "
+            f"{type(value).__name__}, expected "
+            f"{' or '.join(t.__name__ for t in expected)}",
+            _find_line_number(raw_text, f'"{field}"'),
+        ))
+    return findings
+
+
 def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned_files: set[str] = set()
@@ -331,6 +363,7 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
 
         for server_name, server_cfg in servers.items():
             if isinstance(server_cfg, dict):
+                findings.extend(_check_malformed_fields(server_name, server_cfg, rel_path, raw_text))
                 findings.extend(_check_server(server_name, server_cfg, rel_path, raw_text))
 
         # AAK-MCP-ATTEST-001: Servers admitted without attestation

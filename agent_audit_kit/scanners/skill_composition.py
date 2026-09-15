@@ -195,13 +195,16 @@ def _egress_contributors(skills: list[_Skill], allowlist: set[str]) -> list[_Ski
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Scan skill sets for capability-union boundary violations (AAK-AGENT-COMPOSE-001)."""
     findings: list[Finding] = []
-    evaluated = {_RULE_ID}
+    scanned: set[str] = set()
 
     boundaries, allowlist = _load_boundaries(project_root)
+    skill_sets = _skill_sets(project_root)
+    for skills in skill_sets.values():
+        scanned.update(s.rel for s in skills)
     if not boundaries:
-        return findings, evaluated
+        return findings, scanned
 
-    for container, skills in _skill_sets(project_root).items():
+    for container, skills in skill_sets.items():
         if len(skills) < 2:
             continue  # composition needs at least two artifacts
         for boundary in boundaries:
@@ -228,7 +231,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 project_root, container, skills, left_skills, right_skills, boundary, left,
             ))
 
-    return findings, evaluated
+    return findings, scanned
 
 
 def _compose_finding(

@@ -317,6 +317,23 @@ def format_results(
                 "automationDetails": {
                     "id": "agent-audit-kit/",
                 },
+                # SARIF 2.1.0 §3.20: `invocations[].executionSuccessful` is the
+                # schema's own answer to "did the tool run cleanly", and
+                # `toolExecutionNotifications` (§3.20.21) is where a tool reports
+                # its own failures. A crashed scanner is a tool-execution
+                # problem, not a finding about the scanned code, so it belongs
+                # here as well as in `results` -- GitHub code scanning and other
+                # consumers read this field, and a run that reported zero results
+                # with four dead scanners previously looked clean (issue #743).
+                "invocations": [
+                    {
+                        "executionSuccessful": not result.scanner_failures,
+                        "toolExecutionNotifications": [
+                            _scanner_failure_notification(f)
+                            for f in result.scanner_failures
+                        ],
+                    }
+                ],
                 "results": [
                     _finding_to_result(f, rule_index_map, project_root, fingerprint_strategy)
                     for f in filtered
@@ -326,3 +343,17 @@ def format_results(
     }
 
     return json.dumps(sarif_doc, indent=2)
+
+
+def _scanner_failure_notification(finding) -> dict:
+    """A SARIF `notification` object (§3.58) for one crashed scanner."""
+    return {
+        "level": "error",
+        "message": {
+            "text": (
+                f"Scanner crashed; the rules it owns were not evaluated. "
+                f"{finding.evidence}"
+            )
+        },
+        "descriptor": {"id": finding.rule_id},
+    }

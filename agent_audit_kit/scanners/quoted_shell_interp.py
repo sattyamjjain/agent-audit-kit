@@ -492,7 +492,7 @@ def _default_profile_finding(
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Flag quoted shell interpolation and default-profile reachability."""
     findings: list[Finding] = []
-    evaluated = {INTERP_RULE, PROFILE_RULE}
+    scanned: set[str] = set()
 
     for path in sorted(project_root.rglob("*")):
         if not path.is_file():
@@ -514,6 +514,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
 
         rel = str(path.relative_to(project_root))
+        scanned.add(rel)
         if suffix == ".py":
             found, exec_tools = _scan_python(text, rel)
         else:
@@ -527,4 +528,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             if profile is not None:
                 findings.append(profile)
 
-    return findings, evaluated
+    return findings, scanned

@@ -66,6 +66,16 @@ __all__ = ["scan_cmd"]
     help="Exit code 1 if any finding meets or exceeds this severity. Default: none.",
 )
 @click.option(
+    "--allow-scanner-failure",
+    is_flag=True,
+    default=False,
+    help=(
+        "Exit 0 even when a scanner crashed. Off by default: a run whose "
+        "scanners died is incomplete, and an incomplete scan that exits 0 is "
+        "indistinguishable from a clean one (issue #743)."
+    ),
+)
+@click.option(
     "--config",
     "config_path",
     type=click.Path(),
@@ -164,6 +174,7 @@ def scan_cmd(
     preset: str | None,
     profile: str | None,
     fail_on: str,
+    allow_scanner_failure: bool,
     config_path: str | None,
     ci: bool,
     verbose: bool,
@@ -209,6 +220,7 @@ def scan_cmd(
             rules=rules,
             exclude_rules=exclude_rules,
             fail_on=fail_on,
+            allow_scanner_failure=allow_scanner_failure,
             config_path=config_path,
             ci=ci,
             verbose=verbose,
@@ -244,6 +256,7 @@ def _run_scan(
     rules: str | None,
     exclude_rules: str | None,
     fail_on: str,
+    allow_scanner_failure: bool,
     config_path: str | None,
     ci: bool,
     verbose: bool,
@@ -450,6 +463,34 @@ def _run_scan(
                     click.echo(f"  {r.rule_id} -> {r.url}", err=True)
                 else:
                     click.echo(f"  {r.rule_id} FAILED: {r.error}", err=True)
+
+    # --- Scanner-failure exit path (issue #743) ---
+    #
+    # Deliberately ahead of --fail-on and independent of it. --fail-on answers
+    # "were the findings bad enough to fail?"; this answers "did the scan
+    # actually run?", and the second question has to be settled first, because
+    # a threshold applied to the findings of a scan that half-happened is a
+    # measurement of nothing. The reported shape was exit 0 on a run where four
+    # scanners died, no --fail-on set, and every MCP config rule skipped.
+    #
+    # The opt-out is a flag rather than the default so that the safe state is
+    # what you get by not thinking about it.
+    failures = result.scanner_failures
+    if failures and not allow_scanner_failure:
+        click.echo("", err=True)
+        click.echo(
+            f"INCOMPLETE: {len(failures)} scanner(s) crashed; the rules they own "
+            f"were not evaluated. This scan cannot show a clean result.",
+            err=True,
+        )
+        for f in failures:
+            click.echo(f"  {f.evidence}", err=True)
+        click.echo(
+            "  Pass --allow-scanner-failure to exit 0 anyway, and please file "
+            "the crash at https://github.com/sattyamjjain/agent-audit-kit/issues",
+            err=True,
+        )
+        sys.exit(EXIT_FINDINGS)
 
     # --- Fail-on threshold check ---
     if fail_on != "none":

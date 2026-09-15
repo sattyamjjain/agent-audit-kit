@@ -155,11 +155,12 @@ def _complete_external_url(frag: str, allowlist: set[str]) -> bool:
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Scan session transcripts for spliced file-path / URL reassembly (AAK-AGENT-COMPOSE-002)."""
     findings: list[Finding] = []
-    evaluated = {_RULE_ID}
+    scanned: set[str] = set()
 
     sensitive, allowlist = _load_session_config(project_root)
 
     for rel, calls in _transcripts(project_root):
+        scanned.add(rel)
         for run in _same_tool_runs(calls):
             tool = str(run[0][1].get("tool")).lower()
             if tool in _FILE_TOOLS:
@@ -190,7 +191,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     continue
                 findings.append(_finding(rel, run, tool, reassembled, f"non-allowlisted host {host!r}", frags))
 
-    return findings, evaluated
+    return findings, scanned
 
 
 def _finding(rel: str, run: list[tuple[int, dict]], tool: str, reassembled: str, why: str, frags: list[str]) -> Finding:

@@ -40,8 +40,15 @@ def test_rule_is_registered() -> None:
     assert "CVE-2026-73296" in rule.cve_references
 
 
-def test_scanner_always_reports_the_rule_as_evaluated(tmp_path: Path) -> None:
-    assert scan(tmp_path)[1] == {RULE}
+def test_scan_reports_scanned_files_not_rule_ids(tmp_path: Path) -> None:
+    """The second tuple element is scanned file paths, not rule ids (#743).
+
+    This test used to assert the opposite. The engine unions that set into
+    ``files_scanned``, so returning rule ids made an empty directory report
+    files it never opened, and rule coverage is computed separately from the
+    active rule set regardless.
+    """
+    assert scan(tmp_path)[1] == set()
 
 
 # --- fixtures ---------------------------------------------------------------

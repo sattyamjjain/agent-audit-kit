@@ -105,6 +105,12 @@ class Finding:
     related_locations: list[dict] = field(default_factory=list)
 
 
+# The engine files this rule when a scanner raises. It is referenced by the
+# engine, the models, every formatter and the CLI exit path, so it lives here
+# rather than being spelled out as a literal in five places.
+SCANNER_FAIL_RULE_ID = "AAK-INTERNAL-SCANNER-FAIL"
+
+
 @dataclass
 class ScanResult:
     findings: list[Finding] = field(default_factory=list)
@@ -144,4 +150,23 @@ class ScanResult:
         return any(f.severity >= threshold for f in self.findings)
 
     def findings_at_or_above(self, min_severity: Severity) -> list[Finding]:
-        return [f for f in self.findings if f.severity >= min_severity]
+        """Findings at or above ``min_severity``, plus any scanner failure.
+
+        ``AAK-INTERNAL-SCANNER-FAIL`` is exempt from the floor. It is filed at
+        INFO, which sits below the default floor of LOW, so a run in which four
+        scanners died rendered an empty findings array, a 100/100 A and a SARIF
+        file with zero results -- indistinguishable from a clean project
+        (issue #743). The engine already exempts it from the active-rules
+        filter; this is the same exemption for the reporting floor, and it is
+        done here rather than by re-grading the rule so the severity keeps
+        meaning "how bad is the finding" rather than "how loudly is it shown".
+        """
+        return [
+            f for f in self.findings
+            if f.severity >= min_severity or f.rule_id == SCANNER_FAIL_RULE_ID
+        ]
+
+    @property
+    def scanner_failures(self) -> list[Finding]:
+        """Findings recording a scanner that raised during this run."""
+        return [f for f in self.findings if f.rule_id == SCANNER_FAIL_RULE_ID]

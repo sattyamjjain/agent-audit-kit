@@ -77,15 +77,28 @@ def format_results(
             "no findings" line when nothing fired). Closes #13.
     """
     filtered = result.findings_at_or_above(min_severity)
+    failures = result.scanner_failures
     lines: list[str] = []
 
     if not quiet:
         lines.append(f"\n{BOLD}\u2501\u2501\u2501 AgentAuditKit Scan Results \u2501\u2501\u2501{RESET}\n")
 
+    if failures:
+        lines.append(
+            f"{RED}{BOLD}\u26a0 INCOMPLETE SCAN: {len(failures)} scanner(s) crashed.{RESET}"
+        )
+        lines.append(
+            f"{RED}  The rules they own were NOT evaluated. "
+            f"Absence of findings below does not mean absence of issues.{RESET}\n"
+        )
+
     if not filtered:
         if quiet:
             return ""
-        lines.append(f"  \u2705 No findings at or above {min_severity.value} severity.\n")
+        clean = f"  \u2705 No findings at or above {min_severity.value} severity.\n"
+        lines.append(clean if not failures else
+                     f"  {RED}No findings at or above {min_severity.value} severity, "
+                     f"but the scan was incomplete (see above).{RESET}\n")
     else:
         severity_order = [Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW, Severity.INFO]
         for severity in severity_order:
@@ -125,6 +138,15 @@ def format_results(
     if show_score and result.score is not None and result.grade is not None:
         gc = GRADE_COLORS.get(result.grade, RESET)
         lines.append(f"\n{BOLD}Security Score:{RESET} {gc}{result.score}/100  Grade: {result.grade}{RESET}")
+        if failures:
+            # A 100/100 A on a run where scanners died is the part that does the
+            # damage (issue #743). The score is computed from findings that
+            # exist; when a scanner crashed, the findings it would have produced
+            # are missing, so the number is an upper bound, not a measurement.
+            lines.append(
+                f"{RED}  ^ UNRELIABLE: {len(failures)} scanner(s) crashed, so this is an "
+                f"upper bound, not a measurement.{RESET}"
+            )
 
     lines.append(f"\n{DIM}Files scanned: {result.files_scanned}{RESET}")
     lines.append(f"{DIM}Rules evaluated: {result.rules_evaluated}{RESET}")

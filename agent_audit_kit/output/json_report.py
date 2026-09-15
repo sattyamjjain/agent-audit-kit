@@ -61,10 +61,34 @@ def format_results(result: ScanResult, min_severity: Severity = Severity.LOW) ->
             "filesScanned": result.files_scanned,
             "rulesEvaluated": result.rules_evaluated,
             "scanDurationMs": round(result.scan_duration_ms, 1),
+            # A machine-readable "do not trust this run" flag. Consumers that
+            # gate on `total == 0` were previously told a crashed run was clean
+            # (issue #743); `scannerFailures > 0` means the rules those scanners
+            # own were never evaluated, so `complete` is false.
+            "scannerFailures": len(result.scanner_failures),
+            "complete": not result.scanner_failures,
         },
         "findings": [_finding_to_dict(f) for f in filtered],
     }
+    failures = result.scanner_failures
+    if failures:
+        report["scannerFailures"] = [
+            {"scanner": _scanner_name(f), "evidence": f.evidence} for f in failures
+        ]
     if result.score is not None:
         report["score"] = result.score
         report["grade"] = result.grade
+        if failures:
+            # The score is derived from findings that exist. When a scanner
+            # crashed, the findings it would have produced are absent, so the
+            # number is an upper bound rather than a measurement.
+            report["scoreReliable"] = False
     return json.dumps(report, indent=2)
+
+
+def _scanner_name(finding) -> str:
+    """Pull the scanner name back out of the failure evidence string."""
+    ev = finding.evidence or ""
+    if ev.startswith("scanner=") and " error=" in ev:
+        return ev[len("scanner="):ev.index(" error=")].strip("'\"")
+    return "unknown"

@@ -477,9 +477,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         project_root: Repository root to scan.
 
     Returns:
-        Tuple of (findings, evaluated_rule_ids). The evaluated set always
-        contains all three MCP-TUNNEL rule IDs so the engine reports
-        coverage even when no finding fires.
+        Tuple of (findings, scanned file paths relative to ``project_root``).
+        This used to return the three MCP-TUNNEL rule ids instead, which the
+        engine unions into ``files_scanned`` (issue #743) -- the real paths
+        were already being collected in ``scanned`` and then discarded.
     """
     findings: list[Finding] = []
     scanned: set[str] = set()
@@ -504,5 +505,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings.extend(_check_committed_tunnel_pem_keys(project_root))
     findings.extend(_check_committed_k8s_tunnel_secrets(project_root))
 
-    evaluated = {"AAK-MCP-TUNNEL-001", "AAK-MCP-TUNNEL-002", "AAK-MCP-TUNNEL-003"}
-    return findings, evaluated
+    return findings, scanned

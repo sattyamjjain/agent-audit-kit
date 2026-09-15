@@ -67,6 +67,10 @@ EXPECTED_PARAMS = {
     "verify_secrets", "diff_base", "llm_scan", "sessions", "llm_model",
     "strict_loading", "advisories_repo", "advisories_dry_run", "step_summary",
     "pr_summary_out", "fingerprint_strategy", "quiet", "version",
+    # Added by #743: a run whose scanners crashed exits non-zero unless this
+    # flag is passed. Listed here because this set is a deliberate guard --
+    # an option appearing or vanishing should be a decision, not a diff.
+    "allow_scanner_failure",
 }
 
 

@@ -42,9 +42,18 @@ def test_all_rules_registered_with_framework_refs() -> None:
         assert rule.owasp_agentic_references or rule.owasp_mcp_references, rid
 
 
-def test_scan_reports_the_evaluated_rule_ids() -> None:
-    _, evaluated = scan(FIXTURES / "clean")
-    assert evaluated == set(RULE_IDS)
+def test_scan_reports_scanned_files_not_rule_ids() -> None:
+    """The second tuple element is scanned file paths, not rule ids (#743).
+
+    This test used to assert the opposite. The engine unions that set into
+    ``files_scanned``, so returning rule ids made an empty directory report
+    files it never opened, and rule coverage is computed separately from the
+    active rule set regardless.
+    """
+    _, scanned = scan(FIXTURES / "clean")
+    assert not (scanned & set(RULE_IDS))
+    for rel in scanned:
+        assert (FIXTURES / "clean" / rel).is_file(), rel
 
 
 # --- fixtures ---------------------------------------------------------------

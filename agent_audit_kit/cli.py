@@ -227,6 +227,24 @@ def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> N
     score_text = click.style(f"{result.score}/100", bold=True)
     grade_text = click.style(grade, fg=grade_color, bold=True)
     click.echo(f"\nSecurity Score: {score_text}  Grade: {grade_text}\n")
+    # A grade computed from a run whose scanners crashed is an upper bound, not
+    # a measurement: the findings those scanners would have produced are simply
+    # absent from the penalty sum. Reporting the number without the caveat is
+    # the half of issue #743 that does the damage.
+    failures = result.scanner_failures
+    if failures:
+        click.echo(
+            click.style(
+                f"WARNING: {len(failures)} scanner(s) crashed during this scan, so "
+                f"this grade is an upper bound, not a measurement.",
+                fg="red",
+                bold=True,
+            ),
+            err=True,
+        )
+        for f in failures:
+            click.echo(f"  {f.evidence}", err=True)
+        sys.exit(EXIT_FINDINGS)
     if badge:
         svg = generate_badge(result.score or 0, result.grade or "F")
         if output_file:

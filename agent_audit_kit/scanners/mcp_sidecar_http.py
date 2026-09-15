@@ -248,9 +248,10 @@ def _substantive_routes(text: str) -> list[str]:
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Flag MCP servers that also bind an unauthenticated HTTP sidecar."""
     findings: list[Finding] = []
-    evaluated = {NOAUTH_RULE, REBIND_RULE}
+    scanned: set[str] = set()
 
     for path, text in _iter_source_files(project_root):
+        scanned.add(str(path.relative_to(project_root)))
         if not _MCP_IDENTITY_RE.search(text):
             continue
         if not _LISTEN_RE.search(text):
@@ -309,4 +310,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 )
             )
 
-    return findings, evaluated
+    return findings, scanned

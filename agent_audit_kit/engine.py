@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_audit_kit.models import Category, Finding, ScanResult, Severity
+from agent_audit_kit.models import Category, Finding, ScanResult, Severity, SCANNER_FAIL_RULE_ID
 from agent_audit_kit.rules.builtin import all_rule_ids, get_rule
 
 
@@ -276,7 +276,7 @@ def run_scan(
 
     kept: list[Finding] = []
     for finding in all_findings:
-        if finding.rule_id not in active_rules and finding.rule_id != "AAK-INTERNAL-SCANNER-FAIL":
+        if finding.rule_id not in active_rules and finding.rule_id != SCANNER_FAIL_RULE_ID:
             continue
         if _is_ignored(finding.file_path or ""):
             continue

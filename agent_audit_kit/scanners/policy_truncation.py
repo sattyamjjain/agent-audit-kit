@@ -142,10 +142,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         project_root: The root directory of the project to scan.
 
     Returns:
-        A tuple of (list of findings, set of evaluated rule IDs).
+        A tuple of (findings, set of scanned file paths relative to
+        ``project_root``). Used to return rule ids, which the engine unions
+        into ``files_scanned`` (issue #743).
     """
     findings: list[Finding] = []
-    evaluated = {_RULE_ID}
+    scanned: set[str] = set()
 
     for path in sorted(project_root.rglob("*")):
         if not path.is_file():
@@ -166,6 +168,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             raw = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
+        scanned.add(path.relative_to(project_root).as_posix())
 
         hit = _scan_text(_strip_prose(raw, is_python), is_python)
         if hit is None:
@@ -192,4 +195,4 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             find_line_number(raw, f"{bound}") or find_line_number(raw, var),
         ))
 
-    return findings, evaluated
+    return findings, scanned
