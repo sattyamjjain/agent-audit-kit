@@ -190,15 +190,46 @@ _CFG_SECRET_KV_RE = re.compile(
 )
 
 
+# Auth switched off by a flag rather than by an empty secret. This is the same
+# idea spelled differently, and until #731 the scanner only knew the first
+# spelling: CVE-2026-90898's Bifrost config reads
+# `governance.auth_config.is_enabled: false`, carries no secret at all, and so
+# matched nothing. Covers YAML/TOML (`enabled: false`), JSON
+# (`"enabled": false`) and env (`AUTH_ENABLED=false`).
+_CFG_AUTH_DISABLED_RE = re.compile(
+    r"""
+    (?:
+        # auth-ish key, then a false-y value, tolerating a `.`/`_` prefix path
+        (?:^|[\s"'.\w-]*?)
+        \b(?:auth|authentication|authorization|auth_config|require_auth|
+             requireauth|security|governance)\b
+        [\w."'\-]*
+        \s*[:=]\s*
+        \{?\s*
+        (?:[\s\S]{0,120}?\b(?:is_enabled|enabled|required|require)\b\s*[:=]\s*)?
+        ["']?(?:false|0|no|off|disabled)["']?
+      |
+        \b(?:disable_auth|no_auth|auth_disabled|skip_auth|allow_anonymous)\b
+        \s*[:=]\s*["']?(?:true|1|yes|on)["']?
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
 def _scan_config(text: str) -> list[tuple[int, str]]:
     if not _MCP_HINT_RE.search(text):
         return []
     if not _BIND_NONLOOPBACK_RE.search(text):
         return []
     m = _CFG_SECRET_KV_RE.search(text)
-    if not m:
-        return []
-    return [(text.count("\n", 0, m.start()) + 1, "placeholder-secret-config")]
+    if m:
+        return [(text.count("\n", 0, m.start()) + 1, "placeholder-secret-config")]
+    # Auth turned off by a flag, with no secret present to be a placeholder.
+    disabled = _CFG_AUTH_DISABLED_RE.search(text)
+    if disabled:
+        return [(text.count("\n", 0, disabled.start()) + 1, "auth-disabled-config")]
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +252,12 @@ _EVIDENCE = {
     "warn-only-auth-gate": (
         "Missing-secret check only logs a warning and continues, while the "
         "server binds a non-loopback interface — unauthenticated network access"
+    ),
+    "auth-disabled-config": (
+        "MCP config switches authentication off by flag (`auth.enabled: false` "
+        "/ `is_enabled: false` / `disable_auth: true`) while binding a "
+        "non-loopback interface — every caller is an administrator. "
+        "CVE-2026-90898 (Bifrost) shipped exactly this default"
     ),
     "placeholder-secret-config": (
         "MCP config sets a secret/token to a default/placeholder (or empty) "

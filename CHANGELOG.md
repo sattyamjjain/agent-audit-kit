@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A run whose scanner crashed no longer reports success (#743).** One invalid
+  UTF-8 byte in `.mcp.json` killed four scanners. Each was filed as
+  `AAK-INTERNAL-SCANNER-FAIL` at INFO, INFO sits below the default reporting
+  floor of LOW, and the run exited 0 with an empty findings array, a 100/100 A
+  and a SARIF file with zero results. Every MCP config rule had been skipped
+  and the output was indistinguishable from a clean project.
+
+  Scanner failure now has its own exit path, ahead of and independent of
+  `--fail-on`: that flag asks whether the findings were bad enough, this asks
+  whether the scan ran at all, and the second question has to be settled first.
+  The opt-out is `--allow-scanner-failure`, a flag rather than the default, so
+  the safe state is what you get by not thinking about it. The failure is
+  exempt from the `--severity` floor by rule id, and surfaced in the console, the
+  JSON summary (`scannerFailures`, `complete`), SARIF
+  (`invocations[].executionSuccessful` plus `toolExecutionNotifications`) and
+  both score outputs.
+
+- **`filesScanned` counted rule ids (#743).** Eight scanners returned the set of
+  rule ids they evaluate as the second element of their tuple, so an empty
+  directory reported 15 files. All eight now return the files they actually
+  read, which is what the contract always said.
+
+- **Three scanner crashes on malformed input.** `args` as a scalar took down the
+  composition pass and is now reported as `AAK-MCP-CONFIG-MALFORMED-001`; a
+  `SKILL.md` at the scan root made the same pass compute a container above
+  `project_root` and raise. Two further shapes, `url` as a scalar and `command`
+  as a list, are not individually hardened and are pinned by a test asserting
+  they fail the run loudly rather than pass it.
+
+- **A wild-payload regex missed the commonest spelling of its own payload
+  (#742).** `IPI-2026-04-WILD-01` matched "ignore all instructions" and "ignore
+  previous instructions" but not "ignore all previous instructions". The
+  qualifier list is now repeatable. It still requires a sink, so it has not
+  become a phrase matcher.
+
+### Added
+
+- **`AAK-SKILL-006`**, hidden instruction in a `SKILL.md` body. `AAK-AGENT-005`
+  has flagged HTML-comment payloads in named instruction files since v0.2, but
+  skills were not on that list, `AAK-SKILL-005` reads only the frontmatter and
+  `AAK-SKILL-003` wants a code-level sink, so a plain-English exfiltration
+  instruction in a body comment fell between them (#742).
+
+- **`AAK-MCP-STDIO-CMD-INJ-005`**, the Go arm of the STDIO command-injection
+  family, which had Python, TypeScript, Java and Rust arms and no Go arm. Same
+  posture as the Rust arm and it says so: regex and proximity, not data-flow
+  analysis. Closes the CVE-2026-90898 deferral (#729, #731).
+
+- **A disabled-auth config arm on `AAK-MCP-NOAUTH-DEFAULT`.** The rule wanted a
+  placeholder secret plus a non-loopback bind; `auth.enabled: false` is the same
+  idea spelled differently and matched nothing.
+
+- **The artifact boundary, written down** in `docs/rules.md` and `docs/why.md`:
+  which artifact classes AAK reads, that free text inside them is in scope, that
+  markdown no agent loads by name is matched only against a known-payload
+  corpus, and that AAK does not classify arbitrary prose as hostile. The
+  English-only limit of that corpus is recorded as its own gap (#742).
+
+
 ## [0.6.5] - 2026-09-14
 
 ### Fixed

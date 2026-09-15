@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-15T17:24:33Z",
+  "last_updated": "2026-09-15T17:31:15Z",
   "aak_version": "0.6.5",
-  "rule_count": 350,
+  "rule_count": 351,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -148,7 +148,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 48,
+      "rule_density": 49,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -486,6 +486,14 @@
             "AIS-08",
             "IAM-05"
           ]
+        },
+        {
+          "id": "AAK-MCP-STDIO-CMD-INJ-005",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-90898"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
@@ -3278,7 +3286,7 @@
     {
       "asi_id": "ASI10",
       "title": "Supply-Chain",
-      "rule_density": 21,
+      "rule_density": 22,
       "rules": [
         {
           "id": "AAK-A2A-007",
@@ -3495,6 +3503,14 @@
             "AIS-08",
             "IAM-05"
           ]
+        },
+        {
+          "id": "AAK-MCP-STDIO-CMD-INJ-005",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-90898"
+          ],
+          "aicm_references": []
         },
         {
           "id": "AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001",

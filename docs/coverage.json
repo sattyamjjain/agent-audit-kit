@@ -5275,6 +5275,33 @@
       "title": "MCP STDIO command spawned from network-controlled input (Rust)"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-90898"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 14 - Human Oversight"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Instrument for logging and detection (p.13)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse",
+        "ASI10 Rogue Agents"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement",
+        "MCP05:2025 Tool Poisoning / Trust Boundary"
+      ],
+      "rule_id": "AAK-MCP-STDIO-CMD-INJ-005",
+      "severity": "critical",
+      "title": "MCP STDIO command spawned from network-controlled input (Go)"
+    },
+    {
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-40933"
@@ -7827,7 +7854,7 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 110,
+      "supply-chain": 111,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
@@ -7836,24 +7863,24 @@
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 120,
       "Art. 13 - Transparency": 32,
-      "Art. 14 - Human Oversight": 39,
+      "Art. 14 - Human Oversight": 40,
       "Art. 15 - Robustness & Security": 206,
-      "Art. 9 - Risk Management": 118
+      "Art. 9 - Risk Management": 119
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 81,
-      "Constrain and sandbox tool execution (p.11)": 104,
-      "Design for boundaries (p.10)": 180,
+      "Constrain and sandbox tool execution (p.11)": 105,
+      "Design for boundaries (p.10)": 181,
       "Filter and monitor output pipelines and chained execution (p.12)": 77,
-      "Instrument for logging and detection (p.13)": 34,
+      "Instrument for logging and detection (p.13)": 35,
       "Scan local network for open or vulnerable MCP servers (p.14)": 152,
       "Sign and verify MCP messages (p.12)": 151,
       "Track and patch MCP related vulnerabilities (p.13)": 92,
-      "Validate parameters (p.11)": 108
+      "Validate parameters (p.11)": 109
     },
     "by_owasp_agentic": {
       "ASI01": 15,
-      "ASI02": 48,
+      "ASI02": 49,
       "ASI03": 73,
       "ASI04": 75,
       "ASI05": 56,
@@ -7861,14 +7888,14 @@
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
-      "ASI10": 21
+      "ASI10": 22
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 86,
+      "MCP01:2025": 87,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
       "MCP04:2025": 40,
-      "MCP05:2025": 57,
+      "MCP05:2025": 58,
       "MCP06:2025": 19,
       "MCP07:2025": 34,
       "MCP08:2025": 7,
@@ -7876,14 +7903,14 @@
       "MCP10:2025": 12
     },
     "by_severity": {
-      "critical": 81,
+      "critical": 82,
       "high": 161,
       "info": 5,
       "low": 9,
       "medium": 94
     },
-    "total_cves_covered": 213,
-    "total_rules": 350
+    "total_cves_covered": 214,
+    "total_rules": 351
   },
   "tool": "agent-audit-kit"
 }

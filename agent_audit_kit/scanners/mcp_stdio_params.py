@@ -439,6 +439,90 @@ def _walk_rust(text: str, path: Path, project_root: Path, scanned: set[str]) -> 
 
 
 # ---------------------------------------------------------------------------
+# Go - AAK-MCP-STDIO-CMD-INJ-005 (regex + proximity; same posture as Rust)
+# ---------------------------------------------------------------------------
+#
+# Modelled on _walk_rust deliberately, including its limits. This is not a
+# go/ast pass and does not model flow; it reports that a spawn sink sits
+# downstream of a network-shaped source in an MCP-shaped file.
+#
+# The MCP hint cannot be an SDK import the way Rust's is. CVE-2026-90898's
+# handler imports `encoding/json`, `net/http` and `os/exec` and nothing else --
+# the MCP identity lives in the type name (`MCPClientRequest`), the route
+# (`/api/mcp/client`) and the field names (`stdio_command`). A hint gated on an
+# SDK import would miss the exemplar this rule exists for.
+
+_GO_EXEC_RE = re.compile(r"\bexec\s*\.\s*Command(?:Context)?\s*\(")
+# A quoted literal in argv[0] position, optionally after a ctx argument.
+_GO_LITERAL_ARGV0_RE = re.compile(r'\s*(?:\w+\s*,\s*)?["`]')
+_GO_TAINT_RE = re.compile(
+    r"""
+    (?:
+        json\s*\.\s*NewDecoder\s*\(\s*r\s*\.\s*Body\s*\)
+      | json\s*\.\s*NewDecoder\s*\(\s*\w+\s*\.\s*Body\s*\)
+      | \*\s*http\s*\.\s*Request\b
+      | \bShouldBindJSON\s*\(
+      | \bBindJSON\s*\(
+      | io\s*\.\s*ReadAll\s*\(\s*\w+\s*\.\s*Body\s*\)
+      | mux\s*\.\s*Vars\s*\(
+      | r\s*\.\s*URL\s*\.\s*Query\s*\(\s*\)
+    )
+    """,
+    re.VERBOSE,
+)
+# MCP identity in Go: an SDK path, a protocol name, an `MCPFoo` identifier, an
+# /mcp route, or an mcp-prefixed JSON field.
+_GO_MCP_HINT_RE = re.compile(
+    r"""
+    (?:
+        modelcontextprotocol
+      | \bmcp-go\b
+      | \bMCP[A-Z]\w*
+      | ["'`][^"'`]*/mcp(?:/|["'`])
+      | \bmcpServers?\b
+      | \bstdio_?[Cc]ommand\b
+    )
+    """,
+    re.VERBOSE,
+)
+
+
+def _walk_go(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
+    if not _GO_MCP_HINT_RE.search(text):
+        return []
+    findings: list[Finding] = []
+    for m in _GO_EXEC_RE.finditer(text):
+        window = text[max(0, m.start() - 2048) : m.start()]
+        if not _GO_TAINT_RE.search(window):
+            continue
+        # argv[0] is a string literal => the binary is chosen server-side and
+        # the caller cannot pick it. This is what a patched handler looks like
+        # (an allowlist resolves a constant, request data rides as later args),
+        # and without this guard a proximity rule reports every server that
+        # decoded a body anywhere in the preceding 2 KB. Narrow on purpose: a
+        # literal first argument is decidable without parsing Go.
+        if _GO_LITERAL_ARGV0_RE.match(text, m.end()):
+            continue
+        rel = str(path.relative_to(project_root))
+        scanned.add(rel)
+        line = text.count("\n", 0, m.start()) + 1
+        findings.append(make_finding(
+            "AAK-MCP-STDIO-CMD-INJ-005",
+            rel,
+            "exec.Command(...) is invoked in an MCP-shaped Go file downstream "
+            "of a network-controlled source (json.NewDecoder(r.Body), an "
+            "*http.Request handler, or ShouldBindJSON). CVE-2026-90898 "
+            "(Bifrost) class: an unauthenticated client-registration route "
+            "that spawns the registered command. Note: regex and proximity "
+            "only, not Go data-flow analysis, so a handler that decodes a body "
+            "and separately shells out to a constant will also match.",
+            line_number=line,
+        ))
+        return findings
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Driver
 # ---------------------------------------------------------------------------
 
@@ -464,4 +548,6 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             findings.extend(_walk_java(text, path, project_root, scanned))
         elif suffix == ".rs":
             findings.extend(_walk_rust(text, path, project_root, scanned))
+        elif suffix == ".go":
+            findings.extend(_walk_go(text, path, project_root, scanned))
     return findings, scanned

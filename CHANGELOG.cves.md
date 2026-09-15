@@ -44,7 +44,7 @@ correctly-fixed server in the corpus.
 
 Dispositioned at 2026-09-14T12:52:09Z, shipped in v0.6.5.
 
-### CVE-2026-90898 (#729) is deferred, not covered
+### CVE-2026-90898 (#729): deferred 2026-09-14, closed 2026-09-15
 
 A third issue opened the same day, after the two above were already in flight:
 CVE-2026-90898 (maximhq/bifrost, CVSS 9.8, CWE-284/306). Bifrost registers MCP
@@ -74,6 +74,36 @@ coverage that does not exist is worse in a scanner than recording none: it is
 the same class of drift as a stale count, except the number that rots is a
 security claim. #729 is labelled `cve-deferred` with a target date, and the
 missing Go arm is tracked separately.
+
+**Closed 2026-09-15 (#731).** Both halves shipped, and the deferral is closed
+here rather than left standing beside its own fix.
+
+`AAK-MCP-STDIO-CMD-INJ-005` is the Go arm the family was missing. It is
+modelled on the Rust arm and carries the Rust arm's posture verbatim: regex and
+proximity, not data-flow analysis, stated in the rule text rather than implied.
+One precision guard earns its place, a string literal in argv[0], because the
+binary being chosen server-side is exactly what a patched handler looks like
+and without it the arm reports every server that decoded a request body in the
+preceding 2 KB.
+
+`AAK-MCP-NOAUTH-DEFAULT` gains a disabled-auth config arm. It wanted a
+placeholder secret plus a non-loopback bind; Bifrost's config carries no secret
+at all, only `governance.auth_config.is_enabled: false`, which is the same idea
+spelled differently and matched nothing.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-90898 | 9.8 | `bifrost` (`transports`, Go; fixed `transports/v2.1.0`) | **New rule** `AAK-MCP-STDIO-CMD-INJ-005` (Go arm of the STDIO command-injection family) plus a disabled-auth config arm on `AAK-MCP-NOAUTH-DEFAULT`. Positive and negative fixtures under `tests/fixtures/cves/cve-2026-90898-bifrost/`, the negative being the `transports/v2.1.0` posture so the arm cannot report every patched server. | #729, #731 |
+
+Benign-slice false positives are unchanged at 0 of 1 across 536 servers. That
+number is evidence for the config arm, which reads exactly the MCP config JSON
+the slice is made of, and is **not** evidence for the Go arm: the slice
+contains no Go source, so it never exercises it. The Go arm's precision
+controls are unit tests in `tests/test_cve_2026_90898_bifrost.py` instead, and
+saying which of the two the benchmark covers seemed better than quoting an
+unchanged number at both.
+
+Shipped at 2026-09-15T17:30:41Z in v0.6.6.
 
 
 ## 2026-09-12: eight disclosures, one new rule

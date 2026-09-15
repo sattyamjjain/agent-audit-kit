@@ -8566,6 +8566,37 @@ _r(
 
 
 _r(
+    "AAK-MCP-STDIO-CMD-INJ-005",
+    "MCP STDIO command spawned from network-controlled input (Go)",
+    "A Go file calls `exec.Command(...)` or `exec.CommandContext(...)` in an "
+    "MCP-shaped file, after a network-controlled source in the same scope: "
+    "`json.NewDecoder(r.Body)`, an `*http.Request` handler parameter, or "
+    "`c.ShouldBindJSON(...)`. CVE-2026-90898 (maximhq/bifrost, CVSS 9.8) is "
+    "the anchor: Bifrost registers MCP clients through a management API, a "
+    "stdio client is a command plus args, and the gateway starts that program "
+    "the moment the client is added, so one unauthenticated "
+    "`POST /api/mcp/client` runs a program as the gateway user. Fixed in "
+    "`transports/v2.1.0`. NOTE: this rule is regex and proximity, exactly like "
+    "the Rust arm `AAK-MCP-STDIO-CMD-INJ-004`, and not Go data-flow analysis. "
+    "It reports that a spawn sink appears in an MCP file downstream of a "
+    "network-shaped source, which is not the same claim as proving the "
+    "request reaches the sink. Expect false positives where a handler decodes "
+    "a body and separately shells out to a constant. There is no go/ast pass "
+    "behind this and none is pending.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Do not build an exec argv from request-controlled values. Resolve the "
+    "command against a fixed allowlist server-side, pass caller data as data "
+    "rather than as argv, and require authentication on any route that "
+    "registers or starts a subprocess: an unauthenticated registration "
+    "endpoint that spawns is remote code execution by design, not by bug.",
+    sarif_name="McpStdioCommandTaintedGo",
+    cve_references=["CVE-2026-90898"],
+    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI10"],
+)
+
+_r(
     "AAK-SKILL-006",
     "SKILL.md body hides an instruction in an HTML comment",
     "A `SKILL.md` body carries an HTML comment whose text reads as an "
