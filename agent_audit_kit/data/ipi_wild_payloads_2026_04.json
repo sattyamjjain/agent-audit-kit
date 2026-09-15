@@ -7,10 +7,11 @@
     {
       "id": "IPI-2026-04-WILD-01",
       "label": "ignore-prior + exfil",
-      "regex": "(?i)ignore\\s+(?:all|previous|prior)\\s+(?:instructions|tools).*?(?:read|cat|leak|exfil|send)",
+      "regex": "(?i)ignore\\s+(?:(?:all|any|previous|prior|preceding|earlier|above)\\s+)+(?:instructions|tools|prompts?).*?(?:read|cat|leak|exfil|send|post|upload)",
       "severity": "critical",
       "first_seen": "2026-04-24",
-      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
+      "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/",
+      "note": "Qualifier list is repeatable: the original alternation matched 'ignore all instructions' and 'ignore previous instructions' but not 'ignore all previous instructions', which is the commonest spelling of the payload it exists to catch (reported in issue #742). Sink verbs widened to cover 'POST it to' / 'upload'."
     },
     {
       "id": "IPI-2026-04-WILD-02",

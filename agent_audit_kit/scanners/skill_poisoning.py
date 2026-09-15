@@ -80,6 +80,44 @@ _INJECTION_TRIGGERS = (
 )
 
 
+# ---- AAK-SKILL-006: hidden instruction in a body HTML comment ----
+#
+# An HTML comment in a skill body is invisible in every rendered view a human
+# reviews and fully visible to the model, which gets the raw file. Bare comments
+# are ordinary in markdown, so the comment has to read as an *instruction*
+# before this fires: either an injection trigger, or a local-secret reference
+# with somewhere to send it. TODO/FIXME/NOTE housekeeping and licence headers
+# carry neither and stay quiet.
+_HTML_COMMENT_RE = re.compile(r"<!--([\s\S]*?)-->")
+_DESTINATION_RE = re.compile(r"https?://|\b(?:webhook|endpoint|collect|drop|exfil)\b", re.IGNORECASE)
+_IMPERATIVE_EXFIL_RE = re.compile(
+    r"\b(?:exfiltrate|leak|steal|smuggle|siphon|upload|post|send|forward|copy)\b",
+    re.IGNORECASE,
+)
+
+
+def _hidden_instruction_hits(body: str) -> list[tuple[str, str]]:
+    """Return (comment_text, why) for each body comment that reads as an order."""
+    hits: list[tuple[str, str]] = []
+    for match in _HTML_COMMENT_RE.finditer(body):
+        inner = match.group(1).strip()
+        if not inner:
+            continue
+        lowered = inner.lower()
+        trigger = next((t for t in _INJECTION_TRIGGERS if t in lowered), None)
+        if trigger:
+            hits.append((inner, f"injection trigger {trigger!r}"))
+            continue
+        # Exfiltration shape: a local secret, an imperative, and a destination.
+        if (
+            _LOCAL_DATA_RE.search(inner)
+            and _IMPERATIVE_EXFIL_RE.search(inner)
+            and _DESTINATION_RE.search(inner)
+        ):
+            hits.append((inner, "local-secret reference with an outbound destination"))
+    return hits
+
+
 def _iter_skill_files(project_root: Path) -> list[Path]:
     results: list[Path] = []
     for path in project_root.rglob("SKILL.md"):
@@ -160,6 +198,19 @@ def _check_skill(path: Path, project_root: Path) -> list[Finding]:
                     )
                 )
                 break
+
+    # AAK-SKILL-006: hidden instruction in the body (not the frontmatter).
+    _, body = _parse_frontmatter(raw)
+    for inner, why in _hidden_instruction_hits(body):
+        findings.append(
+            make_finding(
+                "AAK-SKILL-006",
+                rel,
+                f"HTML comment in the skill body reads as an instruction "
+                f"({why}): {inner[:100]!r}",
+                line_number=find_line_number(raw, inner.splitlines()[0][:60]),
+            )
+        )
 
     lowered = raw.lower()
     fm_boundary = raw.find("---", 3)

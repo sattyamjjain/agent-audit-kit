@@ -8566,6 +8566,37 @@ _r(
 
 
 _r(
+    "AAK-SKILL-006",
+    "SKILL.md body hides an instruction in an HTML comment",
+    "A `SKILL.md` body carries an HTML comment whose text reads as an "
+    "instruction rather than a note: an injection trigger, or a local-secret "
+    "reference paired with an outbound destination. The comment is invisible "
+    "in every rendered view a human reviews -- GitHub, an editor preview, a "
+    "skill marketplace listing -- and fully visible to the model, which is "
+    "handed the raw file. That gap between what the reviewer reads and what "
+    "the agent reads is the whole attack. `AAK-AGENT-005` has flagged this "
+    "shape in named agent instruction files (AGENTS.md, CLAUDE.md, "
+    "`.cursorrules`) since v0.2; skills were not on that list, so the same "
+    "payload in a `SKILL.md` body was unreported (issue #742). `AAK-SKILL-005` "
+    "reads only the frontmatter and `AAK-SKILL-003` wants a code-level sink "
+    "(`curl`, `fetch`), so a plain-English exfiltration instruction in a body "
+    "comment fell between them.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Delete the comment. A skill body is model-visible input: anything that "
+    "must not reach the model must not be in the file, and anything a reviewer "
+    "needs to read belongs in visible prose. Review skills as raw text rather "
+    "than rendered markdown.",
+    sarif_name="SkillHiddenInstruction",
+    # AST01 Malicious Skills: the hidden-instruction arm. No CVE -- this is a
+    # pattern class, not a disclosure -- and no AICM row, which this rule
+    # cannot evidence on its own.
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI01"],
+    owasp_ast_references=["AST01"],
+)
+
+_r(
     "AAK-MCP-CONFIG-MALFORMED-001",
     "MCP server entry has a field of the wrong type",
     "An `mcpServers` entry declares a field whose type does not match the MCP "

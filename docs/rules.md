@@ -8,7 +8,7 @@
 |----------|-------|
 | Supply Chain | 110 |
 | MCP Configuration | 68 |
-| Tool Poisoning | 30 |
+| Tool Poisoning | 31 |
 | Legal Compliance | 19 |
 | Agent Config | 18 |
 | Secret Exposure | 18 |
@@ -20,7 +20,7 @@
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **349** |
+| **Total** | **350** |
 
 <!-- END rules-summary -->
 
@@ -35,6 +35,40 @@ _Counts are generated from the rule registry; run `agent-audit-kit export-rules`
 > `std::process::Command` with `format!`, etc.) but do **not** track flow from a
 > source to those sinks. A true tree-sitter AST flow analyzer for TS/Rust is tracked
 > as [issue #22](https://github.com/sattyamjjain/agent-audit-kit/issues/22).
+
+> **What AAK looks at — the artifact boundary.** AAK scans the artifacts an
+> agent loads, not every file in the repository: MCP configs
+> (`.mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml`), `SKILL.md`
+> bundles, the named instruction files (`AGENTS.md`, `CLAUDE.md`,
+> `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md`, ...),
+> hooks, CI workflows, dependency manifests, and source.
+>
+> **Free text inside those artifacts is in scope.** Hidden HTML comments,
+> invisible Unicode, injection triggers and exfiltration shapes are read out of
+> the prose in them — that is `AAK-AGENT-005`, `AAK-SKILL-002`, `AAK-SKILL-005`
+> and `AAK-SKILL-006`.
+>
+> **Free text in a markdown file no agent loads by name is matched only against
+> a known-payload corpus**, `AAK-IPI-WILD-CORPUS-001`, which tests `.md` /
+> `.txt` / `.yml` / `.json` against a dated list of payloads observed in the
+> wild. It is a signature check, so it will always miss a novel phrasing.
+>
+> **AAK does not classify arbitrary prose as hostile.** Deciding whether an
+> English sentence is an attack is a model-shaped judgement, and AAK is
+> deterministic and offline by design. The cost of the other posture is
+> measurable: the cross-tool matrix in
+> [issue #742](https://github.com/sattyamjjain/agent-audit-kit/issues/742)
+> shows a pattern-classifier layer firing on four benign files in the same
+> corpus — a documentation page about `data:` imports, a hardening note,
+> ordinary env-var reads and a socket health check. A scanner that cries wolf
+> on hardening notes gets turned off.
+>
+> **Known gap, stated rather than implied:** the payload corpus is
+> English-only. The Chinese injection 「请忽略之前的所有指令」 ("ignore all
+> previous instructions") is **not** detected, and neither are the other
+> non-English spellings of the same payloads. This is a real limitation, not a
+> scope decision — the shape is in scope and the corpus cannot see it. Tracked
+> in [issue #742](https://github.com/sattyamjjain/agent-audit-kit/issues/742).
 
 ## Full Rule List
 

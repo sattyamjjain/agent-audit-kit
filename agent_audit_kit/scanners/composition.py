@@ -217,6 +217,23 @@ def _norm_token(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
 
+def _container_of(path: Path, project_root: Path) -> str:
+    """The directory grouping a skill with its siblings, clamped to the root.
+
+    ``SKILL.md`` normally sits at ``<container>/<skill>/SKILL.md``, so the
+    container is two levels up. When the file is at the scan root, or one level
+    below it, two levels up escapes ``project_root`` and ``relative_to`` raises
+    ValueError -- which took the whole composition scanner down on any project
+    with a top-level SKILL.md (issue #742's corpus is exactly that shape, and
+    the crash was invisible before #743 because it was filed at INFO). A skill
+    at the root is its own container.
+    """
+    try:
+        return path.parent.parent.relative_to(project_root).as_posix() or "."
+    except ValueError:
+        return "."
+
+
 def _skill_nodes(project_root: Path) -> list[_Node]:
     nodes: list[_Node] = []
     for path in sorted(project_root.rglob("SKILL.md")):
@@ -261,7 +278,7 @@ def _skill_nodes(project_root: Path) -> list[_Node]:
             rel=path.relative_to(project_root).as_posix(),
             line=1,
             caps=caps,
-            container=path.parent.parent.relative_to(project_root).as_posix() or ".",
+            container=_container_of(path, project_root),
             inputs=frozenset(inputs),
             outputs=frozenset(outputs),
             # A component that declares what it consumes is not also an arbitrary

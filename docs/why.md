@@ -21,6 +21,39 @@ Off by default, and deliberately narrow:
 Fixes whose correct form depends on how the project is deployed or wired — adding an auth dependency to a route, rewriting a quoted shell string as a parameterised call, flipping a bind address off `0.0.0.0` — are reported but never auto-edited. The PR body says so too.
 
 ---
+## What we scan, and what we refuse to guess
+
+AAK reads the artifacts an agent loads — MCP configs, `SKILL.md`, the named
+instruction files, hooks, workflows, manifests, source — and it does read the
+free text inside them, because a hidden HTML comment in a `SKILL.md` is
+invisible to the human reviewing the rendered page and fully visible to the
+model handed the raw file. That gap is the attack, and closing it is
+`AAK-SKILL-006`.
+
+What AAK does not do is decide whether an arbitrary English sentence is
+hostile. A markdown file no agent loads by name is checked against a dated
+corpus of payloads seen in the wild, and nothing else. That is a signature
+check and it will miss novel phrasings; we would rather say so than imply a
+classifier we do not ship.
+
+The reason is not modesty, it is the failure mode on the other side. A
+cross-tool corpus filed as [issue
+#742](https://github.com/sattyamjjain/agent-audit-kit/issues/742) measured a
+pattern-classifier layer firing on four benign files: a documentation page
+about `data:` imports, a hardening note, ordinary env-var credential reads, and
+a socket health check. Every one of those is the kind of finding that teaches a
+team to stop reading the output. A deterministic scanner's whole claim is that
+when it speaks, it is worth reading; spending that on prose we cannot verify is
+a bad trade.
+
+The same issue is why two of those detections exist at all. The reporter's two
+files were misses, not scope calls: the wild-payload regex matched "ignore all
+instructions" and "ignore previous instructions" but not "ignore all previous
+instructions", and skills were missing from the hidden-comment check that named
+instruction files have had since v0.2. Both are fixed. The honest limit that
+remains is language: the corpus is English-only, so 「请忽略之前的所有指令」
+goes undetected.
+
 ## Supply chain
 
 Every `v*` release publishes:

@@ -6802,6 +6802,24 @@
       "category": "tool-poisoning",
       "cve_references": [],
       "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 13 - Transparency"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI01 Agent Goal Hijacking"
+      ],
+      "owasp_mcp": [
+        "MCP05:2025 Tool Poisoning / Trust Boundary"
+      ],
+      "rule_id": "AAK-SKILL-006",
+      "severity": "high",
+      "title": "SKILL.md body hides an instruction in an HTML comment"
+    },
+    {
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "eu_ai_act": [
         "Art. 10 - Data Governance",
         "Art. 13 - Transparency",
         "Art. 14 - Human Oversight",
@@ -7811,16 +7829,16 @@
       "secret-exposure": 18,
       "supply-chain": 110,
       "taint-analysis": 14,
-      "tool-poisoning": 30,
+      "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 120,
-      "Art. 13 - Transparency": 31,
+      "Art. 13 - Transparency": 32,
       "Art. 14 - Human Oversight": 39,
       "Art. 15 - Robustness & Security": 206,
-      "Art. 9 - Risk Management": 117
+      "Art. 9 - Risk Management": 118
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 81,
@@ -7834,7 +7852,7 @@
       "Validate parameters (p.11)": 108
     },
     "by_owasp_agentic": {
-      "ASI01": 14,
+      "ASI01": 15,
       "ASI02": 48,
       "ASI03": 73,
       "ASI04": 75,
@@ -7850,7 +7868,7 @@
       "MCP02:2025": 14,
       "MCP03:2025": 38,
       "MCP04:2025": 40,
-      "MCP05:2025": 56,
+      "MCP05:2025": 57,
       "MCP06:2025": 19,
       "MCP07:2025": 34,
       "MCP08:2025": 7,
@@ -7859,13 +7877,13 @@
     },
     "by_severity": {
       "critical": 81,
-      "high": 160,
+      "high": 161,
       "info": 5,
       "low": 9,
       "medium": 94
     },
     "total_cves_covered": 213,
-    "total_rules": 349
+    "total_rules": 350
   },
   "tool": "agent-audit-kit"
 }
