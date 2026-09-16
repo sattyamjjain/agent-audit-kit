@@ -424,11 +424,103 @@ def find_manifest_arithmetic_faults() -> list[str]:
     return failures
 
 
+# ---------------------------------------------------------------------------
+# Table-cell scan
+#
+# `find_stale_counts` matches PHRASES and the corroboration sweep reads prose.
+# Neither can see a number that sits ALONE in a markdown table cell, because
+# there is no phrase around it: the row label is in one cell and the number is
+# in another. `docs/comparisons.md` stated `| Compliance frameworks | 12 | ...`
+# against a live 14, and `make count-check` reported clean for as long as it
+# was wrong -- the same blind spot the module docstring describes, arriving
+# through a shape rather than through a phrasing.
+#
+# So this reads the shape instead: for a row whose FIRST cell names a governed
+# count, check the agent-audit-kit column against the registry. The AAK column
+# is located from the table's own header rather than assumed, because the two
+# tables in comparisons.md put it in different positions (column 1 in "At a
+# glance", column 2 in the feature matrix).
+# ---------------------------------------------------------------------------
+
+# Row label -> key in canonical_counts(). Only the labels already governed.
+_ROW_LABEL_KEYS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^\**\s*rules?\s*\**$", re.I), "rules"),
+    (re.compile(r"^\**\s*rule count\s*\**$", re.I), "rules"),
+    (re.compile(r"^\**\s*scanners?\s*\**$", re.I), "scanners"),
+    (re.compile(r"^\**\s*scanner modules?\s*\**$", re.I), "scanners"),
+    (re.compile(r"^\**\s*CLI commands?\s*\**$", re.I), "commands"),
+    (re.compile(r"^\**\s*compliance frameworks?\s*\**$", re.I), "frameworks"),
+    (re.compile(r"^\**\s*frameworks?\s*\**$", re.I), "frameworks"),
+    (re.compile(r"^\**\s*agent platforms?\s*\**$", re.I), "platforms"),
+    (re.compile(r"^\**\s*platforms?\s*\**$", re.I), "platforms"),
+    (re.compile(r"^\**\s*categor(?:y|ies)\s*\**$", re.I), "categories"),
+    (re.compile(r"^\**\s*security categor(?:y|ies)\s*\**$", re.I), "categories"),
+)
+
+# Header cells that identify this project's column.
+_SELF_COLUMN_RE = re.compile(r"^\**\s*agent-?audit-?kit\s*\**$", re.I)
+
+_BARE_NUMBER_RE = re.compile(r"^\**\s*(\d[\d,]*)\s*\**$")
+
+
+def _split_row(line: str) -> list[str] | None:
+    """Cells of a markdown table row, or None if the line is not one."""
+    stripped = line.strip()
+    if not stripped.startswith("|"):
+        return None
+    if set(stripped) <= set("|-: "):        # the header separator row
+        return None
+    return [c.strip() for c in stripped.strip("|").split("|")]
+
+
+def find_table_cell_faults() -> list[str]:
+    """Governed counts sitting alone in a table cell, checked against the registry."""
+    counts = canonical_counts()
+    failures: list[str] = []
+    for rel in _tracked_markdown():
+        if is_excluded(rel):
+            continue
+        path = REPO_ROOT / rel
+        if not path.is_file() or has_historical_banner(path):
+            continue
+        self_col: int | None = None
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            cells = _split_row(line)
+            if cells is None:
+                if line.strip() == "":
+                    self_col = None          # a blank line ends a table
+                continue
+            # Header row: locate this project's column for the rows that follow.
+            found = next((i for i, c in enumerate(cells) if _SELF_COLUMN_RE.match(c)), None)
+            if found is not None:
+                self_col = found
+                continue
+            if self_col is None or self_col >= len(cells):
+                continue
+            key = next((k for pat, k in _ROW_LABEL_KEYS if pat.match(cells[0])), None)
+            if key is None:
+                continue
+            cell = cells[self_col]
+            if _MARKER_RE.search(cell):      # written by the generator; not ours to re-check
+                continue
+            m = _BARE_NUMBER_RE.match(cell)
+            if m is None:                    # prose, a range, "N/A" -- not a bare count
+                continue
+            claimed = int(m.group(1).replace(",", ""))
+            if claimed != counts[key]:
+                failures.append(
+                    f"{rel}:{lineno}: table row {cells[0]!r} claims {claimed} "
+                    f"{key} in the agent-audit-kit column; canonical is {counts[key]}"
+                )
+    return failures
+
+
 def main() -> int:
     failures = (
         find_stale_counts()
         + find_uncorroborated_counts()
         + find_manifest_arithmetic_faults()
+        + find_table_cell_faults()
     )
     if failures:
         sys.stderr.write(

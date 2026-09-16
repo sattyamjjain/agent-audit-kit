@@ -1,7 +1,13 @@
 # How agent-audit-kit compares
 
-_Context for decision-makers evaluating MCP / AI-agent static scanners
-in April 2026._
+_Context for decision-makers evaluating MCP / AI-agent static scanners._
+
+**Reviewed 2026-09-16.** One date for the whole page: it previously carried
+three (an April 2026 framing line, a `Last reviewed` under the market section
+and a `Last updated` in the footer), which drifted apart and left a reader no
+way to tell which claim was checked when. Competitor facts on this page were
+re-verified against the live repositories on that date; where a figure could
+not be sourced it says so rather than carrying a number nobody can check.
 
 Verifiable claims only. If you find a claim here that no longer holds,
 file an issue and we will correct it (best-effort — no fixed clock).
@@ -10,18 +16,18 @@ file an issue and we will correct it (best-effort — no fixed clock).
 
 | | agent-audit-kit | Microsoft AGT | Snyk Agent Scan (ex Invariant) | Semgrep Multimodal SAST | Lakera Guard |
 |---|---|---|---|---|---|
-| License | Apache-2.0 | MIT | Proprietary | Proprietary + OSS rules | Proprietary |
+| License | Apache-2.0 | MIT | Apache-2.0 | Proprietary + OSS rules | Proprietary |
 | Scope | Static scanner + compliance evidence | Runtime governance (policy engine + mesh) | Static + runtime (post-acquisition) | Multimodal SAST | Runtime guardrail |
-| Account / cloud required | No | No (but Azure-native paths) | Yes | Optional | Yes |
-| Cloud round-trip | No | No | Yes (findings leave your repo) | Optional | Yes |
+| Account / cloud required | No | No (but Azure-native paths) | Yes ([its README](https://github.com/snyk/agent-scan#quick-start): sign up, `export SNYK_TOKEN=` "before running any scan") | Optional | Yes |
+| Cloud round-trip | No | No | Yes — its README's ["Analysis and Validation"](https://github.com/snyk/agent-scan#how-it-works) says it "validates discovered components with local checks and the Agent Scan API" and sends MCP server configurations, tool names and descriptions, and skill content, with secrets redacted before transmission | Optional | Yes |
 | Compliance-evidence PDF | **Yes** (EU AI Act, SOC 2, ISO 27001+42001, HIPAA, NIST AI RMF, Singapore, India DPDP, **Alabama DPPA**, **Tennessee SB 1580**, **Colorado SB 26-189 ADMT**, **EU AI Act Art. 50**) | No (runtime policies, no audit PDFs) | No (findings only) | No | No |
 | Regional / US-state compliance | Yes (India DPDP, Singapore, Alabama, Tennessee) | No | No | No | No |
-| Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No (proprietary) | No | No |
-| Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No (multi-model analysis) | Partial | No |
+| Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No — it GPG-signs release checksums and ships an SBOM, but there is no rule set on disk to sign | No | No |
+| Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No — analysis runs through the Agent Scan API against a dated API model, so a result depends on service state as well as the commit | Partial | No |
 | Public CVE-to-rule ledger | **Yes** (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
-| MCP Security Index / leaderboard | **Yes** (147 servers graded; last snapshot 2026-08-24 — [dates, not a cadence promise](../README.md#mcp-security-index)) | No | No | No | No |
-| Pin + drift verification of tool surface | **Yes** | Yes (via Agent Runtime rings) | No | No | No |
-| OWASP Agentic Top 10 coverage | 10/10 | 10/10 | Partial | Partial | Partial |
+| MCP Security Index / leaderboard | **Yes** — server count and last-snapshot date are [stated once in the README](../README.md#mcp-security-index), which `scripts/index_cadence.py` writes from the published `history.json` | No | No | No | No |
+| Pin + drift verification of tool surface | **Yes** | Yes (via Agent Runtime rings) | Partial — it models a `ServerSignature` of the tool surface and sends it for analysis, but ships no pin/verify command to fail a build on drift | No | No |
+| OWASP Agentic Top 10 coverage | 10/10 | 10/10 | Not advertised (no OWASP mapping in its README or `docs/`, checked 2026-09-16) | Partial | Partial |
 
 ## Microsoft Agent Governance Toolkit (Apr 2 2026)
 
@@ -84,27 +90,73 @@ competing.
   best-effort basis, tracked in a public ledger. We do NOT originate CVE research — that's Invariant, Palo Alto
   Unit 42, HiddenLayer, Check Point, etc.
 
-## When to pick agent-audit-kit
+## Finding things, and proving you looked
 
-- You need an **auditor-ready** compliance report (EU AI Act high-risk
-  obligations Aug 2 2026).
-- Your environment is **air-gapped** (defense, finance, healthcare) and
-  no data can leave the repo.
-- You need **reproducible CI** — the same scan on the same commit must
-  produce byte-identical output.
-- You have **regional compliance** obligations in India (DPDP Act) or
-  Singapore (Agentic AI Governance Framework).
-- You want to **pin + verify** your MCP tool surface over time.
-- You need a **public** scanner whose rule set your security team can
-  read, audit, and fork.
+This page used to split the field into OSS and commercial. That split no
+longer describes anything: the largest scanner in the category is free and
+Apache-2.0, and is developed faster than this one. Sorting by licence sorts
+by the wrong axis.
 
-## When to pick a commercial scanner instead
+The distinction that survives is between a scanner that **finds** things and
+a scanner that also produces the **evidence an auditor accepts**. Those are
+different products that happen to read the same files. Most tools in this
+category do the finding, and do it well. Reach for the evidence kind only
+when somebody is going to ask you to show your work.
 
-- You have zero in-house security review capacity and want a vendor
-  SLA, phone number, and on-call.
-- You need a hosted triage dashboard beyond SARIF → GitHub.
-- You prefer to pay for multi-model semantic analysis of skills/tools
-  from third parties.
+### When the evidence is the deliverable
+
+Pick agent-audit-kit when a scan result has to survive being looked at by
+somebody who was not in the room:
+
+- **A dated obligation already applies to you.** EU AI Act Article 50
+  transparency has applied since 2026-08-02 and was not deferred. Colorado
+  SB 26-189 ADMT developer documentation is due from 2027-01-01. India DPDP,
+  Singapore's Agentic AI Governance Framework, Alabama and Tennessee each
+  have a pack here. The competitor's README, docs and source tree mention
+  none of these; that is not a criticism of it, it is a different product.
+- **The answer has to be reproducible.** The same commit scanned twice must
+  produce byte-identical output, because "it flagged that last month" is
+  only usable as evidence if you can re-run it and get the same file. A
+  scanner whose analysis happens behind a versioned service API cannot
+  promise that, however good the analysis is.
+- **Nothing may leave the repository.** Air-gapped review, or a legal
+  position that repository content is not sent to a third party for
+  processing.
+- **You need to prove the rule set itself.** A signed rule bundle, a public
+  CVE-to-rule ledger, and a rule set your security team can read, fork and
+  diff. A service's detections can be excellent and still not be auditable
+  artifacts.
+- **You need a drift primitive, not a drift feeling.** `pin` writes the tool
+  surface to a file you commit; `verify` fails the build when it changes.
+
+### When something else is the better tool
+
+- **You want the widest agent and skill discovery.** Snyk Agent Scan
+  enumerates more agent surfaces than this project does, across system,
+  user, project and extension scope. If the question is "what is installed
+  on these machines", start there.
+- **You want fleet monitoring, a vendor SLA, or a hosted triage
+  dashboard.** AAK emits SARIF and stops; someone else runs the dashboard.
+- **You want semantic judgement of skills and tool descriptions.** That is
+  a model-shaped problem and a deterministic scanner is the wrong shape for
+  it. Run both; they disagree in useful ways.
+
+### Why this gets more true in 2027 and 2028, not less
+
+The EU AI Act's high-risk obligations were the deadline everyone planned
+around. [Regulation (EU) 2026/1744](https://eur-lex.europa.eu/eli/reg/2026/1744/oj),
+the Digital Omnibus on AI, entered into force on 2026-07-27 and moved them:
+Annex III standalone high-risk systems to **2027-12-02**, Annex I
+product-embedded systems to **2028-08-02**. Article 50 transparency stayed
+where it was, on 2026-08-02.
+
+Read that as a schedule, not a reprieve. The obligations did not get
+smaller, they got later, and what they ask for at the end of them is
+documentation: intended purpose, risk management, robustness evidence,
+records that a human can audit. Detection coverage is what you need this
+quarter. The evidence stack is what you need on those two dates, and it is
+the part that cannot be assembled retroactively from a scanner that did not
+keep records.
 
 ## The honest state of the market
 
@@ -113,12 +165,36 @@ The OSS agent-security-scanner category is crowded (May 2025–Apr 2026):
 `mcpshield/mcpshield`, `affaan-m/agentshield`, `HeadyZhang/agent-audit`,
 plus Semgrep's Multimodal SAST.
 
-What's **empty** in the category: compliance evidence mapped to
-specific regulatory articles; deterministic reproducibility; a public
-CVE-to-rule ledger; a pinning + drift primitive; a public leaderboard.
-agent-audit-kit occupies that space.
+Those five gaps were re-checked on 2026-09-16 against `snyk/agent-scan`,
+the largest of them, since asserting a category is empty is only worth
+doing if somebody re-runs it. Four survived the check and one did not.
 
-Last reviewed: 2026-04-18.
+Still **empty**, with nothing in that repository's README, docs or `src/`
+tree answering to it:
+
+- **compliance evidence mapped to specific regulatory articles** — no
+  mention of the EU AI Act, SOC 2, ISO 27001/42001, HIPAA or NIST in the
+  README at all.
+- **deterministic reproducibility** — structurally unavailable rather than
+  merely absent: analysis is performed by the Agent Scan API against a
+  dated API model (`models/api/v20260710.py`), so the same input scanned
+  twice depends on service state, not only on the commit.
+- **a public CVE-to-rule ledger** — no CVE, advisory or ledger surface.
+- **a public leaderboard** — none published.
+
+**Withdrawn:** *a pinning + drift primitive* no longer belongs on that
+list. `snyk/agent-scan` models a `ServerSignature` — protocol version,
+capabilities, `serverInfo`, prompts, resources and tool descriptions —
+which is exactly the surface a drift check needs, and it transmits it for
+analysis. What it does not ship is a user-facing pin/verify workflow: the
+CLI offers `scan`, `inspect` and `help`, and nothing writes a signature to
+a file you commit and later fail a build against. So the accurate claim is
+narrower than the one this page used to make, and it is the narrower one
+that is kept: the ingredient exists there, the local fail-on-drift
+primitive does not.
+
+agent-audit-kit occupies what is left, which is smaller than this page
+previously implied.
 
 ---
 
@@ -131,7 +207,7 @@ coexisted, the README linked only this one, and the other two drifted unread._
 
 | Feature | AgentAuditKit | mcp-scan | Snyk Agent | Agent Audit | Microsoft AGT |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| **Rules** | <!-- rule-count:total -->352<!-- /rule-count --> | ~10 | ~15 | 57 | N/A (runtime) |
+| **Rules** | <!-- rule-count:total -->352<!-- /rule-count --> | ~10 | 20 codes (v0.5.x) / 15 risks (v0.6+) [†](#snyk-rule-count) | 57 | N/A (runtime) |
 | MCP config scanning | Yes | No | Yes | No | No |
 | Hook injection detection | Yes | No | No | No | No |
 | Trust boundary analysis | Yes | No | No | No | Yes |
@@ -139,13 +215,13 @@ coexisted, the README linked only this one, and the other two drifted unread._
 | Supply chain analysis | Yes | No | Yes | No | No |
 | Agent instruction scanning | Yes | No | No | No | No |
 | Tool poisoning detection | Yes | Yes | Yes | No | No |
-| Tool pinning / rug pull | Yes | Yes | No | No | No |
+| Tool pinning / rug pull | Yes | Yes | Partial (captures a tool-surface signature; no pin/verify command) | No | No |
 | Taint analysis (@tool) | Yes | No | No | Yes | No |
 | A2A protocol scanning | Yes | No | No | No | No |
 | Multi-agent discovery | Yes | No | Yes | No | No |
-| OWASP Agentic Top 10 | 10/10 | 0/10 | Partial | 10/10 | 10/10 |
-| OWASP MCP Top 10 | 10/10 | Partial | Partial | 0/10 | 0/10 |
-| Compliance frameworks | 12 | 0 | 0 | 0 | 3 |
+| OWASP Agentic Top 10 | 10/10 | 0/10 | Not advertised | 10/10 | 10/10 |
+| OWASP MCP Top 10 | 10/10 | Partial | Not advertised | 0/10 | 0/10 |
+| Compliance frameworks | <!-- framework-count:total -->14<!-- /framework-count --> | 0 | 0 | 0 | 3 |
 | SARIF output | Yes | No | Yes | No | No |
 | Auto-fix mode | Yes | No | No | No | No |
 | Security scoring | Yes | No | No | No | No |
@@ -157,11 +233,32 @@ coexisted, the README linked only this one, and the other two drifted unread._
 
 *Only click + pyyaml required.
 
+<a id="snyk-rule-count"></a>† **Snyk Agent Scan, counted on 2026-09-16, and
+the two numbers are not the same kind of thing as AAK's.** This cell used to
+say `~15` with no source recorded. Counting method, so the next person can
+re-run it: `snyk/agent-scan` ships two version lines and documents each
+separately. [`docs/issue-codes.md`](https://github.com/snyk/agent-scan/blob/main/docs/issue-codes.md)
+enumerates **20** distinct v0.5.x issue codes (5 `E###` + 15 `W###`, deduplicated
+from the heading badges) across five families;
+[`docs/risks.md`](https://github.com/snyk/agent-scan/blob/main/docs/risks.md)
+names **15** v0.6-and-later risk indicators. So the old `~15` was roughly right
+for one of the two lines and unsourced and ambiguous between them.
+
+Read the row with that caveat rather than as a score. A Snyk issue code is a
+family (`W015 Untrusted content detected`); an AAK rule ID is one detection
+with its own remediation and framework mapping, which is why 352 sits next to
+20 without meaning "23x better". The detection logic is also not in the
+repository to inspect: `src/agent_scan/` is discovery adapters, a CLI, an MCP
+client, API models and redaction, and the README's
+["Analysis and Validation"](https://github.com/snyk/agent-scan#how-it-works)
+says analysis runs through the Agent Scan API. The codes are the published
+surface of a service, not a rule set you can read, fork or diff.
+
 ### When to Use Each
 
 - **AgentAuditKit**: Comprehensive static + config scanning, compliance reporting, CI/CD integration
 - **mcp-scan**: Quick tool description poisoning check via cloud API
-- **Snyk Agent Scan**: Enterprise multi-agent MDM with cloud backend
+- **Snyk Agent Scan**: the broadest agent and skill discovery in the category, free and Apache-2.0, actively developed (3,055 stars, last push 2026-09-16 on the day this page was checked). It enumerates far more agent surfaces than AAK does — fourteen agents across system, user, project and extension scope — and adds a background MDM mode that reports to a Snyk Evo instance. It wants a `SNYK_TOKEN` and sends component data to its API for analysis. Reach for it when coverage breadth and fleet monitoring are the job. AAK's argument against it is not breadth of detection, and this page should not pretend otherwise: it is deterministic reproducibility, the compliance-evidence stack, the public CVE-to-rule ledger, the signed rule bundle, and the pin/verify drift primitive.
 - **Agent Audit**: Academic-quality taint analysis for LangChain/CrewAI code
 - **Microsoft AGT**: Runtime policy enforcement with execution rings
 
@@ -223,4 +320,4 @@ consumers can pick the right tool for their stack.
 - AAK v0.3.8 release notes: ../releases/v0.3.8.md
 - OWASP Agentic Top 10: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
 
-Last updated: 2026-04-27
+Reviewed 2026-09-16 (see the date at the top of this page; the GitLab 18.11 comparison itself describes the 2026-04-17 release and has not been re-run against a later GitLab version).

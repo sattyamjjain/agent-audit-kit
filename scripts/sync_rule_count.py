@@ -55,6 +55,17 @@ _README_CATEGORY_ANCHOR_RE = re.compile(
     r"(<!--\s*category-count:([A-Z0-9_]+)\s*-->)(.*?)(<!--\s*/category-count\s*-->)",
     re.DOTALL,
 )
+# Compliance-framework total. Added after docs/comparisons.md was found stating
+# 12 against a live 14: the number sat alone in a markdown table cell, so the
+# phrase pattern `N compliance frameworks` in check_counts.py could not see it
+# and `make count-check` reported clean for as long as it was wrong. Same anchor
+# mechanism as the rule total, for the same reason -- a literal a human retypes
+# is a literal that eventually disagrees with the registry.
+_FRAMEWORK_ANCHOR_RE = re.compile(
+    r"(<!--\s*framework-count:total\s*-->)(.*?)(<!--\s*/framework-count\s*-->)",
+    re.DOTALL,
+)
+
 _INIT_CONSTANT_RE = re.compile(
     r"^(RULE_COUNT\s*[:=]\s*)\d+(.*)$",
     re.MULTILINE,
@@ -413,6 +424,13 @@ def _update_total_anchor_doc(rel: str, count: int, *, check: bool) -> bool:
         return f"{match.group(1)}{count}{match.group(3)}"
 
     new = _README_ANCHOR_RE.sub(_sub, text)
+
+    def _sub_frameworks(match: re.Match) -> str:
+        from agent_audit_kit.output import pdf_report
+
+        return f"{match.group(1)}{len(pdf_report._FRAMEWORK_TITLES)}{match.group(3)}"
+
+    new = _FRAMEWORK_ANCHOR_RE.sub(_sub_frameworks, new)
     if new == text:
         return False
     if check:
