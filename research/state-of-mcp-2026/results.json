@@ -10,22 +10,21 @@
   "duplicates_removed": 85,
   "unparseable_removed": 1,
   "grade_distribution": {
-    "A": 637,
+    "A": 636,
     "B": 1421,
     "C": 111,
     "D": 49,
-    "F": 85
+    "F": 86
   },
-  "configs_with_critical": 1212,
-  "configs_with_critical_pct": 52.6,
+  "configs_with_critical": 1213,
+  "configs_with_critical_pct": 52.7,
   "configs_with_high": 165,
   "configs_with_high_pct": 7.2,
   "severity_totals": {
-    "critical": 1333,
+    "critical": 1335,
     "high": 319,
-    "medium": 4426,
-    "low": 1224,
-    "info": 1
+    "medium": 4432,
+    "low": 1224
   },
   "transport_distribution": {
     "streamable-http": 1726,
@@ -35,8 +34,8 @@
   },
   "rule_family_distribution": {
     "AAK-MCP": {
-      "configs": 2299,
-      "pct": 99.8
+      "configs": 2300,
+      "pct": 99.9
     },
     "AAK-OAUTH": {
       "configs": 424,
@@ -54,10 +53,6 @@
       "configs": 1,
       "pct": 0.0
     },
-    "AAK-INTERNAL": {
-      "configs": 1,
-      "pct": 0.0
-    },
     "AAK-POISON": {
       "configs": 1,
       "pct": 0.0
@@ -65,8 +60,8 @@
   },
   "category_hit_rate": {
     "mcp-config": {
-      "configs": 2299,
-      "pct": 99.8
+      "configs": 2300,
+      "pct": 99.9
     },
     "secret-exposure": {
       "configs": 70,
@@ -75,10 +70,6 @@
     "transport-security": {
       "configs": 42,
       "pct": 1.8
-    },
-    "agent-config": {
-      "configs": 1,
-      "pct": 0.0
     },
     "composition": {
       "configs": 1,
@@ -91,16 +82,16 @@
   },
   "owasp_mcp_hit_rate": {
     "MCP07:2025": {
-      "configs": 2299,
-      "pct": 99.8
+      "configs": 2300,
+      "pct": 99.9
     },
     "MCP01:2025": {
       "configs": 492,
       "pct": 21.4
     },
     "MCP03:2025": {
-      "configs": 450,
-      "pct": 19.5
+      "configs": 451,
+      "pct": 19.6
     },
     "MCP10:2025": {
       "configs": 450,
@@ -133,7 +124,7 @@
   },
   "auth_profile_2026_07_28": {
     "no_authentication": {
-      "n": 1200,
+      "n": 1201,
       "denominator": 2303,
       "pct": 52.1
     },
@@ -168,7 +159,7 @@
       "rule_id": "AAK-MCP-001",
       "title": "Remote MCP server without authentication",
       "severity": "critical",
-      "configs": 1200,
+      "configs": 1201,
       "config_pct": 52.1
     },
     {
