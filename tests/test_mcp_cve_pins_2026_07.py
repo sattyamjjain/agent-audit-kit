@@ -741,9 +741,20 @@ def test_metaads_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_metaads_patched_passes(tmp_path: Path) -> None:
+    # Floor moved 1.0.109 -> 1.0.115 on 2026-09-19 for CVE-2026-54549
+    # (upload_ad_image SSRF). 1.0.109 is no longer patched.
     assert "AAK-METAADS-CVE-2026-48039-001" not in _ids(
-        tmp_path, "requirements.txt", "meta-ads-mcp==1.0.109\n"
+        tmp_path, "requirements.txt", "meta-ads-mcp==1.0.115\n"
     )
+
+
+def test_metaads_gap_between_the_old_and_new_floor_now_fires(tmp_path: Path) -> None:
+    """1.0.109 satisfied the old floor and was still vulnerable to
+    CVE-2026-54549. This is the interval a cve_references line cannot cover."""
+    for version in ("1.0.109", "1.0.114"):
+        assert "AAK-METAADS-CVE-2026-48039-001" in _ids(
+            tmp_path, "requirements.txt", f"meta-ads-mcp=={version}\n"
+        ), version
 
 
 # --- CVE-2026-19337: @adenot/mcp-google-search SSRF (presence-only, no fix yet) ---

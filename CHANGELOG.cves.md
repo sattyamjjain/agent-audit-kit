@@ -16,6 +16,72 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-19: ten disclosures, five new pins, and two false positives that had nothing to do with them
+
+The watcher opened ten `cve-response` issues across 2026-09-15 and 09-16
+(#745-#754). All ten were in scope — no Apache Storm, no MCP2221, no acronym
+collisions. Every one is a real MCP server or agent framework, so the watcher's
+keyword bias cost nothing this time.
+
+No new *shape* rule was authored. All ten fall into four classes the registry
+already owns — an unauthenticated network-bound MCP transport, SSRF through a
+caller-supplied URL, command injection through MCP server config, and path
+traversal in a tool argument — so the work was version pins, floors, and
+recording the CVEs against the rules whose shape they are.
+
+**The interesting half is what reaching them exposed.** Two false positives in
+the pin table, both live on `main`, neither related to this wave:
+
+*A pin had no idea which package registry it was talking about.* `_Pin` matched
+on name alone, and names are not unique across registries. PyPI publishes
+`praisonai` on a 4.6.x line; npm publishes an unrelated `praisonai` — the
+TypeScript agent framework — on 1.7.x. The 4.6.78 floor was therefore compared
+against npm's newest release, 1.7.4, found it lower, and reported a
+fully-patched install as vulnerable with remediation text naming a version npm
+has never published. `_Pin.ecosystem` now scopes a pin to `py` or `js`, and a
+manifest whose registry is not knowable from its filename — an `mcp.json` can
+name either — still matches every pin, so the scoping only ever removes a claim
+we could not make. `marimo` and `omnigent` were scoped at the same time: the
+file's own header called an old-npm-`marimo` hit "the accepted cost" of covering
+three real pip CVEs, and there is no longer a cost to accept.
+
+*A bare package name matched inside its own scoped sibling.* `_mk_re("frontmcp")`
+matched the `frontmcp` in `"@frontmcp/adapters": "1.5.7"`, captured no version
+because `/adapters` follows the name, and `_fires` reads a missing version as
+"unpinned" — so a patched sibling was reported. The scan loop breaks on the
+first pattern that *matches*, not the first that *fires*, so the unscoped name
+also shadowed the scoped pattern that would have read the version correctly.
+`_mk_bare_re` excludes `@` on the left and `/` on the right. The same pair
+existed for `better-auth` / `@better-auth/oauth-provider` and was also live: a
+patched `@better-auth/oauth-provider@1.6.13` reported as unpinned. A test now
+fails if any future pin names both a bare package and its scoped sibling without
+guarding the bare one.
+
+One smaller contract fix in the same file: `scan()` added a path to its
+`scanned` set only when that file produced a finding, so `files_scanned` counted
+matches rather than files read and a clean repository looked unscanned. Same
+class as the eight scanners corrected in v0.6.6.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-59971 | 10.0 | `mysql-mcp-server` | **New pin** `AAK-MCP-MYSQLMCP-CVE-2026-59971-001`, floor 0.4.2. `MCP_TRANSPORT=sse` builds `SseServerTransport` with neither `security_settings` nor `enable_dns_rebinding_protection`, the Starlette routes carry no auth, and the bind is 0.0.0.0 — so `execute_sql` is reachable directly or by DNS rebinding. Also recorded against `AAK-MCP-HTTP-NOAUTH-SERVER-001`. | #745 |
+| CVE-2026-53710 | 10.0 | `mcp-contextforge-gateway` | No new rule and no new pin. `python_sandbox_server` exposes raw `getattr` through `safe_builtins` and omits the `_getattr_` guard, so runtime-built dunder names traverse to `subprocess.Popen`. Fixed 1.0.2 — **below** the existing 1.0.9 floor, so every affected version already fires. Recorded in `cve_references`. | #746 |
+| CVE-2026-57139 | 9.8 | `praisonai` (npm, TypeScript) | **New pin** `AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001`, floor 1.7.2. `MCPServer.startHttp()` binds with no host restriction and dispatches every POST without auth. This is the CVE that surfaced the registry collision above: it could not be pinned at all until `_Pin` learned which registry it meant. | #747 |
+| CVE-2026-59973 | 8.5 | `mcp-from-openapi`, `frontmcp`, `@frontmcp/adapters` | **New pin** `AAK-MCP-FROMOPENAPI-CVE-2026-59973-001`, floor 2.5.0, because `mcp-from-openapi` runs a 2.x line the `frontmcp` pin's 1.5.7 floor cannot express. The `frontmcp` half was fixed at 1.5.0, already under that floor; the pin gained the `@frontmcp/adapters` name it was missing. | #748 |
+| CVE-2026-91931 | 8.5 | `flowise` | **New pin** `AAK-MCP-FLOWISE-CVE-2026-91931-001`, floor 3.1.4. npx package names in `mcpServerConfig` invoke npx on attacker-chosen packages. | #749 |
+| CVE-2026-91932 | 8.5 | `flowise` | Same pin, same 3.1.4 release. A clean filename in `args` plus a controlled `cwd` bypasses the path validation. One floor, two CVEs. | #753 |
+| CVE-2026-61560 | 9.8 | `@zereight/mcp-gitlab` | **New pin** `AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001`. `SSE=true` exposes every tool unauthenticated and `upload_markdown` reads any local file, so `/proc/self/environ` yields `GITLAB_PERSONAL_ACCESS_TOKEN`. The default for Docker deployments. Fixed 2.1.27. | #750 |
+| CVE-2026-61559 | 9.6 | `@zereight/mcp-gitlab` | Same pin. `ENABLE_DYNAMIC_API_URL=true` trusts `X-GitLab-API-URL` as the outbound base URL with no allowlist while still attaching the victim's `Private-Token`. Fixed 2.1.27. | #752 |
+| CVE-2026-61568 | 9.6 | `@zereight/mcp-gitlab` | Same pin, and it is this one that sets the floor at **2.1.30**: the Streamable HTTP endpoint has no effective Host/Origin allowlist, so DNS rebinding reaches MCP init. 2.1.27 does not close it. | #751 |
+| CVE-2026-54549 | 8.3 | `meta-ads-mcp` | **Floor raised 1.0.109 to 1.0.115.** `upload_ad_image` hands an attacker-controlled `image_url` to `try_multiple_download_methods()`, where `httpx.AsyncClient` runs `follow_redirects=True` and validates neither scheme, host nor resolved IP, and Meta credential validation happens only after the download. The fix is above the old floor, so 1.0.109 through 1.0.114 were vulnerable and silent — the case a `cve_references` line cannot cover. | #754 |
+
+Every package and fix version was verified against the live PyPI and npm
+registries before shipping, and every CVE re-verified against the NVD API
+(the HTML detail pages are JS-rendered and unusable for this).
+
+Dispositioned at 2026-09-19T04:59:40Z, shipped in v0.6.7.
+
+
 ## 2026-09-16: ten disclosures, one new rule, four out of scope
 
 The watcher opened ten `cve-response` issues across 2026-09-14 and 09-15

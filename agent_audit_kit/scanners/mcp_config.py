@@ -180,11 +180,16 @@ def _check_server(
 ) -> list[Finding]:
     findings: list[Finding] = []
 
-    url = server_cfg.get("url", "")
-    command = server_cfg.get("command", "")
+    # A field whose JSON type contradicts the MCP schema is reported by
+    # AAK-MCP-CONFIG-MALFORMED-001 and is unevaluable here: there is no honest
+    # answer to "does this command contain shell metacharacters" when the
+    # command is a list. Treat it as absent for the rules below rather than
+    # guessing at a coercion, and let the malformed rule be the one that speaks.
+    url = _as_str(server_cfg.get("url", ""))
+    command = _as_str(server_cfg.get("command", ""))
     args = server_cfg.get("args", [])
     env = server_cfg.get("env", {})
-    headers_helper = server_cfg.get("headersHelper", "")
+    headers_helper = _as_str(server_cfg.get("headersHelper", ""))
 
     # AAK-MCP-001: Remote server without authentication. A server declaring a
     # recognized credential/access header — Authorization, Bearer, X-API-Key, or
@@ -310,6 +315,16 @@ _EXPECTED_FIELD_TYPES: dict[str, tuple[type, ...]] = {
     "env": (dict,),
     "url": (str,),
 }
+
+
+def _as_str(value: object) -> str:
+    """Return `value` if it is a string, else "" so callers skip it.
+
+    Deliberately not `str(value)`: coercing `["node"]` to its repr would let a
+    shell-metacharacter check run against `['node']` and report brackets that
+    the operator never wrote.
+    """
+    return value if isinstance(value, str) else ""
 
 
 def _check_malformed_fields(

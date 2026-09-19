@@ -74,11 +74,32 @@ def test_both_atlassian_cves_are_recorded() -> None:
 
 
 def test_no_second_pin_was_added_for_an_already_covered_package() -> None:
-    """Two pins on one package report one dependency twice."""
+    """Two pins on one package report one dependency twice.
+
+    Keyed on (name, ecosystem) since 2026-09-19: `praisonai` is published by two
+    unrelated projects, PyPI's on a 4.6.x line and npm's on 1.x, and each needs
+    its own floor. They cannot collide in one manifest because `_pin_applies`
+    filters by the manifest's registry, so this still catches the duplicate
+    reporting it was written for.
+    """
     from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
 
     for pkg in ("praisonai", "mcp-atlassian"):
-        assert sum(1 for p in _PINS if pkg in p.names) == 1, pkg
+        holders = [p for p in _PINS if pkg in p.names]
+        keys = {(pkg, p.ecosystem) for p in holders}
+        assert len(keys) == len(holders), (
+            f"{pkg}: two pins share one (name, ecosystem) key"
+        )
+
+
+def test_the_two_praisonai_pins_are_scoped_to_different_registries() -> None:
+    """Without the scoping they would both fire on one manifest."""
+    from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
+
+    ecosystems = sorted(
+        p.ecosystem for p in _PINS if "praisonai" in p.names
+    )
+    assert ecosystems == ["js", "py"]
 
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-09-19
+
+### Added
+
+- **Ten MCP CVEs from the 2026-09-15..16 wave dispositioned** (issues
+  #745-#754), five of them CRITICAL. No new detection rule was needed: all ten
+  are shapes the registry already owns. Five new package pins
+  (`mysql-mcp-server` >= 0.4.2, npm `praisonai` >= 1.7.2, `@zereight/mcp-gitlab`
+  >= 2.1.30, `flowise` >= 3.1.4, `mcp-from-openapi` >= 2.5.0), one floor raised
+  (`meta-ads-mcp` 1.0.109 -> 1.0.115, because CVE-2026-54549 is fixed above the
+  old floor and 1.0.109-1.0.114 were vulnerable and silent), one name added to
+  an existing pin (`@frontmcp/adapters`), and one CVE recorded against a floor
+  that already covers it (`mcp-contextforge-gateway`, fixed 1.0.2, floor 1.0.9).
+  Every package and fix version verified against the live PyPI and npm
+  registries; every CVE re-verified against the NVD API. Rule count 352 -> 357.
+  Full per-CVE reasoning in `CHANGELOG.cves.md`.
+
 ### Fixed
+
+- **A version pin did not know which package registry it was about, and
+  reported a fully-patched install as vulnerable.** `_Pin` matched on package
+  name alone. PyPI's `praisonai` runs a 4.6.x line; npm publishes an unrelated
+  `praisonai` — the TypeScript agent framework — on 1.7.x. The 4.6.78 floor was
+  compared against npm's newest release, 1.7.4, and flagged it, with remediation
+  text naming a version npm has never published. Found while trying to pin
+  CVE-2026-57139, which is *about* the npm package and could not be expressed at
+  all until the two were distinguishable. `_Pin.ecosystem` now scopes a pin to
+  `py` or `js`; a manifest whose registry the filename does not reveal (an
+  `mcp.json` can name either) still matches every pin, so the scoping only
+  removes claims that could not be made. `marimo` and `omnigent` were scoped in
+  the same pass — the pin table's own header had recorded an old-npm-`marimo`
+  hit as "the accepted cost" of covering three real pip CVEs, and there is now
+  no cost to accept.
+
+- **A bare package name matched inside its own scoped sibling and reported it
+  as unpinned.** `_mk_re("frontmcp")` matched the `frontmcp` inside
+  `"@frontmcp/adapters": "1.5.7"`, captured no version because `/adapters`
+  follows the name, and a missing version reads as "unpinned" — so a correctly
+  patched package was reported. The scan loop breaks on the first pattern that
+  *matches* rather than the first that *fires*, so the bare name also shadowed
+  the scoped pattern that would have parsed the version correctly. `_mk_bare_re`
+  excludes `@` on the left and `/` on the right. The identical pair existed for
+  `better-auth` / `@better-auth/oauth-provider` and was also live: a patched
+  `@better-auth/oauth-provider@1.6.13` reported as unpinned. A test now fails if
+  any future pin names both a bare package and its scoped sibling without
+  guarding the bare one.
+
+- **The CVE-pin scanner under-reported `files_scanned`.** `scan()` added a path
+  to its `scanned` set only when that file produced a finding, so the count
+  described matches rather than files read and a clean repository looked
+  unscanned. Same contract bug as the eight scanners corrected in v0.6.6.
+
+- **The two MCP-config crash shapes left open by v0.6.6 are hardened.**
+  `{"url": 42}` and `{"command": ["node"]}` were taking down four scanners —
+  `mcp_config` and `transport_security` on the int url, `mcp_config` and
+  `supply_chain` on the list command — plus the shared `find_line_number`
+  helper, which fed a value straight from parsed JSON into a substring search.
+  A field whose JSON type contradicts the MCP schema is reported by
+  `AAK-MCP-CONFIG-MALFORMED-001` and skipped by the rules that cannot evaluate
+  it: there is no honest answer to "does this command contain shell
+  metacharacters" when the command is a list, and coercing `["node"]` to its
+  repr would fire `AAK-MCP-002` on brackets the operator never wrote. **Note the
+  exit-code change:** these configs previously forced a non-zero exit through
+  the scanner-failure path, which was a crash acting as an accidental severity
+  floor. They now report at MEDIUM and answer to `--fail-on` like any other
+  MEDIUM finding, so a default-threshold run that used to fail on them now
+  passes. Use `--fail-on medium` if you want them to fail the build.
+
+- **The CVE-latency figure could report a negative fastest response.**
+  CVE-2026-53708 was dispositioned on 2026-08-16 from GHSA-9hgc-g3w5-67cm and
+  NVD published it 29 days later, so its measured latency is -29 days. Its
+  published date had been withheld from the ledger to keep `Fastest: -29` off
+  the page, which hid a real data point to protect a metric. Coverage that
+  predates the disclosure is now its own population — the same split the
+  deferred-backlog rows already had — reported separately with what it means,
+  and excluded from median/p90/fastest because there is no turnaround to measure
+  when the rule was already there. `scripts/build_coverage_page.py` uses the
+  same split, so the public page and `docs/cve-latency.md` can no longer
+  disagree about what the median describes. The negative-latency guard in the
+  test suite is now an allowlist carrying the advisory id that justifies each
+  exemption, so an unverified negative row still fails.
 
 - **`docs/comparisons.md` was wrong about the largest scanner in the
   category, in every row that mentioned it.** The page README links as

@@ -64,6 +64,13 @@ _OUT_OF_SCOPE_RE = re.compile(r"out of scope", re.I)
 # disclosure. Listed separately in the doc so the median/p90 are not read as if
 # every row answered the same question.
 _BACKLOG_DAYS = 30
+# Below zero, the rule was already shipped when NVD published the CVE, because
+# coverage was written from a vendor advisory (or from the shape, generically)
+# ahead of NVD enrichment. That is not a fast response, it is the absence of a
+# response to time, and reporting it as "Fastest: -29 days" describes a
+# turnaround that never happened. Third population, same reasoning as the
+# backlog split: mixing them would describe neither.
+_PRE_COVERED_DAYS = 0
 
 
 class Row(NamedTuple):
@@ -185,6 +192,11 @@ class WindowStats(NamedTuple):
     median_days: float
     p90_days: int
     backlog_n: int
+    # Rows in the window whose coverage predates NVD publication. Excluded from
+    # n/median/p90 for the same reason the doc excludes them: there is no
+    # turnaround to measure when the rule was already there. Surfaced so the
+    # page can say so rather than quietly dropping them.
+    pre_covered_n: int
     computed_on: date
 
 
@@ -213,13 +225,19 @@ def window_stats(
     if not in_window:
         return None
 
-    days = sorted(r.days for r in in_window)
+    # Same three-way split as `render`, so the page and the doc cannot disagree
+    # about what the median describes.
+    pre_covered = [r for r in in_window if r.days < _PRE_COVERED_DAYS]
+    days = sorted(r.days for r in in_window if r.days >= _PRE_COVERED_DAYS)
+    if not days:
+        return None
     return WindowStats(
         window_days=window_days,
         n=len(days),
         median_days=round(statistics.median(days), 1),
         p90_days=percentile_nearest_rank(days, 90),
         backlog_n=sum(1 for d in days if d > _BACKLOG_DAYS),
+        pre_covered_n=len(pre_covered),
         computed_on=when,
     )
 
@@ -255,8 +273,12 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
         # figure that describes neither: when four old Letta CVEs were pinned in
         # one sitting, a mixed p90 jumped from 2 days to 122 while the actual
         # response time to fresh disclosures had not changed at all.
-        response = [r.days for r in rows if r.days <= _BACKLOG_DAYS]
+        response = [
+            r.days for r in rows
+            if _PRE_COVERED_DAYS <= r.days <= _BACKLOG_DAYS
+        ]
         backlog = [r.days for r in rows if r.days > _BACKLOG_DAYS]
+        pre_covered = [r for r in rows if r.days < _PRE_COVERED_DAYS]
 
         add("## Summary")
         add("")
@@ -287,8 +309,35 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
             )
             add("")
 
+        if pre_covered:
+            names = ", ".join(
+                f"`{r.cve}`" for r in sorted(pre_covered, key=lambda r: r.cve)
+            )
+            lead = abs(max(r.days for r in pre_covered))
+            lag = abs(min(r.days for r in pre_covered))
+            if len(pre_covered) == 1:
+                span = f"one CVE was already covered when NVD published it, by {lag} days"
+            elif lead == lag:
+                span = (
+                    f"{len(pre_covered)} CVEs were already covered when NVD "
+                    f"published them, each by {lag} days"
+                )
+            else:
+                span = (
+                    f"{len(pre_covered)} CVEs were already covered when NVD "
+                    f"published them, by between {lead} and {lag} days"
+                )
+            add(
+                f"Separately, {span}: {names}. A rule written from a vendor "
+                f"advisory, or one general enough that the shape was already in "
+                f"the registry, is in place before NVD enrichment lands. There is "
+                f"no turnaround to measure, so these are kept out of the figures "
+                f"above rather than reported as a negative fastest response."
+            )
+            add("")
+
         add(
-            f"Both populations together: {len(measured)} CVEs with a known "
+            f"All populations together: {len(measured)} CVEs with a known "
             f"publication date and shipping release."
         )
         add("")
@@ -323,9 +372,12 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
         "release above it."
     )
     add(
-        "- **Days** is calendar days, `shipped - published`. A negative value would "
-        "mean coverage landed before NVD published, which happens when a rule is "
-        "written from a vendor advisory ahead of NVD enrichment."
+        "- **Days** is calendar days, `shipped - published`. A negative value "
+        "means coverage landed before NVD published, which happens when a rule "
+        "is written from a vendor advisory ahead of NVD enrichment, or when the "
+        "shape was already covered generically. Those rows are a separate "
+        "population and are excluded from the response figures: there is no "
+        "turnaround to measure when the rule predates the disclosure."
     )
     add(
         "- A CVE appearing in several sections is counted from the earliest one "
@@ -451,7 +503,9 @@ def main() -> int:
     out_path.write_text(rendered, encoding="utf-8")
     # Mirror the doc: report the response population, disclose the backlog
     # separately. A mixed figure describes neither.
-    response = [r.days for r in rows if r.days <= _BACKLOG_DAYS]
+    response = [
+        r.days for r in rows if _PRE_COVERED_DAYS <= r.days <= _BACKLOG_DAYS
+    ]
     backlog = [r.days for r in rows if r.days > _BACKLOG_DAYS]
     if response:
         summary = (

@@ -114,6 +114,12 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             command = server_cfg.get("command", "")
             args = server_cfg.get("args", [])
 
+            # `command` is a string per the MCP schema, but a malformed config
+            # can make it a list and `.strip()` then raises (issue #743). The
+            # wrong type is reported by AAK-MCP-CONFIG-MALFORMED-001; there is
+            # no package fetcher to identify here, so skip it.
+            if not isinstance(command, str):
+                continue
             if not command or command.strip().split()[0] not in PACKAGE_FETCHERS:
                 continue
 

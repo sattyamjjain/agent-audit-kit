@@ -22,7 +22,20 @@ SKIP_DIRS = frozenset({
 })
 
 
-def find_line_number(raw: str, key: str) -> int | None:
+def find_line_number(raw: str, key: object) -> int | None:
+    """Locate `key` in `raw`, tolerating a non-string key.
+
+    Callers pass a value straight out of parsed JSON, and a malformed config can
+    put an int or a list where the MCP schema says string. Substring search then
+    raised TypeError and took the whole scanner down (issue #743). The value is
+    only ever used to point a finding at a line, so coercing is the right
+    trade: a wrong-typed key simply fails to match and the finding carries no
+    line number, which is what a missing match already did.
+    """
+    if not isinstance(key, str):
+        key = str(key)
+    if not key:
+        return None
     for i, line in enumerate(raw.splitlines(), 1):
         if key in line:
             return i

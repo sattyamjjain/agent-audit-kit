@@ -78,9 +78,15 @@ def _check_server(
     """Run transport security rules against a single MCP server block."""
     findings: list[Finding] = []
 
-    url: str = server_cfg.get("url", "")
+    # A malformed config can put a non-string here; the MCP-config scanner
+    # reports that as AAK-MCP-CONFIG-MALFORMED-001. Reading it as "" means the
+    # transport rules skip a value they cannot evaluate instead of raising
+    # TypeError out of the regex and taking the scanner down (issue #743).
+    _raw_url = server_cfg.get("url", "")
+    url: str = _raw_url if isinstance(_raw_url, str) else ""
     env: dict[str, Any] = server_cfg.get("env", {})
-    transport: str = server_cfg.get("transport", "")
+    _raw_transport = server_cfg.get("transport", "")
+    transport: str = _raw_transport if isinstance(_raw_transport, str) else ""
 
     # AAK-TRANSPORT-001: cleartext http:// or ws://, excluding loopback
     if url and _CLEARTEXT_URL_RE.match(url) and not _LOCALHOST_RE.match(url):

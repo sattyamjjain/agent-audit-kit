@@ -144,6 +144,15 @@ def _render_latency(stats: "Optional[WindowStats]") -> str:
             "publication and are backlog rather than fresh response."
         )
     )
+    pre_covered = (
+        ""
+        if not stats.pre_covered_n
+        else (
+            f" A further {stats.pre_covered_n} CVE(s) in this window were already "
+            "covered when NVD published them, so they have no turnaround to "
+            "measure and are not counted here."
+        )
+    )
     return (
         f"{head}\n"
         f"<!-- cve-latency-computed-on: {stats.computed_on.isoformat()} -->\n"
@@ -160,8 +169,8 @@ def _render_latency(stats: "Optional[WindowStats]") -> str:
         f"<td>{stats.computed_on.isoformat()}</td></tr>\n"
         "</table>\n"
         f"<p class=\"runtime\">n is printed because a median over a handful of "
-        f"CVEs is not a median.{backlog} This is a measurement, not a service "
-        "level: AgentAuditKit publishes no CVE-response SLA.</p>\n"
+        f"CVEs is not a median.{backlog}{pre_covered} This is a measurement, "
+        "not a service level: AgentAuditKit publishes no CVE-response SLA.</p>\n"
     )
 
 

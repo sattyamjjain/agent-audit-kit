@@ -128,6 +128,20 @@ def test_a_row_covering_several_cves_counts_all_of_them() -> None:
     assert "CVE-2026-11111" not in shipped
 
 
+# A negative latency is normally a parsing fault. It is legitimate only when
+# coverage was genuinely written from a vendor advisory before NVD published,
+# and each such row has to be checked by hand and recorded here with what was
+# verified. Anything NOT on this list still fails, which is the signal the test
+# was built for.
+_VERIFIED_PRE_COVERAGE = {
+    # Dispositioned 2026-08-16 from GHSA-9hgc-g3w5-67cm, which is the source the
+    # ledger row cites; AAK-SSRF-TOCTOU-001 was widened that day (guard
+    # recognition became body-based as well as name-based). NVD published it on
+    # 2026-09-14, 29 days later. The rule really did predate the disclosure.
+    "CVE-2026-53708",
+}
+
+
 def test_real_ledger_produces_no_impossible_latency() -> None:
     """Guard the parsing, not the calendar.
 
@@ -137,10 +151,11 @@ def test_real_ledger_produces_no_impossible_latency() -> None:
     genuine 122-day row (published April, shipped as the deferred #160 backlog
     item in August), and a real backlog entry should not fail the suite.
 
-    What actually indicates a parsing fault is a *negative* latency — a rule
-    credited to a release that predates the CVE — or a row whose shipped date
-    precedes its published date. Those are checked here; the referenced-CVE
-    leak is covered directly by the two attribution tests above.
+    A *negative* latency is the parsing-fault signal — a rule credited to a
+    release that predates the CVE. It has exactly one legitimate cause, coverage
+    written from a vendor advisory ahead of NVD enrichment, so the exceptions are
+    enumerated in `_VERIFIED_PRE_COVERAGE` with the evidence rather than the
+    check being relaxed. An unlisted negative row still fails.
     """
     import json
 
@@ -150,13 +165,39 @@ def test_real_ledger_produces_no_impossible_latency() -> None:
     rows, _missing = build_rows(shipped, published)
     assert rows
 
-    negative = [r for r in rows if r.days < 0]
+    negative = [r for r in rows if r.days < 0 and r.cve not in _VERIFIED_PRE_COVERAGE]
     assert not negative, (
-        "negative latency means a CVE was credited to a release that predates it: "
+        "negative latency means a CVE was credited to a release that predates it. "
+        "If coverage genuinely shipped from a vendor advisory before NVD "
+        "published, verify it and add it to _VERIFIED_PRE_COVERAGE with the "
+        "advisory id: "
         + ", ".join(f"{r.cve} ({r.days}d)" for r in negative)
     )
     for r in rows:
+        if r.cve in _VERIFIED_PRE_COVERAGE:
+            continue
         assert r.shipped >= r.published, f"{r.cve}: shipped {r.shipped} < published {r.published}"
+
+
+def test_verified_pre_coverage_rows_are_really_negative() -> None:
+    """Keep the allowlist honest: an entry that no longer applies must be removed.
+
+    Without this, a stale exemption would sit there masking a future fault on
+    the same CVE id.
+    """
+    import json
+
+    root = Path(__file__).resolve().parent.parent
+    shipped, _ = parse_ledger((root / "CHANGELOG.cves.md").read_text(encoding="utf-8"))
+    published = json.loads((root / "docs" / "data" / "cve-published.json").read_text())
+    rows, _missing = build_rows(shipped, published)
+    by_cve = {r.cve: r for r in rows}
+    for cve in _VERIFIED_PRE_COVERAGE:
+        assert cve in by_cve, f"{cve} is exempted but no longer in the ledger"
+        assert by_cve[cve].days < 0, (
+            f"{cve} is no longer a negative row — drop it from "
+            "_VERIFIED_PRE_COVERAGE so a real fault there cannot hide"
+        )
 
 
 def test_backlog_rows_are_disclosed_separately() -> None:

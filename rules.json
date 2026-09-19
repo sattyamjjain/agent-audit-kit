@@ -4146,6 +4146,7 @@
         "CVE-2026-18905",
         "CVE-2026-18486",
         "CVE-2026-18489",
+        "CVE-2026-53710",
         "CVE-2026-78573"
       ],
       "description": "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below 1.0.8 carries four disclosed defects that one floor remediates. CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint `POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection time \u2014 unlike every other egress path in the gateway \u2014 so an authenticated low-privileged user reaches internal addresses by DNS rebinding and receives the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq filters are validated improperly, letting a remote authenticated attacker read credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the Translate utility exposes data elements to the wrong session, leaking across sessions, at or below 1.0.8. CVE-2026-78573 (CRITICAL 9.8): 1.0.0 through 1.0.7 ship default credentials, so a remote attacker gains administrative access outright \u2014 the floor already in place covers it, and it is recorded here rather than as a second rule because one upgrade remediates all five. Treat < 1.0.9 (and unpinned) as exposed.",
@@ -4462,6 +4463,36 @@
     },
     {
       "adversa_references": [
+        "ADV-AGENT-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-91931",
+        "CVE-2026-91932"
+      ],
+      "description": "Flowise (`flowise`, npm) before 3.1.4 allows an authenticated attacker to reach remote code execution through the Custom MCP node by two routes closed in the same release. Supplying npx package names in the `mcpServerConfig` parameter causes Flowise to invoke `npx` on attacker-controlled npm packages, running their install and entry-point code on the Flowise server (CVE-2026-91931, CVSS 8.5, CWE-78). Separately, the path validation applied to `mcpServerConfig` is bypassed by passing a clean filename in the `args` array while controlling the `cwd` parameter, so the resolved executable is taken from an attacker-chosen working directory (CVE-2026-91932, CVSS 8.5, CWE-20). Both are fixed in 3.1.4.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI02"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP01:2025"
+      ],
+      "remediation": "Upgrade `flowise` to >= 3.1.4 and pin it. Treat the Custom MCP node's `mcpServerConfig` as untrusted input even from authenticated users: allowlist the commands it may launch rather than validating the filename alone, and resolve them against a fixed directory instead of a caller-supplied `cwd`. Restrict who holds Flowise credentials, since both paths require only an authenticated session.",
+      "rule_id": "AAK-MCP-FLOWISE-CVE-2026-91931-001",
+      "sarif_name": "FlowiseCustomMcpNodeRce",
+      "severity": "high",
+      "title": "flowise < 3.1.4 (Custom MCP node reaches RCE through npx package names and an unvalidated cwd)"
+    },
+    {
+      "adversa_references": [
         "ADV-AUTH-01"
       ],
       "aicm_references": [
@@ -4492,6 +4523,35 @@
     },
     {
       "adversa_references": [
+        "ADV-AGENT-04"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-59973"
+      ],
+      "description": "`mcp-from-openapi` (npm) from 2.3.0 until 2.5.0 forwards untrusted OpenAPI `url` and `spec` inputs, and `loadOptions.refResolution`, from `loadOPENAPISpec()` in `libs/adapters/src/openapi/openapi.adapter.ts` into `OpenAPIToolGenerator.fromURL()` and `.fromJSON()`. The external `$ref` guard compares parsed hostname strings without resolving addresses, pinning the validated address, revalidating redirect targets, or normalizing IPv4-mapped IPv6 forms. An authenticated user who can import or configure an OpenAPI specification in a hosted or multi-user deployment therefore causes backend-origin requests to internal services via DNS-to-loopback resolution, redirect-to-loopback behaviour, or `::ffff:` loopback forms, exposing internal administrative APIs, metadata-like services and other private endpoints (CVE-2026-59973, CVSS 8.5, CWE-918). The same defect ships in `frontmcp` and `@frontmcp/adapters` on their own 1.x line, where that package's existing 1.5.7 pin floor already covers the 1.5.0 fix; this rule exists because `mcp-from-openapi` runs a 2.x line that floor cannot express. Impact is lower where only a trusted local administrator can configure specs, and disabling external reference protocols prevents the request outright.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP08:2025"
+      ],
+      "remediation": "Upgrade `mcp-from-openapi` to >= 2.5.0 and pin it (the sibling `frontmcp` and `@frontmcp/adapters` packages to >= 1.5.0). Disable external `$ref` resolution unless you need it. Where you must resolve remote references, resolve the hostname, reject private, loopback, link-local and IPv4-mapped IPv6 addresses, pin the validated address for the connection, and revalidate every redirect target rather than trusting the first hop.",
+      "rule_id": "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001",
+      "sarif_name": "McpFromOpenapiRefSsrf",
+      "severity": "high",
+      "title": "mcp-from-openapi < 2.5.0 (external $ref guard does not resolve or pin addresses \u2014 SSRF)"
+    },
+    {
+      "adversa_references": [
         "ADV-RCE-01"
       ],
       "aicm_references": [
@@ -4502,7 +4562,8 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-67531"
+        "CVE-2026-67531",
+        "CVE-2026-59973"
       ],
       "description": "`frontmcp` before 1.5.7 exposes live host Zod schema instances to the sandboxed `codecall:execute` tool through `getTool()`; because Zod v4's `_zod` is a non-configurable, non-writable own property, the Proxy invariants force the security membrane to return the raw host object, letting a script reach `_zod.constr.constructor` (the host Function constructor) and run arbitrary code as the server user. One `tools/call` is sufficient, and the framework's default public auth mode serves it to unauthenticated callers (CVE-2026-67531). A pinnable npm artifact (latest 1.6.0) the pin scanner resolves from `package.json` / lockfiles / `.mcp.json`.",
       "incident_references": [],
@@ -4607,6 +4668,38 @@
       "sarif_name": "GenieacsMcpDnsRebind",
       "severity": "high",
       "title": "genieacs-mcp serves an unauthenticated /mcp listener open to DNS rebinding (< 0.3.2)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AGENT-02"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "DSP-17",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-61560",
+        "CVE-2026-61559",
+        "CVE-2026-61568"
+      ],
+      "description": "`@zereight/mcp-gitlab` (npm), an MCP server for GitLab, carries three disclosures that share one pin at the highest fix floor. Before 2.1.27, SSE transport mode (`SSE=true`) exposes every MCP tool with no authentication, and the `upload_markdown` tool reads arbitrary files from the server's filesystem through an unsanitised `file_path` parameter and uploads them to a GitLab project; together an unauthenticated network-reachable caller reads `/proc/self/environ`, recovers `GITLAB_PERSONAL_ACCESS_TOKEN` and takes over the GitLab account. That is the default configuration for Docker deployments (CVE-2026-61560, CVSS 9.8, CWE-22). Also before 2.1.27, setting `ENABLE_DYNAMIC_API_URL=true` makes the server read the `X-GitLab-API-URL` request header and use it as the base URL for outbound GitLab API calls, validating only that it parses as a URL, with no allowlist or hostname restriction, while still attaching the victim's `Private-Token` to every such request \u2014 so any caller who reaches the transport receives the token at a host of their choosing (CVE-2026-61559, CVSS 9.6, CWE-918). Before 2.1.30, the Streamable HTTP endpoint has no effective Host or Origin allowlist, so a malicious web page uses DNS rebinding to route a browser's requests to a victim's local MCP listener while preserving an attacker-controlled `Host` and `Origin`, and the server reaches MCP initialization instead of rejecting the request at the HTTP boundary (CVE-2026-61568, CVSS 9.6, CWE-350). 2.1.30 is the highest of the three fix versions and is the floor this rule pins.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `@zereight/mcp-gitlab` to >= 2.1.30 and pin it \u2014 2.1.27 closes the unauthenticated-SSE and dynamic-API-URL paths but not the DNS-rebinding one. Do not run the SSE transport on a reachable interface without an inbound credential, leave `ENABLE_DYNAMIC_API_URL` unset unless you allowlist the hostnames it may resolve to, and treat any `GITLAB_PERSONAL_ACCESS_TOKEN` exposed to an affected deployment as compromised: rotate it rather than relying on the upgrade alone.",
+      "rule_id": "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001",
+      "sarif_name": "ZereightMcpGitlabUnauthAndSsrf",
+      "severity": "critical",
+      "title": "@zereight/mcp-gitlab < 2.1.30 (unauthenticated SSE + arbitrary file read, header-controlled API base, DNS rebinding)"
     },
     {
       "adversa_references": [
@@ -4738,7 +4831,11 @@
         "CVE-2026-49257",
         "CVE-2026-48989",
         "CVE-2026-90617",
-        "CVE-2026-38924"
+        "CVE-2026-38924",
+        "CVE-2026-59971",
+        "CVE-2026-53710",
+        "CVE-2026-57139",
+        "CVE-2026-61560"
       ],
       "description": "A repository publishes an MCP server over HTTP / SSE / Streamable-HTTP (an `/mcp` route handler, or an `SSEServerTransport` / `StreamableHTTPServerTransport` / `--http` setup) with no inbound authentication marker on the handler, while also binding to all interfaces (`0.0.0.0` / `::`) or serving a wildcard `Access-Control-Allow-Origin: *`. The result is a mutation-capable RPC endpoint, backed by the operator's own tokens, reachable without credentials by any network (or, with wildcard CORS, any cross-origin browser) peer. This is a recurring 2026 class: GitLab MCP Server (CVE-2026-44895), Nocturne Memory (CVE-2026-44830), and AgenticMail (CVE-2026-50287) all shipped auth-less HTTP/SSE MCP transports on `0.0.0.0` with wildcard CORS. Generalises the Azure-only `AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP server (the Azure rule still owns Azure-MCP repos; this rule defers to it there). Beyond server source, this also flags the launch surface: MCP config files (`mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml` `command`/`args`), Docker `--host 0.0.0.0` / `-p 0.0.0.0:` publishes, and MCP Inspector / FastMCP startup args that bind a non-loopback interface (`0.0.0.0` / `::` / a routable IP) with no token / `requireAuth`, or with the Inspector kill-switch `DANGEROUSLY_OMIT_AUTH` set. CVE-2026-23744 (MCP Inspector, CVSS 9.8) is the motivating exemplar of the launch-bind variant; Censys counted ~12,520 MCP services exposed on the public internet in this shape. Two further 2026 instances of this exact class: CVE-2026-49257 (mcp-pinot <= 3.0.1, CVSS 10.0) defaults to an HTTP MCP server bound to `0.0.0.0:8080` with no authentication, exposing SQL execution as a confused deputy; CVE-2026-48989 (Windows-MCP < 0.7.5, CVSS 8.9) exposed the MCP control plane over HTTP without auth while enabling wildcard CORS. CWE-306 (Missing Authentication for Critical Function).",
       "incident_references": [],
@@ -5264,6 +5361,36 @@
     },
     {
       "adversa_references": [
+        "ADV-AGENT-02"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-59971"
+      ],
+      "description": "MySQL MCP Server (`mysql-mcp-server`, PyPI) before 0.4.2 constructs `SseServerTransport` in `src/mysql_mcp_server/server.py` with neither `security_settings` nor `enable_dns_rebinding_protection` when `MCP_TRANSPORT=sse` is set, while the Starlette routes `/`, `/sse` and `/messages/` carry no authentication and the service binds `0.0.0.0` by default. A network attacker reaches `execute_sql` directly; a remote web page reaches it through DNS rebinding, relaying same-origin requests from a victim's browser to the locally bound service. Either path supplies a query that lands at `cursor.execute(query)`, giving unauthenticated read and write access to the configured database. Where the MySQL account holds FILE privileges the same access reads and writes server files and can reach code execution. The default stdio transport is not affected (CVE-2026-59971, CVSS 10.0, CWE-306 + CWE-346). Fixed in 0.4.2.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `mysql-mcp-server` to >= 0.4.2 and pin it. If you must run the SSE transport, bind it to `127.0.0.1` behind an authenticating reverse proxy, enable DNS-rebinding protection, and put an inbound credential on the `/sse` and `/messages/` routes. Grant the MySQL account only the privileges the server needs \u2014 never FILE \u2014 so that a reachable `execute_sql` cannot become file read/write.",
+      "rule_id": "AAK-MCP-MYSQLMCP-CVE-2026-59971-001",
+      "sarif_name": "MysqlMcpServerUnauthSse",
+      "severity": "critical",
+      "title": "mysql-mcp-server < 0.4.2 (unauthenticated SSE transport reaches execute_sql)"
+    },
+    {
+      "adversa_references": [
         "ADV-SSRF-01"
       ],
       "aicm_references": [
@@ -5686,6 +5813,36 @@
       "sarif_name": "PraisonAiMcpNoAuthDefault",
       "severity": "high",
       "title": "PraisonAI MCP unauthenticated-default + path traversal (< 4.6.78)"
+    },
+    {
+      "adversa_references": [
+        "ADV-AGENT-02"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-57139"
+      ],
+      "description": "PraisonAI's TypeScript package (`praisonai` on npm \u2014 a different project from the `praisonai` PyPI distribution, which runs a 4.6.x line and carries its own separate pin) from 1.5.0 until 1.7.2 binds `MCPServer.startHttp()` in `src/praisonai-ts/src/mcp/server.ts` with no host restriction and forwards every HTTP POST to `handleRequest()` with no authentication or authorization. Any network client that can reach the port calls `tools/list`, `tools/call`, `resources/read` or `prompts/get`, so registered handlers run with server-side credentials and process privileges, or disclose registered data (CVE-2026-57139, CVSS 9.8, CWE-306 + CWE-862 + CWE-1188). NVD describes 1.7.2 as an initial remediation, so the pin floor is 1.7.2 rather than a later release.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade the npm `praisonai` package to >= 1.7.2 and pin it. Bind the MCP HTTP server to `127.0.0.1` rather than every interface, and require an inbound credential on `handleRequest()` before any `tools/call` or `resources/read` dispatch. Because 1.7.2 is an initial remediation, track the upstream advisory for a follow-up release.",
+      "rule_id": "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001",
+      "sarif_name": "PraisonAiTsMcpHttpNoAuth",
+      "severity": "critical",
+      "title": "praisonai (npm, TypeScript) < 1.7.2 (MCP HTTP server binds unrestricted with no auth)"
     },
     {
       "adversa_references": [
@@ -6869,7 +7026,8 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-48039"
+        "CVE-2026-48039",
+        "CVE-2026-54549"
       ],
       "description": "`meta-ads-mcp` before 1.0.109 has `AuthInjectionMiddleware.dispatch()` unconditionally forward unauthenticated Streamable-HTTP requests to downstream MCP tool handlers without a 401, so any network-reachable caller invokes tools unauthenticated. With no per-request credential the handlers fall back to the `META_ACCESS_TOKEN` env var, and when the downstream Meta Graph API call fails the raw `httpx` request URL \u2014 including the operator's `access_token` query parameter \u2014 is serialised into the JSON-RPC response, delivering the credential to the unauthenticated caller (CVE-2026-48039, CVSS 9.1). Fixed in 1.0.109; treat < 1.0.109 (and unpinned) as exposed.",
       "incident_references": [],

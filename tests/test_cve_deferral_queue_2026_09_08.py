@@ -88,6 +88,10 @@ def test_contextforge_rule_cites_all_five_cves() -> None:
     assert cves == {
         "CVE-2026-77822", "CVE-2026-18905", "CVE-2026-18486", "CVE-2026-18489",
         "CVE-2026-78573",
+        # 2026-09-19: CVE-2026-53710 (python_sandbox_server sandbox escape to
+        # subprocess.Popen, CRITICAL 10.0) is fixed at 1.0.2, below the 1.0.9
+        # floor, so it joined the same rule rather than gaining a pin.
+        "CVE-2026-53710",
     }
 
 

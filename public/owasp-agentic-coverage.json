@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-15T18:38:49Z",
-  "aak_version": "0.6.6",
-  "rule_count": 352,
+  "last_updated": "2026-09-19T05:01:09Z",
+  "aak_version": "0.6.7",
+  "rule_count": 357,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -148,7 +148,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 49,
+      "rule_density": 50,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -392,6 +392,18 @@
             "CVE-2026-49986"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-FLOWISE-CVE-2026-91931-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-91931",
+            "CVE-2026-91932"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001",
@@ -925,6 +937,10 @@
             "CVE-2026-48989",
             "CVE-2026-49257",
             "CVE-2026-50287",
+            "CVE-2026-53710",
+            "CVE-2026-57139",
+            "CVE-2026-59971",
+            "CVE-2026-61560",
             "CVE-2026-90617"
           ],
           "aicm_references": []
@@ -1291,7 +1307,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 75,
+      "rule_density": 79,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1640,14 +1656,40 @@
           ]
         },
         {
+          "id": "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-59973"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-59973",
             "CVE-2026-67531"
           ],
           "aicm_references": [
             "AIS-07",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-61559",
+            "CVE-2026-61560",
+            "CVE-2026-61568"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -1746,6 +1788,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-MYSQLMCP-CVE-2026-59971-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-59971"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-N8NMCP-CVE-2026-54052-001",
           "severity": "critical",
           "cve_references": [
@@ -1792,6 +1846,18 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-57139"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -1900,7 +1966,8 @@
           "id": "AAK-METAADS-CVE-2026-48039-001",
           "severity": "critical",
           "cve_references": [
-            "CVE-2026-48039"
+            "CVE-2026-48039",
+            "CVE-2026-54549"
           ],
           "aicm_references": [
             "DSP-17",
@@ -2303,6 +2370,7 @@
             "CVE-2026-18486",
             "CVE-2026-18489",
             "CVE-2026-18905",
+            "CVE-2026-53710",
             "CVE-2026-77822",
             "CVE-2026-78573"
           ],
@@ -2321,6 +2389,7 @@
           "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-59973",
             "CVE-2026-67531"
           ],
           "aicm_references": [

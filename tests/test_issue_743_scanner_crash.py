@@ -227,30 +227,76 @@ def test_a_malformed_env_is_caught_too(tmp_path: Path) -> None:
     assert not result.scanner_failures
 
 
-def test_remaining_malformed_shapes_fail_the_run_instead_of_passing_it(
+def test_remaining_malformed_shapes_are_now_reported_not_crashed(
     tmp_path: Path,
 ) -> None:
-    """The safety net, on crash shapes this change does NOT individually fix.
+    """`"url": 42` and `"command": ["node"]` are hardened as of v0.6.7.
 
-    `"url": 42` and `"command": ["node"]` still take scanners down. They are
-    the same class as the reported `"args": 42` and were found by widening the
-    fixture while writing these tests. They are deliberately not hardened here
-    (issue #743 asks for the exit path, not a per-field audit of every
-    scanner), and this test exists to state that the exit path is what now
-    stands between them and a green CI run: they must fail loudly rather than
-    report a clean project. Hardening tracked separately.
+    They are the same class as the reported `"args": 42` and were found by
+    widening the fixture while writing these tests. When issue #743 shipped they
+    were deliberately left crashing — that issue asked for the exit path, not a
+    per-field audit of every scanner — and this test asserted only that the exit
+    path kept them from passing a run.
+
+    Four scanners were taking them down: `mcp_config` and `transport_security`
+    on the int url, `mcp_config` and `supply_chain` on the list command, plus the
+    shared `find_line_number` helper, which fed a non-string straight into a
+    substring search. A field whose JSON type contradicts the MCP schema is now
+    reported by AAK-MCP-CONFIG-MALFORMED-001 and skipped by the rules that
+    cannot evaluate it, so the run still fails — on a finding a reader can act
+    on rather than a stack trace.
     """
-    for body in (
-        '{"mcpServers": {"a": {"url": 42}}}',
-        '{"mcpServers": {"a": {"command": ["node"], "args": ["x"]}}}',
+    for body, field, wrong_type in (
+        ('{"mcpServers": {"a": {"url": 42}}}', "url", "int"),
+        ('{"mcpServers": {"a": {"command": ["node"], "args": ["x"]}}}',
+         "command", "list"),
     ):
         project = tmp_path / f"p{abs(hash(body))}"
         project.mkdir()
         (project / ".mcp.json").write_text(body, encoding="utf-8")
         result = run_scan(project_root=project)
-        assert result.scanner_failures, f"expected a recorded crash for {body}"
-        res = runner.invoke(cli, ["scan", str(project)])
-        assert res.exit_code != 0, f"crash on {body} still exited 0"
+
+        assert not result.scanner_failures, (
+            f"{body} crashed a scanner: "
+            + "; ".join(f.evidence for f in result.scanner_failures)
+        )
+        malformed = [
+            f for f in result.findings
+            if f.rule_id == "AAK-MCP-CONFIG-MALFORMED-001"
+        ]
+        assert malformed, f"no malformed-field finding for {body}"
+        assert any(
+            field in f.evidence and wrong_type in f.evidence for f in malformed
+        ), f"finding does not name {field}/{wrong_type}: {[f.evidence for f in malformed]}"
+
+        # The finding is MEDIUM, so it answers to --fail-on like any other
+        # MEDIUM finding. Before the hardening these configs forced a non-zero
+        # exit through the scanner-failure path, which was the crash acting as
+        # an accidental severity floor rather than a decision about how bad a
+        # malformed field is.
+        assert runner.invoke(
+            cli, ["scan", str(project), "--fail-on", "medium"]
+        ).exit_code == 1, f"{body} did not fail at --fail-on medium"
+
+
+def test_a_wrong_typed_command_is_not_coerced_into_a_shell_finding(
+    tmp_path: Path,
+) -> None:
+    """Skipping must not become guessing.
+
+    `str(["node"])` is `"['node']"`, which contains quotes and brackets — feed
+    that to the shell-metacharacter check and AAK-MCP-002 fires on punctuation
+    the operator never wrote. The field is unevaluable, so no rule that reads it
+    as a command may report on it.
+    """
+    project = tmp_path / "coerce"
+    project.mkdir()
+    (project / ".mcp.json").write_text(
+        '{"mcpServers": {"a": {"command": ["node"], "args": ["x"]}}}',
+        encoding="utf-8",
+    )
+    result = run_scan(project_root=project)
+    assert "AAK-MCP-002" not in {f.rule_id for f in result.findings}
 
 
 # ---------------------------------------------------------------------------
