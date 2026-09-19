@@ -109,7 +109,7 @@ From the [State of MCP Security 2026](https://github.com/sattyamjjain/agent-audi
 report ([how to cite](https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md#how-to-cite-this-report)):
 
 - <!-- report:corpus -->2,303<!-- /report --> distinct public MCP configs scanned.
-- <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->) declare a remote server with **no authentication**.
+- <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->) declare a remote server with **no authentication**.
 - <!-- report:rfc9728-n -->0<!-- /report --> serve RFC 9728 Protected-Resource-Metadata discovery.
 - <!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->424<!-- /report -->/<!-- report:inline-auth-d -->424<!-- /report -->) of inline-auth remote configs **hardcode a static credential**.
 

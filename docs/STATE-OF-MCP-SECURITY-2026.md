@@ -39,7 +39,7 @@ published in full as [`research/state-of-mcp-2026/REPORT.md`](../research/state-
 is in [`PREVALENCE.md`](../research/state-of-mcp-2026/PREVALENCE.md).
 
 One figure for orientation, generated from the same data:
-**<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) of those configs declare a remote server with no authentication.**
+**<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->/2,303) of those configs declare a remote server with no authentication.**
 Everything else — grade distribution, auth-posture and transport splits, the top
 misconfigurations table — is in the report, and is deliberately not duplicated
 here. This page previously carried a stubbed "what breaks" section that competed

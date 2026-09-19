@@ -31,8 +31,8 @@ Full detail, including what a config-only corpus cannot measure, is in
 
 | Finding | Rule | Share of corpus |
 |---------|------|----------------:|
-| Remote MCP server with **no authentication** | `AAK-MCP-001` (critical) | **52.1%** — 1200 of 2,303 |
-| Carries at least one **critical** finding | — | 52.6% (1,212) |
+| Remote MCP server with **no authentication** | `AAK-MCP-001` (critical) | **52.1%** — 1201 of 2,303 |
+| Carries at least one **critical** finding | — | 52.7% (1,213) |
 | Fetches & executes remote packages via `npx`/`uvx` (supply-chain surface) | `AAK-MCP-005` (medium) | 19.5% (450) |
 | OAuth surface with **no RFC 9728** Protected-Resource-Metadata discovery | `AAK-OAUTH-008` (low) | 18.4% (424) |
 | Command uses a **relative path** (PATH-hijack surface) | `AAK-MCP-006` (medium) | 7.8% (179) |
@@ -43,7 +43,7 @@ Full detail, including what a config-only corpus cannot measure, is in
 
 Auth posture, the 2026-07-28 profile:
 
-- **No authentication:** 1200 of 2,303 (**52.1%**).
+- **No authentication:** 1201 of 2,303 (**52.1%**).
 - **RFC 9728 PRM discovery:** 0 of 2,303 (**0.0%**) — not a single public server
   serves the discovery document the ratified auth spec expects.
 - **Remote configs:** 1,648 of 2,303 (71.6%). Of the 424 that embed an inline
@@ -124,7 +124,7 @@ this document by `tests/test_corpus_target_consistency.py`.)
 | D | 49 | 2.1% |
 | F | 85 | 3.7% |
 
-n = 2,303. The median config scores **B**. **1,212 (52.6%)** carry at least one
+n = 2,303. The median config scores **B**. **1,213 (52.7%)** carry at least one
 critical-severity finding — driven almost entirely by the no-auth remote server
 class. Most public configs are not catastrophic, but the single most common
 public posture is *a remote server anyone can call*.

@@ -8,9 +8,9 @@ with score-calibration detail in
 time, reply to comments.
 
 **Canonical numbers (from `results.json` — do not round):**
-2,303 distinct configs · 52.6% (1,212) with a critical finding · median grade B
+2,303 distinct configs · 52.7% (1,213) with a critical finding · median grade B
 (top 10% A) · top misconfig = remote server with **no authentication**
-(`AAK-MCP-001`, critical, 52.1%) · 52.1% (1,200) no-auth remote · 19.5% (450)
+(`AAK-MCP-001`, critical, 52.1%) · 52.1% (1,201) no-auth remote · 19.5% (450)
 `npx`/`uvx` fetch-and-execute · 99.8% trip OWASP MCP07 (authorization).
 Static, offline, deterministic.
 
@@ -32,8 +32,8 @@ Apache-2.0). I took 2,303 distinct public MCP configs — a GitHub crawl plus th
 MCP Registry's latest-version servers — and scanned each one offline and
 deterministically: no cloud, no LLM, same input gives the same result.
 
-Headline: 52.1% (1,200 of 2,303) declare a remote server with no authentication —
-that's the single most common finding, and it's critical-severity. 52.6% carry at
+Headline: 52.1% (1,201 of 2,303) declare a remote server with no authentication —
+that's the single most common finding, and it's critical-severity. 52.7% carry at
 least one critical finding overall; the median config still grades a B. It lines
 up with Knostic's separate finding that 119 of 119 exposed servers they probed
 allowed unauthenticated tool-listing. The next most common issue is more boring
@@ -71,8 +71,8 @@ distinct public MCP configs — a GitHub crawl plus the official MCP Registry's
 latest-version servers — with an offline, deterministic static analyzer and
 aggregated the results.
 
-Headline: 52.1% (1,200 of 2,303) declare a remote server with no authentication
-(critical severity, the single most common finding); 52.6% carry at least one
+Headline: 52.1% (1,201 of 2,303) declare a remote server with no authentication
+(critical severity, the single most common finding); 52.7% carry at least one
 critical finding; median grade B. Mapped to the OWASP MCP Top 10, 99.8% trip
 MCP07 (authorization / excessive permissions). Other common issues: npx/uvx
 fetch-and-execute at launch (19.5%), secret inlined in the config env block

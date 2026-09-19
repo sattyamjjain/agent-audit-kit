@@ -22,11 +22,11 @@
 
 ## Three headline numbers
 
-1. **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,200<!-- /report -->/2,303) of public MCP configs declare a remote server with no
+1. **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->/2,303) of public MCP configs declare a remote server with no
    authentication** — a *critical*-severity posture (`AAK-MCP-001`) and the single
    most common finding in the corpus. It corroborates Knostic's 119-of-119
    unauthenticated tool-listing finding from the deployment side.
-2. **<!-- report:critical-pct -->52.6<!-- /report -->% (<!-- report:critical-n -->1,212<!-- /report -->/2,303) contain at least one critical-severity finding** — driven
+2. **<!-- report:critical-pct -->52.7<!-- /report -->% (<!-- report:critical-n -->1,213<!-- /report -->/2,303) contain at least one critical-severity finding** — driven
    almost entirely by that no-auth remote-server class.
 3. **The median public MCP config scores a B; the top 10% score an A.**
    (This is the empirical score-calibration anchor issue #23 asked for. The
@@ -90,7 +90,7 @@ posture is. No penalty re-weighting is done in this report (that's a follow-up).
 
 | # | Rule | Severity | Configs | Share |
 |--:|---|:---:|--:|--:|
-| 1 | `AAK-MCP-001` — remote MCP server without authentication | **CRITICAL** | <!-- report:noauth-n -->1,200<!-- /report --> | <!-- report:noauth-pct -->52.1<!-- /report -->% |
+| 1 | `AAK-MCP-001` — remote MCP server without authentication | **CRITICAL** | <!-- report:noauth-n -->1,201<!-- /report --> | <!-- report:noauth-pct -->52.1<!-- /report -->% |
 | 2 | `AAK-MCP-005` — `npx`/`uvx` fetch-and-execute remote packages | MEDIUM | 450 | 19.5% |
 | 3 | `AAK-OAUTH-008` — MCP OAuth surface with no RFC 9728 PRM discovery | LOW | <!-- report:oauth008-n -->424<!-- /report --> | <!-- report:oauth008-pct -->18.4<!-- /report -->% |
 | 4 | `AAK-MCP-006` — command uses a relative path | MEDIUM | 179 | 7.8% |
