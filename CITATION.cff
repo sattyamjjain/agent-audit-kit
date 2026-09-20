@@ -56,7 +56,7 @@ preferred-citation:
   month: 8
   version: "1.0"
   license: Apache-2.0
-  url: "https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md"
+  url: "https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/"
   abstract: >-
     A static scan of 2,303 distinct public Model Context Protocol server
     configurations, collected 2026-07-26 from GitHub-crawled .mcp.json files and

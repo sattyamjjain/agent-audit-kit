@@ -28,6 +28,7 @@ Detects: hardcoded secrets, shell injection, tool poisoning, rug pulls, trust bo
 - SARIF 2.1.0 output for GitHub Code Scanning
 - Ships as GitHub Action, pre-commit hook, Docker image, and PyPI package
 - Apache-2.0 licensed, fully offline, zero cloud dependencies
+- Backed by a published corpus study of 2,303 public MCP configs: https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/
 
 https://github.com/sattyamjjain/agent-audit-kit
 ```

@@ -63,7 +63,7 @@
         "guid": "monthly-cve-triage",
         "status": "active",
         "name": "Monthly CVE triage",
-        "description": "Recurring support for the disclosed-CVE response loop: NVD watch, triage against published severity budgets, rule authoring and fixtures. Budgets and current queue depth are published in docs/cve-triage.md.",
+        "description": "Recurring support for the disclosed-CVE response loop: NVD watch, triage against published severity budgets, rule authoring and fixtures. Budgets and current queue depth are published at https://sattyamjjain.github.io/agent-audit-kit/docs/cve-triage/.",
         "amount": 25,
         "currency": "USD",
         "frequency": "monthly",

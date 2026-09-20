@@ -29,7 +29,9 @@ on:
       - '**/*.md'
       - 'docs/**'
   schedule:
-    - cron: '23 6 * * 1'  # Mondays 06:23 UTC
+    - cron: '23 6 * * 1'  # Mondays 06:23 UTC — lychee + index cadence
+    - cron: '31 6 * * *'  # daily 06:31 UTC — nav liveness only (see below)
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -37,6 +39,10 @@ permissions:
 jobs:
   links:
     name: Check README + docs links
+    # Unchanged cadence. The daily cron below exists for nav-liveness only:
+    # lychee walks external hosts, and running it seven times a week multiplies
+    # the flaky-host failures this file already documents fighting.
+    if: github.event_name != 'schedule' || github.event.schedule == '23 6 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -94,6 +100,7 @@ jobs:
 
   index-cadence:
     name: MCP Security Index is still publishing
+    if: github.event_name != 'schedule' || github.event.schedule == '23 6 * * 1'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
@@ -108,3 +115,36 @@ jobs:
       # two consecutive misses fail the build instead of waiting to be noticed.
       - name: Check index cadence
         run: python scripts/index_cadence.py --check
+
+  # --------------------------------------------------------------------------
+  # Every nav entry in mkdocs.yml, requested against the deployed site.
+  #
+  # Same shape as description-liveness.yml, for the same reason: a claim only the
+  # network can settle decays silently. Building the docs proves the markdown
+  # parses; only a request proves a reader can reach the page. mkdocs.yml carried
+  # a 23-entry nav while nothing compared it to what was actually served, so a
+  # gap there would have been invisible until somebody clicked.
+  #
+  # Deliberately NOT on pull_request or push. This file already documents why:
+  # "a PR that adds a docs page and links to it 404s until the branch merges".
+  # A nav check on a PR would fail on its own unpublished page every time, and a
+  # check that is red for a legitimate reason gets ignored. It runs on the daily
+  # cron instead — a dead entry is caught within a day of opening, not a week —
+  # and on demand, which is what to use straight after a deploy.
+  # --------------------------------------------------------------------------
+  nav-liveness:
+    name: Every mkdocs nav entry is served
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '31 6 * * *')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+      # No pip install: the script is standard library only, on purpose. A
+      # liveness check that needs MkDocs installed to run would be one more
+      # thing that can stop the check from happening.
+      - name: Check nav liveness
+        run: python scripts/nav_liveness.py --check-live

@@ -309,9 +309,13 @@ def test_report_prose_agrees_with_results_json() -> None:
 def test_citation_badge_points_at_the_citation_section() -> None:
     """3a: the badge is the entry point, so it must land on the citation section."""
     readme = README.read_text(encoding="utf-8")
-    assert "REPORT.md#how-to-cite-this-report" in readme, (
-        "README has no link to the report's citation section"
-    )
+    # Either spelling lands on the same section. The report is now served as a
+    # rendered page at .../REPORT/ as well as existing as REPORT.md in the repo,
+    # so pin the anchor rather than one of the two paths that carry it.
+    assert (
+        "REPORT.md#how-to-cite-this-report" in readme
+        or "REPORT/#how-to-cite-this-report" in readme
+    ), "README has no link to the report's citation section"
     assert re.search(r"<img[^>]*badge/cite-[^>]*>", readme), (
         "README has no 'cite' badge among the badge block"
     )

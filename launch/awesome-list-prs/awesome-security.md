@@ -29,6 +29,7 @@ AgentAuditKit is an open-source security scanner for AI agent configurations (MC
 - **Zero dependencies**: Only click + pyyaml, runs fully offline
 - **CI/CD**: GitHub Action, GitLab CI, pre-commit hook, Docker
 - Apache-2.0 licensed, 1,100+ tests
+- Backed by a published corpus study of 2,303 public MCP configs: https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/
 
 GitHub: https://github.com/sattyamjjain/agent-audit-kit
 PyPI: https://pypi.org/project/agent-audit-kit/

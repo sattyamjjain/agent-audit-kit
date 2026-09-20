@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The 2,303-config corpus study has an address.**
+  `research/state-of-mcp-2026/` sits outside `docs/`, so MkDocs could not serve
+  it and the report every abstract, `CITATION.cff` and the OWASP outreach note
+  points a reader at had no https URL at all — the link from
+  `docs/STATE-OF-MCP-SECURITY-2026.md` answered 404 on the deployed site.
+  `scripts/mkdocs_hooks.py` now adds `REPORT.md`, `PREVALENCE.md`, both Black
+  Hat abstracts, `results.json`, the one-page PDF and the frozen baseline
+  snapshot to the build **from where they already live**. Nothing is copied into
+  `docs/`, so `make report` keeps its single path and
+  `scripts/check_report_figures.py`'s `MUST_AGREE` keeps asserting against the
+  one file it always has. The report is at
+  `https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/`.
+
+  Those files are written to be read from the repository root, so they reach
+  siblings with `../../docs/x` and `../../CITATION.cff`; inside the built site
+  the docs directory *is* the root, so those climb out of it. An explicit
+  rewrite table maps each one — enumerated, not pattern-matched, so it can be
+  read and checked — and a test fails if a published file grows a relative link
+  the table does not cover.
+
+- **Every `nav:` entry is checked against the deployed site.**
+  `scripts/nav_liveness.py`, wired into `link-check.yml` as the `nav-liveness`
+  job, follows the pattern `description-liveness.yml` established: a claim only
+  the network can settle decays silently otherwise. Building the docs proves the
+  markdown parses; only a request proves a reader can reach the page. It runs on
+  a daily cron and on demand — deliberately **not** on pull requests or pushes,
+  because a page added in a branch 404s until it deploys, and a check that is
+  red for a legitimate reason gets ignored. Standard library only, so the check
+  does not depend on MkDocs being installed to run.
+
+### Fixed
+
+- **The report PDF had been stale for two months and nothing could tell.**
+  `state-of-mcp-security-2026.pdf` was last written 2026-07-26 while
+  `results.json` moved on 2026-08-17, 2026-09-14 and 2026-09-19. `make report`
+  did not regenerate it and no guard compared them, so the numbers in the
+  citable artifact disagreed with the corpus it claims to describe. Found while
+  giving it a permanent URL, which would have made a stale artifact easier to
+  cite rather than easier to spot. `make report` now re-renders it, `make
+  report-pdf-check` fails when it drifts, and — because reportlab stamps a
+  `/CreationDate` and no two renders are byte-identical — the guard compares a
+  recorded SHA-256 of the `results.json` it was built from rather than the file.
+
+- **Links from the docs site into the research tree returned 404.**
+  `docs/STATE-OF-MCP-SECURITY-2026.md`, `docs/DISTRIBUTION-CHECKLIST.md` and
+  `docs/research/mcp-security-baseline-v1.0.md` reached the report, the
+  prevalence page, `results.json` and the baseline snapshot with paths that
+  climbed above the docs root. Seven links, all dead on the deployed site.
+
+### Changed
+
+- **Pointers now name the published URL** in `CITATION.cff` (the citation
+  resolves to a rendered page, not a raw file), `funding.json` (a floss.fund
+  reader could not resolve the bare `docs/cve-triage.md` path),
+  `launch/owasp-outreach.md`, both `launch/awesome-list-prs/` entries, both
+  Black Hat abstracts and README.md. **No count moved:** 357 rules across 14
+  categories is unchanged, and the Briefings abstract keeps its 1,374-config
+  2026-07-19 basis, which `tests/test_corpus_n_single_source.py` excludes from
+  the corpus guard on purpose as a dated CFP artifact.
+
 ## [0.6.7] - 2026-09-19
 
 ### Added

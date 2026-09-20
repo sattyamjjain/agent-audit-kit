@@ -1,9 +1,9 @@
 # Distribution Checklist — State of MCP Security 2026
 
 Manual launch checklist + **ready-to-post copy** for the data report
-([`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md),
+([`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md),
 with score-calibration detail in
-[`PREVALENCE.md`](../research/state-of-mcp-2026/PREVALENCE.md)).
+[`PREVALENCE.md`](research/state-of-mcp-2026/PREVALENCE.md)).
 **Nothing here auto-posts.** Copy, sanity-check the links, post one surface at a
 time, reply to comments.
 

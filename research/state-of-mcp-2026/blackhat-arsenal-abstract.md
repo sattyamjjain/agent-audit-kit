@@ -10,6 +10,8 @@
 - **Tool:** AgentAuditKit — `pip install agent-audit-kit` · Apache-2.0 · https://github.com/sattyamjjain/agent-audit-kit
 - **Category:** AI/ML security · MCP · SAST / static analysis
 - **Demo length:** 20–40 min at a station
+- **Docs:** https://sattyamjjain.github.io/agent-audit-kit/docs/
+- **Corpus study:** https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/ (one-page PDF: https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/state-of-mcp-security-2026.pdf)
 
 ## Tool name and one-line
 

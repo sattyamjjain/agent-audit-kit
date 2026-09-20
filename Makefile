@@ -11,18 +11,31 @@ CORPUS   := benchmarks/data
 MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
-.PHONY: report corpus report-check count-check test lint typecheck repo-description \
+.PHONY: report corpus report-check report-pdf report-pdf-check count-check test lint typecheck repo-description \
         cve-latency cve-latency-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
         registry-parity cve-deferral-check
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
+## Also re-renders the human PDF, because the docs site serves it at a stable URL
+## and a PDF left behind by a results.json bump is a published wrong number.
 report:
 	python $(RESEARCH)/run_report.py \
 	  --corpus $(CORPUS) \
 	  --registry-manifest $(MANIFEST) \
 	  --out $(RESULTS)
+	python scripts/render_report_pdf.py
+
+## report-pdf: re-render just the human PDF from the committed results.json
+report-pdf:
+	python scripts/render_report_pdf.py
+
+## report-pdf-check: fail if the PDF was built from a different results.json.
+## Not a byte-diff: reportlab stamps a /CreationDate, so two renders of the same
+## input differ. The stamp beside the PDF records its source hash instead.
+report-pdf-check:
+	@python scripts/render_report_pdf.py --check
 
 ## corpus: refresh the MCP Registry corpus manifest (the one network step)
 corpus:

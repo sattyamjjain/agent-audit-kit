@@ -191,25 +191,56 @@ def test_every_docs_site_link_has_a_source_page() -> None:
         )
 
 
-def test_readme_does_not_link_to_the_unpublished_docs_site() -> None:
-    """`sattyamjjain.github.io/agent-audit-kit/` is the MCP Security Index.
+#: Paths that really are served under the Pages origin. The root is the MCP
+#: Security Index; `docs/` is the MkDocs site, built and staged by
+#: `mcp-security-index.yml` and checked daily by link-check.yml's `nav-liveness`
+#: job. Anything else under that origin is a page nothing publishes.
+_PUBLISHED_PAGES_ORIGIN_PREFIXES = {"docs", "data"}
 
-    No workflow runs mkdocs, so every `…/<page>/` URL under that origin 404s.
-    The Index root and its `/data/` files are fine.
+
+def test_readme_does_not_link_to_an_unpublished_page_on_the_pages_origin() -> None:
+    """`sattyamjjain.github.io/agent-audit-kit/` serves two things, not any path.
+
+    This used to assert that *every* `…/<page>/` URL under that origin 404s, on
+    the stated grounds that "no workflow runs mkdocs". That was wrong, and wrong
+    in the direction that keeps a working thing hidden: `mcp-security-index.yml`
+    has been running `mkdocs build` and staging the result at `/docs/` all along
+    — verified live, 200, with all nav entries served. The belief outlived the
+    condition, and this test was holding it in place by failing anyone who
+    linked to the docs.
+
+    The invariant worth keeping is narrower: do not link to a path under that
+    origin that nothing publishes.
     """
-    bad = re.findall(
-        r"https://sattyamjjain\.github\.io/agent-audit-kit/([a-z0-9-]+)/(?=[)\s\]])",
-        _text(),
+    bad = [
+        segment
+        for segment in re.findall(
+            r"https://sattyamjjain\.github\.io/agent-audit-kit/([a-z0-9-]+)/(?=[)\s\]])",
+            _text(),
+        )
+        if segment not in _PUBLISHED_PAGES_ORIGIN_PREFIXES
+    ]
+    assert not bad, (
+        f"these link to a path nothing publishes on the Pages origin: "
+        f"{sorted(set(bad))}"
     )
-    assert not bad, f"these link to the unpublished mkdocs site: {sorted(set(bad))}"
 
 
 def test_every_mkdocs_nav_target_exists() -> None:
+    """A nav target is a file in docs/, or one the MkDocs hook publishes.
+
+    `scripts/mkdocs_hooks.py` adds `research/state-of-mcp-2026/` to the build
+    from where those files already live, so they are legitimate nav targets
+    without existing under docs/ — which is the point: they are not copied.
+    """
     text = (REPO / "mkdocs.yml").read_text(encoding="utf-8")
     nav = text[text.index("nav:"):text.index("markdown_extensions:")]
     targets = re.findall(r":\s*([A-Za-z0-9_./-]+\.md)\s*$", nav, re.M)
     assert targets, "mkdocs nav has no page targets"
-    missing = [t for t in targets if not (REPO / "docs" / t).is_file()]
+    missing = [
+        t for t in targets
+        if not (REPO / "docs" / t).is_file() and not (REPO / t).is_file()
+    ]
     assert not missing, f"mkdocs nav points at missing pages: {missing}"
 
 

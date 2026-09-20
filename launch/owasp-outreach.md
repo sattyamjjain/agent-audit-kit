@@ -60,7 +60,7 @@ GitHub: https://github.com/sattyamjjain/agent-audit-kit
 
 Would the project be interested in referencing this as an implementation tool? I'm also happy to contribute to the MCP Top 10 documentation.
 
-I also just published a short data report from statically scanning 2,303 public MCP server configs, which found more than half expose a remote endpoint with no authentication: https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md
+I also just published a short data report from statically scanning 2,303 public MCP server configs, which found more than half expose a remote endpoint with no authentication: https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/
 
 Best,
 Sattyam Jain

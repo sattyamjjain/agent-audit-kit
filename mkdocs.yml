@@ -41,9 +41,17 @@ nav:
       - Releasing: RELEASING.md
       - Metrics: metrics.md
   - Research:
-      - State of MCP Security 2026: STATE-OF-MCP-SECURITY-2026.md
+      - Coverage & crosswalk: STATE-OF-MCP-SECURITY-2026.md
+      - 'The State of MCP Security, 2026 (corpus study)': research/state-of-mcp-2026/REPORT.md
+      - Prevalence & score calibration: research/state-of-mcp-2026/PREVALENCE.md
       - Research log: research-log.md
   - Comparison: comparisons.md
+
+# `research/state-of-mcp-2026/` lives outside docs/, so MkDocs cannot see it and
+# the corpus study had no https address. The hook adds those files to the build
+# from where they already are — one source of truth, no copy in the tree.
+hooks:
+  - scripts/mkdocs_hooks.py
 
 markdown_extensions:
   - tables

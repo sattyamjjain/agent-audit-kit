@@ -11,6 +11,9 @@
 - **Track:** Briefings (research)
 - **Suggested tracks:** AI, ML & Data Science · Application Security
 - **Based on:** `REPORT.md` (scan date 2026-07-19), corpus of 1,374 distinct public MCP configs
+- **Published report:** https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/ (live corpus; the figures above are the
+  dated 2026-07-19 basis this skeleton was written against, kept as-is)
+- **One-page PDF:** https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/state-of-mcp-security-2026.pdf
 
 ## Title (pick one, then rewrite)
 
