@@ -6,7 +6,7 @@ configurations, taken with [AgentAuditKit](https://github.com/sattyamjjain/agent
 the new spec can be measured against a fixed reference instead of a moving one.
 
 - **Baseline ID:** `mcp-security-baseline-v1.0-2026-07-27`
-- **Snapshot:** [`research/state-of-mcp-2026/baseline/mcp-security-baseline-v1.0-2026-07-27.json`](state-of-mcp-2026/baseline/mcp-security-baseline-v1.0-2026-07-27.json)
+- **Snapshot:** [`research/state-of-mcp-2026/baseline/mcp-security-baseline-v1.0-2026-07-27.json`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/baseline/mcp-security-baseline-v1.0-2026-07-27.json)
 - **SHA-256:** `320b43072d930edbc18f050795939dbee3831e4da2f88b3483ea12ec7bb6551f`
 - **Tool:** agent-audit-kit 0.3.56 · 262 rules · fully offline
 - **This is the PRE-spec baseline.** The 2026-07-28 spec has **not** shipped as of
@@ -87,7 +87,7 @@ configs are not redistributed). So the full-corpus (1,374) numbers above are **n
 independently re-scannable** from a clean clone — the **registry subset is**. The
 determinism test therefore runs over the committed registry/synthetic corpus, and
 the tamper-evidence test hashes the committed snapshot. The headline figures match
-the published [State of MCP 2026 report](state-of-mcp-2026/REPORT.md).
+the published [State of MCP 2026 report](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/).
 
 ## False-positive-rate caveat
 

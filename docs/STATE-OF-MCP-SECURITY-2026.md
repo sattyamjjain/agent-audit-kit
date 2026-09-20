@@ -1,6 +1,6 @@
 # MCP security coverage & crosswalk
 
-> **The corpus study is [`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md) (v1.0, citable).**
+> **The corpus study is [`research/state-of-mcp-2026/REPORT.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/) (v1.0, citable).**
 > This page is not a second report and does not restate its findings. It covers
 > what only lives here: the framework crosswalk generated from the committed rule
 > registry, the dated evidence anchors, and the reserved-surface status table for
@@ -33,10 +33,10 @@ each framework. The NSA-CSI + OWASP-Agentic view is also in
 
 The data run over **2,303 distinct public MCP server configs** — a GitHub crawl
 plus the official MCP Registry's latest-version servers, deduped by content — is
-published in full as [`research/state-of-mcp-2026/REPORT.md`](research/state-of-mcp-2026/REPORT.md)
+published in full as [`research/state-of-mcp-2026/REPORT.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/)
 (v1.0, with methods, limitations and a citation block), over the raw
-[`results.json`](research/state-of-mcp-2026/results.json). Per-rule prevalence
-is in [`PREVALENCE.md`](research/state-of-mcp-2026/PREVALENCE.md).
+[`results.json`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/results.json). Per-rule prevalence
+is in [`PREVALENCE.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/PREVALENCE/).
 
 One figure for orientation, generated from the same data:
 **<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->/2,303) of those configs declare a remote server with no authentication.**

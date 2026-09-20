@@ -52,7 +52,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -61,6 +61,18 @@ jobs:
             'docs/**/*.md'
           fail: true
 
+      # This repo's own docs pages are excluded for the reason already given below
+      # for blob/main URLs, and it is the same reason: a PR that adds a docs page
+      # and links to it 404s until the branch merges AND the site redeploys. That
+      # is structural, not breakage, and a job that is red for a legitimate reason
+      # stops being read.
+      #
+      # They are not left unchecked. The `nav-liveness` job at the bottom of this
+      # file requests every mkdocs nav entry against the deployed site on a daily
+      # cron, which is the right clock for a published page: it asks after the
+      # deploy rather than during it. The Pages root and its /data/ files stay in
+      # lychee's scope — only the /docs/ subtree moves to that job.
+      #
       # globenewswire.com is excluded above because lychee fails its HTTP/2
       # negotiation from the runner ("HTTP/2 protocol error. Server may not
       # support HTTP/2 properly") while the URL itself is alive — verified 200

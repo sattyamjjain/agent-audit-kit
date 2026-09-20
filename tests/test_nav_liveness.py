@@ -111,3 +111,32 @@ def test_every_nav_entry_resolves_to_a_page_the_build_can_produce() -> None:
         f"renamed without updating mkdocs.yml, or it needs adding to "
         f"PUBLISHED_FILES in scripts/mkdocs_hooks.py."
     )
+
+
+def test_published_assets_are_checked_too() -> None:
+    """The PDF, results.json and the abstracts are not nav pages.
+
+    link-check.yml excludes this site's `/docs/` subtree from lychee on the
+    grounds that nav-liveness covers it. That is only true if the assets are
+    covered as well as the pages, so an empty list here would quietly break the
+    promise made in that exclusion's comment.
+
+    It was empty once already: `PUBLISHED_FILES` carries a type annotation, so
+    it parses as `AnnAssign` and a walk looking only for `Assign` found nothing.
+    """
+    assets = nav.published_asset_urls()
+    assert assets, (
+        "no published assets resolved from scripts/mkdocs_hooks.py — the AST "
+        "walk has stopped matching PUBLISHED_FILES, which makes this half of "
+        "the liveness check vacuous"
+    )
+    joined = " ".join(assets)
+    assert "state-of-mcp-security-2026.pdf" in joined
+    assert "results.json" in joined
+    assert all(u.startswith("https://") for u in assets)
+
+
+def test_published_assets_do_not_duplicate_nav_pages() -> None:
+    """REPORT.md and PREVALENCE.md are in the nav; they must not be probed twice."""
+    overlap = set(nav.nav_urls()) & set(nav.published_asset_urls())
+    assert not overlap, f"probed twice: {sorted(overlap)}"

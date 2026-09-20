@@ -23,6 +23,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 import urllib.error
@@ -31,6 +32,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MKDOCS_YML = REPO_ROOT / "mkdocs.yml"
+HOOKS_PY = REPO_ROOT / "scripts" / "mkdocs_hooks.py"
 
 _TIMEOUT = 30
 _RETRIES = 3
@@ -107,6 +109,58 @@ def nav_urls(text: str | None = None) -> list[str]:
     return [source_to_url(s, base, directory_urls) for s in nav_sources(text)]
 
 
+def published_asset_urls(base: str | None = None) -> list[str]:
+    """The hook's published files that are NOT nav pages, as URLs.
+
+    The PDF, `results.json`, the baseline snapshot and the two Black Hat
+    abstracts are linked from docs pages and cited off-site, but they are not in
+    the nav, so the nav walk alone would not see them. link-check.yml excludes
+    this site's `/docs/` subtree from lychee on the grounds that this job covers
+    it — that is only true if "this job" covers the assets as well as the pages.
+
+    `PUBLISHED_FILES` is read out of `scripts/mkdocs_hooks.py` with `ast` rather
+    than imported, because importing it pulls in MkDocs and this script is
+    deliberately standard-library only.
+    """
+    if base is None:
+        base = site_url()
+    if not HOOKS_PY.is_file():
+        return []
+    tree = ast.parse(HOOKS_PY.read_text(encoding="utf-8"))
+    names: list[str] = []
+    research_dir = ""
+    for node in ast.walk(tree):
+        # PUBLISHED_FILES carries a type annotation, so it parses as AnnAssign
+        # rather than Assign. Handle both or the walk silently finds nothing —
+        # which would make this half of the check quietly vacuous.
+        if isinstance(node, ast.AnnAssign):
+            targets, value = [node.target], node.value
+        elif isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        else:
+            continue
+        for target in targets:
+            if not isinstance(target, ast.Name) or value is None:
+                continue
+            if target.id == "RESEARCH_DIR" and isinstance(value, ast.Constant):
+                research_dir = str(value.value)
+            elif target.id == "PUBLISHED_FILES" and isinstance(value, ast.Tuple):
+                names = [
+                    e.value for e in value.elts
+                    if isinstance(e, ast.Constant) and isinstance(e.value, str)
+                ]
+    if not research_dir or not names:
+        return []
+    nav = set(nav_sources())
+    out = []
+    for name in names:
+        rel = f"{research_dir}/{name}"
+        if rel in nav:  # already walked as a page
+            continue
+        out.append(base + (rel[:-3] + "/" if rel.endswith(".md") else rel))
+    return out
+
+
 def probe(url: str) -> tuple[int, str]:
     """Request `url`, returning (status, detail). Status 0 means no response."""
     last = ""
@@ -134,7 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    urls = nav_urls()
+    urls = nav_urls() + published_asset_urls()
     if not urls:
         print(
             "nav_liveness: parsed zero nav entries from mkdocs.yml. Either the "
@@ -172,7 +226,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(f"\nnav liveness: all {len(urls)} nav entries return 200.")
+    print(
+        f"\nnav liveness: all {len(urls)} published URLs return 200 "
+        f"({len(nav_urls())} nav pages + {len(published_asset_urls())} assets)."
+    )
     return 0
 
 
