@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The ADMT scanner's answer depended on the filesystem it ran on.**
+  `_find_declaration` and `_find_documentation` each return the *first* match
+  from `_iter_files`, which walked `rglob` unsorted. `rglob` yields in
+  `os.scandir` order — different between filesystems and, on ext4, shifting as a
+  directory's contents change — so on any tree holding more than one candidate
+  the whole result was decided by traversal order. Scanning this repository gave
+  **0 findings on macOS and 3 on an ext4 runner from the same commit**, and it
+  surfaced only because an unrelated commit added a file and perturbed the
+  order. Determinism is the property this project sells, so this was worth more
+  than a re-run: `_iter_files` now sorts on the path relative to the project
+  root, making the answer a property of the tree rather than of the disk.
+
+  No existing test could have caught it. `test_two_scans_are_identical_in_order_and_content`
+  scans twice in one process on one filesystem, where the order is stable but
+  arbitrary; it passes either way. The new
+  `test_the_scan_does_not_depend_on_filesystem_traversal_order` shuffles what
+  the filesystem hands back and asserts one outcome — verified to fail with the
+  sort removed.
+
+  `test_scanner_is_silent_on_this_repository` excluded `tests/fixtures` but not
+  `examples/vulnerable-configs`, which is equally deliberate non-compliant input:
+  `12-colorado-admt/expected-findings.json` names AAK-ADMT-002/003/004 as the
+  findings it *should* produce, and `test_examples.py` asserts them. It now
+  excludes both. The self-scan workflow already skipped `examples/`, so the
+  three findings change nothing there.
+
+
 - **The published CVE-latency figure could only ever flatter itself.**
   `docs/cve-latency.md` had three coverage rows — measured, undated, adjudicated
   out of scope — and every one describes a CVE that already reached a

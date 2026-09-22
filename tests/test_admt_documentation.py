@@ -15,6 +15,7 @@ more than coverage here:
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 
 import pytest
@@ -124,20 +125,77 @@ def test_an_undecorated_helper_is_not_a_declaration() -> None:
     assert "helper_not_a_tool" not in declaration[1]
 
 
+#: Trees in this repository that are deliberately non-compliant input. They are
+#: the scanner's fixtures, not its subject — `examples/vulnerable-configs/
+#: 12-colorado-admt/expected-findings.json` names AAK-ADMT-002/003/004 as the
+#: findings that SHOULD come out of it, and `test_examples.py` asserts them.
+_INTENTIONALLY_VULNERABLE = ("tests/fixtures", "examples/vulnerable-configs")
+
+
 def test_scanner_is_silent_on_this_repository() -> None:
     """A security scanner describing prior-authorization denials in its own rule
     catalog is not an ADMT. An earlier draft read whole files and picked exactly
     that up.
+
+    `examples/vulnerable-configs` joined the exclusion on 2026-09-22, for the
+    same reason `tests/fixtures` was already there: it is deliberately
+    non-compliant input with its own expected-findings file. Until the traversal
+    was sorted this test passed by accident — the scanner returned the first
+    match from an unsorted `rglob`, so whether it found the Colorado example at
+    all depended on the filesystem. It found nothing on macOS and three findings
+    on an ext4 runner.
     """
     repo = Path(__file__).parent.parent
     findings, _ = admt_documentation.scan(repo)
-    offenders = [f for f in findings if not f.file_path.startswith("tests/fixtures")]
+    offenders = [
+        f for f in findings
+        if not f.file_path.startswith(_INTENTIONALLY_VULNERABLE)
+    ]
     assert offenders == [], offenders
 
 
 # ---------------------------------------------------------------------------
 # Determinism
 # ---------------------------------------------------------------------------
+
+
+def test_the_scan_does_not_depend_on_filesystem_traversal_order() -> None:
+    """The same tree must answer the same way on any filesystem.
+
+    `_find_declaration` and `_find_documentation` each return the FIRST match
+    from `_iter_files`, which walked `rglob` unsorted. `rglob` yields in
+    `os.scandir` order — different between filesystems, and on ext4 it shifts as
+    a directory's contents change. Scanning this repository therefore produced
+    0 findings on macOS and 3 on an ext4 runner from the same commit, and the
+    failure surfaced only when an unrelated commit added a file and perturbed
+    the order.
+
+    The determinism test below cannot catch this: it scans twice in one process
+    on one filesystem, where the order is stable but arbitrary. This one
+    shuffles what the filesystem hands back.
+    """
+    repo = Path(__file__).parent.parent
+    real_rglob = Path.rglob
+
+    def shuffled(self: Path, pattern: str):
+        items = list(real_rglob(self, pattern))
+        random.shuffle(items)
+        return iter(items)
+
+    outcomes = set()
+    for seed in range(5):
+        random.seed(seed)
+        Path.rglob = shuffled  # type: ignore[method-assign]
+        try:
+            findings, _ = admt_documentation.scan(repo)
+        finally:
+            Path.rglob = real_rglob  # type: ignore[method-assign]
+        outcomes.add(tuple((f.rule_id, f.file_path) for f in findings))
+
+    assert len(outcomes) == 1, (
+        "the scan returned different results for different traversal orders: "
+        f"{outcomes}"
+    )
 
 
 @pytest.mark.parametrize(
