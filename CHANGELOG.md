@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The published CVE-latency figure could only ever flatter itself.**
+  `docs/cve-latency.md` had three coverage rows — measured, undated, adjudicated
+  out of scope — and every one describes a CVE that already reached a
+  disposition. "Shipped" is the date of the `CHANGELOG.cves.md` section carrying
+  the CVE, so a disclosure that was open and untriaged appeared in no population
+  at all: not measured, not undated, not out of scope. Absent.
+
+  The omission has a direction, which is what made it worth fixing rather than
+  footnoting. A CVE joins the measurement only on the day it is dispositioned,
+  so a slow case is invisible for exactly as long as it is slow and is counted
+  only once it resolves. A queue left to sit moves the published median down,
+  never up. On 2026-09-22 the tracker held ten open `cve-response` issues opened
+  2026-09-19 — one CRITICAL, none deferred, none commented — while the page
+  published a median of 1.0 days. `scripts/check_cve_ageing.py` already knew
+  (critical has a 3-day budget and it runs daily); the ageing signal simply had
+  no path into the measurement.
+
+  The page now carries a fourth coverage row, **Disclosed, open and not yet
+  dispositioned**, with the count and the age of the oldest, and one sentence
+  under the median naming the population the figure describes. The queue is read
+  through `check_cve_ageing.py`'s own helpers rather than a second parser, and
+  `cve-deferred` issues are excluded — a deferral is a disposition with a date
+  of its own. When the tracker cannot be read the row says "not read this run":
+  an unread count is a stated gap, never a zero.
+
+  `--check-queue` fails when that row disagrees with the tracker, and is
+  deliberately **not** part of `--check`. `--check` runs inside pytest and on
+  every tag and must stay offline and byte-deterministic; a network read there
+  would make the suite depend on a token and would let queue depth fail a
+  release, which is the mistake `check_cve_ageing.py` was written to avoid. The
+  live comparison runs on the daily CVE cron beside the ageing gate — red on its
+  own schedule, holding no lever over shipping.
+
+  Also fixed in passing: the oldest issue was misidentified for a same-day wave.
+  Creation dates are dates, so ten issues opened in one batch tie on every row
+  and `min` returned whichever `gh` listed first — newest-first, so the reported
+  "oldest" was the newest of the tied set. Issue numbers are monotonic with
+  creation and now break the tie.
+
+
 ### Added
 
 - **The 2,303-config corpus study has an address.**
