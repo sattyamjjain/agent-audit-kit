@@ -21,6 +21,37 @@ Determinism: the default path is offline and reads only committed files, so the
 release workflow can regenerate on every tag and get a byte-identical result for
 unchanged inputs. `--refresh` is the one network step, kept separate on purpose —
 the same split `make report` and `make corpus` already use.
+
+The open queue, and why omitting it flattered the number
+--------------------------------------------------------
+Until 2026-09-22 this page had three coverage rows — measured, undated, out of
+scope — and every one of them describes a CVE that already reached a
+disposition. "Shipped" is the date of the `CHANGELOG.cves.md` section carrying
+the CVE, so a disclosure that is open and untriaged appears in *no* population.
+Not measured, not undated, not out of scope. Absent.
+
+That omission is not neutral, it is directional. A CVE only enters the
+measurement on the day it is dispositioned, so every slow case is invisible
+while it is slow and counted only once it resolves. A queue left to sit makes
+the published median look better, never worse — the one bias a latency figure
+must not have, because the reader is using it to judge exactly that.
+
+It was not hypothetical. On 2026-09-22 the tracker held ten open `cve-response`
+issues opened 2026-09-19, one of them CRITICAL, none deferred and none
+commented, while this page published a median of 1.0 days. `check_cve_ageing.py`
+already knew — it holds critical to three days and runs daily — but the ageing
+signal had no path into the measurement. The fourth row is that path.
+
+`--check-queue` is what keeps the row honest, and it is deliberately NOT part of
+`--check`. `--check` is offline, byte-deterministic, and has two callers that
+must stay that way: `tests/test_regulatory_dates.py` runs it inside pytest, and
+`release.yml` runs it on every tag. A network read in there would make the test
+suite depend on a token and the internet, and would let queue depth fail a
+release — which is the precise mistake `check_cve_ageing.py`'s own docstring was
+written to avoid ("a release blocked on queue depth is what produced the
+deferral label in the first place"). So the live comparison runs on the daily
+cron beside the ageing gate, red on its own schedule, holding no lever over
+shipping.
 """
 
 from __future__ import annotations
@@ -32,7 +63,7 @@ import statistics
 import sys
 from datetime import date, datetime
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
@@ -242,7 +273,196 @@ def window_stats(
     )
 
 
-def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
+# --------------------------------------------------------------------------
+# The open queue: disclosures that have not reached a disposition yet.
+#
+# Sourced from the same issue list `check_cve_ageing.py` reads, through that
+# module's own helpers rather than a second parser — two readers of the tracker
+# would eventually disagree about what "open and undeferred" means, and the
+# disagreement would surface as a published number nobody could reproduce.
+#
+# `cve-deferred` issues are excluded. A deferral is a disposition: somebody read
+# it and named a date, and `check_cve_deferrals.py` judges it against that date.
+# Counting it here would put one issue in two accounting systems.
+# --------------------------------------------------------------------------
+
+#: Machine-readable state for the open-queue row, so `--check` can reproduce the
+#: committed page offline and `--check-queue` can compare it to the tracker
+#: without parsing prose. Same marker convention as README's rule-count anchors.
+_QUEUE_MARKER_RE = re.compile(
+    r"<!--\s*cve-open-queue:\s*(?P<body>[^>]*?)\s*-->"
+)
+
+
+class OpenQueue(NamedTuple):
+    """The undispositioned queue as of `asof`.
+
+    `read` is the field that matters. False means the tracker could not be read
+    on the run that produced the page — not that the queue is empty. The two
+    render differently on purpose: an unread count is a stated gap, and printing
+    it as zero would be the same flattering omission this row exists to close.
+    """
+
+    read: bool
+    count: int = 0
+    oldest_number: Optional[int] = None
+    oldest_created: Optional[date] = None
+    asof: Optional[date] = None
+
+    @property
+    def oldest_age_days(self) -> Optional[int]:
+        if self.oldest_created is None or self.asof is None:
+            return None
+        return (self.asof - self.oldest_created).days
+
+    def agrees_with(self, other: "OpenQueue") -> bool:
+        """Do two readings describe the same queue?
+
+        Compares the count and which issue is oldest — the facts that change
+        only when the tracker changes. Deliberately NOT the age in days, which
+        is a function of the date the page was rendered and would therefore
+        differ every single day with nothing having happened. A guard that is
+        red every morning is one nobody reads by the end of the week.
+        """
+        return (
+            self.read == other.read
+            and self.count == other.count
+            and self.oldest_number == other.oldest_number
+            and self.oldest_created == other.oldest_created
+        )
+
+
+def _load_ageing_module() -> Any:
+    """Import the ageing gate as the single authority on the open queue."""
+    import importlib.util
+
+    script = Path(__file__).resolve().parent / "check_cve_ageing.py"
+    spec = importlib.util.spec_from_file_location("check_cve_ageing", script)
+    if spec is None or spec.loader is None:  # pragma: no cover - packaging error
+        raise RuntimeError(f"cannot load {script}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("check_cve_ageing", module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def open_queue_from_issues(
+    issues: list[dict[str, Any]], today: Optional[date] = None
+) -> OpenQueue:
+    """Build an `OpenQueue` from a `gh`-shaped issue list. Offline; testable."""
+    ageing = _load_ageing_module()
+    today = today or date.today()
+    undeferred = [
+        issue
+        for issue in ageing.response_issues(issues)
+        if ageing.DEFERRED_LABEL not in ageing._labels(issue)
+    ]
+    dated = [(ageing.created_on(i), i) for i in undeferred]
+    dated = [(c, i) for c, i in dated if c is not None]
+    # Tie-break on issue number, not list order. `created_on` returns a DATE, so
+    # a wave opened in one batch — which is how the watcher opens them — ties on
+    # every row, and `min` would then name whichever one `gh` happened to list
+    # first. That is newest-first, so the "oldest" reported was the newest of
+    # the tied set: #767 instead of #758. Issue numbers are monotonic with
+    # creation, so they order a tie correctly and need no second timestamp.
+    oldest_created, oldest = (
+        min(dated, key=lambda pair: (pair[0], int(pair[1].get("number", 0))))
+        if dated
+        else (None, None)
+    )
+    return OpenQueue(
+        read=True,
+        count=len(undeferred),
+        oldest_number=int(oldest["number"]) if oldest else None,
+        oldest_created=oldest_created,
+        asof=today,
+    )
+
+
+def read_open_queue(repo: Optional[str] = None, today: Optional[date] = None) -> OpenQueue:
+    """The live queue, or an explicitly unread one when the tracker is closed.
+
+    Any failure to reach the tracker — no `gh`, no token, a rate limit — yields
+    `read=False` rather than an exception or a zero. The page then says so.
+    """
+    try:
+        ageing = _load_ageing_module()
+        return open_queue_from_issues(ageing.fetch_issues(repo), today)
+    except Exception:
+        return OpenQueue(read=False, asof=today or date.today())
+
+
+def render_queue_marker(queue: OpenQueue) -> str:
+    """The HTML comment carrying the row's machine-readable state."""
+    if not queue.read:
+        return "<!-- cve-open-queue: read=no -->"
+    parts = [f"read=yes count={queue.count}"]
+    if queue.oldest_number is not None:
+        parts.append(f"oldest=#{queue.oldest_number}")
+    if queue.oldest_created is not None:
+        parts.append(f"created={queue.oldest_created.isoformat()}")
+    if queue.asof is not None:
+        parts.append(f"asof={queue.asof.isoformat()}")
+    return f"<!-- cve-open-queue: {' '.join(parts)} -->"
+
+
+def parse_open_queue(page: str) -> Optional[OpenQueue]:
+    """Read the open-queue state back out of a rendered page.
+
+    Returns None when the page carries no marker at all, which is how a page
+    written before this row existed is told apart from one reporting an empty
+    queue. `--check-queue` treats that difference as the whole point.
+    """
+    match = _QUEUE_MARKER_RE.search(page)
+    if match is None:
+        return None
+    fields: dict[str, str] = {}
+    for token in match.group("body").split():
+        key, _, value = token.partition("=")
+        if key:
+            fields[key] = value
+    if fields.get("read") != "yes":
+        return OpenQueue(read=False)
+
+    def _date(key: str) -> Optional[date]:
+        raw = fields.get(key)
+        try:
+            return date.fromisoformat(raw) if raw else None
+        except ValueError:
+            return None
+
+    number = fields.get("oldest", "").lstrip("#")
+    return OpenQueue(
+        read=True,
+        count=int(fields["count"]) if fields.get("count", "").isdigit() else 0,
+        oldest_number=int(number) if number.isdigit() else None,
+        oldest_created=_date("created"),
+        asof=_date("asof"),
+    )
+
+
+def _queue_phrase(queue: Optional[OpenQueue]) -> str:
+    """The open queue as a noun phrase, or "" when there is nothing to say."""
+    if queue is None or not queue.read:
+        return ""
+    if queue.count == 0:
+        return "none are open and undispositioned"
+    age = queue.oldest_age_days
+    oldest = ""
+    if queue.oldest_number is not None:
+        oldest = f", the oldest (#{queue.oldest_number})"
+        if age is not None:
+            oldest += f" at {age} day{'s' if age != 1 else ''}"
+    plural = "is" if queue.count == 1 else "are"
+    return f"{queue.count} {plural} open and undispositioned{oldest}"
+
+
+def render(
+    rows: list[Row],
+    missing: list[str],
+    out_of_scope: set[str],
+    queue: Optional[OpenQueue] = None,
+) -> str:
     measured = [r.days for r in rows]
     lines: list[str] = []
     add = lines.append
@@ -298,6 +518,35 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
             add("| — | no rows in this population |")
         add("")
 
+        # The scope of the figure, stated as a definition rather than a hedge.
+        # Without it the median reads as "how fast we respond", when what it
+        # measures is "how fast the cases that finished, finished" — and the
+        # unfinished ones are exactly the slow ones.
+        phrase = _queue_phrase(queue)
+        if queue is not None and not queue.read:
+            add(
+                "These figures describe disclosures that reached a disposition. "
+                "The open queue was not read on this run, so how many are "
+                "waiting is unknown here — see the coverage table below."
+            )
+            add("")
+        elif phrase and queue is not None and queue.count:
+            asof = f" as of {queue.asof.isoformat()}" if queue.asof else ""
+            add(
+                f"These figures describe disclosures that reached a "
+                f"disposition{asof}: {phrase}, and they are not in the numbers "
+                f"above."
+            )
+            add("")
+        elif phrase:
+            asof = f" as of {queue.asof.isoformat()}" if queue and queue.asof else ""
+            add(
+                f"These figures describe disclosures that reached a "
+                f"disposition, and{asof} {phrase} — so nothing is waiting "
+                f"outside them."
+            )
+            add("")
+
         if backlog:
             add(
                 f"Separately, **{len(backlog)}** deferred roadmap rows were picked "
@@ -349,7 +598,41 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
     add(f"| Measured (published date + shipping release known) | {len(rows)} |")
     add(f"| Shipped, but no published date on file | {len(missing)} |")
     add(f"| Adjudicated out of scope (no rule, so no latency) | {len(out_of_scope)} |")
+    # The fourth row. Every row above it describes a CVE that already reached a
+    # disposition, so without this one a disclosure sitting untriaged appears in
+    # no population at all — and the figures can only improve by waiting.
+    if queue is None:
+        add("| Disclosed, open and not yet dispositioned | not read this run |")
+    elif not queue.read:
+        add("| Disclosed, open and not yet dispositioned | not read this run |")
+    elif queue.count == 0:
+        add(
+            f"| Disclosed, open and not yet dispositioned | 0"
+            f"{f' (as of {queue.asof.isoformat()})' if queue.asof else ''} |"
+        )
+    else:
+        age = queue.oldest_age_days
+        detail = ""
+        if queue.oldest_number is not None:
+            detail = f" — oldest `#{queue.oldest_number}`"
+            if age is not None:
+                detail += f" at {age} day{'s' if age != 1 else ''}"
+            if queue.asof:
+                detail += f", as of {queue.asof.isoformat()}"
+        add(f"| Disclosed, open and not yet dispositioned | {queue.count}{detail} |")
     add("")
+    # Machine-readable state, so `--check` reproduces this page offline and
+    # `--check-queue` compares it to the tracker without parsing prose.
+    add(render_queue_marker(queue if queue is not None else OpenQueue(read=False)))
+    add("")
+    if queue is not None and not queue.read:
+        add(
+            "The open queue could not be read on the run that produced this "
+            "page, so the row above is a stated gap rather than a zero. "
+            "`python scripts/cve_latency.py` re-reads it when the tracker is "
+            "reachable."
+        )
+        add("")
 
     if missing:
         add(
@@ -382,6 +665,18 @@ def render(rows: list[Row], missing: list[str], out_of_scope: set[str]) -> str:
     add(
         "- A CVE appearing in several sections is counted from the earliest one "
         "that carried coverage."
+    )
+    add(
+        "- **Disclosed, open and not yet dispositioned** counts open "
+        "`cve-response` issues on the tracker, minus any labelled "
+        "`cve-deferred` — a deferral is a disposition with a date of its own, "
+        "judged by `check_cve_deferrals.py`. These CVEs have no shipped date "
+        "yet, so they are in none of the rows above. That is the point of "
+        "printing them: without this row a disclosure left sitting appears "
+        "nowhere on the page, and the median can only improve by waiting. "
+        "`python scripts/cve_latency.py --check-queue` fails when this row "
+        "disagrees with the tracker; it runs on the daily CVE cron and blocks "
+        "no release."
     )
     add(
         "- p90 uses the nearest-rank method, so every reported figure is a latency "
@@ -447,6 +742,95 @@ def refresh_published(cves: list[str], store: dict[str, str]) -> dict[str, str]:
     return store
 
 
+def _check_queue(committed: str, live: OpenQueue, out_path: Path) -> int:
+    """Fail when the page's open-queue row disagrees with the tracker.
+
+    Three distinct failures, kept distinct because the fixes differ:
+
+    * the page carries no open-queue row at all while the tracker is non-empty —
+      the original defect, where an untriaged disclosure appeared in no
+      population and the median could only improve by waiting;
+    * the page says the queue was not read, while it can be read now;
+    * the page records a queue the tracker no longer agrees with.
+
+    An unreadable tracker is *not* a failure. This has to be runnable where no
+    token exists, and "I could not look" must never render as "nothing there" —
+    that is the same substitution of a zero for a gap the row exists to stop.
+    """
+    if not committed:
+        print(f"cve-latency: no page at {out_path} to check", file=sys.stderr)
+        return 2
+
+    if not live.read:
+        print(
+            "cve-latency: the tracker could not be read, so the open-queue row "
+            "is unverified this run. Not a failure — an unread queue is a "
+            "stated gap, not a clean bill.",
+            file=sys.stderr,
+        )
+        return 0
+
+    recorded = parse_open_queue(committed)
+    fix = (
+        "Run `python scripts/cve_latency.py` and commit the regenerated page. "
+        "This is a published number, not a release gate: nothing is blocked "
+        "while it is red."
+    )
+
+    if recorded is None:
+        if live.count == 0:
+            print("cve-latency: queue empty and the page predates the row — nothing to report.")
+            return 0
+        print(
+            f"::error ::cve-latency: the page carries no open-queue row, but the "
+            f"tracker holds {live.count} open, undispositioned cve-response "
+            f"issue(s)"
+            + (
+                f" (oldest #{live.oldest_number}, {live.oldest_age_days}d)"
+                if live.oldest_number is not None
+                else ""
+            )
+            + ". Every population on that page describes a CVE that already "
+            "reached a disposition, so those issues are published nowhere and "
+            "the median can only improve while they wait. " + fix,
+            file=sys.stderr,
+        )
+        return 1
+
+    if not recorded.read:
+        print(
+            "::error ::cve-latency: the page says the open queue was not read, "
+            f"but it reads fine now ({live.count} open). A stated gap is only "
+            "honest until it can be closed. " + fix,
+            file=sys.stderr,
+        )
+        return 1
+
+    if not recorded.agrees_with(live):
+        print(
+            "::error ::cve-latency: the published open-queue row disagrees with "
+            "the tracker.\n"
+            f"  page:    {recorded.count} open, oldest "
+            f"{('#' + str(recorded.oldest_number)) if recorded.oldest_number else 'n/a'}"
+            f" created {recorded.oldest_created or 'n/a'}\n"
+            f"  tracker: {live.count} open, oldest "
+            f"{('#' + str(live.oldest_number)) if live.oldest_number else 'n/a'}"
+            f" created {live.oldest_created or 'n/a'}\n"
+            "  " + fix,
+            file=sys.stderr,
+        )
+        return 1
+
+    age = live.oldest_age_days
+    print(
+        f"cve-latency: open-queue row matches the tracker "
+        f"({live.count} open"
+        + (f", oldest #{live.oldest_number} at {age}d" if live.oldest_number else "")
+        + ")."
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -456,6 +840,24 @@ def main() -> int:
     parser.add_argument(
         "--refresh", action="store_true",
         help="Fetch missing published dates from NVD before rendering (network).",
+    )
+    parser.add_argument(
+        "--check-queue", action="store_true",
+        help=(
+            "Fail if the committed page's open-queue row disagrees with the live "
+            "tracker (network). Separate from --check on purpose: --check runs in "
+            "pytest and on every tag, and must stay offline and non-blocking."
+        ),
+    )
+    parser.add_argument(
+        "--repo", help="owner/name for the tracker read (passed to `gh`)."
+    )
+    parser.add_argument(
+        "--issues-json",
+        help="Read the queue from a JSON file instead of `gh` (offline; tests).",
+    )
+    parser.add_argument(
+        "--today", help="ISO date to evaluate the queue against (testing)."
     )
     parser.add_argument("--ledger", default=str(LEDGER))
     parser.add_argument("--out", default=str(OUT))
@@ -484,12 +886,29 @@ def main() -> int:
         )
 
     rows, missing = build_rows(shipped, published)
-    rendered = render(rows, missing, out_of_scope)
-
     out_path = Path(args.out)
+    committed = out_path.read_text(encoding="utf-8") if out_path.is_file() else ""
+    today = date.fromisoformat(args.today) if args.today else date.today()
+
+    def _tracker_queue() -> OpenQueue:
+        """The queue as the tracker reports it right now."""
+        if args.issues_json:
+            with open(args.issues_json, encoding="utf-8") as handle:
+                return open_queue_from_issues(json.load(handle), today)
+        return read_open_queue(args.repo, today)
+
+    if args.check_queue:
+        return _check_queue(committed, _tracker_queue(), out_path)
+
     if args.check:
-        current = out_path.read_text(encoding="utf-8") if out_path.is_file() else ""
-        if current != rendered:
+        # Reproduce the committed page from the committed page's OWN queue
+        # state, not a fresh tracker read. The byte comparison then stays
+        # offline and deterministic, which its two callers require: pytest runs
+        # it with no token, and release.yml runs it on every tag. Whether that
+        # recorded state still matches the tracker is a different question, and
+        # --check-queue is where it is asked.
+        rendered = render(rows, missing, out_of_scope, parse_open_queue(committed))
+        if committed != rendered:
             print(
                 "cve-latency: docs/cve-latency.md is stale — "
                 "run 'python scripts/cve_latency.py' and commit",
@@ -498,6 +917,8 @@ def main() -> int:
             return 1
         print("cve-latency: up to date")
         return 0
+
+    rendered = render(rows, missing, out_of_scope, _tracker_queue())
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(rendered, encoding="utf-8")

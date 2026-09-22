@@ -12,7 +12,7 @@ MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
 .PHONY: report corpus report-check report-pdf report-pdf-check count-check test lint typecheck repo-description \
-        cve-latency cve-latency-check cve-latency-refresh \
+        cve-latency cve-latency-check cve-latency-queue-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
         registry-parity cve-deferral-check
@@ -94,6 +94,13 @@ cve-latency:
 ## cve-latency-check: fail if docs/cve-latency.md is stale vs the ledger (drift guard, runs on tag)
 cve-latency-check:
 	@python scripts/cve_latency.py --check
+
+## cve-latency-queue-check: fail if the published open-queue row disagrees with
+## the tracker (network). Deliberately NOT part of cve-latency-check: that one
+## runs in pytest and on every tag, and a published number must not gate a
+## release. Runs on the daily CVE cron beside the ageing gate.
+cve-latency-queue-check:
+	@python scripts/cve_latency.py --check-queue
 
 ## cve-latency-refresh: top up docs/data/cve-published.json from NVD (the one network step)
 cve-latency-refresh:
