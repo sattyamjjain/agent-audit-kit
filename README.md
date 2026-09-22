@@ -158,7 +158,7 @@ A public leaderboard of scanned public MCP servers, with per-server grade cards
 and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md):
 [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/).
 
-<!-- index-cadence -->Last published snapshot: **2026-09-14** (6 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
+<!-- index-cadence -->Last published snapshot: **2026-09-21** (7 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
 
 ## CVE response
 
