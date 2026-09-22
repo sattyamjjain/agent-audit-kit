@@ -175,6 +175,23 @@ _HUMAN_REVIEW_RE = re.compile(
 
 
 def _iter_files(project_root: Path, exts: set[str]) -> Iterable[Path]:
+    """Matching files, in a stable order that does not depend on the filesystem.
+
+    `rglob` yields in `os.scandir` order, which differs between filesystems and,
+    on ext4, shifts as a directory's contents change. That was invisible until
+    it mattered, and then it mattered a lot: `_find_declaration` and
+    `_find_documentation` each return the FIRST match in this stream, so on a
+    tree holding more than one candidate the scanner's whole answer was decided
+    by traversal order. Scanning this repository produced no findings on macOS
+    and three on an ext4 runner — same commit, same files, same code.
+
+    That is a determinism bug in a scanner that advertises determinism, and no
+    existing test could see it: the determinism test scans twice in one process
+    on one filesystem, where the order is stable but arbitrary. Sorting on the
+    relative POSIX path makes the answer a property of the tree rather than of
+    the disk it is checked out on.
+    """
+    matched: list[Path] = []
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
@@ -187,7 +204,18 @@ def _iter_files(project_root: Path, exts: set[str]) -> Iterable[Path]:
                 continue
         except OSError:
             continue
-        yield path
+        matched.append(path)
+    # Keyed on the path relative to the root, so an identical tree sorts
+    # identically regardless of where it is checked out.
+    matched.sort(key=lambda p: _sort_key(p, project_root))
+    return matched
+
+
+def _sort_key(path: Path, project_root: Path) -> str:
+    try:
+        return path.relative_to(project_root).as_posix()
+    except ValueError:  # pragma: no cover - path is always under the root
+        return path.as_posix()
 
 
 def _read(path: Path) -> str:
