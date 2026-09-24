@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The 2026-09-15..18 CVE wave dispositioned** (issues #758-#767), one CRITICAL.
+  No new shape rule: every one is a class the registry already owns. Four new
+  pins — `@contentful/mcp-server` >= 1.7.19 with `@contentful/mcp-tools` >= 0.4.5
+  (one rule, two pins, two version lines), `mcp-searxng` >= 1.7.1,
+  `atomic-agents-stack` >= 1.1.0, `netlicensing-mcp` >= 0.1.6 — and six CVEs
+  recorded against the rules whose shape they are, because their artifacts are
+  not on a registry this detector reads: `rmcp` is a crates.io crate and PyPI's
+  `rmcp` is a different project, `yutu` is a Go module whose npm name belongs to
+  someone else, ToolHive ships a Go CLI and an Electron app, and two more are
+  not published under any resolvable name. Pinning any of those names would
+  fire on the wrong software — the trap that produced the `praisonai` false
+  positive in v0.6.7. CVE-2026-57134 needed no pin at all: same package and same
+  1.7.2 fix as CVE-2026-57139, already covered. Rule count 357 -> 361.
+
 ### Fixed
 
 - **66 of the 102 rows on the CVE-latency page said `unreleased` for rules that

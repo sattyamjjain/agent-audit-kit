@@ -16,6 +16,58 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-24: ten disclosures, four pins, and six artifacts the detector cannot reach
+
+The watcher opened ten `cve-response` issues across 2026-09-15 to 09-18
+(#758-#767). All ten are real MCP servers or SDKs — no acronym collisions this
+wave either.
+
+**No new shape rule was authored.** Every one of the ten is a class the registry
+already owns: an unauthenticated network-bound MCP transport, SSRF through a
+caller-supplied destination, a cleartext transport, a path escaping its
+confinement root, and an OAuth flow that trusts metadata it never validated.
+The work was pins where a pin is possible and `cve_references` where it is not.
+
+**The more useful half is the six that could not be pinned**, and the reason is
+the same each time: the vulnerable artifact is not published on a registry this
+detector reads, and the name it *is* published under belongs to something else.
+`rmcp` is the official Rust MCP SDK on crates.io, and Cargo manifests are
+outside `_CANDIDATE_NAMES`; PyPI carries an unrelated `rmcp` on a 0.x line, so a
+pin keyed on that name would fire on the wrong software and tell its users to
+upgrade to a version their project has never had. `yutu` is a Go module; npm's
+`yutu` is a single 0.0.1 release by someone else. ToolHive ships a Go CLI and an
+Electron app; npm's `toolhive-mcp` is a third-party client for it, on its own
+0.2.x line. Obsidian Web MCP and MCP Documentation Server are not published
+under any name that resolves. Each of those is recorded against the rule whose
+shape it is, and against nothing else. This is the same trap that produced the
+`praisonai` false positive in v0.6.7 — a floor from one project compared against
+another project's version line — and the answer is the same: do not pin a name
+you have not confirmed is the software.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-54618 | 9.4 | Obsidian Web MCP (no resolvable registry name) | No new rule, no pin. `/oauth/authorize` issues an authorization code with no login, consent or session check, and `/oauth/token` exchanges it for the static `VAULT_MCP_TOKEN`, so an unauthenticated caller reaches `/mcp` and every vault tool including `vault_delete`. Unauthenticated `/oauth/register` also returns `VAULT_OAUTH_CLIENT_SECRET`. Recorded against `AAK-MCP-HTTP-NOAUTH-SERVER-001`, whose shape this is. Fixed 0.2.0. | #758 |
+| CVE-2026-54504 | 8.8 | MCP Documentation Server (no resolvable registry name) | No new rule, no pin. `startWebServer` calls `app.listen(PORT)` with no host, binding the unauthenticated document API to every interface, with the Web UI on by default. Recorded against `AAK-MCP-HTTP-NOAUTH-SERVER-001`. Fixed 1.13.1. | #759 |
+| CVE-2026-58197 | 8.8 | ToolHive (Go CLI + Electron app) | No new rule, no pin. Containers run without network isolation and can reach `host.docker.internal`, while the ToolHive API and MCP proxy endpoints answer without authentication — so one compromised MCP server reaches its siblings and the control plane without escaping its container. Studio additionally sends `network_isolation: false`, overriding the backend's secure default. Recorded against `AAK-MCP-HTTP-NOAUTH-SERVER-001`. Fixed CLI 0.30.1 / Studio 0.38.0. | #760 |
+| CVE-2026-57134 | 8.2 | `praisonai` (npm) | No new rule and **no new pin**. `MCPSecurity.evaluatePolicy()` calls the credential validator only for `api-key` and `bearer`; a `basic` or `oauth` policy accepts any non-empty `Authorization` header and returns an authenticated result. Fixed **1.7.2** — the exact floor `AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001` already carries, so every affected version fires today. Recorded in `cve_references`. | #761 |
+| CVE-2026-63127 | 8.2 | `rmcp` (crates.io, the official Rust MCP SDK) | No new rule, no pin — see the note above on the PyPI name collision. The OAuth implementation omits the RFC 9728 `resource` field and accepts protected-resource metadata without confirming the identifier matches the configured server, so a malicious server points a victim at a legitimate authorization server and captures the token that comes back. Recorded against `AAK-OAUTH-008`, which is exactly this. Fixed 2.0.0. | #762 |
+| CVE-2026-91988 | 8.1 | `atomic-agents-stack` | **New pin** `AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001`, floor **1.1.0**. Cleartext `http://` accepted for the MCP server-registry catalog, so a man in the middle rewrites it and injects `command`/argv that `MCPClientPool` spawns locally — a transport weakness reaching code execution with no parsing bug in between. Also recorded against `AAK-TRANSPORT-001`, since the cleartext scheme *is* the vulnerability. Same distribution as the 2026-08-16 dashboard traversal that never got a CVE id; different defect. | #763 |
+| CVE-2026-54446 | 8.1 | `netlicensing-mcp` | **New pin** `AAK-MCP-NETLICENSING-CVE-2026-54446-001`, floor **0.1.6**. A `/mcp` request carrying none of `x-netlicensing-api-key`, `Authorization: Bearer` or `apikey` passes through `ApiKeyMiddleware`, and `api_key_ctx` then falls back to the operator's `NETLICENSING_API_KEY`. The absence of a credential is treated as a reason to supply the server's own, which inverts the check. Also recorded against `AAK-MCP-HTTP-NOAUTH-SERVER-001`. | #764 |
+| CVE-2026-53957 | 7.7 | `@contentful/mcp-server`, `@contentful/mcp-tools` | **New pin** `AAK-MCP-CONTENTFUL-CVE-2026-53957-001` — one rule, **two pins**, because the two packages fix on different version lines (**1.7.19** and **0.4.5**). `export_space`/`import_space` expose `host`, `proxy`, `rawProxy` and `insecure` to LLM-controlled arguments and combine them with `CONTENTFUL_MANAGEMENT_TOKEN`, so a direct call or prompt injection through attacker-written content redirects the Management API request and its `Authorization` header. Tools built through `createToolClient` pin the host from config and are unaffected. **Rotate the token** if an affected version ran: upgrading does not retract one already sent elsewhere. | #765 |
+| CVE-2026-50158 | 7.7 | `yutu` (Go module) | No new rule, no pin — npm's `yutu` is an unrelated single 0.0.1 release. `caption-download` takes a caller-controlled `file` and passes it to `os.Create()` without the `pkg.Root` confinement backed by `YUTU_ROOT`, so downloaded bytes land on any writable path. Recorded against `AAK-MCP-015`. Fixed 0.10.9. | #766 |
+| CVE-2026-58483 | 7.5 | `mcp-searxng` | **New pin** `AAK-MCP-SEARXNG-CVE-2026-58483-001`, floor **1.7.1**. `checkContentLength()` treats a missing `Content-Length` as an inconclusive preflight, and both the normal and the error path then consume the whole body with `response.text()`, defeating `URL_READ_MAX_CONTENT_LENGTH_BYTES`. The result is handed to `NodeHtmlMarkdown.translate()`, adding CPU to the memory. A preflight header from the peer you are defending against cannot be the only place a limit is applied. | #767 |
+
+Every package and fix version was verified against the live PyPI and npm
+registries before shipping, and every CVE re-verified against the NVD API. The
+four packages that could be pinned were confirmed to exist at both the
+vulnerable and the fixed version; the six that could not were confirmed to be
+absent, or present as a different project.
+
+Dispositioned at 2026-09-24T17:43:24Z. Unreleased at the time of writing: this section
+carries no version label until the next tag stamps it, which is what
+`cve_latency.py --check` now enforces for every section a release has overtaken.
+
+
 ## 2026-09-19 (v0.6.7): ten disclosures, five new pins, and two false positives that had nothing to do with them
 
 The watcher opened ten `cve-response` issues across 2026-09-15 and 09-16

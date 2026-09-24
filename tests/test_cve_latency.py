@@ -141,6 +141,14 @@ _VERIFIED_PRE_COVERAGE = {
     # recognition became body-based as well as name-based). NVD published it on
     # 2026-09-14, 29 days later. The rule really did predate the disclosure.
     "CVE-2026-53708",
+    # Dispositioned 2026-08-16 (v0.3.80) from GHSA-49m4-vp58-wgc9, which the
+    # ledger row cites and which GitHub published on 2026-08-12 — four days
+    # before the section. NVD published it on 2026-09-21, 36 days after the rule
+    # shipped, and the `--refresh` on 2026-09-24 filled that date in for the
+    # first time, which is when this row appeared at all. The pin
+    # (AAK-MCP-STATA-CVE-2026-47708-001, floor moved to 1.19.0) really did
+    # predate the disclosure.
+    "CVE-2026-55071",
 }
 
 

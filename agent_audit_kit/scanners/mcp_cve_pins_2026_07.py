@@ -105,6 +105,14 @@ available) before shipping:
   - mcp-from-openapi               >= 2.5.0   (CVE-2026-59973; external-$ref SSRF on
     its own 2.x line — `frontmcp`/`@frontmcp/adapters` carry the same defect but
     were fixed at 1.5.0, already under that pin's 1.5.7 floor)
+  - @contentful/mcp-server         >= 1.7.19  (CVE-2026-53957; one rule, two pins —
+    @contentful/mcp-tools >= 0.4.5 carries the same defect on its own 0.x line)
+  - mcp-searxng                    >= 1.7.1   (CVE-2026-58483; a missing Content-Length
+    bypasses the read cap and the whole body is consumed)
+  - atomic-agents-stack            >= 1.1.0   (CVE-2026-91988; cleartext registry
+    catalog -> injected argv spawned by MCPClientPool)
+  - netlicensing-mcp               >= 0.1.6   (CVE-2026-54446; unauthenticated /mcp
+    falls back to the operator's API key)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -907,6 +915,47 @@ _PINS: tuple[_Pin, ...] = (
     # forms all reach internal services from the backend origin.
     _Pin("AAK-MCP-FROMOPENAPI-CVE-2026-59973-001", "mcp-from-openapi",
          ("mcp-from-openapi",), (2, 5, 0), fix_label="2.5.0", ecosystem="js"),
+    # --- 2026-09-15..18 wave (dispositioned 2026-09-24) ---
+    #
+    # Contentful ships the defect in two packages on two different version
+    # lines, so one rule_id carries two pins — the AgenticMail shape above.
+    # export_space/import_space expose host, proxy, rawProxy and insecure to
+    # LLM-controlled tool arguments and combine them with the server's
+    # CONTENTFUL_MANAGEMENT_TOKEN, so a direct call or prompt injection through
+    # attacker-controlled Contentful content redirects the Management API
+    # request, and its Authorization header, to a host of the attacker's
+    # choosing. The regular tools pin the host from server config and are
+    # unaffected (CVE-2026-53957, CVSS 7.7, CWE-918).
+    _Pin("AAK-MCP-CONTENTFUL-CVE-2026-53957-001", "@contentful/mcp-server",
+         ("@contentful/mcp-server",), (1, 7, 19), fix_label="1.7.19",
+         ecosystem="js"),
+    _Pin("AAK-MCP-CONTENTFUL-CVE-2026-53957-001", "@contentful/mcp-tools",
+         ("@contentful/mcp-tools",), (0, 4, 5), fix_label="0.4.5",
+         ecosystem="js"),
+    # mcp-searxng < 1.7.1: checkContentLength() treats a missing Content-Length
+    # header as an inconclusive preflight, and both the normal and the error
+    # path then consume the whole body with response.text(). A server that omits
+    # the header bypasses URL_READ_MAX_CONTENT_LENGTH_BYTES entirely; the string
+    # is then fed to NodeHtmlMarkdown.translate(), so an unauthenticated caller
+    # reaches unbounded memory and CPU (CVE-2026-58483, CVSS 7.5, CWE-400).
+    _Pin("AAK-MCP-SEARXNG-CVE-2026-58483-001", "mcp-searxng", ("mcp-searxng",),
+         (1, 7, 1), fix_label="1.7.1", ecosystem="js"),
+    # atomic-agents-stack < 1.1.0: the HTTP MCP server-registry backend factory
+    # accepts cleartext http:// schemes, so a network attacker rewrites the
+    # catalog response and injects command and argv values that MCPClientPool
+    # spawns as local subprocesses (CVE-2026-91988, CVSS 8.1, CWE-319). The same
+    # distribution appears in the 2026-08-16 section for an unrelated dashboard
+    # path traversal that never received a CVE id.
+    _Pin("AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001", "atomic-agents-stack",
+         ("atomic-agents-stack",), (1, 1, 0), fix_label="1.1.0", ecosystem="py"),
+    # netlicensing-mcp < 0.1.6: a /mcp request omitting x-netlicensing-api-key,
+    # Authorization: Bearer and the apikey query parameter passes straight
+    # through ApiKeyMiddleware, and api_key_ctx then falls back to the
+    # operator's NETLICENSING_API_KEY — so an unauthenticated caller drives
+    # every licensing tool, including the destructive ones, as the operator
+    # (CVE-2026-54446, CVSS 8.1, CWE-306).
+    _Pin("AAK-MCP-NETLICENSING-CVE-2026-54446-001", "netlicensing-mcp",
+         ("netlicensing-mcp",), (0, 1, 6), fix_label="0.1.6", ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

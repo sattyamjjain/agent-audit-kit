@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-19T05:01:09Z",
+  "last_updated": "2026-09-24T17:47:29Z",
   "aak_version": "0.6.7",
-  "rule_count": 357,
+  "rule_count": 361,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -148,7 +148,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 50,
+      "rule_density": 51,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -383,6 +383,18 @@
           "aicm_references": [
             "AIS-07",
             "STA-02"
+          ]
+        },
+        {
+          "id": "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-91988"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {
@@ -938,7 +950,11 @@
             "CVE-2026-49257",
             "CVE-2026-50287",
             "CVE-2026-53710",
+            "CVE-2026-54446",
+            "CVE-2026-54504",
+            "CVE-2026-54618",
             "CVE-2026-57139",
+            "CVE-2026-58197",
             "CVE-2026-59971",
             "CVE-2026-61560",
             "CVE-2026-90617"
@@ -1141,7 +1157,9 @@
         {
           "id": "AAK-OAUTH-008",
           "severity": "low",
-          "cve_references": [],
+          "cve_references": [
+            "CVE-2026-63127"
+          ],
           "aicm_references": [
             "IAM-01",
             "IAM-16"
@@ -1257,7 +1275,9 @@
         {
           "id": "AAK-TRANSPORT-001",
           "severity": "critical",
-          "cve_references": [],
+          "cve_references": [
+            "CVE-2026-91988"
+          ],
           "aicm_references": [
             "CEK-08"
           ]
@@ -1307,7 +1327,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 79,
+      "rule_density": 82,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1611,6 +1631,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-CONTENTFUL-CVE-2026-53957-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-53957"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
           "severity": "high",
           "cve_references": [
@@ -1813,6 +1845,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-54446"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-PENPOT-CVE-2026-45805-001",
           "severity": "critical",
           "cve_references": [
@@ -1853,6 +1897,7 @@
           "id": "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-57134",
             "CVE-2026-57139"
           ],
           "aicm_references": [
@@ -1890,6 +1935,17 @@
             "CVE-2026-42074"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-SEARXNG-CVE-2026-58483-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-58483"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-SEQTHINKING-CVE-2026-81845-001",
@@ -2680,7 +2736,9 @@
         {
           "id": "AAK-MCP-015",
           "severity": "critical",
-          "cve_references": [],
+          "cve_references": [
+            "CVE-2026-50158"
+          ],
           "aicm_references": []
         },
         {
