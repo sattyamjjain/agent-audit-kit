@@ -42,6 +42,29 @@ commented, while this page published a median of 1.0 days. `check_cve_ageing.py`
 already knew — it holds critical to three days and runs daily — but the ageing
 signal had no path into the measurement. The fourth row is that path.
 
+The Release column, and the label the ledger stopped writing
+------------------------------------------------------------
+On 2026-09-24, 66 of the 102 rows on this page said `unreleased` — every row
+from 2026-08-16 onward, while PyPI had been serving 0.3.78 through 0.6.7 the
+whole time. `parse_ledger` reads the version out of a section heading's
+parenthesised label and, for a section without one, carries down the nearest
+labelled section above it. The ledger simply stopped writing that label after
+`## 2026-08-15 (v0.3.77)`, so twenty-two sections had nothing above them to
+inherit and all of them fell back to the string the walk starts with.
+
+The parser was doing exactly what it documents. What was missing is the only
+thing that could have caught it: nothing compared the Release column against the
+releases that actually exist. A reader asking whether their installed 0.6.7
+carries a rule for CVE-2026-91932 read `unreleased` and concluded it did not —
+false, and false in the direction that makes this project look slower to ship
+than it is, on the page whose whole job is to measure that.
+
+`--check` now reads the release headings from `CHANGELOG.md` and fails when a
+row resolves to `unreleased` while a release exists *strictly after* its section
+date. Strictly, because a section dated the day of a release may honestly be
+unreleased — the ledger entry is written before the tag is cut, and that is the
+normal state of the newest section, not a defect.
+
 `--check-queue` is what keeps the row honest, and it is deliberately NOT part of
 `--check`. `--check` is offline, byte-deterministic, and has two callers that
 must stay that way: `tests/test_regulatory_dates.py` runs it inside pytest, and
@@ -69,6 +92,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
 PUBLISHED = REPO_ROOT / "docs" / "data" / "cve-published.json"
 OUT = REPO_ROOT / "docs" / "cve-latency.md"
+RELEASES = REPO_ROOT / "CHANGELOG.md"
 
 NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId="
 # NVD allows 5 requests per rolling 30s without an API key.
@@ -120,6 +144,63 @@ def _parse_iso_date(raw: str) -> Optional[date]:
         except ValueError:
             continue
     return None
+
+
+#: A released heading in CHANGELOG.md: ``## [0.6.7] - 2026-09-19``. The
+#: ``[Unreleased]`` heading deliberately does not match — it names no version
+#: and carries no date, so it cannot date anything.
+_RELEASE_HEADING_RE = re.compile(
+    r"^##\s+\[(\d+\.\d+\.\d+)\]\s+-\s+(\d{4}-\d{2}-\d{2})\s*$", re.M
+)
+
+
+def release_dates(changelog_text: str) -> list[tuple[str, date]]:
+    """``(version, date)`` for every released CHANGELOG.md heading, oldest first.
+
+    Committed and offline, which is why this check belongs in `--check` rather
+    than beside `--check-queue`: it needs no tracker and no token, so it can run
+    inside pytest and on every tag like the rest of the drift guard.
+    """
+    out: list[tuple[str, date]] = []
+    for version, raw in _RELEASE_HEADING_RE.findall(changelog_text):
+        parsed = _parse_iso_date(raw)
+        if parsed is not None:
+            out.append((version, parsed))
+    return sorted(out, key=lambda pair: pair[1])
+
+
+def find_unlabelled_shipped(
+    shipped: dict[str, tuple[date, str]], releases: list[tuple[str, date]]
+) -> list[str]:
+    """Rows claiming `unreleased` that a release has already overtaken.
+
+    A row is a fault when some release was cut **strictly after** its section
+    date: the rule was in the tree when that release was built, so the section
+    should carry a version label and the page should name it.
+
+    Strictly after, and not on-or-after, because same-day is the honest case.
+    A ledger section is written when the disposition is done, and the tag is cut
+    afterwards on the same day; at the moment the section lands there is no
+    release above it to inherit, and saying `unreleased` is then simply true.
+    Treating that as a fault would make the newest section permanently red and
+    the guard permanently ignored.
+    """
+    if not releases:
+        return []
+    newest_version, newest_date = releases[-1]
+    faults: list[tuple[date, str]] = []
+    for cve, (section_date, release) in shipped.items():
+        if release != "unreleased":
+            continue
+        later = [v for v, d in releases if d > section_date]
+        if not later:
+            continue
+        faults.append((
+            section_date,
+            f"{cve}  section {section_date}  resolves to 'unreleased', but "
+            f"{later[0]} shipped {[d for v, d in releases if v == later[0]][0]}",
+        ))
+    return [row for _, row in sorted(faults)]
 
 
 def parse_ledger(text: str) -> tuple[dict[str, tuple[date, str]], set[str]]:
@@ -860,6 +941,10 @@ def main() -> int:
         "--today", help="ISO date to evaluate the queue against (testing)."
     )
     parser.add_argument("--ledger", default=str(LEDGER))
+    parser.add_argument(
+        "--changelog", default=str(RELEASES),
+        help="CHANGELOG.md to read release dates from (testing).",
+    )
     parser.add_argument("--out", default=str(OUT))
     args = parser.parse_args()
 
@@ -901,6 +986,33 @@ def main() -> int:
         return _check_queue(committed, _tracker_queue(), out_path)
 
     if args.check:
+        # The Release column first. The byte comparison below cannot catch a
+        # mislabelled one: it regenerates the page from the same ledger and
+        # gets the same wrong label, so the file matches itself and passes.
+        # That is how 66 of 102 rows came to read `unreleased` while PyPI had
+        # been serving 0.3.78 through 0.6.7 for a month.
+        changelog_path = Path(args.changelog)
+        releases = (
+            release_dates(changelog_path.read_text(encoding="utf-8"))
+            if changelog_path.is_file()
+            else []
+        )
+        unlabelled = find_unlabelled_shipped(shipped, releases)
+        if unlabelled:
+            print(
+                f"::error ::cve-latency: {len(unlabelled)} row(s) say "
+                f"'unreleased' although a release was cut after their ledger "
+                f"section. The section heading in CHANGELOG.cves.md needs its "
+                f"version label — `## YYYY-MM-DD (vX.Y.Z): ...`, or "
+                f"`(vX.Y.Z, later)` where it already carries a qualifier:",
+                file=sys.stderr,
+            )
+            for row in unlabelled[:20]:
+                print(f"  {row}", file=sys.stderr)
+            if len(unlabelled) > 20:
+                print(f"  ... and {len(unlabelled) - 20} more", file=sys.stderr)
+            return 1
+
         # Reproduce the committed page from the committed page's OWN queue
         # state, not a fresh tracker read. The byte comparison then stays
         # offline and deterministic, which its two callers require: pytest runs

@@ -23,6 +23,8 @@ cve_latency = importlib.util.module_from_spec(_spec)
 sys.modules["cve_latency"] = cve_latency
 _spec.loader.exec_module(cve_latency)
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 parse_ledger = cve_latency.parse_ledger
 build_rows = cve_latency.build_rows
 percentile_nearest_rank = cve_latency.percentile_nearest_rank
@@ -467,3 +469,157 @@ def test_each_cve_is_dated_to_its_own_section() -> None:
         if cve in truth and str(value[0]) != truth[cve]
     }
     assert not mismatches, f"CVEs dated to the wrong section: {mismatches}"
+
+
+# ---------------------------------------------------------------------------
+# The Release column: a label the ledger stopped writing
+#
+# On 2026-09-24, 66 of the 102 published rows said `unreleased` — every row from
+# 2026-08-16 onward — while PyPI had been serving 0.3.78 through 0.6.7 the whole
+# time. `parse_ledger` reads the version out of a section heading's
+# parenthesised label and carries the nearest labelled section above it down to
+# the ones without. The ledger stopped writing that label after
+# `## 2026-08-15 (v0.3.77)`, so twenty-two sections had nothing to inherit and
+# fell back to the string the walk starts with.
+#
+# The parser did what it documents. Nothing compared the Release column against
+# the releases that exist, so a reader asking whether their installed 0.6.7
+# carried a rule for CVE-2026-91932 read "unreleased" and concluded it did not.
+# False, and false in the direction that makes the project look slower to ship
+# than it is, on the page whose job is to measure that.
+# ---------------------------------------------------------------------------
+
+_FIXTURE_CHANGELOG = """# Changelog
+
+## [Unreleased]
+
+## [0.9.1] - 2026-09-20
+
+## [0.9.0] - 2026-09-10
+"""
+
+
+def _fixture_ledger(section_date: str) -> str:
+    """A one-row ledger whose only section carries NO version label."""
+    return (
+        "# AAK CVE-to-Rule Ledger\n\n"
+        f"## {section_date}: a batch with no version label\n\n"
+        "| CVE | CVSS | Package | What changed | Issue |\n"
+        "|---|---|---|---|---|\n"
+        "| CVE-2026-11111 | 9.0 | `x` | New pin. | #1 |\n"
+    )
+
+
+_PUBLISHED_FIXTURE = {"CVE-2026-11111": "2026-09-01T00:00:00"}
+
+
+def _run_check(tmp_path: Path, ledger: str, changelog: str) -> "object":
+    import subprocess
+
+    ledger_file = tmp_path / "ledger.md"
+    ledger_file.write_text(ledger, encoding="utf-8")
+    changelog_file = tmp_path / "CHANGELOG.md"
+    changelog_file.write_text(changelog, encoding="utf-8")
+    issues_file = tmp_path / "issues.json"
+    issues_file.write_text("[]", encoding="utf-8")
+    page = tmp_path / "page.md"
+
+    common = [
+        sys.executable, "scripts/cve_latency.py",
+        "--ledger", str(ledger_file),
+        "--changelog", str(changelog_file),
+        "--out", str(page),
+        "--issues-json", str(issues_file),
+    ]
+    # Render first, so a failure below is the Release-column guard and never
+    # the byte-drift comparison sitting behind it.
+    subprocess.run(common, cwd=REPO_ROOT, capture_output=True, text=True, timeout=120)
+    return subprocess.run(
+        [*common, "--check"], cwd=REPO_ROOT, capture_output=True, text=True, timeout=120
+    )
+
+
+def test_an_unlabelled_section_older_than_a_release_fails_check(tmp_path) -> None:
+    """The defect itself: a section shipped by a release, still saying so nowhere.
+
+    0.9.1 was cut on 2026-09-20. A section dated 2026-09-15 was therefore in the
+    tree when it was built, so its rows shipped in 0.9.1 and the heading owes a
+    version label.
+    """
+    result = _run_check(tmp_path, _fixture_ledger("2026-09-15"), _FIXTURE_CHANGELOG)
+    assert result.returncode == 1, (
+        "a row resolving to 'unreleased' while a later release exists must be "
+        "refused\n" + result.stdout + result.stderr
+    )
+    assert "unreleased" in result.stderr
+    assert "CVE-2026-11111" in result.stderr
+    assert "0.9.1" in result.stderr, "the error must name the release that overtook it"
+
+
+def test_an_unlabelled_section_newer_than_every_release_passes(tmp_path) -> None:
+    """The positive twin, and the reason the comparison is *strictly* after.
+
+    A ledger section is written when the disposition is done; the tag is cut
+    afterwards. The newest section is therefore legitimately unreleased, and
+    failing on it would make the guard permanently red and permanently ignored.
+    """
+    result = _run_check(tmp_path, _fixture_ledger("2026-09-24"), _FIXTURE_CHANGELOG)
+    assert result.returncode == 0, (
+        "a section newer than every release is honestly unreleased\n"
+        + result.stdout + result.stderr
+    )
+
+
+def test_a_section_dated_the_day_of_a_release_is_not_a_fault(tmp_path) -> None:
+    """Same-day is the edge the `strictly after` comparison exists for."""
+    result = _run_check(tmp_path, _fixture_ledger("2026-09-20"), _FIXTURE_CHANGELOG)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_release_dates_reads_only_released_headings() -> None:
+    """`## [Unreleased]` names no version and carries no date, so it dates nothing."""
+    found = cve_latency.release_dates(_FIXTURE_CHANGELOG)
+    assert found == [("0.9.0", date(2026, 9, 10)), ("0.9.1", date(2026, 9, 20))]
+
+
+def test_release_dates_reads_every_versioned_heading_in_the_real_changelog() -> None:
+    """Guard the guard: a regex that stops matching makes the check vacuous.
+
+    Pinned to the file's own count rather than a threshold, so adding releases
+    never needs this number edited and a heading the regex stops seeing fails
+    here instead of silently shrinking what `--check` can catch.
+    """
+    text = (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    versioned = re.findall(r"^## \[(\d+\.\d+\.\d+)\][^\n]*$", text, re.M)
+    found = cve_latency.release_dates(text)
+    assert {v for v, _ in found} == set(versioned), (
+        "release_dates missed a versioned heading: "
+        f"{sorted(set(versioned) - {v for v, _ in found})}"
+    )
+    assert len(found) == len(versioned) > 40
+    assert found == sorted(found, key=lambda pair: pair[1])
+    # `## [Unreleased]` names no version and carries no date, so it dates nothing.
+    assert "Unreleased" not in {v for v, _ in found}
+
+
+def test_no_row_on_the_committed_page_is_wrongly_unreleased() -> None:
+    """The artifact readers actually see, not just the generator."""
+    shipped, _ = parse_ledger((REPO_ROOT / "CHANGELOG.cves.md").read_text(encoding="utf-8"))
+    releases = cve_latency.release_dates(
+        (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    )
+    faults = cve_latency.find_unlabelled_shipped(shipped, releases)
+    assert faults == [], (
+        "these rows claim 'unreleased' although a release was cut after their "
+        "section:\n  " + "\n  ".join(faults)
+    )
+
+
+def test_the_comma_form_keeps_a_qualifier_alongside_the_version() -> None:
+    """`(v0.3.89, later)` — the ledger uses `(later)` to separate two same-day
+    batches, and the version has to coexist with it."""
+    shipped, _ = parse_ledger(
+        "## 2026-08-25 (v0.3.89, later): x\n\n"
+        "| CVE | a |\n|---|---|\n| CVE-2026-22222 | New pin. |\n"
+    )
+    assert shipped["CVE-2026-22222"][1] == "v0.3.89"
