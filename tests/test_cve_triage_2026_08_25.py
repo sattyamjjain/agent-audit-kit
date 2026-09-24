@@ -38,6 +38,7 @@ from the advisory: 3.1.0 contains zero occurrences of the guard, 3.1.1 defines
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -52,7 +53,32 @@ from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
 
-SECTION = "## 2026-08-25 (later): a real MCP server, and a bug that is not in it"
+SECTION_DATE, SECTION_TITLE = (
+    "2026-08-25",
+    "a real MCP server, and a bug that is not in it",
+)
+
+def _section_body(date: str, title_prefix: str) -> str:
+    """The body of the ledger section headed `date` whose title starts as given.
+
+    Matched on the date plus the title, tolerating any parenthesised label
+    between them. The title is what disambiguates two sections dated the same
+    day; the label is release metadata a section gains when it ships, and
+    twenty-two of them were backfilled at once, so pinning the whole heading
+    string made this test fail on a labelling change it has no stake in.
+    """
+    text = LEDGER.read_text(encoding="utf-8")
+    pattern = re.compile(
+        r"^##\s+"
+        + re.escape(date)
+        + r"(?:\s*\([^)]*\))?\s*[:\u2014-]?\s*"
+        + re.escape(title_prefix),
+        re.M,
+    )
+    match = pattern.search(text)
+    assert match, f"ledger has no {date} section titled {title_prefix!r}"
+    return text[match.end():].split("\n## ", 1)[0]
+
 CVE = "CVE-2026-19801"
 
 # Spellings a pin must never be keyed on. Neither resolves on a registry the pin
@@ -61,9 +87,7 @@ COLLIDING_NAMES = ("betterlinks", "better-links", "betterlinks-mcp")
 
 
 def _row() -> str:
-    text = LEDGER.read_text(encoding="utf-8")
-    assert SECTION in text, f"ledger has no {SECTION!r} section"
-    section = text.split(SECTION, 1)[1].split("\n## ", 1)[0]
+    section = _section_body(SECTION_DATE, SECTION_TITLE)
     rows = [ln for ln in section.splitlines() if ln.startswith("|") and CVE in ln]
     assert rows, f"{CVE} has no row in its ledger section"
     return rows[0]

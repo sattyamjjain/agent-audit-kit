@@ -33,6 +33,7 @@ would fire on 100% of their releases and never on the vulnerable server.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -42,7 +43,32 @@ from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, scan
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
-SECTION = "## 2026-08-26: thirteen open issues, and severity decided none of them"
+SECTION_DATE, SECTION_TITLE = (
+    "2026-08-26",
+    "thirteen open issues, and severity decided none of them",
+)
+
+def _section_body(date: str, title_prefix: str) -> str:
+    """The body of the ledger section headed `date` whose title starts as given.
+
+    Matched on the date plus the title, tolerating any parenthesised label
+    between them. The title is what disambiguates two sections dated the same
+    day; the label is release metadata a section gains when it ships, and
+    twenty-two of them were backfilled at once, so pinning the whole heading
+    string made this test fail on a labelling change it has no stake in.
+    """
+    text = LEDGER.read_text(encoding="utf-8")
+    pattern = re.compile(
+        r"^##\s+"
+        + re.escape(date)
+        + r"(?:\s*\([^)]*\))?\s*[:\u2014-]?\s*"
+        + re.escape(title_prefix),
+        re.M,
+    )
+    match = pattern.search(text)
+    assert match, f"ledger has no {date} section titled {title_prefix!r}"
+    return text[match.end():].split("\n## ", 1)[0]
+
 
 PINNED = {
     "CVE-2026-55546": "AAK-MCP-QWED-CVE-2026-55546-001",
@@ -77,9 +103,7 @@ def _ids(tmp_path: Path, name: str, content: str) -> set[str]:
 
 
 def _row(cve: str) -> str:
-    text = LEDGER.read_text(encoding="utf-8")
-    assert SECTION in text, f"ledger has no {SECTION!r} section"
-    section = text.split(SECTION, 1)[1].split("\n## ", 1)[0]
+    section = _section_body(SECTION_DATE, SECTION_TITLE)
     rows = [ln for ln in section.splitlines() if ln.startswith("|") and cve in ln]
     assert rows, f"{cve} has no row in the 2026-08-26 ledger section"
     return rows[0]

@@ -7,7 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The 2026-09-15..18 CVE wave dispositioned** (issues #758-#767), one CRITICAL.
+  No new shape rule: every one is a class the registry already owns. Four new
+  pins — `@contentful/mcp-server` >= 1.7.19 with `@contentful/mcp-tools` >= 0.4.5
+  (one rule, two pins, two version lines), `mcp-searxng` >= 1.7.1,
+  `atomic-agents-stack` >= 1.1.0, `netlicensing-mcp` >= 0.1.6 — and six CVEs
+  recorded against the rules whose shape they are, because their artifacts are
+  not on a registry this detector reads: `rmcp` is a crates.io crate and PyPI's
+  `rmcp` is a different project, `yutu` is a Go module whose npm name belongs to
+  someone else, ToolHive ships a Go CLI and an Electron app, and two more are
+  not published under any resolvable name. Pinning any of those names would
+  fire on the wrong software — the trap that produced the `praisonai` false
+  positive in v0.6.7. CVE-2026-57134 needed no pin at all: same package and same
+  1.7.2 fix as CVE-2026-57139, already covered. Rule count 357 -> 361.
+
 ### Fixed
+
+- **66 of the 102 rows on the CVE-latency page said `unreleased` for rules that
+  had shipped to PyPI.** `parse_ledger` reads a release from a ledger section's
+  parenthesised label and carries the nearest labelled section above it down to
+  the ones without; the ledger stopped writing that label after
+  `## 2026-08-15 (v0.3.77)`, so twenty-two sections had nothing to inherit and
+  fell back to the string the walk starts with — while 0.3.78 through 0.6.7 were
+  being published. The parser was doing what it documents; nothing compared the
+  Release column against the releases that exist. A reader asking whether their
+  0.6.7 carried a rule for CVE-2026-91932 read `unreleased` and concluded it did
+  not. Labels backfilled from the ledger's own "shipped in vX" prose where it
+  had one, and otherwise from git — the earliest tag containing the commit that
+  added the section, never inferred from a date. The three sections with both
+  sources agreed. `--check` now fails when a row resolves to `unreleased` while
+  a release was cut *strictly* after its section date; strictly, because a
+  section written the day its tag is cut is honestly unreleased, and failing on
+  the newest section every time would make the guard permanently ignored.
+  Latency figures are unchanged (median 1.0, p90 4, 96 rows) — Shipped is the
+  section date, which this does not touch.
+
 
 - **The ADMT scanner's answer depended on the filesystem it ran on.**
   `_find_declaration` and `_find_documentation` each return the *first* match

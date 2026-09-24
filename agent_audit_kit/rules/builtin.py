@@ -218,6 +218,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001": ["IAM-01", "DSP-17", "STA-08"],
     "AAK-MCP-FLOWISE-CVE-2026-91931-001": ["IVS-04", "STA-08"],
     "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CONTENTFUL-CVE-2026-53957-001": ["DSP-17", "IVS-04", "STA-08"],
+    "AAK-MCP-SEARXNG-CVE-2026-58483-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001": ["IVS-04", "CEK-08", "STA-08"],
+    "AAK-MCP-NETLICENSING-CVE-2026-54446-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-GEMINIBRIDGE-CVE-2026-54785-001": ["AIS-07", "STA-08"],
     "AAK-LMDEPLOY-VL-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001": ["DSP-17", "LOG-06"],
@@ -1590,6 +1594,15 @@ _r(
     "Use `https://` for remote HTTP/SSE/Streamable-HTTP servers and "
     "`wss://` for remote WebSocket servers.",
     sarif_name="McpHttpNotHttps",
+    cve_references=[
+        # 2026-09-15. CVE-2026-91988 (atomic-agents-stack < 1.1.0, HIGH 8.1,
+        # CWE-319): cleartext http:// accepted for the MCP server-registry
+        # catalog, so a man in the middle rewrites it and injects argv that
+        # MCPClientPool spawns as a local subprocess. The cleartext scheme
+        # is the vulnerability here, not a contributing factor. Also pinned
+        # at >= 1.1.0 under its own rule.
+        "CVE-2026-91988",
+    ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TRANSPORT-01"],
@@ -1948,6 +1961,15 @@ _r(
     "Resolve the requested path, reject '..' components, and verify the "
     "final path is under an explicit root directory.",
     sarif_name="McpPathTraversal",
+    cve_references=[
+        # 2026-09-17. CVE-2026-50158 (yutu < 0.10.9, HIGH 7.7, CWE-73): the
+        # caption-download tool takes a caller-controlled `file` and hands it
+        # to os.Create() without the pkg.Root confinement backed by
+        # YUTU_ROOT, so downloaded bytes land on any path the process can
+        # write. Not pinnable: yutu is a Go module, and the npm name is an
+        # unrelated single-release package.
+        "CVE-2026-50158",
+    ],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RES-01"],
@@ -2308,6 +2330,19 @@ _r(
     "`resource_metadata` field of a 401 `WWW-Authenticate` challenge — instead of "
     "embedding a static bearer/token credential in the MCP client config.",
     sarif_name="OAuthMissingProtectedResourceMetadata",
+    cve_references=[
+        # 2026-09-16. CVE-2026-63127 (rmcp, the official Rust MCP SDK, HIGH
+        # 8.2, CWE-345): the OAuth implementation omits the RFC 9728
+        # `resource` field from ResourceServerMetadata and accepts
+        # protected-resource metadata without confirming the returned
+        # identifier matches the configured server, so a malicious server
+        # points a victim at a legitimate authorization server and captures
+        # the token that comes back. This rule is the shape. The crate is
+        # not pinnable: Cargo manifests are outside _CANDIDATE_NAMES, and
+        # PyPI `rmcp` is an unrelated project on a 0.x line, so a pin keyed
+        # on that name would fire on the wrong software. Fixed in 2.0.0.
+        "CVE-2026-63127",
+    ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
@@ -5977,6 +6012,19 @@ _r(
         # CVE-2026-61560 (@zereight/mcp-gitlab, 9.8) SSE=true exposes every
         #   tool unauthenticated, which is what makes its file read reachable.
         "CVE-2026-59971", "CVE-2026-53710", "CVE-2026-57139", "CVE-2026-61560",
+        # 2026-09-15..18 wave. Four more of this shape, none of them pinnable —
+        # see CHANGELOG.cves.md for why each artifact is out of the detector's
+        # reach, and the pins that DO exist for that wave:
+        # CVE-2026-54618 (Obsidian Web MCP, 9.4) /oauth/authorize issues a code
+        #   with no login, consent or session check and /oauth/token exchanges
+        #   it for the static VAULT_MCP_TOKEN, so /mcp serves the whole vault.
+        # CVE-2026-54504 (MCP Documentation Server, 8.8) app.listen(PORT) with
+        #   no host binds the unauthenticated document API to every interface.
+        # CVE-2026-58197 (ToolHive, 8.8) the API and MCP proxy endpoints are
+        #   reachable without authentication from an unisolated container.
+        # CVE-2026-54446 (netlicensing-mcp, 8.1) a request with no credential
+        #   falls back to the operator's key; also pinned in its own rule.
+        "CVE-2026-54618", "CVE-2026-54504", "CVE-2026-58197", "CVE-2026-54446",
     ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
@@ -9130,7 +9178,16 @@ _r(
     "`resources/read` dispatch. Because 1.7.2 is an initial remediation, track "
     "the upstream advisory for a follow-up release.",
     sarif_name="PraisonAiTsMcpHttpNoAuth",
-    cve_references=["CVE-2026-57139"],
+    cve_references=[
+        "CVE-2026-57139",
+        # 2026-09-15 wave. CVE-2026-57134 (HIGH 8.2): MCPSecurity.evaluatePolicy()
+        # calls the credential validator only for api-key and bearer, so a basic
+        # or OAuth policy accepts any non-empty Authorization header and returns
+        # an authenticated result. Same package, same 1.7.2 fix release as the
+        # unauthenticated-transport half above, so this pin's floor already fires
+        # on every affected version. Recorded rather than pinned again.
+        "CVE-2026-57134",
+    ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AGENT-02"],
@@ -9243,6 +9300,126 @@ _r(
     owasp_mcp_references=["MCP08:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AGENT-04"],
+)
+
+
+_r(
+    "AAK-MCP-CONTENTFUL-CVE-2026-53957-001",
+    "@contentful/mcp-server < 1.7.19 / @contentful/mcp-tools < 0.4.5 (LLM-controlled host and proxy carry the management token)",
+    "Contentful's MCP server exposes `host`, `proxy`, `rawProxy` and `insecure` "
+    "as tool arguments on `export_space` and `import_space` "
+    "(`packages/mcp-tools/src/tools/jobs/space-to-space-migration/`), and "
+    "combines them with the server's own `CONTENTFUL_MANAGEMENT_TOKEN`. Once "
+    "`space_to_space_migration_handler` has enabled the migration tools, a "
+    "direct MCP call — or prompt injection through Contentful content an "
+    "attacker can write — redirects Management API requests, and the "
+    "`Authorization` header riding on them, to a host or proxy of the "
+    "attacker's choosing. The disclosed token is a personal access token, so it "
+    "grants out-of-band access to every space in its scope until it is rotated; "
+    "upgrading does not undo that. Tools built through `createToolClient` pin "
+    "the host from server configuration and are unaffected, which is what makes "
+    "this a property of the two migration tools rather than of the server "
+    "(CVE-2026-53957, CVSS 7.7, CWE-918). Fixed in `@contentful/mcp-server` "
+    "1.7.19 and `@contentful/mcp-tools` 0.4.5 — two packages on two version "
+    "lines, so this rule carries a pin for each.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@contentful/mcp-server` to >= 1.7.19 and `@contentful/mcp-tools` "
+    "to >= 0.4.5, and pin both. **Rotate the Contentful management token** if "
+    "an affected version ever ran with the migration tools enabled: the upgrade "
+    "closes the redirect, it does not retract a token already sent elsewhere. "
+    "Where you build similar tools, take the API host from server "
+    "configuration and never from a tool argument — a destination an LLM can "
+    "choose is a destination an attacker can choose.",
+    sarif_name="ContentfulMcpMigrationHostRedirect",
+    cve_references=["CVE-2026-53957"],
+    owasp_mcp_references=["MCP08:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AGENT-04"],
+)
+
+
+_r(
+    "AAK-MCP-SEARXNG-CVE-2026-58483-001",
+    "mcp-searxng < 1.7.1 (a missing Content-Length bypasses the read cap)",
+    "`mcp-searxng` before 1.7.1 passes a caller-supplied URL from `web_url_read` "
+    "to `readUrlContent()`, where `checkContentLength()` treats an absent "
+    "`Content-Length` header as an inconclusive preflight rather than a reason "
+    "to stop. Both the normal and the error path then consume the entire body "
+    "with `response.text()`, so a server that simply omits the header defeats "
+    "`URL_READ_MAX_CONTENT_LENGTH_BYTES` and forces unbounded memory use. The "
+    "resulting string is handed to `NodeHtmlMarkdown.translate()`, adding CPU "
+    "to the memory, and the caller needs no credentials (CVE-2026-58483, CVSS "
+    "7.5, CWE-400). Fixed in 1.7.1.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-searxng` to >= 1.7.1 and pin it. Where you enforce a response "
+    "size limit yourself, treat a missing `Content-Length` as unknown rather "
+    "than acceptable and cap the read as the body streams — a preflight header "
+    "is a hint from the peer you are defending against, so it cannot be the "
+    "only place the limit is applied.",
+    sarif_name="McpSearxngUnboundedRead",
+    cve_references=["CVE-2026-58483"],
+    owasp_mcp_references=["MCP08:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AGENT-04"],
+)
+
+
+_r(
+    "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001",
+    "atomic-agents-stack < 1.1.0 (cleartext registry catalog reaches a local subprocess)",
+    "`atomic-agents-stack` before 1.1.0 accepts cleartext `http://` schemes in "
+    "the HTTP MCP server-registry backend factory. A network attacker in the "
+    "path rewrites the catalog response and injects arbitrary `command` and "
+    "argument values, which `MCPClientPool` then spawns as local subprocesses — "
+    "so a transport weakness becomes code execution on the agent host without "
+    "any parsing bug in between (CVE-2026-91988, CVSS 8.1, CWE-319). The same "
+    "distribution appears in this project's 2026-08-16 ledger section for an "
+    "unrelated dashboard path traversal that never received a CVE id; this is a "
+    "different defect in the same package. Fixed in 1.1.0.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `atomic-agents-stack` to >= 1.1.0 and pin it. Require `https://` "
+    "for any registry or catalog the agent reads, and treat a catalog entry as "
+    "untrusted input even over TLS: allowlist the commands a pool may spawn "
+    "rather than executing whatever the catalog names.",
+    sarif_name="AtomicAgentsCleartextRegistryExec",
+    cve_references=["CVE-2026-91988"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-AGENT-01"],
+)
+
+
+_r(
+    "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
+    "netlicensing-mcp < 0.1.6 (unauthenticated /mcp falls back to the operator's API key)",
+    "NetLicensing MCP Server before 0.1.6 lets an HTTP request to `/mcp` that "
+    "carries none of `x-netlicensing-api-key`, `Authorization: Bearer` or the "
+    "`apikey` query parameter pass straight through `ApiKeyMiddleware` in "
+    "`src/netlicensing_mcp/server.py`. `api_key_ctx` in `client.py` then falls "
+    "back to the operator's `NETLICENSING_API_KEY`, so the upstream REST calls "
+    "authenticate as the operator. The absence of a credential is treated as a "
+    "reason to supply the server's own, which inverts the check: an "
+    "unauthenticated caller enumerates products, licenses, licensees and "
+    "transactions, creates and modifies licensing objects, runs validations, "
+    "and performs deletes. Affects HTTP deployments configured with a "
+    "server-side key; no user interaction (CVE-2026-54446, CVSS 8.1, CWE-306). "
+    "Fixed in 0.1.6.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `netlicensing-mcp` to >= 0.1.6 and pin it. Fail closed on a "
+    "missing credential rather than substituting the server's own — an "
+    "operator key is the identity the request should be checked against, never "
+    "the default it falls back to. Treat licensing objects touched while an "
+    "affected version was network-reachable as suspect, since the destructive "
+    "tools were reachable too.",
+    sarif_name="NetlicensingMcpAuthFallback",
+    cve_references=["CVE-2026-54446"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AGENT-02"],
 )
 
 
