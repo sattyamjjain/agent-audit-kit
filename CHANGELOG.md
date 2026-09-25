@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`AAK-AGENT-005` reported Hindi, Persian and emoji text as "hidden
+  content".** The check asked only whether a zero-width code point appeared
+  anywhere on a line, which cannot tell spelling from concealment: every
+  Devanagari conjunct (U+200D), every Persian ZWNJ (U+200C), every emoji ZWJ
+  sequence and every file saved with a BOM was reported at MEDIUM as hidden
+  content — which tells writers of several scripts that their language is
+  suspicious. Reported alongside the `AAK-AGENT-002` severity. The walk is now
+  per occurrence and reads the neighbours: U+200C / U+200D between two letters
+  of the **same** joiner-using script is orthography, U+200D between two emoji
+  composes a glyph, and U+FEFF at offset 0 of the file is an encoding marker.
+  Everywhere else they still fire — beside a space, spliced between two
+  alphabets, inside ASCII — and U+200B, U+2060 and U+202E are never exempt,
+  because none is needed to spell anything and U+202E reverses display order,
+  which is the trick itself. Requiring one script is what keeps the exemption
+  off a joiner used to hide a word boundary between two alphabets.
+
+
 ### Added
 
 - **The 2026-09-15..18 CVE wave dispositioned** (issues #758-#767), one CRITICAL.

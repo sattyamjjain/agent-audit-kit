@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from pathlib import Path
+from typing import Optional
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding
@@ -103,6 +105,95 @@ _ZERO_WIDTH_CHARS = frozenset({
     "\u202e",  # right-to-left override
 })
 
+# Three of those characters do ordinary work in ordinary text, and reporting
+# them as "hidden content" told writers of several scripts that their language
+# is suspicious. Raised in #771 alongside the AAK-AGENT-002 severity: emoji ZWJ
+# sequences, a leading BOM, and Hindi and Persian joiners were all reported at
+# MEDIUM.
+#
+# What stays reportable is placement, not identity. U+200C and U+200D between
+# letters of one script are spelling: Devanagari needs U+200D for a conjunct and
+# U+200C to break one, Persian needs U+200C for a word like "می‌رود". U+200D
+# between two emoji is how a single glyph is composed. A BOM at offset 0 is a
+# file-encoding marker every editor writes.
+#
+# The same characters anywhere else still fire, because that is where they hide
+# text: a joiner between a letter and a space, between two scripts, or inside a
+# run of ASCII is doing nothing a reader can see. U+200B, U+2060 and U+202E are
+# never exempt -- none of them is required to spell anything, and U+202E
+# reverses display order, which is the trick itself.
+_CONTEXTUAL_ZERO_WIDTH = frozenset({"\u200c", "\u200d"})
+
+#: Scripts whose orthography uses U+200C / U+200D between letters. Read off
+#: `unicodedata.name`, which prefixes every letter with its script, so this is
+#: the script name rather than a hand-kept codepoint range.
+_JOINER_SCRIPTS = frozenset({
+    "DEVANAGARI", "BENGALI", "GURMUKHI", "GUJARATI", "ORIYA", "TAMIL",
+    "TELUGU", "KANNADA", "MALAYALAM", "SINHALA",
+    "ARABIC", "SYRIAC", "THAANA", "NKO", "HEBREW",
+    "MYANMAR", "KHMER", "TIBETAN", "MONGOLIAN", "JAVANESE", "BALINESE",
+})
+
+
+def _script_of(char: str) -> Optional[str]:
+    """The script name `unicodedata` gives a letter, or None if it is not one."""
+    if not char.isalpha():
+        return None
+    try:
+        name = unicodedata.name(char)
+    except ValueError:
+        return None
+    return name.split()[0]
+
+
+def _is_emoji(char: str) -> bool:
+    """Close enough for the ZWJ case: a pictographic or regional-indicator code point.
+
+    `unicodedata` exposes no Emoji property, so this is a range test over the
+    blocks a ZWJ sequence actually draws from. It decides only whether a joiner
+    between two of them is ordinary, never whether anything is a finding.
+    """
+    cp = ord(char)
+    return (
+        0x1F300 <= cp <= 0x1FAFF      # pictographs, symbols, emoji extensions
+        or 0x1F000 <= cp <= 0x1F0FF   # mahjong/domino/cards
+        or 0x2600 <= cp <= 0x27BF     # misc symbols and dingbats
+        or 0x1F1E6 <= cp <= 0x1F1FF   # regional indicators (flags)
+        or cp in {0x2640, 0x2642, 0x2695, 0x2708, 0x2764, 0xFE0F}
+    )
+
+
+def _zero_width_is_expected(text: str, index: int, at_file_start: bool = False) -> bool:
+    """True when the zero-width char at `index` is doing ordinary work.
+
+    Exemptions, and nothing wider:
+
+    * U+FEFF at offset 0 **of the file** — an encoding marker, not content.
+      `at_file_start` is passed in rather than derived from `index`, because
+      `index` is an offset into one line and a BOM at the start of line five is
+      not an encoding marker.
+    * U+200C / U+200D between two letters of the SAME joiner-using script.
+      Requiring one script is what keeps the exemption from covering a joiner
+      spliced between two alphabets, which is a way to hide a word boundary.
+    * U+200D between two emoji — one composed glyph.
+    """
+    char = text[index]
+    if char == "\ufeff":
+        return at_file_start
+    if char not in _CONTEXTUAL_ZERO_WIDTH:
+        return False
+    if index == 0 or index + 1 >= len(text):
+        return False
+    before, after = text[index - 1], text[index + 1]
+
+    left, right = _script_of(before), _script_of(after)
+    if left is not None and left == right and left in _JOINER_SCRIPTS:
+        return True
+
+    if char == "\u200d" and _is_emoji(before) and _is_emoji(after):
+        return True
+    return False
+
 
 def _find_agent_config_files(project_root: Path) -> list[Path]:
     """Locate agent configuration / instruction files in the project."""
@@ -173,18 +264,31 @@ def _check_content(
             find_line_number(content, "<!--"),
         ))
 
-    # Zero-width / invisible Unicode characters
+    # Zero-width / invisible Unicode characters.
+    #
+    # Walked per OCCURRENCE rather than per line, because the decision needs the
+    # neighbours: the same code point is spelling in one position and concealment
+    # in another. The old loop asked only whether the character appeared anywhere
+    # on the line, which cannot tell those apart and reported every Devanagari
+    # conjunct, every Persian ZWNJ, every emoji ZWJ sequence and every file with
+    # a BOM. Still one finding per line, so a paragraph of Hindi with one spliced
+    # joiner reports once.
     for line_num, line in enumerate(content.splitlines(), 1):
-        for char in _ZERO_WIDTH_CHARS:
-            if char in line:
-                codepoint = f"U+{ord(char):04X}"
-                findings.append(make_finding(
-                    "AAK-AGENT-005",
-                    rel_path,
-                    f"Hidden Unicode character {codepoint} found",
-                    line_num,
-                ))
-                break  # one finding per line is sufficient
+        for index, char in enumerate(line):
+            if char not in _ZERO_WIDTH_CHARS:
+                continue
+            # Offset 0 of line 1 is the only position that is offset 0 of the file.
+            at_file_start = line_num == 1 and index == 0
+            if _zero_width_is_expected(line, index, at_file_start):
+                continue
+            codepoint = f"U+{ord(char):04X}"
+            findings.append(make_finding(
+                "AAK-AGENT-005",
+                rel_path,
+                f"Hidden Unicode character {codepoint} found",
+                line_num,
+            ))
+            break  # one finding per line is sufficient
 
     return findings
 

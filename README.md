@@ -172,7 +172,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->103<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->2,508<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->2,526<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->361<!-- /rule-count --> rules
