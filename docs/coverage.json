@@ -384,8 +384,8 @@
         "MCP04:2025 Command Injection"
       ],
       "rule_id": "AAK-AGENT-002",
-      "severity": "high",
-      "title": "Agent instructions reference external URLs"
+      "severity": "low",
+      "title": "Agent instruction file links an external host"
     },
     {
       "category": "agent-config",
@@ -446,6 +446,24 @@
       "rule_id": "AAK-AGENT-005",
       "severity": "medium",
       "title": "Agent instruction file contains hidden content"
+    },
+    {
+      "category": "agent-config",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 13 - Transparency"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI01 Agent Goal Hijacking"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection"
+      ],
+      "rule_id": "AAK-AGENT-006",
+      "severity": "high",
+      "title": "Agent instruction file tells the agent to fetch a URL and act on it"
     },
     {
       "category": "trust-boundary",
@@ -8124,7 +8142,7 @@
   "summary": {
     "by_category": {
       "a2a-protocol": 13,
-      "agent-config": 18,
+      "agent-config": 19,
       "agentic-skill": 3,
       "composition": 3,
       "hook-injection": 17,
@@ -8140,10 +8158,10 @@
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 127,
-      "Art. 13 - Transparency": 32,
+      "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
       "Art. 15 - Robustness & Security": 214,
-      "Art. 9 - Risk Management": 121
+      "Art. 9 - Risk Management": 122
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 88,
@@ -8157,7 +8175,7 @@
       "Validate parameters (p.11)": 111
     },
     "by_owasp_agentic": {
-      "ASI01": 15,
+      "ASI01": 16,
       "ASI02": 51,
       "ASI03": 74,
       "ASI04": 82,
@@ -8172,7 +8190,7 @@
       "MCP01:2025": 89,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
-      "MCP04:2025": 40,
+      "MCP04:2025": 41,
       "MCP05:2025": 58,
       "MCP06:2025": 20,
       "MCP07:2025": 38,
@@ -8184,11 +8202,11 @@
       "critical": 85,
       "high": 167,
       "info": 5,
-      "low": 9,
+      "low": 10,
       "medium": 95
     },
     "total_cves_covered": 243,
-    "total_rules": 361
+    "total_rules": 362
   },
   "tool": "agent-audit-kit"
 }

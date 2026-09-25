@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`AAK-AGENT-002` was HIGH for any link in an instruction file, and its
+  allowlist was a prefix match.** Reported against 930 public repositories
+  shipping `AGENTS.md` / `CLAUDE.md`: it fired on 303, so roughly a third failed
+  `--ci` for carrying a documentation link, which teaches people to raise
+  `--fail-on` and hides the findings that deserve it. 002 is now **LOW** and
+  reports inventory. The new **`AAK-AGENT-006` (HIGH)** reports the instruction
+  instead — text telling the agent to fetch a URL and follow, execute, obey or
+  load what comes back, or to send data to one — deterministically, one line at
+  a time, with **no host allowlist at all**, which was the reporter's own
+  argument: an attacker can host on github.com too. The allowlist that remains
+  compares parsed hostnames as dot-bounded suffixes rather than URL prefixes, so
+  `gist.github.com` is inside `github.com` and `github.com.evil.example` is not;
+  verified against the published 0.6.7 wheel, where a fetch-and-follow directive
+  pointing at that lookalike produced no finding at all. The bare `docs.` and
+  `developer.` arms are gone with it — they matched a subdomain label, so
+  `docs.attacker.example` passed — and `python.org` is named explicitly in their
+  place.
+- **`AAK-AGENT-005` reported Hindi, Persian and emoji text as "hidden
+  content".** The check asked only whether a zero-width code point appeared
+  anywhere on a line, which cannot tell spelling from concealment: every
+  Devanagari conjunct (U+200D), every Persian ZWNJ (U+200C), every emoji ZWJ
+  sequence and every file saved with a BOM was reported at MEDIUM as hidden
+  content — which tells writers of several scripts that their language is
+  suspicious. Reported alongside the `AAK-AGENT-002` severity. The walk is now
+  per occurrence and reads the neighbours: U+200C / U+200D between two letters
+  of the **same** joiner-using script is orthography, U+200D between two emoji
+  composes a glyph, and U+FEFF at offset 0 of the file is an encoding marker.
+  Everywhere else they still fire — beside a space, spliced between two
+  alphabets, inside ASCII — and U+200B, U+2060 and U+202E are never exempt,
+  because none is needed to spell anything and U+202E reverses display order,
+  which is the trick itself. Requiring one script is what keeps the exemption
+  off a joiner used to hide a word boundary between two alphabets.
 - **The 2026-09-24 CVE wave dispositioned** (issues #773-#777), two CRITICAL at
   CVSS 10. No new rule and no new pin. Four are `mcp-atlassian` and NVD lists
   them as four separate advisories, but OSV shows one fix commit

@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-25T10:04:11Z",
+  "last_updated": "2026-09-25T10:37:30Z",
   "aak_version": "0.6.7",
-  "rule_count": 361,
+  "rule_count": 362,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Goal Hijack",
-      "rule_density": 15,
+      "rule_density": 16,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -19,7 +19,7 @@
         },
         {
           "id": "AAK-AGENT-002",
-          "severity": "high",
+          "severity": "low",
           "cve_references": [],
           "aicm_references": [
             "IAM-02"
@@ -40,6 +40,12 @@
         {
           "id": "AAK-AGENT-005",
           "severity": "medium",
+          "cve_references": [],
+          "aicm_references": []
+        },
+        {
+          "id": "AAK-AGENT-006",
+          "severity": "high",
           "cve_references": [],
           "aicm_references": []
         },
