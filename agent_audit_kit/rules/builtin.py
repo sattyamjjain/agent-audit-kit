@@ -2041,6 +2041,12 @@ _r(
         # write. Not pinnable: yutu is a Go module, and the npm name is an
         # unrelated single-release package.
         "CVE-2026-50158",
+        # 2026-09-22. CVE-2026-77248 (mcp-atlassian < 0.22.0, HIGH 8.6, CWE-22
+        # + CWE-306): upload_attachment takes an unrestricted file_path, and on
+        # the unauthenticated streamable-http transport an anonymous caller
+        # reads any file the process can and exfiltrates it as a Jira or
+        # Confluence attachment. Also carried by the package's 0.22.0 pin.
+        "CVE-2026-77248",
     ],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
@@ -5977,7 +5983,17 @@ _r(
     "`assert_tool_allowed(name)` called at the top of the call handler) so "
     "discovery and execution cannot drift apart.",
     sarif_name="McpToolGateAsymmetry",
-    cve_references=["CVE-2026-46519"],
+    cve_references=[
+        "CVE-2026-46519",
+        # 2026-09-22. CVE-2026-77243 (mcp-atlassian < 0.22.0, HIGH 8.8,
+        # CWE-862): ENABLED_TOOLS and TOOLSETS are applied when tools are
+        # listed and not rechecked when tools/call is dispatched, so a client
+        # that knows an excluded tool's name invokes it despite the operator's
+        # least-privilege configuration. The same asymmetry this rule describes,
+        # in the ENABLED_TOOLS family it already names. Also carried by the
+        # package's version pin.
+        "CVE-2026-77243",
+    ],
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI04", "ASI02"],
 )
@@ -6097,6 +6113,16 @@ _r(
         # CVE-2026-54446 (netlicensing-mcp, 8.1) a request with no credential
         #   falls back to the operator's key; also pinned in its own rule.
         "CVE-2026-54618", "CVE-2026-54504", "CVE-2026-58197", "CVE-2026-54446",
+        # 2026-09-22 wave. Two more of the credential-fallback variant, both in
+        # mcp-atlassian and both already covered by its 0.22.0 pin:
+        # CVE-2026-77244 (10.0) AtlassianOpaqueTokenVerifier accepts an
+        #   unverified identity and _get_fetcher falls back to the operator's
+        #   global Jira/Confluence credentials.
+        # CVE-2026-77254 (9.1) the same fallback over streamable-http with no
+        #   per-user identity at all.
+        # Same inversion as CVE-2026-54446: a missing credential is treated as a
+        # reason to supply the server's own.
+        "CVE-2026-77244", "CVE-2026-77254",
     ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
@@ -7713,6 +7739,23 @@ _r(
         # middleware time and again at connection time with no IP pinning, so
         # a rebinding name reaches cloud metadata.
         "CVE-2026-73496", "CVE-2026-73497",
+        # 2026-09-22 wave (#774-#777). Four more advisories on the same package,
+        # all fixed by ONE commit (b0417334, cross-read on OSV) shipped as
+        # 0.22.0 — which is exactly this pin's floor, so every affected version
+        # already fires and no floor moves. Recorded for auditability, and each
+        # also against the rule whose shape it is:
+        # CVE-2026-77244 (CRITICAL 10.0) AtlassianOpaqueTokenVerifier accepts a
+        #   request with no verified identity and _get_fetcher falls back to the
+        #   operator's global credentials.
+        # CVE-2026-77254 (CRITICAL 9.1, CWE-306) the same fallback reached
+        #   through streamable-http with no per-user identity at all.
+        # CVE-2026-77243 (HIGH 8.8, CWE-862) ENABLED_TOOLS / TOOLSETS are
+        #   applied in tools/list and not rechecked in tools/call, so a client
+        #   that knows a hidden tool name invokes it anyway.
+        # CVE-2026-77248 (HIGH 8.6, CWE-22 + CWE-306) upload_attachment takes an
+        #   unrestricted file_path on that same unauthenticated transport — this
+        #   pin's own titular shape, now unauthenticated as well.
+        "CVE-2026-77244", "CVE-2026-77254", "CVE-2026-77243", "CVE-2026-77248",
     ],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],

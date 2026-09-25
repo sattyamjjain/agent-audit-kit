@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-25T09:42:58Z",
+  "last_updated": "2026-09-25T10:37:30Z",
   "aak_version": "0.6.7",
   "rule_count": 362,
   "coverage": [
@@ -548,7 +548,8 @@
           "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-46519"
+            "CVE-2026-46519",
+            "CVE-2026-77243"
           ],
           "aicm_references": []
         },
@@ -963,6 +964,8 @@
             "CVE-2026-58197",
             "CVE-2026-59971",
             "CVE-2026-61560",
+            "CVE-2026-77244",
+            "CVE-2026-77254",
             "CVE-2026-90617"
           ],
           "aicm_references": []
@@ -1992,7 +1995,8 @@
           "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-46519"
+            "CVE-2026-46519",
+            "CVE-2026-77243"
           ],
           "aicm_references": []
         },
@@ -2410,7 +2414,11 @@
           "cve_references": [
             "CVE-2026-73496",
             "CVE-2026-73497",
-            "CVE-2026-73498"
+            "CVE-2026-73498",
+            "CVE-2026-77243",
+            "CVE-2026-77244",
+            "CVE-2026-77248",
+            "CVE-2026-77254"
           ],
           "aicm_references": []
         },
@@ -2743,7 +2751,8 @@
           "id": "AAK-MCP-015",
           "severity": "critical",
           "cve_references": [
-            "CVE-2026-50158"
+            "CVE-2026-50158",
+            "CVE-2026-77248"
           ],
           "aicm_references": []
         },
