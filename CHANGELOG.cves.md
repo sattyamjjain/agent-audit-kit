@@ -16,6 +16,64 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-25: five disclosures, four on one package at a floor that already holds, and one runtime gap
+
+The watcher opened five `cve-response` issues at 2026-09-24T21:31Z (#773-#777).
+**No new rule and no new pin.** Four are the same package at a fix version this
+repository already pins; the fifth is a defect no static shape can reach.
+
+**The four `mcp-atlassian` advisories share one fix commit.** NVD lists them
+separately, and the titles read like four different bugs, so they were
+cross-read on OSV before deciding: CVE-2026-77244, CVE-2026-77254,
+CVE-2026-77243 and CVE-2026-77248 are all closed by
+`b041733473f95119dd539542a43c280737a8e460`, shipped as 0.22.0. That is exactly
+the floor `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` has carried since the
+2026-09-14 wave, so every affected version already fires and nothing moves.
+Each is recorded against that pin and against the rule whose shape it is.
+
+Two of them are worth naming for the shape rather than the pin. CVE-2026-77243
+is `AAK-MCP-TOOLGATE-ASYMMETRY-001` precisely — a gate applied in `tools/list`
+and not rechecked in `tools/call`, in the `ENABLED_TOOLS` family that rule
+already names, so a client that knows an excluded tool's name calls it anyway.
+CVE-2026-77244 and CVE-2026-77254 are the same inversion as CVE-2026-54446 last
+wave: a request arriving with no credential is treated as a reason to supply the
+server's own, so the anonymous caller acts as the operator.
+
+**NVD would not serve CVE-2026-77244.** Its API answers `totalResults: 1` with
+`resultsPerPage: 0` and an empty array — the record is indexed and its content
+is not being returned. The disposition rests on the OSV record instead, whose
+summary and fix commit match the watcher's copied text, rather than on the text
+alone.
+
+**CVE-2026-77521 (MaxKB) is out of scope**, and the clause is the reason:
+"assistants with a tool, MCP tool, skill, or sub-application use
+SandboxShellBackend, which exposes an execute shell tool without excluding it
+and omits execute from interrupt_on, so human approval is not required." That is
+a runtime approval decision inside MaxKB's own backend. Nothing in a repository
+this scanner reads expresses it: there is no config file that says
+`interrupt_on` omits `execute`. The nearest registry shape,
+`AAK-MCP-SANDBOX-SELFDISABLE-001`, is about a tool *schema* exposing an
+LLM-settable sandbox-disable parameter, which is a different thing from a
+deployment env var (`MAXKB_SANDBOX`) on the vendor's own server; the gosu
+wrapper is that vendor's container entrypoint. MaxKB is also on neither PyPI nor
+npm, so it is not pinnable either — the same conclusion the pin table's own
+header already records for the earlier MaxKB stdio command-injection.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-77521 | 10.0 | MaxKB (no registry artifact) | **Out of scope**, quoted above. A runtime approval gap in the vendor's backend: no config file this scanner reads carries it, and no registry rule covers it. Not pinnable either — MaxKB is on neither PyPI nor npm. Fixed 2.10.5-lts. | #773 |
+| CVE-2026-77244 | 10.0 | `mcp-atlassian` | No new rule, no new pin. `AtlassianOpaqueTokenVerifier` accepts a request with no verified identity and `_get_fetcher` falls back to the operator's global credentials. Fixed **0.22.0** — this pin's existing floor. Recorded against `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` and `AAK-MCP-HTTP-NOAUTH-SERVER-001`. NVD's API would not serve this record; dispositioned from OSV. | #774 |
+| CVE-2026-77254 | 9.1 | `mcp-atlassian` | No new rule, no new pin. The same credential fallback reached through streamable-http with no per-user identity at all (CWE-306). Same 0.22.0 commit. Recorded against the pin and `AAK-MCP-HTTP-NOAUTH-SERVER-001`. | #775 |
+| CVE-2026-77243 | 8.8 | `mcp-atlassian` | No new rule, no new pin. `ENABLED_TOOLS` / `TOOLSETS` applied in `tools/list`, not rechecked in `tools/call` (CWE-862). This is `AAK-MCP-TOOLGATE-ASYMMETRY-001`'s shape exactly, in the env-var family that rule already names; recorded there as well as on the pin. | #776 |
+| CVE-2026-77248 | 8.6 | `mcp-atlassian` | No new rule, no new pin. `upload_attachment` takes an unrestricted `file_path`, and on the unauthenticated transport an anonymous caller reads any file the process can and exfiltrates it as an attachment (CWE-22 + CWE-306). The pin's own titular shape, now reachable without credentials. Also recorded against `AAK-MCP-015`. | #777 |
+
+Every fix version was cross-read on OSV; four CVEs, one commit, one release.
+CVSS and CWE re-verified against the NVD API for the four it would serve.
+
+Dispositioned at 2026-09-25T10:01:34Z. Unreleased at the time of writing: this section
+carries no version label until the next tag stamps it.
+
+
 ## 2026-09-24: ten disclosures, four pins, and six artifacts the detector cannot reach
 
 The watcher opened ten `cve-response` issues across 2026-09-15 to 09-18

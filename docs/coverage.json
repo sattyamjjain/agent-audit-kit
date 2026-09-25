@@ -2722,7 +2722,8 @@
     {
       "category": "mcp-config",
       "cve_references": [
-        "CVE-2026-50158"
+        "CVE-2026-50158",
+        "CVE-2026-77248"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance"
@@ -3139,7 +3140,11 @@
       "cve_references": [
         "CVE-2026-73496",
         "CVE-2026-73497",
-        "CVE-2026-73498"
+        "CVE-2026-73498",
+        "CVE-2026-77243",
+        "CVE-2026-77244",
+        "CVE-2026-77248",
+        "CVE-2026-77254"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -4151,6 +4156,8 @@
         "CVE-2026-58197",
         "CVE-2026-59971",
         "CVE-2026-61560",
+        "CVE-2026-77244",
+        "CVE-2026-77254",
         "CVE-2026-90617"
       ],
       "eu_ai_act": [
@@ -5711,7 +5718,8 @@
     {
       "category": "mcp-config",
       "cve_references": [
-        "CVE-2026-46519"
+        "CVE-2026-46519",
+        "CVE-2026-77243"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -8179,7 +8187,7 @@
       "low": 9,
       "medium": 95
     },
-    "total_cves_covered": 239,
+    "total_cves_covered": 243,
     "total_rules": 361
   },
   "tool": "agent-audit-kit"

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The 2026-09-24 CVE wave dispositioned** (issues #773-#777), two CRITICAL at
+  CVSS 10. No new rule and no new pin. Four are `mcp-atlassian` and NVD lists
+  them as four separate advisories, but OSV shows one fix commit
+  (`b0417334`) shipped as **0.22.0** — exactly the floor
+  `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` has carried since 2026-09-14, so every
+  affected version already fires. Each is also recorded against the rule whose
+  shape it is: CVE-2026-77243 is `AAK-MCP-TOOLGATE-ASYMMETRY-001` precisely (a
+  gate applied in `tools/list` and not rechecked in `tools/call`),
+  CVE-2026-77244 and CVE-2026-77254 are the credential-fallback inversion on
+  `AAK-MCP-HTTP-NOAUTH-SERVER-001`, and CVE-2026-77248 joins `AAK-MCP-015`.
+  CVE-2026-77521 (MaxKB) is **out of scope**: the approval gap it describes is a
+  runtime decision in the vendor's own backend, no config file this scanner
+  reads expresses it, and MaxKB is on neither PyPI nor npm. NVD's API would not
+  serve CVE-2026-77244 or CVE-2026-77248 — `totalResults: 1` with
+  `resultsPerPage: 0` — so those rest on OSV, whose summaries and fix commit
+  match the watcher's text.
+
+
 ### Added
 
 - **The 2026-09-15..18 CVE wave dispositioned** (issues #758-#767), one CRITICAL.
