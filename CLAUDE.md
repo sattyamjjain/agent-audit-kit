@@ -5,7 +5,7 @@
 
 **AgentAuditKit** (version tracked in `pyproject.toml` / `agent_audit_kit.__version__`) — Security scanner for MCP-connected AI agent pipelines. The "npm audit" for AI agents.
 
-- **361 rules** across 14 security categories
+- **362 rules** across 14 security categories
 - **103 scanner modules** including AST-based Python taint analysis plus regex dangerous-sink pattern scanners for TypeScript/JavaScript and Rust (pattern matching, not taint flow)
 - **27 CLI commands**: `scan`, `discover`, `pin`, `verify`, `fix`, `score`, `update`, `proxy`, `kill`, `diff`, `suggest`, `watch`, `watch-cve`, `notify`, `install-precommit`, `export-rules`, `verify-bundle`, `sbom`, `vex`, `report`, `coverage`, `inspect-ide`, `parity`, `corpus`, `pipelock`, `rule`, `scanners`
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
@@ -97,7 +97,7 @@ agent_audit_kit/
   vuln_db.py, advisories.py, feeds/, watch.py   # CVE DB, advisories, live feeds, watch/watch-cve
   coverage.py, bundle.py         # Framework coverage; signed rule-bundle export/verify
   rules/
-    builtin.py         # 361 RuleDefinition entries (rule registry); `get_rule(rule_id)` is the lookup
+    builtin.py         # 362 RuleDefinition entries (rule registry); `get_rule(rule_id)` is the lookup
   scanners/            # 103 registered scanners (105 .py files on disk — the registry is authoritative; the surplus is the two back-compat shims rust_scan/typescript_scan, and `__init__`/`_`-prefixed helpers are not counted). Has its own CLAUDE.md.
     _helpers.py        # make_finding(rule_id, file_path, evidence, line_number) builds a Finding from the registry; SKIP_DIRS; shared regexes
     mcp_config.py      # MCP configuration checks
@@ -169,7 +169,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 ## Detected Patterns
 
 - **Scanner registry**: `engine._build_registry()` is the always-on core (`mcp_config`, `hook_injection`, `trust_boundary`, `secret_exposure`, `supply_chain`) plus one loop over the `_OPTIONAL_SCANNERS` table of `(module, display_name, kwargs_keys)` tuples. Adding a scanner is one tuple in that table. The registry is cached per `strict_loading` mode (`reset_registry()` for tests that toggle it).
-- **Rule registry**: `rules/builtin.py` defines all 361 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper. Scanners never copy rule metadata: `scanners/_helpers.make_finding(rule_id, ...)` pulls title/severity/category/remediation/references from the registry.
+- **Rule registry**: `rules/builtin.py` defines all 362 rules as `RuleDefinition` dataclasses in a global `RULES` dict, populated by `_r()` helper. Scanners never copy rule metadata: `scanners/_helpers.make_finding(rule_id, ...)` pulls title/severity/category/remediation/references from the registry.
 - **Composition suppression**: `run_scan` post-filters `Category.COMPOSITION` findings on the assembled list — a chain is dropped only when every component already carries a non-composition finding at or above the chain's own severity (presence alone would suppress everything, since `AAK-MCP-ATTEST-001` fires on nearly every config). Keys come from `composition.covering_keys` / `suppression_keys`.
 - **Counts are generated, never hand-typed**: `agent_audit_kit/__init__.py` holds `RULE_COUNT` / `SCANNER_COUNT`; `scripts/sync_rule_count.py` and `scripts/sync_scanner_count.py` regenerate them. `scripts/check_counts.py` (`make count-check`) fails if any tracked `*.md` — **including this file** — carries a stale count. Regenerate; do not hand-fix. Dated/historical docs are exempted via the exclusion list in `check_counts.py`.
 - **The guard is phrase-based, not number-based**: `check_counts.py` only checks counts written in one of its `PATTERNS` phrasings (`"N rules across"`, `"N scanner modules"`, `"N registered scanners"`, `"N CLI commands"`, `"entry point (N commands)"`, ...). A count phrased any other way is never looked at and rots silently while `make count-check` reports clean — the `registered scanners` line in this file sat at a stale value for exactly that reason until its pattern was added, and the `cli.py` line later did the same with `26 commands:` because the colon defeats the `entry point (N commands)` pattern. When prose needs a new count phrasing, reuse a guarded one or add it to `PATTERNS` in `scripts/check_counts.py`; that tuple is the single source, and `tests/test_rule_count_sync.py` imports `find_stale_counts()` rather than mirroring it.

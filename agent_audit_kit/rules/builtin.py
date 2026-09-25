@@ -1310,16 +1310,42 @@ _r(
 
 _r(
     "AAK-AGENT-002",
-    "Agent instructions reference external URLs",
-    "Agent instruction files reference external URLs that could serve as C2 channels "
-    "or data exfiltration endpoints.",
-    Severity.HIGH,
+    "Agent instruction file links an external host",
+    "An agent instruction file (`CLAUDE.md`, `AGENTS.md`, `.cursorrules` and "
+    "friends) links a host outside the documentation allowlist. This is "
+    "inventory, not an incident: the link is one more thing an agent reading "
+    "the file may be pointed at, and worth a look when you are auditing what a "
+    "repository tells its agent to consult. It is not evidence of anything on "
+    "its own.\n\n"
+    "This rule was HIGH until 2026-09-25 and fired on any link outside a prefix "
+    "allowlist. Reported against 930 public repositories shipping `AGENTS.md` / "
+    "`CLAUDE.md`: it fired on 303, so roughly a third failed `--ci` for "
+    "carrying a documentation link. A severity that high on something that "
+    "common teaches people to raise `--fail-on`, which then hides the findings "
+    "that deserve it. What actually earns HIGH is the instruction rather than "
+    "the host — text telling the agent to fetch a URL and act on what comes "
+    "back, or to send data to one — and `AAK-AGENT-006` is that rule. A URL "
+    "already reported there is not repeated here.",
+    Severity.LOW,
     Category.AGENT_CONFIG,
-    "Remove external URL references from agent instructions.",
+    "Usually nothing. Read the link and satisfy yourself it points where you "
+    "expect — a documentation or package host you recognise. Act when the "
+    "surrounding text tells the agent to *do* something with it, which "
+    "`AAK-AGENT-006` reports separately and at HIGH. If instruction files in "
+    "this repository routinely carry links, this rule is inventory and can sit "
+    "below your `--fail-on` threshold; suppressing it wholesale is reasonable, "
+    "suppressing `AAK-AGENT-006` is not.",
     sarif_name="AgentExternalUrls",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-02"],
+    limitations=(
+        "Reports the presence of a link, never its content or its reputation. "
+        "The allowlist is a list of hosts whose links are ordinarily "
+        "documentation; it is not a trust decision, and a link to an "
+        "allowlisted host can still be hostile — an attacker can host on "
+        "github.com too. That is why AAK-AGENT-006 applies no allowlist at all."
+    ),
 )
 
 _r(
@@ -1361,6 +1387,52 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-05"],
+)
+
+
+_r(
+    "AAK-AGENT-006",
+    "Agent instruction file tells the agent to fetch a URL and act on it",
+    "An agent instruction file does not merely link a host — it instructs the "
+    "agent to retrieve a URL and then follow, execute, obey, apply or load what "
+    "comes back, or to send, post or upload data to one. That turns a file "
+    "committed to the repository into a pointer to content the repository does "
+    "not hold, evaluated at whatever the far end is serving at the time. The "
+    "agent's own instructions become editable by whoever controls that "
+    "endpoint, with no commit and no review.\n\n"
+    "**No host allowlist applies here, deliberately.** The reporter who raised "
+    "the severity problem in `AAK-AGENT-002` made the argument himself: an "
+    "attacker can host on github.com too. A gist, a raw file on a fork, a "
+    "release asset — all sit on hosts any allowlist would contain, and the "
+    "instruction to fetch and obey is what matters rather than where it points. "
+    "Matching is a deterministic regex over one line at a time: no model call, "
+    "and no judgement about the destination.\n\n"
+    "Scoped to a single line, because that is what \"the same sentence or list "
+    "item\" means in a markdown instruction file. A URL three paragraphs below "
+    "an unrelated \"follow\" is not a directive about that URL, and matching "
+    "across the gap would recreate the blunt rule this one was added to "
+    "replace.",
+    Severity.HIGH,
+    Category.AGENT_CONFIG,
+    "Move the content into the repository and review it there, so what the "
+    "agent follows is what somebody approved. Where the fetch is genuinely "
+    "required, pin it to an immutable reference — a commit SHA or a digest, "
+    "never a branch or a `latest` tag — and say in the instruction file what is "
+    "expected to come back, so a substitution is visible. Never instruct an "
+    "agent to send repository contents, environment variables or credentials to "
+    "a URL from an instruction file: that is an exfiltration channel a reviewer "
+    "reads as documentation.",
+    sarif_name="AgentFetchAndFollowUrl",
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI01"],
+    adversa_references=["ADV-HIJACK-02"],
+    limitations=(
+        "Regex over one line, not data flow: it reads the instruction, never "
+        "what the URL serves. Phrasing it does not recognise is missed — an "
+        "imperative split across two lines, or a verb outside its list — and a "
+        "line that merely discusses fetching will match. This is a prompt to "
+        "read the line, not a determination that the link is hostile."
+    ),
 )
 
 # ---------------------------------------------------------------------------
