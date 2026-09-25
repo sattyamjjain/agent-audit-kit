@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (361 total; 341 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (362 total; 342 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -30,10 +30,11 @@ Every AgentAuditKit rule (361 total; 341 mapped) against two agentic-security st
 | `AAK-ADMT-003` | medium | legal-compliance | — | — |
 | `AAK-ADMT-004` | medium | legal-compliance | — | — |
 | `AAK-AGENT-001` | critical | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
-| `AAK-AGENT-002` | high | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
+| `AAK-AGENT-002` | low | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-003` | high | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-004` | medium | agent-config | Instrument for logging and detection | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-005` | medium | agent-config | Filter and monitor output pipelines and chained execution | ASI01 Agent Goal Hijacking |
+| `AAK-AGENT-006` | high | agent-config | — | ASI01 Agent Goal Hijacking |
 | `AAK-AGENT-COMPOSE-001` | high | trust-boundary | — | ASI06 Memory & Context Poisoning |
 | `AAK-AGENT-COMPOSE-002` | medium | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI06 Memory & Context Poisoning; ASI03 Identity & Privilege Abuse |
 | `AAK-AGENT-HARNESS-SHARED-STATE-001` | medium | a2a-protocol | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities; ASI06 Memory & Context Poisoning |
