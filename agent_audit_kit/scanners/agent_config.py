@@ -4,6 +4,7 @@ import re
 import unicodedata
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding
@@ -38,38 +39,145 @@ _SHELL_DIRECTIVE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# ---- AAK-AGENT-002: External URLs (exclude safe domains) ----
+# ---- AAK-AGENT-002 / -006: links in instruction files ----
+#
+# AAK-AGENT-002 used to be HIGH for *any* link outside a prefix allowlist, which
+# reads the wrong risk in both directions. Reported in #771 against 930 public
+# repositories shipping AGENTS.md / CLAUDE.md: it fired on 303 of them, so a
+# third of that sample failed `--ci` for carrying a documentation link. A link
+# on its own is not an attack, and calling it HIGH trains people to pass
+# `--fail-on critical`, which then hides the findings that are.
+#
+# What is worth HIGH is the directive, not the host: text that tells the agent to
+# fetch a URL and follow, execute, obey or load what comes back, or to send data
+# to one. AAK-AGENT-006 matches that, deterministically and with no allowlist at
+# all — the reporter's own point, that an attacker can host on github.com too.
 _URL_RE = re.compile(r"https?://[^\s\)>\]\"']+", re.IGNORECASE)
-_SAFE_URL_DOMAINS = re.compile(
-    r"https?://(github\.com|docs\.|"
-    r"developer\.|"
-    r"stackoverflow\.com|"
-    r"wikipedia\.org|"
-    r"npmjs\.com|"
-    r"pypi\.org|"
-    r"crates\.io|"
-    r"registry\.npmjs\.org|"
-    r"gitlab\.com|"
-    r"bitbucket\.org|"
-    r"readthedocs\.io|"
-    r"readthedocs\.org|"
-    r"shields\.io|"
-    r"img\.shields\.io|"
-    r"badge\.fury\.io|"
-    r"travis-ci\.org|"
-    r"circleci\.com|"
-    r"codecov\.io|"
-    r"coveralls\.io|"
-    r"mozilla\.org|"
-    r"w3\.org|"
-    r"json-schema\.org|"
-    r"schema\.org|"
-    r"creativecommons\.org|"
-    r"opensource\.org|"
-    r"spdx\.org|"
-    r"example\.com)",
+
+#: Hosts whose links are ordinary documentation. Compared as HOSTS, never as a
+#: prefix of the URL string. The prefix form let `github.com.evil.example` pass
+#: as `github.com`, so the one shape an allowlist has to get right — a lookalike
+#: registered under somebody else's name — was the shape it waved through.
+#: Verified against the published 0.6.7 wheel before this change: a
+#: fetch-and-follow directive pointing at that host produced no finding at all.
+#:
+#: The bare `docs.` and `developer.` arms are gone with it. They matched any host
+#: beginning with those labels — `docs.attacker.example` included — which is a
+#: statement about a subdomain label, not about who controls the domain.
+_SAFE_URL_HOSTS = frozenset({
+    "github.com",
+    "stackoverflow.com",
+    "wikipedia.org",
+    "npmjs.com",
+    "registry.npmjs.org",
+    "pypi.org",
+    # `python.org` replaces what the bare `docs.` arm used to cover for
+    # `docs.python.org`. Naming the domain is the whole change: it admits any
+    # subdomain of python.org and nothing that merely begins with `docs.`. Any
+    # other documentation host wanted here has to be named the same way.
+    "python.org",
+    "crates.io",
+    "gitlab.com",
+    "bitbucket.org",
+    "readthedocs.io",
+    "readthedocs.org",
+    "shields.io",
+    "badge.fury.io",
+    "travis-ci.org",
+    "circleci.com",
+    "codecov.io",
+    "coveralls.io",
+    "mozilla.org",
+    "w3.org",
+    "json-schema.org",
+    "schema.org",
+    "creativecommons.org",
+    "opensource.org",
+    "spdx.org",
+    "example.com",
+})
+
+
+def _is_safe_host(url: str) -> bool:
+    """True when `url`'s host is an allowlisted domain or a subdomain of one.
+
+    Dot-bounded suffix match on the parsed hostname: `gist.github.com` is inside
+    `github.com`, and `github.com.evil.example` is not, because the allowlisted
+    name has to end the host rather than merely start it.
+    """
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:  # malformed authority — not something to call safe
+        return False
+    if not host:
+        return False
+    host = host.rstrip(".").lower()
+    return any(
+        host == safe or host.endswith("." + safe) for safe in _SAFE_URL_HOSTS
+    )
+
+
+#: A verb that makes a URL an instruction rather than a reference. Three
+#: patterns, because there are three shapes and lumping them made the rule too
+#: loose: an act verb plus any URL later on the line matched "Run the tests, then
+#: see <docs link>", which is exactly the false positive this rule exists to
+#: avoid becoming.
+_FETCH_VERB = (
+    r"(?:fetch|download|curl|wget|retrieve|read|load|import|pull|GET|"
+    r"open|visit|go\s+to)"
+)
+_ACT_VERB = r"(?:follow|execute|run|obey|apply|comply|eval|source|adhere\s+to)"
+_SEND_VERB = r"(?:send|post|POST|upload|exfiltrate|report|submit|transmit|push)"
+_URL_FRAG = r"https?://[^\s\)>\]\"']+"
+
+#: Fetch it, then act on it: "download <url> and run it".
+_FETCH_THEN_ACT_RE = re.compile(
+    r"\b" + _FETCH_VERB + r"\b[^\n]{0,120}?" + _URL_FRAG
+    + r"[^\n]{0,120}?\b" + _ACT_VERB + r"\b",
     re.IGNORECASE,
 )
+
+#: Act on what is at it: "follow the instructions at <url>". The preposition is
+#: required, and is what keeps the act verb bound to the URL rather than merely
+#: sharing a line with it.
+_ACT_AT_URL_RE = re.compile(
+    r"\b" + _ACT_VERB + r"\b[^\n]{0,100}?\b(?:at|from|in|on|via|per)\s+"
+    r"(?:the\s+|this\s+)?(?:\S+\s+){0,3}?" + _URL_FRAG,
+    re.IGNORECASE,
+)
+
+#: Send something to it: "upload the results to <url>".
+_SEND_TO_URL_RE = re.compile(
+    r"\b" + _SEND_VERB + r"\b[^\n]{0,140}?" + _URL_FRAG,
+    re.IGNORECASE,
+)
+
+_DIRECTIVE_PATTERNS = (_FETCH_THEN_ACT_RE, _ACT_AT_URL_RE, _SEND_TO_URL_RE)
+
+
+def _directive_links(content: str) -> list[tuple[str, str]]:
+    """``(evidence, url)`` for each line whose text acts on a URL.
+
+    Scoped to one line, which is what "the same sentence or list item" means in
+    a markdown instruction file: a URL three paragraphs below an unrelated
+    "follow" is not a directive about that URL, and matching across the gap is
+    how a context rule turns into the blunt one it replaced.
+    """
+    out: list[tuple[str, str]] = []
+    for line in content.splitlines():
+        if "://" not in line:
+            continue
+        for pattern in _DIRECTIVE_PATTERNS:
+            match = pattern.search(line)
+            if not match:
+                continue
+            url = _URL_RE.search(match.group())
+            if url is None:
+                continue
+            out.append((match.group().strip(), url.group()))
+            break
+    return out
+
 
 # ---- AAK-AGENT-003: Security override patterns ----
 _SECURITY_OVERRIDE_RE = re.compile(
@@ -209,7 +317,7 @@ def _check_content(
     content: str,
     rel_path: str,
 ) -> list[Finding]:
-    """Run all five rules against the text content of a single file."""
+    """Run all six rules against the text content of a single file."""
     findings: list[Finding] = []
 
     # AAK-AGENT-001: Shell directives
@@ -222,10 +330,27 @@ def _check_content(
             find_line_number(content, evidence[:40]),
         ))
 
-    # AAK-AGENT-002: External URLs (excluding safe domains)
+    # AAK-AGENT-006: a link the text tells the agent to act on. HIGH, and
+    # reported before 002 so the directive is what a reader sees first.
+    directive_urls: set[str] = set()
+    for evidence, url in _directive_links(content):
+        directive_urls.add(url)
+        findings.append(make_finding(
+            "AAK-AGENT-006",
+            rel_path,
+            f"Directive on an external URL: {evidence[:200]}",
+            find_line_number(content, evidence[:60]),
+        ))
+
+    # AAK-AGENT-002: a link to a host outside the documentation allowlist. LOW —
+    # it is something to look at, not something that has happened. A URL already
+    # reported by 006 is not repeated here: the directive is the finding, and
+    # naming the same link twice at two severities reads as two problems.
     for match in _URL_RE.finditer(content):
         url = match.group()
-        if not _SAFE_URL_DOMAINS.match(url):
+        if url in directive_urls:
+            continue
+        if not _is_safe_host(url):
             findings.append(make_finding(
                 "AAK-AGENT-002",
                 rel_path,

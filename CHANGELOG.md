@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`AAK-AGENT-002` was HIGH for any link in an instruction file, and its
+  allowlist was a prefix match.** Reported against 930 public repositories
+  shipping `AGENTS.md` / `CLAUDE.md`: it fired on 303, so roughly a third failed
+  `--ci` for carrying a documentation link, which teaches people to raise
+  `--fail-on` and hides the findings that deserve it. 002 is now **LOW** and
+  reports inventory. The new **`AAK-AGENT-006` (HIGH)** reports the instruction
+  instead — text telling the agent to fetch a URL and follow, execute, obey or
+  load what comes back, or to send data to one — deterministically, one line at
+  a time, with **no host allowlist at all**, which was the reporter's own
+  argument: an attacker can host on github.com too. The allowlist that remains
+  compares parsed hostnames as dot-bounded suffixes rather than URL prefixes, so
+  `gist.github.com` is inside `github.com` and `github.com.evil.example` is not;
+  verified against the published 0.6.7 wheel, where a fetch-and-follow directive
+  pointing at that lookalike produced no finding at all. The bare `docs.` and
+  `developer.` arms are gone with it — they matched a subdomain label, so
+  `docs.attacker.example` passed — and `python.org` is named explicitly in their
+  place.
 - **`AAK-AGENT-005` reported Hindi, Persian and emoji text as "hidden
   content".** The check asked only whether a zero-width code point appeared
   anywhere on a line, which cannot tell spelling from concealment: every
