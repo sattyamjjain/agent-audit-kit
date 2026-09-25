@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-09-25
+
 ### Fixed
 
 - **`AAK-AGENT-002` was HIGH for any link in an instruction file, and its

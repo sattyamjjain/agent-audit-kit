@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-09-25: five disclosures, four on one package at a floor that already holds, and one runtime gap
+## 2026-09-25 (v0.6.8): five disclosures, four on one package at a floor that already holds, and one runtime gap
 
 The watcher opened five `cve-response` issues at 2026-09-24T21:31Z (#773-#777).
 **No new rule and no new pin.** Four are the same package at a fix version this
@@ -74,7 +74,7 @@ Dispositioned at 2026-09-25T10:01:34Z. Unreleased at the time of writing: this s
 carries no version label until the next tag stamps it.
 
 
-## 2026-09-24: ten disclosures, four pins, and six artifacts the detector cannot reach
+## 2026-09-24 (v0.6.8): ten disclosures, four pins, and six artifacts the detector cannot reach
 
 The watcher opened ten `cve-response` issues across 2026-09-15 to 09-18
 (#758-#767). All ten are real MCP servers or SDKs — no acronym collisions this
