@@ -1387,6 +1387,17 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-05"],
+    limitations=(
+        "Looks at two hiding places: HTML comments and invisible code points. A "
+        "comment is reported unless it matches a tool marker's whole syntax: the "
+        "Claude Code auto-memory plugin's section markers, markdownlint toggles "
+        "naming only MDnnn ids, and prettier-ignore. Invisible characters are "
+        "judged by position, so U+200C or U+200D between two letters of one "
+        "joiner-using script, U+200D between two emoji, and a byte-order mark at "
+        "the start of the file are treated as spelling. Other ways to keep text "
+        "out of rendered markdown, such as a link reference definition used as a "
+        "comment (`[//]: # (...)`), are not detected."
+    ),
 )
 
 

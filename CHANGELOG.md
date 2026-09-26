@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Every HTML comment in an agent instruction file was reported at the first
+  comment's line.** `AAK-AGENT-005` located each comment by searching the file
+  for the literal `<!--`, which always finds the first one. SARIF and the VS
+  Code extension pinned every comment finding to that line, and because the
+  SARIF fingerprint includes the line, GitHub code scanning folded them into a
+  single alert: this repository's own `CLAUDE.md` reported its 16 section
+  markers as 16 findings on line 3. The other instruction-file rules
+  (`AAK-AGENT-001` to `004`, and `006`) had the same fault in a milder form.
+  Each searched for its own evidence text, so the second copy of a repeated URL
+  or directive pointed at the first, and an earlier line that merely contained
+  the text (`subprocess_utils` above a real `subprocess`) took the finding.
+  Every one now takes its line from where its match is. Findings that were
+  folded together come apart: code scanning shows one alert per occurrence,
+  and a SARIF baseline taken before this release reports them as newly
+  introduced once, so re-baseline after upgrading.
+- **`AAK-AGENT-005` reported a tool's bookkeeping comments as hidden
+  content.** Every HTML comment in an instruction file fired, including the
+  sixteen section markers the Claude Code auto-memory plugin writes into a root
+  `CLAUDE.md` (`AUTO-MANAGED: …`, `END AUTO-MANAGED`, `MANUAL`, `END MANUAL`),
+  markdownlint toggles and `prettier-ignore`. With each comment now reaching
+  code scanning as its own alert, they would have buried the comments the rule
+  exists for. A comment that matches one of those tools' whole syntax (fixed
+  keywords, the plugin's known section names, `MDnnn` rule ids) is no longer
+  reported. The exemption is the grammar, not a prefix: a marker keyword
+  followed by free text, an unknown section name, a markdownlint rule alias and
+  `markdownlint-configure-file` all still fire, because each has room for a
+  sentence. The rule now says in `limitations` what it does not detect,
+  including a link reference definition used as a comment (`[//]: # (...)`).
+
 ## [0.6.8] - 2026-09-25
 
 ### Fixed
