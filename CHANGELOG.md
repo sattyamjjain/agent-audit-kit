@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Dispositioned #781 to #790, with no new rule and no new pin.** The eight
+  `mcp-atlassian` advisories are all fixed in 0.22.0, the floor
+  `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` already carries, and are recorded
+  against it; CVE-2026-18875 (IBM FTM) is out of scope, a runtime defect in the
+  vendor's own agent server; CVE-2026-94044 is deferred to 2026-10-10 for the
+  TypeScript arm `AAK-MCP-015` lacks. Detail in `CHANGELOG.cves.md`.
+
 ## [0.6.8] - 2026-09-25
 
 ### Fixed

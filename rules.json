@@ -3683,7 +3683,15 @@
         "CVE-2026-77244",
         "CVE-2026-77254",
         "CVE-2026-77243",
-        "CVE-2026-77248"
+        "CVE-2026-77248",
+        "CVE-2026-77255",
+        "CVE-2026-77262",
+        "CVE-2026-77258",
+        "CVE-2026-77259",
+        "CVE-2026-77242",
+        "CVE-2026-77246",
+        "CVE-2026-77261",
+        "CVE-2026-77253"
       ],
       "description": "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, before 0.22.0 passes the client-supplied `file_path` argument of `confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py`, without routing it through `validate_safe_path`. An authenticated MCP client can therefore read any file the server process can reach and exfiltrate it to Confluence as an attachment. Because the tool is agent-callable, untrusted content that induces an agent to call it reaches the same primitive, disclosing server environment material such as `CONFLUENCE_API_TOKEN` and other credentials (CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
       "incident_references": [],
