@@ -49,7 +49,7 @@ make cve-latency-refresh # top up docs/data/cve-published.json from NVD
 make registry-parity     # does the declared version exist on PyPI? (also daily in CI)
 make cve-deferral-check  # every `cve-deferred` issue names a target date (needs gh)
 
-# Install (editable) — [dev] pulls the optional [taint] extra so the tree-sitter data-flow path is tested, not just its fallback
+# Install (editable) — [dev] pulls the optional [taint] extra (tree-sitter data-flow path tested, not just its fallback) and MkDocs (docs-hook tests run, not skip)
 pip install -e ".[dev]"
 
 # Run the CLI — `aak` is an installed alias for `agent-audit-kit` (same entry point)
