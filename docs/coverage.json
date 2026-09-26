@@ -3126,12 +3126,11 @@
       ],
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
       "severity": "critical",
-      "title": "mcp-atlassian Jira/Confluence content reaches subprocess sink"
+      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
     },
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-27825",
         "CVE-2026-27826"
       ],
       "eu_ai_act": [
@@ -3151,7 +3150,7 @@
       ],
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
       "severity": "high",
-      "title": "mcp-atlassian Jira/Confluence content reaches file-write sink"
+      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
     },
     {
       "category": "supply-chain",
