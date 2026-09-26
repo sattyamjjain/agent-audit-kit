@@ -497,7 +497,7 @@
       "cve_references": [],
       "description": "Agent instruction files contain hidden content via HTML comments, zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks at two hiding places: HTML comments and invisible code points. A comment is reported unless it matches a tool marker's whole syntax: the Claude Code auto-memory plugin's section markers, markdownlint toggles naming only MDnnn ids, and prettier-ignore. Invisible characters are judged by position, so U+200C or U+200D between two letters of one joiner-using script, U+200D between two emoji, and a byte-order mark at the start of the file are treated as spelling. Other ways to keep text out of rendered markdown, such as a link reference definition used as a comment (`[//]: # (...)`), are not detected.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -3683,7 +3683,15 @@
         "CVE-2026-77244",
         "CVE-2026-77254",
         "CVE-2026-77243",
-        "CVE-2026-77248"
+        "CVE-2026-77248",
+        "CVE-2026-77255",
+        "CVE-2026-77262",
+        "CVE-2026-77258",
+        "CVE-2026-77259",
+        "CVE-2026-77242",
+        "CVE-2026-77246",
+        "CVE-2026-77261",
+        "CVE-2026-77253"
       ],
       "description": "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, before 0.22.0 passes the client-supplied `file_path` argument of `confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py`, without routing it through `validate_safe_path`. An authenticated MCP client can therefore read any file the server process can reach and exfiltrate it to Confluence as an attachment. Because the tool is agent-callable, untrusted content that induces an agent to call it reaches the same primitive, disclosing server environment material such as `CONFLUENCE_API_TOKEN` and other credentials (CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
       "incident_references": [],

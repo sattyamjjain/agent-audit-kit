@@ -18,7 +18,7 @@ vscode-extension/
     extension.ts       # Entry point — activate/deactivate, runs the CLI via child_process.execFile, publishes diagnostics
     sarifReader.ts     # SARIF → diagnostics: loadSarif, applySarifToDiagnostics, registerSarifCommands
   package.json         # Manifest — contributes.configuration + contributes.commands
-  package-lock.json    # Locked devDependencies
+  package-lock.json    # Gitignored (vscode-extension/.gitignore): local only, so the repo does not lock devDependency versions
   tsconfig.json        # TypeScript config
   README.md            # Marketplace-facing readme
   .vscodeignore        # Package exclusions
@@ -53,7 +53,7 @@ vscode-extension/
 <!-- AUTO-MANAGED: dependencies -->
 ## Key Dependencies
 
-Everything is a devDependency; `dependencies` is empty.
+Everything is a devDependency; the manifest has no `dependencies` block.
 
 - `@types/vscode` — VS Code API types (pinned to the same minor as `engines.vscode`)
 - `@types/node` — Node.js types
