@@ -1,15 +1,24 @@
-"""AAK-MCP-ATLASSIAN-CVE-2026-27825/27826 — Atlassian MCP RCE chain.
+"""AAK-MCP-ATLASSIAN-CVE-2026-27825/27826: mcp-atlassian before 0.17.0.
 
-CVE-2026-27825 (CVSS 9.1) + CVE-2026-27826 (CVSS 8.2) in
-mcp-atlassian: Jira/Confluence field content (description, comment
-body, PR title) flows from a tool handler into file I/O or subprocess
-without validation. Two paired rules so SARIF carries the
-distinguishing CVE id per finding.
+NVD records two advisories, both fixed in mcp-atlassian 0.17.0:
+
+- CVE-2026-27825 (CVSS 9.0, CWE-22 + CWE-73): `confluence_download_attachment`
+  writes to a caller-supplied `download_path` with no directory boundary, and the
+  caller also controls the content, so a written cron entry runs code.
+- CVE-2026-27826 (CVSS 8.2, CWE-918): with no Authorization header, two custom
+  HTTP headers make the server send requests to any host.
+
+Two paired rules, so SARIF carries the distinguishing CVE id per finding. The pin
+reports a declared version below 0.17.0 under both. The source pattern reports a
+related class rather than either CVE's own code path: a Jira/Confluence field
+reaching an exec sink (27825-001) or a file-write sink (27826-001) in a file that
+uses an Atlassian client. This module also carries a source arm for
+CVE-2026-73498, described where it is defined.
 
 Sources:
-- https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html
 - https://nvd.nist.gov/vuln/detail/CVE-2026-27825
 - https://nvd.nist.gov/vuln/detail/CVE-2026-27826
+- https://thehackernews.com/2026/04/anthropic-mcp-design-vulnerability.html
 """
 
 from __future__ import annotations
@@ -20,6 +29,7 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 
 from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from .supply_chain import _semver3
 
 
 _ATLASSIAN_HINT_RE = re.compile(
@@ -70,7 +80,30 @@ _DANGEROUS_SINK_RE = re.compile(
 )
 
 
+# NVD records both advisories as fixed in mcp-atlassian 0.17.0. Until it
+# published that version this pin fired on EVERY declared version "to surface for
+# review", so a fully patched install was reported as CRITICAL indefinitely; the
+# fixture named `patched-pin` (9.9.9) was asserted to fire.
+_FIXED_IN: tuple[int, int, int] = (0, 17, 0)
+_PIN_FINDINGS: tuple[tuple[str, str], ...] = (
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
+     "CVE-2026-27825 (confluence_download_attachment writes to an unconfined download_path)"),
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
+     "CVE-2026-27826 (two custom headers without Authorization make the server request any host)"),
+)
+_PIN_RE = re.compile(
+    r"""(?:^|\n)\s*(?:["']?)mcp-atlassian(?:["']?)\s*[=<>~!]+\s*['"]?([0-9][\w.\-]*)"""
+)
+
+
 def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
+    """A declared mcp-atlassian below 0.17.0: one finding per CVE fixed there.
+
+    Only a version it can read is judged, as before: an unpinned install, a
+    lockfile's separate name and version lines, and an unparseable version are
+    not reported. The version is compared as declared whatever the operator,
+    which is how the central pin table reads a requirement too.
+    """
     findings: list[Finding] = []
     pkg_files: list[Path] = list(project_root.glob("requirements*.txt"))
     for name in ("pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock"):
@@ -82,25 +115,24 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        m = re.search(
-            r"""(?:^|\n)\s*(?:["']?)mcp-atlassian(?:["']?)\s*[=<>~!]+\s*['"]?([0-9][\w.\-]*)""",
-            text,
-        )
+        m = _PIN_RE.search(text)
         if not m:
             continue
-        # GHSA / NVD lists patched line — be conservative: any pin <0.1.99
-        # (rule prompt asks for "vulnerable-version" placeholder).
-        # Until NVD enrichment publishes, fire on any pin to surface for review.
+        version = _semver3(m.group(1))
+        if version is None or version >= _FIXED_IN:
+            continue
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
-        findings.append(make_finding(
-            "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
-            rel,
-            f"mcp-atlassian pinned at {m.group(1)} — CVE-2026-27825 / "
-            "CVE-2026-27826 RCE chain via Jira/Confluence field content. "
-            "Verify against patched version once NVD enrichment ships.",
-            line_number=find_line_number(text, m.group(0)),
-        ))
+        # From the offset of the name, not a text search: the match can open with
+        # the preceding newline, which no single line contains.
+        line = text.count("\n", 0, m.start() + m.group(0).index("mcp-atlassian")) + 1
+        for rule_id, what in _PIN_FINDINGS:
+            findings.append(make_finding(
+                rule_id,
+                rel,
+                f"mcp-atlassian pinned at {m.group(1)}, below 0.17.0, which fixes {what}.",
+                line_number=line,
+            ))
     return findings
 
 
@@ -123,9 +155,9 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
         scanned.add(rel)
         m = _DANGEROUS_SINK_RE.search(text)
         line = (text.count("\n", 0, m.start()) + 1) if m else None
-        # CVE-2026-27826 is the lower-severity (CVSS 8.2) variant; use it
-        # for file-write sinks. CVE-2026-27825 (CVSS 9.1) for
-        # subprocess/os.system sinks.
+        # The class, not either CVE's own code path (see the module docstring):
+        # an exec sink reports under the CRITICAL 27825 rule, a file-write sink
+        # under the HIGH 27826 rule.
         sink_match = m.group(0) if m else ""
         if any(t in sink_match for t in ("subprocess", "os.system", "os.popen")):
             rule_id = "AAK-MCP-ATLASSIAN-CVE-2026-27825-001"

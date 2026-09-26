@@ -18,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The CVE-2026-27825 pin flagged every declared `mcp-atlassian`, patched ones
+  included.** It predated NVD's fix version and fired on any pin "to surface for
+  review", so a fully patched install stayed CRITICAL, and the fixture named
+  `patched-pin` (9.9.9) was asserted to fire. NVD records CVE-2026-27825 (the
+  unconfined `download_path` write, CVSS 9.0) and CVE-2026-27826 (header-driven
+  SSRF, CVSS 8.2) as both fixed in 0.17.0. A version below it now reports each
+  CVE under its own rule, and 0.17.0 or later reports nothing. The two rules
+  described the CVEs from a news report rather than NVD (CVSS 9.1, and 27826 as
+  a file-write bug); they now say what each CVE is, and that the source patterns
+  they also carry are a related class rather than either CVE's code path.
+  `AAK-MCP-ATLASSIAN-CVE-2026-27826-001` no longer claims CVE-2026-27825, which
+  its pattern does not detect, and pin findings now carry a line number.
 - **Every HTML comment in an agent instruction file was reported at the first
   comment's line.** `AAK-AGENT-005` located each comment by searching the file
   for the literal `<!--`, which always finds the first one. SARIF and the VS

@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-26T11:47:29Z",
+  "last_updated": "2026-09-26T12:37:16Z",
   "aak_version": "0.6.8",
   "rule_count": 362,
   "coverage": [
@@ -383,7 +383,6 @@
           "id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
           "severity": "high",
           "cve_references": [
-            "CVE-2026-27825",
             "CVE-2026-27826"
           ],
           "aicm_references": [

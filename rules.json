@@ -3619,11 +3619,11 @@
       "cve_references": [
         "CVE-2026-27825"
       ],
-      "description": "CVE-2026-27825 (CVSS 9.1): a Jira/Confluence field (`issue.fields.*`, `issue.description`, `comment.body`, `page.content`) flows from a tool handler into `subprocess.run/Popen/check_output`, `os.system`, or `os.popen` without input validation. Hacker News + The Hacker News (2026-04-22) documented public PoC; Atlassian is in every enterprise stack so treat any unpinned `mcp-atlassian` install as exposed.",
+      "description": "NVD records CVE-2026-27825 (CVSS 9.0, CWE-22 + CWE-73) as fixed in mcp-atlassian 0.17.0: `confluence_download_attachment` writes to a caller-supplied `download_path` with no directory boundary, and the caller also controls the content through a Confluence attachment, so writing a cron entry runs code with no restart. This rule reports a declared `mcp-atlassian` below 0.17.0. It also reports a related class in the user's own code, which is not the CVE's code path: a Jira/Confluence field (`issue.fields.*`, `issue.description`, `comment.body`, `page.content`) reaching `subprocess`, `os.system` or `os.popen` without validation, in a file that uses an Atlassian client, the shape the 2026-04-22 public reporting described.",
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
-      "limitations": "",
+      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a sink, not data flow, and it never reads mcp-atlassian's own code.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3631,11 +3631,11 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Pin `mcp-atlassian` to the patched version. Until the bump is in, wrap every Jira/Confluence field with an allow-list or shlex.quote before passing into subprocess. Consider front-running the agent surface with a redaction proxy.",
+      "remediation": "Pin `mcp-atlassian>=0.17.0` (0.22.0 or later also clears the upload_attachment pin). For the source pattern, allow-list or `shlex.quote` every Jira/Confluence field before it reaches a subprocess, and pass argv lists rather than a shell string.",
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27825-001",
       "sarif_name": "McpAtlassianRce27825",
       "severity": "critical",
-      "title": "mcp-atlassian Jira/Confluence content reaches subprocess sink"
+      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27825), or Jira/Confluence content reaching an exec sink"
     },
     {
       "adversa_references": [
@@ -3648,14 +3648,13 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-27826",
-        "CVE-2026-27825"
+        "CVE-2026-27826"
       ],
-      "description": "CVE-2026-27826 (CVSS 8.2): companion bug to CVE-2026-27825 \u2014 Jira/Confluence field content flows into `open(... 'w')`, `Path.write_text`, `shutil.move/copy` without validation. Lower blast radius than the subprocess variant but trivially weaponisable for path traversal + data planting.",
+      "description": "NVD records CVE-2026-27826 (CVSS 8.2, CWE-918) as fixed in mcp-atlassian 0.17.0: with no Authorization header, two custom HTTP headers make the server send requests to any host, reaching cloud instance metadata and internal services. This rule reports a declared `mcp-atlassian` below 0.17.0. It also reports a related class in the user's own code, which is not an SSRF detector: Jira/Confluence field content reaching a file-write sink (`open(... 'w')`, `Path.write_text`, `shutil.move/copy`) without validation, in a file that uses an Atlassian client, so whoever writes the field chooses what lands on disk.",
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
-      "limitations": "",
+      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a write sink, not data flow.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3663,11 +3662,11 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Same as CVE-2026-27825: pin `mcp-atlassian` to patched. For file-writes, additionally enforce a path allow-list rooted at the agent's tenant directory.",
+      "remediation": "Pin `mcp-atlassian>=0.17.0`. For the source pattern, write Jira/Confluence content only under a path allow-list rooted at the agent's own directory.",
       "rule_id": "AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
       "sarif_name": "McpAtlassianRce27826",
       "severity": "high",
-      "title": "mcp-atlassian Jira/Confluence content reaches file-write sink"
+      "title": "mcp-atlassian < 0.17.0 (CVE-2026-27826), or Jira/Confluence content reaching a file-write sink"
     },
     {
       "adversa_references": [

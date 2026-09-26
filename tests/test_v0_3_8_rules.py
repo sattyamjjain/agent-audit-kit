@@ -87,15 +87,42 @@ def test_atlassian_subprocess_sink_fires(tmp_path: Path) -> None:
     assert "AAK-MCP-ATLASSIAN-CVE-2026-27825-001" in rule_ids
 
 
-def test_atlassian_pin_fires(tmp_path: Path) -> None:
-    src = (FIXTURES / "cves" / "cve-2026-27825-atlassian" /
-           "patched-pin" / "requirements.txt")
-    (tmp_path / "requirements.txt").write_text(
-        src.read_text(encoding="utf-8"), encoding="utf-8"
-    )
+_PIN_27825 = "AAK-MCP-ATLASSIAN-CVE-2026-27825-001"
+_PIN_27826 = "AAK-MCP-ATLASSIAN-CVE-2026-27826-001"
+
+
+def _pin_ids(tmp_path: Path, requirement: str) -> set[str]:
+    (tmp_path / "requirements.txt").write_text(requirement + "\n", encoding="utf-8")
     findings, _ = atlassian_scan(tmp_path)
-    rule_ids = {f.rule_id for f in findings}
-    assert "AAK-MCP-ATLASSIAN-CVE-2026-27825-001" in rule_ids
+    return {f.rule_id for f in findings}
+
+
+def test_atlassian_pin_below_the_fix_reports_both_cves(tmp_path: Path) -> None:
+    """NVD records CVE-2026-27825 and CVE-2026-27826 as both fixed in 0.17.0.
+
+    One finding per CVE, so SARIF carries each id: 27825 is the unconfined
+    `download_path` write, 27826 the header-driven SSRF.
+    """
+    assert {_PIN_27825, _PIN_27826} <= _pin_ids(tmp_path, "mcp-atlassian==0.16.2")
+
+
+def test_atlassian_pin_at_the_fix_is_silent(tmp_path: Path) -> None:
+    ids = _pin_ids(tmp_path, "mcp-atlassian==0.17.0")
+    assert _PIN_27825 not in ids and _PIN_27826 not in ids
+
+
+def test_atlassian_patched_pin_is_silent(tmp_path: Path) -> None:
+    """The fixture is named patched-pin, and the rule fired on it anyway.
+
+    Until NVD published a fix version, this pin fired on every declared version
+    "to surface for review", so a fully patched mcp-atlassian was reported as
+    CRITICAL indefinitely. NVD has since recorded 0.17.0 for both CVEs.
+    """
+    src = FIXTURES / "cves" / "cve-2026-27825-atlassian" / "patched-pin" / "requirements.txt"
+    (tmp_path / "requirements.txt").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    findings, _ = atlassian_scan(tmp_path)
+    ids = {f.rule_id for f in findings}
+    assert _PIN_27825 not in ids and _PIN_27826 not in ids
 
 
 # -------------------- AAK-IPI-WILD-CORPUS-001 --------------------
