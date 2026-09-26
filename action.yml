@@ -75,6 +75,9 @@ outputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
+  # The image's own entrypoint is the CLI (`docker run IMAGE scan /project`);
+  # the args below are this Action's inputs in order, which only the bridge reads.
+  entrypoint: '/entrypoint.sh'
   args:
     - ${{ inputs.path }}
     - ${{ inputs.severity }}

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`docker run ghcr.io/sattyamjjain/agent-audit-kit scan /project` works.**
+  The image's entrypoint has been the GitHub Action bridge since the Dockerfile
+  was added, and the bridge reads its positional arguments as the Action's
+  inputs, so every documented `docker run` handed it a CLI command line: `scan`
+  became the path, `/project` the severity, and the run exited 2. The image now
+  runs the CLI, and `action.yml` selects the bridge itself with
+  `runs.entrypoint`, so the Action behaves as before. The release job runs the
+  documented one-liner against a fixture before it pushes, and the nightly
+  rebuild after. Anyone who passed the Action's positional inputs to the image
+  directly now needs `--entrypoint /entrypoint.sh`.
+
 ## [0.6.9] - 2026-09-26
 
 ### Changed
