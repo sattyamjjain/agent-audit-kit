@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The README's test count said "tests" and counts test functions.** The
+  marker is `test_*` functions counted from the AST, deliberately, because
+  pytest's collected total moves with parametrisation; a gate printing "2908
+  passed" beside "2,537 tests" read as drift when neither number was wrong. The
+  README now says "test functions", and a contract test holds the noun, so the
+  number stated is one a reader can check.
+
 ## [0.6.8] - 2026-09-25
 
 ### Fixed

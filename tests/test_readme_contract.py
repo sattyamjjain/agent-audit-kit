@@ -60,6 +60,24 @@ def test_scalar_marker_is_present_and_well_formed(marker: str) -> None:
     )
 
 
+def test_test_count_names_what_it_counts() -> None:
+    """The marker counts `test_*` functions, so the README has to say so.
+
+    `scripts/sync_rule_count.py` counts test functions from the AST on purpose:
+    pytest's collected total moves with parametrisation, skips and plugins, and
+    differs between machines. A test gate prints that collected total, which is
+    larger ("2908 passed" beside "2,537 tests"), and under the noun "tests" the
+    two read as drift. The noun after the marker names what the number counts.
+    """
+    m = re.search(r"<!--\s*/test-count\s*-->\s*([a-z]+(?: [a-z]+)?)", _text())
+    assert m is not None, "README lost the test-count marker"
+    assert m.group(1) == "test functions", (
+        f"README says {m.group(1)!r} after the test-count marker; the number counts "
+        "`test_*` functions, not collected pytest cases, so the noun must be "
+        "'test functions'."
+    )
+
+
 @pytest.mark.parametrize(
     "block_open,block_close,writer",
     [
