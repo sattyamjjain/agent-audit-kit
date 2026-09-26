@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The GitLab examples publish their SARIF.** Every one filed it under
+  `artifacts:reports:sast`, which is GitLab's own SAST report format and does
+  not read SARIF; it now goes under `artifacts:reports:sarif` (GitLab Ultimate
+  19.1+). The SARIF jobs report with `--fail-on none`, because GitLab ingests
+  SARIF only from a job that succeeds, and `--ci` failed the job on exactly the
+  runs that had findings. The Docker example sets `entrypoint: [""]` so GitLab
+  can start its shell in the image, and pins the current release instead of
+  0.2.0: `sync_repo_metadata.py` now keeps pinned image tags in the docs on the
+  release version, as it already did for the Action pins.
+
 ## [0.6.9] - 2026-09-26
 
 ### Changed

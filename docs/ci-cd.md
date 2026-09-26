@@ -36,11 +36,15 @@ agent-audit:
   image: python:3.12
   script:
     - pip install agent-audit-kit
-    - agent-audit-kit scan . --ci --severity high --format sarif -o gl-agent-audit.sarif
+    - agent-audit-kit scan . --severity high --format sarif -o gl-agent-audit.sarif --fail-on none
   artifacts:
     reports:
-      sast: gl-agent-audit.sarif
+      sarif: gl-agent-audit.sarif
 ```
+
+`reports:sarif` needs GitLab Ultimate 19.1 or later, and GitLab ingests it only
+from a job that succeeds, hence `--fail-on none`: gate in a separate job. See
+[GitLab CI](gitlab-ci.md#with-sarif-output).
 
 ## Jenkins
 

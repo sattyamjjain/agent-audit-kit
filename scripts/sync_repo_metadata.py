@@ -3,7 +3,8 @@
 
 Three jobs:
 
-1. Rewrite every `sattyamjjain/agent-audit-kit@vX.Y.Z` reference in
+1. Rewrite every `sattyamjjain/agent-audit-kit@vX.Y.Z` reference, pre-commit
+   `rev:` and pinned `ghcr.io/sattyamjjain/agent-audit-kit:X.Y.Z` image in
    README.md + docs/**/*.md to the version recorded in pyproject.toml.
 2. Keep CITATION.cff's `version` / `date-released` on the shipped release.
 3. Generate the target GitHub repo-description string so CI can
@@ -61,6 +62,12 @@ _PRECOMMIT_BLOCK_RE = re.compile(
     r"v\d+\.\d+\.\d+"
 )
 _HISTORY_STEM_RE = re.compile(r"release-notes-v\d+\.\d+\.\d+")
+# A pinned image. Image tags carry no `v` (release.yml strips it), and only a
+# version tag is rewritten: `:latest`, `:nightly` and a `:<tag>` placeholder are
+# left alone. docs/gitlab-ci.md sat on `:0.2.0` until 0.6.9 because nothing here
+# looked at image tags at all.
+_IMAGE_TAG_RE = re.compile(r"ghcr\.io/sattyamjjain/agent-audit-kit:\d+\.\d+\.\d+")
+_IMAGE = "ghcr.io/sattyamjjain/agent-audit-kit"
 
 CITATION = REPO_ROOT / "CITATION.cff"
 CHANGELOG = REPO_ROOT / "CHANGELOG.md"
@@ -175,7 +182,8 @@ def _rewrite(doc: Path, target_ref: str, target_version: str) -> tuple[bool, int
         lambda m: f"{m.group('prefix')}v{target_version}",
         new_text,
     )
-    total = n_action + n_rev
+    new_text, n_image = _IMAGE_TAG_RE.subn(f"{_IMAGE}:{target_version}", new_text)
+    total = n_action + n_rev + n_image
     if total and new_text != text:
         doc.write_text(new_text, encoding="utf-8")
         return True, total
@@ -185,17 +193,15 @@ def _rewrite(doc: Path, target_ref: str, target_version: str) -> tuple[bool, int
 def _check(target_ref: str, target_version: str) -> list[Path]:
     drift: list[Path] = []
     target_rev = f"v{target_version}"
+    target_image = f"{_IMAGE}:{target_version}"
     for doc in _iter_docs():
         text = doc.read_text(encoding="utf-8")
-        for m in _REPO_REF_RE.finditer(text):
-            if m.group(0) != target_ref:
-                drift.append(doc)
-                break
-        else:
-            for m in _PRECOMMIT_BLOCK_RE.finditer(text):
-                if not m.group(0).endswith(target_rev):
-                    drift.append(doc)
-                    break
+        if (
+            any(m.group(0) != target_ref for m in _REPO_REF_RE.finditer(text))
+            or any(not m.group(0).endswith(target_rev) for m in _PRECOMMIT_BLOCK_RE.finditer(text))
+            or any(m.group(0) != target_image for m in _IMAGE_TAG_RE.finditer(text))
+        ):
+            drift.append(doc)
     return drift
 
 
