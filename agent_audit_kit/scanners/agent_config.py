@@ -7,7 +7,7 @@ from typing import Optional
 from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 # ---- Target files to scan (relative to project root) ----
 _AGENT_CONFIG_FILES: list[str] = [
@@ -155,16 +155,16 @@ _SEND_TO_URL_RE = re.compile(
 _DIRECTIVE_PATTERNS = (_FETCH_THEN_ACT_RE, _ACT_AT_URL_RE, _SEND_TO_URL_RE)
 
 
-def _directive_links(content: str) -> list[tuple[str, str]]:
-    """``(evidence, url)`` for each line whose text acts on a URL.
+def _directive_links(content: str) -> list[tuple[int, str, str]]:
+    """``(line, evidence, url)`` for each line whose text acts on a URL.
 
     Scoped to one line, which is what "the same sentence or list item" means in
     a markdown instruction file: a URL three paragraphs below an unrelated
     "follow" is not a directive about that URL, and matching across the gap is
     how a context rule turns into the blunt one it replaced.
     """
-    out: list[tuple[str, str]] = []
-    for line in content.splitlines():
+    out: list[tuple[int, str, str]] = []
+    for line_num, line in enumerate(content.splitlines(), 1):
         if "://" not in line:
             continue
         for pattern in _DIRECTIVE_PATTERNS:
@@ -174,7 +174,7 @@ def _directive_links(content: str) -> list[tuple[str, str]]:
             url = _URL_RE.search(match.group())
             if url is None:
                 continue
-            out.append((match.group().strip(), url.group()))
+            out.append((line_num, match.group().strip(), url.group()))
             break
     return out
 
@@ -204,6 +204,31 @@ _CREDENTIAL_RE = re.compile(
 
 # ---- AAK-AGENT-005: Hidden content ----
 _HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
+
+# Comments that are a tool's own bookkeeping, matched against that tool's whole
+# syntax. The Claude Code auto-memory plugin writes sixteen section markers into
+# a root CLAUDE.md, and once each comment reached code scanning as its own alert
+# they buried the comments this rule exists for.
+#
+# The exemption is a grammar, not a prefix: fixed keywords, a known section name,
+# `MDnnn` rule ids, and nowhere to put a sentence. A keyword followed by free
+# text is free text, an unknown section name is a free-form phrase, and
+# markdownlint's rule aliases are words rather than ids, so all of those still
+# report. Length is no test: a short comment hides a command as well as a long one.
+_AUTO_MEMORY_SECTIONS = (
+    "project-description", "build-commands", "architecture", "conventions",
+    "patterns", "git-insights", "best-practices", "module-description",
+    "dependencies",
+)
+_TOOL_MARKER_RE = re.compile(
+    r"<!--\s*(?:"
+    r"AUTO-MANAGED:\s*(?:" + "|".join(_AUTO_MEMORY_SECTIONS) + r")"
+    r"|END AUTO-MANAGED|MANUAL|END MANUAL"
+    r"|markdownlint-(?:disable|enable)(?:-next-line|-line|-file)?(?:\s+[Mm][Dd]\d{3})*"
+    r"|markdownlint-(?:capture|restore)"
+    r"|prettier-ignore(?:-start|-end)?"
+    r")\s*-->"
+)
 _ZERO_WIDTH_CHARS = frozenset({
     "\u200b",  # zero-width space
     "\u200c",  # zero-width non-joiner
@@ -313,6 +338,24 @@ def _find_agent_config_files(project_root: Path) -> list[Path]:
     return found
 
 
+def _line_at(content: str, offset: int) -> int:
+    """1-based line of the character at ``offset``, counted as ``str.splitlines`` counts.
+
+    Findings used to locate their line by searching the file for their own
+    evidence, which always lands on the first occurrence: the second copy of a
+    repeated URL or directive pointed at the first, an earlier line that merely
+    contained the evidence as a substring took the finding, and every HTML
+    comment, searched for as the literal "<!--", carried the first comment's
+    line. A regex match already knows where it is.
+
+    Counting as ``splitlines`` does keeps these numbers identical to
+    ``find_line_number`` and to the zero-width walk wherever the evidence is not
+    repeated. ``"a\\n".splitlines()`` is one line although offset 2 opens line 2,
+    so a sentinel character keeps that line counted.
+    """
+    return len((content[:offset] + "\0").splitlines())
+
+
 def _check_content(
     content: str,
     rel_path: str,
@@ -327,19 +370,19 @@ def _check_content(
             "AAK-AGENT-001",
             rel_path,
             f"Shell directive: {evidence[:120]}",
-            find_line_number(content, evidence[:40]),
+            _line_at(content, match.start()),
         ))
 
     # AAK-AGENT-006: a link the text tells the agent to act on. HIGH, and
     # reported before 002 so the directive is what a reader sees first.
     directive_urls: set[str] = set()
-    for evidence, url in _directive_links(content):
+    for line_num, evidence, url in _directive_links(content):
         directive_urls.add(url)
         findings.append(make_finding(
             "AAK-AGENT-006",
             rel_path,
             f"Directive on an external URL: {evidence[:200]}",
-            find_line_number(content, evidence[:60]),
+            line_num,
         ))
 
     # AAK-AGENT-002: a link to a host outside the documentation allowlist. LOW —
@@ -355,7 +398,7 @@ def _check_content(
                 "AAK-AGENT-002",
                 rel_path,
                 f"External URL: {url[:200]}",
-                find_line_number(content, url[:60]),
+                _line_at(content, match.start()),
             ))
 
     # AAK-AGENT-003: Security override patterns
@@ -365,7 +408,7 @@ def _check_content(
             "AAK-AGENT-003",
             rel_path,
             f"Security override: {evidence}",
-            find_line_number(content, evidence),
+            _line_at(content, match.start()),
         ))
 
     # AAK-AGENT-004: Credential patterns
@@ -375,18 +418,20 @@ def _check_content(
             "AAK-AGENT-004",
             rel_path,
             f"Credential reference: {evidence}",
-            find_line_number(content, evidence),
+            _line_at(content, match.start()),
         ))
 
     # AAK-AGENT-005: Hidden content
     # HTML comments
     for match in _HTML_COMMENT_RE.finditer(content):
         comment = match.group()
+        if _TOOL_MARKER_RE.fullmatch(comment):
+            continue
         findings.append(make_finding(
             "AAK-AGENT-005",
             rel_path,
             f"HTML comment: {comment[:120]}{'...' if len(comment) > 120 else ''}",
-            find_line_number(content, "<!--"),
+            _line_at(content, match.start()),
         ))
 
     # Zero-width / invisible Unicode characters.

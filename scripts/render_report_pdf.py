@@ -49,11 +49,18 @@ def stamped_digest() -> str | None:
 
 
 def render() -> tuple[bool, str]:
-    """Render the PDF and write the stamp. Returns `emit_report_pdf`'s result."""
+    """Render the PDF, and stamp it only if the render happened.
+
+    Returns `emit_report_pdf`'s result. Without reportlab that call writes a text
+    fallback and reports failure. The stamp used to be written regardless, which
+    certified the PDF already on disk -- built from an older results.json -- as
+    current, so `--check` passed on exactly the stale artifact it exists to catch.
+    """
     from agent_audit_kit.output.pdf_report import emit_report_pdf
 
     ok, message = emit_report_pdf(json.loads(RESULTS.read_text(encoding="utf-8")), PDF)
-    STAMP.write_text(f"{results_digest()}  results.json\n", encoding="utf-8")
+    if ok:
+        STAMP.write_text(f"{results_digest()}  results.json\n", encoding="utf-8")
     return ok, message
 
 
@@ -98,7 +105,9 @@ def main(argv: list[str] | None = None) -> int:
     if not ok:
         print(
             "render_report_pdf: reportlab is not installed, so a text fallback "
-            "was written instead of the PDF the site links to.",
+            "was written instead of the PDF the site links to. The stamp was "
+            "left untouched, so `--check` still describes the PDF on disk. "
+            "`pip install reportlab`, then `make report-pdf`.",
             file=sys.stderr,
         )
         return 1

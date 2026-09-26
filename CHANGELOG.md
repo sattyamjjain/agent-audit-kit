@@ -7,8 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Dispositioned #781 to #790, with no new rule and no new pin.** The eight
+  `mcp-atlassian` advisories are all fixed in 0.22.0, the floor
+  `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` already carries, and are recorded
+  against it; CVE-2026-18875 (IBM FTM) is out of scope, a runtime defect in the
+  vendor's own agent server; CVE-2026-94044 is deferred to 2026-10-10 for the
+  TypeScript arm `AAK-MCP-015` lacks. Detail in `CHANGELOG.cves.md`.
+
 ### Fixed
 
+- **Every HTML comment in an agent instruction file was reported at the first
+  comment's line.** `AAK-AGENT-005` located each comment by searching the file
+  for the literal `<!--`, which always finds the first one. SARIF and the VS
+  Code extension pinned every comment finding to that line, and because the
+  SARIF fingerprint includes the line, GitHub code scanning folded them into a
+  single alert: this repository's own `CLAUDE.md` reported its 16 section
+  markers as 16 findings on line 3. The other instruction-file rules
+  (`AAK-AGENT-001` to `004`, and `006`) had the same fault in a milder form.
+  Each searched for its own evidence text, so the second copy of a repeated URL
+  or directive pointed at the first, and an earlier line that merely contained
+  the text (`subprocess_utils` above a real `subprocess`) took the finding.
+  Every one now takes its line from where its match is. Findings that were
+  folded together come apart: code scanning shows one alert per occurrence,
+  and a SARIF baseline taken before this release reports them as newly
+  introduced once, so re-baseline after upgrading.
+- **`AAK-AGENT-005` reported a tool's bookkeeping comments as hidden
+  content.** Every HTML comment in an instruction file fired, including the
+  sixteen section markers the Claude Code auto-memory plugin writes into a root
+  `CLAUDE.md` (`AUTO-MANAGED: …`, `END AUTO-MANAGED`, `MANUAL`, `END MANUAL`),
+  markdownlint toggles and `prettier-ignore`. With each comment now reaching
+  code scanning as its own alert, they would have buried the comments the rule
+  exists for. A comment that matches one of those tools' whole syntax (fixed
+  keywords, the plugin's known section names, `MDnnn` rule ids) is no longer
+  reported. The exemption is the grammar, not a prefix: a marker keyword
+  followed by free text, an unknown section name, a markdownlint rule alias and
+  `markdownlint-configure-file` all still fire, because each has room for a
+  sentence. The rule now says in `limitations` what it does not detect,
+  including a link reference definition used as a comment (`[//]: # (...)`).
+- **A failed report render stamped the stale PDF as current.** Without
+  reportlab, which no extra installs, `make report` writes a plain-text
+  fallback instead of the PDF, and `scripts/render_report_pdf.py` wrote the
+  source stamp anyway: the live `results.json` digest, recorded against a PDF
+  built from an older one. `make report-pdf-check` and the committed-PDF test
+  then both passed on exactly the artifact they exist to catch. The stamp is
+  now written only when the PDF is. That test had also never run in CI. It
+  lived in `tests/test_docs_research_publishing.py`, which skips as a whole
+  module without MkDocs, and CI installs `.[dev]`, which has none. It moved to
+  `tests/test_render_report_pdf.py` alongside the new cases, and nothing there
+  needs MkDocs.
+- **The MkDocs build-hook tests never ran in CI.**
+  `tests/test_docs_research_publishing.py` skips as a whole module without
+  MkDocs, and CI installs only `.[dev]`, so the guard that fails when a
+  published research page grows a relative link the hook cannot rewrite had
+  never executed on a runner. `mkdocs>=1.6` is now in the `dev` extra, with 1.6
+  as the floor because the hook overrides `File.content_string`.
+- **The false-positive benchmark's Limitations described a different run from
+  its headline.** `benchmarks/false_positive/RESULTS.md` reports the 2026-09-03
+  run (0 / 1, Wilson 95% CI [0.0%, 79.3%]), while its Limitations still gave the
+  2026-08-24 one: 6 HIGH/CRITICAL findings, [30.0%, 90.3%], a 66.7% point
+  estimate, first-remote-only conversion and an ambiguous thoughtspot finding.
+  The bullets now describe the reported run, earlier numbers stay in the History
+  table, and `make fp-check` fails when a HIGH/CRITICAL count, percentage or
+  interval outside that table disagrees with `results.json`.
 - **The precision badge did not say which surface it measured.** Its label read
   `benign-slice 536 configs`, which reads as covering every file AAK scans; the
   slice is MCP server configs only, and instruction files (`CLAUDE.md`,
