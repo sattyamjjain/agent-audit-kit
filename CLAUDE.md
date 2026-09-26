@@ -32,7 +32,7 @@ make typecheck           # mypy agent_audit_kit
 make count-check         # check_counts.py + sync_rule_count.py --check + sync_rule_doc_pages.py --check: no stale count in ANY tracked *.md (incl. this file)
 make report-check        # results.json byte-identical to a fresh run
 make report-figures-check # every governed report figure in prose sits inside a `report:` marker
-make fp-check            # false-positive benchmark artifacts (slice, results, badge) not stale
+make fp-check            # FP benchmark artifacts (slice, results, badge) not stale, and every count, % and CI in RESULTS.md outside ## History matches results.json
 make cve-latency-check   # docs/cve-latency.md matches the CVE ledger (runs on tag)
 make remediation-corpus-check # remediation-key-corpus.json matches benchmarks/data
 
