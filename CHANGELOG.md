@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The launch checklist said 348 rules, and both count guards missed it.**
+  `docs/launch/CHECKLIST.md` wrote its counts as `**348** rules, **103**
+  scanners`: emphasis on the number alone, which none of `check_counts.py`'s
+  phrasings matched and the corroboration sweep could not step over, so the row
+  sat 14 rules stale with `make count-check` clean. The guard now reads that form
+  too (a test holds the stale row as its negative case), the table states its
+  counts in guarded phrasings, and the version, latency median and star count,
+  which move on their own schedule, point at where they live instead of copying
+  them.
 - **`AAK-AGENT-005` missed text hidden as a Markdown comment.** A link reference
   definition is never rendered, and one whose destination is `#` or `<>` exists
   only to carry its title, so `[//]: # (text)` is how Markdown writes a comment:

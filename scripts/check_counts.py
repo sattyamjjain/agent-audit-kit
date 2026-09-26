@@ -127,6 +127,15 @@ PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     # engine registers), so it needs its own canonical entry rather than reusing
     # one.
     (re.compile(r"\b(\d+)\s+\.py files on disk\b", re.I), "scanner_files"),
+    # "**348** rules, **103** scanners" in docs/launch/CHECKLIST.md: emphasis on
+    # the number alone. Every phrasing above wants the noun straight after the
+    # digits, and the corroboration sweep's `\s+` cannot step over `**` either,
+    # so the row read 348 against a live 362 with both guards clean. The phrase
+    # blind spot again, in a markup form. Rules and scanners only: those are the
+    # headline counts, and a bolded per-language "**2** scanners" is worth a
+    # human's look should one ever appear.
+    (re.compile(r"\*\*(\d+)\*\*\s+rules?\b", re.I), "rules"),
+    (re.compile(r"\*\*(\d+)\*\*\s+scanners?\b", re.I), "scanners"),
 )
 
 

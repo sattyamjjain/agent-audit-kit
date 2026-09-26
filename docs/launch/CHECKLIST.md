@@ -6,7 +6,7 @@ file lists what is left, with the exact commands, and is written against the
 original was drafted.
 
 > **Rewritten 2026-09-12.** The previous version was titled "v0.3.0 launch
-> checklist" and was never executed; the repository is now at v0.6.1. Several of
+> checklist" and was never executed; the repository was at v0.6.1 by then. Several of
 > its steps had since been completed by other work and are marked done below
 > rather than left as open boxes, because a checklist that asks you to redo
 > finished work is one you stop reading.
@@ -15,14 +15,19 @@ original was drafted.
 
 | | |
 |---|---|
-| Version | v0.6.1 (PyPI, GHCR, GitHub Releases, Sigstore-signed bundle) |
-| Rules / scanners | **348** rules, **103** scanners, 14 categories |
+| Version | whatever `pyproject.toml` declares (PyPI, GHCR, GitHub Releases, Sigstore-signed bundle) |
+| Rules / scanners | **362 rules** across 14 security categories, 103 scanner modules |
 | Compliance frameworks | **14** |
-| CVE-to-rule latency | median **1.0 day**, p90 **4 days**, measured over 77 CVEs |
-| Stars | 13 |
+| CVE-to-rule latency | generated in `docs/cve-latency.md`; quote it from there, never from memory |
+| Stars | read the repository page on the day you post |
 | Licence | Apache-2.0 |
 
-Regenerate these before posting rather than trusting the table:
+The counts above are in phrasings `make count-check` reads, so they cannot go
+stale unnoticed. The version, the latency and the stars move on their own
+schedule, so the table points at where they live instead of copying them. The
+table used to copy all of them, and went on showing an old rule count, version
+and median long after each had moved. Regenerate before posting rather than
+trusting it:
 
 ```bash
 python -c "import agent_audit_kit as a; print(a.RULE_COUNT, a.SCANNER_COUNT)"
@@ -105,13 +110,14 @@ comment.
 
 The honest differentiators, in the order they hold up to scrutiny:
 
-1. **Compliance-evidence output.** 14 frameworks including two that are already
-   in force and that competing scanners do not map: EU AI Act Article 50
+1. **Compliance-evidence output.** 14 compliance frameworks, including two already
+   in force that competing scanners do not map: EU AI Act Article 50
    (transparency, live since 2026-08-02) and Colorado SB 26-189 ADMT
    (effective 2027-01-01). Every control row cites a real paragraph, and rows
    that cannot be evidenced say so instead of printing a tick.
-2. **A published CVE-to-rule latency number** — median 1.0 day — generated from
-   the ledger rather than asserted, with a guard that fails if the doc drifts.
+2. **A published CVE-to-rule latency number**, generated from the ledger rather
+   than asserted, with a guard that fails if the doc drifts. Quote the current
+   median from `docs/cve-latency.md` on the day, not from this file.
 3. **Pin and verify.** Nobody else fingerprints a tool surface at approval and
    re-verifies it afterwards. See
    `examples/case-studies/deadbugz-delayed-metadata/`.

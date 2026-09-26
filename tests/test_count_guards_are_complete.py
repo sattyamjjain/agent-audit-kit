@@ -85,3 +85,23 @@ def test_docs_landing_page_count_is_generated() -> None:
     from scripts.sync_rule_count import _TOTAL_ANCHOR_DOCS  # noqa: PLC0415
 
     assert "docs/index.md" in _TOTAL_ANCHOR_DOCS
+
+
+def test_a_bold_number_count_is_guarded() -> None:
+    """Emphasis on the number alone defeated both guards.
+
+    `docs/launch/CHECKLIST.md` stated "**348** rules, **103** scanners" while the
+    registry held 362 rules: the `**` between the digits and the noun matched
+    none of the PATTERNS phrasings, and the corroboration sweep's `\\s+` cannot
+    step over it either. The row sat stale with `make count-check` clean.
+    """
+    from scripts.check_counts import PATTERNS  # noqa: PLC0415
+
+    row = "| Rules / scanners | **348** rules, **103** scanners, 14 categories |"
+    found = {
+        (key, int(m.group(1)))
+        for rx, key in PATTERNS if "+" not in key
+        for m in rx.finditer(row)
+    }
+    assert ("rules", 348) in found, "a bold-number rule count is not guarded"
+    assert ("scanners", 103) in found, "a bold-number scanner count is not guarded"
