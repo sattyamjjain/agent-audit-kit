@@ -154,6 +154,21 @@ def test_readme_badge_shows_the_slice_size(results) -> None:
     assert str(results["benign_slice_n"]) in markup
 
 
+def test_readme_badge_names_the_surface_it_measured() -> None:
+    """The slice is MCP server configs, and nothing else is in it.
+
+    "536 configs" let a reader take the rate to cover every file AAK reads,
+    including the instruction files (CLAUDE.md, AGENTS.md) where an outside
+    report on 930 repositories found AAK-AGENT-002 firing on a third of them.
+    The label and the alt text both say which configs were measured.
+    """
+    from scripts.sync_fp_badge import badge_markup, current_numbers  # noqa: PLC0415
+
+    markup = badge_markup(*current_numbers())
+    assert "MCP%20configs" in markup, "the shields label must name MCP configs"
+    assert "MCP configs scanned" in markup, "the alt text must name MCP configs"
+
+
 def test_results_md_headline_matches_the_run(results, adjudication) -> None:
     text = RESULTS_MD.read_text(encoding="utf-8")
     fps = sum(1 for v in adjudication["verdicts"] if v["verdict"] == "false_positive")

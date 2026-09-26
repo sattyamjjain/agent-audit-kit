@@ -9,7 +9,7 @@
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-362-blue.svg" alt="Rules: 362"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.0-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.0"></a>
-  <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20configs-HIGH%2FCRIT%20FP%200%2F1-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
+  <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-HIGH%2FCRIT%20FP%200%2F1-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
 
 <p align="center">
@@ -99,9 +99,13 @@ Full detail per rule is in the [rule reference](https://github.com/sattyamjjain/
   behaves until it does not — see the
   [Deadbugz case study](https://github.com/sattyamjjain/agent-audit-kit/blob/main/examples/case-studies/deadbugz-delayed-metadata/README.md).
 
-Precision is measured rather than asserted: a hand-adjudicated
+The hand-adjudicated
 [benign-slice false-positive rate](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md)
-with a Wilson interval, and any offending rule filed as an issue.
+covers MCP server configs only. Instruction files (`CLAUDE.md`, `AGENTS.md` and
+the like) are not in the slice, and an outside report on 930 repositories
+([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) is what
+exposed `AAK-AGENT-002` on them, fixed in
+[v0.6.8](https://github.com/sattyamjjain/agent-audit-kit/releases/tag/v0.6.8).
 
 ## What we measured
 
@@ -172,7 +176,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->103<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->2,537<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->2,538<!-- /test-count --> tests. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->362<!-- /rule-count --> rules

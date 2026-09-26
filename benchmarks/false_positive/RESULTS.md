@@ -40,11 +40,11 @@ number described a slice that no longer existed. There is now a drift guard
 
 ### How to read the badge
 
-The README badge reads `benign-slice 536 configs · HIGH/CRIT FP 0/1`. The two
+The README badge reads `benign-slice 536 MCP configs · HIGH/CRIT FP 0/1`. The two
 numbers answer different questions and both are needed:
 
-- **536** is how many benign configs were scanned. This is the sample size of
-  the *measurement*.
+- **536** is how many benign MCP server configs were scanned. This is the sample
+  size of the *measurement*, and "MCP" is its scope: see the last limitation.
 - **0/1** is how many of the HIGH/CRITICAL findings raised on those 536 configs
   were wrong. The denominator is small because the scanner is quiet on benign
   input — 1 high-severity finding across 536 configs — not because little was
@@ -54,7 +54,7 @@ The ratio is back to `0/1`, and that string has been wrong on this badge before,
 so it is worth being explicit about what is different. The 2026-07-22 badge read
 `0/1 (n=1)`, which reads as "one thing was tested." It was not: 368 configs were
 tested and exactly one high-severity finding came out of them. The label now
-carries the slice size, so the badge says `benign-slice 536 configs` next to
+carries the slice size, so the badge says `benign-slice 536 MCP configs` next to
 `HIGH/CRIT FP 0/1` and the sample size is not recoverable only by opening this
 file. The failure that badge had was presentational; the number was right.
 
@@ -251,6 +251,14 @@ disagreed about it, and nothing compared their answers.
 - **Scope is HIGH/CRITICAL.** MEDIUM/LOW findings (the bulk of the volume) are not
   adjudicated here; this measures the false-positive rate of the severities that
   drive operational action.
+- **MCP server configs only.** The slice is built from MCP Registry server
+  records, so the rate covers MCP server configs and nothing else. Instruction
+  files (`CLAUDE.md`, `AGENTS.md` and the like) are not in it, and the
+  instruction-file rules (`AAK-AGENT-*`) are not measured by this benchmark. An
+  outside report on 930 repositories
+  ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) is what
+  exposed `AAK-AGENT-002` on them, fixed in v0.6.8. There is no number for
+  instruction files here.
 
 ## History
 

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The precision badge did not say which surface it measured.** Its label read
+  `benign-slice 536 configs`, which reads as covering every file AAK scans; the
+  slice is MCP server configs only, and instruction files (`CLAUDE.md`,
+  `AGENTS.md`) are not in it. The label and alt text now say "MCP configs"
+  (`scripts/sync_fp_badge.py`), the README says the rate covers MCP server
+  configs only and that the 930-repository report in #771 is what exposed
+  `AAK-AGENT-002` on instruction files, and `RESULTS.md` states that the
+  `AAK-AGENT-*` rules are not measured by the benchmark.
+
 ## [0.6.8] - 2026-09-25
 
 ### Fixed
