@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`AAK-AGENT-005` missed text hidden as a Markdown comment.** A link reference
+  definition is never rendered, and one whose destination is `#` or `<>` exists
+  only to carry its title, so `[//]: # (text)` is how Markdown writes a comment:
+  invisible to the reader, intact for the model, and never seen by the
+  HTML-comment check. It is now reported, at its own line. A definition that
+  points somewhere is a link and one with no title carries no text, so neither
+  fires, and four spaces of indent is a code block, which is not a definition.
+  The rule's limitations text, which named this idiom as undetected, now says
+  what is and is not read.
 - **The CVE-2026-27825 pin flagged every declared `mcp-atlassian`, patched ones
   included.** It predated NVD's fix version and fired on any pin "to surface for
   review", so a fully patched install stayed CRITICAL, and the fixture named

@@ -215,6 +215,18 @@ _HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
 # text is free text, an unknown section name is a free-form phrase, and
 # markdownlint's rule aliases are words rather than ids, so all of those still
 # report. Length is no test: a short comment hides a command as well as a long one.
+# A link reference definition is never rendered, and one whose destination is `#`
+# or `<>` exists only to carry its title: `[//]: # (text)` is how Markdown writes a
+# comment, and the HTML-comment pattern never saw it. Up to three spaces of indent
+# (four is a code block), one line, a title in (), "" or ''. A definition that
+# points somewhere is a link, and one with no title carries no text, so neither is
+# reported.
+_REFDEF_COMMENT_RE = re.compile(
+    r"""^[ ]{0,3}\[[^\]\n]+\]:[ \t]*(?:\#|<>)[ \t]+"""
+    r"""(?:\((?P<p>[^)\n]*)\)|"(?P<d>[^"\n]*)"|'(?P<s>[^'\n]*)')[ \t]*$""",
+    re.MULTILINE,
+)
+
 _AUTO_MEMORY_SECTIONS = (
     "project-description", "build-commands", "architecture", "conventions",
     "patterns", "git-insights", "best-practices", "module-description",
@@ -431,6 +443,19 @@ def _check_content(
             "AAK-AGENT-005",
             rel_path,
             f"HTML comment: {comment[:120]}{'...' if len(comment) > 120 else ''}",
+            _line_at(content, match.start()),
+        ))
+
+    # Link reference definitions used as comments: `[//]: # (text)`.
+    for match in _REFDEF_COMMENT_RE.finditer(content):
+        title = next(g for g in match.group("p", "d", "s") if g is not None)
+        if not title.strip():
+            continue
+        line = match.group().strip()
+        findings.append(make_finding(
+            "AAK-AGENT-005",
+            rel_path,
+            f"Markdown comment: {line[:120]}{'...' if len(line) > 120 else ''}",
             _line_at(content, match.start()),
         ))
 
