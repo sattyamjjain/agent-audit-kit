@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-09-26: ten disclosures, eight on the package the last batch closed, one runtime gap and one deferral
+## 2026-09-26 (v0.6.9): ten disclosures, eight on the package the last batch closed, one runtime gap and one deferral
 
 The watcher opened ten `cve-response` issues on 2026-09-25 (#781-#785 at
 11:51Z, #786-#790 at 17:11Z). **No new rule and no new pin.** Eight are
