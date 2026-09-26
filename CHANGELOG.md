@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A release's SBOM describes the release.** From v0.3.0 to v0.6.9 the
+  release job ran `agent-audit-kit sbom .` on this repository. That command
+  inventories the MCP servers a scanned project declares, and this repository
+  declares none, so every signed `sbom.cdx.json` and `sbom.spdx.json` attached
+  to a release listed zero components. `scripts/release_sbom.py` now describes
+  the package installed alone into an empty environment, with its runtime
+  dependencies (click, PyYAML), and both documents pass the official CycloneDX
+  1.5 and SPDX 2.3 validators. The release notes' `docker pull` line used the
+  git tag, and `:v0.6.9` is a 404 because images are tagged without the `v`; it
+  now uses the version the image is pushed under. `docs/why.md` no longer lists
+  an OpenVEX document among the release assets: no release has published one.
+
 ## [0.6.9] - 2026-09-26
 
 ### Changed

@@ -59,10 +59,13 @@ goes undetected.
 Every `v*` release publishes:
 
 - **Wheel + sdist** on PyPI via OIDC Trusted Publisher
-- **Docker image** on GHCR (`ghcr.io/sattyamjjain/agent-audit-kit:<tag>`) with SLSA provenance attestation. Provenance is attached by the release flow, so it covers **version tags**; the nightly rebuild that refreshes `:latest` and `:nightly` scans the image with Trivy but attaches no attestation, so pin a version tag if you need provenance
+- **Docker image** on GHCR (`ghcr.io/sattyamjjain/agent-audit-kit:<version>`, the version without its `v`) with SLSA provenance attestation. Provenance is attached by the release flow, so it covers **version tags**; the nightly rebuild that refreshes `:latest` and `:nightly` scans the image with Trivy but attaches no attestation, so pin a version tag if you need provenance
 - **Sigstore keyless-signed rule bundle** (`rules.json` + `rules.json.sha256`)
-- **CycloneDX + SPDX SBOM** (`sbom.cdx.json`, `sbom.spdx.json`)
-- **OpenVEX 0.2.0 exploitability document** (`vex.openvex.json`) — joins to the SBOM on purl; never claims `not_affected`, which needs a reachability justification a static scan cannot establish
+- **CycloneDX + SPDX SBOM** of the package and its runtime dependencies (`sbom.cdx.json`, `sbom.spdx.json`), each Sigstore-signed. Releases through v0.6.9 attached SBOMs that listed no components: the job described this repository's MCP servers, of which it has none
+
+For your own project, `agent-audit-kit sbom` and `agent-audit-kit vex` emit the SBOM
+of the MCP servers it declares and an OpenVEX 0.2.0 document that joins to it on
+purl ([VEX](vex.md)). No release publishes a VEX document of its own.
 
 Verify a bundle:
 

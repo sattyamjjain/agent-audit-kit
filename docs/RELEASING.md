@@ -83,7 +83,9 @@ correct number. Future releases use the README-grep form.
 - PyPI index shows new version as `latest`. Index can lag the workflow's `Publish to PyPI: success` by 1–2 minutes; poll until propagated.
 - GitHub Release published, non-draft, non-prerelease.
 - GHCR Docker image pushed.
-- Sigstore SBOM + bundle uploaded.
+- Sigstore SBOM + bundle uploaded, and `sbom.cdx.json` lists the runtime
+  dependencies (`jq '.components[].name' sbom.cdx.json`); through v0.6.9 it
+  listed none.
 - README badges (rule count, framework count, version pin) all atomic.
 - GitHub repo description re-PATCHED per §3.
 
