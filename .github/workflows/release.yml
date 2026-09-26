@@ -336,6 +336,18 @@ jobs:
           load: true
           tags: agent-audit-kit:scan
 
+      # The documented one-liner, on the image about to be pushed. Through 0.6.9
+      # the image's entrypoint was the Action bridge, which read `scan` as the
+      # path and `/project` as the severity: every documented `docker run`
+      # exited 2, and nothing ever ran one to notice.
+      - name: Smoke-test the documented docker run
+        run: |
+          set -euo pipefail
+          docker run --rm agent-audit-kit:scan --version
+          docker run --rm -v "$PWD/tests/fixtures/cves/cve-2026-94044-mcp-route/vulnerable:/project:ro" \
+            agent-audit-kit:scan scan /project --format json --fail-on none > smoke.json
+          python3 -c 'import json; ids = {f["ruleId"] for f in json.load(open("smoke.json"))["findings"]}; assert "AAK-MCP-015" in ids, sorted(ids)'
+
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
