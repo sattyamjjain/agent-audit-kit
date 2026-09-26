@@ -63,6 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   published research page grows a relative link the hook cannot rewrite had
   never executed on a runner. `mkdocs>=1.6` is now in the `dev` extra, with 1.6
   as the floor because the hook overrides `File.content_string`.
+- **The false-positive benchmark's Limitations described a different run from
+  its headline.** `benchmarks/false_positive/RESULTS.md` reports the 2026-09-03
+  run (0 / 1, Wilson 95% CI [0.0%, 79.3%]), while its Limitations still gave the
+  2026-08-24 one: 6 HIGH/CRITICAL findings, [30.0%, 90.3%], a 66.7% point
+  estimate, first-remote-only conversion and an ambiguous thoughtspot finding.
+  The bullets now describe the reported run, earlier numbers stay in the History
+  table, and `make fp-check` fails when a HIGH/CRITICAL count, percentage or
+  interval outside that table disagrees with `results.json`.
 
 ## [0.6.8] - 2026-09-25
 

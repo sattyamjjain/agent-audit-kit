@@ -29,10 +29,10 @@ change, the slice stays at 536, and `AAK-MCP-001` is untouched — so the rate
 moves for exactly one reason, which is what the previous run said it wanted and
 deliberately would not bundle.
 
-The 2026-08-24 pair of numbers (untuned **4 / 6 = 66.7%**, post-fix
-**2 / 4 = 50.0%**) stays in [`triage.md`](triage.md) and the history table below.
-That run was itself a large regression against the 0.0% published on 2026-07-22,
-for a reason worth keeping on the record: **the 0.0% was never re-measured after
+The 2026-08-24 numbers, untuned and post-fix, stay in [`triage.md`](triage.md)
+and the history table below; this page's body states only the run it reports.
+That run was itself a large regression against the rate published on 2026-07-22,
+for a reason worth keeping on the record: **that rate was never re-measured after
 the corpus grew.** The manifest went from 1,374 to 1,641 registry servers and the
 benign slice from 368 to 536, and nothing re-ran the benchmark. The published
 number described a slice that no longer existed. There is now a drift guard
@@ -148,7 +148,7 @@ did not go quieter; it went **more accurate**, and the severity mix is the
 evidence.
 
 The MEDIUM count is inflated by one advisory rule (`AAK-MCP-ATTEST-001`) that
-fires on 100% of configs by design; it is not an exploitable misconfiguration.
+fires on every config by design; it is not an exploitable misconfiguration.
 Only `AAK-MCP-001` produced HIGH/CRITICAL findings, so it is the whole of the FP
 surface here — as it was in both previous runs.
 
@@ -236,18 +236,24 @@ disagreed about it, and nothing compared their answers.
 - **Single rater, no inter-rater agreement.** All verdicts are the maintainer's.
   There is no second independent adjudicator, so no agreement statistic is
   reported.
-- **Small adjudication denominator → wide interval.** 6 HIGH/CRITICAL findings
-  across 536 configs gives a Wilson 95% CI of [30.0%, 90.3%] on the FP rate. The
-  point estimate (66.7%) should not be read as precise; the interval is the
-  honest summary. The *slice* is large; the number of high-severity findings it
-  provokes is small, and that is what bounds the precision of this rate.
+- **Small adjudication denominator → wide interval.** 1 HIGH/CRITICAL finding
+  across 536 configs, adjudicated 0 / 1 false positives, gives a Wilson 95% CI of
+  [0.0%, 79.3%] on the FP rate. The point estimate (0.0%) should not be read as
+  precise; the interval is the honest summary. The *slice* is large; the number
+  of high-severity findings it provokes is small, and that is what bounds the
+  precision of this rate.
 - **Config-level + conversion fidelity.** Registry servers are converted to
-  `.mcp.json` shape from their `remotes`/`packages` metadata (**first remote
-  only**), so a multi-remote server's auth can be under-represented. This is no
-  longer hypothetical — see root cause B above.
-- **Snapshot vs live drift.** The manifest is a 2026-07-26 snapshot. Servers
-  republish, and at least one (`app.thoughtspot/mcp-server`) has changed version
-  since, which is why its finding is adjudicated ambiguous rather than guessed at.
+  `.mcp.json` shape from their `remotes`/`packages` metadata, one remote per
+  server: the **first remote that declares headers**, or the first remote when
+  none does. It was the first remote only until the 2026-08-24 fix (root cause B
+  above). A server whose first header-declaring remote is not the one carrying
+  its credential is still under-represented, and its other remotes are not
+  scanned at all.
+- **Snapshot vs live drift.** The manifest is a 2026-07-26 snapshot, and servers
+  republish after it, so a finding describes a server as it was on that date.
+  `app.thoughtspot/mcp-server`, adjudicated ambiguous on 2026-08-24 for exactly
+  this reason, now resolves from the cached snapshot to its `/bearer/mcp`
+  remote and no longer fires.
 - **Scope is HIGH/CRITICAL.** MEDIUM/LOW findings (the bulk of the volume) are not
   adjudicated here; this measures the false-positive rate of the severities that
   drive operational action.

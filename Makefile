@@ -67,13 +67,15 @@ fp:
 ## fp-check: fail if any false-positive artifact is stale vs a fresh derivation (drift guard).
 ## This is the guard that was missing: the corpus manifest grew 1,374 -> 1,641 servers, the
 ## benign slice 368 -> 536, and the published rate went on describing a slice that no longer
-## existed because nothing checked.
+## existed because nothing checked. The last line checks the hand-written RESULTS.md: its
+## Limitations kept the 2026-08-24 run's numbers under a headline reporting 2026-09-03's.
 fp-check:
 	@python benchmarks/false_positive/corpus.py --check
 	@python benchmarks/false_positive/run.py --out /tmp/aak-fp-check.json >/dev/null
 	@diff -q benchmarks/false_positive/results.json /tmp/aak-fp-check.json >/dev/null && echo "fp results are up to date" \
 	  || (echo "results.json is stale - run 'make fp', re-adjudicate by hand, and commit" && exit 1)
 	@python scripts/sync_fp_badge.py --check
+	@python scripts/check_fp_results_page.py
 
 ## count-check: fail if ANY rendered count is stale. Two guards, because they cover
 ## different halves and each one alone gives a false all-clear:

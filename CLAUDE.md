@@ -33,7 +33,7 @@ make count-check         # check_counts.py + sync_rule_count.py --check + sync_r
 make report-check        # results.json byte-identical to a fresh run
 make report-pdf-check    # the report PDF's source stamp matches results.json (a stamp, not a byte-diff: reportlab embeds a CreationDate); pytest asserts it too
 make report-figures-check # every governed report figure in prose sits inside a `report:` marker
-make fp-check            # false-positive benchmark artifacts (slice, results, badge) not stale
+make fp-check            # FP benchmark artifacts (slice, results, badge) not stale, and every count, % and CI in RESULTS.md outside ## History matches results.json
 make cve-latency-check   # docs/cve-latency.md matches the CVE ledger (runs on tag)
 make remediation-corpus-check # remediation-key-corpus.json matches benchmarks/data
 
