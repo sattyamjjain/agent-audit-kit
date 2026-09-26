@@ -21,7 +21,7 @@ Nothing here was cut; it is the same content with a home of its own.
 | `agent-audit-kit proxy --port 8765 --target URL` | Start MCP interception proxy |
 | `agent-audit-kit kill` | Terminate running proxy |
 | `agent-audit-kit export-rules --out rules.json` | Write deterministic rule bundle + SHA-256 (Sigstore-signable) |
-| `agent-audit-kit verify-bundle rules.json [--signature sig]` | Verify bundle digest or Sigstore signature |
+| `agent-audit-kit verify-bundle rules.json [--signature rules.json.sigstore.json] [--tag vX.Y.Z]` | Verify the bundle's digest, or its Sigstore signature and that release.yml signed it (needs `[verify]`) |
 | `agent-audit-kit sbom . --format {cyclonedx,spdx}` | Emit CycloneDX 1.5 / SPDX 2.3 SBOM for MCP deps |
 | `agent-audit-kit vex .` | Emit an OpenVEX 0.2.0 exploitability document, joined to the SBOM on purl |
 | `agent-audit-kit report . --framework FRAMEWORK --format pdf` | Auditor-ready compliance report (EU AI Act / SOC 2 / ISO 27001 / HIPAA / NIST AI RMF) |

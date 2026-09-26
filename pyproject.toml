@@ -41,6 +41,14 @@ taint = [
     "tree-sitter>=0.21",
     "tree-sitter-typescript>=0.21",
 ]
+# Signature verification for `agent-audit-kit verify-bundle --signature`, lazy-
+# imported like the taint extra. 4.1 is the floor: the oldest release checked to
+# verify a current release bundle offline (3.4's bundled trust root lacks the
+# current Rekor key), and the last one that still supports Python 3.9.
+#   pip install "agent-audit-kit[verify]"
+verify = [
+    "sigstore>=4.1",
+]
 
 dev = [
     # Pulls in the optional taint extra so CI exercises the tree-sitter
@@ -48,6 +56,10 @@ dev = [
     # grammar-gated tests skip on every runner and the analysis would ship with
     # no CI coverage at all — the fallback tests would be the only thing green.
     "agent-audit-kit[taint]",
+    # Same reason for the verify extra: tests/test_verify_bundle.py checks a real
+    # release signature and skips without sigstore, and until 0.6.9 nothing ran
+    # that path at all -- which is how it broke with sigstore 3.0 unnoticed.
+    "agent-audit-kit[verify]",
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "mypy>=1.0",

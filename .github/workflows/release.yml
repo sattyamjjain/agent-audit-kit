@@ -531,7 +531,12 @@ jobs:
             - `rules.json` — deterministic rule bundle
             - `rules.json.sha256` — trusted digest
             - `sbom.cdx.json` / `sbom.spdx.json` — CycloneDX + SPDX SBOM of the package and its runtime dependencies
-            - `*.sigstore.json` — Sigstore keyless signature bundles (verify with `agent-audit-kit verify-bundle`)
+            - `*.sigstore.json` — Sigstore keyless signature bundles. Verify one, and that this release's workflow signed it:
+
+            ```bash
+            pip install "agent-audit-kit[verify]"
+            agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore.json --tag ${{ github.ref_name }}
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
