@@ -73,6 +73,18 @@ jobs:
           output: trivy-nightly.sarif
           severity: CRITICAL,HIGH
 
+      # The documented one-liner on the image just pushed; release.yml runs the
+      # same check before its push. A failure here files the scheduled-failure
+      # issue below.
+      - name: Smoke-test the documented docker run
+        run: |
+          set -euo pipefail
+          img=ghcr.io/${{ github.repository_owner }}/agent-audit-kit:nightly
+          docker run --rm "$img" --version
+          docker run --rm -v "$PWD/tests/fixtures/cves/cve-2026-94044-mcp-route/vulnerable:/project:ro" \
+            "$img" scan /project --format json --fail-on none > smoke.json
+          python3 -c 'import json; ids = {f["ruleId"] for f in json.load(open("smoke.json"))["findings"]}; assert "AAK-MCP-015" in ids, sorted(ids)'
+
       - name: Upload Trivy SARIF to Security tab
         if: always()
         uses: github/codeql-action/upload-sarif@v4

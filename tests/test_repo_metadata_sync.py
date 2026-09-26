@@ -345,3 +345,50 @@ def test_render_runs_without_the_package_installed() -> None:
             f"{script} failed with the repo root off sys.path:\n{out.stderr}"
         )
         assert "rules across" in out.stdout, out.stdout
+
+
+# ---------------------------------------------------------------------------
+# Docker image pins. docs/gitlab-ci.md pinned `ghcr.io/...:0.2.0` from the
+# release it was written for until 0.6.9, because the sync rewrote only the
+# `@vX.Y.Z` Action pins and the pre-commit `rev:`; an image tag was nobody's.
+# ---------------------------------------------------------------------------
+
+_IMAGE_PIN = re.compile(r"ghcr\.io/sattyamjjain/agent-audit-kit:(\d+\.\d+\.\d+)")
+
+
+def test_docker_image_pins_in_the_docs_match_the_version() -> None:
+    module = _load_module()
+    version = module._read_version()
+    pins = [
+        (doc.relative_to(REPO_ROOT), tag)
+        for doc in module._iter_docs()
+        for tag in _IMAGE_PIN.findall(doc.read_text(encoding="utf-8"))
+    ]
+    assert pins, "no pinned image in the docs; the guard would be vacuous"
+    assert [p for p in pins if p[1] != version] == []
+
+
+def test_the_writer_moves_a_version_tag_and_leaves_the_rest(tmp_path: Path) -> None:
+    module = _load_module()
+    doc = tmp_path / "gitlab.md"
+    doc.write_text(
+        "image: ghcr.io/sattyamjjain/agent-audit-kit:0.2.0\n"
+        "docker run ghcr.io/sattyamjjain/agent-audit-kit scan .\n"
+        "ghcr.io/sattyamjjain/agent-audit-kit:latest and :<tag>\n",
+        encoding="utf-8",
+    )
+    changed, _ = module._rewrite(doc, "sattyamjjain/agent-audit-kit@v9.9.9", "9.9.9")
+    assert changed
+    assert doc.read_text(encoding="utf-8") == (
+        "image: ghcr.io/sattyamjjain/agent-audit-kit:9.9.9\n"
+        "docker run ghcr.io/sattyamjjain/agent-audit-kit scan .\n"
+        "ghcr.io/sattyamjjain/agent-audit-kit:latest and :<tag>\n"
+    )
+
+
+def test_the_checker_reports_a_stale_image_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+    doc = tmp_path / "gitlab.md"
+    doc.write_text("image: ghcr.io/sattyamjjain/agent-audit-kit:0.2.0\n", encoding="utf-8")
+    monkeypatch.setattr(module, "_iter_docs", lambda: [doc])
+    assert module._check("sattyamjjain/agent-audit-kit@v9.9.9", "9.9.9") == [doc]

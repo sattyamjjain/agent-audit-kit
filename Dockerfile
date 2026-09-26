@@ -9,6 +9,8 @@ COPY . /app
 WORKDIR /app
 RUN pip install --no-cache-dir .
 
+# The GitHub Action bridge. action.yml selects it with `runs.entrypoint`; it
+# reads its positional arguments as the Action's inputs ($1 path, $2 severity).
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
@@ -20,4 +22,7 @@ RUN chmod +x /entrypoint.sh
 # self-scan workflow logs from PR #71. Container isolation, not
 # in-container UID, is the load-bearing security boundary here.
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Everyone except the Action gets the CLI: `docker run IMAGE scan /project`.
+# Through 0.6.9 this was the bridge, which read `scan` as the path and
+# `/project` as the severity, so every documented one-liner exited 2.
+ENTRYPOINT ["agent-audit-kit"]

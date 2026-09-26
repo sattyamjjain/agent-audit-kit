@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`docker run ghcr.io/sattyamjjain/agent-audit-kit scan /project` works.**
+  The image's entrypoint has been the GitHub Action bridge since the Dockerfile
+  was added, and the bridge reads its positional arguments as the Action's
+  inputs, so every documented `docker run` handed it a CLI command line: `scan`
+  became the path, `/project` the severity, and the run exited 2. The image now
+  runs the CLI, and `action.yml` selects the bridge itself with
+  `runs.entrypoint`, so the Action behaves as before. The release job runs the
+  documented one-liner against a fixture before it pushes, and the nightly
+  rebuild after. Anyone who passed the Action's positional inputs to the image
+  directly now needs `--entrypoint /entrypoint.sh`.
+- **The GitLab examples publish their SARIF.** Every one filed it under
+  `artifacts:reports:sast`, which is GitLab's own SAST report format and does
+  not read SARIF; it now goes under `artifacts:reports:sarif` (GitLab Ultimate
+  19.1+). The SARIF jobs report with `--fail-on none`, because GitLab ingests
+  SARIF only from a job that succeeds, and `--ci` failed the job on exactly the
+  runs that had findings. The Docker example sets `entrypoint: [""]` so GitLab
+  can start its shell in the image, and pins the current release instead of
+  0.2.0: `sync_repo_metadata.py` now keeps pinned image tags in the docs on the
+  release version, as it already did for the Action pins.
 - **A release's SBOM describes the release.** From v0.3.0 to v0.6.9 the
   release job ran `agent-audit-kit sbom .` on this repository. That command
   inventories the MCP servers a scanned project declares, and this repository
