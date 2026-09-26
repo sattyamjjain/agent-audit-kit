@@ -55,11 +55,13 @@ def test_the_tag_pins_the_release() -> None:
 
 @needs_sigstore
 def test_a_changed_file_fails(tmp_path: Path) -> None:
+    """Refused on every supported sigstore; the reason's wording is theirs and
+    varies (4.5: "message digest mismatch", 4.1: "Signature is invalid for input")."""
     changed = tmp_path / ARTIFACT.name
     changed.write_bytes(ARTIFACT.read_bytes().replace(b"CycloneDX", b"CycloneDx", 1))
     ok, message = verify_bundle(changed, SIGNATURE, offline=True)
     assert not ok
-    assert "digest" in message.lower()
+    assert message.startswith("sigstore verification failed: ")
 
 
 @needs_sigstore
