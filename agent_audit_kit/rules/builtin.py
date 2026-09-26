@@ -1387,6 +1387,17 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-05"],
+    limitations=(
+        "Looks at two hiding places: HTML comments and invisible code points. A "
+        "comment is reported unless it matches a tool marker's whole syntax: the "
+        "Claude Code auto-memory plugin's section markers, markdownlint toggles "
+        "naming only MDnnn ids, and prettier-ignore. Invisible characters are "
+        "judged by position, so U+200C or U+200D between two letters of one "
+        "joiner-using script, U+200D between two emoji, and a byte-order mark at "
+        "the start of the file are treated as spelling. Other ways to keep text "
+        "out of rendered markdown, such as a link reference definition used as a "
+        "comment (`[//]: # (...)`), are not detected."
+    ),
 )
 
 
@@ -7756,6 +7767,27 @@ _r(
         #   unrestricted file_path on that same unauthenticated transport — this
         #   pin's own titular shape, now unauthenticated as well.
         "CVE-2026-77244", "CVE-2026-77254", "CVE-2026-77243", "CVE-2026-77248",
+        # 2026-09-22 wave, the rest of it (#781-#786, #789, #790). Eight more
+        # advisories on the same package, each citing that same b0417334 commit
+        # and fixed in 0.22.0, this pin's floor. Measured on the CVE-2026-73498
+        # fixtures: fires at 0.21.1, silent at 0.22.0. Recorded against this pin
+        # only; no shape rule is claimed without a fixture of its own.
+        # CVE-2026-77255 (HIGH 8.6, CWE-22 + CWE-441) jira update_issue's
+        #   attachments become local paths routed to upload_attachment unchecked.
+        # CVE-2026-77262 (HIGH 8.6, CWE-22), CVE-2026-77258 (HIGH 7.7, CWE-22)
+        #   and CVE-2026-77259 (HIGH 7.7, CWE-22 + CWE-552) Confluence
+        #   upload_attachment opens a caller-chosen server-local file: this
+        #   pin's titular shape, which its source arm reports as well.
+        # CVE-2026-77242 (HIGH 7.5, CWE-367 + CWE-918) validate_url_for_ssrf
+        #   checks one DNS answer and the connection resolves another.
+        # CVE-2026-77246 (HIGH 7.4, CWE-200 + CWE-22 + CWE-441) a request with
+        #   no Authorization identity picks the attachment host by header.
+        # CVE-2026-77261 (HIGH 7.1, CWE-918) the SSRF redirect hook is missing
+        #   from the basic-auth and oauth_pat fetcher sessions.
+        # CVE-2026-77253 (HIGH 7.1, CWE-22) both attachment tools accept any
+        #   local path.
+        "CVE-2026-77255", "CVE-2026-77262", "CVE-2026-77258", "CVE-2026-77259",
+        "CVE-2026-77242", "CVE-2026-77246", "CVE-2026-77261", "CVE-2026-77253",
     ],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],

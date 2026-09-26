@@ -21,7 +21,8 @@ scanners/
 ```
 
 - **Contract**: `scan(project_root: Path, ...) -> tuple[list[Finding], set[str]]`. The set is **scanned file paths relative to `project_root`** — never rule ids; `run_scan` counts that set as `files_scanned`.
-- **Kwargs**: the engine passes only the keys a scanner declared in its registry tuple (`include_user_config`, `ignore_paths`); a scanner that takes none declares `[]`.
+- **Kwargs**: the engine passes only the keys a scanner declared in its registry tuple (`include_user_config`, `ignore_paths`); a scanner that takes none declares `[]`, as every `_OPTIONAL_SCANNERS` entry currently does (only the always-on core takes kwargs). `run_scan` re-applies `ignore_paths` to every finding after the scan, so a new scanner does not need that kwarg for correctness.
+- **Crashes surface, they are not swallowed**: an exception escaping `scan()` becomes an INFO `AAK-INTERNAL-SCANNER-FAIL` finding, and `aak scan` then exits 1 as INCOMPLETE unless `--allow-scanner-failure`. Catch the specific per-file parse/IO errors (`json.JSONDecodeError`, `yaml.YAMLError`, `OSError`, `UnicodeDecodeError`) as nearly every scanner here does; a blanket `except` around the whole body turns a crash into a silent clean pass.
 - **Registration**: one `(module, display_name, kwargs_keys)` tuple in `_OPTIONAL_SCANNERS` in `../engine.py`; the always-on core (`mcp_config`, `hook_injection`, `trust_boundary`, `secret_exposure`, `supply_chain`) is constructed directly above that table. An ImportError skips the scanner unless `run_scan(strict_loading=True)`.
 - **`_`-prefixed modules are helpers, never scanners**: the count scripts exclude them, so shared logic belongs there and a second public module for one detector creates a phantom count entry.
 - **Composition**: `composition.py` also exports `covering_keys` / `suppression_keys`; `run_scan` uses them to drop a chain whose components already carry findings at or above the chain's severity.
