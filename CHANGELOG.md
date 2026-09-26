@@ -79,6 +79,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configs only and that the 930-repository report in #771 is what exposed
   `AAK-AGENT-002` on instruction files, and `RESULTS.md` states that the
   `AAK-AGENT-*` rules are not measured by the benchmark.
+- **The README's test count said "tests" and counts test functions.** The
+  marker is `test_*` functions counted from the AST, deliberately, because
+  pytest's collected total moves with parametrisation; a gate printing "2908
+  passed" beside "2,537 tests" read as drift when neither number was wrong. The
+  README now says "test functions", and a contract test holds the noun, so the
+  number stated is one a reader can check.
 
 ## [0.6.8] - 2026-09-25
 
