@@ -3174,11 +3174,12 @@
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-50158",
-        "CVE-2026-77248"
+        "CVE-2026-77248",
+        "CVE-2026-94044"
       ],
-      "description": "An MCP server exposes a resource/file handler that passes user-supplied paths to open()/fs.readFile without normalization or allowlist checks. 2,614 MCP implementations surveyed; 82% had this class of issue.",
+      "description": "An MCP server exposes a resource/file handler that passes user-supplied paths to open()/fs.readFile without normalization or allowlist checks. 2,614 MCP implementations surveyed; 82% had this class of issue. In a TypeScript tool handler it also follows a destructured tool argument through `path.join` / `path.resolve` to an fs read or write with no containment check in between, the shape of CVE-2026-94044.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Regex and proximity, not data flow. The TypeScript arm follows one `path.join` / `path.resolve` from a destructured tool argument to an fs read or write within one handler-sized window, so a path assembled through helper functions is missed. It stays silent on a containment check it recognises (`startsWith`, `path.relative`, `realpath`) and on any `if` naming the joined path that throws or returns, by design, so a weak check can silence it; `path.basename()` around the argument counts as sanitizing.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -3190,7 +3191,7 @@
       "rule_id": "AAK-MCP-015",
       "sarif_name": "McpPathTraversal",
       "severity": "critical",
-      "title": "Path traversal in MCP resource handler"
+      "title": "Path traversal in MCP resource or tool file handler"
     },
     {
       "adversa_references": [

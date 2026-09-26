@@ -2037,10 +2037,13 @@ _r(
 
 _r(
     "AAK-MCP-015",
-    "Path traversal in MCP resource handler",
+    "Path traversal in MCP resource or tool file handler",
     "An MCP server exposes a resource/file handler that passes user-supplied "
     "paths to open()/fs.readFile without normalization or allowlist checks. "
-    "2,614 MCP implementations surveyed; 82% had this class of issue.",
+    "2,614 MCP implementations surveyed; 82% had this class of issue. In a "
+    "TypeScript tool handler it also follows a destructured tool argument "
+    "through `path.join` / `path.resolve` to an fs read or write with no "
+    "containment check in between, the shape of CVE-2026-94044.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
     "Resolve the requested path, reject '..' components, and verify the "
@@ -2060,10 +2063,27 @@ _r(
         # reads any file the process can and exfiltrates it as a Jira or
         # Confluence attachment. Also carried by the package's 0.22.0 pin.
         "CVE-2026-77248",
+        # 2026-09-26. CVE-2026-94044 (03-lovepreetSingh MCP, HIGH 7.3, CWE-22):
+        # create_file in app/api/mcp/route.ts joins the filePath argument onto
+        # the upload directory and writes there unchecked. Deferred the same day
+        # because nothing fired on the upstream file; the TypeScript tool-handler
+        # arm now reports all four of its file tools. Not pinnable: the package
+        # is private and unversioned.
+        "CVE-2026-94044",
     ],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RES-01"],
+    limitations=(
+        "Regex and proximity, not data flow. The TypeScript arm follows one "
+        "`path.join` / `path.resolve` from a destructured tool argument to an fs "
+        "read or write within one handler-sized window, so a path assembled "
+        "through helper functions is missed. It stays silent on a containment "
+        "check it recognises (`startsWith`, `path.relative`, `realpath`) and on "
+        "any `if` naming the joined path that throws or returns, by design, so a "
+        "weak check can silence it; `path.basename()` around the argument counts "
+        "as sanitizing."
+    ),
 )
 
 _r(

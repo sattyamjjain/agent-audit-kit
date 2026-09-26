@@ -2741,7 +2741,8 @@
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-50158",
-        "CVE-2026-77248"
+        "CVE-2026-77248",
+        "CVE-2026-94044"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance"
@@ -2757,7 +2758,7 @@
       ],
       "rule_id": "AAK-MCP-015",
       "severity": "critical",
-      "title": "Path traversal in MCP resource handler"
+      "title": "Path traversal in MCP resource or tool file handler"
     },
     {
       "category": "mcp-config",
@@ -8212,7 +8213,7 @@
       "low": 10,
       "medium": 95
     },
-    "total_cves_covered": 251,
+    "total_cves_covered": 252,
     "total_rules": 362
   },
   "tool": "agent-audit-kit"
