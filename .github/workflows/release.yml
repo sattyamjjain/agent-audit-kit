@@ -408,10 +408,19 @@ jobs:
           sha256sum rules.json > rules.json.sha256
           cat rules.json.sha256
 
-      - name: Emit SBOMs (CycloneDX + SPDX)
+      # `agent-audit-kit sbom .` inventories the MCP servers a scanned project
+      # declares; this repository declares none, so from v0.3.0 to v0.6.9 every
+      # SBOM signed and attached here listed zero components. Describe the thing
+      # being released instead: the package installed alone into an empty
+      # environment, with the runtime dependencies that came with it. The script
+      # exits non-zero if a declared dependency is missing from that environment.
+      - name: Emit SBOMs of the package (CycloneDX + SPDX)
         run: |
-          agent-audit-kit sbom . --format cyclonedx --output sbom.cdx.json
-          agent-audit-kit sbom . --format spdx      --output sbom.spdx.json
+          set -euo pipefail
+          python -m venv --without-pip "$RUNNER_TEMP/sbom-env"
+          python -m pip --python "$RUNNER_TEMP/sbom-env/bin/python" install --quiet .
+          "$RUNNER_TEMP/sbom-env/bin/python" scripts/release_sbom.py \
+            --cyclonedx sbom.cdx.json --spdx sbom.spdx.json
 
       - name: Sigstore keyless sign
         uses: sigstore/gh-action-sigstore-python@v3.5.0
@@ -479,6 +488,12 @@ jobs:
           name: signed-bundle
           path: signed
 
+      # The docker job pushes the image as the tag without its `v`; the notes
+      # said `docker pull ...:v0.6.9`, which is a 404. Same step, same id.
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
@@ -496,12 +511,12 @@ jobs:
 
             **pip:**
             ```bash
-            pip install agent-audit-kit==${{ github.ref_name }}
+            pip install agent-audit-kit==${{ steps.version.outputs.version }}
             ```
 
             **Docker:**
             ```bash
-            docker pull ghcr.io/sattyamjjain/agent-audit-kit:${{ github.ref_name }}
+            docker pull ghcr.io/sattyamjjain/agent-audit-kit:${{ steps.version.outputs.version }}
             ```
 
             **GitHub Action:**
@@ -515,8 +530,8 @@ jobs:
 
             - `rules.json` — deterministic rule bundle
             - `rules.json.sha256` — trusted digest
-            - `sbom.cdx.json` / `sbom.spdx.json` — CycloneDX + SPDX SBOM
-            - `*.sigstore` — Sigstore keyless signatures (verify with `agent-audit-kit verify-bundle`)
+            - `sbom.cdx.json` / `sbom.spdx.json` — CycloneDX + SPDX SBOM of the package and its runtime dependencies
+            - `*.sigstore.json` — Sigstore keyless signature bundles (verify with `agent-audit-kit verify-bundle`)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
