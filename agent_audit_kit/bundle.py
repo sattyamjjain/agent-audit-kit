@@ -5,8 +5,10 @@ This module:
 - builds a reproducible JSON bundle of the rule catalog
   (`agent-audit-kit export-rules --out rules.json`)
 - computes a SHA-256 digest the user can independently verify
-- verifies a local bundle against a detached signature + certificate if
-  the `sigstore` package is available (`agent-audit-kit verify-bundle`)
+- verifies a file a release signed against the Sigstore bundle published
+  beside it, and that the signer is this repository's release workflow, when
+  sigstore is installed (`pip install "agent-audit-kit[verify]"`;
+  `agent-audit-kit verify-bundle`)
 
 The scanner still runs without these deps; signing is opt-in for
 compliance workflows.
@@ -18,8 +20,14 @@ import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.rules.builtin import RULES
+
+# Who signs a release: release.yml, keyless, on a `v*` tag push. The Fulcio
+# certificate's SAN is that workflow at the tag, `<this>@refs/tags/v0.6.9`.
+_RELEASE_WORKFLOW = "https://github.com/sattyamjjain/agent-audit-kit/.github/workflows/release.yml"
+_GITHUB_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 
 
 def build_bundle() -> dict:
@@ -53,13 +61,58 @@ def write_bundle(path: Path) -> str:
     return hashlib.sha256(blob).hexdigest()
 
 
-def verify_bundle(bundle_path: Path, signature_path: Path | None = None) -> tuple[bool, str]:
-    """Verify a rule bundle.
+def _signers(cert: Any) -> list[str]:
+    """The URI identities in a signing certificate's SAN."""
+    from cryptography.x509 import SubjectAlternativeName, UniformResourceIdentifier
 
-    If `signature_path` is given AND the `sigstore` package is importable,
-    a full cryptographic verification is attempted. Otherwise only the
-    bundle's SHA-256 is returned and the caller is expected to compare
-    against a trusted digest.
+    try:
+        san = cert.extensions.get_extension_for_class(SubjectAlternativeName).value
+    except Exception:  # noqa: BLE001 -- no SAN extension: no identity to report
+        return []
+    return list(san.get_values_for_type(UniformResourceIdentifier))
+
+
+def _release_policy(tag: str | None) -> Any:
+    """The identity a release signature has to carry.
+
+    With ``tag``, exactly release.yml at that tag. Without it, release.yml at any
+    ``v*`` tag: a rule bundle does not record its own version, so that is as far
+    as the file alone can pin it. A valid Sigstore signature from anyone else --
+    another repository, another workflow, a branch -- fails either way.
+    """
+    from sigstore.errors import VerificationError
+    from sigstore.verify import policy
+
+    if tag:
+        return policy.Identity(identity=f"{_RELEASE_WORKFLOW}@refs/tags/{tag}", issuer=_GITHUB_OIDC_ISSUER)
+
+    class _ReleaseTag(policy.VerificationPolicy):
+        def verify(self, cert: Any) -> None:
+            signers = _signers(cert)
+            if not any(s.startswith(f"{_RELEASE_WORKFLOW}@refs/tags/v") for s in signers):
+                raise VerificationError(f"signed by {signers}, not by {_RELEASE_WORKFLOW} on a version tag")
+
+    return policy.AllOf([policy.OIDCIssuer(_GITHUB_OIDC_ISSUER), _ReleaseTag()])
+
+
+def verify_bundle(
+    bundle_path: Path,
+    signature_path: Path | None = None,
+    *,
+    tag: str | None = None,
+    offline: bool = False,
+) -> tuple[bool, str]:
+    """Verify a rule bundle, or any other file a release signed.
+
+    Without ``signature_path`` only the SHA-256 is returned, to compare with the
+    published ``rules.json.sha256``. With it, the Sigstore bundle
+    (``rules.json.sigstore.json``) must verify for this file and carry the
+    release workflow's identity (`_release_policy`). ``offline`` uses the trust
+    root that ships with sigstore instead of refreshing it over TUF.
+
+    Through 0.6.9 this imported ``VerificationMaterials`` and called
+    ``Verifier.verify``, both gone since sigstore 3.0, with no identity policy:
+    it could not verify a release, and said sigstore was missing when it was not.
 
     Returns (ok, message).
     """
@@ -72,21 +125,18 @@ def verify_bundle(bundle_path: Path, signature_path: Path | None = None) -> tupl
         return True, f"sha256={digest} (signature not supplied; compare against trusted digest)"
 
     try:
-        from sigstore.verify import Verifier, VerificationMaterials  # type: ignore[import-not-found]
+        from sigstore.models import Bundle
+        from sigstore.verify import Verifier
     except ImportError:
         return False, (
-            "sigstore package not installed. Install with `pip install sigstore` "
+            'sigstore is not installed: pip install "agent-audit-kit[verify]" '
             f"and re-run. Bundle SHA-256: {digest}"
         )
 
     try:
-        verifier = Verifier.production()
-        _ = VerificationMaterials  # type: ignore[unused-ignore]
-        # Full signature verification path — we keep the call shape
-        # flexible because sigstore-python's Verifier.verify() signature
-        # has shifted between 1.x and 3.x releases.
-        sig_blob = signature_path.read_bytes()
-        verifier.verify(blob, sig_blob)
-        return True, f"sigstore verified · sha256={digest}"
-    except Exception as exc:  # noqa: BLE001 — surface any verification failure
+        signed = Bundle.from_json(signature_path.read_bytes())
+        Verifier.production(offline=offline).verify_artifact(blob, signed, _release_policy(tag))
+    except Exception as exc:  # noqa: BLE001 -- any failure is a failed verification, and says why
         return False, f"sigstore verification failed: {exc}. Bundle SHA-256: {digest}"
+    signers = ", ".join(_signers(signed.signing_certificate))
+    return True, f"sigstore verified · signed by {signers} · sha256={digest}"

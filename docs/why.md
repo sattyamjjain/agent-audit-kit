@@ -67,11 +67,21 @@ For your own project, `agent-audit-kit sbom` and `agent-audit-kit vex` emit the 
 of the MCP servers it declares and an OpenVEX 0.2.0 document that joins to it on
 purl ([VEX](vex.md)). No release publishes a VEX document of its own.
 
-Verify a bundle:
+Verify a bundle against its signature and signer:
 
 ```bash
-agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore
+pip install "agent-audit-kit[verify]"
+agent-audit-kit verify-bundle rules.json --signature rules.json.sigstore.json --tag v<version>
 ```
+
+It checks the Sigstore bundle against the file and that the signer is this
+repository's `release.yml` on that tag. Without `--tag`, any release tag is
+accepted, since the bundle does not record its own version; `--offline` uses the
+trust root that ships with sigstore. Through v0.6.9 the command could not verify
+a signature at all, so for those releases use the Sigstore CLI:
+`python -m sigstore verify identity rules.json --bundle rules.json.sigstore.json
+--cert-identity https://github.com/sattyamjjain/agent-audit-kit/.github/workflows/release.yml@refs/tags/v<version>
+--cert-oidc-issuer https://token.actions.githubusercontent.com`.
 
 ---
 ## State of MCP Security 2026

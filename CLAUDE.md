@@ -11,7 +11,7 @@
 - **OWASP coverage**: Agentic Top 10 (10/10), MCP Top 10 (10/10), Adversa AI Top 25
 - **Compliance mapping** (14 frameworks): EU AI Act (incl. Art. 50 transparency and Art. 55 packs), SOC 2, ISO 27001/42001, HIPAA, NIST AI RMF, NSA MCP CSI, + regional (India DPDP, Singapore, Alabama, Tennessee, Colorado SB 26-189 ADMT); EU AI Act Art. 50 in force 2026-08-02
 - **10 agent platforms** enumerated by `discover` (`discovery.AGENT_CONFIGS`)
-- Zero cloud dependencies — a default scan is fully offline; network use is opt-in (e.g. `--llm-scan`, `update`, `watch-cve`, `corpus`, `notify`). The only declared extra is `taint` (tree-sitter), lazy-imported with a heuristic fallback; `reportlab` (PDF output) and `sigstore` (bundle signature verification) are undeclared lazy imports that degrade when absent
+- Zero cloud dependencies — a default scan is fully offline; network use is opt-in (e.g. `--llm-scan`, `update`, `watch-cve`, `corpus`, `notify`). The declared extras are `taint` (tree-sitter, with a heuristic fallback) and `verify` (sigstore, for `verify-bundle --signature`), both lazy-imported; `reportlab` (PDF output) is an undeclared lazy import that degrades when absent
 - **License**: Apache-2.0 (relicensed from MIT)
 
 <!-- END AUTO-MANAGED -->
@@ -52,7 +52,7 @@ make cve-latency-queue-check # published open-queue row vs the live tracker; run
 make registry-parity     # does the declared version exist on PyPI? (also daily in CI)
 make cve-deferral-check  # every `cve-deferred` issue names a target date (needs gh)
 
-# Install (editable) — [dev] pulls the optional [taint] extra (tree-sitter data-flow path tested, not just its fallback) and MkDocs (docs-hook tests run, not skip)
+# Install (editable) — [dev] pulls the optional [taint] and [verify] extras (tree-sitter data-flow path and a real release signature tested, not just their fallbacks) and MkDocs (docs-hook tests run, not skip)
 pip install -e ".[dev]"
 
 # Run the CLI — `aak` is an installed alias for `agent-audit-kit` (same entry point)

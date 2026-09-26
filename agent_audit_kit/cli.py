@@ -681,12 +681,17 @@ def scanners_cmd(as_json: bool) -> None:
 @click.version_option(version=__version__)
 @click.argument("bundle", type=click.Path(exists=True, dir_okay=False))
 @click.option("--signature", "-s", "sig_path", type=click.Path(exists=True, dir_okay=False),
-              default=None, help="Sigstore signature bundle.")
-def verify_bundle_cmd(bundle: str, sig_path: str | None) -> None:
-    """Verify a rule bundle's SHA-256 (optionally against a Sigstore signature)."""
+              default=None, help="The Sigstore bundle published beside it, e.g. rules.json.sigstore.json.")
+@click.option("--tag", default=None,
+              help="Release tag the file came from (vX.Y.Z): pins the signer to that release. "
+                   "Without it, release.yml on any version tag is accepted.")
+@click.option("--offline", is_flag=True, default=False,
+              help="Use the trust root bundled with sigstore instead of refreshing it.")
+def verify_bundle_cmd(bundle: str, sig_path: str | None, tag: str | None, offline: bool) -> None:
+    """Verify a release file's SHA-256, or its Sigstore signature and signer."""
     from agent_audit_kit.bundle import verify_bundle
 
-    ok, message = verify_bundle(Path(bundle), Path(sig_path) if sig_path else None)
+    ok, message = verify_bundle(Path(bundle), Path(sig_path) if sig_path else None, tag=tag, offline=offline)
     click.echo(message)
     if not ok:
         sys.exit(EXIT_ERROR)

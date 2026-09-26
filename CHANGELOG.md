@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`verify-bundle --signature` verifies a release.** It imported
+  `VerificationMaterials` and called `Verifier.verify`, both removed in
+  sigstore 3.0, so with sigstore installed it said "sigstore package not
+  installed". Past that, it applied no identity policy, which would have
+  accepted any valid Sigstore signature. It now verifies the published
+  `rules.json.sigstore.json` and requires the signer to be `release.yml` on a
+  version tag; `--tag vX.Y.Z` pins the exact release, and `--offline` uses the
+  trust root bundled with sigstore. `pip install "agent-audit-kit[verify]"`
+  brings sigstore 4.1+, and `[dev]` includes it, so CI verifies a real v0.6.9
+  signature. The documented command named `rules.json.sigstore`, a file no
+  release has attached; the docs and release notes now give the full command.
 - **`docker run ghcr.io/sattyamjjain/agent-audit-kit scan /project` works.**
   The image's entrypoint has been the GitHub Action bridge since the Dockerfile
   was added, and the bridge reads its positional arguments as the Action's
