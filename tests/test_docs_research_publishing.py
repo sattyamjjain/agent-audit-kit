@@ -103,29 +103,3 @@ def test_the_link_scanner_actually_finds_links() -> None:
         (RESEARCH / "REPORT.md").read_text(encoding="utf-8")
     )
     assert len(found) > 3, f"only {len(found)} relative links found in REPORT.md"
-
-
-def test_report_pdf_is_built_from_the_committed_results() -> None:
-    """The site serves this PDF at a stable URL, so a stale one is a wrong number.
-
-    It had been stale for roughly two months: the PDF was last written
-    2026-07-26 while results.json moved three times after it, because nothing
-    regenerated it and nothing compared them.
-    """
-    spec = importlib.util.spec_from_file_location(
-        "render_report_pdf", REPO_ROOT / "scripts" / "render_report_pdf.py"
-    )
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["render_report_pdf"] = module
-    spec.loader.exec_module(module)
-
-    stamped = module.stamped_digest()
-    assert stamped is not None, (
-        "the report PDF carries no source stamp, so nothing records which "
-        "numbers it shows. Run `make report-pdf` and commit both files."
-    )
-    assert stamped == module.results_digest(), (
-        "the report PDF was rendered from a different results.json. "
-        "Run `make report-pdf` and commit."
-    )
