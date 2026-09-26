@@ -22,7 +22,8 @@ _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go"}
 _MAX_FILE_BYTES = 512_000
 
 _MCP_SERVER_HINT = re.compile(
-    r"\b(createServer|McpServer|@tool|mcp\.ServeHTTP|FastMCP|Server\.run_streamable_http)\b"
+    r"\b(createServer|McpServer|createMcpHandler|@tool|mcp\.ServeHTTP|FastMCP|"
+    r"Server\.run_streamable_http)\b"
 )
 
 # AAK-MCP-013: CORS wildcard combined with credentials
@@ -48,6 +49,88 @@ _RESOURCE_OPEN_RE = re.compile(
     r"""\b(?:open|fs\.(?:readFile|readFileSync)|Path\s*\()\s*\(\s*(?:req|request|params|input|args|tool_input|path|file|user_\w+)\b""",
     re.IGNORECASE,
 )
+
+# AAK-MCP-015, TypeScript tool-handler arm (CVE-2026-94044). The regex above wants
+# the request value as the direct first argument of `open` / `fs.readFile`. The
+# commonest form of this bug routes it through `path.join` into a variable first,
+# and `fs.writeFile` was not a sink at all, so a full scan of the upstream
+# app/api/mcp/route.ts reported nothing. This arm follows a name a tool handler
+# destructures (`async ({ filePath }) =>`) through one `path.join` / `path.resolve`
+# to an fs read or write, and stays silent when the joined path is checked in
+# between. Regex and proximity, not data flow, like the language arms of the
+# STDIO command-injection family.
+_TS_EXTS = frozenset({".ts", ".tsx", ".js", ".jsx", ".mjs"})
+_TS_HANDLER_PARAMS_RE = re.compile(r"\(\s*\{([^{}()]*)\}\s*(?::[^()=]*)?\)\s*=>")
+_TS_JOIN_ARGS = r"\(((?:[^()]|\([^()]*\))*)\)"
+_TS_JOIN_ASSIGN_RE = re.compile(
+    r"\b(?:const|let|var)\s+(\w+)\s*=\s*path\.(join|resolve)\s*" + _TS_JOIN_ARGS
+)
+_TS_FS_SINK = (
+    r"fs\.(?:promises\.)?(readFile|readFileSync|writeFile|writeFileSync|appendFile|"
+    r"appendFileSync|createReadStream|createWriteStream|unlink|unlinkSync|rm|rmSync)"
+)
+_TS_INLINE_SINK_RE = re.compile(
+    _TS_FS_SINK + r"\s*\(\s*path\.(join|resolve)\s*" + _TS_JOIN_ARGS
+)
+# One handler body: a sink further away than this is not read as the same flow.
+_TS_FLOW_WINDOW = 800
+
+
+def _ts_handler_params(text: str) -> set[str]:
+    """Local names tool handlers destructure: `({ filePath, content: body })`."""
+    names: set[str] = set()
+    for m in _TS_HANDLER_PARAMS_RE.finditer(text):
+        for item in m.group(1).split(","):
+            local = item.split("=")[0].split(":")[-1].strip()
+            if re.fullmatch(r"[A-Za-z_$][\w$]*", local):
+                names.add(local)
+    return names
+
+
+def _ts_is_guarded(between: str, var: str) -> bool:
+    """A containment check on ``var`` between the join and its sink.
+
+    `startsWith` against a base, `path.relative`, `realpath`, or any `if` naming
+    the variable that throws or returns, which is how a helper such as
+    `if (!inside(fullPath)) throw` reads. Deliberately generous: a check this
+    does not understand silences the arm rather than accusing a guarded handler.
+    """
+    v = re.escape(var)
+    return bool(
+        re.search(rf"\b{v}\s*\.\s*startsWith\s*\(", between)
+        or re.search(rf"path\.relative\s*\([^)]*\b{v}\b", between)
+        or re.search(rf"realpath\w*\s*\(\s*{v}\b", between)
+        or re.search(rf"\bif\s*\([^;{{]*\b{v}\b[^;{{]*\)\s*\{{?\s*(?:throw|return)\b", between)
+    )
+
+
+def _ts_tool_path_traversal(text: str) -> list[tuple[int, str]]:
+    """``(offset, evidence)`` for each tool argument joined onto a path and read
+    or written with no containment check in between."""
+    names = _ts_handler_params(text)
+    if not names:
+        return []
+    arg_re = re.compile(r"\b(?:" + "|".join(map(re.escape, sorted(names))) + r")\b")
+    hits: list[tuple[int, str]] = []
+    for m in _TS_JOIN_ASSIGN_RE.finditer(text):
+        var, fn, args = m.group(1), m.group(2), m.group(3)
+        if not arg_re.search(args) or "basename(" in args:
+            continue
+        window = text[m.end(): m.end() + _TS_FLOW_WINDOW]
+        sink = re.search(_TS_FS_SINK + r"\s*\(\s*" + re.escape(var) + r"\b", window)
+        if sink is None or _ts_is_guarded(window[: sink.start()], var):
+            continue
+        hits.append((m.start(), (
+            f"`{var} = path.{fn}({args[:80]})` reaches `fs.{sink.group(1)}` "
+            "with no containment check"
+        )))
+    for m in _TS_INLINE_SINK_RE.finditer(text):
+        sink_name, fn, args = m.group(1), m.group(2), m.group(3)
+        if arg_re.search(args) and "basename(" not in args:
+            hits.append((m.start(), (
+                f"`fs.{sink_name}(path.{fn}({args[:80]}))` with no containment check"
+            )))
+    return hits
 
 # AAK-MCP-017: plain HTTP (not HTTPS) bind in server config
 _PLAIN_HTTP_BIND_RE = re.compile(
@@ -131,6 +214,23 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 line_number=find_line_number(text, m.group(0)) if m else None,
             )
         )
+
+    if path.suffix.lower() in _TS_EXTS:
+        # A line the direct-argument regex above already reported is not repeated.
+        reported = {f.line_number for f in findings if f.rule_id == "AAK-MCP-015"}
+        for offset, evidence in _ts_tool_path_traversal(text):
+            line = text.count("\n", 0, offset) + 1
+            if line in reported:
+                continue
+            reported.add(line)
+            findings.append(
+                make_finding(
+                    "AAK-MCP-015",
+                    rel,
+                    f"Tool argument joined onto a path: {evidence}",
+                    line_number=line,
+                )
+            )
 
     if _PLAIN_HTTP_BIND_RE.search(text):
         findings.append(

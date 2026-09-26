@@ -48,7 +48,7 @@ was checked for a nearest shape rather than assumed empty:
 and `AAK-MCP-HTTP-NOAUTH-SERVER-001` about an unauthenticated endpoint in MCP
 server code the user ships. Neither describes a vendor's own upsert route.
 
-### CVE-2026-94044 (#787): deferred 2026-09-26, target 2026-10-10
+### CVE-2026-94044 (#787): deferred 2026-09-26 (target 2026-10-10), closed the same day
 
 NVD, quoted in full: "A vulnerability was identified in 03-lovepreetSingh MCP up
 to f95d035c5317fad81af9828286631053ccb23546. This issue affects the function
@@ -74,6 +74,20 @@ So the CVE is **not** added to `AAK-MCP-015`. #787 is labelled `cve-deferred`
 with a target of 2026-10-10, for a TypeScript tool-handler arm that follows the
 path through `path.join` to a read or write sink.
 
+**Closed the same day, ahead of its target.** `AAK-MCP-015` gains that arm: it
+follows a name a tool handler destructures (`async ({ filePath }) =>`) through
+one `path.join` or `path.resolve` to an fs read or write, and stays silent when
+the joined path is containment-checked in between. The scanner's MCP-server
+gate also learned Vercel's `createMcpHandler`; without it the file was never
+read at all. Measured on the upstream file at `f95d035c`, not only on a
+fixture: the full scan that reported nothing now reports all four of its file
+tools, each at its `path.join`. Across this repository's own TypeScript the arm
+fires nowhere but the positive fixture.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-94044 | 7.3 | 03-lovepreetSingh MCP (private, unversioned) | **Arm added** to `AAK-MCP-015`: a tool argument through `path.join` / `path.resolve` to an fs read or write with no containment check. Positive, negative and not-an-MCP-server fixtures under `tests/fixtures/cves/cve-2026-94044-mcp-route/`. | #787 |
+
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
 | CVE-2026-77255 | 8.6 | `mcp-atlassian` | No new rule, no new pin. NVD: "the Jira update_issue attachments argument is converted into local paths and routed to the attachment upload implementation without workspace validation." Fixed 0.22.0, this pin's floor; recorded against `AAK-MCP-ATLASSIAN-CVE-2026-73498-001`. | #781 |
@@ -86,7 +100,8 @@ path through `path.join` to a read or write sink.
 | CVE-2026-77261 | 7.1 | `mcp-atlassian` | No new rule, no new pin. NVD: "_make_ssrf_safe_hook is omitted from JiraFetcher and ConfluenceFetcher sessions created through the basic-auth and oauth_pat branches." Fixed 0.22.0; covered by the pin. | #789 |
 | CVE-2026-77253 | 7.1 | `mcp-atlassian` | No new rule, no new pin. NVD: "Jira and Confluence attachment upload tools accept arbitrary local filesystem paths and send the selected bytes to Atlassian." Fixed 0.22.0; covered by the pin. | #790 |
 
-CVE-2026-94044 has no row: it shipped nothing, and a row is a coverage claim.
+CVE-2026-94044's row sits under its closure note above. It had none until the
+arm shipped, because a row is a coverage claim.
 CVSS and CWE are from the NVD API; for the eight `mcp-atlassian` records the
 scores are GitHub's, as the CNA.
 

@@ -13,11 +13,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `mcp-atlassian` advisories are all fixed in 0.22.0, the floor
   `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` already carries, and are recorded
   against it; CVE-2026-18875 (IBM FTM) is out of scope, a runtime defect in the
-  vendor's own agent server; CVE-2026-94044 is deferred to 2026-10-10 for the
-  TypeScript arm `AAK-MCP-015` lacks. Detail in `CHANGELOG.cves.md`.
+  vendor's own agent server; CVE-2026-94044 was deferred for the TypeScript
+  arm `AAK-MCP-015` lacked, and that arm shipped the same day (see Fixed).
+  Detail in `CHANGELOG.cves.md`.
 
 ### Fixed
 
+- **`AAK-MCP-015` missed path traversal in a TypeScript MCP tool handler
+  (CVE-2026-94044).** Its matcher wanted the request value as the direct first
+  argument of `open` / `fs.readFile`, but the commonest form of the bug joins a
+  tool argument onto a base directory first, `fs.writeFile` was not a sink it
+  knew, and the scanner's MCP-server gate did not recognise Vercel's
+  `createMcpHandler`, so a full scan of the upstream `app/api/mcp/route.ts`
+  reported nothing and the CVE was deferred. A TypeScript arm now follows a
+  destructured tool argument through `path.join` / `path.resolve` to an fs read
+  or write, and stays silent when the joined path is containment-checked in
+  between. On the upstream file it reports all four file tools, each at its
+  `path.join`; across this repository's own TypeScript it fires nowhere but the
+  positive fixture.
 - **The launch checklist said 348 rules, and both count guards missed it.**
   `docs/launch/CHECKLIST.md` wrote its counts as `**348** rules, **103**
   scanners`: emphasis on the number alone, which none of `check_counts.py`'s
