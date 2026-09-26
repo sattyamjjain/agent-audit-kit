@@ -58,6 +58,11 @@ dev = [
     # which makes the bound safe to widen — see the note there before touching it.
     "ruff>=0.15,<0.17",
     "types-PyYAML>=6.0",
+    # tests/test_docs_research_publishing.py imports the MkDocs build hook and
+    # skips as a whole module without MkDocs. CI installs only this extra, so the
+    # link-rewrite guard for the published research pages never ran there. 1.6 is
+    # the floor because the hook overrides `File.content_string`, added in 1.6.
+    "mkdocs>=1.6",
 ]
 
 [project.scripts]

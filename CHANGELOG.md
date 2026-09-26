@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A failed report render stamped the stale PDF as current.** Without
+  reportlab, which no extra installs, `make report` writes a plain-text
+  fallback instead of the PDF, and `scripts/render_report_pdf.py` wrote the
+  source stamp anyway: the live `results.json` digest, recorded against a PDF
+  built from an older one. `make report-pdf-check` and the committed-PDF test
+  then both passed on exactly the artifact they exist to catch. The stamp is
+  now written only when the PDF is. That test had also never run in CI. It
+  lived in `tests/test_docs_research_publishing.py`, which skips as a whole
+  module without MkDocs, and CI installs `.[dev]`, which has none. It moved to
+  `tests/test_render_report_pdf.py` alongside the new cases, and nothing there
+  needs MkDocs.
+- **The MkDocs build-hook tests never ran in CI.**
+  `tests/test_docs_research_publishing.py` skips as a whole module without
+  MkDocs, and CI installs only `.[dev]`, so the guard that fails when a
+  published research page grows a relative link the hook cannot rewrite had
+  never executed on a runner. `mkdocs>=1.6` is now in the `dev` extra, with 1.6
+  as the floor because the hook overrides `File.content_string`.
+
 ## [0.6.8] - 2026-09-25
 
 ### Fixed
