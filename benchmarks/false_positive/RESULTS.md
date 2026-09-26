@@ -29,10 +29,10 @@ change, the slice stays at 536, and `AAK-MCP-001` is untouched — so the rate
 moves for exactly one reason, which is what the previous run said it wanted and
 deliberately would not bundle.
 
-The 2026-08-24 pair of numbers (untuned **4 / 6 = 66.7%**, post-fix
-**2 / 4 = 50.0%**) stays in [`triage.md`](triage.md) and the history table below.
-That run was itself a large regression against the 0.0% published on 2026-07-22,
-for a reason worth keeping on the record: **the 0.0% was never re-measured after
+The 2026-08-24 numbers, untuned and post-fix, stay in [`triage.md`](triage.md)
+and the history table below; this page's body states only the run it reports.
+That run was itself a large regression against the rate published on 2026-07-22,
+for a reason worth keeping on the record: **that rate was never re-measured after
 the corpus grew.** The manifest went from 1,374 to 1,641 registry servers and the
 benign slice from 368 to 536, and nothing re-ran the benchmark. The published
 number described a slice that no longer existed. There is now a drift guard
@@ -40,11 +40,11 @@ number described a slice that no longer existed. There is now a drift guard
 
 ### How to read the badge
 
-The README badge reads `benign-slice 536 configs · HIGH/CRIT FP 0/1`. The two
+The README badge reads `benign-slice 536 MCP configs · HIGH/CRIT FP 0/1`. The two
 numbers answer different questions and both are needed:
 
-- **536** is how many benign configs were scanned. This is the sample size of
-  the *measurement*.
+- **536** is how many benign MCP server configs were scanned. This is the sample
+  size of the *measurement*, and "MCP" is its scope: see the last limitation.
 - **0/1** is how many of the HIGH/CRITICAL findings raised on those 536 configs
   were wrong. The denominator is small because the scanner is quiet on benign
   input — 1 high-severity finding across 536 configs — not because little was
@@ -54,7 +54,7 @@ The ratio is back to `0/1`, and that string has been wrong on this badge before,
 so it is worth being explicit about what is different. The 2026-07-22 badge read
 `0/1 (n=1)`, which reads as "one thing was tested." It was not: 368 configs were
 tested and exactly one high-severity finding came out of them. The label now
-carries the slice size, so the badge says `benign-slice 536 configs` next to
+carries the slice size, so the badge says `benign-slice 536 MCP configs` next to
 `HIGH/CRIT FP 0/1` and the sample size is not recoverable only by opening this
 file. The failure that badge had was presentational; the number was right.
 
@@ -148,7 +148,7 @@ did not go quieter; it went **more accurate**, and the severity mix is the
 evidence.
 
 The MEDIUM count is inflated by one advisory rule (`AAK-MCP-ATTEST-001`) that
-fires on 100% of configs by design; it is not an exploitable misconfiguration.
+fires on every config by design; it is not an exploitable misconfiguration.
 Only `AAK-MCP-001` produced HIGH/CRITICAL findings, so it is the whole of the FP
 surface here — as it was in both previous runs.
 
@@ -236,21 +236,35 @@ disagreed about it, and nothing compared their answers.
 - **Single rater, no inter-rater agreement.** All verdicts are the maintainer's.
   There is no second independent adjudicator, so no agreement statistic is
   reported.
-- **Small adjudication denominator → wide interval.** 6 HIGH/CRITICAL findings
-  across 536 configs gives a Wilson 95% CI of [30.0%, 90.3%] on the FP rate. The
-  point estimate (66.7%) should not be read as precise; the interval is the
-  honest summary. The *slice* is large; the number of high-severity findings it
-  provokes is small, and that is what bounds the precision of this rate.
+- **Small adjudication denominator → wide interval.** 1 HIGH/CRITICAL finding
+  across 536 configs, adjudicated 0 / 1 false positives, gives a Wilson 95% CI of
+  [0.0%, 79.3%] on the FP rate. The point estimate (0.0%) should not be read as
+  precise; the interval is the honest summary. The *slice* is large; the number
+  of high-severity findings it provokes is small, and that is what bounds the
+  precision of this rate.
 - **Config-level + conversion fidelity.** Registry servers are converted to
-  `.mcp.json` shape from their `remotes`/`packages` metadata (**first remote
-  only**), so a multi-remote server's auth can be under-represented. This is no
-  longer hypothetical — see root cause B above.
-- **Snapshot vs live drift.** The manifest is a 2026-07-26 snapshot. Servers
-  republish, and at least one (`app.thoughtspot/mcp-server`) has changed version
-  since, which is why its finding is adjudicated ambiguous rather than guessed at.
+  `.mcp.json` shape from their `remotes`/`packages` metadata, one remote per
+  server: the **first remote that declares headers**, or the first remote when
+  none does. It was the first remote only until the 2026-08-24 fix (root cause B
+  above). A server whose first header-declaring remote is not the one carrying
+  its credential is still under-represented, and its other remotes are not
+  scanned at all.
+- **Snapshot vs live drift.** The manifest is a 2026-07-26 snapshot, and servers
+  republish after it, so a finding describes a server as it was on that date.
+  `app.thoughtspot/mcp-server`, adjudicated ambiguous on 2026-08-24 for exactly
+  this reason, now resolves from the cached snapshot to its `/bearer/mcp`
+  remote and no longer fires.
 - **Scope is HIGH/CRITICAL.** MEDIUM/LOW findings (the bulk of the volume) are not
   adjudicated here; this measures the false-positive rate of the severities that
   drive operational action.
+- **MCP server configs only.** The slice is built from MCP Registry server
+  records, so the rate covers MCP server configs and nothing else. Instruction
+  files (`CLAUDE.md`, `AGENTS.md` and the like) are not in it, and the
+  instruction-file rules (`AAK-AGENT-*`) are not measured by this benchmark. An
+  outside report on 930 repositories
+  ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) is what
+  exposed `AAK-AGENT-002` on them, fixed in v0.6.8. There is no number for
+  instruction files here.
 
 ## History
 

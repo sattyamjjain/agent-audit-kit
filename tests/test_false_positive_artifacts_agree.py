@@ -154,6 +154,21 @@ def test_readme_badge_shows_the_slice_size(results) -> None:
     assert str(results["benign_slice_n"]) in markup
 
 
+def test_readme_badge_names_the_surface_it_measured() -> None:
+    """The slice is MCP server configs, and nothing else is in it.
+
+    "536 configs" let a reader take the rate to cover every file AAK reads,
+    including the instruction files (CLAUDE.md, AGENTS.md) where an outside
+    report on 930 repositories found AAK-AGENT-002 firing on a third of them.
+    The label and the alt text both say which configs were measured.
+    """
+    from scripts.sync_fp_badge import badge_markup, current_numbers  # noqa: PLC0415
+
+    markup = badge_markup(*current_numbers())
+    assert "MCP%20configs" in markup, "the shields label must name MCP configs"
+    assert "MCP configs scanned" in markup, "the alt text must name MCP configs"
+
+
 def test_results_md_headline_matches_the_run(results, adjudication) -> None:
     text = RESULTS_MD.read_text(encoding="utf-8")
     fps = sum(1 for v in adjudication["verdicts"] if v["verdict"] == "false_positive")
@@ -162,7 +177,48 @@ def test_results_md_headline_matches_the_run(results, adjudication) -> None:
 
 
 def test_results_md_still_states_the_conversion_limitation() -> None:
-    """Two of the adjudicated false positives are caused by it, so the
+    """It caused two of the 2026-08-24 false positives, and the fix narrowed it
+    rather than removing it: one remote per server is still converted, so the
     limitation section is load-bearing rather than boilerplate."""
     text = RESULTS_MD.read_text(encoding="utf-8")
     assert "first remote" in text.lower()
+
+
+# ---------------------------------------------------------------------------
+# RESULTS.md prose outside the History table describes the headline run
+# ---------------------------------------------------------------------------
+
+# The Limitations bullet as it stood until this guard existed, verbatim. It
+# described the 2026-08-24 run while the headline above it reported 2026-09-03's,
+# and nothing read past the headline. Kept as the negative fixture: a check that
+# has never failed on the real defect has not been shown to catch it.
+_STALE_LIMITATION = """\
+- **Small adjudication denominator → wide interval.** 6 HIGH/CRITICAL findings
+  across 536 configs gives a Wilson 95% CI of [30.0%, 90.3%] on the FP rate. The
+  point estimate (66.7%) should not be read as precise; the interval is the
+  honest summary. The *slice* is large; the number of high-severity findings it
+  provokes is small, and that is what bounds the precision of this rate.
+"""
+_LIMITATIONS_HEADING = "## Limitations (stated plainly)\n\n"
+
+
+def test_results_md_numbers_outside_history_match_the_run() -> None:
+    """Every HIGH/CRITICAL count, percentage and interval in the page body
+    describes the run the headline reports. Earlier runs' numbers belong in the
+    History table, which is exempt, and which holds several of them."""
+    from scripts.check_fp_results_page import find_disagreements  # noqa: PLC0415
+
+    assert find_disagreements(RESULTS_MD.read_text(encoding="utf-8")) == []
+
+
+def test_the_stale_limitation_bullet_fails_the_page_check() -> None:
+    from scripts.check_fp_results_page import find_disagreements  # noqa: PLC0415
+
+    page = RESULTS_MD.read_text(encoding="utf-8")
+    assert _LIMITATIONS_HEADING in page
+    problems = "\n".join(find_disagreements(
+        page.replace(_LIMITATIONS_HEADING, _LIMITATIONS_HEADING + _STALE_LIMITATION)
+    ))
+    assert "'6 HIGH/CRITICAL'" in problems
+    assert "[30.0%, 90.3%]" in problems
+    assert "'66.7%'" in problems

@@ -60,7 +60,10 @@ def _colour(rate: float) -> str:
 def badge_markup(slice_n: int, false_positives: int, adjudicated: int) -> str:
     """The full anchor+img block, including the enclosing markers."""
     rate = (false_positives / adjudicated) if adjudicated else 0.0
-    label = f"benign-slice {slice_n} configs"
+    # "MCP configs", not "configs": the slice is MCP server configs only. Bare
+    # "configs" read as covering instruction files too, which this benchmark
+    # never measures (AAK-AGENT-002 on CLAUDE.md / AGENTS.md was found outside it).
+    label = f"benign-slice {slice_n} MCP configs"
     message = f"HIGH/CRIT FP {false_positives}/{adjudicated}"
     # shields.io: a literal dash in a label/message is escaped by doubling it, and
     # `/` must be percent-encoded or it is read as a path separator and splits the
@@ -73,7 +76,7 @@ def badge_markup(slice_n: int, false_positives: int, adjudicated: int) -> str:
         f"{_colour(rate)}.svg"
     )
     alt = (
-        f"Benign-slice false-positive measurement: {slice_n} configs scanned, "
+        f"Benign-slice false-positive measurement: {slice_n} MCP configs scanned, "
         f"{false_positives} of {adjudicated} HIGH/CRITICAL findings were false "
         f"positives ({rate * 100:.1f}%)"
     )
