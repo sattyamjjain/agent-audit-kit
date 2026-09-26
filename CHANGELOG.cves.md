@@ -16,6 +16,83 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-26: ten disclosures, eight on the package the last batch closed, one runtime gap and one deferral
+
+The watcher opened ten `cve-response` issues on 2026-09-25 (#781-#785 at
+11:51Z, #786-#790 at 17:11Z). **No new rule and no new pin.** Eight are
+`mcp-atlassian` advisories fixed by the same commit as the last batch, one is a
+runtime defect inside a proprietary product, and one needs a detector shape this
+repository does not have, so it is deferred with a date rather than given a rule
+today. Every description below is quoted from the NVD API record, read on
+2026-09-26, not from the issue title.
+
+**The eight `mcp-atlassian` advisories are the rest of the 2026-09-22 wave.**
+Each NVD record ends "This issue is fixed in version 0.22.0", and each cites
+commit `b041733473f95119dd539542a43c280737a8e460`, the one that closed
+#774-#777. 0.22.0 is the floor `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` has
+carried since the 2026-09-14 wave, and that was measured rather than assumed: a
+full `run_scan` of the CVE-2026-73498 fixtures reports the pin at
+`mcp-atlassian==0.21.1` and nothing at `==0.22.0`. Every affected version
+already fires and no floor moves. Each CVE is recorded against that pin only.
+Some have an obvious shape elsewhere in the registry (the two SSRF variants,
+the unauthenticated header-selected host), and none is claimed there: no fixture
+was built for them, and a coverage claim in a scanner has to be a measured one.
+
+**CVE-2026-18875 (IBM Financial Transaction Manager) is out of scope**, and the
+clause is the reason: "vulnerable to RAG poisoning via unauthenticated runbook
+upsert (CWE-74) in the FTM AI agent server (api.vectordb.runbooks.js:51)". That
+file ships inside IBM's product. It is in no repository a customer would scan,
+and FTM is not a registry package, so it cannot be pinned either. The registry
+was checked for a nearest shape rather than assumed empty:
+`AAK-IPI-WILD-CORPUS-001` is about injection payloads committed to a repository,
+and `AAK-MCP-HTTP-NOAUTH-SERVER-001` about an unauthenticated endpoint in MCP
+server code the user ships. Neither describes a vendor's own upsert route.
+
+### CVE-2026-94044 (#787): deferred 2026-09-26, target 2026-10-10
+
+NVD, quoted in full: "A vulnerability was identified in 03-lovepreetSingh MCP up
+to f95d035c5317fad81af9828286631053ccb23546. This issue affects the function
+create_file of the file app/api/mcp/route.ts. Such manipulation of the argument
+filePath/content leads to path traversal. The attack can be launched remotely.
+The exploit is publicly available and might be used. This product does not use
+versioning. This is why information about affected and unaffected releases are
+unavailable. The project was informed of the problem early through an issue
+report but has not responded yet."
+
+The upstream file at that commit is a Next.js MCP handler
+(`@vercel/mcp-adapter`) whose `read_file`, `create_file` and `edit_file` tools
+each build `path.join(UPLOAD_DIR, filePath)` and pass it to `fs.readFile` or
+`fs.writeFile` with no containment check. `AAK-MCP-015` names the class and does
+not fire, which was measured: a full `run_scan` of the upstream file reports
+nothing on `route.ts`. Its matcher wants the request value as the direct first
+argument of `open` or `fs.readFile(Sync)`, so a `path.join` into an intermediate
+variable, the commonest form of this bug, never matches, and `fs.writeFile` is
+not in its sink list at all. The package is `private` in its `package.json`, so
+there is no version to pin.
+
+So the CVE is **not** added to `AAK-MCP-015`. #787 is labelled `cve-deferred`
+with a target of 2026-10-10, for a TypeScript tool-handler arm that follows the
+path through `path.join` to a read or write sink.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-77255 | 8.6 | `mcp-atlassian` | No new rule, no new pin. NVD: "the Jira update_issue attachments argument is converted into local paths and routed to the attachment upload implementation without workspace validation." Fixed 0.22.0, this pin's floor; recorded against `AAK-MCP-ATLASSIAN-CVE-2026-73498-001`. | #781 |
+| CVE-2026-77262 | 8.6 | `mcp-atlassian` | No new rule, no new pin. NVD: "confluence_upload_attachment accepts an attacker-controlled file_path and does not apply the path restriction added for the earlier download vulnerability." The pin's titular shape, which its source arm reports as well. Fixed 0.22.0. | #782 |
+| CVE-2026-77258 | 7.7 | `mcp-atlassian` | No new rule, no new pin. NVD: "upload_attachment in src/mcp_atlassian/confluence/attachments.py accepts a caller-controlled file_path and opens the selected server-local file without restricting it to the workspace." The pin's titular shape, which its source arm reports as well. Fixed 0.22.0. | #783 |
+| CVE-2026-77259 | 7.7 | `mcp-atlassian` | No new rule, no new pin. NVD: "confluence_upload_attachment opens a caller-selected server-local file without checking that the resolved path remains in the workspace." The pin's titular shape, which its source arm reports as well. Fixed 0.22.0. | #784 |
+| CVE-2026-77242 | 7.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "validate_url_for_ssrf checks a hostname's resolved addresses, but Requests and urllib3 resolve the hostname again when connecting." Fixed 0.22.0; covered by the pin, not claimed against an SSRF rule. | #785 |
+| CVE-2026-77246 | 7.4 | `mcp-atlassian` | No new rule, no new pin. NVD: "an HTTP transport deployment with READ_ONLY_MODE=false accepts a request without an Authorization identity and permits attacker-controlled Atlassian service headers, including X-Atlassian-Confluence-Url, to select a public attacker hostname". Fixed 0.22.0; covered by the pin. | #786 |
+| CVE-2026-18875 | 7.3 | IBM Financial Transaction Manager (no registry artifact) | **Out of scope**, quoted above. A runtime defect in the vendor's own agent server: no file this scanner reads carries it, and there is nothing to pin. | #788 |
+| CVE-2026-77261 | 7.1 | `mcp-atlassian` | No new rule, no new pin. NVD: "_make_ssrf_safe_hook is omitted from JiraFetcher and ConfluenceFetcher sessions created through the basic-auth and oauth_pat branches." Fixed 0.22.0; covered by the pin. | #789 |
+| CVE-2026-77253 | 7.1 | `mcp-atlassian` | No new rule, no new pin. NVD: "Jira and Confluence attachment upload tools accept arbitrary local filesystem paths and send the selected bytes to Atlassian." Fixed 0.22.0; covered by the pin. | #790 |
+
+CVE-2026-94044 has no row: it shipped nothing, and a row is a coverage claim.
+CVSS and CWE are from the NVD API; for the eight `mcp-atlassian` records the
+scores are GitHub's, as the CNA.
+
+Dispositioned at 2026-09-26T11:43:08Z. Unreleased at the time of writing: this
+section carries no version label until the next tag stamps it.
+
 ## 2026-09-25 (v0.6.8): five disclosures, four on one package at a floor that already holds, and one runtime gap
 
 The watcher opened five `cve-response` issues at 2026-09-24T21:31Z (#773-#777).
