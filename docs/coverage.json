@@ -3164,13 +3164,17 @@
         "CVE-2026-77244",
         "CVE-2026-77246",
         "CVE-2026-77248",
+        "CVE-2026-77252",
         "CVE-2026-77253",
         "CVE-2026-77254",
         "CVE-2026-77255",
         "CVE-2026-77258",
         "CVE-2026-77259",
         "CVE-2026-77261",
-        "CVE-2026-77262"
+        "CVE-2026-77262",
+        "CVE-2026-77266",
+        "CVE-2026-77269",
+        "CVE-2026-77270"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -4271,6 +4275,31 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-95660"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement"
+      ],
+      "rule_id": "AAK-MCP-KIMICODE-CVE-2026-95660-001",
+      "severity": "medium",
+      "title": "Kimi Code up to 0.31.0 starts a workspace's MCP servers before the trust prompt"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-86439",
         "CVE-2026-88938"
       ],
@@ -4902,6 +4931,7 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-100585",
         "CVE-2026-62195",
         "CVE-2026-62208"
       ],
@@ -4921,7 +4951,7 @@
       ],
       "rule_id": "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
       "severity": "high",
-      "title": "OpenClaw MCP loopback authorization bypass (2026.5.20\u20132026.6.5)"
+      "title": "OpenClaw MCP authorization bypasses (below 2026.7.1)"
     },
     {
       "category": "supply-chain",
@@ -5055,6 +5085,25 @@
       "rule_id": "AAK-MCP-QWED-CVE-2026-55546-001",
       "severity": "critical",
       "title": "QWED-MCP evaluates a tool argument through SymPy parse_expr (< 0.2.1)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-51994"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-REMOTE-CVE-2026-51994-001",
+      "severity": "critical",
+      "title": "mcp-remote 0.1.32\u20130.1.38 fetches a server-chosen `resource_metadata` URL (SSRF)"
     },
     {
       "category": "supply-chain",
@@ -8158,44 +8207,44 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 121,
+      "supply-chain": 123,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 127,
+      "Art. 10 - Data Governance": 129,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
-      "Art. 15 - Robustness & Security": 214,
+      "Art. 15 - Robustness & Security": 215,
       "Art. 9 - Risk Management": 122
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 88,
+      "Choose supported MCP projects when possible (p.10)": 89,
       "Constrain and sandbox tool execution (p.11)": 107,
       "Design for boundaries (p.10)": 184,
       "Filter and monitor output pipelines and chained execution (p.12)": 77,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 160,
-      "Sign and verify MCP messages (p.12)": 159,
-      "Track and patch MCP related vulnerabilities (p.13)": 99,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 161,
+      "Sign and verify MCP messages (p.12)": 160,
+      "Track and patch MCP related vulnerabilities (p.13)": 100,
       "Validate parameters (p.11)": 111
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 51,
       "ASI03": 74,
-      "ASI04": 82,
+      "ASI04": 83,
       "ASI05": 56,
-      "ASI06": 48,
+      "ASI06": 49,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
       "ASI10": 22
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 89,
+      "MCP01:2025": 90,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
       "MCP04:2025": 41,
@@ -8203,18 +8252,18 @@
       "MCP06:2025": 20,
       "MCP07:2025": 38,
       "MCP08:2025": 10,
-      "MCP09:2025": 29,
+      "MCP09:2025": 30,
       "MCP10:2025": 12
     },
     "by_severity": {
-      "critical": 85,
+      "critical": 86,
       "high": 167,
       "info": 5,
       "low": 10,
-      "medium": 95
+      "medium": 96
     },
-    "total_cves_covered": 252,
-    "total_rules": 362
+    "total_cves_covered": 259,
+    "total_rules": 364
   },
   "tool": "agent-audit-kit"
 }

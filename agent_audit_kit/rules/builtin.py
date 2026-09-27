@@ -197,6 +197,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OMNIGENT-CVE-2026-62674-001": ["IVS-04", "IAM-01"],
     "AAK-MCP-NEOMJS-CVE-2026-18482-001": ["IVS-04", "STA-08"],
     "AAK-MCP-LANGBOT-CVE-2026-54449-001": ["IVS-04", "IAM-01"],
+    "AAK-MCP-REMOTE-CVE-2026-51994-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-KIMICODE-CVE-2026-95660-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -6878,21 +6880,28 @@ _r(
 
 _r(
     "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
-    "OpenClaw MCP loopback authorization bypass (2026.5.20–2026.6.5)",
+    "OpenClaw MCP authorization bypasses (below 2026.7.1)",
     "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an "
     "authorization-bypass in the MCP loopback feature that lets lower-trust "
     "callers execute owner-only tools by routing through configured input paths, "
     "so an attacker can execute or persist actions beyond their intended "
     "permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < "
     "`2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers "
-    "forwarded during MCP SSE redirects, fixed in 2026.6.5). Treat that range "
-    "(and unpinned) as exposed.",
+    "forwarded during MCP SSE redirects, fixed in 2026.6.5). Before 2026.7.1, "
+    "owner-only authorization is also not enforced for Claude Code permission "
+    "prompts delivered through the MCP channel bridge: a non-owner channel sender "
+    "with channel command access can approve or deny a pending permission request "
+    "meant for the owner, so the requested action proceeds without owner consent "
+    "(CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< "
+    "2026.7.1` with no lower bound). Treat every release below 2026.7.1 (and "
+    "unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `openclaw` to >= 2026.6.6 and pin it. Enforce the caller's trust tier "
-    "on every MCP loopback tool invocation, not just at the transport edge.",
+    "Upgrade `openclaw` to >= 2026.7.1 and pin it. Enforce the caller's trust tier "
+    "on every MCP loopback tool invocation, not just at the transport edge, and "
+    "accept a permission reply only from the owner the prompt was addressed to.",
     sarif_name="OpenClawMcpLoopbackAuthzBypass",
-    cve_references=["CVE-2026-62195", "CVE-2026-62208"],
+    cve_references=["CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
@@ -7832,6 +7841,17 @@ _r(
         #   local path.
         "CVE-2026-77255", "CVE-2026-77262", "CVE-2026-77258", "CVE-2026-77259",
         "CVE-2026-77242", "CVE-2026-77246", "CVE-2026-77261", "CVE-2026-77253",
+        # 2026-09-26 wave (#811-#814). Four more, each "fixed in version 0.22.0"
+        # by that same b0417334 commit. Re-measured 2026-09-27: fires at 0.21.1,
+        # silent at 0.22.0. Recorded against this pin only.
+        # CVE-2026-77252 (MEDIUM 6.5, CWE-284) caller-supplied projects_filter /
+        #   spaces_filter replace the administrator's allowlists.
+        # CVE-2026-77270, CVE-2026-77266 (MEDIUM 6.5, CWE-22) the attachment
+        #   upload tools open a caller-chosen server-local path; the second
+        #   accepts absolute paths and traversal outright.
+        # CVE-2026-77269 (MEDIUM 6.5, CWE-22) the CVE-2026-27825 fix guarded
+        #   download destinations and left upload sources unconstrained.
+        "CVE-2026-77252", "CVE-2026-77270", "CVE-2026-77266", "CVE-2026-77269",
     ],
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
@@ -9793,6 +9813,77 @@ def get_rule(rule_id: str) -> RuleDefinition:
         KeyError: If the rule_id is not registered.
     """
     return RULES[rule_id]
+
+# ---------------------------------------------------------------------------
+# 2026-09-26 wave (#808-#817). Ten watcher-filed CVEs: two new pins below, the
+# OpenClaw floor raised in place, four more mcp-atlassian advisories recorded
+# against its 0.22.0 floor, one out of scope and two deferred with a date. The
+# dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-REMOTE-CVE-2026-51994-001",
+    "mcp-remote 0.1.32–0.1.38 fetches a server-chosen `resource_metadata` URL (SSRF)",
+    "`mcp-remote`, the npm proxy that connects stdio MCP clients to remote MCP "
+    "servers over OAuth, from 0.1.32 through 0.1.38 takes the `resource_metadata` "
+    "URL a remote server puts in its `WWW-Authenticate` header and fetches it with "
+    "no scheme, hostname or private-address policy. A malicious or compromised MCP "
+    "server therefore makes the client request localhost services, private-network "
+    "addresses or cloud metadata endpoints reachable from the user's machine, during "
+    "OAuth discovery and before any tool is called (CVE-2026-51994, CVSS 3.1 9.1, "
+    "CWE-918). The range is the advisory's: it reconfirmed the flaw against 0.1.38, "
+    "and upstream has published neither an advisory nor a fix, so this rule makes no "
+    "claim about 0.1.39 or later in either direction.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Move off 0.1.32–0.1.38 and pin the release you move to. Upstream names no fixed "
+    "version, so check that it validates discovery URLs before trusting it. Connect "
+    "`mcp-remote` only to MCP servers you trust, and where the client host can reach "
+    "metadata or admin endpoints, put an egress policy in front of it that blocks "
+    "loopback, link-local and private destinations on every request and redirect.",
+    sarif_name="McpRemoteResourceMetadataSsrf",
+    cve_references=["CVE-2026-51994"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reports only a reference that states a version in the range: an "
+        "`mcp-remote@0.1.3x` argument in an MCP config, a `package.json` dependency "
+        "or a lockfile entry. An unpinned `npx mcp-remote` is not reported, because "
+        "it resolves to the newest release (0.14.x on 2026-09-27), which the "
+        "advisory did not test."
+    ),
+)
+
+_r(
+    "AAK-MCP-KIMICODE-CVE-2026-95660-001",
+    "Kimi Code up to 0.31.0 starts a workspace's MCP servers before the trust prompt",
+    "Kimi Code (`@moonshot-ai/kimi-code`), Moonshot AI's coding agent CLI, through "
+    "0.31.0 loads the MCP configuration of the workspace it is opened in "
+    "(`agent-core-v2/src/agent/mcp/config-loader.ts`) and spawns the STDIO servers a "
+    "repository's `.mcp.json` declares before asking whether the workspace is "
+    "trusted, so opening a cloned repository runs commands its author chose "
+    "(CVE-2026-95660, CVSS 3.1 6.3, CWE-77/CWE-78). 0.31.1 adds the trust prompt and "
+    "resolves `fd` and `stty` to absolute paths, so an untrusted workspace can no "
+    "longer plant bare-name executables on `$PATH` before confirmation either.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@moonshot-ai/kimi-code` to >= 0.31.1 and pin it. Until then, do not "
+    "open untrusted repositories with Kimi Code, and read a repository's `.mcp.json` "
+    "before opening it.",
+    sarif_name="KimiCodeUntrustedWorkspaceMcpAutostart",
+    cve_references=["CVE-2026-95660"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports the package where a manifest pins it. Most installs are global "
+        "(`npm i -g`) and leave no file in a project, so this catches a project that "
+        "declares Kimi Code as a dependency, not every machine that runs it. The "
+        "project-side half of the attack, the `.mcp.json` a hostile repository ships, "
+        "is what the MCP config rules read."
+    ),
+)
 
 
 def all_rule_ids() -> list[str]:

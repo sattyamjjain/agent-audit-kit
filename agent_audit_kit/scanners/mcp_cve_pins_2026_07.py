@@ -21,7 +21,8 @@ available) before shipping:
   - praisonai                      >= 4.6.78  (CVE-2026-61427)
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
-  - openclaw                       >= 2026.6.6 (CVE-2026-62195; NVD 2026.5.20..<2026.6.6)
+  - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
+    CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
   - mcp (MCP Python SDK)            >= 1.28.1  (CVE-2026-52869, CVE-2026-52870, CVE-2026-59950)
@@ -113,6 +114,11 @@ available) before shipping:
     catalog -> injected argv spawned by MCPClientPool)
   - netlicensing-mcp               >= 0.1.6   (CVE-2026-54446; unauthenticated /mcp
     falls back to the operator's API key)
+  - mcp-remote                     0.1.32–0.1.38 (CVE-2026-51994; `resource_metadata`
+    SSRF. Upstream names no fix, so the pin is the advisory's own range, and it
+    needs a stated version: an unpinned `npx mcp-remote` resolves to 0.14.x)
+  - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
+    `.mcp.json` servers spawned before the trust prompt)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -167,6 +173,12 @@ _VER_OPT = (
 # fastmcp / mcp-text-editor / n8n-mcp / awslabs.*-mcp-server.
 _MCP_SDK_RE = re.compile(r"(?<![\w./-])mcp(?:\[[\w,\s-]+\])?\s*" + _VER_REQ, re.IGNORECASE)
 _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECASE)
+# `mcp-remote` (npm) requires a stated version, like `_MCP_SDK_RE`. The pin is
+# the advisory's range, 0.1.32-0.1.38, and an unpinned `npx mcp-remote` resolves
+# to the newest release (0.14.x), which that advisory never tested. The house
+# default reads a missing version as exposed; here that would put a CRITICAL on a
+# large share of all MCP configs for a claim nobody has made.
+_MCP_REMOTE_RE = re.compile(r"(?<![\w./-])mcp-remote(?![\w-])" + _VER_REQ, re.IGNORECASE)
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
 # version line; the lookbehind keeps it off `pyletta`.
@@ -322,8 +334,11 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="1.85.10"),
     _Pin("AAK-MCP-PENPOT-CVE-2026-45805-001", "@penpot/mcp", ("@penpot/mcp",), (2, 15, 0),
          fix_label="2.15.0"),
-    _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 6, 6),
-         introduced=(2026, 5, 20), fix_label="2026.6.6 (affected 2026.5.20–2026.6.5)"),
+    # Floor raised 2026.6.6 -> 2026.7.1 and the 2026.5.20 lower bound dropped for
+    # CVE-2026-100585 (owner-only Claude permission replies over the MCP channel
+    # bridge), which GHSA-p5g8-m35v-7m82 scopes `< 2026.7.1` with no lower bound.
+    _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
+         fix_label="2026.7.1 (CVE-2026-100585; CVE-2026-62195 alone was fixed in 2026.6.6)"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
     # Floor raised 1.6.11 -> 1.6.13 for CVE-2026-67333 (redirect_uri scheme not
@@ -956,6 +971,19 @@ _PINS: tuple[_Pin, ...] = (
     # (CVE-2026-54446, CVSS 8.1, CWE-306).
     _Pin("AAK-MCP-NETLICENSING-CVE-2026-54446-001", "netlicensing-mcp",
          ("netlicensing-mcp",), (0, 1, 6), fix_label="0.1.6", ecosystem="py"),
+    # --- 2026-09-26 wave ---
+    # mcp-remote 0.1.32-0.1.38 fetches the `resource_metadata` URL a remote
+    # server puts in its WWW-Authenticate header with no destination policy
+    # (CVE-2026-51994, CVSS 9.1, CWE-918). `introduced` + floor make it the
+    # advisory's range exactly; `_MCP_REMOTE_RE` keeps unpinned references out.
+    _Pin("AAK-MCP-REMOTE-CVE-2026-51994-001", "mcp-remote", ("mcp-remote",), (0, 1, 39),
+         introduced=(0, 1, 32),
+         fix_label="a release outside 0.1.32–0.1.38 (upstream names no fix)",
+         regexes=(_MCP_REMOTE_RE,), ecosystem="js"),
+    # Kimi Code <= 0.31.0 spawns a workspace's `.mcp.json` servers before asking
+    # whether the workspace is trusted (CVE-2026-95660, CVSS 6.3, CWE-77/78).
+    _Pin("AAK-MCP-KIMICODE-CVE-2026-95660-001", "@moonshot-ai/kimi-code",
+         ("@moonshot-ai/kimi-code",), (0, 31, 1), fix_label="0.31.1", ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
