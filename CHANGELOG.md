@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `make count-check` now compares the live GitHub description (`gh repo view --json description`) with the rendered one and fails on a mismatch, printing the `gh repo edit` that fixes it; it skips, and says so, when gh is not installed or not authenticated.
+
 ## [0.6.10] - 2026-09-27
 
 ### Added

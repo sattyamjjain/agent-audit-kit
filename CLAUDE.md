@@ -29,7 +29,7 @@ make lint                # ruff check . (CI lints only agent_audit_kit/ and test
 make typecheck           # mypy agent_audit_kit (CI adds --ignore-missing-imports, so this local run is the stricter one)
 
 # Drift guards (CI's `counts` job: count-check, report-figures-check, sync_scanner_count.py --check, build_coverage_page.py --check)
-make count-check         # check_counts.py + sync_rule_count.py --check + sync_rule_doc_pages.py --check: no stale count in ANY tracked *.md (incl. this file)
+make count-check         # check_counts.py + sync_rule_count.py --check + sync_rule_doc_pages.py --check: no stale count in ANY tracked *.md (incl. this file); then the live GitHub description vs the rendered one (render_repo_metadata.py --check-live, skipped when gh is not authenticated, as in CI's counts job)
 make report-check        # results.json byte-identical to a fresh run
 make report-pdf-check    # the report PDF's source stamp matches results.json (a stamp, not a byte-diff: reportlab embeds a CreationDate); pytest asserts it too
 make report-figures-check # every governed report figure in prose sits inside a `report:` marker
