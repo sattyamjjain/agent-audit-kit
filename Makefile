@@ -84,10 +84,13 @@ fp-check:
 ##                         __init__.py, docs/rules.md, and every <!-- rule-count --> anchor
 ## The badge sat outside check_counts.py's phrase list, so `make count-check` reported
 ## clean with a stale badge until v0.3.88. Both now run under the one target.
+## Last, the live github.com description against the rendered one (gh repo view; fails
+## on a mismatch, skipped with a message when gh is missing or not authenticated).
 count-check:
 	@PYTHONPATH=. python scripts/check_counts.py
 	@PYTHONPATH=. python scripts/sync_rule_count.py --check
 	@PYTHONPATH=. python scripts/sync_rule_doc_pages.py --check
+	@PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit
 
 ## cve-latency: regenerate docs/cve-latency.md from the ledger (offline, deterministic)
 cve-latency:

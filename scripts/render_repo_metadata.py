@@ -23,6 +23,12 @@ scheduled caller is the one that matters, because the release-time check can onl
 notice drift during a release. The description sat one rule stale from 2026-08-31
 until 2026-09-01 for exactly that reason: 0.3.91 never released, so the only thing
 that would have looked never ran.
+
+``make count-check`` is the third caller. On 2026-09-27 two reads of the description
+disagreed (332 rules from the API, 362 on a rendered page) and no local check could
+say which one matched the code. It reads with ``gh repo view --json description``, the
+command a person uses to check by hand. Where gh is missing or holds no credentials
+(CI's ``counts`` job has no token), the comparison is skipped and the output says so.
 """
 
 from __future__ import annotations
@@ -97,16 +103,33 @@ def render() -> str:
     )
 
 
+#: ``gh help exit-codes``: "If a command requires authentication, the exit code will be 4".
+_GH_AUTH_REQUIRED = 4
+
+
+class GhUnavailable(RuntimeError):
+    """gh is not installed, or has no credentials: nothing was read."""
+
+
 def live_description(repo: str) -> str:
-    """github.com's current description for ``repo``. Raises on any failure."""
+    """github.com's current description for ``repo``.
+
+    Raises GhUnavailable when gh is missing or unauthenticated, and RuntimeError on
+    any other failure (a rejected token is exit 1 to gh, not 4, so it lands there).
+    """
     import subprocess
 
-    out = subprocess.run(
-        ["gh", "api", f"repos/{repo}", "--jq", ".description // \"\""],
-        capture_output=True, text=True, timeout=30,
-    )
+    try:
+        out = subprocess.run(
+            ["gh", "repo", "view", repo, "--json", "description", "--jq", '.description // ""'],
+            capture_output=True, text=True, timeout=30,
+        )
+    except FileNotFoundError as exc:
+        raise GhUnavailable("gh is not installed") from exc
+    if out.returncode == _GH_AUTH_REQUIRED:
+        raise GhUnavailable("gh is not authenticated (gh auth login, or set GH_TOKEN)")
     if out.returncode != 0:
-        raise RuntimeError(out.stderr.strip() or "gh api failed")
+        raise RuntimeError(out.stderr.strip() or "gh repo view failed")
     return out.stdout.strip()
 
 
@@ -127,6 +150,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         live = live_description(args.check_live)
+    except GhUnavailable as exc:
+        # The expected case on a fresh machine and in any CI job without a token, so
+        # a plain line rather than an annotation on every run. Still never a pass.
+        sys.stderr.write(f"repo description: not compared, {exc}. Skipped, not a pass.\n")
+        return 0
     except Exception as exc:  # noqa: BLE001 - any failure means "not compared"
         # Never a silent pass. Same rule as check_registry_parity: an unreadable
         # surface must not look like a matching one.
@@ -137,7 +165,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if live == expected:
-        sys.stdout.write("repo description liveness: live == rendered.\n")
+        # The string itself, so the count that was compared is on screen.
+        sys.stdout.write(f"repo description liveness: live == rendered: {live}\n")
         return 0
 
     sys.stderr.write(
@@ -145,6 +174,10 @@ def main(argv: list[str] | None = None) -> int:
         f"Settings > About (a CI token cannot set it): {expected}\n"
     )
     sys.stderr.write(f"  live    : {live}\n  rendered: {expected}\n")
+    sys.stderr.write(
+        f"  fix     : gh repo edit {args.check_live} --description "
+        '"$(PYTHONPATH=. python scripts/render_repo_metadata.py)"\n'
+    )
     return 1
 
 

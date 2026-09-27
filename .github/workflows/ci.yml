@@ -87,6 +87,11 @@ jobs:
       # check_counts.py reads unmarked prose and has no pattern for the shields
       # badge; sync_rule_count.py --check owns the badge, the anchors and the
       # generated docs but never looks at free prose.
+      #
+      # count-check also compares the live repo description, and skips that
+      # here on purpose: this job holds no GH_TOKEN, and a PR that changes the
+      # rule count would otherwise go red for a description only the maintainer
+      # can set. description-liveness.yml compares main against it daily.
       - name: Counts (prose + generated surfaces)
         run: make count-check
 

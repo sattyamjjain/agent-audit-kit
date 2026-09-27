@@ -41,6 +41,19 @@ def test_count_check_runs_the_generated_surface_guard() -> None:
     assert "sync_rule_count.py --check" in _recipe("count-check")
 
 
+def test_count_check_compares_the_live_repo_description() -> None:
+    """The one rendered count that lives outside the repository.
+
+    Two reads of the description disagreed on 2026-09-27 (332 and 362 rules) while
+    every step here read only tracked files. The behaviour is tested in
+    ``tests/test_repo_description_liveness.py``; this pins that count-check runs it.
+    """
+    assert (
+        "render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit"
+        in _recipe("count-check")
+    )
+
+
 def test_the_badge_is_a_generated_surface_not_prose() -> None:
     """If the badge stops being generated, the prose guard will not catch it.
 
