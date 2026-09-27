@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.10] - 2026-09-27
+
 ### Added
 
 - **The 2026-09-26 CVE wave dispositioned** (issues #808-#817), one CRITICAL.

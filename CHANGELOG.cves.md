@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-09-27: ten disclosures, two new pins, one floor raised, four more at an existing floor, one out of scope and two deferrals
+## 2026-09-27 (v0.6.10): ten disclosures, two new pins, one floor raised, four more at an existing floor, one out of scope and two deferrals
 
 The watcher opened ten `cve-response` issues on 2026-09-26 (#808-#812 at
 16:23Z, #813-#817 at 21:10Z). Two get new pins and one raises an existing
