@@ -88,6 +88,9 @@ PINS = {
     "AAK-MCP-MARIMO-CVE-2026-75149-001": "high",
     "AAK-MCP-NEOMJS-CVE-2026-18482-001": "high",
     "AAK-MCP-LANGBOT-CVE-2026-54449-001": "high",
+    # 2026-09-26 wave
+    "AAK-MCP-REMOTE-CVE-2026-51994-001": "critical",
+    "AAK-MCP-KIMICODE-CVE-2026-95660-001": "medium",
 }
 
 
@@ -241,14 +244,24 @@ def test_openclaw_calver_in_range_fires(tmp_path: Path) -> None:
 
 
 def test_openclaw_patched_passes(tmp_path: Path) -> None:
-    content = '{"dependencies": {"openclaw": "2026.6.6"}}'
+    content = '{"dependencies": {"openclaw": "2026.7.1"}}'
     assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(tmp_path, "package.json", content)
 
 
-def test_openclaw_before_introduced_passes(tmp_path: Path) -> None:
-    # The flaw range starts at 2026.5.20; an earlier calendar release must not fire.
+def test_openclaw_between_the_two_fixes_fires(tmp_path: Path) -> None:
+    """2026.6.6 fixed CVE-2026-62195, but CVE-2026-100585 (owner-only Claude
+    permission replies over the MCP channel bridge) is fixed only in 2026.7.1.
+    npm carries 2026.6.x patch releases up to 2026.6.35, all still exposed."""
+    for version in ("2026.6.6", "2026.6.35"):
+        content = '{"dependencies": {"openclaw": "%s"}}' % version
+        assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" in _ids(tmp_path, "package.json", content), version
+
+
+def test_openclaw_has_no_lower_bound(tmp_path: Path) -> None:
+    # CVE-2026-62195 started at 2026.5.20, but GHSA-p5g8-m35v-7m82 (CVE-2026-100585)
+    # is `< 2026.7.1` with no lower bound, so an earlier calendar release is exposed.
     content = '{"dependencies": {"openclaw": "2026.5.10"}}'
-    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(tmp_path, "package.json", content)
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" in _ids(tmp_path, "package.json", content)
 
 
 def test_repomix_below_floor_fires(tmp_path: Path) -> None:
@@ -395,9 +408,11 @@ def test_healthomics_below_floor_fires(tmp_path: Path) -> None:
     )
 
 
-def test_openclaw_rule_cites_both_cves() -> None:
+def test_openclaw_rule_cites_all_three_cves() -> None:
+    # CVE-2026-100585 (#809) joined the pin that already carried the first two
+    # and raised its floor to 2026.7.1.
     rule = RULES["AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
-    assert set(rule.cve_references) == {"CVE-2026-62195", "CVE-2026-62208"}
+    assert set(rule.cve_references) == {"CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"}
 
 
 def test_mcp_sdk_rule_cites_three_cves() -> None:
@@ -1288,3 +1303,52 @@ def test_cline_pin_uses_a_bounded_regex() -> None:
 
     pin = next(p for p in _PINS if p.rule_id == _CLINE_RULE)
     assert pin.regexes, "the cline pin must carry an explicit bounded regex"
+
+
+# --- 2026-09-26 wave -------------------------------------------------------
+
+_REMOTE = "AAK-MCP-REMOTE-CVE-2026-51994-001"
+
+
+def _remote_config(spec: str) -> str:
+    return '{"mcpServers": {"x": {"command": "npx", "args": ["-y", "%s", "https://mcp.example.com/sse"]}}}' % spec
+
+
+def test_mcp_remote_in_the_advisory_range_fires(tmp_path: Path) -> None:
+    """CVE-2026-51994: `resource_metadata` SSRF in mcp-remote 0.1.32 through 0.1.38."""
+    for spec in ("mcp-remote@0.1.32", "mcp-remote@0.1.35", "mcp-remote@0.1.38"):
+        assert _REMOTE in _ids(tmp_path, ".mcp.json", _remote_config(spec)), spec
+
+
+def test_mcp_remote_outside_the_advisory_range_passes(tmp_path: Path) -> None:
+    # 0.1.31 predates the range; 0.1.39+ is not confirmed vulnerable by the advisory
+    # and upstream published no fix, so the rule makes no claim about it either way.
+    for spec in ("mcp-remote@0.1.31", "mcp-remote@0.1.39", "mcp-remote@0.14.3"):
+        assert _REMOTE not in _ids(tmp_path, ".mcp.json", _remote_config(spec)), spec
+
+
+def test_mcp_remote_unpinned_passes(tmp_path: Path) -> None:
+    """Unpinned `npx mcp-remote` resolves to the newest release (0.14.x), outside
+    the range, and it is in a very large share of MCP configs. Treating it as
+    exposed, the house default for a floor pin, would put a CRITICAL on all of
+    them for a version the advisory never tested."""
+    assert _REMOTE not in _ids(tmp_path, ".mcp.json", _remote_config("mcp-remote"))
+
+
+def test_mcp_remote_in_package_json_fires(tmp_path: Path) -> None:
+    assert _REMOTE in _ids(tmp_path, "package.json", '{"dependencies": {"mcp-remote": "0.1.36"}}')
+
+
+_KIMI = "AAK-MCP-KIMICODE-CVE-2026-95660-001"
+
+
+def test_kimi_code_below_floor_fires(tmp_path: Path) -> None:
+    """CVE-2026-95660: Kimi Code up to 0.31.0 spawns an untrusted workspace's
+    `.mcp.json` servers without a trust prompt. Fixed in 0.31.1."""
+    content = '{"devDependencies": {"@moonshot-ai/kimi-code": "0.31.0"}}'
+    assert _KIMI in _ids(tmp_path, "package.json", content)
+
+
+def test_kimi_code_patched_passes(tmp_path: Path) -> None:
+    content = '{"devDependencies": {"@moonshot-ai/kimi-code": "0.31.1"}}'
+    assert _KIMI not in _ids(tmp_path, "package.json", content)

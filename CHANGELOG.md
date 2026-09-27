@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The 2026-09-26 CVE wave dispositioned** (issues #808-#817), one CRITICAL.
+  Two new pins. `mcp-remote` 0.1.32-0.1.38 (CVE-2026-51994, SSRF through the
+  `resource_metadata` URL a server puts in `WWW-Authenticate`) is reported only
+  where a version is stated: upstream names no fix, and an unpinned
+  `npx mcp-remote` resolves to 0.14.x, which the advisory never tested.
+  `@moonshot-ai/kimi-code` below 0.31.1 (CVE-2026-95660) spawns a workspace's
+  `.mcp.json` servers before its trust prompt. CVE-2026-100585 raised the
+  OpenClaw pin's floor from 2026.6.6 to 2026.7.1 and removed its lower bound,
+  since the advisory scopes it `< 2026.7.1` outright. Four more `mcp-atlassian`
+  advisories sit at the 0.22.0 floor already pinned, re-measured. The WSP MCP
+  WordPress plugin is out of scope, like the four WordPress MCP plugins before
+  it. SxDevOps (CVE-2026-93965) and nexus-mcp (CVE-2026-94031) are deferred to
+  2026-10-11: nothing catches either today, measured on the upstream code, and
+  both need a detector shape this repository does not have. Rule count
+  362 -> 364.
+
 ### Fixed
 
 - **`verify-bundle --signature` verifies a release.** It imported

@@ -16,6 +16,121 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-27: ten disclosures, two new pins, one floor raised, four more at an existing floor, one out of scope and two deferrals
+
+The watcher opened ten `cve-response` issues on 2026-09-26 (#808-#812 at
+16:23Z, #813-#817 at 21:10Z). Two get new pins and one raises an existing
+pin's floor. Four are `mcp-atlassian` advisories at the floor that already
+holds. One is a WordPress plugin, out of scope on the same basis as four before
+it. Two need a detector shape this repository does not have, so they are
+deferred with a date. Every description below is quoted from the NVD API record,
+read on 2026-09-27; the GitHub advisory and the npm registry were read wherever
+a range or a fix version had to be settled.
+
+**`mcp-remote` (CVE-2026-51994) is pinned to the advisory's range exactly, and
+only where a version is stated.** NVD: "mcp-remote versions 0.1.32 through
+0.1.38 are vulnerable to Server-Side Request Forgery (SSRF) via the
+resource_metadata URL extracted from a remote MCP server's WWW-Authenticate
+header". The advisory it cites (playb0t/mcp-remote-oauth-security, F-01)
+reconfirmed the flaw against 0.1.38 and names no fixed release. Upstream
+publishes no security advisory, and no commit since 0.1.38 describes a
+destination policy for OAuth discovery. Releases resumed on 2026-08-21 with
+0.1.39 and reach 0.14.3, none of them tested. So the new
+`AAK-MCP-REMOTE-CVE-2026-51994-001` fires on 0.1.32-0.1.38 and makes no claim
+about anything later. It deliberately does not fire on an unpinned
+`npx mcp-remote` either: the pin table reads a missing version as exposed, and
+an unpinned `npx` resolves to the newest release, so that default would put a
+CRITICAL on a large share of all MCP configs for a version nobody has shown to
+be vulnerable.
+
+**OpenClaw (CVE-2026-100585) raises an existing floor.** NVD: "OpenClaw (npm
+package `openclaw`) before 2026.7.1 fails to enforce the owner-only
+authorization requirement for Claude Code permission prompts delivered through
+the MCP channel bridge." GHSA-p5g8-m35v-7m82 scopes it `< 2026.7.1` with no
+lower bound, which the 2026.5.20 lower bound kept for CVE-2026-62195 does not
+survive. `AAK-MCP-OPENCLAW-CVE-2026-62195-001` now fires below 2026.7.1 — the
+same package-and-rule move the langflow and `@apify/actors-mcp-server` pins
+made. npm's 2026.6.x patch line, up to 2026.6.35, is exposed and now reported.
+
+**Kimi Code (CVE-2026-95660) is a client, pinned like `cline` and
+`codewhale`.** NVD: "The affected element is an unknown function of the file
+agent-core-v2/src/agent/mcp/config-loader.ts of the component MCP Configuration
+Loader. The manipulation results in os command injection." And: "Upgrading to
+version 0.31.1 is sufficient to fix this issue." The fix adds a trust prompt
+before a workspace's `.mcp.json` servers are spawned. `@moonshot-ai/kimi-code`
+0.31.1 is on npm, so the new `AAK-MCP-KIMICODE-CVE-2026-95660-001` pins it; most
+installs are global and leave no manifest, which the rule's limitations say.
+
+**The four `mcp-atlassian` advisories close the 2026-09-22 wave.** Each NVD
+record says "This issue is fixed in version 0.22.0" and cites commit
+`b041733473f95119dd539542a43c280737a8e460`. Re-measured on 2026-09-27: a full
+`run_scan` reports `AAK-MCP-ATLASSIAN-CVE-2026-73498-001` at
+`mcp-atlassian==0.21.1` and nothing at `==0.22.0`. Recorded against that pin
+only.
+
+**WSP MCP (CVE-2026-93529) is out of scope.** NVD, in full: "Contributor Broken
+Access Control in WSP MCP &#8211; AI Agents Connector <= 2.7.0 versions." A
+wordpress.org plugin: the name resolves on neither npm nor PyPI (both 404),
+this repository has no PHP analysis and no WordPress manifest reader, and the
+four WordPress MCP plugins before it were recorded out of scope on that basis
+(#490, #523, #634, #648). wordpress.org lists 2.7.1 as the release after 2.7.0.
+
+### CVE-2026-93965 (#810): deferred 2026-09-27 (target 2026-10-11)
+
+NVD: "Affected is the function subprocess.Popen of the file
+backend/aiops/services.py of the component MCP STDIO Server Management. This
+manipulation of the argument endpoint_or_command causes command injection."
+SxDevOps is an application, not a package: a DevOps web app whose AIOps module
+stores an MCP server's `endpoint_or_command` and, for a STDIO server, splits it
+with `shlex.split` and starts it. The fix (`2b4bf858`) adds an executable
+allowlist (`MCP_ALLOWED_STDIO_EXECUTABLES = {'npx', 'swmcp'}`), rejects shell
+metacharacters, and blocks `PATH` / `LD_PRELOAD`-style keys in the server's
+environment.
+
+Nothing covers it today, and that was measured: a full `run_scan` of the
+upstream `backend/aiops/services.py` at the fix's parent (`1d707ff8`) reports
+one unrelated entropy finding and nothing on the launcher. The registry's STDIO
+command-injection rules follow a configured command into the MCP SDKs' own
+launchers (`StdioServerParameters`, `StdioClientTransport`); a raw
+`subprocess.Popen` over a stored command string is a shape none of them read.
+The target is a Python arm for that launcher shape, with fixtures cut from this
+file. SxDevOps publishes no package, so there is nothing to pin.
+
+### CVE-2026-94031 (#816): deferred 2026-09-27 (target 2026-10-11)
+
+NVD: "Affected by this issue is the function child_process.exec of the file
+src/auth/browser.ts of the component nexus_reauth MCP tool. The manipulation of
+the argument url results in command injection." The flow crosses files: the
+`nexus_reauth` handler in `src/tools/reauth.ts` passes its `url` argument to
+`BrowserSessionManager.reauth()` in `src/auth/browser.ts`, which interpolates
+it into `open "${loginUrl}"` and hands that to `exec`.
+
+Measured on the upstream tree at `aed0026e`: `AAK-TAINT-001` fires on a
+different `exec`, in `src/auth/oauth.ts:272`, only because an HTML title in that
+file says "Nexus MCP" and that is what the TypeScript pattern scanner's
+MCP-server gate matched. Nothing fires in `src/auth/browser.ts`, which carries
+no MCP marker at all, and a finding on the wrong line is not coverage. The
+target is a TypeScript arm that follows a tool handler's argument into a method
+defined in another file and reports the shell sink there. The project ships
+rolling releases and no package, so there is nothing to pin.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-51994 | 9.1 | `mcp-remote` (npm) | **New pin** `AAK-MCP-REMOTE-CVE-2026-51994-001`: 0.1.32-0.1.38, reported only where a version is stated. | #808 |
+| CVE-2026-100585 | 8.0 | `openclaw` (npm) | **Floor raised** 2026.6.6 -> 2026.7.1 on `AAK-MCP-OPENCLAW-CVE-2026-62195-001`, lower bound dropped (GHSA: `< 2026.7.1`). | #809 |
+| CVE-2026-77252 | 6.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "caller-supplied projects_filter and spaces_filter arguments can replace administrator-configured allowlists". Fixed 0.22.0, this pin's floor; recorded against `AAK-MCP-ATLASSIAN-CVE-2026-73498-001`. | #811 |
+| CVE-2026-77270 | 6.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "the Jira and Confluence attachment upload tools treat caller-controlled file_path values as trusted server-local paths." Fixed 0.22.0; covered by the pin. | #812 |
+| CVE-2026-77266 | 6.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "upload_attachment accepts absolute paths and traversal sequences without constraining the resolved path to the server workspace." Fixed 0.22.0; covered by the pin. | #813 |
+| CVE-2026-77269 | 6.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "the remediation for CVE-2026-27825 protects download destinations but does not constrain source paths used by attachment uploads." Fixed 0.22.0; covered by the pin. | #814 |
+| CVE-2026-93529 | 6.5 | WSP MCP - AI Agents Connector (wordpress.org plugin) | **Out of scope**, quoted above. No npm or PyPI artifact and no PHP analysis here. Upgrade the plugin to 2.7.1 or later. | #815 |
+| CVE-2026-95660 | 6.3 | `@moonshot-ai/kimi-code` (npm) | **New pin** `AAK-MCP-KIMICODE-CVE-2026-95660-001`: below 0.31.1. | #817 |
+
+CVE-2026-93965 and CVE-2026-94031 have no row: a row is a coverage claim, and
+neither has coverage yet. CVSS and CWE are from the NVD API.
+
+Dispositioned at 2026-09-27T13:59:29Z. Unreleased at the time of writing: this
+section carries no version label until the next tag stamps it.
+
 ## 2026-09-26 (v0.6.9): ten disclosures, eight on the package the last batch closed, one runtime gap and one deferral
 
 The watcher opened ten `cve-response` issues on 2026-09-25 (#781-#785 at
