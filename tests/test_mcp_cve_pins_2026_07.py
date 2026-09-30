@@ -952,6 +952,15 @@ def test_atlassian_73498_unpinned_fires(tmp_path: Path) -> None:
     assert _ATLASSIAN_73498 in _ids(tmp_path, ".mcp.json", content)
 
 
+def test_atlassian_73498_records_the_later_022_advisories() -> None:
+    """#822, #823, #825, #830: four more advisories "fixed in version 0.22.0", this
+    pin's floor, so they are recorded here rather than pinned again."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    refs = set(get_rule(_ATLASSIAN_73498).cve_references)
+    assert {"CVE-2026-77250", "CVE-2026-77265", "CVE-2026-77268", "CVE-2026-77272"} <= refs
+
+
 def test_atlassian_73498_fixtures_positive_and_negative() -> None:
     base = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-73498-mcp-atlassian"
     vuln = {f.rule_id for f in scan(base / "vulnerable")[0]}
@@ -1111,6 +1120,16 @@ def test_ckan_below_floor_fires(tmp_path: Path) -> None:
     assert _CKAN in _ids(tmp_path, "package.json", content)
 
 
+def test_ckan_below_the_dns_resolution_fix_fires(tmp_path: Path) -> None:
+    """CVE-2026-61612 (#824), the third `validateServerUrl` bypass, was fixed in
+    0.4.108, below this pin's 0.4.112 floor, so the pin already reports it."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    content = '{"dependencies": {"@aborruso/ckan-mcp-server": "0.4.107"}}'
+    assert _CKAN in _ids(tmp_path, "package.json", content)
+    assert "CVE-2026-61612" in get_rule(_CKAN).cve_references
+
+
 def test_ckan_patched_passes(tmp_path: Path) -> None:
     content = '{"dependencies": {"@aborruso/ckan-mcp-server": "0.4.112"}}'
     assert _CKAN not in _ids(tmp_path, "package.json", content)
@@ -1122,18 +1141,19 @@ def test_ckan_later_release_passes(tmp_path: Path) -> None:
 
 
 def test_ckan_one_pin_carries_every_cve_its_floor_covers() -> None:
-    """One pin, four CVEs, and the fourth arrived free.
+    """One pin, five CVEs, and the last two arrived free.
 
     Three came from the 2026-08-15 batch, which shared a package and a fix
-    version. CVE-2026-53509 (2026-08-22) is fixed in 0.4.106, below this pin's
-    0.4.112 floor, so it was already being reported before it was published --
-    recorded here rather than given a second pin that would report one
-    dependency twice.
+    version. CVE-2026-53509 (2026-08-22) is fixed in 0.4.106 and CVE-2026-61612
+    (2026-09-21) in 0.4.108, both below this pin's 0.4.112 floor, so each was
+    already being reported before it was published -- recorded here rather than
+    given a second pin that would report one dependency twice.
     """
     from agent_audit_kit.rules.builtin import RULES
     refs = set(RULES[_CKAN].cve_references)
     assert refs == {
         "CVE-2026-73846", "CVE-2026-73845", "CVE-2026-73844", "CVE-2026-53509",
+        "CVE-2026-61612",
     }
 
 
@@ -1315,16 +1335,30 @@ def _remote_config(spec: str) -> str:
 
 
 def test_mcp_remote_in_the_advisory_range_fires(tmp_path: Path) -> None:
-    """CVE-2026-51994: `resource_metadata` SSRF in mcp-remote 0.1.32 through 0.1.38."""
+    """CVE-2026-51994 and CVE-2026-51995: OAuth discovery SSRF, 0.1.32 through 0.1.38."""
     for spec in ("mcp-remote@0.1.32", "mcp-remote@0.1.35", "mcp-remote@0.1.38"):
         assert _REMOTE in _ids(tmp_path, ".mcp.json", _remote_config(spec)), spec
 
 
+def test_mcp_remote_browser_launch_range_fires(tmp_path: Path) -> None:
+    """CVE-2026-51997 starts at 0.1.16, where the URL check it bypasses was added
+    for CVE-2025-6514, so the pin's lower bound moved down from 0.1.32."""
+    for spec in ("mcp-remote@0.1.16", "mcp-remote@0.1.24", "mcp-remote@0.1.31"):
+        assert _REMOTE in _ids(tmp_path, ".mcp.json", _remote_config(spec)), spec
+
+
 def test_mcp_remote_outside_the_advisory_range_passes(tmp_path: Path) -> None:
-    # 0.1.31 predates the range; 0.1.39+ is not confirmed vulnerable by the advisory
+    # 0.1.15 predates the range; 0.1.39+ is not confirmed vulnerable by the advisory
     # and upstream published no fix, so the rule makes no claim about it either way.
-    for spec in ("mcp-remote@0.1.31", "mcp-remote@0.1.39", "mcp-remote@0.14.3"):
+    for spec in ("mcp-remote@0.1.15", "mcp-remote@0.1.39", "mcp-remote@0.14.3"):
         assert _REMOTE not in _ids(tmp_path, ".mcp.json", _remote_config(spec)), spec
+
+
+def test_mcp_remote_rule_cites_the_three_advisories() -> None:
+    from agent_audit_kit.rules.builtin import get_rule
+
+    refs = set(get_rule(_REMOTE).cve_references)
+    assert {"CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51997"} <= refs
 
 
 def test_mcp_remote_unpinned_passes(tmp_path: Path) -> None:
