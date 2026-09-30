@@ -11,7 +11,9 @@ manifest, an env var fed by an HTTP webhook) inherit the bug.
 This scanner is the SDK-named-API counterpart to the broader
 AAK-STDIO-001 sink-pattern detector. Where AAK-STDIO-001 fires on any
 `subprocess.run(shell=True, ..., tainted)` shape, this scanner fires
-*specifically* on `StdioServerParameters(command=tainted)` (Python),
+*specifically* on `StdioServerParameters(command=tainted)` (Python) and on a
+hand-rolled Python launcher that spawns `shlex.split()` of a stored MCP
+server's command with no executable allowlist (CVE-2026-93965),
 `new StdioClientTransport({command, args})` (TS),
 `StdioServerParameters.Builder().command(tainted)` (Java), and
 `tokio::process::Command::new(tainted)` adjacent to MCP imports
@@ -178,6 +180,110 @@ def _taint_flows_to_command(
     return False
 
 
+# Hand-rolled launcher arm (CVE-2026-93965, SxDevOps). An application that
+# stores the MCP servers its users register and starts a STDIO one itself, with
+# `subprocess.Popen(shlex.split(server.endpoint_or_command))`, never touches the
+# SDK names above, so the SDK arm cannot see it. Same class, same function-local
+# posture: the split and the spawn sit in one function, the split reads a stored
+# server's `command` field, the function manages MCP STDIO servers (its class,
+# its name or its own strings say "MCP" and "stdio"), and nothing between the
+# split and the spawn checks the executable against an allowlist.
+_PY_SPAWN_CHAINS = frozenset({
+    "subprocess.Popen", "subprocess.run", "subprocess.call",
+    "subprocess.check_call", "subprocess.check_output",
+    "asyncio.create_subprocess_exec", "Popen", "create_subprocess_exec",
+})
+_ALLOWLIST_NAME_RE = re.compile(r"allow|permit|whitelist|approved", re.IGNORECASE)
+
+
+def _spawn_argv(call: ast.Call) -> ast.expr | None:
+    """The argv a process-spawn call runs, or None if it is not one."""
+    if _attr_chain(call.func) not in _PY_SPAWN_CHAINS:
+        return None
+    kw = {k.arg: k.value for k in call.keywords if k.arg}
+    if "args" in kw:
+        return kw["args"]
+    if not call.args:
+        return None
+    first = call.args[0]
+    return first.value if isinstance(first, ast.Starred) else first
+
+
+def _is_shlex_split(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and _attr_chain(node.func) == "shlex.split" and bool(node.args)
+
+
+def _reads_stored_command(node: ast.AST) -> bool:
+    """A server record's command field: `server.endpoint_or_command`, `cfg["command"]`."""
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Attribute) and "command" in sub.attr.lower():
+            return True
+        if (
+            isinstance(sub, ast.Subscript)
+            and isinstance(sub.slice, ast.Constant)
+            and isinstance(sub.slice.value, str)
+            and "command" in sub.slice.value.lower()
+        ):
+            return True
+    return False
+
+
+def _split_source(
+    call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
+) -> ast.expr | None:
+    """What `shlex.split` was applied to, when a spawn's argv is its result.
+
+    Either directly (`Popen(shlex.split(x))`) or through the last local
+    assignment before the spawn (`command = shlex.split(x); Popen(command)`). An
+    argv assigned from anything else, such as a validator, is not followed:
+    that is exactly what the upstream fix looks like.
+    """
+    argv = _spawn_argv(call)
+    if argv is None:
+        return None
+    if isinstance(argv, ast.Name):
+        value: ast.expr | None = None
+        for stmt in ast.walk(func):
+            if isinstance(stmt, ast.Assign) and stmt.lineno < call.lineno:
+                if any(isinstance(t, ast.Name) and t.id == argv.id for t in stmt.targets):
+                    if value is None or stmt.lineno > getattr(value, "lineno", 0):
+                        value = stmt.value
+            elif isinstance(stmt, ast.AnnAssign) and stmt.lineno < call.lineno:
+                if isinstance(stmt.target, ast.Name) and stmt.target.id == argv.id and stmt.value is not None:
+                    if value is None or stmt.lineno > getattr(value, "lineno", 0):
+                        value = stmt.value
+        argv = value
+    if not isinstance(argv, ast.Call) or not _is_shlex_split(argv):
+        return None
+    source = argv.args[0]
+    if _is_static(source) or not _reads_stored_command(source):
+        return None
+    return source
+
+
+def _manages_mcp_stdio(func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str) -> bool:
+    words = [class_name, func.name]
+    words += [
+        n.value for n in ast.walk(func)
+        if isinstance(n, ast.Constant) and isinstance(n.value, str)
+    ]
+    blob = " ".join(words).lower()
+    return "mcp" in blob and "stdio" in blob
+
+
+def _checks_an_allowlist(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """`if command[0] not in ALLOWED_EXECUTABLES:` and its kin, inside the function."""
+    for node in ast.walk(func):
+        if not isinstance(node, ast.Compare):
+            continue
+        if not any(isinstance(op, (ast.In, ast.NotIn)) for op in node.ops):
+            continue
+        for side in (node.left, *node.comparators):
+            if _ALLOWLIST_NAME_RE.search(_attr_chain(side)):
+                return True
+    return False
+
+
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     try:
         tree = ast.parse(text, str(path))
@@ -186,6 +292,14 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     findings: list[Finding] = []
 
     class V(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self._classes: list[str] = []
+
+        def visit_ClassDef(self, node: ast.ClassDef) -> None:
+            self._classes.append(node.name)
+            self.generic_visit(node)
+            self._classes.pop()
+
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
             self._scan(node)
             self.generic_visit(node)
@@ -194,6 +308,29 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             self._scan(node)
             self.generic_visit(node)
 
+        def _launcher_finding(
+            self, call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
+        ) -> Finding | None:
+            source = _split_source(call, func)
+            if source is None:
+                return None
+            if not _manages_mcp_stdio(func, self._classes[-1] if self._classes else ""):
+                return None
+            if _checks_an_allowlist(func):
+                return None
+            rel = str(path.relative_to(project_root))
+            scanned.add(rel)
+            return make_finding(
+                "AAK-MCP-STDIO-CMD-INJ-001",
+                rel,
+                f"{_attr_chain(call.func)}(...) at line {call.lineno} launches "
+                f"`shlex.split({_unparse(source)})`, a stored MCP STDIO server's "
+                "command, with no executable allowlist between the split and the "
+                "spawn. Whoever can register or edit that server record chooses "
+                "the program this host runs (the CVE-2026-93965 launcher shape).",
+                line_number=call.lineno,
+            )
+
         def _scan(self, func: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
             calls = sorted(
                 (n for n in ast.walk(func) if isinstance(n, ast.Call)),
@@ -201,6 +338,10 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             )
             for call in calls:
                 if not _is_stdio_server_params_call(call):
+                    launcher = self._launcher_finding(call, func)
+                    if launcher is not None:
+                        findings.append(launcher)
+                        return  # one finding per function
                     continue
                 # We have StdioServerParameters(command=X, args=Y). Fire only
                 # when a network-controlled value actually flows into the

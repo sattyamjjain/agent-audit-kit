@@ -16,6 +16,109 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-09-30: ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
+
+The watcher opened ten `cve-response` issues on 2026-09-27 (#821-#825 at 16:58Z,
+#827-#831 at 21:21Z). Seven sit on pins that already existed: one needed its range
+widened, six were already reported. Three are out of scope. The two deferrals from
+2026-09-27 (#810, #816) close with arms on existing rules, each measured on the
+upstream code. No rule was added; the count stays 364. Every description below is
+quoted from the NVD API record, read on 2026-09-30.
+
+**`mcp-remote` (CVE-2026-51995, CVE-2026-51997) widens the pin CVE-2026-51994
+opened.** NVD, CVE-2026-51995: "An issue in geelen mcp-remote 0.1.32 through 0.1.38
+allows a remote attacker to obtain sensitive information via the
+src/lib/authorization-server-metadata.ts, src/lib/utils.ts components". The
+advisory it cites (playb0t/mcp-remote-oauth-security, F-02) is a blind SSRF: the
+authorization-server origin comes from server-controlled metadata and
+`/.well-known/oauth-authorization-server` is fetched from it unvalidated. That is
+the existing pin's range exactly. NVD, CVE-2026-51997: "An issue in geelen
+mcp-remote 0.1.16 through 0.1.38 allows a remote attacker to execute arbitrary code
+via the open() functions". The advisory it cites (F-08) describes something
+narrower than code execution: the URL check 0.1.16 added for CVE-2025-6514 accepts
+any HTTP(S) URL, so loopback, private and metadata destinations reach the browser
+launch, "Confirmed by source and dependency review". Either way its range starts at
+0.1.16, below the pin's 0.1.32, so `AAK-MCP-REMOTE-CVE-2026-51994-001` now fires on
+0.1.16-0.1.38 and cites all three. It still needs a stated version and still makes
+no claim past 0.1.38. Versions before 0.1.16 carry CVE-2025-6514, which no rule here
+reports; the rule's limitations say so.
+
+**Four more `mcp-atlassian` advisories sit at the 0.22.0 floor.** Each NVD record
+says "This issue is fixed in version 0.22.0" and cites commit
+`b041733473f95119dd539542a43c280737a8e460`, the fix behind the eight before them.
+Re-measured on 2026-09-30 with a full `run_scan`:
+`AAK-MCP-ATLASSIAN-CVE-2026-73498-001` at `mcp-atlassian==0.21.1`, nothing at
+`==0.22.0`. Recorded against that pin only.
+
+**CKAN MCP Server (CVE-2026-61612) was already reported.** NVD: "Prior to version
+0.4.108, the SSRF guard `validateServerUrl` (added for CVE-2026-33060, extended for
+CVE-2026-53509) validates only the hostname string and never resolves DNS." Fixed in
+0.4.108, below the 0.4.112 floor of `AAK-MCP-CKAN-CVE-2026-73846-001`, which fires at
+0.4.107 and is silent at 0.4.112. npm's `@aborruso/ckan-mcp-server` is the
+`ondata/ckan-mcp-server` repository the advisory names.
+
+**OpenWA (CVE-2026-91161) is out of scope.** NVD: "the GET
+/api/sessions/{sessionId}/groups/{groupId}/invite-code endpoint and the
+GroupGetInviteCode MCP tool have no OPERATOR role requirement". A role check in a
+self-hosted gateway's own server. The gateway's `package.json` is `private: true`
+and it is on neither npm nor PyPI; npm's `@rmyndharis/openwa` is its client SDK
+(0.1.0-0.5.0), versioned apart from the gateway's 0.23.x, so a pin on it would
+report the wrong thing. No file this scanner reads states the gateway's version.
+
+**MaxKB (CVE-2026-77519) is out of scope** on the same basis as CVE-2026-77521
+(#773). NVD: "the /chat/api/mcp authentication path looks up an ApplicationApiKey
+using only its secret and active status, without enforcing the is_permanent and
+expire_time checks used by the standard chat API." A runtime check in MaxKB's own
+backend, and MaxKB is on neither PyPI nor npm.
+
+**GitLab (CVE-2026-92874) is out of scope.** NVD: "GitLab has remediated an issue in
+GitLab CE/EE ... that under certain conditions could have allowed an authenticated
+user with an MCP-scoped token to perform actions beyond the intended scope of that
+token due to improper authorization checks." GitLab's own MCP endpoint is part of the
+GitLab instance and is fixed by upgrading it; nothing in a repository states the
+instance's version. That is the runZero precedent (CVE-2026-81846).
+`AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001` pins `@zereight/mcp-gitlab`, a
+third-party MCP server for GitLab and a different product, so it covers none of this.
+
+**The 2026-09-27 deferrals close.** CVE-2026-93965 (#810, SxDevOps):
+`AAK-MCP-STDIO-CMD-INJ-001` gains the Python launcher arm the deferral named,
+`subprocess.Popen`, `subprocess.run` or `asyncio.create_subprocess_exec` over
+`shlex.split()` of a stored MCP server's command with no executable allowlist
+between the split and the spawn. On the full upstream `backend/aiops/services.py`
+(16,403 lines) it reports line 14168, the `Popen`, at `1d707ff8` and nothing at the
+fix, `2b4bf858`; the only other finding on either version is the entropy hit the
+deferral recorded. CVE-2026-94031 (#816, nexus-mcp):
+`AAK-SHELL-QUOTED-INTERP-001`'s JavaScript arm gains both hops the deferral named, a
+command built in a local variable, which the rule text had always claimed, and one
+call from a tool handler into a method defined in another file, matched by name. On
+the upstream tree at `aed0026e` (84 files) it reports `src/auth/browser.ts:63`, the
+`exec`, and names `src/tools/reauth.ts:42` as the handler; the two `oauth.ts`
+findings the deferral recorded are unchanged. Upstream has shipped no fix, so the
+negative fixture is the usual one, `execFile` with an argv list. Old against new over
+`modelcontextprotocol/servers`, `python-sdk` and `typescript-sdk`: neither arm adds or
+removes a finding.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-51995 | 7.5 | `mcp-remote` (npm) | No new rule, no new pin. Same 0.1.32-0.1.38 range as CVE-2026-51994; recorded against `AAK-MCP-REMOTE-CVE-2026-51994-001`. | #821 |
+| CVE-2026-51997 | 8.8 | `mcp-remote` (npm) | **Range widened**: `AAK-MCP-REMOTE-CVE-2026-51994-001` now starts at 0.1.16, not 0.1.32. Reported only where a version is stated. | #827 |
+| CVE-2026-77250 | 6.1 | `mcp-atlassian` | No new rule, no new pin. NVD: "OAuthConfig writes a plaintext fallback file containing access and refresh tokens under the user's .mcp-atlassian directory using process-default permissions." Fixed 0.22.0; covered by `AAK-MCP-ATLASSIAN-CVE-2026-73498-001`. | #822 |
+| CVE-2026-77265 | 5.9 | `mcp-atlassian` | No new rule, no new pin. NVD: "An unauthenticated caller can use a DNS-rebinding hostname that returns a public address during validation and an internal address during connection". Fixed 0.22.0; covered by the pin. | #823 |
+| CVE-2026-77268 | 5.5 | `mcp-atlassian` | No new rule, no new pin. NVD: "the OAuth fallback token directory and JSON file are created without explicit owner-only modes." Fixed 0.22.0; covered by the pin. | #825 |
+| CVE-2026-77272 | 5.4 | `mcp-atlassian` | No new rule, no new pin. NVD: "the OAuth error query parameter is passed to CallbackHandler._send_response in oauth_setup.py and interpolated into an HTML page without escaping." Fixed 0.22.0; covered by the pin. | #830 |
+| CVE-2026-61612 | 5.7 | `@aborruso/ckan-mcp-server` (npm) | No new rule, no new pin. Fixed 0.4.108, below the 0.4.112 floor; covered by `AAK-MCP-CKAN-CVE-2026-73846-001`. | #824 |
+| CVE-2026-93965 | 6.6 | SxDevOps (no registry artifact) | **Arm added** to `AAK-MCP-STDIO-CMD-INJ-001`: a Python launcher spawning `shlex.split()` of a stored MCP server's command with no executable allowlist. Closes the 2026-09-27 deferral. | #810 |
+| CVE-2026-94031 | 6.3 | nexus-mcp (no registry artifact) | **Arm extended**: `AAK-SHELL-QUOTED-INTERP-001` follows a JavaScript command through a local variable and one call into another file. Closes the 2026-09-27 deferral. | #816 |
+| CVE-2026-91161 | 6.4 | OpenWA gateway (no registry artifact) | **Out of scope**, quoted above. A role check in the gateway's own server; its npm SDK is versioned apart from it. Fixed 0.23.5. | #828 |
+| CVE-2026-77519 | 5.4 | MaxKB (no registry artifact) | **Out of scope**, quoted above. A runtime check in the vendor's backend, on neither PyPI nor npm. NVD names no fixed version. | #829 |
+| CVE-2026-92874 | 5.4 | GitLab CE/EE (the instance) | **Out of scope**, quoted above. Fixed server-side in 19.2.7, 19.3.3 and 19.4.1; the `@zereight/mcp-gitlab` pin is a different product. | #831 |
+
+CVSS and CWE are from the NVD API. CVE-2026-93965 and CVE-2026-94031 keep their
+2026-09-27 deferral entries below as the record of the gap.
+
+Dispositioned at 2026-09-30T19:00:00Z. Unreleased at the time of writing: this
+section carries no version label until the next tag stamps it.
+
 ## 2026-09-27 (v0.6.10): ten disclosures, two new pins, one floor raised, four more at an existing floor, one out of scope and two deferrals
 
 The watcher opened ten `cve-response` issues on 2026-09-26 (#808-#812 at

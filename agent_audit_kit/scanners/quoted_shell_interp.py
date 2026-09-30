@@ -414,15 +414,53 @@ def _template_literals(text: str, start: int) -> str | None:
     return text[open_idx + 1 : close_idx]
 
 
-def _scan_js(text: str, rel: str) -> tuple[list[Finding], list[str]]:
-    if _JS_QUOTE_RE.search(text):
-        return [], []
-    if not _JS_TOOL_ARG_RE.search(text):
-        return [], []
+# A shell sink whose command is a bare identifier: `exec(cmd, ...)`.
+_JS_FIRST_IDENT_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*[,)]")
 
-    findings: list[Finding] = []
-    exec_tools: list[str] = []
+# How far back an assignment to that identifier is looked for.
+_JS_LOCAL_WINDOW_LINES = 60
 
+
+def _js_assigned_templates(text: str, ident: str, before: int) -> list[str]:
+    """Template literals assigned to ``ident`` shortly before a sink.
+
+    Every branch counts: nexus-mcp assigns ``cmd`` a different template per
+    platform and then runs whichever was taken.
+    """
+    start = before
+    for _ in range(_JS_LOCAL_WINDOW_LINES):
+        prev = text.rfind("\n", 0, start - 1)
+        if prev < 0:
+            start = 0
+            break
+        start = prev
+    assign_re = re.compile(
+        rf"(?<![\w$.]){re.escape(ident)}\s*(?::\s*[\w$<>\[\]|, ]+)?\s*=(?![=>])\s*`"
+    )
+    templates: list[str] = []
+    for m in assign_re.finditer(text, start, before):
+        template = _template_literals(text, m.end() - 1)
+        if template is not None:
+            templates.append(template)
+    return templates
+
+
+class _JsSink:
+    """One shell sink and the interpolations its command carries."""
+
+    __slots__ = ("sink", "pos", "line", "interps")
+
+    def __init__(self, sink: str, pos: int, line: int, interps: list[tuple[str, str, str, str]]) -> None:
+        self.sink = sink
+        self.pos = pos
+        self.line = line
+        # (root name, quoting, mode, template)
+        self.interps = interps
+
+
+def _js_sinks(text: str) -> list[_JsSink]:
+    """Every shell sink with an interpolated command, inline or through a local."""
+    sinks: list[_JsSink] = []
     for match in _JS_SHELL_SINK_RE.finditer(text):
         sink = match.group(0).rstrip("(").strip()
         call_start = match.end()
@@ -435,36 +473,225 @@ def _scan_js(text: str, rel: str) -> tuple[list[Finding], list[str]]:
             if not any(f'"{f}"' in window or f"'{f}'" in window for f in _EVAL_FLAGS):
                 continue
 
-        if template is None:
-            continue
-        interps = _JS_INTERP_RE.findall(template)
-        if not interps:
-            continue
-
-        line = text[: match.start()].count("\n") + 1
+        templates = [template] if template is not None else []
+        if not templates and sink in _JS_SHELL_ONLY:
+            ident = _JS_FIRST_IDENT_RE.match(text, call_start)
+            if ident:
+                templates = _js_assigned_templates(text, ident.group(1), match.start())
+        mode = "shell" if sink in _JS_SHELL_ONLY else "argv-eval"
         # One command string can interpolate the same value more than once —
         # CVE-2026-55157 uses `username` twice in one template. That is one
-        # defect, not two.
+        # defect, not two; so is one value in each branch of a platform switch.
         seen: set[tuple[str, str]] = set()
-        for expr in interps:
-            marker = "${" + expr + "}"
-            quoting = _quote_context(template, marker)
-            name = expr.strip().split(".")[-1].split(" ")[0] or "argument"
-            if (name, quoting) in seen:
-                continue
-            seen.add((name, quoting))
-            mode = "shell" if sink in _JS_SHELL_ONLY else "argv-eval"
+        interps: list[tuple[str, str, str, str]] = []
+        for tpl in templates:
+            for expr in _JS_INTERP_RE.findall(tpl):
+                quoting = _quote_context(tpl, "${" + expr + "}")
+                name = expr.strip().split(".")[-1].split(" ")[0] or "argument"
+                if (name, quoting) not in seen:
+                    seen.add((name, quoting))
+                    interps.append((name, quoting, mode, tpl))
+        if interps:
+            line = text[: match.start()].count("\n") + 1
+            sinks.append(_JsSink(sink, match.start(), line, interps))
+    return sinks
+
+
+def _scan_js(text: str, rel: str) -> tuple[list[Finding], list[str]]:
+    if _JS_QUOTE_RE.search(text):
+        return [], []
+    if not _JS_TOOL_ARG_RE.search(text):
+        return [], []
+
+    findings: list[Finding] = []
+    exec_tools: list[str] = []
+    for found in _js_sinks(text):
+        for name, quoting, mode, template in found.interps:
             findings.append(
                 make_finding(
                     INTERP_RULE,
                     rel,
-                    _evidence(sink, name, quoting, mode, template),
-                    line,
+                    _evidence(found.sink, name, quoting, mode, template),
+                    found.line,
                 )
             )
-            exec_tools.append(sink)
-
+            exec_tools.append(found.sink)
     return findings, exec_tools
+
+
+# --------------------------------------------------------------------------
+# One hop across files (CVE-2026-94031, nexus-mcp)
+# --------------------------------------------------------------------------
+# A tool handler passes its argument to `x.method(...)`, and `method`, defined
+# in another file, interpolates that parameter into a shell command. The sink
+# file carries no tool-argument marker, so `_scan_js` never looks at it.
+# Matched by method name, not type, and one call deep.
+
+_JS_KEYWORDS = frozenset({
+    "if", "for", "while", "switch", "catch", "with", "return", "typeof",
+    "await", "new", "function", "else", "do", "try",
+})
+
+# A function or method header whose body opens with `{`.
+_JS_HEADER_RE = re.compile(
+    r"""
+    (?:\bfunction\s*\*?\s*(?P<fname>[A-Za-z_$][\w$]*)\s*\((?P<fparams>[^()]*)\)
+      | (?P<mname>[A-Za-z_$][\w$]*)\s*\((?P<mparams>[^()]*)\)
+        \s*(?::\s*[^{};=]*(?:\{[^{}]*\}[^{};=]*)?)?\s*(?=\{)
+      | (?:(?P<aname>[A-Za-z_$][\w$]*)\s*=\s*)?(?:async\s*)?\((?P<aparams>[^()]*)\)
+        \s*(?::\s*[^=;{]*?)?=>\s*(?=\{)
+    )
+    """,
+    re.VERBOSE,
+)
+
+
+def _split_top_level(text: str, brackets: str = "([{<") -> list[str]:
+    """Split on commas that sit outside every bracket pair in ``brackets``."""
+    closers = {"(": ")", "[": "]", "{": "}", "<": ">"}
+    close_set = {closers[b] for b in brackets}
+    depth = 0
+    parts: list[str] = []
+    cur: list[str] = []
+    for ch in text:
+        if ch in brackets:
+            depth += 1
+        elif ch in close_set and depth:
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(cur))
+            cur = []
+            continue
+        cur.append(ch)
+    if "".join(cur).strip():
+        parts.append("".join(cur))
+    return parts
+
+
+def _js_param_names(params: str) -> list[str | None]:
+    names: list[str | None] = []
+    for raw in _split_top_level(params):
+        p = re.sub(r"^\s*(?:(?:public|private|protected|readonly)\s+)*(?:\.\.\.)?", "", raw)
+        m = re.match(r"[A-Za-z_$][\w$]*", p)
+        names.append(m.group(0) if m and not p.startswith(("{", "[")) else None)
+    return names
+
+
+def _js_enclosing_param(text: str, pos: int, name: str) -> tuple[str, int] | None:
+    """The nearest enclosing function that takes ``name`` as a parameter."""
+    headers = [m for m in _JS_HEADER_RE.finditer(text, 0, pos)]
+    for m in reversed(headers):
+        func = m.group("fname") or m.group("mname") or m.group("aname") or ""
+        if func in _JS_KEYWORDS:
+            continue
+        body = text.find("{", m.end())
+        if body < 0 or body >= pos:
+            continue
+        segment = text[body + 1 : pos]
+        if 1 + segment.count("{") - segment.count("}") <= 0:
+            continue  # the body closed before the sink: not enclosing
+        params = _js_param_names(m.group("fparams") or m.group("mparams") or m.group("aparams") or "")
+        if name in params and func:
+            return func, params.index(name)
+    return None
+
+
+def _strip_subscripts(expr: str) -> str:
+    """`TABLE[key]` is the table's value, not the key: drop what indexes it."""
+    prev = None
+    while prev != expr:
+        prev = expr
+        expr = re.sub(r"\[[^\[\]]*\]", "", expr)
+    return expr
+
+
+def _js_tool_derived_names(text: str) -> set[str]:
+    """Locals a handler file assigns from a tool argument, to a fixed point."""
+    assigns: list[tuple[list[str], str]] = []
+    for m in re.finditer(
+        r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=(?![=>])\s*([^;\n]+)", text
+    ):
+        assigns.append(([m.group(1)], m.group(2)))
+    for m in re.finditer(r"\b(?:const|let|var)\s*\{([^}]*)\}\s*(?::[^=;\n]+)?=\s*([^;\n]+)", text):
+        bound = []
+        for part in _split_top_level(m.group(1)):
+            local = part.split(":")[-1].split("=")[0].strip().lstrip(".")
+            if re.fullmatch(r"[A-Za-z_$][\w$]*", local):
+                bound.append(local)
+        assigns.append((bound, m.group(2)))
+    tainted: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for names, rhs in assigns:
+            if set(names) <= tainted:
+                continue
+            if _js_is_tool_derived(rhs, tainted, destructure=len(names) > 1 or rhs.strip() in {"args", "input"}):
+                tainted.update(names)
+                changed = True
+    return tainted
+
+
+def _js_is_tool_derived(expr: str, tainted: set[str], destructure: bool = False) -> bool:
+    bare = _strip_subscripts(expr)
+    if _JS_TOOL_ARG_RE.search(bare):
+        return True
+    if destructure and re.search(r"\b(?:args|arguments|input)\b", bare):
+        return True
+    return any(re.search(rf"(?<![\w$.]){re.escape(n)}(?![\w$])", bare) for n in tainted)
+
+
+def _js_call_args(text: str, open_paren: int) -> list[str]:
+    depth = 0
+    for i in range(open_paren, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return _split_top_level(text[open_paren + 1 : i], brackets="([{")
+    return []
+
+
+def _js_tool_arg_call(text: str, func: str, index: int) -> int | None:
+    """Line of a call to ``func`` whose argument at ``index`` is tool-derived."""
+    tainted = _js_tool_derived_names(text)
+    call_re = re.compile(rf"(?<![\w$]){re.escape(func)}\s*\(")
+    for m in call_re.finditer(text):
+        line_start = text.rfind("\n", 0, m.start()) + 1
+        head = text[line_start : m.start()]
+        if re.search(r"\bfunction\s*$|^\s*(?:(?:public|private|protected|static|async)\s+)*$", head):
+            continue  # a definition, not a call
+        args = _js_call_args(text, m.end() - 1)
+        if index < len(args) and _js_is_tool_derived(args[index], tainted):
+            return text[: m.start()].count("\n") + 1
+    return None
+
+
+def _cross_file_js(texts: dict[str, str]) -> list[Finding]:
+    handlers = {rel: t for rel, t in texts.items() if _JS_TOOL_ARG_RE.search(t)}
+    findings: list[Finding] = []
+    for rel, text in texts.items():
+        if rel in handlers or _JS_QUOTE_RE.search(text):
+            continue  # `_scan_js` already judged a handler file
+        for found in _js_sinks(text):
+            for name, quoting, mode, template in found.interps:
+                owner = _js_enclosing_param(text, found.pos, name)
+                if owner is None:
+                    continue
+                func, index = owner
+                for hrel, htext in sorted(handlers.items()):
+                    hline = _js_tool_arg_call(htext, func, index)
+                    if hline is None:
+                        continue
+                    evidence = (
+                        _evidence(func, name, quoting, mode, template)
+                        + f"; a tool argument reaches it from another file: "
+                        f"{hrel}:{hline} passes it to {func}()"
+                    )
+                    findings.append(make_finding(INTERP_RULE, rel, evidence, found.line))
+                    break
+    return findings
 
 
 # --------------------------------------------------------------------------
@@ -493,6 +720,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Flag quoted shell interpolation and default-profile reachability."""
     findings: list[Finding] = []
     scanned: set[str] = set()
+    js_texts: dict[str, str] = {}
 
     for path in sorted(project_root.rglob("*")):
         if not path.is_file():
@@ -518,6 +746,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if suffix == ".py":
             found, exec_tools = _scan_python(text, rel)
         else:
+            js_texts[rel] = text
             found, exec_tools = _scan_js(text, rel)
 
         findings.extend(found)
@@ -528,4 +757,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             if profile is not None:
                 findings.append(profile)
 
+    # The tool's registration lives in the handler file, so the default-profile
+    # qualifier has nothing to read in the sink file and is not attached.
+    findings.extend(_cross_file_js(js_texts))
     return findings, scanned

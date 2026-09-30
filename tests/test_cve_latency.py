@@ -149,6 +149,15 @@ _VERIFIED_PRE_COVERAGE = {
     # (AAK-MCP-STATA-CVE-2026-47708-001, floor moved to 1.19.0) really did
     # predate the disclosure.
     "CVE-2026-55071",
+    # The same batch and the same shape, both on `@ooples/token-optimizer-mcp`
+    # < 5.1.0. Dispositioned 2026-08-16 (v0.3.80) from GHSA-76pc-mqxp-3rq5
+    # (CVE-2026-55156, AAK-MCP-SIDECAR-NOAUTH-001) and GHSA-49mq-fc6q-3h46
+    # (CVE-2026-55157, AAK-SHELL-QUOTED-INTERP-001), which the ledger rows cite
+    # and which GitHub published on 2026-08-14, two days before the section.
+    # NVD published both on 2026-09-28, 43 days after the rules shipped; the
+    # `--refresh` on 2026-09-30 filled those dates in for the first time.
+    "CVE-2026-55156",
+    "CVE-2026-55157",
 }
 
 

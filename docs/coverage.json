@@ -3164,6 +3164,7 @@
         "CVE-2026-77244",
         "CVE-2026-77246",
         "CVE-2026-77248",
+        "CVE-2026-77250",
         "CVE-2026-77252",
         "CVE-2026-77253",
         "CVE-2026-77254",
@@ -3172,9 +3173,12 @@
         "CVE-2026-77259",
         "CVE-2026-77261",
         "CVE-2026-77262",
+        "CVE-2026-77265",
         "CVE-2026-77266",
+        "CVE-2026-77268",
         "CVE-2026-77269",
-        "CVE-2026-77270"
+        "CVE-2026-77270",
+        "CVE-2026-77272"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -3520,6 +3524,7 @@
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-53509",
+        "CVE-2026-61612",
         "CVE-2026-73844",
         "CVE-2026-73845",
         "CVE-2026-73846"
@@ -5089,7 +5094,9 @@
     {
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-51994"
+        "CVE-2026-51994",
+        "CVE-2026-51995",
+        "CVE-2026-51997"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance"
@@ -5103,7 +5110,7 @@
       ],
       "rule_id": "AAK-MCP-REMOTE-CVE-2026-51994-001",
       "severity": "critical",
-      "title": "mcp-remote 0.1.32\u20130.1.38 fetches a server-chosen `resource_metadata` URL (SSRF)"
+      "title": "mcp-remote 0.1.16\u20130.1.38 trusts URLs a remote MCP server chooses (SSRF, browser launch)"
     },
     {
       "category": "supply-chain",
@@ -5495,7 +5502,8 @@
         "CVE-2026-30623",
         "CVE-2026-33224",
         "CVE-2026-40933",
-        "CVE-2026-6980"
+        "CVE-2026-6980",
+        "CVE-2026-93965"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management",
@@ -5517,7 +5525,7 @@
       ],
       "rule_id": "AAK-MCP-STDIO-CMD-INJ-001",
       "severity": "critical",
-      "title": "MCP StdioServerParameters built from network-controlled input (Python)"
+      "title": "MCP STDIO server launched from network-controlled input (Python)"
     },
     {
       "category": "supply-chain",
@@ -7033,7 +7041,8 @@
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-55071",
-        "CVE-2026-55157"
+        "CVE-2026-55157",
+        "CVE-2026-94031"
       ],
       "eu_ai_act": [
         "Art. 9 - Risk Management"
@@ -8262,7 +8271,7 @@
       "low": 10,
       "medium": 96
     },
-    "total_cves_covered": 259,
+    "total_cves_covered": 268,
     "total_rules": 364
   },
   "tool": "agent-audit-kit"

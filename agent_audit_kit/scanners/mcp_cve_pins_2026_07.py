@@ -114,9 +114,11 @@ available) before shipping:
     catalog -> injected argv spawned by MCPClientPool)
   - netlicensing-mcp               >= 0.1.6   (CVE-2026-54446; unauthenticated /mcp
     falls back to the operator's API key)
-  - mcp-remote                     0.1.32–0.1.38 (CVE-2026-51994; `resource_metadata`
-    SSRF. Upstream names no fix, so the pin is the advisory's own range, and it
-    needs a stated version: an unpinned `npx mcp-remote` resolves to 0.14.x)
+  - mcp-remote                     0.1.16–0.1.38 (CVE-2026-51994 and CVE-2026-51995,
+    OAuth discovery SSRF from 0.1.32; CVE-2026-51997, internal URLs reach the
+    browser launch from 0.1.16. Upstream names no fix, so the pin is the union of
+    the advisories' ranges, and it needs a stated version: an unpinned
+    `npx mcp-remote` resolves to 0.14.x)
   - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
     `.mcp.json` servers spawned before the trust prompt)
 
@@ -174,8 +176,8 @@ _VER_OPT = (
 _MCP_SDK_RE = re.compile(r"(?<![\w./-])mcp(?:\[[\w,\s-]+\])?\s*" + _VER_REQ, re.IGNORECASE)
 _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECASE)
 # `mcp-remote` (npm) requires a stated version, like `_MCP_SDK_RE`. The pin is
-# the advisory's range, 0.1.32-0.1.38, and an unpinned `npx mcp-remote` resolves
-# to the newest release (0.14.x), which that advisory never tested. The house
+# the advisories' range, 0.1.16-0.1.38, and an unpinned `npx mcp-remote` resolves
+# to the newest release (0.14.x), which none of them tested. The house
 # default reads a missing version as exposed; here that would put a CRITICAL on a
 # large share of all MCP configs for a claim nobody has made.
 _MCP_REMOTE_RE = re.compile(r"(?<![\w./-])mcp-remote(?![\w-])" + _VER_REQ, re.IGNORECASE)
@@ -974,11 +976,16 @@ _PINS: tuple[_Pin, ...] = (
     # --- 2026-09-26 wave ---
     # mcp-remote 0.1.32-0.1.38 fetches the `resource_metadata` URL a remote
     # server puts in its WWW-Authenticate header with no destination policy
-    # (CVE-2026-51994, CVSS 9.1, CWE-918). `introduced` + floor make it the
-    # advisory's range exactly; `_MCP_REMOTE_RE` keeps unpinned references out.
+    # (CVE-2026-51994, CVSS 9.1, CWE-918), and in the same range fetches an
+    # authorization server's well-known metadata from an unvalidated origin
+    # (CVE-2026-51995). From 0.1.16, the release that added a URL check for
+    # CVE-2025-6514, that check lets loopback, private and metadata addresses
+    # through to the browser launch (CVE-2026-51997), so `introduced` is 0.1.16:
+    # the union of the three advisory ranges. `_MCP_REMOTE_RE` keeps unpinned
+    # references out.
     _Pin("AAK-MCP-REMOTE-CVE-2026-51994-001", "mcp-remote", ("mcp-remote",), (0, 1, 39),
-         introduced=(0, 1, 32),
-         fix_label="a release outside 0.1.32–0.1.38 (upstream names no fix)",
+         introduced=(0, 1, 16),
+         fix_label="a release outside 0.1.16–0.1.38 (upstream names no fix)",
          regexes=(_MCP_REMOTE_RE,), ecosystem="js"),
     # Kimi Code <= 0.31.0 spawns a workspace's `.mcp.json` servers before asking
     # whether the workspace is trusted (CVE-2026-95660, CVSS 6.3, CWE-77/78).
