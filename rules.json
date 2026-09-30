@@ -3695,7 +3695,11 @@
         "CVE-2026-77252",
         "CVE-2026-77270",
         "CVE-2026-77266",
-        "CVE-2026-77269"
+        "CVE-2026-77269",
+        "CVE-2026-77250",
+        "CVE-2026-77268",
+        "CVE-2026-77265",
+        "CVE-2026-77272"
       ],
       "description": "MCP Atlassian (`mcp-atlassian`), an MCP server for Confluence and Jira, before 0.22.0 passes the client-supplied `file_path` argument of `confluence_upload_attachment` straight to `open(file_path, \"rb\")` inside `_upload_attachment_direct()` in `src/mcp_atlassian/confluence/attachments.py`, without routing it through `validate_safe_path`. An authenticated MCP client can therefore read any file the server process can reach and exfiltrate it to Confluence as an attachment. Because the tool is agent-callable, untrusted content that induces an agent to call it reaches the same primitive, disclosing server environment material such as `CONFLUENCE_API_TOKEN` and other credentials (CVE-2026-73498, CVSS 7.7). Fixed in 0.22.0.",
       "incident_references": [],
@@ -4108,7 +4112,8 @@
         "CVE-2026-73846",
         "CVE-2026-73845",
         "CVE-2026-73844",
-        "CVE-2026-53509"
+        "CVE-2026-53509",
+        "CVE-2026-61612"
       ],
       "description": "`@aborruso/ckan-mcp-server`, an MCP server for querying CKAN open-data portals, before 0.4.112 carries three related defects. `canonicalizeParams` in `src/utils/cache.ts` serialises request parameters without escaping `&`, `=` or `|`, so distinct logical parameter sets collapse to the same `buildCacheKey` output and an attacker can prime the shared cache with a response another user's different query then receives (CVE-2026-73846, CVSS 6.5). `isValidMqaServer`, used by `ckan_get_mqa_quality` and `ckan_get_mqa_quality_details` in `src/tools/quality.ts`, validates the `server_url` parameter with a prefix-only regular expression for `dati.gov.it`, which suffix-host and URL-userinfo forms defeat, letting a caller point the tool at an attacker-controlled host and receive a spoofed response (CVE-2026-73845, CVSS 5.3). Error paths reflect raw upstream response bodies and internal exception text \u2014 hostnames, internal IPs, database errors, stack fragments \u2014 back to the caller instead of a sanitised message (CVE-2026-73844, CVSS 3.7). All three are fixed in 0.4.112.",
       "incident_references": [],
@@ -6056,11 +6061,13 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-51994"
+        "CVE-2026-51994",
+        "CVE-2026-51995",
+        "CVE-2026-51997"
       ],
-      "description": "`mcp-remote`, the npm proxy that connects stdio MCP clients to remote MCP servers over OAuth, from 0.1.32 through 0.1.38 takes the `resource_metadata` URL a remote server puts in its `WWW-Authenticate` header and fetches it with no scheme, hostname or private-address policy. A malicious or compromised MCP server therefore makes the client request localhost services, private-network addresses or cloud metadata endpoints reachable from the user's machine, during OAuth discovery and before any tool is called (CVE-2026-51994, CVSS 3.1 9.1, CWE-918). The range is the advisory's: it reconfirmed the flaw against 0.1.38, and upstream has published neither an advisory nor a fix, so this rule makes no claim about 0.1.39 or later in either direction.",
+      "description": "`mcp-remote`, the npm proxy that connects stdio MCP clients to remote MCP servers over OAuth, trusts URLs the remote server chooses. From 0.1.32 through 0.1.38 it fetches the `resource_metadata` URL a server puts in its `WWW-Authenticate` header with no scheme, hostname or private-address policy (CVE-2026-51994, CVSS 3.1 9.1, CWE-918), and it fetches `/.well-known/oauth-authorization-server` from an authorization-server origin taken from server-controlled metadata without validating that origin (CVE-2026-51995, CVSS 3.1 7.5). A malicious or compromised MCP server therefore makes the client request localhost services, private-network addresses or cloud metadata endpoints during OAuth discovery, before any tool is called. From 0.1.16, the release that added a URL check before opening the user's browser, that check accepts any HTTP(S) URL and lets loopback, private, link-local and metadata destinations through to the browser launch (CVE-2026-51997, CVSS 3.1 8.8). The range is the union of the advisories': they were reconfirmed against 0.1.38, and upstream has published neither an advisory nor a fix, so this rule makes no claim about 0.1.39 or later in either direction.",
       "incident_references": [],
-      "limitations": "Reports only a reference that states a version in the range: an `mcp-remote@0.1.3x` argument in an MCP config, a `package.json` dependency or a lockfile entry. An unpinned `npx mcp-remote` is not reported, because it resolves to the newest release (0.14.x on 2026-09-27), which the advisory did not test.",
+      "limitations": "Reports only a reference that states a version in the range: an `mcp-remote@0.1.x` argument in an MCP config, a `package.json` dependency or a lockfile entry. An unpinned `npx mcp-remote` is not reported, because it resolves to the newest release (0.14.x on 2026-09-27), which the advisories did not test. Versions before 0.1.16 carry CVE-2025-6514 (OS command injection through the authorization endpoint URL, fixed in 0.1.16), which this rule does not report.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -6068,11 +6075,11 @@
       "owasp_mcp_references": [
         "MCP09:2025"
       ],
-      "remediation": "Move off 0.1.32\u20130.1.38 and pin the release you move to. Upstream names no fixed version, so check that it validates discovery URLs before trusting it. Connect `mcp-remote` only to MCP servers you trust, and where the client host can reach metadata or admin endpoints, put an egress policy in front of it that blocks loopback, link-local and private destinations on every request and redirect.",
+      "remediation": "Move off 0.1.16\u20130.1.38 and pin the release you move to. Upstream names no fixed version, so check that it validates discovery and authorization URLs before trusting it. Connect `mcp-remote` only to MCP servers you trust, and where the client host can reach metadata or admin endpoints, put an egress policy in front of it that blocks loopback, link-local and private destinations on every request and redirect.",
       "rule_id": "AAK-MCP-REMOTE-CVE-2026-51994-001",
-      "sarif_name": "McpRemoteResourceMetadataSsrf",
+      "sarif_name": "McpRemoteServerChosenUrls",
       "severity": "critical",
-      "title": "mcp-remote 0.1.32\u20130.1.38 fetches a server-chosen `resource_metadata` URL (SSRF)"
+      "title": "mcp-remote 0.1.16\u20130.1.38 trusts URLs a remote MCP server chooses (SSRF, browser launch)"
     },
     {
       "adversa_references": [
@@ -6564,9 +6571,10 @@
         "CVE-2026-22688",
         "CVE-2026-33224",
         "CVE-2026-40933",
-        "CVE-2026-6980"
+        "CVE-2026-6980",
+        "CVE-2026-93965"
       ],
-      "description": "A Python function calls `StdioServerParameters(command=..., args=...)` from `mcp.client.stdio` / `modelcontextprotocol.client` while also reading from a network-controlled source (request body, fetched JSON, environment variable wired to a webhook, untrusted YAML). The OX MCP April-2026 architectural class makes this exploitable: the SDK executes whatever ends up in `command`/`args` verbatim. See AAK-STDIO-001 for the broader sink-pattern detector; this rule is the SDK-named-API config-side counterpart.",
+      "description": "A Python function calls `StdioServerParameters(command=..., args=...)` from `mcp.client.stdio` / `modelcontextprotocol.client` while also reading from a network-controlled source (request body, fetched JSON, environment variable wired to a webhook, untrusted YAML). The OX MCP April-2026 architectural class makes this exploitable: the SDK executes whatever ends up in `command`/`args` verbatim. The same class without the SDK is a hand-rolled launcher: `subprocess.Popen`, `subprocess.run` or `asyncio.create_subprocess_exec` over `shlex.split()` of a stored server record's command field (`server.endpoint_or_command`, `cfg[\"command\"]`), in a class or function that manages MCP STDIO servers, with no executable allowlist between the split and the spawn. A command users register over an application's API is as network-controlled as a request body (CVE-2026-93965, SxDevOps). Both arms are AST within one function, not data flow across functions. See AAK-STDIO-001 for the broader sink-pattern detector; this rule is the launcher-side counterpart.",
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
@@ -6580,11 +6588,11 @@
         "MCP01:2025",
         "MCP05:2025"
       ],
-      "remediation": "Never build `StdioServerParameters.command` / `.args` from a network-controlled value. Pin `command` to a constant binary path and validate `args` against an allow-list. If a tenant must pick the server, look the choice up in a server-side allow-list keyed by tenant identity, not by a free-form string in the request.",
+      "remediation": "Never build `StdioServerParameters.command` / `.args`, or the argv a launcher splits, from a network-controlled value. Pin `command` to a constant binary path and validate `args` against an allow-list. If a tenant must pick the server, look the choice up in a server-side allow-list keyed by tenant identity, not by a free-form string in the request. An application that stores user-registered STDIO servers must check the executable, and for `npx` or `uvx` the package, against an allowlist before spawning, reject shell metacharacters, and drop `PATH` / `LD_PRELOAD`-style keys from the server's environment.",
       "rule_id": "AAK-MCP-STDIO-CMD-INJ-001",
       "sarif_name": "McpStdioServerParamsTainted",
       "severity": "critical",
-      "title": "MCP StdioServerParameters built from network-controlled input (Python)"
+      "title": "MCP STDIO server launched from network-controlled input (Python)"
     },
     {
       "adversa_references": [
@@ -8423,14 +8431,15 @@
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-55157",
-        "CVE-2026-55071"
+        "CVE-2026-55071",
+        "CVE-2026-94031"
       ],
-      "description": "An agent/tool parameter reaches a shell-executing sink through an interpolated command string (CWE-78), including via a local variable and including when the interpolation site is quoted. Double quotes are not a mitigation: `$(...)`, backticks and `${...}` all expand inside them, so `getent passwd \"${username}\"` is exactly as injectable as the unquoted form \u2014 that is CVE-2026-55157 (CVSS 3.1 8.4). Single quotes do block substitution but not a literal `'` that closes the quoting. The rule also covers the argv-behind-an-eval-flag form: passing a list instead of a shell string stops shell metacharacters, but not injection into an interpreter you explicitly invoked, which is how CVE-2026-55071 (CVSS 3.1 8.4) reached the OS through Stata's own shell escape. Narrower and more precise than `AAK-TAINT-001`, which only matches a bare parameter handed straight to the sink.",
+      "description": "An agent/tool parameter reaches a shell-executing sink through an interpolated command string (CWE-78), including via a local variable and including when the interpolation site is quoted. Double quotes are not a mitigation: `$(...)`, backticks and `${...}` all expand inside them, so `getent passwd \"${username}\"` is exactly as injectable as the unquoted form \u2014 that is CVE-2026-55157 (CVSS 3.1 8.4). Single quotes do block substitution but not a literal `'` that closes the quoting. The rule also covers the argv-behind-an-eval-flag form: passing a list instead of a shell string stops shell metacharacters, but not injection into an interpreter you explicitly invoked, which is how CVE-2026-55071 (CVSS 3.1 8.4) reached the OS through Stata's own shell escape. In JavaScript and TypeScript it also follows one call into another file: a tool handler passes a tool-argument value to a method defined in another file, and that method interpolates the parameter into the command. That is CVE-2026-94031, where nexus-mcp's `nexus_reauth` handler handed its `url` argument to a method that ran `open \"${loginUrl}\"` through `exec`. Narrower and more precise than `AAK-TAINT-001`, which only matches a bare parameter handed straight to the sink.",
       "incident_references": [
         "GHSA-49mq-fc6q-3h46",
         "GHSA-49m4-vp58-wgc9"
       ],
-      "limitations": "Propagation is one hop: a parameter interpolated into a local variable that is then passed to the sink. A value routed through a helper function in another module is not followed.",
+      "limitations": "Propagation is one hop: a parameter interpolated into a local variable that is then passed to the sink. In JavaScript and TypeScript it also follows one call from a tool handler into a method defined in another file, matched by name, not type: a same-named method elsewhere can be matched, and a value routed through two helpers is not followed. Python does not follow calls into other modules.",
       "owasp_agentic_references": [
         "ASI02"
       ],
