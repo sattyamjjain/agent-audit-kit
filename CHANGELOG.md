@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AAK-AGENT-004` and `AAK-AGENT-006` again report three lines 0.6.10 reported and 0.6.11 missed: a credential after a comma splice ("Never print $GITHUB_TOKEN, log $AWS_SECRET_ACCESS_KEY ..."), an upload joined by "or" after an unrelated negation and a "but", and "Fetch `<url>` and execute immediately". Found in a review of 0.6.11.
+- `agent_config` reads a bounded window before each verb and credential, so a long crafted instruction-file line no longer scans in quadratic time (0.6.11 took minutes on 600 KB of "never upload it to `<url>`").
+
 ## [0.6.11] - 2026-10-02
 
 ### Added

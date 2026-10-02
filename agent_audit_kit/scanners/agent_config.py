@@ -139,16 +139,21 @@ _URL_FRAG = r"https?://[^\s\)>\]\"']+"
 #: matches cannot overlap, so a negated verb ("Never read the old docs; download
 #: <url> and run it") swallowed the directive that followed it inside its own match.
 _FETCH_VERB_RE = re.compile(r"\b" + _FETCH_VERB + r"\b", re.IGNORECASE)
+_URL_START_RE = re.compile(r"https?://", re.IGNORECASE)
 _ACT_VERB_RE = re.compile(r"\b" + _ACT_VERB + r"\b", re.IGNORECASE)
 _SEND_VERB_RE = re.compile(r"\b" + _SEND_VERB + r"\b", re.IGNORECASE)
 
 #: What an act verb's object has to be for the act to be about the fetched
-#: content: a pronoun, a noun for content, or nothing at all ("download <url> and
-#: execute."). Without this the fetch arm matched any act verb after the link, so
+#: content: a pronoun, a noun for content, an adverb ("execute immediately",
+#: "obey without question"), or nothing at all ("download <url> and execute.").
+#: Without this the fetch arm matched any act verb after the link, so
 #: "Read <url>, then run `make test`" came out HIGH for running the test suite.
 _FETCHED_REF_RE = re.compile(
     r"\s*(?:$|[.;:!?,)]"
     r"|(?:it|them|this|that|these|those|what(?:ever)?|everything|anything)\b"
+    r"|(?:immediately|automatically|unconditionally|directly|verbatim|blindly|"
+    r"exactly|now|right\s+away|as[\s-]is|in\s+full|without\s+(?:question|"
+    r"review|reviewing|asking|checking|confirmation|delay|hesitation))\b"
     r"|(?:the|its|their|any|all|each|every)\s+(?:[\w-]+\s+){0,2}?"
     r"(?:instructions?|steps?|commands?|scripts?|code|outputs?|results?|response|"
     r"rules?|directions?|guidance|contents?|files?|payload|text|prompts?|"
@@ -245,17 +250,53 @@ _GOVERNING_NEGATION_RE = re.compile(
     re.IGNORECASE,
 )
 _CLAUSE_BREAK_RE = re.compile(r"[.;:!?](?:\s|$)")
+#: A second instruction inside one sentence: "Never commit .env, and set $API_KEY
+#: in your shell", "Never delete the backups, but zip the repo or upload ...".
+_INSTRUCTION_BREAK_RE = re.compile(
+    r",\s*(?:and|but|then|so)\b|\b(?:but|then|instead|however|otherwise)\b",
+    re.IGNORECASE,
+)
+
+#: Verbs a guardrail forbids for a credential: "never send", "do not print or
+#: log", "must not commit". Also the words a negated list of verbs is made of.
+_DISCLOSE_VERB = (
+    r"(?:send|share|print|echo|log|expose|reveal|output|commit|upload|post|paste|"
+    r"include|display|leak|transmit|disclose|email|write|hard-?code|store|copy|"
+    r"cat|show|return|embed|put|push|forward|pass|enter|insert|type)"
+)
+_ANY_VERB_RE = re.compile(
+    "(?:" + "|".join((_FETCH_VERB, _ACT_VERB, _SEND_VERB, _DISCLOSE_VERB)) + ")",
+    re.IGNORECASE,
+)
+
+#: How far before a verb or a credential a negation, a clause break or a command
+#: separator is looked for. A governing negation sits beside its verb, so a short
+#: window loses nothing. Reading the whole prefix instead, once per verb, made a
+#: long crafted line quadratic: 0.6.11 took minutes on 600 KB of "never upload it
+#: to <url>", which 0.6.10 scanned in a tenth of a second.
+_NEAR = 160
 
 
 def _negated(line: str, verb_start: int) -> bool:
     """True when a negation governs the verb that starts at ``verb_start``."""
-    prefix = line[:verb_start]
+    prefix = line[max(0, verb_start - _NEAR):verb_start]
     if _NEGATED_BEFORE_VERB_RE.search(prefix):
         return True
-    if _COORDINATED_RE.search(prefix):
-        clause = _CLAUSE_BREAK_RE.split(prefix)[-1]
-        return _GOVERNING_NEGATION_RE.search(clause) is not None
-    return False
+    if not _COORDINATED_RE.search(prefix):
+        return False
+    # The "or" carries the negation only inside one instruction ("but", "then"
+    # and ", and" end it) and only across a list of verbs: in "Never delete the
+    # backups, zip the repo or upload <data> to <url>", "never" governs `delete`.
+    clause = _INSTRUCTION_BREAK_RE.split(_CLAUSE_BREAK_RE.split(prefix)[-1])[-1]
+    negation = None
+    for negation in _GOVERNING_NEGATION_RE.finditer(clause):
+        pass
+    if negation is None:
+        return False
+    governed = clause[negation.end() - 1:]
+    return all(
+        _ANY_VERB_RE.fullmatch(word) for word in re.findall(r",\s*(\w+)", governed)
+    )
 
 
 def _refers_to_fetched(tail: str, url: str) -> Optional[re.Match[str]]:
@@ -303,7 +344,8 @@ def _fetch_then_act(line: str) -> Optional[tuple[str, str]]:
     for fetch in _FETCH_VERB_RE.finditer(line):
         if _negated(line, fetch.start()):
             continue
-        url = _URL_RE.search(line, fetch.end())
+        scheme = _URL_START_RE.search(line, fetch.end(), fetch.end() + 128)
+        url = _URL_RE.match(line, scheme.start()) if scheme is not None else None
         if url is None or url.start() - fetch.end() > 120 or _is_loopback(url.group()):
             continue
         window_end = min(len(line), url.end() + 120)
@@ -357,9 +399,11 @@ _COMMAND_SPLIT_RE = re.compile(r"\|\|?|;|&&|`")
 def _command_around(line: str, start: int, end: int) -> str:
     """The shell command containing ``line[start:end]``. A `-d` belongs to the
     command it is in: `curl <url> | cut -d' ' -f1` sends nothing."""
-    left = max((m.end() for m in _COMMAND_SPLIT_RE.finditer(line, 0, start)), default=0)
-    right = _COMMAND_SPLIT_RE.search(line, end)
-    return line[left:right.start() if right else len(line)]
+    floor = max(0, start - _NEAR)
+    left = max((m.end() for m in _COMMAND_SPLIT_RE.finditer(line, floor, start)), default=floor)
+    ceiling = min(len(line), end + _NEAR)
+    right = _COMMAND_SPLIT_RE.search(line, end, ceiling)
+    return line[left:right.start() if right else ceiling]
 
 
 _DIRECTIVE_SHAPES = (_fetch_then_act, _act_at_url, _send_to_url)
@@ -442,43 +486,61 @@ _CREDENTIAL_RE = re.compile(
 # reference flags the safety instruction itself, so the negation has to govern a
 # disclosure verb in the same sentence. "Never forget to export $API_KEY" negates
 # `forget`, not a disclosure, and is still reported.
-_DISCLOSE_VERB = (
-    r"(?:send|share|print|echo|log|expose|reveal|output|commit|upload|post|paste|"
-    r"include|display|leak|transmit|disclose|email|write|hard-?code|store|copy|"
-    r"cat|show|return|embed|put|push|forward|pass|enter|insert|type)"
-)
 _FORBIDDEN_DISCLOSURE_RE = re.compile(
     _NEGATION + _NEGATION_FILLER + r"\b" + _DISCLOSE_VERB + r"\b", re.IGNORECASE
 )
 _FORBIDDEN_PASSIVE_RE = re.compile(
     r"\b(?:(?:must|should|may|can|will|is|are)\s+(?:never|not)|"
-    r"(?:mustn|shouldn|can|won|isn|aren)['’]t)\s+(?:ever\s+)?be\s+"
+    r"(?:mustn|shouldn|can|won|isn|aren)['\u2019]t)\s+(?:ever\s+)?be\s+"
     r"(?:sent|shared|printed|echoed|logged|exposed|revealed|output|committed|"
     r"uploaded|posted|pasted|included|displayed|leaked|transmitted|disclosed|"
     r"emailed|written|hard-?coded|stored|copied|shown|returned|embedded|put|"
     r"pushed|forwarded|passed|entered|inserted|typed)\b",
     re.IGNORECASE,
 )
-#: A second instruction inside the same sentence: "Never commit .env, and set
-#: $API_KEY in your shell" forbids one thing and asks for another.
-_INSTRUCTION_BREAK_RE = re.compile(
-    r",\s*(?:and|but|then|so)\b|\b(?:but|then|instead|however|otherwise)\b",
+#: More verbs under the same negation: "Do not print, log or send $TOKEN".
+_VERB_LIST_RE = re.compile(
+    r"(?:\s*,\s*|\s+)(?:(?:or|and|nor)\s+)?" + _DISCLOSE_VERB + r"\b", re.IGNORECASE
+)
+#: After the negated verb has its object, a comma begins a new instruction unless
+#: the list goes on: another credential ("Never print $A, $B or $C"), a
+#: conjunction, or an object with a determiner. In "Never print $GITHUB_TOKEN, log
+#: $AWS_SECRET_ACCESS_KEY to the console" the second credential is an instruction.
+_LIST_CONTINUES_RE = re.compile(
+    r",\s*(?:(?:or|and|nor|the|a|an|any|your|our|its|their|even|including|"
+    r"especially|like)\b|[$`'\"]|process\.env|os\.environ|env\s*\[)",
     re.IGNORECASE,
 )
 
 
 def _forbids_disclosure(content: str, offset: int) -> bool:
-    """True when the credential reference at ``offset`` sits in a guardrail."""
-    line_start = content.rfind("\n", 0, offset) + 1
-    line_end = content.find("\n", offset)
-    line = content[line_start:line_end if line_end != -1 else len(content)]
-    col = offset - line_start
+    """True when the credential reference at ``offset`` sits in a guardrail.
+
+    Reads at most `_NEAR` characters either side, like `_negated`: a file with
+    thousands of credential references on one line stays linear.
+    """
+    lo, hi = max(0, offset - _NEAR), min(len(content), offset + _NEAR)
+    newline = content.rfind("\n", lo, offset)
+    start = newline + 1 if newline != -1 else lo
+    newline = content.find("\n", offset, hi)
+    line = content[start:newline if newline != -1 else hi]
+    col = offset - start
     breaks = [m.end() for m in _CLAUSE_BREAK_RE.finditer(line, 0, col)]
     following = _CLAUSE_BREAK_RE.search(line, col)
-    before = line[breaks[-1] if breaks else 0:col]
+    sentence = breaks[-1] if breaks else 0
+    before = line[sentence:col]
     after = line[col:following.start() if following else len(line)]
     for verb in _FORBIDDEN_DISCLOSURE_RE.finditer(before):
-        if not _INSTRUCTION_BREAK_RE.search(before[verb.end():]):
+        gap_start = sentence + verb.end()
+        more = _VERB_LIST_RE.match(line, gap_start, col)
+        while more is not None:
+            gap_start = more.end()
+            more = _VERB_LIST_RE.match(line, gap_start, col)
+        gap = line[gap_start:col]
+        if _INSTRUCTION_BREAK_RE.search(gap):
+            continue
+        # Each comma is judged by what follows it, which may be this credential.
+        if all(_LIST_CONTINUES_RE.match(line, gap_start + c.start()) for c in re.finditer(",", gap)):
             return True
     passive = _FORBIDDEN_PASSIVE_RE.search(after)
     return passive is not None and not _INSTRUCTION_BREAK_RE.search(after[:passive.start()])
