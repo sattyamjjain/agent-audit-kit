@@ -16,12 +16,14 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-02: ten disclosures
+## 2026-10-02: ten disclosures, one new pin, three more on existing pins, two out of scope, four deferred
 
 The watcher opened ten `cve-response` issues (#833-#837 at 22:16Z on 2026-09-30,
-#838-#842 at 05:55Z on 2026-10-01). This section records #833 to #837, #839 and
-#840. Every description below is quoted from the NVD API record, read on
-2026-10-02.
+#838-#842 at 05:55Z on 2026-10-01). One gets a new pin. Three fall inside pins that
+already existed and are listed on them. Two are out of scope. Four are self-hosted
+MCP gateways that ship as container images, and nothing but the image tag carries
+their version, so they are deferred with a date. Every description below is quoted
+from the NVD API record, read on 2026-10-02.
 
 **pi-llm-wiki (CVE-2026-102911) gets a new pin.** NVD: "A flaw has been found in
 zosmaai pi-llm-wiki up to 0.11.7. Affected is an unknown function of the file
@@ -71,31 +73,45 @@ the quickstart written as a compose file produces no finding in a full `run_scan
 detector for `docker.sock` mounts in MCP platform configs is a new shape, not a CVE
 pin, and none is added here.
 
-### CVE-2026-79538 (#836): deferred 2026-10-02 (target 2026-10-11)
+**MCP Server for WordPress (CVE-2026-96524) is out of scope.** NVD: "The MCP Server
+for WordPress  WordPress plugin before 1.8.2 does not correctly verify the WordPress
+REST API nonce for cookie-authenticated requests when a condition an attacker can
+influence is present". A wordpress.org plugin (AtlasMCP, slug
+`ai-workflow-automation-ai-agent-hub`, 1.9.0 today), on neither npm nor PyPI, and no
+file this scanner reads states a WordPress plugin's version. Non-pinnable, on the
+same basis as the five WordPress MCP plugins before it (#490, #523, #634, #648, #815).
+
+### CVE-2026-79538 (#836) and CVE-2026-79537 (#838): deferred 2026-10-02 (target 2026-10-11)
 
 NVD: "metatool-ai MetaMCP up to and including 2.4.22 is vulnerable to Code Execution
 in the internal MCP inspector proxy endpoint GET /mcp-proxy/server/stdio
-(createTransport, STDIO branch, routers/mcp-proxy/server.ts)." MetaMCP is a
+(createTransport, STDIO branch, routers/mcp-proxy/server.ts)." And CVE-2026-79537:
+"metatool-ai MetaMCP through 2.4.22 contains an insecure direct object reference
+(IDOR) in the MCP transport session dispatch." MetaMCP is a
 self-hosted gateway that ships as the container image
 `ghcr.io/metatool-ai/metamcp`, which its compose file pulls at `:latest`. Its root
 `package.json` is `private: true`, and npm's `@metamcp/mcp-server-metamcp` is a
 separate client proxy from another repository (0.6.5, last published 2025-05-28),
 so a pin on it would report the wrong product. v2.4.22 (2025-12-19) is the newest
 GitHub release; the `v2.5.x-docker-per-mcp` tags are not releases, and nothing says
-they fix this. The only versioned artifact is the image tag, and this repository
-has no image-tag detector. Deferred to 2026-10-11 for that reason, and #836 is
-closed with this entry as the record.
+they fix either CVE. The only versioned artifact is the image tag, and this
+repository has no image-tag detector. Both are deferred to 2026-10-11 for that
+reason, and #836 and #838 are closed with this entry as the record.
 
-### CVE-2026-101084 (#837): deferred 2026-10-02 (target 2026-10-11)
+### CVE-2026-101084 (#837) and CVE-2026-101062 (#842): deferred 2026-10-02 (target 2026-10-11)
 
 NVD: "obot versions before v0.21.1 fail to enforce Access Control Rules on the
 /mcp-connect endpoint, allowing any authenticated user to connect to restricted MCP
-servers if they possess the server ID." Fixed in v0.21.1 (2026-05-07). Obot ships
+servers if they possess the server ID." Fixed in v0.21.1 (2026-05-07). And
+CVE-2026-101062: "Obot before v0.23.0 (affected versions <= v0.22.1) running with
+OBOT_SERVER_ENABLE_AUTHENTICATION=true exposes OAuth dynamic client registration
+without authentication and without any restriction on the redirect URIs a client may
+register." Fixed in v0.23.0 (2026-06-17), which covers both ranges. Obot ships
 as the container image `ghcr.io/obot-platform/obot` and a Helm chart; it is a Go
 application, not a package. npm's `obot` is an empty 2018 placeholder and PyPI's
 `obot` is an unrelated bot library. The version a deployment runs is its image tag,
-and this repository has no image-tag detector. Deferred to 2026-10-11 on the same
-basis as #836, and #837 is closed with this entry as the record.
+and this repository has no image-tag detector. Both are deferred to 2026-10-11 on
+the same basis as #836, and #837 and #842 are closed with this entry as the record.
 
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
@@ -104,11 +120,13 @@ basis as #836, and #837 is closed with this entry as the record.
 | CVE-2026-100587 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-pjjr-5qhr-5w6r, the existing floor; recorded against `AAK-MCP-OPENCLAW-CVE-2026-62195-001`. | #839 |
 | CVE-2026-100596 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-wwx7-573h-pqwc; recorded against the same pin. | #840 |
 | CVE-2026-101065 | 9.8 | Obot quickstart (a documented `docker run`) | **Out of scope**, quoted above. No version to pin; the fix is documentation-only. | #835 |
+| CVE-2026-96524 | 8.8 | MCP Server for WordPress (wordpress.org plugin) | **Out of scope**, non-pinnable, quoted above. No npm or PyPI artifact; upgrade the plugin to 1.8.2 or later. | #841 |
 
-CVE-2026-79538 and CVE-2026-101084 have no row: a row is a coverage claim, and
-neither has coverage. CVSS and CWE are from the NVD API.
+CVE-2026-79538, CVE-2026-79537, CVE-2026-101084 and CVE-2026-101062 have no row: a
+row is a coverage claim, and none of them has coverage. CVSS and CWE are from the NVD
+API.
 
-Dispositioned at 2026-10-02T11:30:00Z. Unreleased at the time of writing: this
+Dispositioned at 2026-10-02T11:07:33Z. Unreleased at the time of writing: this
 section carries no version label until the next tag stamps it.
 
 ## 2026-09-30: ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
