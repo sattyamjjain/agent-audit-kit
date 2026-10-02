@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import re
 import unicodedata
 from pathlib import Path
@@ -117,42 +118,270 @@ def _is_safe_host(url: str) -> bool:
     )
 
 
-#: A verb that makes a URL an instruction rather than a reference. Three
-#: patterns, because there are three shapes and lumping them made the rule too
-#: loose: an act verb plus any URL later on the line matched "Run the tests, then
-#: see <docs link>", which is exactly the false positive this rule exists to
-#: avoid becoming.
+#: A verb that makes a URL an instruction rather than a reference. Three prose
+#: shapes, because lumping them made the rule too loose: an act verb plus any URL
+#: later on the line matched "Run the tests, then see <docs link>", which is
+#: exactly the false positive this rule exists to avoid becoming. A fourth, the
+#: shell-command form (`curl -d @.env <url>`), is `_HTTP_SEND_RE` below.
+#:
+#: `GET` is the HTTP method and only matches in capitals. Matched case-blind it
+#: was also the "get" in "To get started, see <url>, then run make test", one of
+#: the lines #771 found still reported HIGH after 0.6.8.
 _FETCH_VERB = (
-    r"(?:fetch|download|curl|wget|retrieve|read|load|import|pull|GET|"
+    r"(?:fetch|download|curl|wget|retrieve|read|load|import|pull|(?-i:GET)|"
     r"open|visit|go\s+to)"
 )
 _ACT_VERB = r"(?:follow|execute|run|obey|apply|comply|eval|source|adhere\s+to)"
-_SEND_VERB = r"(?:send|post|POST|upload|exfiltrate|report|submit|transmit|push)"
+_SEND_VERB = r"(?:send|post|upload|exfiltrate|report|submit|transmit|push)"
 _URL_FRAG = r"https?://[^\s\)>\]\"']+"
 
-#: Fetch it, then act on it: "download <url> and run it".
-_FETCH_THEN_ACT_RE = re.compile(
-    r"\b" + _FETCH_VERB + r"\b[^\n]{0,120}?" + _URL_FRAG
-    + r"[^\n]{0,120}?\b" + _ACT_VERB + r"\b",
+#: Each verb is tried where it stands, not through one regex sweep. A sweep's
+#: matches cannot overlap, so a negated verb ("Never read the old docs; download
+#: <url> and run it") swallowed the directive that followed it inside its own match.
+_FETCH_VERB_RE = re.compile(r"\b" + _FETCH_VERB + r"\b", re.IGNORECASE)
+_ACT_VERB_RE = re.compile(r"\b" + _ACT_VERB + r"\b", re.IGNORECASE)
+_SEND_VERB_RE = re.compile(r"\b" + _SEND_VERB + r"\b", re.IGNORECASE)
+
+#: What an act verb's object has to be for the act to be about the fetched
+#: content: a pronoun, a noun for content, or nothing at all ("download <url> and
+#: execute."). Without this the fetch arm matched any act verb after the link, so
+#: "Read <url>, then run `make test`" came out HIGH for running the test suite.
+_FETCHED_REF_RE = re.compile(
+    r"\s*(?:$|[.;:!?,)]"
+    r"|(?:it|them|this|that|these|those|what(?:ever)?|everything|anything)\b"
+    r"|(?:the|its|their|any|all|each|every)\s+(?:[\w-]+\s+){0,2}?"
+    r"(?:instructions?|steps?|commands?|scripts?|code|outputs?|results?|response|"
+    r"rules?|directions?|guidance|contents?|files?|payload|text|prompts?|"
+    r"directives?|polic(?:y|ies)|installer|program|binary|playbook|runbook|"
+    r"procedure)\b)",
+    re.IGNORECASE,
+)
+
+#: Fetched content can be put in charge without an act verb: pypa/setuptools'
+#: AGENTS.md says to "fetch and read the [skeleton](<url>) document in its
+#: entirety. It is the authoritative source of truth for this project". That is
+#: the directive this rule exists for, and 0.6.10 caught it only because it read
+#: the noun "source" as the shell verb.
+_AUTHORITY_RE = re.compile(
+    r"\b(?:authoritative|source\s+of\s+truth|takes?\s+precedence|supersedes?|"
+    r"overrides?\s+(?:this|these|the|any|all)\b)",
     re.IGNORECASE,
 )
 
 #: Act on what is at it: "follow the instructions at <url>". The preposition is
 #: required, and is what keeps the act verb bound to the URL rather than merely
-#: sharing a line with it.
+#: sharing a line with it. It cannot follow the verb directly: in "the docs
+#: source at <url>" the act verb is a noun, and a verb needs an object first.
 _ACT_AT_URL_RE = re.compile(
-    r"\b" + _ACT_VERB + r"\b[^\n]{0,100}?\b(?:at|from|in|on|via|per)\s+"
-    r"(?:the\s+|this\s+)?(?:\S+\s+){0,3}?" + _URL_FRAG,
+    r"\b(?P<verb>" + _ACT_VERB + r")\b\s+(?!(?:at|from|in|on|via|per)\b)"
+    r"[^\n]{0,100}?\b(?:at|from|in|on|via|per)\s+"
+    r"(?:the\s+|this\s+)?(?:\S+\s+){0,3}?(?P<url>" + _URL_FRAG + r")",
     re.IGNORECASE,
 )
 
-#: Send something to it: "upload the results to <url>".
+#: Send something to it: "upload the results to <url>". The destination has to
+#: be introduced by "to", "into" or "onto". "Report bugs at <url>" and "Submit a
+#: PR at <url>" name a place to go, and the old arm, which took any send verb
+#: followed anywhere by a URL, reported both as exfiltration.
 _SEND_TO_URL_RE = re.compile(
-    r"\b" + _SEND_VERB + r"\b[^\n]{0,140}?" + _URL_FRAG,
+    r"\b(?P<verb>" + _SEND_VERB + r")\b(?P<obj>[^\n]{0,140}?)\b(?:to|into|onto)\s+"
+    r"(?:(?:the|this|that|our|your|their)\s+)?(?:\S+\s+){0,3}?(?P<url>" + _URL_FRAG + r")",
     re.IGNORECASE,
 )
 
-_DIRECTIVE_PATTERNS = (_FETCH_THEN_ACT_RE, _ACT_AT_URL_RE, _SEND_TO_URL_RE)
+#: The command form needs no preposition: `curl -X POST -d @.env <url>`. It has
+#: to carry a payload, because sending data is the claim. A bare `POST <url>` in
+#: an architecture note, or a `curl -X POST` that triggers a job with only an auth
+#: header, sends nothing. Method names match in capitals only, as `GET` does.
+_HTTP_SEND_RE = re.compile(
+    r"(?:(?-i:\b(?P<method>POST|PUT|PATCH)\b)|\b(?P<client>curl|wget)\b)"
+    r"[^\n]{0,140}?(?P<url>" + _URL_FRAG + r")",
+    re.IGNORECASE,
+)
+_PAYLOAD_FLAG_RE = re.compile(
+    r"(?<!\S)(?:-d|-F|-T|--data(?:-[a-z]+)?|--form|--json|--upload-file|"
+    r"--post-(?:data|file))(?=[\s=@'\"]|$)|(?<!\S)-d@"
+)
+
+#: An object that is a contribution, not data: "Report security issues to <url>",
+#: "Submit pull requests to <url>". The whole object has to be one of these, so
+#: "Report the bug along with ~/.ssh/id_rsa to <url>" is still a directive.
+_CONTRIBUTION_NP = (
+    r"(?:(?:a|an|the|any|all|your|new|security|bug|feature|pull|merge|potential|"
+    r"suspected|possible)\s+){0,3}"
+    r"(?:bugs?|bug\s+reports?|issues?|PRs?|pull\s+requests?|merge\s+requests?|"
+    r"patch(?:es)?|feedback|vulnerabilit(?:y|ies)|questions?|feature\s+requests?|"
+    r"suggestions?|ideas?|contributions?|problems?|tickets?|changes|commits?|"
+    r"fix(?:es)?)"
+)
+_CONTRIBUTION_OBJECT_RE = re.compile(
+    _CONTRIBUTION_NP + r"(?:\s*(?:,|\band\b|\bor\b|&|/)\s*" + _CONTRIBUTION_NP + r")*",
+    re.IGNORECASE,
+)
+
+#: A negation that governs the verb right after it: "never upload", "do not
+#: send", "don't ever post", "do not, under any circumstances, upload". A line
+#: like "Never upload repository files to <url>" is a guardrail, the opposite of
+#: what AAK-AGENT-006 and AAK-AGENT-004 report.
+#:
+#: It has to sit directly before the verb, never merely somewhere on the line.
+#: "Don't use pip, download <url> and run it" negates `use`, and reading any
+#: negation as a guardrail would let one leading "don't" switch off every
+#: directive after it. "Never forget to upload <data> to <url>" is the same: the
+#: negation governs `forget`, and the line still tells the agent to upload.
+_NEGATION = r"(?:\bnever|\bnot|\bcannot|n['\u2019]t)\b[\s,]*"
+_NEGATION_FILLER = (
+    r"(?:(?:ever|even|to|under\s+any\s+circumstances|at\s+any\s+point|at\s+all)\b[\s,]*)*"
+)
+_NEGATED_BEFORE_VERB_RE = re.compile(_NEGATION + _NEGATION_FILLER + r"$", re.IGNORECASE)
+
+#: "Never upload secrets or send logs to <url>": one negation over two verbs. Only
+#: "or" and "nor" carry it; "and" does not reliably. A double negative ("never
+#: forget to save or upload ...") is an instruction, so those verbs do not count.
+_COORDINATED_RE = re.compile(r"\b(?:or|nor)\s+$", re.IGNORECASE)
+_DOUBLE_NEGATIVE = r"(?:forget|hesitate|fail|neglect|skip|omit|miss|stop|refuse|delay)\b"
+_GOVERNING_NEGATION_RE = re.compile(
+    _NEGATION + _NEGATION_FILLER + r"(?!" + _DOUBLE_NEGATIVE + r")\w",
+    re.IGNORECASE,
+)
+_CLAUSE_BREAK_RE = re.compile(r"[.;:!?](?:\s|$)")
+
+
+def _negated(line: str, verb_start: int) -> bool:
+    """True when a negation governs the verb that starts at ``verb_start``."""
+    prefix = line[:verb_start]
+    if _NEGATED_BEFORE_VERB_RE.search(prefix):
+        return True
+    if _COORDINATED_RE.search(prefix):
+        clause = _CLAUSE_BREAK_RE.split(prefix)[-1]
+        return _GOVERNING_NEGATION_RE.search(clause) is not None
+    return False
+
+
+def _refers_to_fetched(tail: str, url: str) -> Optional[re.Match[str]]:
+    """Match when the text after an act verb points back at what was fetched.
+
+    The URL's own file name counts too: "Fetch <url>/setup.sh, then run setup.sh"
+    runs what it fetched as surely as "and run it" does.
+    """
+    ref = _FETCHED_REF_RE.match(tail)
+    if ref is not None:
+        return ref
+    # `_URL_RE` keeps a trailing comma or full stop, so trim it off the name.
+    name = urlsplit(url).path.rstrip(".,;:!?").rsplit("/", 1)[-1]
+    if len(name) >= 3:
+        return re.match(r"\s*\S*" + re.escape(name), tail)
+    return None
+
+
+def _is_loopback(url: str) -> bool:
+    """True for a URL on this machine: localhost, 127.0.0.0/8, ::1 or 0.0.0.0.
+
+    Such a URL is not a pointer to content somebody else controls, which is the
+    premise of AAK-AGENT-006. On the #771 corpus the commonest HIGH left after
+    the contributor-link fix was a dev-server comment, "npm run dev  # Starts at
+    http://localhost:3000", read as "run what is at <url>".
+    """
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return False
+    if not host:
+        return False
+    host = host.rstrip(".").lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_unspecified
+
+
+def _fetch_then_act(line: str) -> Optional[tuple[str, str]]:
+    """``(evidence, url)`` for "fetch <url> ... act on it", else None."""
+    for fetch in _FETCH_VERB_RE.finditer(line):
+        if _negated(line, fetch.start()):
+            continue
+        url = _URL_RE.search(line, fetch.end())
+        if url is None or url.start() - fetch.end() > 120 or _is_loopback(url.group()):
+            continue
+        window_end = min(len(line), url.end() + 120)
+        for act in _ACT_VERB_RE.finditer(line, url.end(), window_end):
+            if _negated(line, act.start()):
+                continue
+            ref = _refers_to_fetched(line[act.end():act.end() + 80], url.group())
+            if ref is not None:
+                return line[fetch.start():act.end() + ref.end()].strip(), url.group()
+        authority = _AUTHORITY_RE.search(line, url.end(), window_end)
+        if authority is not None:
+            return line[fetch.start():authority.end()].strip(), url.group()
+    return None
+
+
+def _act_at_url(line: str) -> Optional[tuple[str, str]]:
+    for act in _ACT_VERB_RE.finditer(line):
+        match = _ACT_AT_URL_RE.match(line, act.start())
+        if match is None or _negated(line, act.start()) or _is_loopback(match.group("url")):
+            continue
+        return match.group().strip(), match.group("url")
+    return None
+
+
+def _send_to_url(line: str) -> Optional[tuple[str, str]]:
+    for verb in _SEND_VERB_RE.finditer(line):
+        match = _SEND_TO_URL_RE.match(line, verb.start())
+        if match is None or _negated(line, verb.start()) or _is_loopback(match.group("url")):
+            continue
+        if _CONTRIBUTION_OBJECT_RE.fullmatch(match.group("obj").strip()):
+            continue
+        return match.group().strip(), match.group("url")
+    return None
+
+
+def _http_send(command: str) -> Optional[tuple[str, str]]:
+    """``(evidence, url)`` for an HTTP client call that carries a payload."""
+    for match in _HTTP_SEND_RE.finditer(command):
+        if _negated(command, match.start()) or _is_loopback(match.group("url")):
+            continue
+        if _PAYLOAD_FLAG_RE.search(_command_around(command, match.start(), match.end())):
+            return match.group().strip(), match.group("url")
+    return None
+
+
+#: What ends one shell command on a line: a pipe, `;`, `&&`, or the backtick
+#: closing an inline code span.
+_COMMAND_SPLIT_RE = re.compile(r"\|\|?|;|&&|`")
+
+
+def _command_around(line: str, start: int, end: int) -> str:
+    """The shell command containing ``line[start:end]``. A `-d` belongs to the
+    command it is in: `curl <url> | cut -d' ' -f1` sends nothing."""
+    left = max((m.end() for m in _COMMAND_SPLIT_RE.finditer(line, 0, start)), default=0)
+    right = _COMMAND_SPLIT_RE.search(line, end)
+    return line[left:right.start() if right else len(line)]
+
+
+_DIRECTIVE_SHAPES = (_fetch_then_act, _act_at_url, _send_to_url)
+
+
+def _logical_lines(content: str) -> list[tuple[int, str]]:
+    """``(first line number, text)``, with backslash-continued lines joined.
+
+    A shell command split with a trailing backslash is one command, and the
+    payload of a `curl -X POST` usually sits on its last line.
+    """
+    out: list[tuple[int, str]] = []
+    lines = content.splitlines()
+    index = 0
+    while index < len(lines):
+        first, text = index + 1, lines[index]
+        while text.rstrip().endswith("\\") and index + 1 < len(lines):
+            index += 1
+            text = text.rstrip()[:-1] + " " + lines[index].strip()
+        out.append((first, text))
+        index += 1
+    return out
 
 
 def _directive_links(content: str) -> list[tuple[int, str, str]]:
@@ -161,22 +390,27 @@ def _directive_links(content: str) -> list[tuple[int, str, str]]:
     Scoped to one line, which is what "the same sentence or list item" means in
     a markdown instruction file: a URL three paragraphs below an unrelated
     "follow" is not a directive about that URL, and matching across the gap is
-    how a context rule turns into the blunt one it replaced.
+    how a context rule turns into the blunt one it replaced. The one exception
+    is a shell command continued with a trailing backslash, read as one line.
     """
-    out: list[tuple[int, str, str]] = []
+    found_at: dict[int, tuple[str, str]] = {}
     for line_num, line in enumerate(content.splitlines(), 1):
         if "://" not in line:
             continue
-        for pattern in _DIRECTIVE_PATTERNS:
-            match = pattern.search(line)
-            if not match:
-                continue
-            url = _URL_RE.search(match.group())
-            if url is None:
-                continue
-            out.append((line_num, match.group().strip(), url.group()))
-            break
-    return out
+        for shape in _DIRECTIVE_SHAPES:
+            found = shape(line)
+            if found is not None:
+                found_at[line_num] = found
+                break
+    # Only the command form reads across a backslash continuation. Joined prose
+    # misreads a program's argument as a directive: `cargo run ... \` followed by
+    # `-- "Find top travel books on <url>"` is not "run what is on <url>".
+    for line_num, command in _logical_lines(content):
+        if line_num not in found_at and "://" in command:
+            found = _http_send(command)
+            if found is not None:
+                found_at[line_num] = found
+    return [(line_num, ev, url) for line_num, (ev, url) in sorted(found_at.items())]
 
 
 # ---- AAK-AGENT-003: Security override patterns ----
@@ -201,6 +435,53 @@ _CREDENTIAL_RE = re.compile(
     r"\bprocess\.env\.[A-Z_]*(?:KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL)[A-Z_]*\b",
     re.IGNORECASE,
 )
+
+# A guardrail names a credential in order to forbid disclosing it: "Never send
+# $AWS_SECRET_ACCESS_KEY anywhere", "$GITHUB_TOKEN must never be printed". Raised
+# in #771 with the AAK-AGENT-002 severity. Reporting that line as a credential
+# reference flags the safety instruction itself, so the negation has to govern a
+# disclosure verb in the same sentence. "Never forget to export $API_KEY" negates
+# `forget`, not a disclosure, and is still reported.
+_DISCLOSE_VERB = (
+    r"(?:send|share|print|echo|log|expose|reveal|output|commit|upload|post|paste|"
+    r"include|display|leak|transmit|disclose|email|write|hard-?code|store|copy|"
+    r"cat|show|return|embed|put|push|forward|pass|enter|insert|type)"
+)
+_FORBIDDEN_DISCLOSURE_RE = re.compile(
+    _NEGATION + _NEGATION_FILLER + r"\b" + _DISCLOSE_VERB + r"\b", re.IGNORECASE
+)
+_FORBIDDEN_PASSIVE_RE = re.compile(
+    r"\b(?:(?:must|should|may|can|will|is|are)\s+(?:never|not)|"
+    r"(?:mustn|shouldn|can|won|isn|aren)['’]t)\s+(?:ever\s+)?be\s+"
+    r"(?:sent|shared|printed|echoed|logged|exposed|revealed|output|committed|"
+    r"uploaded|posted|pasted|included|displayed|leaked|transmitted|disclosed|"
+    r"emailed|written|hard-?coded|stored|copied|shown|returned|embedded|put|"
+    r"pushed|forwarded|passed|entered|inserted|typed)\b",
+    re.IGNORECASE,
+)
+#: A second instruction inside the same sentence: "Never commit .env, and set
+#: $API_KEY in your shell" forbids one thing and asks for another.
+_INSTRUCTION_BREAK_RE = re.compile(
+    r",\s*(?:and|but|then|so)\b|\b(?:but|then|instead|however|otherwise)\b",
+    re.IGNORECASE,
+)
+
+
+def _forbids_disclosure(content: str, offset: int) -> bool:
+    """True when the credential reference at ``offset`` sits in a guardrail."""
+    line_start = content.rfind("\n", 0, offset) + 1
+    line_end = content.find("\n", offset)
+    line = content[line_start:line_end if line_end != -1 else len(content)]
+    col = offset - line_start
+    breaks = [m.end() for m in _CLAUSE_BREAK_RE.finditer(line, 0, col)]
+    following = _CLAUSE_BREAK_RE.search(line, col)
+    before = line[breaks[-1] if breaks else 0:col]
+    after = line[col:following.start() if following else len(line)]
+    for verb in _FORBIDDEN_DISCLOSURE_RE.finditer(before):
+        if not _INSTRUCTION_BREAK_RE.search(before[verb.end():]):
+            return True
+    passive = _FORBIDDEN_PASSIVE_RE.search(after)
+    return passive is not None and not _INSTRUCTION_BREAK_RE.search(after[:passive.start()])
 
 # ---- AAK-AGENT-005: Hidden content ----
 _HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
@@ -423,8 +704,10 @@ def _check_content(
             _line_at(content, match.start()),
         ))
 
-    # AAK-AGENT-004: Credential patterns
+    # AAK-AGENT-004: Credential patterns, unless the sentence forbids disclosing it
     for match in _CREDENTIAL_RE.finditer(content):
+        if _forbids_disclosure(content, match.start()):
+            continue
         evidence = match.group().strip()
         findings.append(make_finding(
             "AAK-AGENT-004",

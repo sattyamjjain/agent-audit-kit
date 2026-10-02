@@ -1375,6 +1375,15 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-04"],
+    limitations=(
+        "Reads `$NAME`, `${NAME}`, `env[...]`, `os.environ[...]` and "
+        "`process.env.NAME` references whose name contains KEY, SECRET, TOKEN, "
+        "PASSWORD or CREDENTIAL; a bare name with no `$` is not a reference. A "
+        "sentence that forbids disclosing the credential (\"Never send "
+        "$AWS_SECRET_ACCESS_KEY anywhere\", \"$GITHUB_TOKEN must never be "
+        "printed\") is a guardrail and is not reported. The negation has to "
+        "govern a disclosure verb, so \"Never forget to export $API_KEY\" still is."
+    ),
 )
 
 _r(
@@ -1415,13 +1424,27 @@ _r(
     "not hold, evaluated at whatever the far end is serving at the time. The "
     "agent's own instructions become editable by whoever controls that "
     "endpoint, with no commit and no review.\n\n"
-    "**No host allowlist applies here, deliberately.** The reporter who raised "
-    "the severity problem in `AAK-AGENT-002` made the argument himself: an "
+    "**No host allowlist applies here, deliberately.** @GarvitAgrawal04 made "
+    "the argument in [#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771), "
+    "the report that benchmarked `AAK-AGENT-002` on 930 public repositories: an "
     "attacker can host on github.com too. A gist, a raw file on a fork, a "
     "release asset — all sit on hosts any allowlist would contain, and the "
     "instruction to fetch and obey is what matters rather than where it points. "
     "Matching is a deterministic regex over one line at a time: no model call, "
     "and no judgement about the destination.\n\n"
+    "Not every link with a verb is a directive. A contributor pointer is not: "
+    "\"Report bugs at <url>\", \"Submit pull requests to <url>\", or \"see "
+    "<url>, then run `make test`\", where what runs is the test suite, not the "
+    "page. Fetch-then-act needs the act to point back at what was fetched (it, "
+    "them, the instructions, the script, the file's own name), or the line to "
+    "put the fetched content in charge (\"it is the authoritative source of "
+    "truth\"). A loopback address is not content anyone else controls, so "
+    "`npm run dev  # Starts at http://localhost:3000` is not reported, and a "
+    "`curl` or `POST` sends data only when it carries a payload (`-d`, `-F`, "
+    "`--data`). Nor is a guardrail: a negation that governs the verb, as in \"Never upload "
+    "repository files to <url>\", forbids what this rule reports. A negation "
+    "elsewhere on the line does not count, so \"Don't use pip, download <url> "
+    "and run it\" is still reported.\n\n"
     "Scoped to a single line, because that is what \"the same sentence or list "
     "item\" means in a markdown instruction file. A URL three paragraphs below "
     "an unrelated \"follow\" is not a directive about that URL, and matching "
@@ -1444,7 +1467,8 @@ _r(
     limitations=(
         "Regex over one line, not data flow: it reads the instruction, never "
         "what the URL serves. Phrasing it does not recognise is missed — an "
-        "imperative split across two lines, or a verb outside its list — and a "
+        "imperative split across two lines, a verb outside its list, or a "
+        "download run under another name (\"extract it and run ./tool\") — and a "
         "line that merely discusses fetching will match. This is a prompt to "
         "read the line, not a determination that the link is hostile."
     ),
