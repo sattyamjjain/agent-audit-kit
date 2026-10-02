@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `AAK-AGENT-006` no longer fires on "Report bugs at", "Submit a PR at" or "see `<url>`, then run", or on a guardrail that forbids an upload. Thanks to @GarvitAgrawal04 for the 930-repo bench (#771).
 - `AAK-AGENT-004` no longer reports a guardrail that names a credential in order to forbid sending it.
+- `AAK-AGENT-005` no longer flags a Hindi virama next to a joiner, as in the reporter's ksha on #771.
+- Corrects 0.6.8: the Hindi virama plus joiner case was not fixed there; it is now.
 
 ## [0.6.10] - 2026-09-27
 

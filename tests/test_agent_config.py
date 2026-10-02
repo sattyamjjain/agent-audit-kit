@@ -597,6 +597,27 @@ def test_devanagari_zwnj_is_not_hidden_content(tmp_path: Path) -> None:
     assert _hidden_unicode_findings(tmp_path, "क" + _ZWNJ + "ष in the notes\n") == []
 
 
+_VIRAMA = "\u094d"  # DEVANAGARI SIGN VIRAMA
+
+
+def test_a_joiner_after_a_virama_is_not_hidden_content(tmp_path: Path) -> None:
+    """The reporter's ksha on #771, spelled the way Hindi writes it: क, virama,
+    U+200D, ष asks for the half form of क. 0.6.8 claimed this case and missed it:
+    its exemption compared the letters on either side of the joiner, and the
+    character before it here is the virama, a combining mark, not a letter."""
+    assert _hidden_unicode_findings(tmp_path, "क" + _VIRAMA + _ZWJ + "ष\n") == []
+
+
+def test_a_non_joiner_after_a_virama_is_not_hidden_content(tmp_path: Path) -> None:
+    """क, virama, U+200C, ष keeps the virama visible instead of forming a conjunct."""
+    assert _hidden_unicode_findings(tmp_path, "क" + _VIRAMA + _ZWNJ + "ष\n") == []
+
+
+def test_a_joiner_between_a_virama_and_a_latin_letter_fires(tmp_path: Path) -> None:
+    """The virama counts as Devanagari, not as a pass: a joiner spliced between it
+    and another alphabet still fires."""
+    assert _hidden_unicode_findings(tmp_path, "क" + _VIRAMA + _ZWJ + "a\n")
+
 
 def test_persian_zwnj_is_not_hidden_content(tmp_path: Path) -> None:
     """Persian needs U+200C inside a word — "می‌رود" is spelled with one."""

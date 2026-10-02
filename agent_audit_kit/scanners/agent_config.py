@@ -538,8 +538,9 @@ _ZERO_WIDTH_CHARS = frozenset({
 # MEDIUM.
 #
 # What stays reportable is placement, not identity. U+200C and U+200D between
-# letters of one script are spelling: Devanagari needs U+200D for a conjunct and
-# U+200C to break one, Persian needs U+200C for a word like "می‌رود". U+200D
+# letters of one script are spelling, and so are they right after that script's
+# virama: Devanagari needs U+200D for a conjunct or a half form and U+200C to
+# break one, Persian needs U+200C for a word like "می‌رود". U+200D
 # between two emoji is how a single glyph is composed. A BOM at offset 0 is a
 # file-encoding marker every editor writes.
 #
@@ -562,8 +563,15 @@ _JOINER_SCRIPTS = frozenset({
 
 
 def _script_of(char: str) -> Optional[str]:
-    """The script name `unicodedata` gives a letter, or None if it is not one."""
-    if not char.isalpha():
+    """The script name `unicodedata` gives a letter or a combining mark, else None.
+
+    Marks count because Indic orthography puts the joiner right after one. The
+    Hindi half form of क before ष is written क, virama (DEVANAGARI SIGN
+    VIRAMA, a mark, not a letter), U+200D, ष. 0.6.8 compared letters only, so
+    it saw a mark on the left and reported the joiner it had claimed to stop
+    reporting (#771).
+    """
+    if not (char.isalpha() or unicodedata.category(char).startswith("M")):
         return None
     try:
         name = unicodedata.name(char)
@@ -598,7 +606,8 @@ def _zero_width_is_expected(text: str, index: int, at_file_start: bool = False) 
       `at_file_start` is passed in rather than derived from `index`, because
       `index` is an offset into one line and a BOM at the start of line five is
       not an encoding marker.
-    * U+200C / U+200D between two letters of the SAME joiner-using script.
+    * U+200C / U+200D between two letters, or a letter and a mark such as a
+      virama, of the SAME joiner-using script.
       Requiring one script is what keeps the exemption from covering a joiner
       spliced between two alphabets, which is a way to hide a word boundary.
     * U+200D between two emoji — one composed glyph.
