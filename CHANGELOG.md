@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.11] - 2026-10-02
+
 ### Added
 
 - `AAK-MCP-PILLMWIKI-CVE-2026-102911-001`: `@zosmaai/pi-llm-wiki` below 0.11.8, whose `wiki_capture_source` MCP tool hands its `url` argument to a shell (CVE-2026-102911, #833). Reported only where a version is stated. Rule count 364 -> 365.

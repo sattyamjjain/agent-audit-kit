@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-02: ten disclosures, one new pin, three more on existing pins, two out of scope, four deferred
+## 2026-10-02 (v0.6.11): ten disclosures, one new pin, three more on existing pins, two out of scope, four deferred
 
 The watcher opened ten `cve-response` issues (#833-#837 at 22:16Z on 2026-09-30,
 #838-#842 at 05:55Z on 2026-10-01). One gets a new pin. Three fall inside pins that
@@ -129,7 +129,7 @@ API.
 Dispositioned at 2026-10-02T11:07:33Z. Unreleased at the time of writing: this
 section carries no version label until the next tag stamps it.
 
-## 2026-09-30: ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
+## 2026-09-30 (v0.6.11): ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
 
 The watcher opened ten `cve-response` issues on 2026-09-27 (#821-#825 at 16:58Z,
 #827-#831 at 21:21Z). Seven sit on pins that already existed: one needed its range
