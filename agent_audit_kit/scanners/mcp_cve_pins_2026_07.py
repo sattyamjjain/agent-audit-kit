@@ -122,6 +122,8 @@ available) before shipping:
     `npx mcp-remote` resolves to 0.14.x)
   - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
     `.mcp.json` servers spawned before the trust prompt)
+  - @zosmaai/pi-llm-wiki           >= 0.11.8  (CVE-2026-102911; the wiki_capture_source MCP
+    tool's `url` reaches `sh -c`. A stated version is required, as for mcp-remote)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -182,6 +184,13 @@ _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECAS
 # default reads a missing version as exposed; here that would put a CRITICAL on a
 # large share of all MCP configs for a claim nobody has made.
 _MCP_REMOTE_RE = re.compile(r"(?<![\w./-])mcp-remote(?![\w-])" + _VER_REQ, re.IGNORECASE)
+# `@zosmaai/pi-llm-wiki` (npm) requires a stated version too. Upstream registers
+# its MCP server by a path inside node_modules, which states none, and the
+# lookbehind keeps that path (`.../node_modules/@zosmaai/...`) out. The unscoped
+# npm `pi-llm-wiki` is a different author's package and is never matched.
+_PILLMWIKI_RE = re.compile(
+    r"(?<![\w./-])@zosmaai/pi-llm-wiki(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
 # version line; the lookbehind keeps it off `pyletta`.
@@ -994,6 +1003,15 @@ _PINS: tuple[_Pin, ...] = (
     # whether the workspace is trusted (CVE-2026-95660, CVSS 6.3, CWE-77/78).
     _Pin("AAK-MCP-KIMICODE-CVE-2026-95660-001", "@moonshot-ai/kimi-code",
          ("@moonshot-ai/kimi-code",), (0, 31, 1), fix_label="0.31.1", ecosystem="js"),
+    # --- 2026-10-02 wave ---
+    # pi-llm-wiki's wiki_capture_source MCP tool hands its `url` argument to
+    # `sh -c "uvx ... markitdown \"${source}\""` (CVE-2026-102911, CVSS 9.9,
+    # CWE-77/78). 0.11.8 calls markitdown with an argv list instead (fix
+    # 36086703). NVD says "up to 0.11.7" with no lower bound, and the shell call
+    # is in the upstream source from 2026-05-11, so there is no `introduced`.
+    _Pin("AAK-MCP-PILLMWIKI-CVE-2026-102911-001", "@zosmaai/pi-llm-wiki",
+         ("@zosmaai/pi-llm-wiki",), (0, 11, 8), fix_label="0.11.8",
+         regexes=(_PILLMWIKI_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

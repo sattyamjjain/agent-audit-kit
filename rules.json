@@ -5931,6 +5931,35 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-102911"
+      ],
+      "description": "`@zosmaai/pi-llm-wiki`, an Obsidian-compatible wiki package for the pi coding agent that also ships an MCP server, passes the `url` argument of its `wiki_capture_source` MCP tool into a shell command, `sh -c \"uvx ... markitdown \\\"${source}\\\"\"`, so a caller that controls the argument runs commands on the host (CVE-2026-102911, CVSS 3.1 9.9, CWE-77/CWE-78). Double quotes do not stop `$(...)` or backticks. 0.11.8 calls markitdown with an argument list and no shell (fix commit `36086703`). NVD scopes it \"up to 0.11.7\" with no lower bound, and the shell call is in the upstream source from May 2026, months before 0.11.0, so every stated version below 0.11.8 is reported.",
+      "incident_references": [],
+      "limitations": "Reports only a reference that states a version: a `package.json` dependency, a lockfile entry, or `@zosmaai/pi-llm-wiki@0.x` in an MCP config. Upstream registers the MCP server by its path inside `node_modules`, which states no version, and `pi install npm:...` records the package in pi's own settings, which this scanner does not read, so a machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a different author's package and is not matched.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `@zosmaai/pi-llm-wiki` to >= 0.11.8 and pin it. Until then, do not expose the wiki MCP server to a model or caller that can choose the URL `wiki_capture_source` captures.",
+      "rule_id": "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+      "sarif_name": "PiLlmWikiCaptureSourceShellInjection",
+      "severity": "critical",
+      "title": "pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given"
+    },
+    {
+      "adversa_references": [
         "ADV-DATA-01"
       ],
       "aicm_references": [],

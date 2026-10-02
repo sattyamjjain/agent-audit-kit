@@ -199,6 +199,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-LANGBOT-CVE-2026-54449-001": ["IVS-04", "IAM-01"],
     "AAK-MCP-REMOTE-CVE-2026-51994-001": ["IVS-04", "STA-08"],
     "AAK-MCP-KIMICODE-CVE-2026-95660-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -9959,6 +9960,47 @@ _r(
         "declares Kimi Code as a dependency, not every machine that runs it. The "
         "project-side half of the attack, the `.mcp.json` a hostile repository ships, "
         "is what the MCP config rules read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-02 wave (#833-#842). Ten watcher-filed CVEs: one new pin below, two
+# CVEs listed on the mcp-remote and OpenClaw pins they fall inside, two out of
+# scope, and four on self-hosted MCP gateways shipped as container images,
+# deferred with a date. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+    "pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given",
+    "`@zosmaai/pi-llm-wiki`, an Obsidian-compatible wiki package for the pi coding "
+    "agent that also ships an MCP server, passes the `url` argument of its "
+    "`wiki_capture_source` MCP tool into a shell command, `sh -c \"uvx ... markitdown "
+    "\\\"${source}\\\"\"`, so a caller that controls the argument runs commands on the "
+    "host (CVE-2026-102911, CVSS 3.1 9.9, CWE-77/CWE-78). Double quotes do not stop "
+    "`$(...)` or backticks. 0.11.8 calls markitdown with an argument list and no "
+    "shell (fix commit `36086703`). NVD scopes it \"up to 0.11.7\" with no lower "
+    "bound, and the shell call is in the upstream source from May 2026, months "
+    "before 0.11.0, so every stated version below 0.11.8 is reported.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@zosmaai/pi-llm-wiki` to >= 0.11.8 and pin it. Until then, do not "
+    "expose the wiki MCP server to a model or caller that can choose the URL "
+    "`wiki_capture_source` captures.",
+    sarif_name="PiLlmWikiCaptureSourceShellInjection",
+    cve_references=["CVE-2026-102911"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports only a reference that states a version: a `package.json` "
+        "dependency, a lockfile entry, or `@zosmaai/pi-llm-wiki@0.x` in an MCP "
+        "config. Upstream registers the MCP server by its path inside "
+        "`node_modules`, which states no version, and `pi install npm:...` records "
+        "the package in pi's own settings, which this scanner does not read, so a "
+        "machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a "
+        "different author's package and is not matched."
     ),
 )
 

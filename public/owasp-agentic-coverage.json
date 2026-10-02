@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-02T10:57:09Z",
+  "last_updated": "2026-10-02T11:01:31Z",
   "aak_version": "0.6.10",
-  "rule_count": 364,
+  "rule_count": 365,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2195,7 +2195,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 56,
+      "rule_density": 57,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2529,6 +2529,17 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-18482"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-102911"
           ],
           "aicm_references": [
             "IVS-04",

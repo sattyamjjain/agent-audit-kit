@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-PILLMWIKI-CVE-2026-102911-001`: `@zosmaai/pi-llm-wiki` below 0.11.8, whose `wiki_capture_source` MCP tool hands its `url` argument to a shell (CVE-2026-102911, #833). Reported only where a version is stated. Rule count 364 -> 365.
+
 ### Changed
 
 - `make count-check` now compares the live GitHub description (`gh repo view --json description`) with the rendered one and fails on a mismatch, printing the `gh repo edit` that fixes it; it skips, and says so, when gh is not installed or not authenticated.
