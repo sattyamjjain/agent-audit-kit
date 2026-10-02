@@ -19,8 +19,9 @@ open.
 ## 2026-10-02: ten disclosures
 
 The watcher opened ten `cve-response` issues (#833-#837 at 22:16Z on 2026-09-30,
-#838-#842 at 05:55Z on 2026-10-01). This section records #833 to #837. Every
-description below is quoted from the NVD API record, read on 2026-10-02.
+#838-#842 at 05:55Z on 2026-10-01). This section records #833 to #837, #839 and
+#840. Every description below is quoted from the NVD API record, read on
+2026-10-02.
 
 **pi-llm-wiki (CVE-2026-102911) gets a new pin.** NVD: "A flaw has been found in
 zosmaai pi-llm-wiki up to 0.11.7. Affected is an unknown function of the file
@@ -49,6 +50,17 @@ token namespace takeover or real-token access was demonstrated", and CVSS "not
 applicable to the current evidence". It also says the MD5 naming starts at 0.0.14;
 below 0.1.16 the pin reports nothing, which its limitations already say for
 CVE-2025-6514.
+
+**OpenClaw (CVE-2026-100587, CVE-2026-100596) sits at the floor already pinned.**
+NVD, CVE-2026-100587: "OpenClaw versions before 2026.7.1 fail to properly validate
+owner authorization in the Codex computer-use installation command." CVE-2026-100596:
+"OpenClaw versions before 2026.7.1 fail to properly authorize non-owner users
+executing MCP configuration changes through /mcp set and /mcp unset commands." Their
+advisories, GHSA-pjjr-5qhr-5w6r and GHSA-wwx7-573h-pqwc, both read npm `openclaw`
+`< 2026.7.1`, patched in 2026.7.1, which is the floor
+`AAK-MCP-OPENCLAW-CVE-2026-62195-001` has carried since CVE-2026-100585 raised it. A
+stated 2026.6.30 lists both CVEs in its finding and 2026.7.1 is clean. Both
+advisories were published on GitHub on 2026-09-11, and NVD on 2026-09-26.
 
 **Obot's quickstart (CVE-2026-101065) is out of scope.** NVD: "In all versions up to
 and including commit d7e6970, the Docker quickstart command documented in the README
@@ -89,6 +101,8 @@ basis as #836, and #837 is closed with this entry as the record.
 |---|---|---|---|---|
 | CVE-2026-102911 | 9.9 | `@zosmaai/pi-llm-wiki` (npm) | **New pin** `AAK-MCP-PILLMWIKI-CVE-2026-102911-001`: below 0.11.8, reported only where a version is stated. | #833 |
 | CVE-2026-51996 | 9.8 | `mcp-remote` (npm) | No new rule, no new pin. Same 0.1.16-0.1.38 range; recorded against `AAK-MCP-REMOTE-CVE-2026-51994-001`. The advisory NVD cites was corrected to hardening, quoted above. | #834 |
+| CVE-2026-100587 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-pjjr-5qhr-5w6r, the existing floor; recorded against `AAK-MCP-OPENCLAW-CVE-2026-62195-001`. | #839 |
+| CVE-2026-100596 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-wwx7-573h-pqwc; recorded against the same pin. | #840 |
 | CVE-2026-101065 | 9.8 | Obot quickstart (a documented `docker run`) | **Out of scope**, quoted above. No version to pin; the fix is documentation-only. | #835 |
 
 CVE-2026-79538 and CVE-2026-101084 have no row: a row is a coverage claim, and

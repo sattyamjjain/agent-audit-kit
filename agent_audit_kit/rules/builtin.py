@@ -6933,15 +6933,23 @@ _r(
     "with channel command access can approve or deny a pending permission request "
     "meant for the owner, so the requested action proceeds without owner consent "
     "(CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< "
-    "2026.7.1` with no lower bound). Treat every release below 2026.7.1 (and "
-    "unpinned) as exposed.",
+    "2026.7.1` with no lower bound). Before 2026.7.1 a non-owner channel sender "
+    "can also run the Codex computer-use install command, and so install plugins "
+    "and start MCP processes with OpenClaw's privileges (CVE-2026-100587, CVSS 8.8, "
+    "CWE-862, GHSA-pjjr-5qhr-5w6r). The same sender can persist a stdio MCP command "
+    "through `/mcp set` or `/mcp unset` that runs with OpenClaw's privileges when the "
+    "configuration loads (CVE-2026-100596, CVSS 8.8, CWE-862, GHSA-wwx7-573h-pqwc). "
+    "Treat every release below 2026.7.1 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `openclaw` to >= 2026.7.1 and pin it. Enforce the caller's trust tier "
     "on every MCP loopback tool invocation, not just at the transport edge, and "
     "accept a permission reply only from the owner the prompt was addressed to.",
     sarif_name="OpenClawMcpLoopbackAuthzBypass",
-    cve_references=["CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"],
+    cve_references=[
+        "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
+        "CVE-2026-100587", "CVE-2026-100596",
+    ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],

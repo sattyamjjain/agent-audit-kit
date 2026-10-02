@@ -22,7 +22,8 @@ available) before shipping:
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
   - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
-    CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound)
+    CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound;
+    CVE-2026-100587 and CVE-2026-100596 sit at the same floor)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
   - mcp (MCP Python SDK)            >= 1.28.1  (CVE-2026-52869, CVE-2026-52870, CVE-2026-59950)
@@ -349,8 +350,11 @@ _PINS: tuple[_Pin, ...] = (
     # Floor raised 2026.6.6 -> 2026.7.1 and the 2026.5.20 lower bound dropped for
     # CVE-2026-100585 (owner-only Claude permission replies over the MCP channel
     # bridge), which GHSA-p5g8-m35v-7m82 scopes `< 2026.7.1` with no lower bound.
+    # CVE-2026-100587 (Codex computer-use install) and CVE-2026-100596 (`/mcp set`
+    # persisting a stdio command) are `< 2026.7.1` too, so the floor holds.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
-         fix_label="2026.7.1 (CVE-2026-100585; CVE-2026-62195 alone was fixed in 2026.6.6)"),
+         fix_label="2026.7.1 (CVE-2026-100585, CVE-2026-100587, CVE-2026-100596; "
+                   "CVE-2026-62195 alone was fixed in 2026.6.6)"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
     # Floor raised 1.6.11 -> 1.6.13 for CVE-2026-67333 (redirect_uri scheme not

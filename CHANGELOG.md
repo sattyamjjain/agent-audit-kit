@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `make count-check` now compares the live GitHub description (`gh repo view --json description`) with the rendered one and fails on a mismatch, printing the `gh repo edit` that fixes it; it skips, and says so, when gh is not installed or not authenticated.
 - Dispositioned CVE-response issues #821 to #825 and #827 to #831, and #810 and #816.
 - The mcp-remote rule now also lists CVE-2026-51996 (`getServerUrlHash`, same 0.1.16 to 0.1.38 range). Closes #834.
+- The OpenClaw rule now also lists CVE-2026-100587 and CVE-2026-100596 (same below-2026.7.1 floor). Closes #839 and #840.
 
 ### Fixed
 

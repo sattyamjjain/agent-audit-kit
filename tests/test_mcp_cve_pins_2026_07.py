@@ -410,11 +410,29 @@ def test_healthomics_below_floor_fires(tmp_path: Path) -> None:
     )
 
 
-def test_openclaw_rule_cites_all_three_cves() -> None:
+def test_openclaw_rule_cites_all_five_cves() -> None:
     # CVE-2026-100585 (#809) joined the pin that already carried the first two
-    # and raised its floor to 2026.7.1.
+    # and raised its floor to 2026.7.1. CVE-2026-100587 (#839) and CVE-2026-100596
+    # (#840) are both `< 2026.7.1` per their GHSAs, so they join at that floor.
     rule = RULES["AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
-    assert set(rule.cve_references) == {"CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"}
+    assert set(rule.cve_references) == {
+        "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
+        "CVE-2026-100587", "CVE-2026-100596",
+    }
+
+
+def test_openclaw_below_the_floor_lists_the_two_new_cves(tmp_path: Path) -> None:
+    """2026.6.30 is exposed to the Codex computer-use install command (#839) and
+    to `/mcp set` persisting a stdio command (#840); 2026.7.1 fixes both."""
+    content = '{"dependencies": {"openclaw": "%s"}}'
+    (tmp_path / "package.json").write_text(content % "2026.6.30", encoding="utf-8")
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
+    assert len(hits) == 1
+    assert {"CVE-2026-100587", "CVE-2026-100596"} <= set(hits[0].cve_references)
+    assert "CVE-2026-100587" in hits[0].evidence and "CVE-2026-100596" in hits[0].evidence
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(
+        tmp_path, "package.json", content % "2026.7.1"
+    )
 
 
 def test_mcp_sdk_rule_cites_three_cves() -> None:

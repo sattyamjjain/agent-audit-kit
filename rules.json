@@ -5881,9 +5881,11 @@
       "cve_references": [
         "CVE-2026-62195",
         "CVE-2026-62208",
-        "CVE-2026-100585"
+        "CVE-2026-100585",
+        "CVE-2026-100587",
+        "CVE-2026-100596"
       ],
-      "description": "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an authorization-bypass in the MCP loopback feature that lets lower-trust callers execute owner-only tools by routing through configured input paths, so an attacker can execute or persist actions beyond their intended permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < `2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers forwarded during MCP SSE redirects, fixed in 2026.6.5). Before 2026.7.1, owner-only authorization is also not enforced for Claude Code permission prompts delivered through the MCP channel bridge: a non-owner channel sender with channel command access can approve or deny a pending permission request meant for the owner, so the requested action proceeds without owner consent (CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< 2026.7.1` with no lower bound). Treat every release below 2026.7.1 (and unpinned) as exposed.",
+      "description": "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an authorization-bypass in the MCP loopback feature that lets lower-trust callers execute owner-only tools by routing through configured input paths, so an attacker can execute or persist actions beyond their intended permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < `2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers forwarded during MCP SSE redirects, fixed in 2026.6.5). Before 2026.7.1, owner-only authorization is also not enforced for Claude Code permission prompts delivered through the MCP channel bridge: a non-owner channel sender with channel command access can approve or deny a pending permission request meant for the owner, so the requested action proceeds without owner consent (CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< 2026.7.1` with no lower bound). Before 2026.7.1 a non-owner channel sender can also run the Codex computer-use install command, and so install plugins and start MCP processes with OpenClaw's privileges (CVE-2026-100587, CVSS 8.8, CWE-862, GHSA-pjjr-5qhr-5w6r). The same sender can persist a stdio MCP command through `/mcp set` or `/mcp unset` that runs with OpenClaw's privileges when the configuration loads (CVE-2026-100596, CVSS 8.8, CWE-862, GHSA-wwx7-573h-pqwc). Treat every release below 2026.7.1 (and unpinned) as exposed.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
