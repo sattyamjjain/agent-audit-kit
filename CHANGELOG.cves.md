@@ -16,7 +16,120 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-09-30: ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
+## 2026-10-02 (v0.6.11): ten disclosures, one new pin, three more on existing pins, two out of scope, four deferred
+
+The watcher opened ten `cve-response` issues (#833-#837 at 22:16Z on 2026-09-30,
+#838-#842 at 05:55Z on 2026-10-01). One gets a new pin. Three fall inside pins that
+already existed and are listed on them. Two are out of scope. Four are self-hosted
+MCP gateways that ship as container images, and nothing but the image tag carries
+their version, so they are deferred with a date. Every description below is quoted
+from the NVD API record, read on 2026-10-02.
+
+**pi-llm-wiki (CVE-2026-102911) gets a new pin.** NVD: "A flaw has been found in
+zosmaai pi-llm-wiki up to 0.11.7. Affected is an unknown function of the file
+mcp/index.ts of the component wiki_capture_source MCP tool. Executing a
+manipulation of the argument url can lead to os command injection." The npm
+package is `@zosmaai/pi-llm-wiki`, read from the upstream repository's
+`package.json`; npm's unscoped `pi-llm-wiki` (0.1.0) is a different author's
+project. The fix, `36086703`, replaces
+`sh -c "uvx --from 'markitdown[docx,pdf]' markitdown \"${source}\""` in
+`extensions/llm-wiki/lib/source-extractors.ts` with an argument list and no shell,
+and shipped as 0.11.8 on npm. NVD gives no lower bound, and the shell call is in the
+upstream source from 2026-05-11 (`fa666649`), months before 0.11.0, so the new
+`AAK-MCP-PILLMWIKI-CVE-2026-102911-001` reports every stated version below 0.11.8.
+It needs a stated version, as the mcp-remote pin does: upstream registers the MCP
+server by its path inside `node_modules`, which states none. A full `run_scan`
+reports it on the 0.11.7 fixture and not on 0.11.8. Rule count 364 -> 365.
+
+**mcp-remote (CVE-2026-51996) is listed on the pin it falls inside.** NVD, in full:
+"An issue in geelen mcp-remote 0.1.16 through 0.1.38 allows a remote attacker to
+execute arbitrary code via the src/lib/utils.ts and the getServerUrlHash function".
+That is the 0.1.16-0.1.38 range `AAK-MCP-REMOTE-CVE-2026-51994-001` already
+reports, so the CVE joins its `cve_references` and nothing moves. The advisory NVD
+cites (playb0t/mcp-remote-oauth-security F-04) reads differently since its
+v1.0.1: MD5-derived names for the per-server OAuth state and token files, "No
+token namespace takeover or real-token access was demonstrated", and CVSS "not
+applicable to the current evidence". It also says the MD5 naming starts at 0.0.14;
+below 0.1.16 the pin reports nothing, which its limitations already say for
+CVE-2025-6514.
+
+**OpenClaw (CVE-2026-100587, CVE-2026-100596) sits at the floor already pinned.**
+NVD, CVE-2026-100587: "OpenClaw versions before 2026.7.1 fail to properly validate
+owner authorization in the Codex computer-use installation command." CVE-2026-100596:
+"OpenClaw versions before 2026.7.1 fail to properly authorize non-owner users
+executing MCP configuration changes through /mcp set and /mcp unset commands." Their
+advisories, GHSA-pjjr-5qhr-5w6r and GHSA-wwx7-573h-pqwc, both read npm `openclaw`
+`< 2026.7.1`, patched in 2026.7.1, which is the floor
+`AAK-MCP-OPENCLAW-CVE-2026-62195-001` has carried since CVE-2026-100585 raised it. A
+stated 2026.6.30 lists both CVEs in its finding and 2026.7.1 is clean. Both
+advisories were published on GitHub on 2026-09-11, and NVD on 2026-09-26.
+
+**Obot's quickstart (CVE-2026-101065) is out of scope.** NVD: "In all versions up to
+and including commit d7e6970, the Docker quickstart command documented in the README
+starts the container listening on 0.0.0.0:8080 with authentication disabled by
+default." And: "The fix is documentation-only". There is no version to pin: the
+defect is a documented run command, and it mounts `/var/run/docker.sock`. Measured:
+the quickstart written as a compose file produces no finding in a full `run_scan`. A
+detector for `docker.sock` mounts in MCP platform configs is a new shape, not a CVE
+pin, and none is added here.
+
+**MCP Server for WordPress (CVE-2026-96524) is out of scope.** NVD: "The MCP Server
+for WordPress  WordPress plugin before 1.8.2 does not correctly verify the WordPress
+REST API nonce for cookie-authenticated requests when a condition an attacker can
+influence is present". A wordpress.org plugin (AtlasMCP, slug
+`ai-workflow-automation-ai-agent-hub`, 1.9.0 today), on neither npm nor PyPI, and no
+file this scanner reads states a WordPress plugin's version. Non-pinnable, on the
+same basis as the five WordPress MCP plugins before it (#490, #523, #634, #648, #815).
+
+### CVE-2026-79538 (#836) and CVE-2026-79537 (#838): deferred 2026-10-02 (target 2026-10-11)
+
+NVD: "metatool-ai MetaMCP up to and including 2.4.22 is vulnerable to Code Execution
+in the internal MCP inspector proxy endpoint GET /mcp-proxy/server/stdio
+(createTransport, STDIO branch, routers/mcp-proxy/server.ts)." And CVE-2026-79537:
+"metatool-ai MetaMCP through 2.4.22 contains an insecure direct object reference
+(IDOR) in the MCP transport session dispatch." MetaMCP is a
+self-hosted gateway that ships as the container image
+`ghcr.io/metatool-ai/metamcp`, which its compose file pulls at `:latest`. Its root
+`package.json` is `private: true`, and npm's `@metamcp/mcp-server-metamcp` is a
+separate client proxy from another repository (0.6.5, last published 2025-05-28),
+so a pin on it would report the wrong product. v2.4.22 (2025-12-19) is the newest
+GitHub release; the `v2.5.x-docker-per-mcp` tags are not releases, and nothing says
+they fix either CVE. The only versioned artifact is the image tag, and this
+repository has no image-tag detector. Both are deferred to 2026-10-11 for that
+reason, and #836 and #838 are closed with this entry as the record.
+
+### CVE-2026-101084 (#837) and CVE-2026-101062 (#842): deferred 2026-10-02 (target 2026-10-11)
+
+NVD: "obot versions before v0.21.1 fail to enforce Access Control Rules on the
+/mcp-connect endpoint, allowing any authenticated user to connect to restricted MCP
+servers if they possess the server ID." Fixed in v0.21.1 (2026-05-07). And
+CVE-2026-101062: "Obot before v0.23.0 (affected versions <= v0.22.1) running with
+OBOT_SERVER_ENABLE_AUTHENTICATION=true exposes OAuth dynamic client registration
+without authentication and without any restriction on the redirect URIs a client may
+register." Fixed in v0.23.0 (2026-06-17), which covers both ranges. Obot ships
+as the container image `ghcr.io/obot-platform/obot` and a Helm chart; it is a Go
+application, not a package. npm's `obot` is an empty 2018 placeholder and PyPI's
+`obot` is an unrelated bot library. The version a deployment runs is its image tag,
+and this repository has no image-tag detector. Both are deferred to 2026-10-11 on
+the same basis as #836, and #837 and #842 are closed with this entry as the record.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-102911 | 9.9 | `@zosmaai/pi-llm-wiki` (npm) | **New pin** `AAK-MCP-PILLMWIKI-CVE-2026-102911-001`: below 0.11.8, reported only where a version is stated. | #833 |
+| CVE-2026-51996 | 9.8 | `mcp-remote` (npm) | No new rule, no new pin. Same 0.1.16-0.1.38 range; recorded against `AAK-MCP-REMOTE-CVE-2026-51994-001`. The advisory NVD cites was corrected to hardening, quoted above. | #834 |
+| CVE-2026-100587 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-pjjr-5qhr-5w6r, the existing floor; recorded against `AAK-MCP-OPENCLAW-CVE-2026-62195-001`. | #839 |
+| CVE-2026-100596 | 8.8 | `openclaw` (npm) | No new rule, no new pin. `< 2026.7.1` per GHSA-wwx7-573h-pqwc; recorded against the same pin. | #840 |
+| CVE-2026-101065 | 9.8 | Obot quickstart (a documented `docker run`) | **Out of scope**, quoted above. No version to pin; the fix is documentation-only. | #835 |
+| CVE-2026-96524 | 8.8 | MCP Server for WordPress (wordpress.org plugin) | **Out of scope**, non-pinnable, quoted above. No npm or PyPI artifact; upgrade the plugin to 1.8.2 or later. | #841 |
+
+CVE-2026-79538, CVE-2026-79537, CVE-2026-101084 and CVE-2026-101062 have no row: a
+row is a coverage claim, and none of them has coverage. CVSS and CWE are from the NVD
+API.
+
+Dispositioned at 2026-10-02T11:07:33Z. Unreleased at the time of writing: this
+section carries no version label until the next tag stamps it.
+
+## 2026-09-30 (v0.6.11): ten disclosures and both deferrals closed, one pin widened, five more at existing floors, two arms on existing rules, three out of scope
 
 The watcher opened ten `cve-response` issues on 2026-09-27 (#821-#825 at 16:58Z,
 #827-#831 at 21:21Z). Seven sit on pins that already existed: one needed its range

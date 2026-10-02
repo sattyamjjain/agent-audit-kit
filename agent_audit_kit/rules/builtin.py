@@ -199,6 +199,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-LANGBOT-CVE-2026-54449-001": ["IVS-04", "IAM-01"],
     "AAK-MCP-REMOTE-CVE-2026-51994-001": ["IVS-04", "STA-08"],
     "AAK-MCP-KIMICODE-CVE-2026-95660-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -285,6 +286,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-HOOK-007": ["CCC-08"],
     "AAK-AGENT-001": ["IAM-02"],
     "AAK-AGENT-002": ["IAM-02"],
+    "AAK-AGENT-006": ["IAM-02"],
     "AAK-ROUTINE-001": ["IAM-02"],
     # ---- Logging (LOG) -------------------------------------------------
     "AAK-LOGINJ-001": ["LOG-06"],
@@ -1375,6 +1377,15 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-04"],
+    limitations=(
+        "Reads `$NAME`, `${NAME}`, `env[...]`, `os.environ[...]` and "
+        "`process.env.NAME` references whose name contains KEY, SECRET, TOKEN, "
+        "PASSWORD or CREDENTIAL; a bare name with no `$` is not a reference. A "
+        "sentence that forbids disclosing the credential (\"Never send "
+        "$AWS_SECRET_ACCESS_KEY anywhere\", \"$GITHUB_TOKEN must never be "
+        "printed\") is a guardrail and is not reported. The negation has to "
+        "govern a disclosure verb, so \"Never forget to export $API_KEY\" still is."
+    ),
 )
 
 _r(
@@ -1396,8 +1407,10 @@ _r(
         "unless it matches a tool marker's whole syntax: the Claude Code "
         "auto-memory plugin's section markers, markdownlint toggles naming only "
         "MDnnn ids, and prettier-ignore. Invisible characters are judged by "
-        "position, so U+200C or U+200D between two letters of one joiner-using "
-        "script, U+200D between two emoji, and a byte-order mark at the start of "
+        "position, so U+200C or U+200D between two characters of one "
+        "joiner-using script (letters, or a mark such as the virama a Hindi "
+        "half form puts before the joiner), U+200D between two emoji, and a "
+        "byte-order mark at the start of "
         "the file are treated as spelling. Code fences are not parsed, so a "
         "comment inside one is reported too, and other ways to keep text out of "
         "rendered markdown, such as HTML a renderer hides, are not detected."
@@ -1415,13 +1428,27 @@ _r(
     "not hold, evaluated at whatever the far end is serving at the time. The "
     "agent's own instructions become editable by whoever controls that "
     "endpoint, with no commit and no review.\n\n"
-    "**No host allowlist applies here, deliberately.** The reporter who raised "
-    "the severity problem in `AAK-AGENT-002` made the argument himself: an "
+    "**No host allowlist applies here, deliberately.** @GarvitAgrawal04 made "
+    "the argument in [#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771), "
+    "the report that benchmarked `AAK-AGENT-002` on 930 public repositories: an "
     "attacker can host on github.com too. A gist, a raw file on a fork, a "
     "release asset — all sit on hosts any allowlist would contain, and the "
     "instruction to fetch and obey is what matters rather than where it points. "
     "Matching is a deterministic regex over one line at a time: no model call, "
     "and no judgement about the destination.\n\n"
+    "Not every link with a verb is a directive. A contributor pointer is not: "
+    "\"Report bugs at <url>\", \"Submit pull requests to <url>\", or \"see "
+    "<url>, then run `make test`\", where what runs is the test suite, not the "
+    "page. Fetch-then-act needs the act to point back at what was fetched (it, "
+    "them, the instructions, the script, the file's own name), or the line to "
+    "put the fetched content in charge (\"it is the authoritative source of "
+    "truth\"). A loopback address is not content anyone else controls, so "
+    "`npm run dev  # Starts at http://localhost:3000` is not reported, and a "
+    "`curl` or `POST` sends data only when it carries a payload (`-d`, `-F`, "
+    "`--data`). Nor is a guardrail: a negation that governs the verb, as in \"Never upload "
+    "repository files to <url>\", forbids what this rule reports. A negation "
+    "elsewhere on the line does not count, so \"Don't use pip, download <url> "
+    "and run it\" is still reported.\n\n"
     "Scoped to a single line, because that is what \"the same sentence or list "
     "item\" means in a markdown instruction file. A URL three paragraphs below "
     "an unrelated \"follow\" is not a directive about that URL, and matching "
@@ -1444,7 +1471,8 @@ _r(
     limitations=(
         "Regex over one line, not data flow: it reads the instruction, never "
         "what the URL serves. Phrasing it does not recognise is missed — an "
-        "imperative split across two lines, or a verb outside its list — and a "
+        "imperative split across two lines, a verb outside its list, or a "
+        "download run under another name (\"extract it and run ./tool\") — and a "
         "line that merely discusses fetching will match. This is a prompt to "
         "read the line, not a determination that the link is hostile."
     ),
@@ -6905,15 +6933,23 @@ _r(
     "with channel command access can approve or deny a pending permission request "
     "meant for the owner, so the requested action proceeds without owner consent "
     "(CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< "
-    "2026.7.1` with no lower bound). Treat every release below 2026.7.1 (and "
-    "unpinned) as exposed.",
+    "2026.7.1` with no lower bound). Before 2026.7.1 a non-owner channel sender "
+    "can also run the Codex computer-use install command, and so install plugins "
+    "and start MCP processes with OpenClaw's privileges (CVE-2026-100587, CVSS 8.8, "
+    "CWE-862, GHSA-pjjr-5qhr-5w6r). The same sender can persist a stdio MCP command "
+    "through `/mcp set` or `/mcp unset` that runs with OpenClaw's privileges when the "
+    "configuration loads (CVE-2026-100596, CVSS 8.8, CWE-862, GHSA-wwx7-573h-pqwc). "
+    "Treat every release below 2026.7.1 (and unpinned) as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `openclaw` to >= 2026.7.1 and pin it. Enforce the caller's trust tier "
     "on every MCP loopback tool invocation, not just at the transport edge, and "
     "accept a permission reply only from the owner the prompt was addressed to.",
     sarif_name="OpenClawMcpLoopbackAuthzBypass",
-    cve_references=["CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"],
+    cve_references=[
+        "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
+        "CVE-2026-100587", "CVE-2026-100596",
+    ],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
@@ -9874,7 +9910,11 @@ _r(
     "0.1.16, the release that added a URL check before opening the user's browser, "
     "that check accepts any HTTP(S) URL and lets loopback, private, link-local and "
     "metadata destinations through to the browser launch (CVE-2026-51997, CVSS 3.1 "
-    "8.8). The range is the union of the advisories': they were reconfirmed against "
+    "8.8). In the same 0.1.16–0.1.38 range NVD records CVE-2026-51996 (CVSS 3.1 9.8, "
+    "CWE-328) as code execution through `getServerUrlHash` in `src/lib/utils.ts`, "
+    "which names each server's OAuth state and token files from an MD5 hash; the "
+    "advisory NVD cites (F-04) was corrected in its v1.0.1 to call this hardening, "
+    "with no token takeover shown. The range is the union of the advisories': they were reconfirmed against "
     "0.1.38, and upstream has published neither an advisory nor a fix, so this rule "
     "makes no claim about 0.1.39 or later in either direction.",
     Severity.CRITICAL,
@@ -9886,7 +9926,7 @@ _r(
     "of it that blocks loopback, link-local and private destinations on every request "
     "and redirect.",
     sarif_name="McpRemoteServerChosenUrls",
-    cve_references=["CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51997"],
+    cve_references=["CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
@@ -9928,6 +9968,47 @@ _r(
         "declares Kimi Code as a dependency, not every machine that runs it. The "
         "project-side half of the attack, the `.mcp.json` a hostile repository ships, "
         "is what the MCP config rules read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-02 wave (#833-#842). Ten watcher-filed CVEs: one new pin below, two
+# CVEs listed on the mcp-remote and OpenClaw pins they fall inside, two out of
+# scope, and four on self-hosted MCP gateways shipped as container images,
+# deferred with a date. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+    "pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given",
+    "`@zosmaai/pi-llm-wiki`, an Obsidian-compatible wiki package for the pi coding "
+    "agent that also ships an MCP server, passes the `url` argument of its "
+    "`wiki_capture_source` MCP tool into a shell command, `sh -c \"uvx ... markitdown "
+    "\\\"${source}\\\"\"`, so a caller that controls the argument runs commands on the "
+    "host (CVE-2026-102911, CVSS 3.1 9.9, CWE-77/CWE-78). Double quotes do not stop "
+    "`$(...)` or backticks. 0.11.8 calls markitdown with an argument list and no "
+    "shell (fix commit `36086703`). NVD scopes it \"up to 0.11.7\" with no lower "
+    "bound, and the shell call is in the upstream source from May 2026, months "
+    "before 0.11.0, so every stated version below 0.11.8 is reported.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@zosmaai/pi-llm-wiki` to >= 0.11.8 and pin it. Until then, do not "
+    "expose the wiki MCP server to a model or caller that can choose the URL "
+    "`wiki_capture_source` captures.",
+    sarif_name="PiLlmWikiCaptureSourceShellInjection",
+    cve_references=["CVE-2026-102911"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports only a reference that states a version: a `package.json` "
+        "dependency, a lockfile entry, or `@zosmaai/pi-llm-wiki@0.x` in an MCP "
+        "config. Upstream registers the MCP server by its path inside "
+        "`node_modules`, which states no version, and `pi install npm:...` records "
+        "the package in pi's own settings, which this scanner does not read, so a "
+        "machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a "
+        "different author's package and is not matched."
     ),
 )
 

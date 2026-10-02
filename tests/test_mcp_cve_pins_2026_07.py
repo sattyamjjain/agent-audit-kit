@@ -91,6 +91,8 @@ PINS = {
     # 2026-09-26 wave
     "AAK-MCP-REMOTE-CVE-2026-51994-001": "critical",
     "AAK-MCP-KIMICODE-CVE-2026-95660-001": "medium",
+    # 2026-10-02 wave
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": "critical",
 }
 
 
@@ -408,11 +410,29 @@ def test_healthomics_below_floor_fires(tmp_path: Path) -> None:
     )
 
 
-def test_openclaw_rule_cites_all_three_cves() -> None:
+def test_openclaw_rule_cites_all_five_cves() -> None:
     # CVE-2026-100585 (#809) joined the pin that already carried the first two
-    # and raised its floor to 2026.7.1.
+    # and raised its floor to 2026.7.1. CVE-2026-100587 (#839) and CVE-2026-100596
+    # (#840) are both `< 2026.7.1` per their GHSAs, so they join at that floor.
     rule = RULES["AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
-    assert set(rule.cve_references) == {"CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585"}
+    assert set(rule.cve_references) == {
+        "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
+        "CVE-2026-100587", "CVE-2026-100596",
+    }
+
+
+def test_openclaw_below_the_floor_lists_the_two_new_cves(tmp_path: Path) -> None:
+    """2026.6.30 is exposed to the Codex computer-use install command (#839) and
+    to `/mcp set` persisting a stdio command (#840); 2026.7.1 fixes both."""
+    content = '{"dependencies": {"openclaw": "%s"}}'
+    (tmp_path / "package.json").write_text(content % "2026.6.30", encoding="utf-8")
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-MCP-OPENCLAW-CVE-2026-62195-001"]
+    assert len(hits) == 1
+    assert {"CVE-2026-100587", "CVE-2026-100596"} <= set(hits[0].cve_references)
+    assert "CVE-2026-100587" in hits[0].evidence and "CVE-2026-100596" in hits[0].evidence
+    assert "AAK-MCP-OPENCLAW-CVE-2026-62195-001" not in _ids(
+        tmp_path, "package.json", content % "2026.7.1"
+    )
 
 
 def test_mcp_sdk_rule_cites_three_cves() -> None:
@@ -1361,6 +1381,31 @@ def test_mcp_remote_rule_cites_the_three_advisories() -> None:
     assert {"CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51997"} <= refs
 
 
+def test_mcp_remote_finding_lists_cve_2026_51996(tmp_path: Path) -> None:
+    """CVE-2026-51996 (#834): NVD scopes it 0.1.16 through 0.1.38, the range the
+    pin already reports, so it joins the rule and nothing moves. A stated 0.1.20
+    is below the 0.1.32 start of the SSRF pair and still inside it."""
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"mcp-remote": "0.1.20"}}', encoding="utf-8"
+    )
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == _REMOTE]
+    assert len(hits) == 1
+    assert "CVE-2026-51996" in hits[0].cve_references
+
+
+def test_mcp_remote_rule_cites_cve_2026_51996_and_its_advisory_correction() -> None:
+    """NVD calls it code execution; the advisory NVD cites (F-04, v1.0.1) was
+    corrected to hardening with no token takeover shown. The rule says both."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    rule = get_rule(_REMOTE)
+    assert set(rule.cve_references) == {
+        "CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997",
+    }
+    assert "getServerUrlHash" in rule.description
+    assert "no token takeover" in rule.description
+
+
 def test_mcp_remote_unpinned_passes(tmp_path: Path) -> None:
     """Unpinned `npx mcp-remote` resolves to the newest release (0.14.x), outside
     the range, and it is in a very large share of MCP configs. Treating it as
@@ -1386,3 +1431,50 @@ def test_kimi_code_below_floor_fires(tmp_path: Path) -> None:
 def test_kimi_code_patched_passes(tmp_path: Path) -> None:
     content = '{"devDependencies": {"@moonshot-ai/kimi-code": "0.31.1"}}'
     assert _KIMI not in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-10-02 wave -------------------------------------------------------
+
+_PILLMWIKI = "AAK-MCP-PILLMWIKI-CVE-2026-102911-001"
+_PILLMWIKI_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-102911-pi-llm-wiki"
+
+
+def test_pi_llm_wiki_fixtures_positive_and_negative() -> None:
+    """CVE-2026-102911 (#833): the wiki_capture_source MCP tool passes its `url`
+    argument into `sh -c "uvx ... markitdown \"${source}\""`. Fixed in 0.11.8."""
+    assert _PILLMWIKI in {f.rule_id for f in scan(_PILLMWIKI_FIXTURES / "vulnerable")[0]}
+    assert _PILLMWIKI not in {f.rule_id for f in scan(_PILLMWIKI_FIXTURES / "negative")[0]}
+
+
+def test_pi_llm_wiki_has_no_lower_bound(tmp_path: Path) -> None:
+    """NVD says "up to 0.11.7", and the shell call is in the upstream source from
+    May 2026, months before 0.11.0, so an early release is reported too."""
+    content = '{"dependencies": {"@zosmaai/pi-llm-wiki": "0.6.3"}}'
+    assert _PILLMWIKI in _ids(tmp_path, "package.json", content)
+
+
+def test_pi_llm_wiki_locked_version_decides(tmp_path: Path) -> None:
+    lock = (
+        '{"name": "x", "lockfileVersion": 3, "packages": {'
+        '"node_modules/@zosmaai/pi-llm-wiki": {"version": "%s"}}}'
+    )
+    assert _PILLMWIKI in _ids(tmp_path, "package-lock.json", lock % "0.11.7")
+    assert _PILLMWIKI not in _ids(tmp_path, "package-lock.json", lock % "0.11.8")
+
+
+def test_pi_llm_wiki_needs_a_stated_version(tmp_path: Path) -> None:
+    """Upstream registers the MCP server by its path inside node_modules, which
+    states no version, and `pi install npm:<pkg>` writes pi's own settings, which
+    this scanner does not read. An unpinned reference is not reported, as for
+    mcp-remote."""
+    config = (
+        '{"mcpServers": {"llm-wiki": {"command": "node", "args": '
+        '["/abs/node_modules/@zosmaai/pi-llm-wiki/dist/mcp/index.js"]}}}'
+    )
+    assert _PILLMWIKI not in _ids(tmp_path, ".mcp.json", config)
+
+
+def test_the_unscoped_pi_llm_wiki_is_another_project(tmp_path: Path) -> None:
+    """npm's unscoped `pi-llm-wiki` (0.1.0) is a different author's package."""
+    content = '{"dependencies": {"pi-llm-wiki": "0.1.0"}}'
+    assert _PILLMWIKI not in _ids(tmp_path, "package.json", content)

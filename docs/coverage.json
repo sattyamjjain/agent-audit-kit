@@ -4937,6 +4937,8 @@
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-100585",
+        "CVE-2026-100587",
+        "CVE-2026-100596",
         "CVE-2026-62195",
         "CVE-2026-62208"
       ],
@@ -4982,6 +4984,31 @@
       "rule_id": "AAK-MCP-PENPOT-CVE-2026-45805-001",
       "severity": "critical",
       "title": "Penpot MCP ReplServer unauthenticated /execute RCE (< 2.15.0)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-102911"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Filter and monitor output pipelines and chained execution (p.12)"
+      ],
+      "owasp_agentic": [
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection"
+      ],
+      "rule_id": "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+      "severity": "critical",
+      "title": "pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given"
     },
     {
       "category": "supply-chain",
@@ -5096,6 +5123,7 @@
       "cve_references": [
         "CVE-2026-51994",
         "CVE-2026-51995",
+        "CVE-2026-51996",
         "CVE-2026-51997"
       ],
       "eu_ai_act": [
@@ -8216,7 +8244,7 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 123,
+      "supply-chain": 124,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
@@ -8226,26 +8254,26 @@
       "Art. 10 - Data Governance": 129,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
-      "Art. 15 - Robustness & Security": 215,
-      "Art. 9 - Risk Management": 122
+      "Art. 15 - Robustness & Security": 216,
+      "Art. 9 - Risk Management": 123
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 89,
-      "Constrain and sandbox tool execution (p.11)": 107,
-      "Design for boundaries (p.10)": 184,
-      "Filter and monitor output pipelines and chained execution (p.12)": 77,
+      "Constrain and sandbox tool execution (p.11)": 108,
+      "Design for boundaries (p.10)": 185,
+      "Filter and monitor output pipelines and chained execution (p.12)": 78,
       "Instrument for logging and detection (p.13)": 35,
       "Scan local network for open or vulnerable MCP servers (p.14)": 161,
       "Sign and verify MCP messages (p.12)": 160,
       "Track and patch MCP related vulnerabilities (p.13)": 100,
-      "Validate parameters (p.11)": 111
+      "Validate parameters (p.11)": 112
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 51,
       "ASI03": 74,
       "ASI04": 83,
-      "ASI05": 56,
+      "ASI05": 57,
       "ASI06": 49,
       "ASI07": 9,
       "ASI08": 5,
@@ -8256,7 +8284,7 @@
       "MCP01:2025": 90,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
-      "MCP04:2025": 41,
+      "MCP04:2025": 42,
       "MCP05:2025": 58,
       "MCP06:2025": 20,
       "MCP07:2025": 38,
@@ -8265,14 +8293,14 @@
       "MCP10:2025": 12
     },
     "by_severity": {
-      "critical": 86,
+      "critical": 87,
       "high": 167,
       "info": 5,
       "low": 10,
       "medium": 96
     },
-    "total_cves_covered": 268,
-    "total_rules": 364
+    "total_cves_covered": 272,
+    "total_rules": 365
   },
   "tool": "agent-audit-kit"
 }

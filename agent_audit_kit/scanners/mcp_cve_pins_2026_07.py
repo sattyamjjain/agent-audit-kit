@@ -22,7 +22,8 @@ available) before shipping:
   - appium-mcp                     >= 1.85.10 (CVE-2026-58500)
   - @penpot/mcp                    >= 2.15.0  (CVE-2026-45805)
   - openclaw                       >= 2026.7.1 (CVE-2026-62195 was 2026.5.20..<2026.6.6;
-    CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound)
+    CVE-2026-100585 raised the floor to 2026.7.1 and has no lower bound;
+    CVE-2026-100587 and CVE-2026-100596 sit at the same floor)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
   - mcp (MCP Python SDK)            >= 1.28.1  (CVE-2026-52869, CVE-2026-52870, CVE-2026-59950)
@@ -116,11 +117,14 @@ available) before shipping:
     falls back to the operator's API key)
   - mcp-remote                     0.1.16–0.1.38 (CVE-2026-51994 and CVE-2026-51995,
     OAuth discovery SSRF from 0.1.32; CVE-2026-51997, internal URLs reach the
-    browser launch from 0.1.16. Upstream names no fix, so the pin is the union of
+    browser launch from 0.1.16; CVE-2026-51996, MD5-derived token-file names,
+    0.1.16-0.1.38 per NVD. Upstream names no fix, so the pin is the union of
     the advisories' ranges, and it needs a stated version: an unpinned
     `npx mcp-remote` resolves to 0.14.x)
   - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
     `.mcp.json` servers spawned before the trust prompt)
+  - @zosmaai/pi-llm-wiki           >= 0.11.8  (CVE-2026-102911; the wiki_capture_source MCP
+    tool's `url` reaches `sh -c`. A stated version is required, as for mcp-remote)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -181,6 +185,13 @@ _N8N_MCP_RE = re.compile(r"(?<![\w./-])n8n-mcp(?![\w])" + _VER_OPT, re.IGNORECAS
 # default reads a missing version as exposed; here that would put a CRITICAL on a
 # large share of all MCP configs for a claim nobody has made.
 _MCP_REMOTE_RE = re.compile(r"(?<![\w./-])mcp-remote(?![\w-])" + _VER_REQ, re.IGNORECASE)
+# `@zosmaai/pi-llm-wiki` (npm) requires a stated version too. Upstream registers
+# its MCP server by a path inside node_modules, which states none, and the
+# lookbehind keeps that path (`.../node_modules/@zosmaai/...`) out. The unscoped
+# npm `pi-llm-wiki` is a different author's package and is never matched.
+_PILLMWIKI_RE = re.compile(
+    r"(?<![\w./-])@zosmaai/pi-llm-wiki(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
 # version line; the lookbehind keeps it off `pyletta`.
@@ -339,8 +350,11 @@ _PINS: tuple[_Pin, ...] = (
     # Floor raised 2026.6.6 -> 2026.7.1 and the 2026.5.20 lower bound dropped for
     # CVE-2026-100585 (owner-only Claude permission replies over the MCP channel
     # bridge), which GHSA-p5g8-m35v-7m82 scopes `< 2026.7.1` with no lower bound.
+    # CVE-2026-100587 (Codex computer-use install) and CVE-2026-100596 (`/mcp set`
+    # persisting a stdio command) are `< 2026.7.1` too, so the floor holds.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
-         fix_label="2026.7.1 (CVE-2026-100585; CVE-2026-62195 alone was fixed in 2026.6.6)"),
+         fix_label="2026.7.1 (CVE-2026-100585, CVE-2026-100587, CVE-2026-100596; "
+                   "CVE-2026-62195 alone was fixed in 2026.6.6)"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
     # Floor raised 1.6.11 -> 1.6.13 for CVE-2026-67333 (redirect_uri scheme not
@@ -981,8 +995,10 @@ _PINS: tuple[_Pin, ...] = (
     # (CVE-2026-51995). From 0.1.16, the release that added a URL check for
     # CVE-2025-6514, that check lets loopback, private and metadata addresses
     # through to the browser launch (CVE-2026-51997), so `introduced` is 0.1.16:
-    # the union of the three advisory ranges. `_MCP_REMOTE_RE` keeps unpinned
-    # references out.
+    # the union of the advisory ranges. CVE-2026-51996 (MD5-derived names for the
+    # per-server OAuth state files, `getServerUrlHash`) is scoped 0.1.16-0.1.38
+    # by NVD, inside that union, so it moved nothing. `_MCP_REMOTE_RE` keeps
+    # unpinned references out.
     _Pin("AAK-MCP-REMOTE-CVE-2026-51994-001", "mcp-remote", ("mcp-remote",), (0, 1, 39),
          introduced=(0, 1, 16),
          fix_label="a release outside 0.1.16–0.1.38 (upstream names no fix)",
@@ -991,6 +1007,15 @@ _PINS: tuple[_Pin, ...] = (
     # whether the workspace is trusted (CVE-2026-95660, CVSS 6.3, CWE-77/78).
     _Pin("AAK-MCP-KIMICODE-CVE-2026-95660-001", "@moonshot-ai/kimi-code",
          ("@moonshot-ai/kimi-code",), (0, 31, 1), fix_label="0.31.1", ecosystem="js"),
+    # --- 2026-10-02 wave ---
+    # pi-llm-wiki's wiki_capture_source MCP tool hands its `url` argument to
+    # `sh -c "uvx ... markitdown \"${source}\""` (CVE-2026-102911, CVSS 9.9,
+    # CWE-77/78). 0.11.8 calls markitdown with an argv list instead (fix
+    # 36086703). NVD says "up to 0.11.7" with no lower bound, and the shell call
+    # is in the upstream source from 2026-05-11, so there is no `introduced`.
+    _Pin("AAK-MCP-PILLMWIKI-CVE-2026-102911-001", "@zosmaai/pi-llm-wiki",
+         ("@zosmaai/pi-llm-wiki",), (0, 11, 8), fix_label="0.11.8",
+         regexes=(_PILLMWIKI_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

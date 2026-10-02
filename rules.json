@@ -473,7 +473,7 @@
       "cve_references": [],
       "description": "Agent instruction files reference credentials, API keys, or environment variables.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `$NAME`, `${NAME}`, `env[...]`, `os.environ[...]` and `process.env.NAME` references whose name contains KEY, SECRET, TOKEN, PASSWORD or CREDENTIAL; a bare name with no `$` is not a reference. A sentence that forbids disclosing the credential (\"Never send $AWS_SECRET_ACCESS_KEY anywhere\", \"$GITHUB_TOKEN must never be printed\") is a guardrail and is not reported. The negation has to govern a disclosure verb, so \"Never forget to export $API_KEY\" still is.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -497,7 +497,7 @@
       "cve_references": [],
       "description": "Agent instruction files contain hidden content via HTML or Markdown comments, zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
       "incident_references": [],
-      "limitations": "Looks at three hiding places: HTML comments, link reference definitions used as comments (a `#` or `<>` destination with a title, as in `[//]: # (...)`), and invisible code points. An HTML comment is reported unless it matches a tool marker's whole syntax: the Claude Code auto-memory plugin's section markers, markdownlint toggles naming only MDnnn ids, and prettier-ignore. Invisible characters are judged by position, so U+200C or U+200D between two letters of one joiner-using script, U+200D between two emoji, and a byte-order mark at the start of the file are treated as spelling. Code fences are not parsed, so a comment inside one is reported too, and other ways to keep text out of rendered markdown, such as HTML a renderer hides, are not detected.",
+      "limitations": "Looks at three hiding places: HTML comments, link reference definitions used as comments (a `#` or `<>` destination with a title, as in `[//]: # (...)`), and invisible code points. An HTML comment is reported unless it matches a tool marker's whole syntax: the Claude Code auto-memory plugin's section markers, markdownlint toggles naming only MDnnn ids, and prettier-ignore. Invisible characters are judged by position, so U+200C or U+200D between two characters of one joiner-using script (letters, or a mark such as the virama a Hindi half form puts before the joiner), U+200D between two emoji, and a byte-order mark at the start of the file are treated as spelling. Code fences are not parsed, so a comment inside one is reported too, and other ways to keep text out of rendered markdown, such as HTML a renderer hides, are not detected.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -515,13 +515,15 @@
       "adversa_references": [
         "ADV-HIJACK-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
-      "description": "An agent instruction file does not merely link a host \u2014 it instructs the agent to retrieve a URL and then follow, execute, obey, apply or load what comes back, or to send, post or upload data to one. That turns a file committed to the repository into a pointer to content the repository does not hold, evaluated at whatever the far end is serving at the time. The agent's own instructions become editable by whoever controls that endpoint, with no commit and no review.\n\n**No host allowlist applies here, deliberately.** The reporter who raised the severity problem in `AAK-AGENT-002` made the argument himself: an attacker can host on github.com too. A gist, a raw file on a fork, a release asset \u2014 all sit on hosts any allowlist would contain, and the instruction to fetch and obey is what matters rather than where it points. Matching is a deterministic regex over one line at a time: no model call, and no judgement about the destination.\n\nScoped to a single line, because that is what \"the same sentence or list item\" means in a markdown instruction file. A URL three paragraphs below an unrelated \"follow\" is not a directive about that URL, and matching across the gap would recreate the blunt rule this one was added to replace.",
+      "description": "An agent instruction file does not merely link a host \u2014 it instructs the agent to retrieve a URL and then follow, execute, obey, apply or load what comes back, or to send, post or upload data to one. That turns a file committed to the repository into a pointer to content the repository does not hold, evaluated at whatever the far end is serving at the time. The agent's own instructions become editable by whoever controls that endpoint, with no commit and no review.\n\n**No host allowlist applies here, deliberately.** @GarvitAgrawal04 made the argument in [#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771), the report that benchmarked `AAK-AGENT-002` on 930 public repositories: an attacker can host on github.com too. A gist, a raw file on a fork, a release asset \u2014 all sit on hosts any allowlist would contain, and the instruction to fetch and obey is what matters rather than where it points. Matching is a deterministic regex over one line at a time: no model call, and no judgement about the destination.\n\nNot every link with a verb is a directive. A contributor pointer is not: \"Report bugs at <url>\", \"Submit pull requests to <url>\", or \"see <url>, then run `make test`\", where what runs is the test suite, not the page. Fetch-then-act needs the act to point back at what was fetched (it, them, the instructions, the script, the file's own name), or the line to put the fetched content in charge (\"it is the authoritative source of truth\"). A loopback address is not content anyone else controls, so `npm run dev  # Starts at http://localhost:3000` is not reported, and a `curl` or `POST` sends data only when it carries a payload (`-d`, `-F`, `--data`). Nor is a guardrail: a negation that governs the verb, as in \"Never upload repository files to <url>\", forbids what this rule reports. A negation elsewhere on the line does not count, so \"Don't use pip, download <url> and run it\" is still reported.\n\nScoped to a single line, because that is what \"the same sentence or list item\" means in a markdown instruction file. A URL three paragraphs below an unrelated \"follow\" is not a directive about that URL, and matching across the gap would recreate the blunt rule this one was added to replace.",
       "incident_references": [],
-      "limitations": "Regex over one line, not data flow: it reads the instruction, never what the URL serves. Phrasing it does not recognise is missed \u2014 an imperative split across two lines, or a verb outside its list \u2014 and a line that merely discusses fetching will match. This is a prompt to read the line, not a determination that the link is hostile.",
+      "limitations": "Regex over one line, not data flow: it reads the instruction, never what the URL serves. Phrasing it does not recognise is missed \u2014 an imperative split across two lines, a verb outside its list, or a download run under another name (\"extract it and run ./tool\") \u2014 and a line that merely discusses fetching will match. This is a prompt to read the line, not a determination that the link is hostile.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -5879,9 +5881,11 @@
       "cve_references": [
         "CVE-2026-62195",
         "CVE-2026-62208",
-        "CVE-2026-100585"
+        "CVE-2026-100585",
+        "CVE-2026-100587",
+        "CVE-2026-100596"
       ],
-      "description": "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an authorization-bypass in the MCP loopback feature that lets lower-trust callers execute owner-only tools by routing through configured input paths, so an attacker can execute or persist actions beyond their intended permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < `2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers forwarded during MCP SSE redirects, fixed in 2026.6.5). Before 2026.7.1, owner-only authorization is also not enforced for Claude Code permission prompts delivered through the MCP channel bridge: a non-owner channel sender with channel command access can approve or deny a pending permission request meant for the owner, so the requested action proceeds without owner consent (CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< 2026.7.1` with no lower bound). Treat every release below 2026.7.1 (and unpinned) as exposed.",
+      "description": "OpenClaw 2026.5.20 up to (but not including) 2026.6.6 contains an authorization-bypass in the MCP loopback feature that lets lower-trust callers execute owner-only tools by routing through configured input paths, so an attacker can execute or persist actions beyond their intended permissions (CVE-2026-62195, CVSS 8.3; NVD range `2026.5.20` <= v < `2026.6.6`). The same pin also covers CVE-2026-62208 (Authorization headers forwarded during MCP SSE redirects, fixed in 2026.6.5). Before 2026.7.1, owner-only authorization is also not enforced for Claude Code permission prompts delivered through the MCP channel bridge: a non-owner channel sender with channel command access can approve or deny a pending permission request meant for the owner, so the requested action proceeds without owner consent (CVE-2026-100585, CVSS 8.0, CWE-862; GHSA-p5g8-m35v-7m82 scopes it `< 2026.7.1` with no lower bound). Before 2026.7.1 a non-owner channel sender can also run the Codex computer-use install command, and so install plugins and start MCP processes with OpenClaw's privileges (CVE-2026-100587, CVSS 8.8, CWE-862, GHSA-pjjr-5qhr-5w6r). The same sender can persist a stdio MCP command through `/mcp set` or `/mcp unset` that runs with OpenClaw's privileges when the configuration loads (CVE-2026-100596, CVSS 8.8, CWE-862, GHSA-wwx7-573h-pqwc). Treat every release below 2026.7.1 (and unpinned) as exposed.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -5926,6 +5930,35 @@
       "sarif_name": "PenpotMcpReplRce",
       "severity": "critical",
       "title": "Penpot MCP ReplServer unauthenticated /execute RCE (< 2.15.0)"
+    },
+    {
+      "adversa_references": [
+        "ADV-INJECT-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-102911"
+      ],
+      "description": "`@zosmaai/pi-llm-wiki`, an Obsidian-compatible wiki package for the pi coding agent that also ships an MCP server, passes the `url` argument of its `wiki_capture_source` MCP tool into a shell command, `sh -c \"uvx ... markitdown \\\"${source}\\\"\"`, so a caller that controls the argument runs commands on the host (CVE-2026-102911, CVSS 3.1 9.9, CWE-77/CWE-78). Double quotes do not stop `$(...)` or backticks. 0.11.8 calls markitdown with an argument list and no shell (fix commit `36086703`). NVD scopes it \"up to 0.11.7\" with no lower bound, and the shell call is in the upstream source from May 2026, months before 0.11.0, so every stated version below 0.11.8 is reported.",
+      "incident_references": [],
+      "limitations": "Reports only a reference that states a version: a `package.json` dependency, a lockfile entry, or `@zosmaai/pi-llm-wiki@0.x` in an MCP config. Upstream registers the MCP server by its path inside `node_modules`, which states no version, and `pi install npm:...` records the package in pi's own settings, which this scanner does not read, so a machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a different author's package and is not matched.",
+      "owasp_agentic_references": [
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `@zosmaai/pi-llm-wiki` to >= 0.11.8 and pin it. Until then, do not expose the wiki MCP server to a model or caller that can choose the URL `wiki_capture_source` captures.",
+      "rule_id": "AAK-MCP-PILLMWIKI-CVE-2026-102911-001",
+      "sarif_name": "PiLlmWikiCaptureSourceShellInjection",
+      "severity": "critical",
+      "title": "pi-llm-wiki below 0.11.8 runs a shell on the URL its MCP capture tool is given"
     },
     {
       "adversa_references": [
@@ -6063,9 +6096,10 @@
       "cve_references": [
         "CVE-2026-51994",
         "CVE-2026-51995",
+        "CVE-2026-51996",
         "CVE-2026-51997"
       ],
-      "description": "`mcp-remote`, the npm proxy that connects stdio MCP clients to remote MCP servers over OAuth, trusts URLs the remote server chooses. From 0.1.32 through 0.1.38 it fetches the `resource_metadata` URL a server puts in its `WWW-Authenticate` header with no scheme, hostname or private-address policy (CVE-2026-51994, CVSS 3.1 9.1, CWE-918), and it fetches `/.well-known/oauth-authorization-server` from an authorization-server origin taken from server-controlled metadata without validating that origin (CVE-2026-51995, CVSS 3.1 7.5). A malicious or compromised MCP server therefore makes the client request localhost services, private-network addresses or cloud metadata endpoints during OAuth discovery, before any tool is called. From 0.1.16, the release that added a URL check before opening the user's browser, that check accepts any HTTP(S) URL and lets loopback, private, link-local and metadata destinations through to the browser launch (CVE-2026-51997, CVSS 3.1 8.8). The range is the union of the advisories': they were reconfirmed against 0.1.38, and upstream has published neither an advisory nor a fix, so this rule makes no claim about 0.1.39 or later in either direction.",
+      "description": "`mcp-remote`, the npm proxy that connects stdio MCP clients to remote MCP servers over OAuth, trusts URLs the remote server chooses. From 0.1.32 through 0.1.38 it fetches the `resource_metadata` URL a server puts in its `WWW-Authenticate` header with no scheme, hostname or private-address policy (CVE-2026-51994, CVSS 3.1 9.1, CWE-918), and it fetches `/.well-known/oauth-authorization-server` from an authorization-server origin taken from server-controlled metadata without validating that origin (CVE-2026-51995, CVSS 3.1 7.5). A malicious or compromised MCP server therefore makes the client request localhost services, private-network addresses or cloud metadata endpoints during OAuth discovery, before any tool is called. From 0.1.16, the release that added a URL check before opening the user's browser, that check accepts any HTTP(S) URL and lets loopback, private, link-local and metadata destinations through to the browser launch (CVE-2026-51997, CVSS 3.1 8.8). In the same 0.1.16\u20130.1.38 range NVD records CVE-2026-51996 (CVSS 3.1 9.8, CWE-328) as code execution through `getServerUrlHash` in `src/lib/utils.ts`, which names each server's OAuth state and token files from an MD5 hash; the advisory NVD cites (F-04) was corrected in its v1.0.1 to call this hardening, with no token takeover shown. The range is the union of the advisories': they were reconfirmed against 0.1.38, and upstream has published neither an advisory nor a fix, so this rule makes no claim about 0.1.39 or later in either direction.",
       "incident_references": [],
       "limitations": "Reports only a reference that states a version in the range: an `mcp-remote@0.1.x` argument in an MCP config, a `package.json` dependency or a lockfile entry. An unpinned `npx mcp-remote` is not reported, because it resolves to the newest release (0.14.x on 2026-09-27), which the advisories did not test. Versions before 0.1.16 carry CVE-2025-6514 (OS command injection through the authorization endpoint URL, fixed in 0.1.16), which this rule does not report.",
       "owasp_agentic_references": [
