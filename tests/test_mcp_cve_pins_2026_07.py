@@ -1361,6 +1361,31 @@ def test_mcp_remote_rule_cites_the_three_advisories() -> None:
     assert {"CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51997"} <= refs
 
 
+def test_mcp_remote_finding_lists_cve_2026_51996(tmp_path: Path) -> None:
+    """CVE-2026-51996 (#834): NVD scopes it 0.1.16 through 0.1.38, the range the
+    pin already reports, so it joins the rule and nothing moves. A stated 0.1.20
+    is below the 0.1.32 start of the SSRF pair and still inside it."""
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"mcp-remote": "0.1.20"}}', encoding="utf-8"
+    )
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == _REMOTE]
+    assert len(hits) == 1
+    assert "CVE-2026-51996" in hits[0].cve_references
+
+
+def test_mcp_remote_rule_cites_cve_2026_51996_and_its_advisory_correction() -> None:
+    """NVD calls it code execution; the advisory NVD cites (F-04, v1.0.1) was
+    corrected to hardening with no token takeover shown. The rule says both."""
+    from agent_audit_kit.rules.builtin import get_rule
+
+    rule = get_rule(_REMOTE)
+    assert set(rule.cve_references) == {
+        "CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997",
+    }
+    assert "getServerUrlHash" in rule.description
+    assert "no token takeover" in rule.description
+
+
 def test_mcp_remote_unpinned_passes(tmp_path: Path) -> None:
     """Unpinned `npx mcp-remote` resolves to the newest release (0.14.x), outside
     the range, and it is in a very large share of MCP configs. Treating it as

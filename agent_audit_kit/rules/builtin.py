@@ -9901,7 +9901,11 @@ _r(
     "0.1.16, the release that added a URL check before opening the user's browser, "
     "that check accepts any HTTP(S) URL and lets loopback, private, link-local and "
     "metadata destinations through to the browser launch (CVE-2026-51997, CVSS 3.1 "
-    "8.8). The range is the union of the advisories': they were reconfirmed against "
+    "8.8). In the same 0.1.16–0.1.38 range NVD records CVE-2026-51996 (CVSS 3.1 9.8, "
+    "CWE-328) as code execution through `getServerUrlHash` in `src/lib/utils.ts`, "
+    "which names each server's OAuth state and token files from an MD5 hash; the "
+    "advisory NVD cites (F-04) was corrected in its v1.0.1 to call this hardening, "
+    "with no token takeover shown. The range is the union of the advisories': they were reconfirmed against "
     "0.1.38, and upstream has published neither an advisory nor a fix, so this rule "
     "makes no claim about 0.1.39 or later in either direction.",
     Severity.CRITICAL,
@@ -9913,7 +9917,7 @@ _r(
     "of it that blocks loopback, link-local and private destinations on every request "
     "and redirect.",
     sarif_name="McpRemoteServerChosenUrls",
-    cve_references=["CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51997"],
+    cve_references=["CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],

@@ -5096,6 +5096,7 @@
       "cve_references": [
         "CVE-2026-51994",
         "CVE-2026-51995",
+        "CVE-2026-51996",
         "CVE-2026-51997"
       ],
       "eu_ai_act": [
@@ -8271,7 +8272,7 @@
       "low": 10,
       "medium": 96
     },
-    "total_cves_covered": 268,
+    "total_cves_covered": 269,
     "total_rules": 364
   },
   "tool": "agent-audit-kit"

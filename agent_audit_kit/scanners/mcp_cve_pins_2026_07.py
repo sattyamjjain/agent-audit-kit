@@ -116,7 +116,8 @@ available) before shipping:
     falls back to the operator's API key)
   - mcp-remote                     0.1.16–0.1.38 (CVE-2026-51994 and CVE-2026-51995,
     OAuth discovery SSRF from 0.1.32; CVE-2026-51997, internal URLs reach the
-    browser launch from 0.1.16. Upstream names no fix, so the pin is the union of
+    browser launch from 0.1.16; CVE-2026-51996, MD5-derived token-file names,
+    0.1.16-0.1.38 per NVD. Upstream names no fix, so the pin is the union of
     the advisories' ranges, and it needs a stated version: an unpinned
     `npx mcp-remote` resolves to 0.14.x)
   - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
@@ -981,8 +982,10 @@ _PINS: tuple[_Pin, ...] = (
     # (CVE-2026-51995). From 0.1.16, the release that added a URL check for
     # CVE-2025-6514, that check lets loopback, private and metadata addresses
     # through to the browser launch (CVE-2026-51997), so `introduced` is 0.1.16:
-    # the union of the three advisory ranges. `_MCP_REMOTE_RE` keeps unpinned
-    # references out.
+    # the union of the advisory ranges. CVE-2026-51996 (MD5-derived names for the
+    # per-server OAuth state files, `getServerUrlHash`) is scoped 0.1.16-0.1.38
+    # by NVD, inside that union, so it moved nothing. `_MCP_REMOTE_RE` keeps
+    # unpinned references out.
     _Pin("AAK-MCP-REMOTE-CVE-2026-51994-001", "mcp-remote", ("mcp-remote",), (0, 1, 39),
          introduced=(0, 1, 16),
          fix_label="a release outside 0.1.16–0.1.38 (upstream names no fix)",
