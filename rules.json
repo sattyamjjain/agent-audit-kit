@@ -515,7 +515,9 @@
       "adversa_references": [
         "ADV-HIJACK-02"
       ],
-      "aicm_references": [],
+      "aicm_references": [
+        "IAM-02"
+      ],
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],

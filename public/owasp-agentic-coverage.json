@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-09-30T18:50:16Z",
+  "last_updated": "2026-10-02T10:56:09Z",
   "aak_version": "0.6.10",
   "rule_count": 364,
   "coverage": [
@@ -47,7 +47,9 @@
           "id": "AAK-AGENT-006",
           "severity": "high",
           "cve_references": [],
-          "aicm_references": []
+          "aicm_references": [
+            "IAM-02"
+          ]
         },
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",

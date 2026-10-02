@@ -372,6 +372,15 @@ def test_agent_002_is_low_and_006_is_high_in_the_registry() -> None:
     assert RULES["AAK-AGENT-006"].severity.name == "HIGH"
 
 
+def test_agent_006_carries_the_aicm_control_002_does() -> None:
+    """0.6.8 split 006 out of 002 and left it unmapped, so a finding that used to
+    carry IAM-02 lost its AICM control when it moved to the higher severity."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    assert RULES["AAK-AGENT-002"].aicm_references == ["IAM-02"]
+    assert RULES["AAK-AGENT-006"].aicm_references == ["IAM-02"]
+
+
 def test_the_allowlist_no_longer_carries_bare_subdomain_labels() -> None:
     """`docs.` and `developer.` matched a label, not a domain.
 

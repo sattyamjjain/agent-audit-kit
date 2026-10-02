@@ -285,6 +285,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-HOOK-007": ["CCC-08"],
     "AAK-AGENT-001": ["IAM-02"],
     "AAK-AGENT-002": ["IAM-02"],
+    "AAK-AGENT-006": ["IAM-02"],
     "AAK-ROUTINE-001": ["IAM-02"],
     # ---- Logging (LOG) -------------------------------------------------
     "AAK-LOGINJ-001": ["LOG-06"],
