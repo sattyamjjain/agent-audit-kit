@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.14] - 2026-10-03
+
 ### Added
 
 - `container_image_pins`, a scanner that reads container image tags: `image:` values and other `REPO:TAG` mentions in YAML (compose files, Kubernetes manifests, MCP configs), Helm values that pair `repository` with `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in MCP configs. Obot, MetaMCP and heym ship only as images, so until now nothing AAK reads carried their version. A tag that is not a version, a digest with no tag, an interpolated tag and an empty Helm `tag` state no version and are not reported. Scanner count 103 -> 104.

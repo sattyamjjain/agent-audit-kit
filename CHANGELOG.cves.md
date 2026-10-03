@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-03: five disclosures, two new pins, three WordPress plugins out of scope
+## 2026-10-03 (v0.6.14): five disclosures, two new pins, three WordPress plugins out of scope
 
 The watcher opened five `cve-response` issues at 16:17Z (#863-#867). Two are MCP
 servers published to a registry AAK reads, and each gets a pin measured with the
@@ -69,7 +69,7 @@ still the newest release on wordpress.org.
 
 CVSS is NVD's CVSS 3.1 score.
 
-## 2026-10-03: the image-tag deferrals close on two new pins, heym gets a third, two stay deferred
+## 2026-10-03 (v0.6.14): the image-tag deferrals close on two new pins, heym gets a third, two stay deferred
 
 Six deferrals waited on one thing: an image-tag reader. Obot and MetaMCP ship only
 as container images, so nothing AAK read carried their version (2026-10-02 and

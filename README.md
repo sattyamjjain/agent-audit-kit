@@ -38,7 +38,7 @@ As a pre-commit hook:
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.6.13
+    rev: v0.6.14
     hooks:
       - id: agent-audit-kit
 ```
@@ -47,7 +47,7 @@ In CI:
 
 ```yaml
 # .github/workflows/agent-security.yml
-- uses: sattyamjjain/agent-audit-kit@v0.6.13
+- uses: sattyamjjain/agent-audit-kit@v0.6.14
   with:
     severity: medium
     fail-on: high
