@@ -1,0 +1,47 @@
+name: VS Code extension
+
+# Builds and packages vscode-extension/ whenever it changes. Nothing else in CI
+# compiles it: CodeQL reads the TypeScript without building it, and the Python
+# jobs only read its sources as text. So without this job, a Dependabot bump that
+# breaks `tsc` (the first one, #873, moved TypeScript 5 -> 7 and stopped resolving
+# @types/node) still shows every check green.
+#
+# `vsce package` is the real gate. Its `vscode:prepublish` script runs
+# `npm run compile` first, so this checks both the compile and the packaging. The
+# lockfile is gitignored on purpose (see vscode-extension/.gitignore), so this
+# runs `npm install`, which is the same thing a contributor runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "vscode-extension/**"
+      - ".github/workflows/vscode-extension.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "vscode-extension/**"
+      - ".github/workflows/vscode-extension.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode-extension
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Package (compiles first through vscode:prepublish)
+        run: npx --no-install vsce package --out "$RUNNER_TEMP/agent-audit-kit.vsix"
