@@ -21,23 +21,8 @@ _AGENT_CONFIG_FILES: list[str] = [
     ".kiro/rules",
 ]
 
-# ---- AAK-AGENT-001: Shell command directives ----
-# NOTE: no bare `` `...` `` inline-code arm — it matched *every* backtick span
-# in an agent-instruction file (`` `cargo build` ``, `` `make` ``, `` `npx tsc` ``),
-# producing dozens of false positives per CLAUDE.md. A genuinely dangerous
-# backtick-wrapped command (`` `rm -rf /` ``, `` `sh -c ...` ``) still matches
-# through the specific arms below. The `curl|wget ... | sh` arm preserves
-# detection of pipe-to-shell that the catch-all used to cover.
-_SHELL_DIRECTIVE_RE = re.compile(
-    r"\bsh\s+-c\s|\bbash\s+-c\s|"
-    r"\bos\.system\s*\(|"
-    r"\bsubprocess\b|"
-    r"\bexec\s*\(|"
-    r"\beval\s*\(|"
-    r"\brm\s+-rf\b|"
-    r"(?:curl|wget)\b[^\n`]*\|\s*(?:sh|bash|zsh)\b",
-    re.IGNORECASE,
-)
+# AAK-AGENT-001 and -003 are matched further down, after the negation helpers
+# they share with -006 ("directives, not mentions").
 
 # ---- AAK-AGENT-002 / -006: links in instruction files ----
 #
@@ -456,18 +441,330 @@ def _directive_links(content: str) -> list[tuple[int, str, str]]:
     return [(line_num, ev, url) for line_num, (ev, url) in sorted(found_at.items())]
 
 
-# ---- AAK-AGENT-003: Security override patterns ----
-_SECURITY_OVERRIDE_RE = re.compile(
-    r"ignore\s+security|"
-    r"skip\s+verification|"
-    r"disable\s+auth|"
-    r"allow\s+all|"
-    r"bypass|"
-    r"ignore\s+previous\s+instructions|"
-    r"you\s+are\s+now|"
-    r"new\s+system\s+prompt",
+# ---- AAK-AGENT-001 / -003: directives, not mentions ----
+#
+# Both rules used to be bare keyword regexes over the whole file. Re-run on the
+# #771 corpus (909 public repositories) for #869, that made 001 (CRITICAL) fire
+# on 74 repositories and 003 (HIGH) on 127, and nearly all of it was a mention:
+# "Never use `eval()`", a deny-list row of `curl|bash`, `insert.exec();` in a code
+# sample, `rm -rf dist`, and the word "bypass" in "never bypass the pre-push
+# hooks" or "auth bypass" in a review checklist. 173 of those repositories failed
+# `--ci` on these two rules and nothing else.
+#
+# What they report now is the instruction, the move AAK-AGENT-006 made for links
+# in #843. 001: a command that runs code it downloads, or a recursive delete of
+# the filesystem root or a home directory. 003: telling the agent to get past a
+# named security control, plus the prompt-injection phrases it always matched. A
+# guardrail that forbids either is not a finding.
+
+#: What a download can fetch: a URL, a `$VARIABLE` holding one, or a bare host
+#: (`get.docker.com`, `example.dev/install`). "`curl ... | bash`" and "`curl|sh`"
+#: name nothing, and that is the difference between a deny-list or guardrail
+#: quoting the pattern and an installer line running one. On the corpus every
+#: pipe-to-shell that named a target was an installer (bun, uv, strix, php.new)
+#: and every one that did not was a list of things not to do.
+_SHELL_VAR_RE = re.compile(r"\$\{?[A-Za-z_]\w*\}?")
+_BARE_HOST_RE = re.compile(r"(?<![\w./-])((?:[A-Za-z0-9-]+\.)+([A-Za-z]{2,24}))(?:(/)|(?=[\s'\")]|$))")
+#: A last label that makes `install.sh` a file name rather than a host.
+_FILE_SUFFIXES = frozenset({
+    "sh", "bash", "zsh", "py", "js", "mjs", "cjs", "ts", "rb", "pl", "php", "ps1",
+    "bat", "cmd", "txt", "md", "json", "yaml", "yml", "toml", "lock", "tar", "gz",
+    "tgz", "zip", "exe", "deb", "rpm", "conf", "cfg", "ini", "env", "log", "html",
+})
+
+
+def _names_remote(args: str) -> bool:
+    """True when a downloader's arguments name something off this machine.
+
+    A loopback URL is a local API, as for AAK-AGENT-006: `curl -s
+    http://localhost:8080/props | python3 -m json.tool` reads a dev server.
+    """
+    if any(not _is_loopback(url.group()) for url in _URL_RE.finditer(args)):
+        return True
+    if _SHELL_VAR_RE.search(args):
+        return True
+    return any(
+        host.group(3) or host.group(1).count(".") >= 2
+        or host.group(2).lower() not in _FILE_SUFFIXES
+        for host in _BARE_HOST_RE.finditer(args)
+    )
+
+
+_DOWNLOADER = r"(?:\bcurl|\bwget|\biwr|\birm|\bInvoke-WebRequest|\bInvoke-RestMethod)\b"
+_INTERPRETER = (
+    r"(?:sudo\s+(?:-\S+\s+)*)?"
+    r"(?:(?:ba|z|da|k|fi)?sh|python[0-9.]*|node|perl|ruby|php|iex|"
+    r"Invoke-Expression|pwsh|powershell)\b"
+)
+#: A download piped into an interpreter: `curl -fsSL <url> | bash`,
+#: `wget -qO- <url> | sudo sh`, `irm <url> | iex`. The arguments are read up to
+#: the first pipe and no further, so `curl <url> | tar xz` is not this, and a line
+#: of many `curl`s stays linear (the old `[^\n`]*` read to the end for each one).
+_PIPE_TO_SHELL_RE = re.compile(
+    _DOWNLOADER + r"(?P<args>[^\n|`]{0,240}?)\|\s*" + _INTERPRETER + r"(?P<after>[^\n|`;&]{0,40})",
     re.IGNORECASE,
 )
+#: An interpreter given its code on the command line reads the download as data:
+#: `| python3 -m json.tool`, `| python -c "import json,sys; ..."`, `| node -e ...`,
+#: `| bash -c '...'`. `| sh -s -- --flag` and a bare `| bash` run it.
+_STDIN_IS_DATA_RE = re.compile(r"^\s+(?:-[cmerp]\b|--eval\b|--print\b)")
+#: A download run through substitution: `/bin/bash -c "$(curl -fsSL <url>)"`
+#: (the Homebrew and php.new installers), `eval "$(wget -qO- <url>)"`,
+#: `source <(curl -s <url>)`, `bash <(curl -s <url>)`.
+_SUBSTITUTED_DOWNLOAD_RE = re.compile(
+    r"(?:\b(?:ba|z|da|k)?sh\s+(?:-[A-Za-z]*c\s+)?|\beval\s+|\bsource\s+|(?<![\w./-])\.\s+)"
+    r"[\"']?(?:\$\(|<\()\s*" + _DOWNLOADER + r"(?P<args>[^\n)`]{0,240})",
+    re.IGNORECASE,
+)
+#: PowerShell's download-and-run: `iex ((New-Object Net.WebClient).DownloadString(<url>))`,
+#: `Invoke-Expression (Invoke-WebRequest <url>)`. `irm <url> | iex` is the pipe form.
+_PS_DOWNLOAD_EXEC_RE = re.compile(
+    r"\b(?:iex|Invoke-Expression)\b(?P<args>[^\n|;]{0,240}?"
+    r"\b(?:DownloadString|iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\b[^\n|;]{0,240})",
+    re.IGNORECASE,
+)
+#: A recursive delete aimed at the filesystem root or a home directory. Build
+#: output (`rm -rf dist node_modules`), a temp path or a cache is housekeeping;
+#: on the corpus it was 43 of the 173 old findings and none of them was this.
+_WIPE_RE = re.compile(
+    r"\brm\s+(?P<flags>(?:-{1,2}[\w-]+\s+){1,4})"
+    r"(?P<target>[\"']?(?:/\*?|~/?\*?|\$\{?HOME\}?/?\*?)[\"']?)(?=[\s`;&|)]|$)"
+)
+_RECURSIVE_FLAG_RE = re.compile(r"(?:^|\s)(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?=\s|$)")
+#: Where a command starts, so a delete counts only when the text runs it: a shell
+#: line or list item (optionally after a `$ ` prompt), after `;`, `&&` or `||`,
+#: at a new sentence, or after "run", "then", "with". "...(`rm -rf /` stays
+#: hardline-blocked)" describes a test; a deny-list row is a table cell.
+_COMMAND_LEAD_RE = re.compile(
+    r"(?:^\s*(?:[-*+>]|\d+[.)])?\s*(?:\$\s+)?|(?:;|&&|\|\|)\s*|[.:!?]\s+|"
+    r"\b(?:run|execute|exec|type|paste|enter|then|and|try|with)\s+)[`'\"]*$",
+    re.IGNORECASE,
+)
+_TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+
+#: Verbs a guardrail puts between its negation and what it forbids: "never run
+#: `curl <url> | sh`", "don't add `-ExecutionPolicy Bypass`", "do not push to
+#: `main`, bypass hooks, or skip checks".
+_GUARD_VERB = (
+    r"(?:run|use|add|pass|call|invoke|execute|exec|type|paste|copy|pipe|set|enable|"
+    r"apply|include|try|do|introduce|bypass|skip|disable|ignore|push|commit|merge|"
+    r"allow|grant|turn\s+off|switch\s+off)"
+)
+_NEGATED_COMMAND_RE = re.compile(
+    _NEGATION + _NEGATION_FILLER + r"(?:" + _GUARD_VERB + r"\b[\s,]*)?"
+    r"(?:(?:the|a|an)\s+)?(?:command\s+)?[`'\"(\s]*$",
+    re.IGNORECASE,
+)
+_NEGATED_GUARD_VERB_RE = re.compile(
+    _NEGATION + _NEGATION_FILLER + _GUARD_VERB + r"\b", re.IGNORECASE
+)
+_LIST_CONTINUATION_RE = re.compile(r"(?:,|\b(?:or|nor))\s*$", re.IGNORECASE)
+
+
+def _forbidden(line: str, start: int) -> bool:
+    """True when a guardrail forbids the command or instruction at ``start``.
+
+    Three shapes: a negation right before it ("never bypass the hooks", "do not
+    run `curl <url> | sh`"), the negated verb lists `_negated` already reads for
+    AAK-AGENT-006, and one negation over a comma list of instructions ("Do not
+    push to `main`, bypass hooks, use `--no-verify`, or skip checks"). The list
+    is read back only to the start of its clause, and only while nothing in
+    between ends the instruction ("but", "then", ", and ...").
+    """
+    prefix = line[max(0, start - _NEAR):start]
+    if _NEGATED_COMMAND_RE.search(prefix) or _negated(line, start):
+        return True
+    if not _LIST_CONTINUATION_RE.search(prefix):
+        return False
+    clause = _CLAUSE_BREAK_RE.split(prefix)[-1]
+    head = None
+    for head in _NEGATED_GUARD_VERB_RE.finditer(clause):
+        pass
+    return head is not None and not _INSTRUCTION_BREAK_RE.search(clause, head.end())
+
+
+def _shell_directives(line: str) -> list[tuple[int, str, str]]:
+    """``(offset, kind, command)`` for each command on ``line`` that AAK-AGENT-001 reports."""
+    found: list[tuple[int, str, str]] = []
+    for pattern in (_PIPE_TO_SHELL_RE, _SUBSTITUTED_DOWNLOAD_RE, _PS_DOWNLOAD_EXEC_RE):
+        for match in pattern.finditer(line):
+            if not _names_remote(match.group("args")) or _forbidden(line, match.start()):
+                continue
+            if pattern is _PIPE_TO_SHELL_RE:
+                if _STDIN_IS_DATA_RE.match(match.group("after")):
+                    continue
+                command = line[match.start():match.start("after")]
+            else:
+                command = match.group()
+            found.append((match.start(), "runs downloaded code", command.strip()))
+    if not _TABLE_ROW_RE.match(line):
+        for match in _WIPE_RE.finditer(line):
+            lead = line[max(0, match.start() - _NEAR):match.start()]
+            if (
+                _RECURSIVE_FLAG_RE.search(match.group("flags"))
+                and _COMMAND_LEAD_RE.search(lead)
+                and not _forbidden(line, match.start())
+            ):
+                found.append((match.start(), "recursive delete", match.group().strip()))
+    return sorted(found)
+
+
+#: A named security control. "the pre-push hooks", "CI checks", "authentication".
+#: A word like "the type-checker" or "the need for screenshots" is not one.
+_SECURITY_CONTROL = (
+    r"(?:(?:the|any|all|your|our|these|those|this|that|its|their|every)\s+)?"
+    r"(?:[\w-]+\s+){0,2}?"
+    r"(?:hooks?|checks?|verification|validation|authentication|authorization|auth|"
+    r"sandbox(?:ing)?|permissions?|approvals?|security|safeguards?|guardrails?|guards?|"
+    r"protections?|restrictions?|polic(?:y|ies)|firewalls?|signing|signatures?|"
+    r"code\s+reviews?|reviews?|ci|2fa|mfa|ssl|tls|certificates?)\b"
+)
+#: "bypass" as a verb with a control as its object, in the base form an
+#: instruction uses. As a noun ("auth bypass", "anti-bot bypass"), with anything
+#: else as its object, or describing code ("Pairing bypasses the owner check",
+#: "`--no-verify` bypasses hooks") it is not a directive.
+_BYPASS_CONTROL_RE = re.compile(r"\bbypass\s+" + _SECURITY_CONTROL, re.IGNORECASE)
+#: PowerShell's execution policy switched off for the command the agent runs.
+_EXECUTION_POLICY_RE = re.compile(
+    r"(?:-ExecutionPolicy|\bSet-ExecutionPolicy)\s+(?:Bypass|Unrestricted)\b", re.IGNORECASE
+)
+#: "Allow all tools" as an instruction. "Allow all crawlers" (robots.txt) and a
+#: UI option quoted in a sentence ("Plugins' Allow all actions") are not.
+_ALLOW_ALL_RE = re.compile(
+    r"\ballow\s+all\s+(?:the\s+)?(?:tools?|tool\s+calls?|commands?|permissions?|actions?|"
+    r"operations?|requests?|network(?:\s+access)?|hosts?|domains?|origins?|file\s+access|"
+    r"writes?)\b",
+    re.IGNORECASE,
+)
+_OVERRIDE_PHRASE_RE = re.compile(r"ignore\s+security|skip\s+verification|disable\s+auth", re.IGNORECASE)
+
+#: Where an instruction starts: the start of a line, a new sentence, or after
+#: "always", "then", "must" and the like. "Length-1 batches bypass these checks"
+#: and "settings can bypass any captcha protection" describe; they do not instruct.
+_INSTRUCTION_LEAD_RE = re.compile(
+    r"(?:^\s*(?:(?:[-*+>]|\d+[.)])\s+)?|[.;:!?]\s+|\b(?:always|just|please|then|and|or|"
+    r"should|must|simply)\s+)[`'\"*_]*$",
+    re.IGNORECASE,
+)
+#: Or the purpose clause of an imperative: "Use `--no-verify` to bypass commit hooks".
+_PURPOSE_LEAD_RE = re.compile(
+    r"(?:^\s*(?:(?:[-*+>]|\d+[.)])\s+)?|[.;:!?]\s+)(?:use|run|pass|add|set|try|call|"
+    r"append|include|enable)\b[^.;:!?\n]{0,120}?\bto\s+$",
+    re.IGNORECASE,
+)
+#: Or permission granted to the reader: "You may bypass the approval prompts",
+#: "Feel free to bypass the sandbox". A sentence about something else ("these
+#: settings can bypass any captcha protection") grants nothing.
+_PERMISSION_LEAD_RE = re.compile(
+    r"(?:\byou\s+(?:can|may|could|should|must|need\s+to|are\s+(?:allowed|permitted|free)\s+to)"
+    r"|\b(?:free|fine|ok|okay|allowed|permitted|safe)\s+to)\s+(?:always\s+|just\s+|simply\s+)?$",
+    re.IGNORECASE,
+)
+#: Lines that stand alone in markdown, so the line after them starts afresh.
+_STRUCTURAL_LINE_RE = re.compile(r"^\s*(?:#|```|~~~|\|)|[.:;!?]['\")*_`]*\s*$")
+
+
+def _instruction_starts(line: str, start: int, previous: str) -> bool:
+    """True when the text at ``start`` opens an instruction rather than continuing one.
+
+    A match that is the first thing on its line opens an instruction only if the
+    previous line ended one. Markdown joins wrapped prose, so "npm has been
+    restricting tokens that" followed by a line starting "bypass 2FA for writes"
+    is one sentence about npm, not an order.
+    """
+    lead = line[max(0, start - _NEAR):start]
+    # A quoted phrase is a name, not an order: a token needs the npm setting
+    # **"Bypass 2FA"** enabled.
+    if lead.rstrip(" *_").endswith(('"', "\u201c", "'", "\u2018")):
+        return False
+    if _PURPOSE_LEAD_RE.search(lead) or _PERMISSION_LEAD_RE.search(lead):
+        return True
+    if not _INSTRUCTION_LEAD_RE.search(lead):
+        return False
+    if line[:start].strip(" \t`'\"*_"):
+        return True
+    return not previous.strip() or bool(_STRUCTURAL_LINE_RE.search(previous))
+
+
+#: A heading or lead-in that turns what follows into prohibitions: "### NEVER",
+#: "## Don'ts", "**Forbidden:**", "Never do any of the following:". On the corpus
+#: "Use `--no-verify` to bypass commit hooks" read as an order until the heading
+#: above it, "### NEVER", was read too.
+_PROHIBITION_HEAD_RE = re.compile(
+    r"^\s*(?:#{1,6}\s+)?[*_]*\s*(?:never|don['\u2019]?ts?|do\s+not|must\s+not|forbidden|"
+    r"prohibited|not\s+allowed|disallowed|banned|avoid|anti-?patterns?|blocked|"
+    r"deny(?:-?list)?|denied)\b",
+    re.IGNORECASE,
+)
+_HEADING_RE = re.compile(r"^\s*#{1,6}\s")
+_LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+
+
+def _prohibited_lines(lines: list[str]) -> set[int]:
+    """1-based numbers of the lines a prohibition heading or lead-in governs.
+
+    A heading ("### NEVER") governs everything up to the next heading. A lead-in
+    paragraph ending in a colon ("Never do any of the following:") governs the
+    list right after it, up to the next paragraph that is not a list item. Inside
+    a fenced code block a `#` line is a shell comment, not a heading: "# Don't
+    forget to install uv" above `curl ... | sh` does not forbid the install.
+    """
+    governed: set[int] = set()
+    heading_forbids = lead_in_forbids = in_fence = False
+    for number, line in enumerate(lines, 1):
+        if _FENCE_RE.match(line):
+            in_fence = not in_fence
+            if heading_forbids:
+                governed.add(number)
+            continue
+        if in_fence:
+            if heading_forbids or lead_in_forbids:
+                governed.add(number)
+            continue
+        if _HEADING_RE.match(line):
+            heading_forbids = bool(_PROHIBITION_HEAD_RE.match(line))
+            lead_in_forbids = False
+            continue
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _LIST_ITEM_RE.match(line):
+            if heading_forbids or lead_in_forbids:
+                governed.add(number)
+            continue
+        lead_in_forbids = bool(_PROHIBITION_HEAD_RE.match(line)) and stripped.rstrip(" *_").endswith(":")
+        if heading_forbids:
+            governed.add(number)
+    return governed
+#: Prompt-injection markers. Reported wherever they appear, and matched over the
+#: whole file rather than per line: markdown renders "ignore previous" and
+#: "instructions" on two lines as one sentence, so a line break must not hide it.
+_PROMPT_INJECTION_RE = re.compile(
+    r"ignore\s+previous\s+instructions|you\s+are\s+now|new\s+system\s+prompt",
+    re.IGNORECASE,
+)
+
+
+def _security_overrides(line: str, previous: str) -> list[tuple[int, str]]:
+    """``(offset, evidence)`` for each instruction on ``line`` that AAK-AGENT-003 reports,
+    apart from the prompt-injection phrases, which `_check_content` matches file-wide.
+
+    ``previous`` is the line before, which decides whether a match at the start of
+    this line opens an instruction or continues a sentence.
+    """
+    found: list[tuple[int, str]] = []
+    # A flag inside a command the agent runs, wherever it sits on the line.
+    for match in _EXECUTION_POLICY_RE.finditer(line):
+        if not _forbidden(line, match.start()):
+            found.append((match.start(), match.group().strip()))
+    for pattern in (_BYPASS_CONTROL_RE, _OVERRIDE_PHRASE_RE, _ALLOW_ALL_RE):
+        for match in pattern.finditer(line):
+            if _instruction_starts(line, match.start(), previous) and not _forbidden(
+                line, match.start()
+            ):
+                found.append((match.start(), match.group().strip()))
+    return sorted(found)
 
 # ---- AAK-AGENT-004: Credential patterns ----
 _CREDENTIAL_RE = re.compile(
@@ -726,15 +1023,21 @@ def _check_content(
     """Run all six rules against the text content of a single file."""
     findings: list[Finding] = []
 
-    # AAK-AGENT-001: Shell directives
-    for match in _SHELL_DIRECTIVE_RE.finditer(content):
-        evidence = match.group().strip()
-        findings.append(make_finding(
-            "AAK-AGENT-001",
-            rel_path,
-            f"Shell directive: {evidence[:120]}",
-            _line_at(content, match.start()),
-        ))
+    lines = content.splitlines()
+    prohibited = _prohibited_lines(lines)
+
+    # AAK-AGENT-001: a command that runs downloaded code or wipes a root or home
+    # directory, unless a guardrail forbids it
+    for line_num, line in enumerate(lines, 1):
+        if line_num in prohibited:
+            continue
+        for _, kind, command in _shell_directives(line):
+            findings.append(make_finding(
+                "AAK-AGENT-001",
+                rel_path,
+                f"Shell directive ({kind}): {command[:200]}",
+                line_num,
+            ))
 
     # AAK-AGENT-006: a link the text tells the agent to act on. HIGH, and
     # reported before 002 so the directive is what a reader sees first.
@@ -764,14 +1067,25 @@ def _check_content(
                 _line_at(content, match.start()),
             ))
 
-    # AAK-AGENT-003: Security override patterns
-    for match in _SECURITY_OVERRIDE_RE.finditer(content):
-        evidence = match.group().strip()
+    # AAK-AGENT-003: an instruction to get past a named security control, unless a
+    # guardrail forbids it, and the prompt-injection phrases anywhere in the file
+    overrides = [
+        (_line_at(content, match.start()), match.group().strip())
+        for match in _PROMPT_INJECTION_RE.finditer(content)
+    ]
+    for line_num, line in enumerate(lines, 1):
+        if line_num in prohibited:
+            continue
+        previous = lines[line_num - 2] if line_num > 1 else ""
+        overrides.extend(
+            (line_num, evidence) for _, evidence in _security_overrides(line, previous)
+        )
+    for line_num, evidence in sorted(overrides):
         findings.append(make_finding(
             "AAK-AGENT-003",
             rel_path,
             f"Security override: {evidence}",
-            _line_at(content, match.start()),
+            line_num,
         ))
 
     # AAK-AGENT-004: Credential patterns, unless the sentence forbids disclosing it
