@@ -4193,6 +4193,25 @@
       "title": "AWS HealthOmics MCP workflow-bundle path traversal (< 0.0.36)"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-100858"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-HEYM-CVE-2026-100858-001",
+      "severity": "medium",
+      "title": "heym image below 0.0.109 fetches workflow-node URLs past its SSRF guard"
+    },
+    {
       "category": "mcp-config",
       "cve_references": [
         "CVE-2026-23744",
@@ -4672,6 +4691,36 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-79537",
+        "CVE-2026-79538"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse",
+        "ASI05 Unexpected Code Execution"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection",
+        "MCP07:2025 Insufficient Authentication"
+      ],
+      "rule_id": "AAK-MCP-METAMCP-CVE-2026-79538-001",
+      "severity": "critical",
+      "title": "MetaMCP image up to 2.4.22: inspector proxy code execution and cross-tenant session dispatch (no fixed release)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-59971"
       ],
       "eu_ai_act": [
@@ -4889,6 +4938,33 @@
       "rule_id": "AAK-MCP-NOAUTH-DEFAULT",
       "severity": "high",
       "title": "MCP server unauthenticated-by-default / fail-open authentication"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-101062",
+        "CVE-2026-101064",
+        "CVE-2026-101084",
+        "CVE-2026-103758"
+      ],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication",
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-OBOT-CVE-2026-101084-001",
+      "severity": "critical",
+      "title": "Obot image below v0.25.0: MCP gateway access-control bypasses, open OAuth client registration, SSRF"
     },
     {
       "category": "supply-chain",
@@ -8264,37 +8340,37 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 125,
+      "supply-chain": 128,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 130,
+      "Art. 10 - Data Governance": 131,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
-      "Art. 15 - Robustness & Security": 216,
-      "Art. 9 - Risk Management": 123
+      "Art. 15 - Robustness & Security": 218,
+      "Art. 9 - Risk Management": 124
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 89,
-      "Constrain and sandbox tool execution (p.11)": 108,
-      "Design for boundaries (p.10)": 185,
-      "Filter and monitor output pipelines and chained execution (p.12)": 78,
+      "Constrain and sandbox tool execution (p.11)": 109,
+      "Design for boundaries (p.10)": 187,
+      "Filter and monitor output pipelines and chained execution (p.12)": 79,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 161,
-      "Sign and verify MCP messages (p.12)": 160,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 163,
+      "Sign and verify MCP messages (p.12)": 162,
       "Track and patch MCP related vulnerabilities (p.13)": 100,
-      "Validate parameters (p.11)": 112
+      "Validate parameters (p.11)": 113
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 51,
-      "ASI03": 74,
+      "ASI03": 76,
       "ASI04": 83,
-      "ASI05": 57,
-      "ASI06": 50,
+      "ASI05": 58,
+      "ASI06": 51,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -8304,23 +8380,23 @@
       "MCP01:2025": 90,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
-      "MCP04:2025": 42,
+      "MCP04:2025": 43,
       "MCP05:2025": 58,
       "MCP06:2025": 20,
-      "MCP07:2025": 38,
+      "MCP07:2025": 40,
       "MCP08:2025": 10,
-      "MCP09:2025": 31,
+      "MCP09:2025": 33,
       "MCP10:2025": 12
     },
     "by_severity": {
-      "critical": 87,
+      "critical": 89,
       "high": 168,
       "info": 5,
       "low": 10,
-      "medium": 96
+      "medium": 97
     },
-    "total_cves_covered": 274,
-    "total_rules": 366
+    "total_cves_covered": 281,
+    "total_rules": 369
   },
   "tool": "agent-audit-kit"
 }

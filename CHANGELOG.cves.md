@@ -16,6 +16,90 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-03: the image-tag deferrals close on two new pins, heym gets a third, two stay deferred
+
+Six deferrals waited on one thing: an image-tag reader. Obot and MetaMCP ship only
+as container images, so nothing AAK read carried their version (2026-10-02 and
+2026-10-03 sections below). The new `container_image_pins` scanner reads image
+references in YAML, Helm values, Dockerfile `FROM` and `docker run` arguments in
+MCP configs, and the six close on two pins. heym (#854), recorded the same day as
+non-pinnable for the same reason, gets a third. Every pin was measured with a
+full `run_scan` on a firing fixture and a negative one. The two deferrals that
+wait on an upstream fix (#847, #850) are re-checked and stay deferred. NVD text
+below is quoted from the API record, read on 2026-10-03.
+
+**Obot (CVE-2026-101084, CVE-2026-101062, CVE-2026-103758, CVE-2026-101064) gets
+`AAK-MCP-OBOT-CVE-2026-101084-001`, below v0.25.0.** The fixes for the first, second
+and fourth are v0.21.1, v0.23.0 and v0.23.0, quoted in the earlier sections. The
+third had no fix to pin to: NVD says "Obot 0.21.1 through 0.24.1", and
+GHSA-6fwv-3h4c-37j9 names no patched version. The code does. obot-platform/obot#7375
+(`190356202d`, 2026-07-30) replaced the prefix deny list in `pkg/api/authz/ui.go`
+with a check that the matched route is the UI's own `/` fallback, so
+`/mcp-connect-composite/{mcp_id}` can no longer be authorized as UI traffic. The
+GitHub compare API shows v0.24.1 without that commit and v0.25.0 (2026-07-31) with
+it. v0.24.2
+(2026-08-26) was cut from the 0.24 branch with one commit (`154838b195`, CIMD
+native overrides, outside `pkg/api/authz`), and its `ui.go` still carries the
+0.24.1 deny list next to the composite route in `router.go`, so the advisory's
+"<= 0.24.1" misses it and the pin reports it. The floor sits above 0.24.1, which
+is what the 2026-10-03 entry asked of it. `latest` was v0.26.2 on 2026-10-03 (same
+digest) and is not reported. The enterprise image `obot-enterprise` is not
+matched; its tags were not checked.
+
+**MetaMCP (CVE-2026-79538, CVE-2026-79537) gets
+`AAK-MCP-METAMCP-CVE-2026-79538-001`, up to and including 2.4.22.** There is still
+no fixed release: 2.4.22 is the newest release and the newest version tag on
+GHCR, and both TraceForce advisories NVD cites list "v2.4.22 and ai-dev commit
+ff4ff2d" (the newest `main` commit) as affected with no patched version. The
+upstream compose file pulls `:latest`, and on 2026-10-03 `latest`, `2`, `2.4` and
+`2.4.22` were one digest, so `latest` and an untagged reference are reported as
+well, as an unpinned PyPI or npm reference is for the other no-fix pins. The
+floating `2` and `2.4` tags are not reported. When a fixed image takes `latest`,
+the `latest` arm has to move with it; the rule's limitations say so.
+
+**heym (CVE-2026-100858) gets `AAK-MCP-HEYM-CVE-2026-100858-001`, below 0.0.109.**
+NVD: "heym before 0.0.109 contains a server-side request forgery vulnerability in
+the Slack, Discord, and Crawler workflow nodes." GHSA-39j3-6x3x-8rcr names 0.0.109
+as patched. The image is `ghcr.io/heymrun/heym` (newest tag 0.0.123, the same
+digest as `latest` on 2026-10-03). The 2026-10-03 entry recorded it as non-pinnable and
+said an image-tag reader should cover it; this is that reader, and the earlier
+row stays as the dated record of the first disposition.
+
+### CVE-2026-102878 (#847): re-checked 2026-10-03, still deferred (target 2026-10-31)
+
+No fix yet. `npm view mcp-chrome-bridge version` is still 1.0.31 (2025-12-30), the
+newest GitHub release is still v1.0.0, the last upstream commit is from
+2026-01-06, and hangwin/mcp-chrome#384 is open with no reply. Nothing here needs an
+image reader: once a fixed release ships, it is an npm pin on `mcp-chrome-bridge`.
+
+### CVE-2026-102243 (#850): re-checked 2026-10-03, still deferred (target 2026-10-31)
+
+No fix yet: v2.0.3 (2026-09-26) is still the newest SurfSense release. The image
+reader does not settle this one even once a fix ships, because NVD's version line
+is not the image's. The endpoint NVD names lives in `surfsense_backend`
+(`app/routes/search_source_connectors_routes.py`), whose image
+`ghcr.io/modsetter/surfsense-backend` is tagged 0.0.x (newest 0.0.40.4, and the
+repository's `VERSION` file says 0.0.40), while "up to 2.0.3" follows the GitHub
+release tags, which the desktop app's releases carry ("chore(local): release
+2.0.3"). No backend image is tagged 2.x. A pin needs the backend image tag that
+carries the fix, which nobody has named yet.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-101084 | 9.6 | Obot (container image `ghcr.io/obot-platform/obot`) | **New pin** `AAK-MCP-OBOT-CVE-2026-101084-001`: below v0.25.0. Fixed in v0.21.1. | #837 |
+| CVE-2026-101062 | 8.8 | Obot (container image) | Same pin. Fixed in v0.23.0. | #842 |
+| CVE-2026-103758 | 8.1 | Obot (container image) | Same pin. No patched version named; v0.25.0 is the first tag with obot-platform/obot#7375, and v0.24.2 is reported. | #848 |
+| CVE-2026-101064 | 7.6 | Obot (container image) | Same pin. Fixed in v0.23.0. | #849 |
+| CVE-2026-79538 | 9.8 | MetaMCP (container image `ghcr.io/metatool-ai/metamcp`) | **New pin** `AAK-MCP-METAMCP-CVE-2026-79538-001`: 2.4.22 and earlier, and `latest` (the same image on 2026-10-03). No fixed release. | #836 |
+| CVE-2026-79537 | 9.1 | MetaMCP (container image) | Same pin. | #838 |
+| CVE-2026-100858 | 6.8 | heym (container image `ghcr.io/heymrun/heym`) | **New pin** `AAK-MCP-HEYM-CVE-2026-100858-001`: below 0.0.109. Recorded as non-pinnable on 2026-10-03, before this reader existed. | #854 |
+
+CVE-2026-102878 and CVE-2026-102243 have no row: neither has coverage. CVSS is
+NVD's CVSS 3.1 score.
+
+Dispositioned on 2026-10-03. Unreleased at the time of writing: this section
+carries no version label until the next tag stamps it.
+
 ## 2026-10-03 (v0.6.12): ten disclosures, one new pin, one more on an existing rule, four out of scope, four deferred
 
 The watcher opened ten `cve-response` issues (#845-#849 at 12:35Z and #850-#854 at

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `container_image_pins`, a scanner that reads container image tags: `image:` values and other `REPO:TAG` mentions in YAML (compose files, Kubernetes manifests, MCP configs), Helm values that pair `repository` with `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in MCP configs. Obot, MetaMCP and heym ship only as images, so until now nothing AAK reads carried their version. A tag that is not a version, a digest with no tag, an interpolated tag and an empty Helm `tag` state no version and are not reported. Scanner count 103 -> 104.
+- `AAK-MCP-OBOT-CVE-2026-101084-001`: Obot below v0.25.0 (CVE-2026-101084, CVE-2026-101062, CVE-2026-103758, CVE-2026-101064; #837, #842, #848, #849). CVE-2026-103758's advisory names no fix; v0.25.0 is the first tag with the `checkUI` rewrite that closes the composite route, and v0.24.2, cut from the 0.24 branch without it, is reported.
+- `AAK-MCP-METAMCP-CVE-2026-79538-001`: MetaMCP up to 2.4.22, and `latest`, which was the same image on 2026-10-03 (CVE-2026-79538, CVE-2026-79537; #836, #838). There is no fixed release.
+- `AAK-MCP-HEYM-CVE-2026-100858-001`: heym below 0.0.109 (CVE-2026-100858, #854), recorded on 2026-10-03 as non-pinnable because only its image tag carries the version. Rule count 366 -> 369.
+
+### Fixed
+
+- The coverage map's reserved MCP 2026-07-28 surfaces match a whole rule-id segment, so `AAK-MCP-METAMCP-*` does not mark the `_meta`-per-request slot (`AAK-MCP-META`) covered.
+
 ## [0.6.13] - 2026-10-03
 
 ### Fixed

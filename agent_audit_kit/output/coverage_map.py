@@ -116,7 +116,9 @@ def build_coverage() -> dict[str, Any]:
 
     reserved = []
     for spec in _RESERVED_2026_07_28:
-        matched = sorted(r for r in RULES if r.startswith(spec["rule_id_prefix"]))
+        # A whole id segment, so AAK-MCP-METAMCP-* does not fill the AAK-MCP-META slot.
+        prefix = spec["rule_id_prefix"] + "-"
+        matched = sorted(r for r in RULES if r.startswith(prefix))
         reserved.append({
             "surface": spec["surface"],
             "reference": spec["reference"],
