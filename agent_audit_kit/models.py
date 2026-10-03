@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 
 class Severity(Enum):
@@ -74,7 +73,7 @@ class Finding:
     severity: Severity
     category: Category
     file_path: str
-    line_number: Optional[int] = None
+    line_number: int | None = None
     evidence: str = ""
     remediation: str = ""
     cve_references: list[str] = field(default_factory=list)
@@ -117,8 +116,8 @@ class ScanResult:
     files_scanned: int = 0
     rules_evaluated: int = 0
     scan_duration_ms: float = 0.0
-    score: Optional[int] = None
-    grade: Optional[str] = None
+    score: int | None = None
+    grade: str | None = None
 
     @property
     def critical_count(self) -> int:
@@ -141,7 +140,7 @@ class ScanResult:
         return sum(1 for f in self.findings if f.severity == Severity.INFO)
 
     @property
-    def max_severity(self) -> Optional[Severity]:
+    def max_severity(self) -> Severity | None:
         if not self.findings:
             return None
         return max(self.findings, key=lambda f: f.severity.numeric()).severity

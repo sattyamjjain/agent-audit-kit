@@ -91,7 +91,7 @@ import statistics
 import sys
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
@@ -141,7 +141,7 @@ class Row(NamedTuple):
     days: int
 
 
-def _parse_iso_date(raw: str) -> Optional[date]:
+def _parse_iso_date(raw: str) -> date | None:
     text = raw.strip().replace("Z", "")
     for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
@@ -221,7 +221,7 @@ def parse_ledger(text: str) -> tuple[dict[str, tuple[date, str]], set[str]]:
     shipped: dict[str, tuple[date, str]] = {}
     out_of_scope: set[str] = set()
 
-    section_date: Optional[date] = None
+    section_date: date | None = None
     section_release = "unreleased"
     pending_release = "unreleased"
 
@@ -318,8 +318,8 @@ class WindowStats(NamedTuple):
 
 
 def window_stats(
-    window_days: int = 90, today: Optional[date] = None
-) -> Optional[WindowStats]:
+    window_days: int = 90, today: date | None = None
+) -> WindowStats | None:
     """Median and p90 response latency for CVEs *published* in the last N days.
 
     The window is keyed on publication rather than ship date on purpose: it
@@ -391,12 +391,12 @@ class OpenQueue(NamedTuple):
 
     read: bool
     count: int = 0
-    oldest_number: Optional[int] = None
-    oldest_created: Optional[date] = None
-    asof: Optional[date] = None
+    oldest_number: int | None = None
+    oldest_created: date | None = None
+    asof: date | None = None
 
     @property
-    def oldest_age_days(self) -> Optional[int]:
+    def oldest_age_days(self) -> int | None:
         if self.oldest_created is None or self.asof is None:
             return None
         return (self.asof - self.oldest_created).days
@@ -433,7 +433,7 @@ def _load_ageing_module() -> Any:
 
 
 def open_queue_from_issues(
-    issues: list[dict[str, Any]], today: Optional[date] = None
+    issues: list[dict[str, Any]], today: date | None = None
 ) -> OpenQueue:
     """Build an `OpenQueue` from a `gh`-shaped issue list. Offline; testable."""
     ageing = _load_ageing_module()
@@ -465,7 +465,7 @@ def open_queue_from_issues(
     )
 
 
-def read_open_queue(repo: Optional[str] = None, today: Optional[date] = None) -> OpenQueue:
+def read_open_queue(repo: str | None = None, today: date | None = None) -> OpenQueue:
     """The live queue, or an explicitly unread one when the tracker is closed.
 
     Any failure to reach the tracker — no `gh`, no token, a rate limit — yields
@@ -492,7 +492,7 @@ def render_queue_marker(queue: OpenQueue) -> str:
     return f"<!-- cve-open-queue: {' '.join(parts)} -->"
 
 
-def parse_open_queue(page: str) -> Optional[OpenQueue]:
+def parse_open_queue(page: str) -> OpenQueue | None:
     """Read the open-queue state back out of a rendered page.
 
     Returns None when the page carries no marker at all, which is how a page
@@ -510,7 +510,7 @@ def parse_open_queue(page: str) -> Optional[OpenQueue]:
     if fields.get("read") != "yes":
         return OpenQueue(read=False)
 
-    def _date(key: str) -> Optional[date]:
+    def _date(key: str) -> date | None:
         raw = fields.get(key)
         try:
             return date.fromisoformat(raw) if raw else None
@@ -527,7 +527,7 @@ def parse_open_queue(page: str) -> Optional[OpenQueue]:
     )
 
 
-def _queue_phrase(queue: Optional[OpenQueue]) -> str:
+def _queue_phrase(queue: OpenQueue | None) -> str:
     """The open queue as a noun phrase, or "" when there is nothing to say."""
     if queue is None or not queue.read:
         return ""
@@ -547,7 +547,7 @@ def render(
     rows: list[Row],
     missing: list[str],
     out_of_scope: set[str],
-    queue: Optional[OpenQueue] = None,
+    queue: OpenQueue | None = None,
 ) -> str:
     measured = [r.days for r in rows]
     lines: list[str] = []

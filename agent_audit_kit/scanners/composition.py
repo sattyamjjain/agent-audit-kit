@@ -62,7 +62,6 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import SKIP_DIRS, find_line_number, make_finding
@@ -188,10 +187,10 @@ class _Node:
     kind: str  # "skill" | "mcp-server"
     name: str
     rel: str
-    line: Optional[int]
+    line: int | None
     caps: _Caps
     container: str
-    line_end: Optional[int] = None
+    line_end: int | None = None
     inputs: frozenset[str] = frozenset()
     outputs: frozenset[str] = frozenset()
     accepts_free_text: bool = True
@@ -659,7 +658,7 @@ def suppression_keys(finding: Finding) -> set[str]:
     component *is*, which is this module's concern.
     """
     keys: set[str] = set()
-    locations: list[tuple[str, Optional[int], Optional[int]]] = [
+    locations: list[tuple[str, int | None, int | None]] = [
         (finding.file_path, finding.line_number, None)
     ]
     for loc in finding.related_locations or []:
@@ -685,7 +684,7 @@ def suppression_keys(finding: Finding) -> set[str]:
     return keys
 
 
-def covering_keys(file_path: str, line_number: Optional[int]) -> set[str]:
+def covering_keys(file_path: str, line_number: int | None) -> set[str]:
     """Keys a non-composition finding covers, in the same vocabulary."""
     if not file_path:
         return set()

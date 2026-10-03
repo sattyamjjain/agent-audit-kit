@@ -43,7 +43,7 @@ import re
 import subprocess
 import sys
 from datetime import date
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 RESPONSE_LABEL = "cve-response"
 DEFERRED_LABEL = "cve-deferred"
@@ -100,7 +100,7 @@ def _texts(issue: dict[str, Any]) -> list[str]:
     return texts
 
 
-def target_date(issue: dict[str, Any]) -> Optional[date]:
+def target_date(issue: dict[str, Any]) -> date | None:
     """The latest calendar-valid target date named anywhere on the issue.
 
     Latest rather than first: a re-deferred issue names a new date in a newer
@@ -109,7 +109,7 @@ def target_date(issue: dict[str, Any]) -> Optional[date]:
     date and is skipped, so a typo reads as "no date given" and fails the guard
     rather than passing it with a value nothing can order.
     """
-    best: Optional[date] = None
+    best: date | None = None
     for text in _texts(issue):
         for match in _TARGET_RE.finditer(text):
             try:
@@ -143,7 +143,7 @@ def find_undated_deferrals(issues: Iterable[dict[str, Any]]) -> list[str]:
 
 
 def find_past_due(
-    issues: Iterable[dict[str, Any]], today: Optional[date] = None
+    issues: Iterable[dict[str, Any]], today: date | None = None
 ) -> list[str]:
     """``#N  YYYY-MM-DD  title`` for deferrals whose target date has passed.
 
@@ -165,7 +165,7 @@ def _gh_json(args: list[str]) -> Any:
     return json.loads(out.stdout or "[]")
 
 
-def fetch_issues(repo: Optional[str] = None) -> list[dict[str, Any]]:
+def fetch_issues(repo: str | None = None) -> list[dict[str, Any]]:
     """Open ``cve-response`` issues via `gh`, with comments on the deferred ones.
 
     Comments are fetched only for issues carrying ``cve-deferred``: they are the
@@ -188,7 +188,7 @@ def fetch_issues(repo: Optional[str] = None) -> list[dict[str, Any]]:
     return issues
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--issues-json",

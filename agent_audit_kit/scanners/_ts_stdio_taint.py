@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Any, Optional
+from typing import Any
 
 _SINK_CTORS = ("StdioClientTransport", "StdioServerTransport")
 _SINK_PROPS = ("command", "args")
@@ -44,7 +44,7 @@ _MAX_DEPTH = 6
 
 
 @functools.lru_cache(maxsize=1)
-def _load() -> Optional[Any]:
+def _load() -> Any | None:
     """Build the TS parser once, or return None when the grammar is absent."""
     try:
         import tree_sitter_typescript as ts_ts
@@ -160,7 +160,7 @@ class _Model:
         return False
 
 
-def find_tainted_sink(source: str) -> Optional[int]:
+def find_tainted_sink(source: str) -> int | None:
     """Line of the first StdioTransport whose command/args derive from input.
 
     Returns None when nothing reaches a sink, or when the grammar is absent —

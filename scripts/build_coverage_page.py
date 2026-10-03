@@ -17,7 +17,6 @@ import re
 import sys
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 from agent_audit_kit import __version__
 from agent_audit_kit.coverage import load_manifest, summarize as ox_summarize
@@ -123,11 +122,11 @@ _COMPUTED_ON_RE = re.compile(
 )
 
 
-def _latency_stats() -> "Optional[WindowStats]":
+def _latency_stats() -> "WindowStats | None":
     return window_stats(LATENCY_WINDOW_DAYS)
 
 
-def _render_latency(stats: "Optional[WindowStats]") -> str:
+def _render_latency(stats: "WindowStats | None") -> str:
     head = "<h2>CVE response latency</h2>"
     if stats is None:
         return (
@@ -207,7 +206,7 @@ def check_figure_freshness() -> int:
     return 0
 
 
-def main(argv: "Optional[list[str]]" = None) -> int:
+def main(argv: "list[str] | None" = None) -> int:
     """Build the page, or with ``--check`` verify the committed one is fresh.
 
     ``argv`` defaults to EMPTY, not to ``sys.argv[1:]``: this is called directly

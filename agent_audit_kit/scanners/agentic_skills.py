@@ -61,7 +61,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import SKIP_DIRS, find_line_number, make_finding
@@ -148,11 +148,11 @@ class _Bundle:
     root: Path
     rel: str
     manifests: dict[str, tuple[Path, dict[str, Any]]] = field(default_factory=dict)
-    skill_md: Optional[Path] = None
+    skill_md: Path | None = None
     body: str = ""
 
 
-def _load_json(path: Path) -> Optional[dict[str, Any]]:
+def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         if path.stat().st_size > _MAX_FILE_BYTES:
             return None
@@ -210,7 +210,7 @@ def _bundles(project_root: Path) -> list[_Bundle]:
     return out
 
 
-def _declared(data: dict[str, Any], keys: tuple[str, ...]) -> Optional[Any]:
+def _declared(data: dict[str, Any], keys: tuple[str, ...]) -> Any | None:
     """The first of ``keys`` the manifest declares, searching one level in.
 
     `package.json` nests skill metadata under a platform key, so a top-level miss

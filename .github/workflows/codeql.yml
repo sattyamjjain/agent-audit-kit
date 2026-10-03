@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [python]
+        language: [python, javascript-typescript]
 
     steps:
       - name: Checkout repository
@@ -30,6 +30,10 @@ jobs:
         uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           languages: ${{ matrix.language }}
+          # TypeScript means the VS Code extension's own source only. The other
+          # JS/TS in the repo is test fixtures written to be vulnerable, and
+          # analysing them would bury the extension's alerts under planted ones.
+          config: "${{ matrix.language == 'javascript-typescript' && 'paths: [vscode-extension/src]' || '' }}"
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2

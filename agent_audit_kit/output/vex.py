@@ -45,7 +45,6 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import Finding, ScanResult
@@ -91,7 +90,7 @@ def _known_cves() -> set[str]:
     return {cve for pin in _PINS for cve in _cves_for(pin)}
 
 
-def _status_for(pin: _Pin, version: str) -> Optional[str]:
+def _status_for(pin: _Pin, version: str) -> str | None:
     """Status of ``version`` against ``pin``, or None when no honest status exists.
 
     None means "the only truthful label is not_affected", which this emitter
@@ -171,7 +170,7 @@ def emit_openvex(
         pins = by_package.get(product["name"].lower(), [])
         for cve in sorted(universe):
             covering = [p for p in pins if cve in _cves_for(p)]
-            pin: Optional[_Pin] = None
+            pin: _Pin | None = None
             if covering:
                 pin = covering[0]
                 status = _status_for(pin, product["version"])

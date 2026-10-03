@@ -4,7 +4,6 @@ import ipaddress
 import re
 import unicodedata
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
@@ -299,7 +298,7 @@ def _negated(line: str, verb_start: int) -> bool:
     )
 
 
-def _refers_to_fetched(tail: str, url: str) -> Optional[re.Match[str]]:
+def _refers_to_fetched(tail: str, url: str) -> re.Match[str] | None:
     """Match when the text after an act verb points back at what was fetched.
 
     The URL's own file name counts too: "Fetch <url>/setup.sh, then run setup.sh"
@@ -339,7 +338,7 @@ def _is_loopback(url: str) -> bool:
     return address.is_loopback or address.is_unspecified
 
 
-def _fetch_then_act(line: str) -> Optional[tuple[str, str]]:
+def _fetch_then_act(line: str) -> tuple[str, str] | None:
     """``(evidence, url)`` for "fetch <url> ... act on it", else None."""
     for fetch in _FETCH_VERB_RE.finditer(line):
         if _negated(line, fetch.start()):
@@ -361,7 +360,7 @@ def _fetch_then_act(line: str) -> Optional[tuple[str, str]]:
     return None
 
 
-def _act_at_url(line: str) -> Optional[tuple[str, str]]:
+def _act_at_url(line: str) -> tuple[str, str] | None:
     for act in _ACT_VERB_RE.finditer(line):
         match = _ACT_AT_URL_RE.match(line, act.start())
         if match is None or _negated(line, act.start()) or _is_loopback(match.group("url")):
@@ -370,7 +369,7 @@ def _act_at_url(line: str) -> Optional[tuple[str, str]]:
     return None
 
 
-def _send_to_url(line: str) -> Optional[tuple[str, str]]:
+def _send_to_url(line: str) -> tuple[str, str] | None:
     for verb in _SEND_VERB_RE.finditer(line):
         match = _SEND_TO_URL_RE.match(line, verb.start())
         if match is None or _negated(line, verb.start()) or _is_loopback(match.group("url")):
@@ -381,7 +380,7 @@ def _send_to_url(line: str) -> Optional[tuple[str, str]]:
     return None
 
 
-def _http_send(command: str) -> Optional[tuple[str, str]]:
+def _http_send(command: str) -> tuple[str, str] | None:
     """``(evidence, url)`` for an HTTP client call that carries a payload."""
     for match in _HTTP_SEND_RE.finditer(command):
         if _negated(command, match.start()) or _is_loopback(match.group("url")):
@@ -624,7 +623,7 @@ _JOINER_SCRIPTS = frozenset({
 })
 
 
-def _script_of(char: str) -> Optional[str]:
+def _script_of(char: str) -> str | None:
     """The script name `unicodedata` gives a letter or a combining mark, else None.
 
     Marks count because Indic orthography puts the joiner right after one. The

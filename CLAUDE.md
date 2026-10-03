@@ -143,7 +143,7 @@ vscode-extension/      # VS Code extension (TypeScript) — separate subtree, ha
 - **Naming**: `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_SNAKE` for constants
 - **Data models**: `@dataclass` (stdlib), not Pydantic — `Finding`, `ScanResult`, `RuleDefinition`
 - **Enums**: `Severity` (CRITICAL…INFO, with custom comparison operators) and `Category` (14 members), both `enum.Enum`
-- **Type hints**: On all function signatures; `X | None` (not `Optional[X]`, which survives in a few older modules such as `models.py`) and lowercase generics (`list[str]`). On 3.9, `X | None` is legal only inside annotations (courtesy of the future import), so keep it out of runtime expressions such as `isinstance` checks or type aliases
+- **Type hints**: On all function signatures; `X | None`, never `Optional[X]` (`tests/test_no_optional_annotations.py` fails on one in `agent_audit_kit/` or `scripts/`), and lowercase generics (`list[str]`). On 3.9, `X | None` is legal only inside annotations (courtesy of the future import), so keep it out of runtime expressions such as `isinstance` checks or type aliases
 - **Optional dependencies**: lazy-import inside the module that needs them and fall back (tree-sitter in the STDIO taint path, reportlab in `pdf_report`, sigstore in `bundle`); the default install stays dependency-light
 - **Lint scope**: ruff `select = ["E4", "E7", "E9", "F"]` with `tests/fixtures/cves` excluded; pyproject's mypy config waives missing imports only for `reportlab` and `sigstore` (CI's `--ignore-missing-imports` is broader)
 - **CLI**: Click decorators, exit codes: 0=pass, 1=findings, 2=error (`EXIT_*` in `commands/_common.py`)

@@ -64,7 +64,7 @@ import ast
 import json
 import re
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
@@ -343,7 +343,7 @@ def _tool_declarations(path: Path) -> Iterable[str]:
         yield f"{node.name}\n{doc}"
 
 
-def _find_declaration(project_root: Path) -> Optional[tuple[str, str]]:
+def _find_declaration(project_root: Path) -> tuple[str, str] | None:
     """First declaration of a covered-domain consequential decision, or None.
 
     Returns (relative path, the matching text) so the finding can quote the
@@ -368,9 +368,9 @@ def _find_declaration(project_root: Path) -> Optional[tuple[str, str]]:
     return None
 
 
-def _find_documentation(project_root: Path) -> Optional[tuple[str, str]]:
+def _find_documentation(project_root: Path) -> tuple[str, str] | None:
     """The developer-documentation file, by name hint or by content."""
-    by_content: Optional[tuple[str, str]] = None
+    by_content: tuple[str, str] | None = None
     for path in _iter_files(project_root, _DOC_EXTS):
         rel = str(path.relative_to(project_root))
         text = _read(path)
