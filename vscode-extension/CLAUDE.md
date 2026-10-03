@@ -47,7 +47,7 @@ vscode-extension/
 - **Package**: `npm run compile && npx @vscode/vsce package` (no `vscode:prepublish` script, so vsce ships whatever `out/` holds)
 - **Engine**: VS Code `^1.85.0`
 - **Category**: `Linters`
-- Not covered by the root `pytest` / `ruff` / `mypy` targets — this subtree has no test suite, no workflow under `.github/workflows/` builds it, and neither Dependabot (pip, Actions, Docker) nor CodeQL (Python) covers it. Verify changes with `npm run compile` locally.
+- The root `ruff` / `mypy` targets do not cover it, and root `pytest` only reads its sources as text (`tests/test_vscode_json_contract.py` pins the CLI contract above) — this subtree has no test suite, no workflow under `.github/workflows/` builds it, and neither Dependabot (pip, Actions, Docker) nor CodeQL (Python) covers it. Verify changes with `npm run compile` locally.
 
 <!-- END AUTO-MANAGED -->
 

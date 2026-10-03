@@ -81,9 +81,12 @@ def test_every_report_key_the_extension_reads_is_written() -> None:
 
 
 def test_the_severity_union_matches_the_enum() -> None:
-    match = re.search(r"severity:\s*((?:\"\w+\"\s*\|?\s*)+);", _block(_ts(), "interface AuditFinding {"))
-    assert match, "AuditFinding.severity is no longer a string-literal union"
+    # One quantifier over a class that cannot match the terminator, so this is
+    # linear; a nested `(?:"\w+"\s*\|?\s*)+` backtracks exponentially (CodeQL).
+    match = re.search(r"severity:\s*([^;\n]+);", _block(_ts(), "interface AuditFinding {"))
+    assert match, "AuditFinding.severity is no longer declared on one line"
     union = set(re.findall(r"\"(\w+)\"", match.group(1)))
+    assert union, "AuditFinding.severity is no longer a string-literal union"
     assert union == {s.value for s in Severity}, (
         f"extension.ts severity union {sorted(union)} != Severity values {sorted(s.value for s in Severity)}"
     )
