@@ -56,6 +56,23 @@ want credit, we will include your name in the advisory and changelog. If your
 own compliance program needs a contractual response SLA, don't rely on this
 project for it — run your own review in parallel.
 
+### Triage targets
+
+CI tracks the `cve-response` queue against these targets, counted from the day an
+issue is opened. They are targets, not an SLA: when one is missed, the daily ageing
+check goes red. It doesn't block a release, and it isn't a promise to you.
+
+| Severity (CVSS v3.1) | Triage target |
+|---|---|
+| Critical (9.0 and above) | 3 days |
+| High (7.0 to 8.9) | 7 days |
+| Medium (4.0 to 6.9) | 21 days |
+| Low (below 4.0) | 60 days |
+
+A report deferred to a stated date is judged against that date instead. The budgets
+live in [`scripts/check_cve_ageing.py`](scripts/check_cve_ageing.py), and the measured
+response times (median and p90) are in [`docs/cve-latency.md`](docs/cve-latency.md).
+
 ## Supported Versions
 
 | Version | Supported |

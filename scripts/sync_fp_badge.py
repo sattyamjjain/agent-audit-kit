@@ -9,7 +9,8 @@ advertising a rate measured against a slice that no longer existed.
 It also *read* wrong. ``0/1 (n=1)`` parses as "one thing was tested". What it
 meant was "368 configs were scanned and exactly one high-severity finding came
 out of them". Two different numbers, and the badge only showed the one that made
-the sample look tiny. Both are rendered now.
+the sample look tiny. Both are rendered now, and the finding count is written as
+counts ("1 HIGH/CRIT finding, 0 false") rather than a fraction that reads as a rate.
 
 Sources, neither of which this script may edit:
 
@@ -64,7 +65,11 @@ def badge_markup(slice_n: int, false_positives: int, adjudicated: int) -> str:
     # "configs" read as covering instruction files too, which this benchmark
     # never measures (AAK-AGENT-002 on CLAUDE.md / AGENTS.md was found outside it).
     label = f"benign-slice {slice_n} MCP configs"
-    message = f"HIGH/CRIT FP {false_positives}/{adjudicated}"
+    # Counts, not a fraction: "0/1" read as a rate measured on a sample of one.
+    # Saying how many HIGH/CRITICAL findings were adjudicated, and how many of
+    # them were false, is the same data without the misleading shape.
+    noun = "finding" if adjudicated == 1 else "findings"
+    message = f"{adjudicated} HIGH/CRIT {noun}, {false_positives} false"
     # shields.io: a literal dash in a label/message is escaped by doubling it, and
     # `/` must be percent-encoded or it is read as a path separator and splits the
     # badge into the wrong fields. `quote` defaults to `safe="/"`, so the empty
