@@ -31,7 +31,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 _AGENT_CLASS_SUFFIXES: tuple[str, ...] = ("Agent", "Worker", "Harness")
@@ -174,21 +175,8 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
             continue
         primary_line = writes[0][1]
         agent_list = ", ".join(sorted(agent_names))
-        findings.append(Finding(
+        findings.append(make_finding(
             rule_id="AAK-AGENT-HARNESS-SHARED-STATE-001",
-            title="Multi-agent shared state mutated by >=2 agents without a lock primitive",
-            description=(
-                "A module-level mutable object (`dict` / `list` / `set` "
-                "/ comprehension result) is mutated by methods of >=2 "
-                "distinct Agent / Worker / Harness classes without a "
-                "lock primitive (`threading.Lock` / `asyncio.Lock` / "
-                "etc.) visible in any of the mutating functions. Per "
-                "*Code as Agent Harness* (arXiv:2605.18747, EASE 2026 "
-                "survey), 'consistent shared state across multiple "
-                "agents' is an explicit open challenge."
-            ),
-            severity=Severity.MEDIUM,
-            category=Category.A2A_PROTOCOL,
             file_path=rel,
             line_number=primary_line,
             evidence=(
@@ -196,17 +184,6 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
                 f"{{{agent_list}}} without a lock acquisition in any "
                 "of the mutating function bodies"
             ),
-            remediation=(
-                "Guard every mutation against the shared symbol with a "
-                "lock primitive (`threading.Lock` / `asyncio.Lock` / "
-                "`multiprocessing.Lock`). If serialization is enforced "
-                "by an external coordinator (database transaction, "
-                "message queue), this rule's false-positive rate is "
-                "expected — add a `# noqa: AAK-AGENT-HARNESS-SHARED-STATE-001` "
-                "comment with the coordinator name to suppress."
-            ),
-            owasp_agentic_references=["ASI04", "ASI06"],
-            incident_references=["ARXIV-2605.18747"],
         ))
     return findings
 

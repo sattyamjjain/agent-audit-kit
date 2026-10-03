@@ -148,9 +148,17 @@ def _load_scanner_sync():
     return module
 
 
-def test_scanner_count_matches_filesystem() -> None:
-    """README anchor + SCANNER_COUNT constant must equal the real
-    filesystem count of detector modules in agent_audit_kit/scanners/."""
+def test_scanner_count_matches_registry() -> None:
+    """README anchor + SCANNER_COUNT constant must equal the live registry.
+
+    `count_scanners()` is `len(engine.scanner_manifest())`, the scanners the
+    engine actually registers and runs, not a count of files in
+    agent_audit_kit/scanners/. So this catches a registered module that stops
+    importing (the engine skips it silently outside `strict_loading`), but not a
+    module that was never added to `_OPTIONAL_SCANNERS`: both sides would agree
+    on the smaller number. That case is `check_counts.py`'s `scanners.json`
+    arithmetic (`count + unregistered_shims == non-private files`).
+    """
     sync = _load_scanner_sync()
     actual = sync.count_scanners()
     assert actual > 0
@@ -166,14 +174,14 @@ def test_scanner_count_matches_filesystem() -> None:
     )
     assert int(anchor_match.group(1)) == actual, (
         f"README scanner-count anchor reports {anchor_match.group(1)}, "
-        f"filesystem has {actual} detector(s). "
+        f"the registry has {actual} scanner(s). "
         "Run `python scripts/sync_scanner_count.py` and commit."
     )
 
     from agent_audit_kit import SCANNER_COUNT
     assert SCANNER_COUNT == actual, (
         f"agent_audit_kit.SCANNER_COUNT = {SCANNER_COUNT}, "
-        f"filesystem has {actual}. "
+        f"the registry has {actual}. "
         "Run `python scripts/sync_scanner_count.py` and commit."
     )
 

@@ -1,17 +1,18 @@
 # AgentAuditKit task runner.
 #
 # The State of MCP report is a build artifact: `make report` regenerates
-# results.json from the committed corpus manifest, deterministically and
-# offline, so the numbers in research/state-of-mcp-2026/REPORT.md cannot drift
-# from the code. `make corpus` is the single network step (refreshes the
-# manifest from the MCP Registry); it is intentionally separate from `report`.
+# results.json from the local benchmarks/data crawl (gitignored) and the
+# committed registry manifest, deterministically and offline, so the numbers in
+# research/state-of-mcp-2026/REPORT.md cannot drift from the code. `make corpus`
+# is the report's one network step (refreshes the manifest from the MCP
+# Registry); it is intentionally separate from `report`.
 
 RESEARCH := research/state-of-mcp-2026
 CORPUS   := benchmarks/data
 MANIFEST := $(RESEARCH)/corpus/registry-manifest.json
 RESULTS  := $(RESEARCH)/results.json
 
-.PHONY: report corpus report-check report-pdf report-pdf-check count-check test lint typecheck repo-description \
+.PHONY: report corpus report-check report-pdf report-pdf-check report-figures-check count-check test lint typecheck repo-description \
         cve-latency cve-latency-check cve-latency-queue-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
@@ -92,11 +93,14 @@ count-check:
 	@PYTHONPATH=. python scripts/sync_rule_doc_pages.py --check
 	@PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit
 
-## cve-latency: regenerate docs/cve-latency.md from the ledger (offline, deterministic)
+## cve-latency: regenerate docs/cve-latency.md from the ledger. Not offline: the
+## open-queue row reads the live cve-response tracker via gh (read=no without
+## it); run the script with --issues-json FILE to render a fixed queue.
 cve-latency:
 	python scripts/cve_latency.py
 
-## cve-latency-check: fail if docs/cve-latency.md is stale vs the ledger (drift guard, runs on tag)
+## cve-latency-check: fail if docs/cve-latency.md is stale vs the ledger (drift guard,
+## offline: pytest runs it every time and release.yml on every tag)
 cve-latency-check:
 	@python scripts/cve_latency.py --check
 
@@ -107,7 +111,7 @@ cve-latency-check:
 cve-latency-queue-check:
 	@python scripts/cve_latency.py --check-queue
 
-## cve-latency-refresh: top up docs/data/cve-published.json from NVD (the one network step)
+## cve-latency-refresh: top up docs/data/cve-published.json from NVD (network)
 cve-latency-refresh:
 	python scripts/cve_latency.py --refresh
 

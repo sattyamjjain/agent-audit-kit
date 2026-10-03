@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AAK-DOCSGPT-MCP-STDIO-MITM-001` and `AAK-GPTRESEARCHER-MCP-STDIO-MITM-001` findings carry the corrected remediation. #597 rewrote it in the registry to say `deny_stdio_transport` and `allowed_transports` are AAK conventions an MCP client ignores, but both scanners built their findings by hand and kept telling users to set `deny_stdio_transport: true`.
+- Eight scanners built findings by hand, and for eleven rules the title, description, remediation and AICM references in `aak scan` output had drifted from `rules.json`: the two above, `AAK-AGENT-HARNESS-SHARED-STATE-001`, `AAK-MCP-TOOL-UNSAFE-EVAL-001`, `AAK-SKILL-LIFECYCLE-ATTRIBUTION-001`, `AAK-MCP-LINEAGE-STAINLESS-001`, both `AAK-METIS-*` rules and the three `AAK-MCP-OPENAPI-*` rules. They now use `make_finding`, so every field comes from the registry; what fires, and where, is unchanged. A SARIF result's fingerprint includes its title, so code scanning re-keys these eleven rules' alerts once: the old alerts close and new ones open. `tests/test_findings_match_registry.py` fails on a hand-built `Finding` in `scanners/` and on any emitted field that differs from the registry.
+- The rule-count bot (`sync-rule-count.yml`) commits every file its sync scripts rewrote (`git add -u`) instead of four named ones, which would have left `scanners.json`, `docs/rules.md` and the anchored docs pages behind.
+- `report-figures-check` is declared `.PHONY`, and `make cve-latency` and `scripts/cve_latency.py` no longer describe the default render as offline: its open-queue row reads the live tracker.
+
 ## [0.6.12] - 2026-10-03
 
 ### Added

@@ -14,13 +14,18 @@ number can be checked rather than believed.
 Usage::
 
     python scripts/cve_latency.py                 # regenerate docs/cve-latency.md
+    python scripts/cve_latency.py --issues-json F # ...with the open queue read from F
     python scripts/cve_latency.py --check         # fail if the doc is stale
+    python scripts/cve_latency.py --check-queue   # fail if the queue row is stale
     python scripts/cve_latency.py --refresh       # top up published dates from NVD
 
-Determinism: the default path is offline and reads only committed files, so the
-release workflow can regenerate on every tag and get a byte-identical result for
-unchanged inputs. `--refresh` is the one network step, kept separate on purpose —
-the same split `make report` and `make corpus` already use.
+Determinism: `--check` is offline and byte-deterministic. It re-renders from the
+committed ledger and the committed page's own queue marker, which is why pytest
+and the release workflow (on every tag) can run it without a token. The default
+render is not offline: its open-queue row reads the live `cve-response` tracker
+through `gh`, or records `read=no` without it, so pass `--issues-json` to render
+a fixed queue. `--refresh` (NVD) and `--check-queue` (the tracker) are the
+network steps, kept out of the release path on purpose.
 
 The open queue, and why omitting it flattered the number
 --------------------------------------------------------

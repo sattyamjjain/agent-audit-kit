@@ -28,7 +28,8 @@ from pathlib import Path
 
 import yaml
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 _OPENAPI_FILENAMES: frozenset[str] = frozenset({
@@ -147,29 +148,6 @@ def _check_tangled_path(path: str, methods_on_path: list[str]) -> str | None:
     return None
 
 
-def _make_finding(
-    rule_id: str,
-    title: str,
-    rel: str,
-    line: int | None,
-    evidence: str,
-    remediation: str,
-    severity: Severity,
-) -> Finding:
-    return Finding(
-        rule_id=rule_id,
-        title=title,
-        description=title,
-        severity=severity,
-        category=Category.TOOL_POISONING,
-        file_path=rel,
-        line_number=line,
-        evidence=evidence,
-        remediation=remediation,
-        incident_references=["ARXIV-2605.14312"],
-    )
-
-
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
@@ -191,14 +169,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
             tangled = _check_tangled_path(url_path, methods_present)
             if tangled:
-                findings.append(_make_finding(
-                    "AAK-MCP-OPENAPI-TANGLED-METHODS-001",
-                    "OpenAPI tangled methods + paths",
-                    rel, None, tangled,
-                    "Split the tangled path into >=2 disjoint paths, each "
-                    "owning <=4 methods with method-name and path-segment in "
-                    "semantic agreement.",
-                    Severity.MEDIUM,
+                findings.append(make_finding(
+                    "AAK-MCP-OPENAPI-TANGLED-METHODS-001", rel, tangled,
                 ))
 
             for method_name, op in methods_block.items():
@@ -208,25 +180,15 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     continue
                 lazy = _check_lazy(op)
                 if lazy:
-                    findings.append(_make_finding(
-                        "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001",
-                        "OpenAPI operation has missing or sub-40-char description",
-                        rel, None,
+                    findings.append(make_finding(
+                        "AAK-MCP-OPENAPI-LAZY-DESCRIPTION-001", rel,
                         f"{method_name.upper()} {url_path} — {lazy}",
-                        "Author a >=40-character description naming the "
-                        "operation's purpose, input shape, and side-effect class.",
-                        Severity.MEDIUM,
                     ))
                 bloated = _check_bloated(op)
                 if bloated:
-                    findings.append(_make_finding(
-                        "AAK-MCP-OPENAPI-BLOATED-PARAMS-001",
-                        "OpenAPI operation has too many parameters or properties",
-                        rel, None,
+                    findings.append(make_finding(
+                        "AAK-MCP-OPENAPI-BLOATED-PARAMS-001", rel,
                         f"{method_name.upper()} {url_path} — {bloated}",
-                        "Decompose the operation into smaller MCP tools, each "
-                        "owning <=12 parameters.",
-                        Severity.LOW,
                     ))
     return findings, scanned
 

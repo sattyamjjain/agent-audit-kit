@@ -20,7 +20,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 _GPT_RESEARCHER_HINT_RE = re.compile(
@@ -110,39 +111,14 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if not permits_override:
             continue
 
-        findings.append(Finding(
+        findings.append(make_finding(
             rule_id="AAK-GPTRESEARCHER-MCP-STDIO-MITM-001",
-            title="GPT-Researcher MCP config permits transport-flip to stdio (OX 2026-05-01)",
-            description=(
-                "GPT-Researcher MCP server config declares an SSE/HTTP "
-                "transport but also permits a post-handshake "
-                "`transport=stdio` override. The OX/BackBox 2026-05-01 "
-                "disclosure showed this enables a MITM to flip the "
-                "transport mid-session and reach the architectural shape "
-                "AAK-MCP-STDIO-CMD-INJ-001 covers. Add an explicit "
-                "reject-stdio guard."
-            ),
-            severity=Severity.HIGH,
-            category=Category.SUPPLY_CHAIN,
             file_path=rel,
             line_number=_line_number(text, _TRANSPORT_PERMITS_STDIO_RE),
             evidence=(
                 "transports/stdio_fallback/transport_override flag enabled "
                 "alongside sse/http/https transport — MITM can flip to stdio."
             ),
-            remediation=(
-                "Set `\"deny_stdio_transport\": true` (or "
-                "`\"allowed_transports\": [\"sse\"]`) in the same config. "
-                "Pin gpt-researcher away from pre-disclosure versions when "
-                "vendor ships a fix (track upstream "
-                "https://github.com/assafelovic/gpt-researcher). See "
-                "AAK-MCP-STDIO-CMD-INJ-001 + AAK-STDIO-001 for the "
-                "receiver-side architectural class."
-            ),
-            cve_references=["CVE-2025-65720"],
-            owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-            owasp_agentic_references=["ASI02", "ASI10"],
-            incident_references=["OX-MCP-2026-05-01"],
         ))
 
     return findings, scanned
