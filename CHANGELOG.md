@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.13] - 2026-10-03
+
 ### Fixed
 
 - `AAK-DOCSGPT-MCP-STDIO-MITM-001` and `AAK-GPTRESEARCHER-MCP-STDIO-MITM-001` findings carry the corrected remediation. #597 rewrote it in the registry to say `deny_stdio_transport` and `allowed_transports` are AAK conventions an MCP client ignores, but both scanners built their findings by hand and kept telling users to set `deny_stdio_transport: true`.
