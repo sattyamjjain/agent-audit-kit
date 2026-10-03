@@ -16,7 +16,60 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-03: the image-tag deferrals close on two new pins, heym gets a third, two stay deferred
+## 2026-10-03 (v0.6.14): five disclosures, two new pins, three WordPress plugins out of scope
+
+The watcher opened five `cve-response` issues at 16:17Z (#863-#867). Two are MCP
+servers published to a registry AAK reads, and each gets a pin measured with the
+scanner on a firing fixture and a negative one. Three are WordPress plugins, out
+of scope and non-pinnable like #845, #846 and #852. NVD text below is quoted from
+the API record, read on 2026-10-03.
+
+**Office-PowerPoint-MCP-Server (CVE-2025-71427) gets
+`AAK-MCP-OFFICEPPT-CVE-2025-71427-001`, every version.** NVD: "Office-PowerPoint-MCP-Server
+through 2.0.7 contains a path traversal vulnerability that allows MCP callers to
+write and read files outside the working directory by supplying absolute paths or
+../ sequences." The PyPI distribution is `office-powerpoint-mcp-server`, and in the
+2.0.7 wheel `save_presentation` and `open_presentation` hand `file_path` to the
+filesystem after an existence check only. There is no fixed release: 2.0.7
+(2025-12-31) is the newest on PyPI, and the fix,
+GongRzhe/Office-PowerPoint-MCP-Server#33, is unmerged. So the pin is presence-only,
+as for `@adenot/mcp-google-search`, and it needs a floor once a fixed release
+ships. No class rule fires on the 2.0.7 tools (a full scan of the wheel reports
+only `AAK-DNS-REBIND-001`, which is about something else), so the pin is the only
+coverage.
+
+**Penpot (CVE-2026-100868) gets `AAK-MCP-PENPOT-CVE-2026-100868-001`, below
+2.18.0.** NVD: "Penpot before 2.18.0 binds the MCP server plugin WebSocket bridge
+to all network interfaces without authentication in single-user mode." The bridge
+runs in the MCP server, which is the npm package `@penpot/mcp`. Penpot's fix
+(`b5274a44`, penpot/penpot#11605, in 2.18.0) passes the configured host to
+`new WebSocketServer({ port: port })`, and the published 2.17.0 and 2.15.4
+packages still carry the old line. npm has no 2.18.x: 2.17.0 is the newest
+published and `latest` is 2.15.4, so every published version is reported. The
+existing `@penpot/mcp` pin, `AAK-MCP-PENPOT-CVE-2026-45805-001`, keeps its 2.15.0
+floor and its own rule. That CVE is an unauthenticated REPL RCE rated critical,
+and raising its floor would report 2.15.0 to 2.17.x as critical. GHSA-ch2q-6x56-qg5r,
+the advisory NVD cites, is a repository advisory that names no npm package; it
+lists `penpot/penpot` up to 2.17.2 as affected.
+
+**WEBO MCP (CVE-2026-97242), MCP Content Manager Lite (CVE-2026-97239) and Airano
+MCP Bridge (CVE-2026-32585) are out of scope.** All three are wordpress.org
+plugins with no npm or PyPI artifact, and Patchstack is the only reference NVD
+gives. Patchstack lists WEBO MCP as fixed in 3.0.22 and MCP Content Manager Lite
+in 1.2.0. Airano MCP Bridge has no fix: NVD says "through 2.11.0", and 2.11.0 is
+still the newest release on wordpress.org.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2025-71427 | 6.8 | `office-powerpoint-mcp-server` (PyPI) | **New pin** `AAK-MCP-OFFICEPPT-CVE-2025-71427-001`: every version. No fixed release. | #864 |
+| CVE-2026-100868 | 6.3 | `@penpot/mcp` (npm) | **New pin** `AAK-MCP-PENPOT-CVE-2026-100868-001`: below 2.18.0, which npm does not have yet. | #867 |
+| CVE-2026-97242 | 6.8 | WEBO MCP (wordpress.org plugin) | **Out of scope**, non-pinnable. Upgrade the plugin to 3.0.22 or later. | #863 |
+| CVE-2026-97239 | 6.5 | MCP Content Manager Lite (wordpress.org plugin) | **Out of scope**, non-pinnable. Upgrade the plugin to 1.2.0 or later. | #865 |
+| CVE-2026-32585 | 6.5 | Airano MCP Bridge (wordpress.org plugin) | **Out of scope**, non-pinnable, and no fixed release yet. | #866 |
+
+CVSS is NVD's CVSS 3.1 score.
+
+## 2026-10-03 (v0.6.14): the image-tag deferrals close on two new pins, heym gets a third, two stay deferred
 
 Six deferrals waited on one thing: an image-tag reader. Obot and MetaMCP ship only
 as container images, so nothing AAK read carried their version (2026-10-02 and

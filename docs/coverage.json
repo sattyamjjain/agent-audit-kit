@@ -4969,6 +4969,36 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2025-71427"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse",
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Command Injection"
+      ],
+      "rule_id": "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
+      "severity": "medium",
+      "title": "Office-PowerPoint-MCP-Server tools read and write any path they are given (no fixed release)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-62674"
       ],
       "eu_ai_act": [
@@ -5054,6 +5084,23 @@
       "rule_id": "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
       "severity": "high",
       "title": "OpenClaw MCP authorization bypasses (below 2026.7.1)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-100868"
+      ],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI07 Insecure Inter-Agent Communication"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication"
+      ],
+      "rule_id": "AAK-MCP-PENPOT-CVE-2026-100868-001",
+      "severity": "medium",
+      "title": "Penpot MCP plugin WebSocket bridge listens on every interface (< 2.18.0)"
     },
     {
       "category": "supply-chain",
@@ -8340,38 +8387,38 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 128,
+      "supply-chain": 130,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 131,
+      "Art. 10 - Data Governance": 132,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
-      "Art. 15 - Robustness & Security": 218,
-      "Art. 9 - Risk Management": 124
+      "Art. 15 - Robustness & Security": 219,
+      "Art. 9 - Risk Management": 125
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 89,
-      "Constrain and sandbox tool execution (p.11)": 109,
-      "Design for boundaries (p.10)": 187,
+      "Choose supported MCP projects when possible (p.10)": 90,
+      "Constrain and sandbox tool execution (p.11)": 110,
+      "Design for boundaries (p.10)": 188,
       "Filter and monitor output pipelines and chained execution (p.12)": 79,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 163,
-      "Sign and verify MCP messages (p.12)": 162,
-      "Track and patch MCP related vulnerabilities (p.13)": 100,
-      "Validate parameters (p.11)": 113
+      "Scan local network for open or vulnerable MCP servers (p.14)": 164,
+      "Sign and verify MCP messages (p.12)": 163,
+      "Track and patch MCP related vulnerabilities (p.13)": 101,
+      "Validate parameters (p.11)": 114
     },
     "by_owasp_agentic": {
       "ASI01": 16,
-      "ASI02": 51,
+      "ASI02": 52,
       "ASI03": 76,
-      "ASI04": 83,
+      "ASI04": 84,
       "ASI05": 58,
       "ASI06": 51,
-      "ASI07": 9,
+      "ASI07": 10,
       "ASI08": 5,
       "ASI09": 18,
       "ASI10": 22
@@ -8380,10 +8427,10 @@
       "MCP01:2025": 90,
       "MCP02:2025": 14,
       "MCP03:2025": 38,
-      "MCP04:2025": 43,
+      "MCP04:2025": 44,
       "MCP05:2025": 58,
       "MCP06:2025": 20,
-      "MCP07:2025": 40,
+      "MCP07:2025": 41,
       "MCP08:2025": 10,
       "MCP09:2025": 33,
       "MCP10:2025": 12
@@ -8393,10 +8440,10 @@
       "high": 168,
       "info": 5,
       "low": 10,
-      "medium": 97
+      "medium": 99
     },
-    "total_cves_covered": 281,
-    "total_rules": 369
+    "total_cves_covered": 283,
+    "total_rules": 371
   },
   "tool": "agent-audit-kit"
 }

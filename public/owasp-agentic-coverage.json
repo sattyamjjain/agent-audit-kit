@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-03T16:03:36Z",
-  "aak_version": "0.6.13",
-  "rule_count": 369,
+  "last_updated": "2026-10-03T17:12:10Z",
+  "aak_version": "0.6.14",
+  "rule_count": 371,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 51,
+      "rule_density": 52,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -445,6 +445,17 @@
             "CVE-2026-4965"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2025-71427"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-STDIO-CMD-INJ-001",
@@ -1370,7 +1381,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 83,
+      "rule_density": 84,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1907,6 +1918,17 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2025-71427"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },
@@ -3249,7 +3271,7 @@
     {
       "asi_id": "ASI07",
       "title": "Plan Injection",
-      "rule_density": 9,
+      "rule_density": 10,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -3321,6 +3343,18 @@
           "cve_references": [],
           "aicm_references": [
             "AIS-07"
+          ]
+        },
+        {
+          "id": "AAK-MCP-PENPOT-CVE-2026-100868-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-100868"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
           ]
         }
       ]

@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.14] - 2026-10-03
+
 ### Added
 
 - `container_image_pins`, a scanner that reads container image tags: `image:` values and other `REPO:TAG` mentions in YAML (compose files, Kubernetes manifests, MCP configs), Helm values that pair `repository` with `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in MCP configs. Obot, MetaMCP and heym ship only as images, so until now nothing AAK reads carried their version. A tag that is not a version, a digest with no tag, an interpolated tag and an empty Helm `tag` state no version and are not reported. Scanner count 103 -> 104.
 - `AAK-MCP-OBOT-CVE-2026-101084-001`: Obot below v0.25.0 (CVE-2026-101084, CVE-2026-101062, CVE-2026-103758, CVE-2026-101064; #837, #842, #848, #849). CVE-2026-103758's advisory names no fix; v0.25.0 is the first tag with the `checkUI` rewrite that closes the composite route, and v0.24.2, cut from the 0.24 branch without it, is reported.
 - `AAK-MCP-METAMCP-CVE-2026-79538-001`: MetaMCP up to 2.4.22, and `latest`, which was the same image on 2026-10-03 (CVE-2026-79538, CVE-2026-79537; #836, #838). There is no fixed release.
 - `AAK-MCP-HEYM-CVE-2026-100858-001`: heym below 0.0.109 (CVE-2026-100858, #854), recorded on 2026-10-03 as non-pinnable because only its image tag carries the version. Rule count 366 -> 369.
+- `AAK-MCP-OFFICEPPT-CVE-2025-71427-001`: `office-powerpoint-mcp-server`, every version (CVE-2025-71427, #864). Its `save_presentation`, `open_presentation` and `manage_image` tools take any path, and there is no fixed release: 2.0.7 is the newest on PyPI and the upstream fix (PR #33) is unmerged.
+- `AAK-MCP-PENPOT-CVE-2026-100868-001`: `@penpot/mcp` below 2.18.0 (CVE-2026-100868, #867), whose plugin WebSocket bridge listens on every interface. npm has no 2.18.x yet, so every published release is reported. It is a MEDIUM rule of its own: the existing `@penpot/mcp` pin is the critical REPL RCE fixed in 2.15.0, and raising that floor would have reported 2.15.0 to 2.17.x as critical. Rule count 369 -> 371.
+
+### Changed
+
+- Dispositioned #863 to #867. Two get the pins above; WEBO MCP (#863), MCP Content Manager Lite (#865) and Airano MCP Bridge (#866) are wordpress.org plugins, out of scope and non-pinnable like #845, #846 and #852.
 
 ### Fixed
 
