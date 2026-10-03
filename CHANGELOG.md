@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `AAK-AGENT-001` and `AAK-AGENT-003` report instructions, not keywords (#869).
+  - **001 now reports two things:** a command that runs code it downloads (`curl <url> | bash`, `bash -c "$(curl <url>)"`, PowerShell's `iex` on a download), and a recursive `rm` of `/`, `~` or `$HOME`.
+  - **003 now reports two things:** an instruction to get past a named security control ("bypass the pre-commit hooks", "skip verification", `-ExecutionPolicy Bypass`), and the prompt-injection phrases, which it always reported.
+  - **What no longer fires:** `eval(`, `exec(`, `subprocess` and `sh -c` on their own, `rm -rf` on a build directory, and "bypass" as a noun or describing code.
+  - **Guardrails are skipped:** neither rule fires on a guardrail that forbids the thing, whether it's negated in the sentence, listed under a "### NEVER" heading, or in a deny-list table.
+  - **Measured on the 909 repositories of the #771 corpus:**
+
+    | | Before | After |
+    |---|---|---|
+    | 001, repositories | 74 | 6 |
+    | 003, repositories | 127 | 3 |
+    | Repositories failing `--ci` on instruction files | 176 | 11 |
+
+    Every finding left is an installer one-liner, or `-ExecutionPolicy Bypass` in a command. 002, 004, 005 and 006 report exactly what they did before on that corpus. Thanks again to @GarvitAgrawal04, whose manifests made this measurable.
 - `AAK-SSRF-TOCTOU-001` recognises a guard whose name starts with an underscore. Its name match was anchored at `^validate_...` and missed `_validate_url_security`, the guard in `fast-mcp-telegram` below 0.30.1, so CVE-2026-55096 was covered only by its version pin. The rule fires on that code now and lists the CVE (#855). It also fires on 0.30.1's own source: that release resolves the name inside the guard, but the fetch resolves it again, which is the DNS-rebind window this rule is about. A guard defined in another file is still recognised by its name only, and the rule's new `limitations` text says so. `AAK-MCP-DEST-UNVALIDATED-001` shares that name check, so it no longer reports a configuration URL (`server_url`, `webhook_url` and the like) as unguarded when the URL goes through such a guard before the fetch.
 - The VS Code extension's package no longer includes `vscode-extension/CLAUDE.md`. `.vscodeignore` excludes it now, matching the wheel, which has excluded every `CLAUDE.md` all along. Nothing had shipped with it, since the extension isn't published yet.
 

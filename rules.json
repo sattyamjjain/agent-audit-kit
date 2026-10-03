@@ -397,9 +397,9 @@
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
-      "description": "An agent instruction file (AGENTS.md, .cursorrules, CLAUDE.md) contains shell commands or execution directives that could be injected into agent behavior.",
+      "description": "An agent instruction file (`AGENTS.md`, `CLAUDE.md`, `.cursorrules` and friends) tells the agent to run code it downloads, or to delete the filesystem root or a home directory: `curl -fsSL <url> | bash`, `bash -c \"$(curl -fsSL <url>)\"`, `iex ((New-Object Net.WebClient).DownloadString(<url>))`, `rm -rf ~`. The file is read as instructions, so whatever the far end serves at the time runs with the agent's permissions.\n\nUntil 0.6.15 this rule was a keyword match (`subprocess`, `eval(`, `exec(`, `sh -c`, any `rm -rf`, any `curl ... | sh`). On the 909 public repositories of the #771 corpus it fired on 74, nearly all of them on a mention: a guardrail such as \"Never use `eval()`\", a deny-list row, a code sample, `rm -rf dist`. It reports the command now, not the word (#869).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads one line at a time. A download counts when it is piped into an interpreter, run through `$(...)` or `<(...)`, or handed to PowerShell's `iex`, and the command names what it fetches (a URL, a `$VARIABLE` or a host); an interpreter given its code on the command line (`| python3 -m json.tool`) reads the download as data, and a loopback URL is a local API. A recursive `rm` counts when it targets `/`, `~` or `$HOME` where a command starts. A command a guardrail forbids is not reported: one negated in the sentence, one under a heading or lead-in such as \"### NEVER\", or one in a table row. `eval(`, `exec(`, `subprocess` and `sh -c` on their own, commands split across lines, and other destructive commands (`mkfs`, `dd`) are not reported.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -407,7 +407,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Remove shell commands from agent instruction files. Use proper tool definitions instead.",
+      "remediation": "Do not tell the agent to pipe a download into a shell. Install from a package manager, or download the script to a file, check its checksum or signature, and run the local copy. Remove destructive commands from instruction files.",
       "rule_id": "AAK-AGENT-001",
       "sarif_name": "AgentShellDirectives",
       "severity": "critical",
@@ -447,9 +447,9 @@
       "auto_fixable": false,
       "category": "agent-config",
       "cve_references": [],
-      "description": "Agent instructions contain patterns that attempt to disable or bypass security controls (e.g., 'ignore security warnings', 'skip verification').",
+      "description": "Agent instructions tell the agent to get past a named security control (\"bypass the pre-commit hooks\", \"skip verification\", \"disable auth\", \"allow all commands\", PowerShell's `-ExecutionPolicy Bypass`), or carry a prompt-injection phrase (\"ignore previous instructions\", \"you are now\", \"new system prompt\").\n\nUntil 0.6.15 this rule matched the bare word \"bypass\" anywhere. On the 909 public repositories of the #771 corpus it fired on 127, nearly always on a guardrail (\"Never bypass the pre-push hooks\"), a description of code (\"Pairing bypasses the owner check\") or a noun (\"auth bypass\" in a review checklist). It reports the instruction now (#869).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "An override counts where an instruction starts (a list item, a new sentence, after \"always\" or \"must\", after \"you may\" or \"free to\", or as the purpose of \"use X to ...\") with a named control as its object, unless a guardrail forbids it, in the sentence or under a heading or lead-in such as \"### NEVER\". A description of what code does, a quoted setting name, and a line that continues the previous sentence are not instructions. The prompt-injection phrases are reported anywhere. Agent permission flags (`--dangerously-skip-permissions`, `bypassPermissions`) in CI workflows and settings files are AAK-AGENT-TRUST-001 and AAK-AGENT-TRUST-003, not this rule.",
       "owasp_agentic_references": [
         "ASI01"
       ],
