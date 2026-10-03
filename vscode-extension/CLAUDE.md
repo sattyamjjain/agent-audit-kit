@@ -31,6 +31,7 @@ vscode-extension/
 - **Output**: `./out/extension.js` (`main` in the manifest)
 - **Scan path**: `extension.ts` invokes the CLI via `child_process.execFile` — the extension carries no scanning logic of its own, so in-editor results always match `agent-audit-kit scan`.
 - **Two diagnostic collections**: scans write to `agent-audit-kit`, SARIF imports to `agent-audit-kit-sarif`, so an imported report never overwrites live scan results.
+- **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. No test spans the two, so a key rename there breaks the extension silently.
 
 **A command needs both halves.** `registerCommand` in code makes it callable; `contributes.commands` in the manifest makes it reachable from the Command Palette. `sarifReader.ts` was unreachable for a long stretch because `activate()` never called `registerSarifCommands`, and the two scan commands were registered but undeclared, so none of the extension's commands appeared in the palette. When adding a command, do both, then confirm with `npm run compile` that `out/extension.js` requires the new module.
 
@@ -43,10 +44,10 @@ vscode-extension/
 - **Build**: `npm run compile` (`tsc -p ./`)
 - **Watch**: `npm run watch` (`tsc -watch -p ./`)
 - **Lint**: `npm run lint` (`eslint src --ext ts`) — note `eslint` is not in `devDependencies`, so this script needs it installed separately
-- **Package**: `npx @vscode/vsce package`
+- **Package**: `npm run compile && npx @vscode/vsce package` (no `vscode:prepublish` script, so vsce ships whatever `out/` holds)
 - **Engine**: VS Code `^1.85.0`
 - **Category**: `Linters`
-- Not covered by the root `pytest` / `ruff` / `mypy` targets — this subtree has no test suite, and no workflow under `.github/workflows/` builds it. Verify changes with `npm run compile` locally.
+- Not covered by the root `pytest` / `ruff` / `mypy` targets — this subtree has no test suite, no workflow under `.github/workflows/` builds it, and neither Dependabot (pip, Actions, Docker) nor CodeQL (Python) covers it. Verify changes with `npm run compile` locally.
 
 <!-- END AUTO-MANAGED -->
 
@@ -55,7 +56,7 @@ vscode-extension/
 
 Everything is a devDependency; the manifest has no `dependencies` block.
 
-- `@types/vscode` — VS Code API types (pinned to the same minor as `engines.vscode`)
+- `@types/vscode` — VS Code API types, `^1.85.0` like `engines.vscode`; with no tracked lockfile a fresh install resolves the newest 1.x types, so `tsc` will not flag an API newer than the 1.85 floor
 - `@types/node` — Node.js types
 - `typescript` — compiler
 - `@vscode/vsce` — extension packaging
