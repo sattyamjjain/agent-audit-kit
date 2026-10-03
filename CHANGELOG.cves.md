@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-04 (unreleased): CVE-2026-55096 on its class rule
+## 2026-10-03 (v0.6.15): CVE-2026-55096 on its class rule
 
 No new disclosures. `AAK-SSRF-TOCTOU-001` now strips leading underscores before it
 matches a guard's name, so it fires on the `fast-mcp-telegram` 0.30.0 code that the

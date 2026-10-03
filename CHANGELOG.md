@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.15] - 2026-10-03
+
 ### Changed
 
 - The VS Code extension's `vscode:prepublish` script runs `npm run compile`, so `vsce package` can no longer ship a stale `out/`. Dependabot now covers its devDependencies in one grouped npm PR (`@types/vscode` excluded, since it has to move with `engines.vscode`), and CodeQL analyses its TypeScript, `vscode-extension/src` only, so the repo's deliberately vulnerable JS fixtures stay out of the alerts.
