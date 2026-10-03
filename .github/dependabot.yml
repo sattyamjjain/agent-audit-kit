@@ -52,3 +52,9 @@ updates:
       # @types/vscode tracks engines.vscode (^1.85.0). vsce refuses to package
       # when the types are newer than the engine, so the two move together, by hand.
       - dependency-name: "@types/vscode"
+      # @types/node should describe the Node that VS Code runs extensions on, and
+      # VS Code bundles an older Node than the newest release. The first grouped
+      # PR (#873) proposed @types/node 26, which would let `tsc` accept APIs the
+      # runtime lacks, so majors move by hand too.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

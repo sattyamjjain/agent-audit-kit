@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The VS Code extension's `vscode:prepublish` script runs `npm run compile`, so `vsce package` can no longer ship a stale `out/`. Dependabot now covers its devDependencies in one grouped npm PR (`@types/vscode` excluded, since it has to move with `engines.vscode`), and CodeQL analyses its TypeScript, `vscode-extension/src` only, so the repo's deliberately vulnerable JS fixtures stay out of the alerts.
 - The last `Optional[X]` annotations, in nine package modules and six scripts, are `X | None` now, as the code conventions ask, and `tests/test_no_optional_annotations.py` keeps it that way.
+- A new workflow, `vscode-extension.yml`, installs and packages the VS Code extension whenever it changes. Until now nothing in CI compiled it, so Dependabot's first grouped PR (#873, TypeScript 5 to 7) showed every check green while `tsc` failed. The extension's `tsconfig.json` names its `types` (`node`, `vscode`), which TypeScript 7 needs and 5.9 accepts, and Dependabot leaves `@types/node` majors to a person.
 
 ### Fixed
 
