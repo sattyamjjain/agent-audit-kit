@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The container image is published for `linux/arm64` as well as `linux/amd64`. Through 0.6.15 it was amd64-only, so the documented `docker pull ghcr.io/sattyamjjain/agent-audit-kit:<version>` failed on Apple Silicon and ARM runners with "no matching manifest for linux/arm64/v8", unless the caller added `--platform linux/amd64`. The release and nightly workflows build both architectures under QEMU and run the pushed arm64 image before they finish.
+
 ## [0.6.15] - 2026-10-03
 
 ### Added
