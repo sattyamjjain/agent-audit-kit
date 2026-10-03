@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-03T14:45:10Z",
+  "last_updated": "2026-10-03T16:03:36Z",
   "aak_version": "0.6.13",
-  "rule_count": 366,
+  "rule_count": 369,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -697,7 +697,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 74,
+      "rule_density": 76,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -993,6 +993,19 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-METAMCP-CVE-2026-79538-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-79537",
+            "CVE-2026-79538"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-N8N-CVE-2026-65594-001",
           "severity": "high",
           "cve_references": [
@@ -1023,6 +1036,21 @@
             "CVE-2026-48814"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-OBOT-CVE-2026-101084-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-101062",
+            "CVE-2026-101064",
+            "CVE-2026-101084",
+            "CVE-2026-103758"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-OMNIGENT-CVE-2026-62674-001",
@@ -2197,7 +2225,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 57,
+      "rule_density": 58,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2513,6 +2541,19 @@
           ]
         },
         {
+          "id": "AAK-MCP-METAMCP-CVE-2026-79538-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-79537",
+            "CVE-2026-79538"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-N8N-CVE-2026-72768-001",
           "severity": "high",
           "cve_references": [
@@ -2725,7 +2766,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 50,
+      "rule_density": 51,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2906,6 +2947,17 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-15643"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-HEYM-CVE-2026-100858-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-100858"
           ],
           "aicm_references": [
             "IVS-04",

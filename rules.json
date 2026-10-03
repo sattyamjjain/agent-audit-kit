@@ -4958,6 +4958,35 @@
       "title": "AWS HealthOmics MCP workflow-bundle path traversal (< 0.0.36)"
     },
     {
+      "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-100858"
+      ],
+      "description": "heym, a self-hosted workflow platform with MCP nodes, is on neither PyPI nor npm and ships as the container image `ghcr.io/heymrun/heym`. Before 0.0.109 its Slack, Discord and Crawler workflow nodes send HTTP requests to URLs taken from user-created credentials (`webhook_url`, `flaresolverr_url`) through an HTTP client without the SSRF egress guard that already covers the HTTP, WebSocket and MCP nodes, and the credential API checks only that the URL is non-empty. Any registered user can point a credential at a loopback, private, link-local or cloud-metadata address and run a workflow (CVE-2026-100858, CVSS 3.1 6.8, CWE-918, GHSA-39j3-6x3x-8rcr).",
+      "incident_references": [],
+      "limitations": "Reads image references only: an `image:` value or any other mention of `REPO:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm values mapping of `repository` (or `registry` + `repository`) and `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. A tag that is not a version (`main`, `main-20250617`, `dev`), a digest with no tag, an interpolated tag (`:${VERSION}`, `{{ .Values.tag }}`) and a Helm `tag` left empty (the chart's appVersion decides) state no version and are not reported. A two-part tag such as `0.24` stands for the newest patch on that line and is reported only when the whole line sits below the fixed version. Mirrors under another registry are not matched, and commented-out lines are skipped. `latest` (or no tag) is not reported: it was 0.0.123 on 2026-10-03. heym's own compose file builds a local image (`heym-backend:local` unless `HEYM_BACKEND_IMAGE` is set), which states no version.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Run `ghcr.io/heymrun/heym` at 0.0.109 or later and pin that tag (or its digest). Until then, run the backend where internal and cloud-metadata addresses are unreachable.",
+      "rule_id": "AAK-MCP-HEYM-CVE-2026-100858-001",
+      "sarif_name": "HeymImageWorkflowNodeSsrf",
+      "severity": "medium",
+      "title": "heym image below 0.0.109 fetches workflow-node URLs past its SSRF guard"
+    },
+    {
       "adversa_references": [],
       "aicm_references": [],
       "auto_fixable": false,
@@ -5535,6 +5564,40 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-01",
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-79538",
+        "CVE-2026-79537"
+      ],
+      "description": "MetaMCP, a self-hosted MCP aggregator and gateway, ships as the container image `ghcr.io/metatool-ai/metamcp`, which its compose file pulls at `:latest`. Its root `package.json` is private, and npm's `@metamcp/mcp-server-metamcp` is a separate client proxy, so the image tag is the only thing that carries its version. Up to and including 2.4.22 the internal MCP inspector proxy endpoint `GET /mcp-proxy/server/stdio` takes the STDIO process parameters from the request instead of from a server record the caller owns, so any logged-in user (self-registration is on by default) can run commands in the application container (CVE-2026-79538, CVSS 3.1 9.8, CWE-94). Through 2.4.22 the session store is keyed only by the client-supplied `mcp-session-id`, the endpoint middleware never checks who owns the session, and `GET /metamcp/health/sessions` lists live session IDs without authentication, so a caller can list and call another tenant's MCP tools with that tenant's forwarded credentials (CVE-2026-79537, CVSS 9.1, CWE-639). There is no fixed release: 2.4.22 (2025-12-19) is the newest release and image tag, and the TraceForce advisories NVD cites list 2.4.22 and the newest `main` commit as affected with no patched version. On 2026-10-03 the `latest`, `2` and `2.4` tags were the same image as `2.4.22`, so `latest` and an untagged reference are reported too.",
+      "incident_references": [],
+      "limitations": "Reads image references only: an `image:` value or any other mention of `REPO:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm values mapping of `repository` (or `registry` + `repository`) and `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. A tag that is not a version (`main`, `main-20250617`, `dev`), a digest with no tag, an interpolated tag (`:${VERSION}`, `{{ .Values.tag }}`) and a Helm `tag` left empty (the chart's appVersion decides) state no version and are not reported. A two-part tag such as `0.24` stands for the newest patch on that line and is reported only when the whole line sits below the fixed version. Mirrors under another registry are not matched, and commented-out lines are skipped. `latest` and an untagged reference are reported because `latest` was 2.4.22 on 2026-10-03; once a fixed image takes `latest`, that arm reports a patched deployment until the pin moves. The floating `2` and `2.4` tags are not reported, though both were 2.4.22 on that date. A release after 2.4.22 is outside NVD's range and is not reported, which is not a claim that it is fixed.",
+      "owasp_agentic_references": [
+        "ASI05",
+        "ASI03"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "There is no patched image to move to. Keep MetaMCP off public networks, block the `/mcp-proxy/` and `/metamcp/health/` paths at the reverse proxy, turn off open self-registration, and rotate every secret in the environment of a deployment that was exposed.",
+      "rule_id": "AAK-MCP-METAMCP-CVE-2026-79538-001",
+      "sarif_name": "MetaMcpImageInspectorProxyRce",
+      "severity": "critical",
+      "title": "MetaMCP image up to 2.4.22: inspector proxy code execution and cross-tenant session dispatch (no fixed release)"
+    },
+    {
+      "adversa_references": [
         "ADV-AGENT-02"
       ],
       "aicm_references": [
@@ -5801,6 +5864,41 @@
       "sarif_name": "McpNoAuthDefault",
       "severity": "high",
       "title": "MCP server unauthenticated-by-default / fail-open authentication"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01",
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-101084",
+        "CVE-2026-101062",
+        "CVE-2026-103758",
+        "CVE-2026-101064"
+      ],
+      "description": "Obot, a self-hosted MCP gateway, ships as the container image `ghcr.io/obot-platform/obot` and a Helm chart, so the image tag is the only thing that states which release a deployment runs. Before v0.21.1 the `/mcp-connect` endpoint does not enforce Access Control Rules, so any authenticated user who has a server ID can connect to an MCP server the administrator restricted to other groups and call its tools with the stored OAuth credentials (CVE-2026-101084, CVSS 3.1 9.6, CWE-639, GHSA-vw82-7fv8-r6gp). v0.21.1 added `/mcp-connect/` to the deny list in `checkUI`, but `/mcp-connect-composite/{mcp_id}` reaches the same `mcpGateway.Proxy` without that prefix, so a Basic-role user with a composite MCP ID still gets through (CVE-2026-103758, CVSS 8.1, CWE-863, GHSA-6fwv-3h4c-37j9: 0.21.1 through 0.24.1, no patched version named). Before v0.23.0, with authentication enabled, OAuth dynamic client registration needs no authentication and accepts any redirect URI, and the authorization flow auto-completes for a logged-in user, so one crafted link hands an attacker's client an access token (CVE-2026-101062, CVSS 8.8, CWE-863); and remote MCP server registration fetches any URL a Power User supplies, including internal services and cloud metadata, with the response echoed in error messages (CVE-2026-101064, CVSS 7.6, CWE-918). v0.25.0 is the first release whose `checkUI` authorizes only the UI's own fallback route (obot-platform/obot#7375). v0.24.2, cut from the 0.24 branch after it, still has the 0.24.1 deny list and is reported.",
+      "incident_references": [],
+      "limitations": "Reads image references only: an `image:` value or any other mention of `REPO:TAG` in YAML (compose files, Kubernetes manifests, MCP configs), a Helm values mapping of `repository` (or `registry` + `repository`) and `tag`, Dockerfile and Containerfile `FROM`, and `docker run` arguments in `*mcp*.json` and `claude_desktop_config.json`. A tag that is not a version (`main`, `main-20250617`, `dev`), a digest with no tag, an interpolated tag (`:${VERSION}`, `{{ .Values.tag }}`) and a Helm `tag` left empty (the chart's appVersion decides) state no version and are not reported. A two-part tag such as `0.24` stands for the newest patch on that line and is reported only when the whole line sits below the fixed version. Mirrors under another registry are not matched, and commented-out lines are skipped. `latest` (or no tag) is not reported: it was v0.26.2 on 2026-10-03. The enterprise image `ghcr.io/obot-platform/obot-enterprise` is a different image and is not matched.",
+      "owasp_agentic_references": [
+        "ASI03"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP07:2025",
+        "MCP09:2025"
+      ],
+      "remediation": "Run `ghcr.io/obot-platform/obot` at v0.25.0 or later and pin that tag (or its digest) in compose files, manifests and Helm values. Until then, expose the gateway only to users trusted with every MCP server behind it, since Access Control Rules do not separate them.",
+      "rule_id": "AAK-MCP-OBOT-CVE-2026-101084-001",
+      "sarif_name": "ObotImageGatewayAuthzBypass",
+      "severity": "critical",
+      "title": "Obot image below v0.25.0: MCP gateway access-control bypasses, open OAuth client registration, SSRF"
     },
     {
       "adversa_references": [

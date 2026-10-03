@@ -1,6 +1,6 @@
 {
   "_comment": "count = scanner modules the engine registers and runs. unregistered_shims are back-compat re-exports kept so old import paths resolve; they run no detection of their own. count + len(unregistered_shims) == non-private *.py files in agent_audit_kit/scanners/, asserted by scripts/check_counts.py.",
-  "count": 103,
+  "count": 104,
   "scanners": [
     {
       "module": "a2a_protocol",
@@ -37,6 +37,10 @@
     {
       "module": "composition",
       "name": "Capability-graph composition (AAK-COMPOSE-001/002/003)"
+    },
+    {
+      "module": "container_image_pins",
+      "name": "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym)"
     },
     {
       "module": "crewai_rce_chain",
