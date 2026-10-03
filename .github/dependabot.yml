@@ -36,3 +36,19 @@ updates:
     ignore:
       - dependency-name: "python"
         update-types: ["version-update:semver-major"]
+
+  # The VS Code extension: TypeScript with devDependencies only, and its
+  # package-lock.json is gitignored, so these PRs move the ranges in
+  # vscode-extension/package.json. One grouped PR for the lot.
+  - package-ecosystem: "npm"
+    directory: "/vscode-extension"
+    schedule:
+      interval: "weekly"
+    groups:
+      vscode-extension:
+        patterns:
+          - "*"
+    ignore:
+      # @types/vscode tracks engines.vscode (^1.85.0). vsce refuses to package
+      # when the types are newer than the engine, so the two move together, by hand.
+      - dependency-name: "@types/vscode"

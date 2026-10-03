@@ -67,7 +67,6 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -165,7 +164,7 @@ def governed_values() -> dict[str, float]:
 
 
 def scan_file(rel: str, *, must_be_marked: bool,
-              values: Optional[dict[str, float]] = None) -> list[str]:
+              values: dict[str, float] | None = None) -> list[str]:
     """``file:line  …`` for every violation in one file."""
     path = REPO_ROOT / rel
     if not path.is_file():
@@ -209,7 +208,7 @@ def find_violations() -> tuple[list[str], list[str]]:
     return unmarked, disagree
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     unmarked, disagree = find_violations()
 
     if unmarked:

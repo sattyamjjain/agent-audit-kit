@@ -61,7 +61,7 @@ import re
 import subprocess
 import sys
 from datetime import date, datetime
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 RESPONSE_LABEL = "cve-response"
 DEFERRED_LABEL = "cve-deferred"
@@ -97,7 +97,7 @@ AGE_BUDGET_DAYS: dict[str, int] = {
 CVSS_RE = re.compile(r"CVSS\s+(\d+(?:\.\d+)?)", re.IGNORECASE)
 
 
-def parse_cvss(title: str) -> Optional[float]:
+def parse_cvss(title: str) -> float | None:
     """The CVSS base score named in an issue title, or None.
 
     Returns None rather than a default for `CVSS n/a`, an absent score, or a
@@ -114,7 +114,7 @@ def parse_cvss(title: str) -> Optional[float]:
     return score if 0.0 <= score <= 10.0 else None
 
 
-def band_for_score(score: Optional[float]) -> str:
+def band_for_score(score: float | None) -> str:
     """`critical`/`high`/`medium`/`low`, or `unknown` when there is no score."""
     if score is None:
         return UNKNOWN_BAND
@@ -146,7 +146,7 @@ def _labels(issue: dict[str, Any]) -> set[str]:
     return out
 
 
-def created_on(issue: dict[str, Any]) -> Optional[date]:
+def created_on(issue: dict[str, Any]) -> date | None:
     """The issue's creation date, from `gh --json createdAt` (ISO 8601, UTC)."""
     raw = str(issue.get("createdAt") or "")
     if not raw:
@@ -157,7 +157,7 @@ def created_on(issue: dict[str, Any]) -> Optional[date]:
         return None
 
 
-def age_days(issue: dict[str, Any], today: Optional[date] = None) -> Optional[int]:
+def age_days(issue: dict[str, Any], today: date | None = None) -> int | None:
     created = created_on(issue)
     if created is None:
         return None
@@ -169,7 +169,7 @@ def response_issues(issues: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def find_overdue(
-    issues: Iterable[dict[str, Any]], today: Optional[date] = None
+    issues: Iterable[dict[str, Any]], today: date | None = None
 ) -> list[str]:
     """``#N  band  Nd/Bd  title`` for every undeferred issue over its budget.
 
@@ -196,7 +196,7 @@ def find_overdue(
 
 def find_undated_or_past_due(
     issues: Iterable[dict[str, Any]],
-    today: Optional[date] = None,
+    today: date | None = None,
     target_date_fn: Any = None,
 ) -> list[str]:
     """``#N  …`` for every deferral that names no date, or names a passed one.
@@ -254,7 +254,7 @@ def _gh_json(args: list[str]) -> Any:
     return json.loads(out.stdout or "[]")
 
 
-def fetch_issues(repo: Optional[str] = None) -> list[dict[str, Any]]:
+def fetch_issues(repo: str | None = None) -> list[dict[str, Any]]:
     """Open `cve-response` issues, with comments on the deferred ones only.
 
     Comments are where a disposition date usually lands, but fetching them for
@@ -277,7 +277,7 @@ def fetch_issues(repo: Optional[str] = None) -> list[dict[str, Any]]:
     return issues
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="CVE queue ageing gate.")
     parser.add_argument(
         "--issues-json",

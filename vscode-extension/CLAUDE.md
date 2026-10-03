@@ -44,10 +44,10 @@ vscode-extension/
 - **Build**: `npm run compile` (`tsc -p ./`)
 - **Watch**: `npm run watch` (`tsc -watch -p ./`)
 - **Lint**: `npm run lint` (`eslint src --ext ts`) — note `eslint` is not in `devDependencies`, so this script needs it installed separately
-- **Package**: `npm run compile && npx @vscode/vsce package` (no `vscode:prepublish` script, so vsce ships whatever `out/` holds)
+- **Package**: `npx @vscode/vsce package`; its `vscode:prepublish` script runs `npm run compile` first, so a package never ships a stale `out/`
 - **Engine**: VS Code `^1.85.0`
 - **Category**: `Linters`
-- The root `ruff` / `mypy` targets do not cover it, and root `pytest` only reads its sources as text (`tests/test_vscode_json_contract.py` pins the CLI contract above) — this subtree has no test suite, no workflow under `.github/workflows/` builds it, and neither Dependabot (pip, Actions, Docker) nor CodeQL (Python) covers it. Verify changes with `npm run compile` locally.
+- The root `ruff` / `mypy` targets do not cover it, and root `pytest` only reads its sources as text (`tests/test_vscode_json_contract.py` pins the CLI contract above) — this subtree has no test suite and no workflow under `.github/workflows/` builds it. Dependabot covers its devDependencies in one grouped npm PR, except `@types/vscode`, which moves with `engines.vscode` by hand because vsce refuses types newer than the engine. CodeQL analyses `src/` as `javascript-typescript`; `paths` in `codeql.yml` keeps the repo's deliberately vulnerable JS fixtures out. Verify changes with `npm run compile` locally.
 
 <!-- END AUTO-MANAGED -->
 

@@ -36,7 +36,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -90,7 +90,7 @@ def _line(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
-def find_disagreements(text: str, numbers: Optional[dict[str, Any]] = None) -> list[str]:
+def find_disagreements(text: str, numbers: dict[str, Any] | None = None) -> list[str]:
     """``RESULTS.md:LINE: ...`` for each number in the body that is not this run's."""
     numbers = numbers or expected()
     body = body_without_history(text)

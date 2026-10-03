@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 # Callees that perform an outbound request.
 _PY_FETCH_CALLEES = (
@@ -65,7 +65,7 @@ class Reach(NamedTuple):
     callee: str
     line: int
     tainted: bool          # URL argument derives from caller-controlled input
-    private_addr: Optional[str]   # private/metadata address reaching this call
+    private_addr: str | None   # private/metadata address reaching this call
 
 
 def _blank_preserving_layout(text: str, pattern: re.Pattern[str]) -> str:
@@ -167,7 +167,7 @@ def analyze_python(text: str) -> list[Reach]:
                     return True
         return False
 
-    def addr_reaching(node: ast.AST, depth: int = 0) -> Optional[str]:
+    def addr_reaching(node: ast.AST, depth: int = 0) -> str | None:
         if depth > 4:
             return None
         for lit in _py_literal_strings(node):
@@ -188,7 +188,7 @@ def analyze_python(text: str) -> list[Reach]:
         name = _py_callee_name(node.func)
         if not _py_is_fetch(name):
             continue
-        url_arg: Optional[ast.AST] = node.args[0] if node.args else None
+        url_arg: ast.AST | None = node.args[0] if node.args else None
         if url_arg is None:
             for kw in node.keywords:
                 if kw.arg in ("url", "uri"):
