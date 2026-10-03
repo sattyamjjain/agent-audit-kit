@@ -1,0 +1,1986 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Security scanner for MCP-connected AI agent pipelines">
+      
+      
+      
+        <link rel="canonical" href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/">
+      
+      
+        <link rel="prev" href="../../../STATE-OF-MCP-SECURITY-2026/">
+      
+      
+        <link rel="next" href="../PREVALENCE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>The State of MCP Security, 2026 (corpus study) - AgentAuditKit Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="red" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-state-of-mcp-security-2026" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="AgentAuditKit Documentation" class="md-header__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            AgentAuditKit Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The State of MCP Security, 2026 (corpus study)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="AgentAuditKit Documentation" class="md-nav__button md-logo" aria-label="AgentAuditKit Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    AgentAuditKit Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/sattyamjjain/agent-audit-kit" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    agent-audit-kit
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rule-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration & rule schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rules & coverage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Rules & coverage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rule reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../owasp-mapping/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP mapping
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../owasp-agentic-coverage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP Agentic coverage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../session-transcripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Session transcripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compliance & evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compliance & evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../vex/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    VEX and SBOM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../why/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Why it works this way
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CI/CD
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../github-action/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitHub Action
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../gitlab-ci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitLab CI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../azure-pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../circleci/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CircleCI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & process
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & process
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../disclosure-policy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disclosure policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cve-triage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE triage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../cve-latency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVE-to-rule latency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../RELEASING/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Releasing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Research
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../STATE-OF-MCP-SECURITY-2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coverage & crosswalk
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The State of MCP Security, 2026 (corpus study)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The State of MCP Security, 2026 (corpus study)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#headline-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Headline findings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#corpus-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corpus construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reproduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduce
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grade-distribution-score-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grade distribution (score calibration)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-matters-now-and-the-two-wedges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this matters now — and the two wedges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-07-28-stateless-transport-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2026-07-28 stateless-transport exposure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#responsible-disclosure-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responsible-disclosure posture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-cite-this-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to cite this report
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREVALENCE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prevalence & score calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../research-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Research log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../comparisons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#headline-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Headline findings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#corpus-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Corpus construction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scanning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reproduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduce
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grade-distribution-score-calibration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grade distribution (score calibration)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-matters-now-and-the-two-wedges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this matters now — and the two wedges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2026-07-28-stateless-transport-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2026-07-28 stateless-transport exposure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#responsible-disclosure-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Responsible-disclosure posture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-cite-this-report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to cite this report
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="the-state-of-mcp-security-2026">The State of MCP Security, 2026</h1>
+<p><strong>Report version 1.0</strong> · <strong>Published 2026-08-17</strong> · <strong>Scan date 2026-07-26</strong> · <strong>Corpus:</strong> 2,303 distinct public MCP server configs · <strong>Tool:</strong> AgentAuditKit (offline, deterministic) · <strong>Licence:</strong> Apache-2.0 (same as the tool)</p>
+<blockquote>
+<p><strong>Stable identity.</strong> Cite this document as <em>The State of MCP Security, 2026</em>,
+version 1.0. The version changes only when a number in it changes; re-running the
+pipeline on the same committed corpus reproduces this exact file, so version 1.0
+always refers to these numbers. See <a href="#how-to-cite-this-report">How to cite this report</a>.</p>
+</blockquote>
+<p>We statically scanned <strong>2,303 distinct public Model Context Protocol server
+configurations</strong> — the largest snapshot we know of — and measured what fraction
+fail each security rule family. The headline: <strong>more than half of public MCP
+servers declare a remote endpoint with no authentication.</strong> Every number below
+carries its numerator, denominator, and — where a metric is not computable for
+the whole corpus — its coverage.</p>
+<p><strong>Methods in one paragraph.</strong> The corpus was collected <strong>2026-07-26</strong> from two
+provenance-tracked sources — 664 GitHub-crawled <code>.mcp.json</code> files
+(<code>benchmarks/data/</code>) and 1,639 latest-version servers from the official MCP Registry
+(<code>registry.modelcontextprotocol.io</code>) — deduplicated by SHA-256 of the normalised
+JSON. Each config was scanned in isolation with AgentAuditKit's engine and graded on
+the same penalty-based A–F scale as <code>aak score</code>. The scan makes <strong>zero network
+calls</strong> and is <strong>deterministic</strong>: the same corpus yields a byte-identical
+<code>results.json</code> across runs and Python hash seeds. Reproduce the published numbers
+with <code>make report</code> (offline); refreshing the corpus itself is a separate, explicitly
+network step (<code>python research/state-of-mcp-2026/fetch_registry.py --target 5000</code>).
+Full detail, including what a config-only corpus cannot measure, is in
+<a href="#method">Method</a> and <a href="#limitations">Limitations</a>.</p>
+<h2 id="headline-findings">Headline findings</h2>
+<table>
+<thead>
+<tr>
+<th>Finding</th>
+<th>Rule</th>
+<th style="text-align: right;">Share of corpus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Remote MCP server with <strong>no authentication</strong></td>
+<td><code>AAK-MCP-001</code> (critical)</td>
+<td style="text-align: right;"><strong>52.1%</strong> — 1201 of 2,303</td>
+</tr>
+<tr>
+<td>Carries at least one <strong>critical</strong> finding</td>
+<td>—</td>
+<td style="text-align: right;">52.7% (1,213)</td>
+</tr>
+<tr>
+<td>Fetches &amp; executes remote packages via <code>npx</code>/<code>uvx</code> (supply-chain surface)</td>
+<td><code>AAK-MCP-005</code> (medium)</td>
+<td style="text-align: right;">19.5% (450)</td>
+</tr>
+<tr>
+<td>OAuth surface with <strong>no RFC 9728</strong> Protected-Resource-Metadata discovery</td>
+<td><code>AAK-OAUTH-008</code> (low)</td>
+<td style="text-align: right;">18.4% (424)</td>
+</tr>
+<tr>
+<td>Command uses a <strong>relative path</strong> (PATH-hijack surface)</td>
+<td><code>AAK-MCP-006</code> (medium)</td>
+<td style="text-align: right;">7.8% (179)</td>
+</tr>
+<tr>
+<td><strong>Secret in the env block</strong> (hardcoded credential)</td>
+<td><code>AAK-MCP-003</code> / <code>AAK-SECRET-007</code></td>
+<td style="text-align: right;">3.0% (70)</td>
+</tr>
+<tr>
+<td><strong>stdio launcher injection</strong> — shell interpreter with exec flag / interpolated args</td>
+<td><code>AAK-MCP-STDIO-LAUNCHER-INJECT-001</code> (high)</td>
+<td style="text-align: right;">2.1% (49)</td>
+</tr>
+<tr>
+<td>URL points to <strong>localhost / internal</strong> network (SSRF surface)</td>
+<td><code>AAK-MCP-009</code> (high)</td>
+<td style="text-align: right;">1.9% (44)</td>
+</tr>
+<tr>
+<td>Deprecated <strong>SSE</strong> transport (2026-07-28 stateless break)</td>
+<td><code>AAK-TRANSPORT-003</code></td>
+<td style="text-align: right;">1.6% (36)</td>
+</tr>
+</tbody>
+</table>
+<p>Auth posture, the 2026-07-28 profile:</p>
+<ul>
+<li><strong>No authentication:</strong> 1201 of 2,303 (<strong>52.1%</strong>).</li>
+<li><strong>RFC 9728 PRM discovery:</strong> 0 of 2,303 (<strong>0.0%</strong>) — not a single public server
+  serves the discovery document the ratified auth spec expects.</li>
+<li><strong>Remote configs:</strong> 1,648 of 2,303 (71.6%). Of the 424 that embed an inline
+  credential, <strong>424 of 424 (100%)</strong> hardcode a static secret rather than
+  reference an env var or use OAuth.</li>
+</ul>
+<h2 id="method">Method</h2>
+<h3 id="corpus-construction">Corpus construction</h3>
+<p>Two provenance-tracked sources, deduplicated by configuration content (SHA-256
+of the normalised JSON):</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th style="text-align: right;">Candidates</th>
+<th style="text-align: right;">In corpus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub-crawled <code>.mcp.json</code> files (<code>benchmarks/data/</code>)</td>
+<td style="text-align: right;">748</td>
+<td style="text-align: right;">664</td>
+</tr>
+<tr>
+<td>Official MCP Registry, latest-version servers (<code>registry.modelcontextprotocol.io</code>)</td>
+<td style="text-align: right;">1,641</td>
+<td style="text-align: right;">1,639</td>
+</tr>
+<tr>
+<td><strong>Combined</strong></td>
+<td style="text-align: right;"><strong>2,389</strong></td>
+<td style="text-align: right;"><strong>2,303</strong></td>
+</tr>
+</tbody>
+</table>
+<p>85 byte-duplicate configs and 1 unparseable file were removed. Registry servers
+were fetched on <strong>2026-07-26</strong> via cursor pagination (40-page crawl), filtered to
+<code>isLatest = true</code> / <code>status = active</code>, and each converted to a scannable
+<code>.mcp.json</code>-shaped config. The registry has grown fast — this snapshot is
+<strong>1,641 distinct latest-version registry servers</strong>, up from 710 on 2026-07-19
+(2.3×). Provenance for every registry server — name, version, transport, auth
+mode, source URL, fetch date — is recorded in <code>corpus/registry-manifest.json</code>,
+so each number here is reproducible from the committed manifest without
+re-fetching.</p>
+<h3 id="scanning">Scanning</h3>
+<p>Each config is scanned in isolation with AgentAuditKit's engine and scored with
+the same penalty-based A–F grade the <code>aak score</code> command and the MCP Security
+Index use. The scan is <strong>offline</strong> (zero network calls) and <strong>deterministic</strong>:
+the same corpus yields a byte-identical <code>results.json</code> on every run, across
+Python hash seeds — the property that makes a published number auditable.</p>
+<p>Note on what is and isn't config-detectable: rule families that live in a
+client <code>.mcp.json</code> — no-auth, launcher injection, relative-path commands, env
+secrets, <code>npx</code>/<code>uvx</code> fetch-execute, transport — fire here. Families that require
+<strong>server source</strong> (tool-poisoning <code>AAK-POISON-*</code>, taint <code>AAK-TAINT-*</code>, the
+<code>AAK-MCP-STDIO-CMD-INJ-*</code> source detectors) do not fire on a config-only corpus
+and are reported as ~0% by construction, not by absence of risk. The MCP CVE
+version-pins (<code>agent_audit_kit/scanners/mcp_cve_pins_2026_07.py</code>) fire only when
+a config pins a specific vulnerable version; registry configs overwhelmingly use
+unpinned <code>npx -y &lt;pkg&gt;</code> (counted under <code>AAK-MCP-005</code>), so pinned-CVE hits are
+rare on this corpus.</p>
+<h3 id="reproduce">Reproduce</h3>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>report<span class="w">          </span><span class="c1"># refreshes results.json from the committed manifest, offline + deterministic</span>
+<span class="c1"># or, explicitly:</span>
+python<span class="w"> </span>research/state-of-mcp-2026/run_report.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--corpus<span class="w"> </span>benchmarks/data<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--registry-manifest<span class="w"> </span>research/state-of-mcp-2026/corpus/registry-manifest.json<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--out<span class="w"> </span>research/state-of-mcp-2026/results.json
+</code></pre></div>
+<p>Refreshing the corpus itself (the one network step) is separate:
+<code>python research/state-of-mcp-2026/fetch_registry.py --target 5000</code>.</p>
+<p>At the published run this walk collected <strong>1,641 distinct latest-version servers</strong>
+(<code>corpus/registry-manifest.json</code> → <code>distinct_latest_servers</code>, <code>fetched_at</code>
+<strong>2026-07-26</strong>). <code>--target 5000</code> is deliberately larger than that count so the walk
+runs to cursor-exhaustion rather than stopping early; the MCP Registry grows over
+time, so a later rerun that returns a larger N is registry growth, not a broken
+command. (<code>--target</code> is kept identical across the Makefile, the fetcher default, and
+this document by <code>tests/test_corpus_target_consistency.py</code>.)</p>
+<h2 id="grade-distribution-score-calibration">Grade distribution (score calibration)</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Grade</th>
+<th style="text-align: right;">Configs</th>
+<th style="text-align: right;">Share</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">A</td>
+<td style="text-align: right;">637</td>
+<td style="text-align: right;">27.7%</td>
+</tr>
+<tr>
+<td style="text-align: center;">B</td>
+<td style="text-align: right;">1,421</td>
+<td style="text-align: right;">61.7%</td>
+</tr>
+<tr>
+<td style="text-align: center;">C</td>
+<td style="text-align: right;">111</td>
+<td style="text-align: right;">4.8%</td>
+</tr>
+<tr>
+<td style="text-align: center;">D</td>
+<td style="text-align: right;">49</td>
+<td style="text-align: right;">2.1%</td>
+</tr>
+<tr>
+<td style="text-align: center;">F</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: right;">3.7%</td>
+</tr>
+</tbody>
+</table>
+<p>n = 2,303. The median config scores <strong>B</strong>. <strong>1,213 (52.7%)</strong> carry at least one
+critical-severity finding — driven almost entirely by the no-auth remote server
+class. Most public configs are not catastrophic, but the single most common
+public posture is <em>a remote server anyone can call</em>.</p>
+<h2 id="why-this-matters-now-and-the-two-wedges">Why this matters now — and the two wedges</h2>
+<p>The market backdrop is a supply-chain and trust crisis, not a scanner gap:</p>
+<ul>
+<li><strong>Shai-Hulud 2.0</strong> — the self-propagating npm worm that republishes legitimate
+  packages with a malicious <code>preinstall</code> script and uses GitHub infrastructure as
+  C2 — compromised <strong>25,000+ repositories across ~350 maintainers</strong> (Zapier,
+  PostHog, Postman), with a <em>Mini Shai-Hulud</em> resurgence in May 2026 hitting 170+
+  npm packages (<a href="https://www.microsoft.com/en-us/security/blog/2025/12/09/shai-hulud-2-0-guidance-for-detecting-investigating-and-defending-against-the-supply-chain-attack/">Microsoft Security</a>).
+  Our finding that <strong>19.5% of public MCP servers <code>npx</code>/<code>uvx</code>-fetch-and-execute
+  unpinned remote packages</strong> is that same blast radius, one <code>.mcp.json</code> away.</li>
+<li><strong>NSA MCP hardening guidance</strong> — the NSA AISC <em>MCP Security Design
+  Considerations</em> CSI (U/OO/6030316-26, 2026-05-20) put MCP posture on
+  government letterhead. It is prose, not a checklist — so the gap is <em>evidence</em>,
+  not awareness.</li>
+</ul>
+<p>Against that backdrop, two things a free hosted scanner structurally can't match:</p>
+<ol>
+<li><strong>Offline + deterministic scanning.</strong> Zero network calls in the default scan
+   path; the same input always yields the same finding (no model in the loop), so
+   CI diffs, audit re-runs, and regression baselines stay byte-stable. This report
+   is itself the proof: every number regenerates identically from the committed
+   manifest.</li>
+<li><strong>A compliance-evidence crosswalk.</strong> Every rule is mapped — rule by rule — to
+   the <strong>NSA MCP Security CSI</strong> control it evidences and its <strong>OWASP Agentic
+   Top-10 (2026)</strong> slot (also OWASP MCP Top-10 and EU AI Act), emitted as
+   machine-readable evidence: <code>agent-audit-kit --emit-coverage --format json</code>
+   (see <a href="../../../coverage.json"><code>docs/coverage.json</code></a> and
+   <a href="../../../crosswalk/nsa-csi-owasp-agentic/"><code>docs/crosswalk/nsa-csi-owasp-agentic.md</code></a>).
+   That turns a finding into audit evidence an assessor can cite.</li>
+</ol>
+<p>We are <strong>not</strong> claiming to be first — public MCP-security surveys and vendor
+disclosures predate this. What is offline, deterministic, and standards-mapped is
+the combination.</p>
+<h2 id="2026-07-28-stateless-transport-exposure">2026-07-28 stateless-transport exposure</h2>
+<p>The ratified 2026-07-28 spec removes the <code>initialize</code> handshake and the
+<code>Mcp-Session-Id</code> header (stateless core). The measurable proxy in a client config
+is deprecated <strong>SSE</strong> transport: <strong>36 configs (1.6%)</strong> still declare it and will
+break when the session model goes. streamable-HTTP dominates the fresh corpus
+(1,726 server entries) over stdio (1,347) and SSE (62).</p>
+<h2 id="responsible-disclosure-posture">Responsible-disclosure posture</h2>
+<p>Findings here are aggregate and de-identified; no server is named as vulnerable.
+The corpus is public registry metadata and public GitHub <code>.mcp.json</code> files. AAK's
+90-day <a href="../../../disclosure-policy/">disclosure policy</a> governs any per-server
+notification.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>Config-only for source-based families.</strong> Tool-poisoning and taint need server
+  source; their ~0% here is a coverage boundary, not an all-clear (stated above).</li>
+<li><strong>Registry snapshot is a 40-page crawl</strong> (1,641 distinct latest); the registry
+  is larger and still growing, so the true corpus is a floor.</li>
+<li><strong>Auth posture is inferred from declared config</strong>, not a live probe — a server
+  could enforce auth the config doesn't declare (and vice-versa).</li>
+<li><strong>"Benign" is not claimed.</strong> This measures declared posture, not exploitability;
+  see the <a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md">benign-slice false-positive rate</a>
+  for how precise the high-severity findings are.</li>
+</ul>
+<h2 id="how-to-cite-this-report">How to cite this report</h2>
+<p>Cite the report, not the repository, when you are citing a number from it — the
+repository moves and the report does not. Version 1.0 refers to the 2026-07-26 scan
+of 2,303 configs described above.</p>
+<p><strong>Plain text</strong></p>
+<blockquote>
+<p>Jain, S. (2026). <em>The State of MCP Security, 2026</em> (Version 1.0). AgentAuditKit.
+https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md</p>
+</blockquote>
+<p><strong>BibTeX</strong></p>
+<div class="highlight"><pre><span></span><code><span class="nc">@techreport</span><span class="p">{</span><span class="nl">jain2026mcpsecurity</span><span class="p">,</span>
+<span class="w">  </span><span class="na">author</span><span class="w">      </span><span class="p">=</span><span class="w"> </span><span class="s">{Jain, Sattyam}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">title</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="s">{The State of MCP Security, 2026}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">institution</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">{AgentAuditKit}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">year</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{2026}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">month</span><span class="w">       </span><span class="p">=</span><span class="w"> </span><span class="s">{8}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">type</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{Technical Report}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">number</span><span class="w">      </span><span class="p">=</span><span class="w"> </span><span class="s">{Version 1.0}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">url</span><span class="w">         </span><span class="p">=</span><span class="w"> </span><span class="s">{https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md}</span><span class="p">,</span>
+<span class="w">  </span><span class="na">note</span><span class="w">        </span><span class="p">=</span><span class="w"> </span><span class="s">{Corpus: 2,303 distinct public MCP server configurations, collected 2026-07-26. Offline, deterministic scan; reproducible with \texttt{make report}.}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Repository-level metadata is in <a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/CITATION.cff"><code>CITATION.cff</code></a> at the repo
+root, which GitHub renders as a "Cite this repository" widget. It points at this same
+identity, so the two cannot disagree about the report version.</p>
+<p><strong>Citing a specific number.</strong> Every figure above carries its numerator and
+denominator; quote both. For example: "0 of 2,303 public MCP configs served RFC 9728
+Protected Resource Metadata discovery (Jain 2026, v1.0)." If you need the raw data,
+<code>results.json</code> beside this file is the machine-readable output, and
+<code>corpus/registry-manifest.json</code> records per-server provenance.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.sections", "navigation.expand", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

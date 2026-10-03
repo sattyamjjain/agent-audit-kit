@@ -1,0 +1,233 @@
+{
+  "tool": "agent-audit-kit",
+  "corpus": "benchmarks/data",
+  "corpus_sources": {
+    "crawl": 664,
+    "registry": 1639
+  },
+  "corpus_total_candidates": 2389,
+  "distinct_configs_scanned": 2303,
+  "duplicates_removed": 85,
+  "unparseable_removed": 1,
+  "grade_distribution": {
+    "A": 636,
+    "B": 1421,
+    "C": 111,
+    "D": 49,
+    "F": 86
+  },
+  "configs_with_critical": 1213,
+  "configs_with_critical_pct": 52.7,
+  "configs_with_high": 165,
+  "configs_with_high_pct": 7.2,
+  "severity_totals": {
+    "critical": 1335,
+    "high": 319,
+    "medium": 4432,
+    "low": 1224
+  },
+  "transport_distribution": {
+    "streamable-http": 1726,
+    "stdio": 1347,
+    "sse": 62,
+    "unknown": 7
+  },
+  "rule_family_distribution": {
+    "AAK-MCP": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "AAK-OAUTH": {
+      "configs": 424,
+      "pct": 18.4
+    },
+    "AAK-SECRET": {
+      "configs": 70,
+      "pct": 3.0
+    },
+    "AAK-TRANSPORT": {
+      "configs": 42,
+      "pct": 1.8
+    },
+    "AAK-COMPOSE": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "AAK-POISON": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "category_hit_rate": {
+    "mcp-config": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "secret-exposure": {
+      "configs": 70,
+      "pct": 3.0
+    },
+    "transport-security": {
+      "configs": 42,
+      "pct": 1.8
+    },
+    "composition": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "tool-poisoning": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "owasp_mcp_hit_rate": {
+    "MCP07:2025": {
+      "configs": 2300,
+      "pct": 99.9
+    },
+    "MCP01:2025": {
+      "configs": 492,
+      "pct": 21.4
+    },
+    "MCP03:2025": {
+      "configs": 451,
+      "pct": 19.6
+    },
+    "MCP10:2025": {
+      "configs": 450,
+      "pct": 19.5
+    },
+    "MCP04:2025": {
+      "configs": 209,
+      "pct": 9.1
+    },
+    "MCP09:2025": {
+      "configs": 44,
+      "pct": 1.9
+    },
+    "MCP02:2025": {
+      "configs": 12,
+      "pct": 0.5
+    },
+    "MCP05:2025": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "MCP06:2025": {
+      "configs": 1,
+      "pct": 0.0
+    },
+    "MCP08:2025": {
+      "configs": 1,
+      "pct": 0.0
+    }
+  },
+  "auth_profile_2026_07_28": {
+    "no_authentication": {
+      "n": 1201,
+      "denominator": 2303,
+      "pct": 52.1
+    },
+    "rfc9728_prm_discovery": {
+      "n": 0,
+      "denominator": 2303,
+      "pct": 0.0
+    },
+    "remote_configs": {
+      "n": 1648,
+      "denominator": 2303,
+      "pct": 71.6
+    },
+    "remote_auth_static_credential": {
+      "n": 424,
+      "denominator": 424,
+      "pct": 100.0
+    },
+    "sse_transport_stateless_break_proxy": {
+      "n": 47,
+      "denominator": 2303,
+      "pct": 2.0
+    },
+    "removal_clock_features_measured_from_config": {
+      "n": 0,
+      "denominator": 2303,
+      "pct": 0.0
+    }
+  },
+  "top_misconfigurations": [
+    {
+      "rule_id": "AAK-MCP-001",
+      "title": "Remote MCP server without authentication",
+      "severity": "critical",
+      "configs": 1201,
+      "config_pct": 52.1
+    },
+    {
+      "rule_id": "AAK-MCP-005",
+      "title": "MCP server uses npx/uvx to fetch and execute remote packages",
+      "severity": "medium",
+      "configs": 450,
+      "config_pct": 19.5
+    },
+    {
+      "rule_id": "AAK-OAUTH-008",
+      "title": "MCP OAuth surface with no RFC 9728 Protected Resource Metadata discovery",
+      "severity": "low",
+      "configs": 424,
+      "config_pct": 18.4
+    },
+    {
+      "rule_id": "AAK-MCP-006",
+      "title": "MCP server command uses relative path",
+      "severity": "medium",
+      "configs": 179,
+      "config_pct": 7.8
+    },
+    {
+      "rule_id": "AAK-MCP-003",
+      "title": "MCP server environment exposes secrets",
+      "severity": "high",
+      "configs": 70,
+      "config_pct": 3.0
+    },
+    {
+      "rule_id": "AAK-SECRET-007",
+      "title": "Secret in MCP server environment block",
+      "severity": "medium",
+      "configs": 70,
+      "config_pct": 3.0
+    },
+    {
+      "rule_id": "AAK-MCP-STDIO-LAUNCHER-INJECT-001",
+      "title": "MCP stdio server launches a shell-style interpreter with an exec flag or interpolated args",
+      "severity": "high",
+      "configs": 49,
+      "config_pct": 2.1
+    },
+    {
+      "rule_id": "AAK-MCP-009",
+      "title": "MCP server URL points to localhost/internal network",
+      "severity": "high",
+      "configs": 44,
+      "config_pct": 1.9
+    },
+    {
+      "rule_id": "AAK-TRANSPORT-003",
+      "title": "Deprecated SSE transport in use",
+      "severity": "medium",
+      "configs": 36,
+      "config_pct": 1.6
+    },
+    {
+      "rule_id": "AAK-MCP-004",
+      "title": "Excessive number of MCP servers declared",
+      "severity": "high",
+      "configs": 12,
+      "config_pct": 0.5
+    }
+  ],
+  "excluded_advisory_rules": [
+    "AAK-MCP-007",
+    "AAK-MCP-ATTEST-001"
+  ]
+}
