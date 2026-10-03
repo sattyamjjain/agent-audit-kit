@@ -127,6 +127,12 @@ available) before shipping:
     tool's `url` reaches `sh -c`. A stated version is required, as for mcp-remote)
   - fast-mcp-telegram              >= 0.30.1  (CVE-2026-55096; the attachment SSRF guard
     checks the literal hostname and never resolves it. NVD prints the fix as "30.1")
+  - office-powerpoint-mcp-server   presence-only (CVE-2025-71427; save_presentation,
+    open_presentation and manage_image take any path. No fixed release: 2.0.7 is the
+    newest and the fix, upstream PR #33, is unmerged)
+  - @penpot/mcp                    >= 2.18.0  (CVE-2026-100868; the plugin WebSocket
+    bridge listens on every interface. Its own MEDIUM rule beside the CRITICAL 2.15.0
+    REPL pin above, and npm has no 2.18.x yet, so every published release is reported)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -198,6 +204,13 @@ _PILLMWIKI_RE = re.compile(
 # (`fast-mcp-telegram-*`) is never read as this package.
 _FASTMCPTELEGRAM_RE = re.compile(
     r"(?<![\w./-])fast-mcp-telegram(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `office-powerpoint-mcp-server` (PyPI). PyPI treats `-` and `_` as the same
+# name, so both spellings match. Bounded so a longer sibling name, and a GitHub
+# path such as `GongRzhe/Office-PowerPoint-MCP-Server`, are not read as the package.
+_OFFICEPPT_RE = re.compile(
+    r"(?<![\w./-])office[-_]powerpoint[-_]mcp[-_]server(?![\w-])" + _VER_OPT,
+    re.IGNORECASE,
 )
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
@@ -1032,6 +1045,28 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001", "fast-mcp-telegram",
          ("fast-mcp-telegram",), (0, 30, 1), fix_label="0.30.1",
          regexes=(_FASTMCPTELEGRAM_RE,), ecosystem="py"),
+    # --- 2026-10-03 wave, second batch (#863-#867) ---
+    # Office-PowerPoint-MCP-Server's save_presentation / open_presentation /
+    # manage_image tools take any path (CVE-2025-71427, CVSS 6.8, CWE-22, "through
+    # 2.0.7"). No fixed release: 2.0.7 (2025-12-31) is the newest on PyPI and the
+    # fix, upstream PR #33, is unmerged, so floor=None (presence-only). npm has no
+    # package of that name. Give the pin a floor once a fixed release ships.
+    _Pin("AAK-MCP-OFFICEPPT-CVE-2025-71427-001", "office-powerpoint-mcp-server",
+         ("office-powerpoint-mcp-server",), None,
+         fix_label="no fixed release (upstream PR #33 is unmerged and 2.0.7 is the "
+                   "newest); confine the server to a scratch directory meanwhile",
+         regexes=(_OFFICEPPT_RE,), ecosystem="py"),
+    # @penpot/mcp's plugin WebSocket bridge is `new WebSocketServer({ port })` with
+    # no host, so it listens on every interface, unauthenticated in single-user
+    # mode (CVE-2026-100868, CVSS 6.3, GHSA-ch2q-6x56-qg5r). Penpot fixed it in
+    # 2.18.0 (b5274a44), but npm has no @penpot/mcp 2.18.x: 2.17.0 is the newest
+    # published and `latest` is 2.15.4, both affected. A rule of its own, not a
+    # raised floor on the 45805 pin above: that one is a CRITICAL RCE fixed in
+    # 2.15.0, and raising its floor would report 2.15.0-2.17.x as critical.
+    _Pin("AAK-MCP-PENPOT-CVE-2026-100868-001", "@penpot/mcp", ("@penpot/mcp",),
+         (2, 18, 0),
+         fix_label="2.18.0 (not on npm yet, 2.17.0 is the newest published; "
+                   "meanwhile firewall the plugin WebSocket port, 4402 by default)"),
 )
 
 _CANDIDATE_NAMES = (

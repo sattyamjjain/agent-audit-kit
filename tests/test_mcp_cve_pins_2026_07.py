@@ -95,6 +95,9 @@ PINS = {
     "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": "critical",
     # 2026-10-03 wave
     "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001": "high",
+    # 2026-10-03 wave, second batch
+    "AAK-MCP-OFFICEPPT-CVE-2025-71427-001": "medium",
+    "AAK-MCP-PENPOT-CVE-2026-100868-001": "medium",
 }
 
 
@@ -1520,3 +1523,89 @@ def test_fast_mcp_telegram_is_a_pypi_pin(tmp_path: Path) -> None:
 
 def test_fast_mcp_telegram_longer_name_is_another_package(tmp_path: Path) -> None:
     assert _FMTG not in _ids(tmp_path, "requirements.txt", "fast-mcp-telegram-bot==0.1.0\n")
+
+
+# --- 2026-10-03 wave, second batch (#863-#867) ------------------------------
+_OFFICEPPT = "AAK-MCP-OFFICEPPT-CVE-2025-71427-001"
+_OFFICEPPT_FIXTURES = (
+    Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2025-71427-office-powerpoint-mcp"
+)
+_PENPOT_BRIDGE = "AAK-MCP-PENPOT-CVE-2026-100868-001"
+_PENPOT_REPL = "AAK-MCP-PENPOT-CVE-2026-45805-001"
+_PENPOT_FIXTURES = (
+    Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-100868-penpot-mcp"
+)
+
+
+def test_office_powerpoint_fixtures_positive_and_negative() -> None:
+    """CVE-2025-71427 (#864): save_presentation, open_presentation and manage_image
+    take any path through 2.0.7, and there is no fixed release (upstream PR #33 is
+    unmerged). The negative is the same author's Word server, a different package."""
+    assert _OFFICEPPT in {f.rule_id for f in scan(_OFFICEPPT_FIXTURES / "vulnerable")[0]}
+    assert _OFFICEPPT not in {f.rule_id for f in scan(_OFFICEPPT_FIXTURES / "negative")[0]}
+
+
+@pytest.mark.parametrize("version", ["2.0.1", "2.0.7", "2.1.0"])
+def test_office_powerpoint_every_version_fires_until_a_fix_ships(tmp_path: Path, version: str) -> None:
+    """Presence-only: no release is known to be fixed, so no version clears the pin.
+    2.1.0 does not exist; it stands for whatever ships next, which is reported until
+    the pin gets a floor."""
+    assert _OFFICEPPT in _ids(tmp_path, "requirements.txt", f"office-powerpoint-mcp-server=={version}\n")
+
+
+def test_office_powerpoint_uvx_config_fires(tmp_path: Path) -> None:
+    content = (
+        '{"mcpServers": {"ppt": {"command": "uvx", '
+        '"args": ["--from", "office-powerpoint-mcp-server", "ppt_mcp_server"]}}}'
+    )
+    assert _OFFICEPPT in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_office_powerpoint_underscore_spelling_fires(tmp_path: Path) -> None:
+    """PyPI treats `-` and `_` as one name, and requirements files use both."""
+    assert _OFFICEPPT in _ids(tmp_path, "requirements.txt", "office_powerpoint_mcp_server==2.0.7\n")
+
+
+def test_office_powerpoint_is_a_pypi_pin(tmp_path: Path) -> None:
+    """npm has no package of that name, so a package.json entry is not this project."""
+    content = '{"dependencies": {"office-powerpoint-mcp-server": "2.0.7"}}'
+    assert _OFFICEPPT not in _ids(tmp_path, "package.json", content)
+
+
+def test_office_powerpoint_longer_name_is_another_package(tmp_path: Path) -> None:
+    assert _OFFICEPPT not in _ids(tmp_path, "requirements.txt", "office-powerpoint-mcp-server-lite==0.1.0\n")
+
+
+def test_penpot_bridge_fixtures_positive_and_negative() -> None:
+    """CVE-2026-100868 (#867): the plugin WebSocket bridge listens on every interface
+    before Penpot 2.18.0, and npm has no @penpot/mcp 2.18.x yet. 2.17.0 is past the
+    REPL RCE's 2.15.0 fix, so only the bridge rule fires on it."""
+    vulnerable = {f.rule_id for f in scan(_PENPOT_FIXTURES / "vulnerable")[0]}
+    assert _PENPOT_BRIDGE in vulnerable
+    assert _PENPOT_REPL not in vulnerable
+    negative = {f.rule_id for f in scan(_PENPOT_FIXTURES / "negative")[0]}
+    assert not {_PENPOT_BRIDGE, _PENPOT_REPL} & negative
+
+
+def test_penpot_below_the_rce_fix_reports_both_cves(tmp_path: Path) -> None:
+    content = '{"dependencies": {"@penpot/mcp": "2.14.9"}}'
+    assert {_PENPOT_BRIDGE, _PENPOT_REPL} <= _ids(tmp_path, "package.json", content)
+
+
+def test_penpot_latest_dist_tag_fires_the_bridge_rule_only(tmp_path: Path) -> None:
+    """npm's `latest` was 2.15.4 on 2026-10-03: clear of the RCE, not of the bridge."""
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"@penpot/mcp": "2.15.4"}}')
+    assert _PENPOT_BRIDGE in ids
+    assert _PENPOT_REPL not in ids
+
+
+def test_penpot_unpinned_npx_fires_the_bridge_rule(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"penpot": {"command": "npx", "args": ["-y", "@penpot/mcp"]}}}'
+    assert _PENPOT_BRIDGE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_penpot_bridge_stays_a_separate_lower_severity_rule() -> None:
+    """Raising the 45805 floor instead would have called 2.15.0-2.17.x a critical RCE."""
+    assert RULES[_PENPOT_BRIDGE].severity.value == "medium"
+    assert RULES[_PENPOT_REPL].severity.value == "critical"
+    assert RULES[_PENPOT_REPL].cve_references == ["CVE-2026-45805"]

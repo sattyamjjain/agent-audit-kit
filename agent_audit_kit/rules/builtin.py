@@ -204,6 +204,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OBOT-CVE-2026-101084-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-METAMCP-CVE-2026-79538-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HEYM-CVE-2026-100858-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-OFFICEPPT-CVE-2025-71427-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-PENPOT-CVE-2026-100868-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -10205,6 +10207,83 @@ _r(
         "0.0.123 on 2026-10-03. heym's own compose file builds a local image "
         "(`heym-backend:local` unless `HEYM_BACKEND_IMAGE` is set), which states no "
         "version."
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# 2026-10-03 wave, second batch (#863-#867). Five watcher-filed CVEs: two new
+# pins below, and three WordPress plugins out of scope as non-pinnable. The
+# dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
+    "Office-PowerPoint-MCP-Server tools read and write any path they are given (no fixed release)",
+    "`office-powerpoint-mcp-server` (PyPI; GongRzhe/Office-PowerPoint-MCP-Server) "
+    "hands the paths its MCP tools receive to the filesystem without confining them "
+    "to a working directory: `save_presentation` and `open_presentation` take any "
+    "`file_path`, and `manage_image` any `output_path`. An absolute path or a `../` "
+    "sequence therefore overwrites any file the server's user can write, or loads "
+    "one from outside the working directory, and an indirect prompt injection that "
+    "steers the agent's tool calls is enough (CVE-2025-71427, CVSS 3.1 6.8, CWE-22, "
+    "through 2.0.7). There is no fixed release: 2.0.7 is the newest on PyPI and the "
+    "upstream fix (PR #33) is unmerged, so every published version is treated as "
+    "exposed (presence-only pin).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release to upgrade to. Run the server as a user that can "
+    "reach only a scratch directory (or in a container with only that directory "
+    "mounted), keep untrusted content away from an agent that holds these tools, or "
+    "build from a fork that carries upstream PR #33. Pin the first fixed release "
+    "once it ships.",
+    sarif_name="OfficePowerPointMcpPathTraversal",
+    cve_references=["CVE-2025-71427"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        "Reports a reference that names the PyPI package: a requirements, pyproject "
+        "or lockfile entry, or `office-powerpoint-mcp-server` in an MCP config (the "
+        "`uvx --from office-powerpoint-mcp-server ppt_mcp_server` form). A server run "
+        "from a clone of the repository (`python ppt_mcp_server.py`) names no package "
+        "and is not reported. Presence-only: every version is reported, a future "
+        "fixed one included, until the pin gets a floor. No class rule fires on the "
+        "2.0.7 tools, so this pin is the only coverage."
+    ),
+)
+
+_r(
+    "AAK-MCP-PENPOT-CVE-2026-100868-001",
+    "Penpot MCP plugin WebSocket bridge listens on every interface (< 2.18.0)",
+    "`@penpot/mcp`, Penpot's MCP server on npm, opens a WebSocket bridge (port "
+    "4402 by default) for the Penpot browser plugin. Before Penpot 2.18.0 that "
+    "bridge is created as `new WebSocketServer({ port })` with no `host`, so it "
+    "listens on every interface whatever `PENPOT_MCP_SERVER_HOST` says, and in "
+    "single-user mode it accepts the connection without authentication. Anyone on "
+    "an adjacent network can connect as the plugin, receive the agent's task "
+    "payloads and return forged results (CVE-2026-100868, CVSS 3.1 6.3, "
+    "GHSA-ch2q-6x56-qg5r, fix commit `b5274a44`). npm has no 2.18.x yet: 2.17.0 is "
+    "the newest published release and still binds every interface, so every "
+    "published version is reported. The older `@penpot/mcp` pin, for the REPL RCE "
+    "fixed in 2.15.0, stays a separate rule because that one is critical and this "
+    "one is not.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@penpot/mcp` to 2.18.0 or later once npm has it, and pin it. Until "
+    "then, block the plugin WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by "
+    "default) from every other host, or run the server only on a machine that is "
+    "not reachable from a shared network.",
+    sarif_name="PenpotMcpPluginBridgeAllInterfaces",
+    cve_references=["CVE-2026-100868"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
+        "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference is "
+        "reported because what npm installs by default is affected (the `latest` tag "
+        "was 2.15.4 on 2026-10-03; the newest published, 2.17.0, is too). It reads the npm "
+        "version, not Penpot's: a self-hosted Penpot 2.18.0 server does not clear an "
+        "older `@penpot/mcp`, since the bridge runs in the MCP server."
     ),
 )
 
