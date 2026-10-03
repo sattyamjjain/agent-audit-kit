@@ -7587,7 +7587,8 @@
       "category": "transport-security",
       "cve_references": [
         "CVE-2026-41488",
-        "CVE-2026-53708"
+        "CVE-2026-53708",
+        "CVE-2026-55096"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance",
