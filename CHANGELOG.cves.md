@@ -16,6 +16,133 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-03 (v0.6.12): ten disclosures, one new pin, one more on an existing rule, four out of scope, four deferred
+
+The watcher opened ten `cve-response` issues (#845-#849 at 12:35Z and #850-#854 at
+22:14Z on 2026-10-02). One gets a new pin, and the class rule it belongs to misses
+the upstream code, which is a follow-up issue rather than a change here. One falls
+inside a rule that already names its class. Three are WordPress plugins and one is
+a self-hosted platform shipped only as a container image, all non-pinnable. Two
+Obot CVEs join the 2026-10-11 deferral, and two have no upstream fix yet. No
+detector changed. Every description below is quoted from the NVD API record, read
+on 2026-10-03.
+
+**fast-mcp-telegram (CVE-2026-55096) gets a new pin; its class rule misses the
+upstream code.** NVD: "Prior to version 30.1, the send_message/send_message_to_phone
+MCP tools accept files as a list of http(s) URLs, which the server downloads and
+attaches to the outgoing Telegram message. Downloads are guarded by
+_validate_url_security, an SSRF denylist that checks the URL's literal hostname
+string but never resolves DNS. The fetch (httpx.AsyncClient.get) does its own
+resolution at request time." That is the class `AAK-SSRF-TOCTOU-001` names, and it
+was measured on the 0.30.0 code (`src/tools/messages/security.py` and
+`file_handling.py`, read at the tag): a fixture with the upstream names produces
+no finding from that rule or from a full `run_scan`. The rule recognises a guard by
+a name anchored at `^validate_...`, which the leading underscore of
+`_validate_url_security` fails, or by a body that resolves a name and range-checks
+it, which this guard never does. With the underscore removed, the same file fires.
+The detector is not widened here, the CVE is not added to that rule, and the gap is
+#855. NVD and the advisory (GHSA-xr72-j7vj-vp7g, `<= 0.30.0`) print the fix as
+"30.1"; the GitHub tag and the PyPI release are 0.30.1 (fix `e6b3032c`, which
+resolves with `socket.getaddrinfo` before the check). The new
+`AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001` reports `fast-mcp-telegram` below
+0.30.1, and a full `run_scan` reports it on 0.30.0 and not on 0.30.1. The 0.19.1
+that `AAK-MCP-AUTH-PATHTRAVERSAL-001` cites is the same package's earlier
+path-traversal fix, a different defect that rule detects in code. Rule count
+365 -> 366.
+
+**mcp-server-fetch (CVE-2026-104120) is listed on `AAK-MCP-SSRF-001`.** NVD: "A
+security vulnerability has been detected in modelcontextprotocol mcp-server-fetch
+and mcp-server-everything up to 2026.6.4. Affected is the function fetch_url of the
+file mcp_server_fetch/server.py of the component Fetch Tool. The manipulation of
+the argument url/path leads to server-side request forgery." And: "The pull request
+to fix this issue awaits acceptance." In `server.py`, identical at the 2026.6.3,
+2026.7.10, 2026.8.18 and 2026.8.31 tags, the `fetch` prompt's handler hands
+`arguments["url"]` to `fetch_url` without even the robots.txt check
+(`check_may_autonomously_fetch_url`) that the tool path runs, and neither path
+checks the destination. `AAK-MCP-SSRF-001` names that class and fires on it. On a
+fixture of the prompt path the finding sits on the fetch inside `fetch_url`; on the
+upstream file it lands on the first unguarded fetch, the robots.txt request built
+from the caller's host. A host allow-list before the fetch clears it. The fix,
+modelcontextprotocol/servers#4890, is still open, so there is no fixed release and
+no pin.
+
+**ByteCoreStack MCP Connector (CVE-2026-19807, CVE-2026-103068) and AI Engine
+(CVE-2026-96561) are out of scope.** NVD, CVE-2026-19807: "The ByteCoreStack – MCP
+Connector for AI Tools plugin for WordPress is vulnerable to Privilege Escalation
+in all versions up to, and including, 1.2.3". CVE-2026-103068: "Subscriber
+Privilege Escalation in ByteCoreStack &#8211; MCP Connector for AI Tools <= 1.2.2
+versions." CVE-2026-96561: "The AI Engine – The Chatbot, AI Framework & MCP for
+WordPress plugin for WordPress is vulnerable to Stored Cross-Site Scripting in
+versions up to, and including, 3.8.0". All three are wordpress.org plugins (slugs
+`bcs-mcp-manager` and `ai-engine`), on neither npm nor PyPI, and no file this
+scanner reads states a WordPress plugin's version. Non-pinnable, on the same basis
+as the six WordPress MCP plugins before them (#490, #523, #634, #648, #815, #841);
+AI Engine is #523's plugin again. The changesets NVD cites end at 1.2.4 and 3.8.1.
+
+**heym (CVE-2026-100858) is out of scope.** NVD: "heym before 0.0.109 contains a
+server-side request forgery vulnerability in the Slack, Discord, and Crawler
+workflow nodes." heym is published on neither PyPI nor npm (`pip index versions
+heym` and `npm view heym` both find nothing). It is a self-hosted workflow platform
+that ships as the container image `ghcr.io/heymrun/heym` and compose files, so, as
+with Obot, the image tag is the only thing that carries its version. Non-pinnable
+today. If the 2026-10-11 decision adds an image-tag reader, heym's image belongs in
+it; its advisory, GHSA-39j3-6x3x-8rcr, puts the fix at 0.0.109.
+
+### CVE-2026-103758 (#848) and CVE-2026-101064 (#849): deferred 2026-10-03 (target 2026-10-11)
+
+NVD: "Obot 0.21.1 through 0.24.1 contains an authorization bypass vulnerability
+that allows authenticated users to reach MCP servers because the checkUI deny list
+omits the /mcp-connect-composite/ route." And CVE-2026-101064: "Obot before v0.23.0
+contains a server-side request forgery vulnerability in remote MCP server
+registration that allows privileged users to specify arbitrary URLs without
+destination validation." The same product as #837 and #842 (2026-10-02 section),
+which ships as the container image `ghcr.io/obot-platform/obot` and a Helm chart,
+so both are deferred to 2026-10-11 with them. GHSA-jgh3-fggc-mcpm puts
+CVE-2026-101064's fix at v0.23.0, which the earlier entry's v0.23.0 already covers.
+CVE-2026-103758 is different: GHSA-6fwv-3h4c-37j9 lists `>= 0.21.1, <= 0.24.1` with
+no patched version, and releases after 0.24.1 exist (0.25.6, 0.26.1, 0.26.2 on
+2026-10-02) without one being named as its fix. Whatever floor the 2026-10-11
+decision picks must sit above 0.24.1, or the pin misses #848. #848 and #849 are
+closed with this entry as the record.
+
+### CVE-2026-102878 (#847): deferred 2026-10-03 (target 2026-10-17), no upstream fix
+
+NVD: "mcp-chrome-bridge through 1.0.31 contains an origin validation error in the
+native-server HTTP API that allows attackers to bypass CORS restrictions." 1.0.31
+(2025-12-30) is the newest npm release and v1.0.0 the newest GitHub release, and
+the upstream issue NVD cites (hangwin/mcp-chrome#384) is open with no reply. With
+no fixed release there is no floor to pin; when one ships, it is an npm pin on
+`mcp-chrome-bridge`. Deferred to 2026-10-17 to re-check, and #847 is closed with
+this entry as the record.
+
+### CVE-2026-102243 (#850): deferred 2026-10-03 (target 2026-10-17), no upstream fix
+
+NVD: "A vulnerability was identified in MODSetter SurfSense up to 2.0.3. This issue
+affects some unknown processing of the file
+/api/search-source/connectors/mcp/test of the component MCP Connector
+Integration. Such manipulation leads to command injection." And: "The vendor was
+contacted early about this disclosure but did not respond in any way." v2.0.3
+(2026-09-26) is the newest release, so nothing is fixed. SurfSense is on neither
+PyPI nor npm; its compose file pulls `ghcr.io/modsetter/surfsense-backend` at
+`${SURFSENSE_VERSION:-latest}`, so a fixed release would still leave only an image
+tag to read, the Obot case. Deferred to 2026-10-17 to re-check for a fix, and #850
+is closed with this entry as the record.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-55096 | 7.1 | `fast-mcp-telegram` (PyPI) | **New pin** `AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001`: below 0.30.1. `AAK-SSRF-TOCTOU-001` names the class but does not fire on the upstream code, so the CVE is not listed on it (#855). | #853 |
+| CVE-2026-104120 | 7.3 | `mcp-server-fetch` (PyPI) | No new rule, no pin: no fixed release. Recorded against `AAK-MCP-SSRF-001`, which fires on the shape. | #851 |
+| CVE-2026-19807 | 8.8 | ByteCoreStack MCP Connector for AI Tools (wordpress.org plugin) | **Out of scope**, non-pinnable, quoted above. No npm or PyPI artifact; upgrade the plugin to 1.2.4 or later. | #845 |
+| CVE-2026-103068 | 8.8 | ByteCoreStack MCP Connector for AI Tools (wordpress.org plugin) | **Out of scope**, non-pinnable, the plugin in #845. | #846 |
+| CVE-2026-96561 | 7.2 | AI Engine (wordpress.org plugin) | **Out of scope**, non-pinnable, quoted above. Upgrade the plugin to 3.8.1 or later. | #852 |
+| CVE-2026-100858 | 6.8 | heym (container image `ghcr.io/heymrun/heym`) | **Out of scope**, non-pinnable: on neither PyPI nor npm. Upgrade to 0.0.109 or later. | #854 |
+
+CVE-2026-103758, CVE-2026-101064, CVE-2026-102878 and CVE-2026-102243 have no row: a
+row is a coverage claim, and none of them has coverage. CVSS is NVD's CVSS 3.1 score.
+
+Dispositioned at 2026-10-03T11:27:13Z. Unreleased at the time of writing: this
+section carries no version label until the next tag stamps it.
+
 ## 2026-10-02 (v0.6.11): ten disclosures, one new pin, three more on existing pins, two out of scope, four deferred
 
 The watcher opened ten `cve-response` issues (#833-#837 at 22:16Z on 2026-09-30,
@@ -112,6 +239,8 @@ application, not a package. npm's `obot` is an empty 2018 placeholder and PyPI's
 `obot` is an unrelated bot library. The version a deployment runs is its image tag,
 and this repository has no image-tag detector. Both are deferred to 2026-10-11 on
 the same basis as #836, and #837 and #842 are closed with this entry as the record.
+CVE-2026-103758 (#848) and CVE-2026-101064 (#849) joined this deferral on
+2026-10-03 (see that section); #848 runs through 0.24.1 with no fixed release named.
 
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|

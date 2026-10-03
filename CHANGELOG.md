@@ -7,8 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.12] - 2026-10-03
+
+### Added
+
+- `AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001`: `fast-mcp-telegram` below 0.30.1, whose attachment download checks the URL's literal hostname against a denylist and never resolves it (CVE-2026-55096, #853). NVD prints the fix as "30.1"; PyPI and the GitHub tag say 0.30.1. Rule count 365 -> 366.
+
+### Changed
+
+- Dispositioned #845 to #854. One maps onto a rule that already names its class: `AAK-MCP-SSRF-001` now lists CVE-2026-104120 (mcp-server-fetch, #851), which has no fixed release to pin. `AAK-SSRF-TOCTOU-001` names #853's class but does not fire on the upstream code, so #853 closes on the pin above, the CVE is not listed on that rule, and the detector gap is #855. The Obot pair (#848, #849) joins the 10-11 deferral, mcp-chrome-bridge (#847) and SurfSense (#850) are deferred to 10-17 for want of an upstream fix, and the WordPress plugins (#845, #846, #852) and heym (#854) are recorded as non-pinnable.
+
 ### Fixed
 
+- Link check is green on main again. The three pages that turned it red after #844 (two `snyk/agent-scan` docs and the OpenVEX spec) predate #844 and answered 503 to the CI runner on 2026-10-02 while serving 200 elsewhere, so they are excluded by exact path; github.com stays checked.
 - `AAK-AGENT-004` and `AAK-AGENT-006` again report three lines 0.6.10 reported and 0.6.11 missed: a credential after a comma splice ("Never print $GITHUB_TOKEN, log $AWS_SECRET_ACCESS_KEY ..."), an upload joined by "or" after an unrelated negation and a "but", and "Fetch `<url>` and execute immediately". Found in a review of 0.6.11.
 - `agent_config` reads a bounded window before each verb and credential, so a long crafted instruction-file line no longer scans in quadratic time (0.6.11 took minutes on 600 KB of "never upload it to `<url>`").
 

@@ -200,6 +200,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-REMOTE-CVE-2026-51994-001": ["IVS-04", "STA-08"],
     "AAK-MCP-KIMICODE-CVE-2026-95660-001": ["IAM-01", "STA-08"],
     "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -6579,7 +6580,7 @@ _r(
     "Disable automatic redirects or re-validate every hop, and pin the resolved "
     "IP for the actual request to defeat DNS rebinding.",
     sarif_name="McpToolArgUrlSsrf",
-    cve_references=["CVE-2026-14748"],
+    cve_references=["CVE-2026-14748", "CVE-2026-104120"],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
@@ -10010,6 +10011,53 @@ _r(
         "the package in pi's own settings, which this scanner does not read, so a "
         "machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a "
         "different author's package and is not matched."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-03 wave (#845-#854). Ten watcher-filed CVEs: one new pin below, one
+# CVE listed on AAK-MCP-SSRF-001, three WordPress plugins and heym out of scope
+# as non-pinnable, and four deferred with a date (the Obot pair with #837 and
+# #842, mcp-chrome-bridge and SurfSense for want of an upstream fix). The
+# dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
+    "fast-mcp-telegram below 0.30.1 fetches attachment URLs its SSRF guard never resolved",
+    "`fast-mcp-telegram`, a Telegram MCP server, downloads the http(s) URLs given "
+    "to its `send_message` and `send_message_to_phone` MCP tools and attaches them "
+    "to the outgoing message. Before 0.30.1 the guard, `_validate_url_security`, "
+    "compares the URL's literal hostname with a denylist and never resolves it, "
+    "while the fetch (`httpx.AsyncClient.get`) resolves the name itself. A "
+    "hostname that resolves to a loopback, private or link-local address "
+    "therefore passes the guard and is fetched, even with `block_private_ips=True` "
+    "and `allow_http_urls=False`, and the body comes back to the caller as a "
+    "Telegram attachment, so the read is not blind (CVE-2026-55096, CVSS 3.1 7.1, "
+    "CWE-918/CWE-184). 0.30.1 resolves the name with `socket.getaddrinfo` and "
+    "blocks loopback, private and link-local results (fix commit `e6b3032c`). NVD "
+    "and the advisory print the fixed version as \"30.1\"; the release on PyPI "
+    "and the GitHub tag are 0.30.1.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `fast-mcp-telegram` to >= 0.30.1 and pin it. Until then, do not let "
+    "an untrusted caller choose the attachment URLs `send_message` downloads, or "
+    "run the server where loopback, private and cloud-metadata addresses are "
+    "unreachable.",
+    sarif_name="FastMcpTelegramAttachmentSsrf",
+    cve_references=["CVE-2026-55096"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reports a reference that names the package: a requirements, pyproject or "
+        "lockfile entry, or `fast-mcp-telegram` in an MCP config, where an "
+        "unpinned `uvx fast-mcp-telegram` is reported as unpinned, as for the "
+        "other PyPI pins. It reads versions, not code: the defect's shape, a "
+        "hostname-only guard before a fetch that resolves again, is the class "
+        "`AAK-SSRF-TOCTOU-001` names, and that rule does not recognise this guard "
+        "(a leading underscore, and no resolution in its body), which is #855."
     ),
 )
 
