@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-03T17:12:10Z",
+  "last_updated": "2026-10-03T19:17:19Z",
   "aak_version": "0.6.14",
   "rule_count": 371,
   "coverage": [
@@ -2187,7 +2187,8 @@
           "severity": "medium",
           "cve_references": [
             "CVE-2026-41488",
-            "CVE-2026-53708"
+            "CVE-2026-53708",
+            "CVE-2026-55096"
           ],
           "aicm_references": [
             "AIS-08",

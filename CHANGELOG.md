@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `AAK-SSRF-TOCTOU-001` recognises a guard whose name starts with an underscore. Its name match was anchored at `^validate_...` and missed `_validate_url_security`, the guard in `fast-mcp-telegram` below 0.30.1, so CVE-2026-55096 was covered only by its version pin. The rule fires on that code now and lists the CVE (#855). It also fires on 0.30.1's own source: that release resolves the name inside the guard, but the fetch resolves it again, which is the DNS-rebind window this rule is about. A guard defined in another file is still recognised by its name only, and the rule's new `limitations` text says so.
+
 ## [0.6.14] - 2026-10-03
 
 ### Added

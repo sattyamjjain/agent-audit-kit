@@ -4555,7 +4555,10 @@ _r(
     "(langchain-openai `_url_to_size`) is the canonical example; "
     "CVE-2026-53708 (`mcp-contextforge-gateway` < 1.0.3, "
     "`/admin/gateways/test`) is the same bug reached through a guard "
-    "named after the endpoint rather than after the check. The "
+    "named after the endpoint rather than after the check, and "
+    "CVE-2026-55096 (`fast-mcp-telegram` < 0.30.1) through a "
+    "module-private guard, `_validate_url_security`, that checks the "
+    "literal hostname and never resolves it at all. The "
     "fix is to resolve once, pin the IP, and reuse the same `Session` / "
     "`HTTPAdapter` for the fetch — or drive the allow-list check on the "
     "resolved IP instead of the hostname.",
@@ -4567,11 +4570,23 @@ _r(
     "+ explicit IP, custom `HTTPAdapter`, or `pinned_ip`-style helper). "
     "Pin `langchain-openai >= 1.1.14`.",
     sarif_name="UrlAllowListToctou",
-    cve_references=["CVE-2026-41488", "CVE-2026-53708"],
+    cve_references=["CVE-2026-41488", "CVE-2026-53708", "CVE-2026-55096"],
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-NETWORK-03"],
     incident_references=["GHSA-r7w7-9xr2-qq2r"],
+    limitations=(
+        "The code check is Python only and looks at one function at a time. A "
+        "guard is recognised by its name (leading underscores ignored) wherever "
+        "it is defined, or by its body, a name lookup plus a private-range check, "
+        "only when it is defined in the same file as the fetch. An IP pin is "
+        "recognised by name (`pinned_ip`, `resolved_ip`, `HTTPAdapter`, "
+        "`session.mount`, `socket.getaddrinfo` and a few more) anywhere in the "
+        "calling function. The version check covers `langchain-openai` only, so "
+        "on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's "
+        "own source: that release resolves inside the guard, but the fetch "
+        "resolves the name again."
+    ),
 )
 
 
@@ -10061,8 +10076,9 @@ _r(
         "unpinned `uvx fast-mcp-telegram` is reported as unpinned, as for the "
         "other PyPI pins. It reads versions, not code: the defect's shape, a "
         "hostname-only guard before a fetch that resolves again, is the class "
-        "`AAK-SSRF-TOCTOU-001` names, and that rule does not recognise this guard "
-        "(a leading underscore, and no resolution in its body), which is #855."
+        "`AAK-SSRF-TOCTOU-001` names, which recognises this guard in code since "
+        "#855 and keeps firing on 0.30.1's source, whose fetch still resolves "
+        "the name a second time."
     ),
 )
 

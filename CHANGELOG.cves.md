@@ -16,6 +16,20 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-04 (unreleased): CVE-2026-55096 on its class rule
+
+No new disclosures. `AAK-SSRF-TOCTOU-001` now strips leading underscores before it
+matches a guard's name, so it fires on the `fast-mcp-telegram` 0.30.0 code that the
+2026-10-03 (v0.6.12) entry below measured as a miss (#855). CVE-2026-55096 is on
+that rule now, proven by the hostname-guard fixture and by the 0.30.0 wheel itself,
+where the finding sits on the fetch in `src/tools/messages/file_handling.py` (line
+221). The rule keeps firing on the 0.30.1 wheel, at the same line, and that is
+deliberate: the fix (`e6b3032c`) resolves the name inside `_validate_url_security`,
+but `file_handling.py` did not change and `httpx.AsyncClient.get` resolves the name
+a second time, which is the DNS-rebind window the rule is named for. The version pin
+`AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001` is the rule that clears at 0.30.1, and
+the CVE's latency is unchanged because the pin shipped first.
+
 ## 2026-10-03 (v0.6.14): five disclosures, two new pins, three WordPress plugins out of scope
 
 The watcher opened five `cve-response` issues at 16:17Z (#863-#867). Two are MCP

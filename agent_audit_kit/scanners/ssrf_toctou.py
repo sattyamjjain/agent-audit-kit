@@ -24,6 +24,15 @@ name, and the allow-list said nothing. So a callee now counts as a guard
 if either its **name** reads like a URL/host check, or its **body** in this
 file both resolves a name and range-checks the result.
 
+A leading underscore does not change what a guard is. `fast-mcp-telegram`
+< 0.30.1 (CVE-2026-55096, #855) calls its guard `_validate_url_security`, a
+module-private helper that checks the literal hostname and never resolves it,
+then hands the URL to `httpx.AsyncClient.get`, which resolves the name itself.
+The name track was anchored at `^validate_...`, so the underscore alone hid
+the guard; names are now matched with leading underscores stripped. The body
+track still needs the guard defined in the same file as the fetch, and
+upstream's lives in another module, so the name is what finds it there.
+
 Pin check: `langchain-openai < 1.1.14`.
 """
 
@@ -90,9 +99,16 @@ _RANGE_CHECK_RE = re.compile(
 
 
 def _is_validator_name(name: str | None) -> bool:
-    if not name:
+    """True when `name` reads like a URL/host guard, leading underscores aside.
+
+    `_validate_url_security` (fast-mcp-telegram < 0.30.1, CVE-2026-55096, #855)
+    is the same check as `validate_url_security`; matched as written, the
+    anchored pattern missed every module-private guard.
+    """
+    bare = (name or "").lstrip("_")
+    if not bare:
         return False
-    return name in _VALIDATOR_NAMES or bool(_VALIDATOR_NAME_RE.match(name))
+    return bare in _VALIDATOR_NAMES or bool(_VALIDATOR_NAME_RE.match(bare))
 
 
 def _guard_functions(tree: ast.AST, text: str) -> set[str]:
