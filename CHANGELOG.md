@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.12] - 2026-10-03
+
 ### Added
 
 - `AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001`: `fast-mcp-telegram` below 0.30.1, whose attachment download checks the URL's literal hostname against a denylist and never resolves it (CVE-2026-55096, #853). NVD prints the fix as "30.1"; PyPI and the GitHub tag say 0.30.1. Rule count 365 -> 366.

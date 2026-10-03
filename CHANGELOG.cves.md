@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-03: ten disclosures, one new pin, one more on an existing rule, four out of scope, four deferred
+## 2026-10-03 (v0.6.12): ten disclosures, one new pin, one more on an existing rule, four out of scope, four deferred
 
 The watcher opened ten `cve-response` issues (#845-#849 at 12:35Z and #850-#854 at
 22:14Z on 2026-10-02). One gets a new pin, and the class rule it belongs to misses
