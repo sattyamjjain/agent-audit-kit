@@ -41,7 +41,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 # Verified verbatim against anthropic-sdk-python `__init__.py`:
@@ -111,31 +112,13 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     has_config, config_rel = _config_present(project_root)
     if has_config:
         scanned.add(config_rel)
-        findings.append(Finding(
+        findings.append(make_finding(
             rule_id="AAK-MCP-LINEAGE-STAINLESS-001",
-            title="Stainless generator-config present in project root",
-            description=(
-                "Found `" + config_rel + "` — a Stainless config-as-code "
-                "file/directory. The source tree is therefore a Stainless-"
-                "generated SDK / CLI / MCP-server. Provenance only; not a "
-                "vulnerability. Useful for supply-chain attestation."
-            ),
-            severity=Severity.INFO,
-            category=Category.SUPPLY_CHAIN,
             file_path=config_rel,
             evidence=(
                 f"Stainless config-as-code marker present: `{config_rel}`. "
                 f"Anchor: anthropic.com/news/anthropic-acquires-stainless (2026-05-18)."
             ),
-            remediation=(
-                "No action required for the rule fire itself — this is a "
-                "lineage data point. For SBOM / supply-chain attestation, "
-                "record the Stainless lineage alongside the package's own "
-                "version metadata. If a future CVE targets a specific "
-                "Stainless generator version, AAK will re-target this rule "
-                "to fire on the affected lineage."
-            ),
-            incident_references=["ANTHROPIC-STAINLESS-2026-05-18"],
         ))
 
     # Arm 2: in-file banner detection — fires once per source file (capped
@@ -156,26 +139,11 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         banner_fires += 1
-        findings.append(Finding(
+        findings.append(make_finding(
             rule_id="AAK-MCP-LINEAGE-STAINLESS-001",
-            title="Stainless-generator banner in source file",
-            description=(
-                "Source file carries a Stainless auto-generation banner "
-                "(`" + matched + "`). The file is therefore generator-"
-                "produced. Provenance only; not a vulnerability."
-            ),
-            severity=Severity.INFO,
-            category=Category.SUPPLY_CHAIN,
             file_path=rel,
             line_number=line_no,
             evidence=f"banner: {matched!r}",
-            remediation=(
-                "No action required. Record the Stainless lineage in your "
-                "SBOM if procurement reviewers ask for generator-origin "
-                "metadata. Anchor: anthropic.com/news/anthropic-acquires-"
-                "stainless (2026-05-18)."
-            ),
-            incident_references=["ANTHROPIC-STAINLESS-2026-05-18"],
         ))
     return findings, scanned
 

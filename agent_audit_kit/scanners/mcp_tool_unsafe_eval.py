@@ -25,7 +25,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 _MCP_TOOL_DECORATOR_NAMES: frozenset[str] = frozenset({
@@ -140,35 +141,11 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
         for child in node.body:
             visitor.visit(child)
         for lineno, _call_name, evidence in visitor.findings:
-            findings.append(Finding(
+            findings.append(make_finding(
                 rule_id="AAK-MCP-TOOL-UNSAFE-EVAL-001",
-                title="Unsafe eval()/exec()/compile() inside @mcp.tool handler",
-                description=(
-                    "An MCP tool handler routes a tool-parameter value through "
-                    "`eval()`, `exec()`, `compile()`, `__import__()`, or SymPy "
-                    "`parse_expr()` without `local_dict` / `global_dict` "
-                    "pinning. This is the architectural class behind "
-                    "CVE-2026-44717 (mcp-calculate-server) and generalizes to "
-                    "any single-author MCP server with the same shape — see "
-                    "AAK-MCPCALC-CVE-2026-44717-PIN-001 for the named-product "
-                    "pin row that v0.3.18 shipped."
-                ),
-                severity=Severity.CRITICAL,
-                category=Category.TOOL_POISONING,
                 file_path=rel,
                 line_number=lineno,
                 evidence=evidence,
-                remediation=(
-                    "Replace `eval(expr)` with `ast.literal_eval(expr)` for "
-                    "trusted-literal inputs, or with SymPy "
-                    "`parse_expr(expr, local_dict={}, global_dict={}, "
-                    "evaluate=True)` and a strict symbol allow-list for math. "
-                    "Validate input length + char-set before evaluation."
-                ),
-                cve_references=["CVE-2026-44717"],
-                owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-                owasp_agentic_references=["ASI02", "ASI05"],
-                incident_references=["NVD-CVE-2026-44717"],
             ))
     return findings
 

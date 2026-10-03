@@ -19,10 +19,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
+from agent_audit_kit.scanners import docsgpt_transport_flip, gpt_researcher_transport_flip
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CORPUS = REPO_ROOT / "benchmarks" / "data"
@@ -73,6 +75,28 @@ def test_remediation_does_not_present_the_keys_as_the_fix(rule_id: str) -> None:
         "to prevent MITM transport-flip",
     ):
         assert bad not in text, f"{rule_id} still presents an AAK-only key as the fix"
+
+
+@pytest.mark.parametrize(
+    ("module", "fixture", "rule_id"),
+    [
+        (docsgpt_transport_flip, "cve-2026-26015-docsgpt", "AAK-DOCSGPT-MCP-STDIO-MITM-001"),
+        (gpt_researcher_transport_flip, "cve-2025-65720-gpt-researcher", "AAK-GPTRESEARCHER-MCP-STDIO-MITM-001"),
+    ],
+)
+def test_the_scanner_emits_the_corrected_remediation(module: ModuleType, fixture: str, rule_id: str) -> None:
+    """The tests above read RULES. This reads what `aak scan` actually prints.
+
+    Both scanners used to hand-build their Finding with the pre-#597 text, so the
+    registry was corrected, every test above passed, and users were still told to
+    set `deny_stdio_transport: true`.
+    """
+    findings, _ = module.scan(REPO_ROOT / "tests" / "fixtures" / "cves" / fixture / "config-unsafe")
+    emitted = [f for f in findings if f.rule_id == rule_id]
+    assert emitted, f"{fixture}/config-unsafe no longer fires {rule_id}"
+    for finding in emitted:
+        assert finding.remediation == RULES[rule_id].remediation
+        assert 'Set `"deny_stdio_transport": true`' not in finding.remediation
 
 
 def test_the_aak_only_keys_are_still_absent_from_the_corpus() -> None:

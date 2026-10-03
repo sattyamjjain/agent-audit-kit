@@ -31,7 +31,7 @@ vscode-extension/
 - **Output**: `./out/extension.js` (`main` in the manifest)
 - **Scan path**: `extension.ts` invokes the CLI via `child_process.execFile` — the extension carries no scanning logic of its own, so in-editor results always match `agent-audit-kit scan`.
 - **Two diagnostic collections**: scans write to `agent-audit-kit`, SARIF imports to `agent-audit-kit-sarif`, so an imported report never overwrites live scan results.
-- **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. No test spans the two, so a key rename there breaks the extension silently.
+- **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. `tests/test_vscode_json_contract.py` parses those interfaces and fails when `json_report.py` stops writing a key they read.
 
 **A command needs both halves.** `registerCommand` in code makes it callable; `contributes.commands` in the manifest makes it reachable from the Command Palette. `sarifReader.ts` was unreachable for a long stretch because `activate()` never called `registerSarifCommands`, and the two scan commands were registered but undeclared, so none of the extension's commands appeared in the palette. When adding a command, do both, then confirm with `npm run compile` that `out/extension.js` requires the new module.
 

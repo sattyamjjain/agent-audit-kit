@@ -1,9 +1,10 @@
 name: Sync rule count
 
-# Keeps README badge + action.yml description + __init__.RULE_COUNT in
-# lockstep with the rule bundle. Runs on every push to main that touches
-# rules.json or the rule source, then commits the bumped files back if
-# anything drifted.
+# Keeps the generated count surfaces (rules.json, RULE_COUNT/SCANNER_COUNT,
+# the README badge and anchors, action.yml, scanners.json, docs/rules.md and
+# the anchored docs pages) in lockstep with the registry. Runs on every push
+# to main that touches the rule or scanner source, then commits whatever
+# drifted back.
 
 on:
   push:
@@ -60,6 +61,11 @@ jobs:
         run: |
           git config user.name 'agent-audit-kit-bot'
           git config user.email 'agent-audit-kit-bot@users.noreply.github.com'
-          git add rules.json README.md action.yml agent_audit_kit/__init__.py
+          # Stage every tracked file the two sync scripts rewrote: exactly what
+          # the `git diff --quiet` drift check above saw. This used to name four
+          # files while the scripts also write scanners.json, docs/rules.md and
+          # the anchored docs pages, so a run that touched those would push a
+          # partial sync and leave the rest drifting on main.
+          git add -u
           git commit -m "chore(rule-count): auto-sync after rules.json change"
           git push

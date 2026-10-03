@@ -31,7 +31,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 # Heuristic: a function is treated as a Skill execute() if it is
@@ -159,35 +160,11 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 continue
             line, evidence = hit
             scanned.add(rel)
-            findings.append(Finding(
+            findings.append(make_finding(
                 rule_id="AAK-SKILL-LIFECYCLE-ATTRIBUTION-001",
-                title="Skill execute mutates persistent state without emitting an outcome-attribution record",
-                description=(
-                    "A Skill execute / run function mutates persistent "
-                    "state (file write, DB commit, side-effecting HTTP "
-                    "verb) without emitting an outcome-attribution call "
-                    "(`record_outcome` / `log_outcome` / `attribute_*` / "
-                    "etc.) in the same function body. Per SkillsVote "
-                    "(arXiv:2605.18401), the evidence-gated update loop "
-                    "depends on per-execution attribution; missing "
-                    "attribution silently degrades repeat invocations."
-                ),
-                severity=Severity.MEDIUM,
-                category=Category.TOOL_POISONING,
                 file_path=rel,
                 line_number=line,
                 evidence=f"function `{node.name}`: {evidence}, but no attribution call emitted",
-                remediation=(
-                    "Emit a structured outcome record at the end of the "
-                    "skill's execute function: e.g., `record_outcome("
-                    "skill_id=..., outcome='success'|'failure', "
-                    "signals={...})`. The schema can be project-local — "
-                    "SkillsVote does not prescribe a specific format — "
-                    "but the call must be present in the same function "
-                    "body so the evidence-gated update loop can consume it."
-                ),
-                owasp_agentic_references=["ASI04", "ASI09"],
-                incident_references=["ARXIV-2605.18401"],
             ))
     return findings, scanned
 

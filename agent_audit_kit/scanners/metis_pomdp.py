@@ -39,7 +39,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._helpers import make_finding
 
 
 # Heuristic name patterns — function name, parameter name, or string
@@ -172,13 +173,8 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
                             and sub.value.id in tainted:
                         findings.append(_metis_finding(
                             "AAK-METIS-REFUSAL-REFEED-001",
-                            "Refusal text returned from handler — risk of re-feed into next prompt",
                             rel, sub.lineno,
                             f"function `{fn_name}` returns `{sub.value.id}` derived from a refusal signal",
-                            "Wrap the refusal in a policy-mediated transformation (categorize / "
-                            "log / rate-limit / strip free-text) before any callsite re-uses it. "
-                            "Per Metis (arXiv:2605.10067), structured feedback used as a semantic "
-                            "gradient is the exploited surface.",
                         ))
                     # Pattern B: refusal-tainted value flows into a prompt sink
                     if isinstance(sub, ast.Call) and _is_prompt_sink_call(sub):
@@ -186,11 +182,8 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
                             if isinstance(a, ast.Name) and a.id in tainted:
                                 findings.append(_metis_finding(
                                     "AAK-METIS-REFUSAL-REFEED-001",
-                                    "Refusal value flows into prompt-sink call",
                                     rel, sub.lineno,
                                     f"prompt-sink call in `{fn_name}` receives refusal-tainted `{a.id}`",
-                                    "Categorize and replace refusal text with a non-echoing token "
-                                    "before injecting into the next prompt. See arXiv:2605.10067.",
                                 ))
 
         # ---- AAK-METIS-SCORING-SINK-001 ----
@@ -205,38 +198,22 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
                             if isinstance(a, ast.Name) and a.id in tainted:
                                 findings.append(_metis_finding(
                                     "AAK-METIS-SCORING-SINK-001",
-                                    "Scoring/judge value flows into prompt-sink call",
                                     rel, sub.lineno,
                                     f"prompt-sink call in `{fn_name}` receives score-tainted `{a.id}`",
-                                    "Discretize scoring signal into an opaque bucket (PASS / FAIL / "
-                                    "PARTIAL) before re-injecting. Per Metis (arXiv:2605.10067), "
-                                    "numeric / verbose scoring strings are the semantic-gradient "
-                                    "the adversary uses to refine its policy.",
                                 ))
     return findings
 
 
-def _metis_finding(
-    rule_id: str,
-    title: str,
-    rel: str,
-    line: int,
-    evidence: str,
-    remediation: str,
-) -> Finding:
-    return Finding(
-        rule_id=rule_id,
-        title=title,
-        description=title,
-        severity=Severity.MEDIUM,  # research-grade — high-FP risk warrants MEDIUM
-        category=Category.TOOL_POISONING,
-        file_path=rel,
-        line_number=line,
-        evidence=evidence,
-        remediation=remediation,
-        owasp_agentic_references=["ASI01", "ASI02"],
-        incident_references=["ARXIV-2605.10067"],
-    )
+def _metis_finding(rule_id: str, rel: str, line: int, evidence: str) -> Finding:
+    """A Metis finding located at ``rel:line``, everything else from the registry.
+
+    This used to hand-build the Finding with its own titles and remediation
+    text, which drifted from the registered rule (SARIF then showed one title in
+    the rule descriptor and another on the result). The pattern-specific detail
+    belongs in ``evidence``; the rule's MEDIUM (research-grade) severity is the
+    registered one.
+    """
+    return make_finding(rule_id, rel, evidence, line)
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

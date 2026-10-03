@@ -27,15 +27,16 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding, Severity
-from agent_audit_kit.rules.builtin import get_rule
 from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     SKIP_DIRS,
     find_line_number,
+    make_finding,
 )
 
 _VSCODE_DIR = ".vscode"
@@ -76,30 +77,19 @@ def _finding(
     line_number: int | None = None,
     severity: Severity | None = None,
 ) -> Finding:
-    """Like ``_helpers.make_finding`` but with an optional severity override.
+    """``_helpers.make_finding`` with an optional severity override.
 
     AAK-IDE-TASK-001 is HIGH by default and escalates to CRITICAL when the
     auto-run command is a shell / interpreter / network fetch, so the finding's
-    severity can differ from the rule's registered default.
+    severity can differ from the rule's registered default. Every other field
+    comes from ``make_finding``: this used to copy the registry field by field
+    and missed ``owasp_ast_references``, which a field-by-field copy always
+    risks.
     """
-    rule = get_rule(rule_id)
-    return Finding(
-        rule_id=rule_id,
-        title=rule.title,
-        description=rule.description,
-        severity=severity or rule.severity,
-        category=rule.category,
-        file_path=file_path,
-        line_number=line_number,
-        evidence=evidence,
-        remediation=rule.remediation,
-        cve_references=rule.cve_references,
-        owasp_mcp_references=rule.owasp_mcp_references,
-        owasp_agentic_references=rule.owasp_agentic_references,
-        adversa_references=rule.adversa_references,
-        incident_references=rule.incident_references,
-        aicm_references=rule.aicm_references,
-    )
+    finding = make_finding(rule_id, file_path, evidence, line_number)
+    if severity is not None:
+        finding = replace(finding, severity=severity)
+    return finding
 
 
 def _strip_jsonc(text: str) -> str:

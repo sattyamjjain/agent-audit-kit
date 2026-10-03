@@ -33,7 +33,7 @@ scanners/
 <!-- AUTO-MANAGED: conventions -->
 ## Module-Specific Conventions
 
-- Build findings with `_helpers.make_finding(rule_id, file_path, evidence, line_number=None, related_locations=None)`; construct `Finding(...)` by hand only when a field must differ from the registry, and say why in a comment.
+- Build findings with `_helpers.make_finding(rule_id, file_path, evidence, line_number=None, related_locations=None)` and never construct `Finding(...)` here: `tests/test_findings_match_registry.py` fails on it, and on any emitted field that differs from `RULES`. When one field must differ (`ide_task_rce` escalates AAK-IDE-TASK-001 to CRITICAL), `dataclasses.replace` the `make_finding` result and list the module, with its reason, in that test's `SEVERITY_OVERRIDE_MODULES`.
 - Rule ids are `AAK-<AREA>-<NNN>` (`AAK-MCP-014`, `AAK-HOOK-003`) or, for most newer rules, `AAK-<AREA>-<TOPIC>-<NNN>` (`AAK-MCP-STDIO-UNBOUNDED-BUFFER-001`, `AAK-MCP-ATLASSIAN-CVE-2026-27825-001`). The id must already exist in `RULES`: `make_finding` resolves it through `get_rule()`.
 - Walk trees with `SKIP_DIRS` and attach a `line_number` so SARIF and the VS Code extension can place the diagnostic. With a regex match, take the line from the match offset (as `agent_config._line_at` does): `find_line_number(raw, key)` returns the first line containing the key, which piles repeated matches onto one line that GitHub code scanning folds into a single alert (#792). Keep `find_line_number` for keys from parsed configs.
 - Prefer real data flow over proximity heuristics. Where a heuristic remains as the fallback (tree-sitter absent), the module docstring says which path ran and the tests cover both.
