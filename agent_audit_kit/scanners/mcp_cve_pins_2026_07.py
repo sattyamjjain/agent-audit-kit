@@ -133,6 +133,15 @@ available) before shipping:
   - @penpot/mcp                    >= 2.18.0  (CVE-2026-100868; the plugin WebSocket
     bridge listens on every interface. Its own MEDIUM rule beside the CRITICAL 2.15.0
     REPL pin above, and npm has no 2.18.x yet, so every published release is reported)
+  - voice-mode                     >= 8.10.2  (CVE-2026-79535; update_config writes the
+    caller's value into a sourced env file, double-quoted at best)
+  - @0xshariq/github-mcp-server    presence-only (CVE-2026-102906; git tools run
+    interpolated strings through child_process.exec. Every release, 2.0.0 to 2.5.0,
+    has it, and upstream has not answered)
+  - openclaw                       2026.7.2 <= v < 2026.9.4  (CVE-2026-102807; an
+    operator.read token runs operator.write MCP App tools through a standalone
+    ticket. Its own MEDIUM rule beside the HIGH 2026.7.1 pin above; the feature is
+    absent before 2026.7.2)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -208,6 +217,16 @@ _FASTMCPTELEGRAM_RE = re.compile(
 # `office-powerpoint-mcp-server` (PyPI). PyPI treats `-` and `_` as the same
 # name, so both spellings match. Bounded so a longer sibling name, and a GitHub
 # path such as `GongRzhe/Office-PowerPoint-MCP-Server`, are not read as the package.
+# `voice-mode` (PyPI). PyPI folds `-` and `_`, so both spellings match, and the
+# bounds keep a longer sibling name (`voice-mode-*`, `openai-voice-mode`) off it.
+_VOICEMODE_RE = re.compile(
+    r"(?<![\w./-])voice[-_]mode(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `@0xshariq/github-mcp-server` (npm). The scope is the point: GitHub's own
+# `github-mcp-server` and `@modelcontextprotocol/server-github` are other projects.
+_SHARIQ_GITHUB_RE = re.compile(
+    r"(?<![\w./-])@0xshariq/github-mcp-server(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
 _OFFICEPPT_RE = re.compile(
     r"(?<![\w./-])office[-_]powerpoint[-_]mcp[-_]server(?![\w-])" + _VER_OPT,
     re.IGNORECASE,
@@ -1067,6 +1086,34 @@ _PINS: tuple[_Pin, ...] = (
          (2, 18, 0),
          fix_label="2.18.0 (not on npm yet, 2.17.0 is the newest published; "
                    "meanwhile firewall the plugin WebSocket port, 4402 by default)"),
+    # --- 2026-10-03 wave, third batch (#879-#883) ---
+    # VoiceMode's update_config MCP tool writes the caller's value into
+    # ~/.voicemode/voicemode.env, which the service scripts `source`; before 8.10.2
+    # a value was at best double-quoted, which does not stop `$(...)`
+    # (CVE-2026-79535, CVSS 6.3, CWE-78, GHSA-h97v-r3jw-cf6f). Checked in the
+    # wheels: 8.10.2's `_format_env_value` single-quotes anything not shell-inert.
+    _Pin("AAK-MCP-VOICEMODE-CVE-2026-79535-001", "voice-mode", ("voice-mode",),
+         (8, 10, 2), fix_label="8.10.2", regexes=(_VOICEMODE_RE,), ecosystem="py"),
+    # @0xshariq/github-mcp-server builds git commands as strings and runs them with
+    # child_process.exec: `gitRemove(file)` is `git reset HEAD "${file}"`
+    # (CVE-2026-102906, CVSS 6.3, CWE-77/78). Checked in the npm tarballs: 2.0.0 and
+    # 2.5.0 (the newest) both have it. Upstream has not answered issue #2 and there
+    # is no fixed release, so floor=None (presence-only).
+    _Pin("AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001", "@0xshariq/github-mcp-server",
+         ("@0xshariq/github-mcp-server",), None,
+         fix_label="no fixed release (2.5.0 is the newest and upstream has not "
+                   "answered); keep it away from agents that read untrusted text",
+         regexes=(_SHARIQ_GITHUB_RE,), ecosystem="js"),
+    # OpenClaw's mcp.app.view issued standalone tickets that did not carry the
+    # issuer's tool authority, so an operator.read token ran operator.write tools
+    # (CVE-2026-102807, CVSS 5.3, CWE-863, GHSA-3xrq-g42v-gh57). The standalone host
+    # (`src/gateway/mcp-app-standalone.ts`) is absent at v2026.7.1 and tools through
+    # it arrived in 7c070d6 (first in 2026.7.2-beta.4, first stable 2026.8.1); the
+    # fix, 3bd8ec2b, is in 2026.9.4 and not in extended-stable 2026.8.35. MEDIUM, so
+    # its own rule beside the HIGH pin above rather than a raised floor.
+    _Pin("AAK-MCP-OPENCLAW-CVE-2026-102807-001", "openclaw", ("openclaw",),
+         (2026, 9, 4), introduced=(2026, 7, 2),
+         fix_label="2026.9.4 (the 2026.8.x extended-stable line has no fix yet)"),
 )
 
 _CANDIDATE_NAMES = (

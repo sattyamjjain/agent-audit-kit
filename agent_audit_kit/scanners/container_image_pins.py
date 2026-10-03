@@ -6,7 +6,9 @@ placeholder and PyPI's `obot` an unrelated bot library. MetaMCP's root
 `package.json` is `private: true`, its compose file pulls
 `ghcr.io/metatool-ai/metamcp:latest`, and npm's `@metamcp/mcp-server-metamcp` is
 a separate client proxy from another repository. heym is on neither registry and
-ships as `ghcr.io/heymrun/heym`. Nothing `mcp_cve_pins_2026_07` reads carries
+ships as `ghcr.io/heymrun/heym`, and mark3labs' `mcp-filesystem-server` is a Go
+binary whose one versioned distribution is
+`ghcr.io/mark3labs/mcp-filesystem-server`. Nothing `mcp_cve_pins_2026_07` reads carries
 their version, and a pin on a look-alike package name would report somebody
 else's project. The image tag is the only place a deployment states which
 release it runs, so this module reads image references and nothing else.
@@ -76,15 +78,17 @@ class _ImagePin:
 
 
 _PINS: tuple[_ImagePin, ...] = (
-    # CVE-2026-101084 (< v0.21.1), CVE-2026-101062 and CVE-2026-101064 (< v0.23.0),
-    # CVE-2026-103758 (0.21.1 to 0.24.1, no patched version named). v0.25.0 is the
-    # first tag carrying obot-platform/obot#7375 (190356202d), which made `checkUI`
-    # authorize only the UI's own "/" route. v0.24.2 was cut from the 0.24 branch
-    # after that, with one unrelated commit, and still has the 0.24.1 deny list.
+    # CVE-2026-101084 (< v0.21.1), CVE-2026-101062, CVE-2026-101064 and
+    # CVE-2026-101063 (< v0.23.0), CVE-2026-103758 (0.21.1 to 0.24.1, no patched
+    # version named). v0.25.0 is the first tag carrying obot-platform/obot#7375
+    # (190356202d), which made `checkUI` authorize only the UI's own "/" route.
+    # v0.24.2 was cut from the 0.24 branch after that, with one unrelated commit,
+    # and still has the 0.24.1 deny list.
     _ImagePin(
         "AAK-MCP-OBOT-CVE-2026-101084-001", "Obot", "ghcr.io/obot-platform/obot",
         (0, 25, 0), "below v0.25.0", "Fixed in v0.25.0.",
-        ("CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064"),
+        ("CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064",
+         "CVE-2026-101063"),
     ),
     # NVD scopes both "up to and including 2.4.22". There is no fixed release, and
     # 2.4.22 is the newest image tag, so the floor is the next patch number.
@@ -98,6 +102,17 @@ _PINS: tuple[_ImagePin, ...] = (
     _ImagePin(
         "AAK-MCP-HEYM-CVE-2026-100858-001", "heym", "ghcr.io/heymrun/heym",
         (0, 0, 109), "below 0.0.109", "Fixed in 0.0.109.", ("CVE-2026-100858",),
+    ),
+    # CVE-2026-79534 names v0.11.1, and the same `validatePath` fallback (return the
+    # unresolved path when `EvalSymlinks` reports a missing target) is in every
+    # tag from 0.6.0 and on `main`. No fixed release: 0.11.1 is the newest tag and
+    # the release workflow pushes `latest` only from tags, so `latest` is 0.11.1.
+    _ImagePin(
+        "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001", "mcp-filesystem-server",
+        "ghcr.io/mark3labs/mcp-filesystem-server",
+        (0, 11, 2), "up to and including 0.11.1", "No fixed release yet.",
+        ("CVE-2026-79534",),
+        floating_affected=True,
     ),
 )
 

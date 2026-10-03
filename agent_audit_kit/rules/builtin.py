@@ -206,6 +206,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-HEYM-CVE-2026-100858-001": ["IVS-04", "STA-08"],
     "AAK-MCP-OFFICEPPT-CVE-2025-71427-001": ["AIS-07", "STA-08"],
     "AAK-MCP-PENPOT-CVE-2026-100868-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-VOICEMODE-CVE-2026-79535-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-OPENCLAW-CVE-2026-102807-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -10174,7 +10178,11 @@ _r(
     "client an access token (CVE-2026-101062, CVSS 8.8, CWE-863); and remote MCP "
     "server registration fetches any URL a Power User supplies, including internal "
     "services and cloud metadata, with the response echoed in error messages "
-    "(CVE-2026-101064, CVSS 7.6, CWE-918). v0.25.0 is the first release whose "
+    "(CVE-2026-101064, CVSS 7.6, CWE-918). Also before v0.23.0, with registry "
+    "authentication enabled, the MCP Registry endpoints under `/v0.1/*` answer "
+    "without authentication, so anyone can list server names, descriptions, "
+    "repository URLs and connect URLs (CVE-2026-101063, CVSS 5.3, CWE-862, "
+    "GHSA-pr6h-vr44-xq8j). v0.25.0 is the first release whose "
     "`checkUI` authorizes only the UI's own fallback route "
     "(obot-platform/obot#7375). v0.24.2, cut from the 0.24 branch after it, still "
     "has the 0.24.1 deny list and is reported.",
@@ -10187,6 +10195,7 @@ _r(
     sarif_name="ObotImageGatewayAuthzBypass",
     cve_references=[
         "CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064",
+        "CVE-2026-101063",
     ],
     owasp_mcp_references=["MCP07:2025", "MCP09:2025"],
     owasp_agentic_references=["ASI03"],
@@ -10347,6 +10356,142 @@ _r(
         "was 2.15.4 on 2026-10-03; the newest published, 2.17.0, is too). It reads the npm "
         "version, not Penpot's: a self-hosted Penpot 2.18.0 server does not clear an "
         "older `@penpot/mcp`, since the bridge runs in the MCP server."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-03 wave, third batch (#879-#883). Five watcher-filed CVEs: four new
+# pins below and one more CVE on the Obot image pin. The dispositions are in
+# CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-VOICEMODE-CVE-2026-79535-001",
+    "VoiceMode below 8.10.2 writes MCP-supplied config values into a sourced env file unescaped",
+    "`voice-mode` (PyPI; mbailey/voicemode), a voice MCP server, lets its "
+    "`update_config` MCP tool (and `voicemode config set`) write a caller-supplied "
+    "value into `~/.voicemode/voicemode.env`. Before 8.10.2 a value with a space "
+    "or a quote was wrapped in double quotes and anything else written as is, and "
+    "the service start scripts `source` that file, so `$(...)` or backticks in "
+    "the value run as shell commands the next time the service starts "
+    "(CVE-2026-79535, CVSS 3.1 6.3, CWE-78, GHSA-h97v-r3jw-cf6f). 8.10.2 writes "
+    "only shell-inert values bare and single-quotes everything else (fix commit "
+    "`c1cef853`).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `voice-mode` to 8.10.2 or later and pin it. Check "
+    "`~/.voicemode/voicemode.env` for values containing `$(`, backticks or `;` "
+    "written before the upgrade.",
+    sarif_name="VoiceModeConfigEnvCommandInjection",
+    cve_references=["CVE-2026-79535"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports a reference that names the PyPI package: a requirements, pyproject "
+        "or lockfile entry, or `voice-mode` in an MCP config, where an unpinned "
+        "`uvx voice-mode` is reported as unpinned, as for the other PyPI pins. It "
+        "reads versions, not the env file: a value written by an older release stays "
+        "in `voicemode.env` after the upgrade."
+    ),
+)
+
+_r(
+    "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001",
+    "@0xshariq/github-mcp-server runs git commands built from tool arguments through a shell (no fixed release)",
+    "`@0xshariq/github-mcp-server` (npm; 0xshariq/github-mcp-server), a git MCP "
+    "server, builds its git commands as strings from tool arguments and runs them "
+    "with `child_process.exec`. The Git Remove tool's `gitRemove(file)` runs "
+    "`git reset HEAD \"${file}\"`, so a `file` argument carrying `$(...)` or a "
+    "closing quote runs shell commands as the server's user, and an agent that "
+    "reads untrusted text can be steered into that call. The only check, that the "
+    "command starts with `git `, does not stop it (CVE-2026-102906, CVSS 3.1 6.3, "
+    "CWE-77/CWE-78). The same `exec` of an interpolated string backs most of the "
+    "other git tools. Every published version has it (2.0.0 through 2.5.0, the "
+    "newest), the project has not answered the report (issue #2), and there is no "
+    "fixed release, so this is a presence-only pin.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Remove the server from agents that read untrusted "
+    "content, or replace it with a git MCP server that passes arguments to "
+    "`execFile`/`spawn` as an array. Pin the first fixed release once it ships.",
+    sarif_name="ShariqGithubMcpGitCommandInjection",
+    cve_references=["CVE-2026-102906"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reports a reference that names `@0xshariq/github-mcp-server`: a package.json "
+        "or lockfile entry, or the package in an MCP config. Presence-only: every "
+        "version is reported, a future fixed one included, until the pin gets a "
+        "floor. GitHub's own `github-mcp-server` and `@modelcontextprotocol/server-github` "
+        "are different projects and are not matched."
+    ),
+)
+
+_r(
+    "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001",
+    "mark3labs mcp-filesystem-server image (every tag): writes follow a dangling symlink out of the allowed directories",
+    "mark3labs `mcp-filesystem-server` is a Go MCP server that ships as the image "
+    "`ghcr.io/mark3labs/mcp-filesystem-server` and a `go install` binary. Its "
+    "`validatePath` resolves symlinks with `filepath.EvalSymlinks`, and when that "
+    "fails because the target does not exist it checks only the parent directory "
+    "and returns the unresolved path. A dangling symlink placed inside an allowed "
+    "directory therefore passes, and `write_file`, `modify_file`, `copy_file`, "
+    "`move_file` and `create_directory` follow it to create a file anywhere the "
+    "server's user can write (CVE-2026-79534, CVSS 3.1 5.9, CWE-22/CWE-59). The same "
+    "fallback is in every release from 0.6.0 to 0.11.1, the newest, and on `main`; "
+    "there is no fixed release, and `latest` is 0.11.1.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Mount only the directories the agent needs, "
+    "read-only where it only reads, and keep anything that could plant a symlink "
+    "(an untrusted repository, a shared upload directory) out of the allowed "
+    "directories. Pin the first fixed tag once it ships.",
+    sarif_name="Mark3labsFilesystemMcpDanglingSymlinkWrite",
+    cve_references=["CVE-2026-79534"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        _IMAGE_PIN_LIMITATIONS + " Every tag up to 0.11.1 is reported, and `latest` "
+        "or no tag too, since `latest` was 0.11.1 on 2026-10-03. A binary from "
+        "`go install github.com/mark3labs/mcp-filesystem-server` states no version "
+        "anywhere AAK reads and is not reported."
+    ),
+)
+
+_r(
+    "AAK-MCP-OPENCLAW-CVE-2026-102807-001",
+    "OpenClaw 2026.7.2 up to 2026.9.4: a read-scoped operator runs write-scoped MCP App tools",
+    "OpenClaw's `mcp.app.view` method issues a standalone ticket for an MCP App "
+    "view, and the ticket did not record what the issuer was allowed to do. An "
+    "operator holding only `operator.read` could request one and redeem it at the "
+    "MCP App view endpoint to call state-changing tools that need "
+    "`operator.write` (CVE-2026-102807, CVSS 3.1 5.3, CWE-863, GHSA-3xrq-g42v-gh57). "
+    "Standalone MCP Apps could call tools from 2026.7.2 (the "
+    "`mcp-app-standalone.ts` host is absent in 2026.7.1). 2026.9.4 binds the "
+    "ticket to the issuer's tool authority (`toolOperationsAuthorized`, fix commit "
+    "`3bd8ec2b`). The extended-stable line does not carry the fix: 2026.8.35 "
+    "(2026-10-02) is affected.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `openclaw` to 2026.9.4 or later and pin it. Until then, issue "
+    "`operator.read` tokens only to operators you would also trust with "
+    "`operator.write`.",
+    sarif_name="OpenClawMcpAppStandaloneTicketAuthz",
+    cve_references=["CVE-2026-102807"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports an npm reference to `openclaw` from 2026.7.2 up to 2026.9.4: a "
+        "package.json or lockfile entry, or the package in an MCP config, where an "
+        "unpinned reference is reported. Versions are compared on their first three "
+        "numbers, so the 2026.7.2 betas before the feature landed (beta.1 to beta.3) "
+        "are reported too. A later extended-stable 2026.8.x that backports the fix "
+        "would still be reported until the pin learns that line. Releases below "
+        "2026.7.1 belong to the older OpenClaw pin."
     ),
 )
 
