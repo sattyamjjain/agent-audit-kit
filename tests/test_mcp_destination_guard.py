@@ -149,6 +149,27 @@ async def call(body):
     assert RULE not in _ids(tmp_path, src)
 
 
+def test_an_imported_guard_with_a_leading_underscore_still_counts(tmp_path: Path) -> None:
+    """Guard recognition is shared with `ssrf_toctou`, so #855 reached this rule too.
+    Before it, `_validate_url_security` (fast-mcp-telegram, CVE-2026-55096) was no
+    guard here either, and a destination passed through it was reported as unguarded.
+    Whether that guard resolves before the fetch is AAK-SSRF-TOCTOU-001's question."""
+    src = '''
+import httpx
+
+from .security import _validate_url_security
+
+
+async def call(cfg):
+    """mcp tools/call"""
+    server_url = cfg["server_url"]
+    _validate_url_security(server_url)
+    return await httpx.AsyncClient().get(server_url)
+'''
+    assert RULE not in _ids(tmp_path, src)
+    assert RULE in _ids(tmp_path, src.replace("    _validate_url_security(server_url)\n", ""))
+
+
 def test_a_caller_supplied_tool_argument_is_not_this_rule(tmp_path: Path) -> None:
     """`AAK-MCP-SSRF-001` owns a URL that arrives as a tool argument. Firing here
     too would report one finding twice."""
