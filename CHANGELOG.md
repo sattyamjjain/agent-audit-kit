@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Link check is green on main again. The three pages that turned it red after #844 (two `snyk/agent-scan` docs and the OpenVEX spec) predate #844 and answered 503 to the CI runner on 2026-10-02 while serving 200 elsewhere, so they are excluded by exact path; github.com stays checked.
 - `AAK-AGENT-004` and `AAK-AGENT-006` again report three lines 0.6.10 reported and 0.6.11 missed: a credential after a comma splice ("Never print $GITHUB_TOKEN, log $AWS_SECRET_ACCESS_KEY ..."), an upload joined by "or" after an unrelated negation and a "but", and "Fetch `<url>` and execute immediately". Found in a review of 0.6.11.
 - `agent_config` reads a bounded window before each verb and credential, so a long crafted instruction-file line no longer scans in quadratic time (0.6.11 took minutes on 600 KB of "never upload it to `<url>`").
 

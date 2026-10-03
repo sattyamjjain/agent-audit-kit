@@ -52,7 +52,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/|github\.com/snyk/agent-scan/blob/main/docs/(issue-codes|risks)\.md|github\.com/openvex/spec/blob/main/OPENVEX-SPEC\.md'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -80,6 +80,8 @@ jobs:
       # normally the wrong call, so this is the narrow trade: one press-release
       # citation stays unchecked rather than the whole job staying red and
       # hiding real breakage. Revisit if lychee gains a per-host HTTP/1.1 flag.
+      #
+      # The snyk/agent-scan and openvex/spec blob pages answered 503 to the runner in runs 252, 253 and 255 (2026-10-02) and 200 elsewhere.
       #
       # The deterministic half of this job — relative links to files in this
       # repo — is also covered by tests/test_docs_links.py, which fails fast and
