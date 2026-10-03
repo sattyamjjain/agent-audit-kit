@@ -98,6 +98,9 @@ PINS = {
     # 2026-10-03 wave, second batch
     "AAK-MCP-OFFICEPPT-CVE-2025-71427-001": "medium",
     "AAK-MCP-PENPOT-CVE-2026-100868-001": "medium",
+    "AAK-MCP-VOICEMODE-CVE-2026-79535-001": "medium",
+    "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001": "medium",
+    "AAK-MCP-OPENCLAW-CVE-2026-102807-001": "medium",
 }
 
 
@@ -1609,3 +1612,90 @@ def test_penpot_bridge_stays_a_separate_lower_severity_rule() -> None:
     assert RULES[_PENPOT_BRIDGE].severity.value == "medium"
     assert RULES[_PENPOT_REPL].severity.value == "critical"
     assert RULES[_PENPOT_REPL].cve_references == ["CVE-2026-45805"]
+
+
+# --- 2026-10-03 wave, third batch (#879-#883) -------------------------------
+_CVE_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "cves"
+_VOICEMODE = "AAK-MCP-VOICEMODE-CVE-2026-79535-001"
+_SHARIQ = "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001"
+_OPENCLAW_APP = "AAK-MCP-OPENCLAW-CVE-2026-102807-001"
+_OPENCLAW_OLD = "AAK-MCP-OPENCLAW-CVE-2026-62195-001"
+
+
+def test_voicemode_fixtures_positive_and_negative() -> None:
+    """CVE-2026-79535 (#879): update_config writes the caller's value into a sourced
+    env file. Checked in the wheels: 8.10.1 double-quotes at best, which does not
+    stop `$(...)`; 8.10.2 single-quotes anything that is not shell-inert."""
+    root = _CVE_FIXTURES / "cve-2026-79535-voicemode"
+    assert _VOICEMODE in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _VOICEMODE not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("voice-mode==8.10.1\n", True),
+    ("voice_mode==8.9.0\n", True),       # PyPI folds - and _
+    ("voice-mode>=8.10.2\n", False),
+    ("voice-mode==8.12.0\n", False),
+    ("voice-mode-extras==1.0.0\n", False),  # a longer name is another package
+])
+def test_voicemode_versions(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_VOICEMODE in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_voicemode_unpinned_uvx_config_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"voice": {"command": "uvx", "args": ["voice-mode"]}}}'
+    assert _VOICEMODE in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_shariq_github_fixtures_positive_and_negative() -> None:
+    """CVE-2026-102906 (#880): `gitRemove(file)` runs `git reset HEAD "${file}"`
+    through child_process.exec. Checked in the npm tarballs of 2.0.0 and 2.5.0 (the
+    newest): both have it, and there is no fixed release. The negative holds the
+    official GitHub server and an unscoped package of a similar name."""
+    root = _CVE_FIXTURES / "cve-2026-102906-shariq-github-mcp"
+    assert _SHARIQ in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _SHARIQ not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize("version", ["2.0.0", "2.5.0", "2.6.0"])
+def test_shariq_github_every_version_fires_until_a_fix_ships(tmp_path: Path, version: str) -> None:
+    """Presence-only. 2.6.0 does not exist; it stands for whatever ships next."""
+    content = '{"dependencies": {"@0xshariq/github-mcp-server": "%s"}}' % version
+    assert _SHARIQ in _ids(tmp_path, "package.json", content)
+
+
+def test_shariq_github_npx_config_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"git": {"command": "npx", "args": ["-y", "@0xshariq/github-mcp-server"]}}}'
+    assert _SHARIQ in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_openclaw_app_fixtures_positive_and_negative() -> None:
+    """CVE-2026-102807 (#883): fixed in 2026.9.4 (3bd8ec2b). 2026.9.3 is affected and
+    past the older pin's 2026.7.1 floor, so only the new rule fires on it."""
+    root = _CVE_FIXTURES / "cve-2026-102807-openclaw"
+    vulnerable = {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _OPENCLAW_APP in vulnerable
+    assert _OPENCLAW_OLD not in vulnerable
+    assert _OPENCLAW_APP not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("2026.7.1", False),   # the standalone MCP App host is absent here
+    ("2026.6.34", False),  # extended-stable 2026.6 line, no host either
+    ("2026.7.2", True),
+    ("2026.8.1", True),    # first stable release with tools through the host
+    ("2026.8.35", True),   # extended-stable 2026.8 line: no backport on 2026-10-02
+    ("2026.9.3", True),
+    ("2026.9.4", False),
+    ("2026.9.8", False),
+])
+def test_openclaw_app_version_range(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"openclaw": "%s"}}' % version
+    assert (_OPENCLAW_APP in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_openclaw_app_is_its_own_medium_rule_beside_the_high_pin() -> None:
+    """Raising the 2026.7.1 floor would have called 2026.7.1-2026.9.3 the HIGH bugs."""
+    assert RULES[_OPENCLAW_APP].severity.value == "medium"
+    assert RULES[_OPENCLAW_OLD].severity.value == "high"
+    assert "CVE-2026-102807" not in RULES[_OPENCLAW_OLD].cve_references

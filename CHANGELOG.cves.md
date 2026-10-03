@@ -16,7 +16,75 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-04 (unreleased): CVE-2026-55096 on its class rule
+## 2026-10-03 (v0.6.15): five disclosures, four new pins, one more CVE on the Obot pin
+
+The watcher opened five `cve-response` issues at 21:14Z (#879-#883) while 0.6.15
+was being cut, so the release waited for them. All five are in scope. Four get a
+new pin, each measured with the scanner on a firing fixture and a negative one,
+and one is fixed below an existing pin's floor and joins that rule. NVD text below
+is quoted from the API record, read on 2026-10-03.
+
+**VoiceMode (CVE-2026-79535) gets `AAK-MCP-VOICEMODE-CVE-2026-79535-001`, below
+8.10.2.** NVD: "mbailey VoiceMode <= 8.10.1 is vulnerable to OS Command Injection.
+The update_config MCP tool (and the "voicemode config set" CLI) writes a
+caller-supplied value into ~/.voicemode/voicemode.env without shell-safe
+escaping." The PyPI distribution is `voice-mode`. In the 8.10.1 wheel
+`_format_env_value` writes a value bare or in double quotes, and double quotes do
+not stop `$(...)` when the service scripts `source` the file. The 8.10.2 wheel
+writes only shell-inert values bare and single-quotes the rest
+(GHSA-h97v-r3jw-cf6f, fix `c1cef853`).
+
+**@0xshariq/github-mcp-server (CVE-2026-102906) gets
+`AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001`, every version.** NVD: "This issue
+affects the function child_process.exec of the file src/github.ts of the component
+Git Remove MCP Tool. Such manipulation of the argument File leads to os command
+injection." In the npm tarballs of 2.0.0 and 2.5.0, the newest, `gitRemove(file)`
+runs `git reset HEAD "${file}"` through `exec`, behind a check that the string
+starts with `git `. NVD also says the project "has not responded yet": issue #2
+has no reply and the repository has had no push since 2026-03-25. So the pin is
+presence-only, like the PowerPoint one.
+
+**mark3labs mcp-filesystem-server (CVE-2026-79534) gets
+`AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001` on its container image, every tag.**
+NVD: "mark3labs mcp-filesystem-server v0.11.1 is vulnerable to Directory Traversal
+due to an improper link resolution in validatePath (filesystemserver/handler/helper.go).
+When filepath.EvalSymlinks returns os.IsNotExist for a dangling symlink, the
+fallback validates only the parent directory and returns the unresolved path". It
+is a Go module, which no AAK reader covers, but its README runs it as
+`ghcr.io/mark3labs/mcp-filesystem-server`, so the image tag is pinnable through
+`container_image_pins`. The same fallback is in `validatePath` at every tag from
+0.6.0 to 0.11.1 (the newest) and on `main`, and the release workflow pushes
+`latest` only from tags, so `latest` is 0.11.1 too. There is no fixed release, so
+the floor is the next patch, as for MetaMCP.
+
+**Obot (CVE-2026-101063) joins `AAK-MCP-OBOT-CVE-2026-101084-001`.** NVD: "Obot
+versions before v0.23.0 fail to enforce authentication on MCP Registry endpoints
+under /v0.1/* when registry authentication is enabled." v0.23.0 is below the pin's
+v0.25.0 floor, so every version this CVE affects is already reported. The CVE is
+added to the rule and to the image pin's evidence, and no pin changes.
+
+**OpenClaw (CVE-2026-102807) gets `AAK-MCP-OPENCLAW-CVE-2026-102807-001`, 2026.7.2
+up to 2026.9.4.** NVD: "OpenClaw before 2026.9.4 contains an incorrect
+authorization vulnerability in the mcp.app.view method that allows read-scoped
+operators to execute MCP App tools requiring operator.write scope." The fix,
+`3bd8ec2b`, is in 2026.9.4 and not in the extended-stable 2026.8.35 (2026-10-02).
+`src/gateway/mcp-app-standalone.ts` is absent at 2026.7.1, and tools through it
+arrived in `7c070d6` (2026.7.2-beta.4, first stable 2026.8.1), so the pin starts
+at 2026.7.2. The CVE is MEDIUM and the existing OpenClaw pin is HIGH with a
+2026.7.1 floor, so this is a separate rule: raising that floor would report
+2026.7.1 to 2026.9.3 as the HIGH bugs.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-79535 | 6.3 | `voice-mode` (PyPI) | **New pin** `AAK-MCP-VOICEMODE-CVE-2026-79535-001`: below 8.10.2. | #879 |
+| CVE-2026-102906 | 6.3 | `@0xshariq/github-mcp-server` (npm) | **New pin** `AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001`: every version. No fixed release. | #880 |
+| CVE-2026-79534 | 5.9 | `ghcr.io/mark3labs/mcp-filesystem-server` (image) | **New pin** `AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001`: every tag up to 0.11.1, and `latest`. No fixed release. | #881 |
+| CVE-2026-101063 | 5.3 | `ghcr.io/obot-platform/obot` (image) | **Added** to `AAK-MCP-OBOT-CVE-2026-101084-001`: fixed in v0.23.0, below its v0.25.0 floor. | #882 |
+| CVE-2026-102807 | 5.3 | `openclaw` (npm) | **New pin** `AAK-MCP-OPENCLAW-CVE-2026-102807-001`: 2026.7.2 up to 2026.9.4. | #883 |
+
+CVSS is NVD's CVSS 3.1 score.
+
+## 2026-10-03 (v0.6.15): CVE-2026-55096 on its class rule
 
 No new disclosures. `AAK-SSRF-TOCTOU-001` now strips leading underscores before it
 matches a guard's name, so it fires on the `fast-mcp-telegram` 0.30.0 code that the

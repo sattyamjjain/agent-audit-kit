@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.15] - 2026-10-03
+
+### Added
+
+- `AAK-MCP-VOICEMODE-CVE-2026-79535-001`: `voice-mode` below 8.10.2 (CVE-2026-79535, #879). Its `update_config` MCP tool writes the caller's value into `~/.voicemode/voicemode.env`, which the service scripts `source`, and before 8.10.2 that value was at best double-quoted, which does not stop `$(...)`.
+- `AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001`: `@0xshariq/github-mcp-server`, every version (CVE-2026-102906, #880). Its git tools run interpolated strings through `child_process.exec`, such as `git reset HEAD "${file}"` for Git Remove. Every release from 2.0.0 to 2.5.0 has it, and there is no fix.
+- `AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001`: the `ghcr.io/mark3labs/mcp-filesystem-server` image, every tag up to 0.11.1 and `latest` (CVE-2026-79534, #881). `validatePath` returns the unresolved path when a symlink's target does not exist, so writes follow a dangling symlink out of the allowed directories. There is no fixed release.
+- `AAK-MCP-OPENCLAW-CVE-2026-102807-001`: `openclaw` from 2026.7.2 up to 2026.9.4 (CVE-2026-102807, #883), where an `operator.read` token runs `operator.write` MCP App tools through a standalone ticket. It is MEDIUM, so it gets its own rule beside the HIGH OpenClaw pin. The extended-stable 2026.8.x line has no fix yet.
+
 ### Changed
 
+- Dispositioned #879 to #883: four new pins (above), and CVE-2026-101063 (#882, Obot before v0.23.0) added to `AAK-MCP-OBOT-CVE-2026-101084-001`, whose v0.25.0 floor already covers it.
 - The VS Code extension's `vscode:prepublish` script runs `npm run compile`, so `vsce package` can no longer ship a stale `out/`. Dependabot now covers its devDependencies in one grouped npm PR (`@types/vscode` excluded, since it has to move with `engines.vscode`), and CodeQL analyses its TypeScript, `vscode-extension/src` only, so the repo's deliberately vulnerable JS fixtures stay out of the alerts.
 - The last `Optional[X]` annotations, in nine package modules and six scripts, are `X | None` now, as the code conventions ask, and `tests/test_no_optional_annotations.py` keeps it that way.
 - A new workflow, `vscode-extension.yml`, installs and packages the VS Code extension whenever it changes. Until now nothing in CI compiled it, so Dependabot's first grouped PR (#873, TypeScript 5 to 7) showed every check green while `tsc` failed. The extension's `tsconfig.json` names its `types` (`node`, `vscode`), which TypeScript 7 needs and 5.9 accepts, and Dependabot leaves `@types/node` majors to a person.

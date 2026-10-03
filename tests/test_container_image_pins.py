@@ -10,6 +10,8 @@ scanner and through a full `run_scan`:
 - MetaMCP: 2.4.22 and `latest` (the same image on 2026-10-03) fire. There is no
   fixed release, so the negative is a reference that states no version.
 - heym: 0.0.108 fires, 0.0.109 does not.
+- mark3labs mcp-filesystem-server (#881): 0.11.1 and `latest` fire. There is no
+  fixed release, so the negative is a look-alike image and an interpolated tag.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "cves"
 OBOT = "AAK-MCP-OBOT-CVE-2026-101084-001"
 METAMCP = "AAK-MCP-METAMCP-CVE-2026-79538-001"
 HEYM = "AAK-MCP-HEYM-CVE-2026-100858-001"
+MARK3LABS_FS = "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
 
 
 def _ids(root: Path) -> list[str]:
@@ -42,12 +45,48 @@ def _write(tmp_path: Path, name: str, content: str) -> list[str]:
 def test_each_pin_carries_its_cves_and_severity() -> None:
     assert RULES[OBOT].cve_references == [
         "CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064",
+        "CVE-2026-101063",
     ]
     assert RULES[METAMCP].cve_references == ["CVE-2026-79538", "CVE-2026-79537"]
     assert RULES[HEYM].cve_references == ["CVE-2026-100858"]
-    assert [RULES[r].severity.value for r in (OBOT, METAMCP, HEYM)] == [
-        "critical", "critical", "medium",
+    assert RULES[MARK3LABS_FS].cve_references == ["CVE-2026-79534"]
+    assert [RULES[r].severity.value for r in (OBOT, METAMCP, HEYM, MARK3LABS_FS)] == [
+        "critical", "critical", "medium", "medium",
     ]
+
+
+def test_obot_registry_auth_cve_rides_the_existing_floor(tmp_path: Path) -> None:
+    """CVE-2026-101063 (#882) is fixed in v0.23.0, below the pin's v0.25.0 floor, so
+    every version it affects is already reported: it joins the rule, no new pin."""
+    ids = _write(tmp_path, "compose.yaml", "services:\n  o:\n    image: ghcr.io/obot-platform/obot:v0.22.0\n")
+    assert ids == [OBOT]
+
+
+@pytest.mark.parametrize("case, line", [("vulnerable", 10), ("vulnerable-tagged", 5)])
+def test_mark3labs_filesystem_fixtures_fire(case: str, line: int) -> None:
+    """CVE-2026-79534 (#881): `latest` in an MCP config's docker args, and 0.11.1 in
+    compose. The release workflow pushes `latest` only from tags, so it is 0.11.1."""
+    root = FIXTURES / "cve-2026-79534-mark3labs-filesystem" / case
+    findings = scan(root)[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(MARK3LABS_FS, line)]
+    assert MARK3LABS_FS in {f.rule_id for f in run_scan(root).findings}
+
+
+def test_mark3labs_filesystem_lookalike_and_interpolated_tag_are_quiet() -> None:
+    root = FIXTURES / "cve-2026-79534-mark3labs-filesystem" / "negative"
+    assert _ids(root) == []
+    assert MARK3LABS_FS not in {f.rule_id for f in run_scan(root).findings}
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("0.6.0", True),     # the oldest tag has the same fallback
+    ("0.11.1", True),
+    ("0.11.2", False),   # does not exist; stands for the first fixed tag
+    ("main", False),
+])
+def test_mark3labs_filesystem_tag_reading(tmp_path: Path, tag: str, fires: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  f:\n    image: ghcr.io/mark3labs/mcp-filesystem-server:{tag}\n")
+    assert (MARK3LABS_FS in ids) is fires
 
 
 @pytest.mark.parametrize(

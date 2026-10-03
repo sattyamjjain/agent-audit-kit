@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-03T19:17:19Z",
-  "aak_version": "0.6.14",
-  "rule_count": 371,
+  "last_updated": "2026-10-03T21:33:20Z",
+  "aak_version": "0.6.15",
+  "rule_count": 375,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 52,
+      "rule_density": 53,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -447,6 +447,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-79534"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
           "severity": "medium",
           "cve_references": [
@@ -708,7 +719,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 76,
+      "rule_density": 77,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -1053,6 +1064,7 @@
           "severity": "critical",
           "cve_references": [
             "CVE-2026-101062",
+            "CVE-2026-101063",
             "CVE-2026-101064",
             "CVE-2026-101084",
             "CVE-2026-103758"
@@ -1072,6 +1084,17 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OPENCLAW-CVE-2026-102807-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-102807"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
           ]
         },
         {
@@ -1381,7 +1404,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 84,
+      "rule_density": 85,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1858,6 +1881,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-79534"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
@@ -2248,7 +2282,7 @@
     {
       "asi_id": "ASI05",
       "title": "Cascading Failures",
-      "rule_density": 58,
+      "rule_density": 60,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -2625,6 +2659,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-102906"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-SIDECAR-NOAUTH-001",
           "severity": "high",
           "cve_references": [
@@ -2697,6 +2742,17 @@
           "severity": "critical",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-VOICEMODE-CVE-2026-79535-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-79535"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
