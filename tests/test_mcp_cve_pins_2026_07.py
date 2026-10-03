@@ -93,6 +93,8 @@ PINS = {
     "AAK-MCP-KIMICODE-CVE-2026-95660-001": "medium",
     # 2026-10-02 wave
     "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": "critical",
+    # 2026-10-03 wave
+    "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001": "high",
 }
 
 
@@ -1478,3 +1480,43 @@ def test_the_unscoped_pi_llm_wiki_is_another_project(tmp_path: Path) -> None:
     """npm's unscoped `pi-llm-wiki` (0.1.0) is a different author's package."""
     content = '{"dependencies": {"pi-llm-wiki": "0.1.0"}}'
     assert _PILLMWIKI not in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-10-03 wave -------------------------------------------------------
+
+_FMTG = "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001"
+_FMTG_FIXTURES = (
+    Path(__file__).resolve().parent / "fixtures" / "cves" / "cve-2026-55096-fast-mcp-telegram"
+)
+
+
+def test_fast_mcp_telegram_fixtures_positive_and_negative() -> None:
+    """CVE-2026-55096 (#853): the attachment guard checks the literal hostname and
+    never resolves it. Fixed in 0.30.1, which NVD and the advisory print as "30.1"."""
+    assert _FMTG in {f.rule_id for f in scan(_FMTG_FIXTURES / "vulnerable")[0]}
+    assert _FMTG not in {f.rule_id for f in scan(_FMTG_FIXTURES / "negative")[0]}
+
+
+def test_fast_mcp_telegram_later_release_passes(tmp_path: Path) -> None:
+    assert _FMTG not in _ids(tmp_path, "requirements.txt", "fast-mcp-telegram==0.45.0\n")
+
+
+def test_fast_mcp_telegram_unpinned_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"telegram": {"command": "uvx", "args": ["fast-mcp-telegram"]}}}'
+    assert _FMTG in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_fast_mcp_telegram_locked_version_decides(tmp_path: Path) -> None:
+    lock = '[[package]]\nname = "fast-mcp-telegram"\nversion = "%s"\n'
+    assert _FMTG in _ids(tmp_path, "uv.lock", lock % "0.30.0")
+    assert _FMTG not in _ids(tmp_path, "uv.lock", lock % "0.30.1")
+
+
+def test_fast_mcp_telegram_is_a_pypi_pin(tmp_path: Path) -> None:
+    """npm has no package of that name, so a package.json entry is not this project."""
+    content = '{"dependencies": {"fast-mcp-telegram": "0.29.0"}}'
+    assert _FMTG not in _ids(tmp_path, "package.json", content)
+
+
+def test_fast_mcp_telegram_longer_name_is_another_package(tmp_path: Path) -> None:
+    assert _FMTG not in _ids(tmp_path, "requirements.txt", "fast-mcp-telegram-bot==0.1.0\n")

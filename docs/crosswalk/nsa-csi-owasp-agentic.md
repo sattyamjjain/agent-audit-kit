@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (365 total; 345 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (366 total; 346 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -184,6 +184,7 @@ Every AgentAuditKit rule (365 total; 345 mapped) against two agentic-security st
 | `AAK-MCP-DEST-UNVALIDATED-001` | high | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution |
 | `AAK-MCP-DOCUMENTDB-CVE-2026-18954-001` | medium | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-ENV-PLACEHOLDER-EXFIL-001` | critical | secret-exposure | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
+| `AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001` | high | supply-chain | — | ASI06 Memory & Context Poisoning |
 | `AAK-MCP-FHI-001` | high | tool-poisoning | Choose supported MCP projects when possible; Validate parameters; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-FLORENCE2-CVE-2026-19984-001` | medium | supply-chain | — | ASI06 Memory & Context Poisoning |
 | `AAK-MCP-FLOWISE-CVE-2026-91931-001` | high | supply-chain | Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse |

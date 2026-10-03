@@ -125,6 +125,8 @@ available) before shipping:
     `.mcp.json` servers spawned before the trust prompt)
   - @zosmaai/pi-llm-wiki           >= 0.11.8  (CVE-2026-102911; the wiki_capture_source MCP
     tool's `url` reaches `sh -c`. A stated version is required, as for mcp-remote)
+  - fast-mcp-telegram              >= 0.30.1  (CVE-2026-55096; the attachment SSRF guard
+    checks the literal hostname and never resolves it. NVD prints the fix as "30.1")
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -191,6 +193,11 @@ _MCP_REMOTE_RE = re.compile(r"(?<![\w./-])mcp-remote(?![\w-])" + _VER_REQ, re.IG
 # npm `pi-llm-wiki` is a different author's package and is never matched.
 _PILLMWIKI_RE = re.compile(
     r"(?<![\w./-])@zosmaai/pi-llm-wiki(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+# `fast-mcp-telegram` (PyPI). Bounded on both sides so a longer sibling name
+# (`fast-mcp-telegram-*`) is never read as this package.
+_FASTMCPTELEGRAM_RE = re.compile(
+    r"(?<![\w./-])fast-mcp-telegram(?![\w-])" + _VER_OPT, re.IGNORECASE
 )
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
@@ -1016,6 +1023,15 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-PILLMWIKI-CVE-2026-102911-001", "@zosmaai/pi-llm-wiki",
          ("@zosmaai/pi-llm-wiki",), (0, 11, 8), fix_label="0.11.8",
          regexes=(_PILLMWIKI_RE,), ecosystem="js"),
+    # --- 2026-10-03 wave ---
+    # fast-mcp-telegram's attachment download checks the URL's literal hostname
+    # in `_validate_url_security` and never resolves it, then httpx resolves the
+    # name itself (CVE-2026-55096, CVSS 7.1, CWE-918). 0.30.1 resolves first (fix
+    # e6b3032c). NVD and the advisory print the fix as "30.1"; PyPI and the
+    # GitHub tag say 0.30.1. No npm package of that name exists.
+    _Pin("AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001", "fast-mcp-telegram",
+         ("fast-mcp-telegram",), (0, 30, 1), fix_label="0.30.1",
+         regexes=(_FASTMCPTELEGRAM_RE,), ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (

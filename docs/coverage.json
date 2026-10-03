@@ -3853,6 +3853,25 @@
       "title": "MCP server resolves ${VAR} placeholders against process.env on a user-supplied server config (secret exfiltration)"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-55096"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
+      "severity": "high",
+      "title": "fast-mcp-telegram below 0.30.1 fetches attachment URLs its SSRF guard never resolved"
+    },
+    {
       "category": "tool-poisoning",
       "cve_references": [],
       "eu_ai_act": [
@@ -5416,6 +5435,7 @@
     {
       "category": "mcp-config",
       "cve_references": [
+        "CVE-2026-104120",
         "CVE-2026-14748"
       ],
       "eu_ai_act": [
@@ -8244,14 +8264,14 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 124,
+      "supply-chain": 125,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 129,
+      "Art. 10 - Data Governance": 130,
       "Art. 13 - Transparency": 33,
       "Art. 14 - Human Oversight": 40,
       "Art. 15 - Robustness & Security": 216,
@@ -8274,7 +8294,7 @@
       "ASI03": 74,
       "ASI04": 83,
       "ASI05": 57,
-      "ASI06": 49,
+      "ASI06": 50,
       "ASI07": 9,
       "ASI08": 5,
       "ASI09": 18,
@@ -8289,18 +8309,18 @@
       "MCP06:2025": 20,
       "MCP07:2025": 38,
       "MCP08:2025": 10,
-      "MCP09:2025": 30,
+      "MCP09:2025": 31,
       "MCP10:2025": 12
     },
     "by_severity": {
       "critical": 87,
-      "high": 167,
+      "high": 168,
       "info": 5,
       "low": 10,
       "medium": 96
     },
-    "total_cves_covered": 272,
-    "total_rules": 365
+    "total_cves_covered": 274,
+    "total_rules": 366
   },
   "tool": "agent-audit-kit"
 }

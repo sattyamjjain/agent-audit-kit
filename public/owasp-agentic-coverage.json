@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-02T11:09:47Z",
+  "last_updated": "2026-10-03T11:28:14Z",
   "aak_version": "0.6.11",
-  "rule_count": 365,
+  "rule_count": 366,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2725,7 +2725,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 49,
+      "rule_density": 50,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -2857,6 +2857,17 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-55096"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FLORENCE2-CVE-2026-19984-001",
           "severity": "medium",
           "cve_references": [
@@ -2979,6 +2990,7 @@
           "id": "AAK-MCP-SSRF-001",
           "severity": "medium",
           "cve_references": [
+            "CVE-2026-104120",
             "CVE-2026-14748"
           ],
           "aicm_references": [

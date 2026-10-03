@@ -4515,6 +4515,35 @@
     },
     {
       "adversa_references": [
+        "ADV-SSRF-01"
+      ],
+      "aicm_references": [
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-55096"
+      ],
+      "description": "`fast-mcp-telegram`, a Telegram MCP server, downloads the http(s) URLs given to its `send_message` and `send_message_to_phone` MCP tools and attaches them to the outgoing message. Before 0.30.1 the guard, `_validate_url_security`, compares the URL's literal hostname with a denylist and never resolves it, while the fetch (`httpx.AsyncClient.get`) resolves the name itself. A hostname that resolves to a loopback, private or link-local address therefore passes the guard and is fetched, even with `block_private_ips=True` and `allow_http_urls=False`, and the body comes back to the caller as a Telegram attachment, so the read is not blind (CVE-2026-55096, CVSS 3.1 7.1, CWE-918/CWE-184). 0.30.1 resolves the name with `socket.getaddrinfo` and blocks loopback, private and link-local results (fix commit `e6b3032c`). NVD and the advisory print the fixed version as \"30.1\"; the release on PyPI and the GitHub tag are 0.30.1.",
+      "incident_references": [],
+      "limitations": "Reports a reference that names the package: a requirements, pyproject or lockfile entry, or `fast-mcp-telegram` in an MCP config, where an unpinned `uvx fast-mcp-telegram` is reported as unpinned, as for the other PyPI pins. It reads versions, not code: the defect's shape, a hostname-only guard before a fetch that resolves again, is the class `AAK-SSRF-TOCTOU-001` names, and that rule does not recognise this guard (a leading underscore, and no resolution in its body), which is #855.",
+      "owasp_agentic_references": [
+        "ASI06"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP09:2025"
+      ],
+      "remediation": "Upgrade `fast-mcp-telegram` to >= 0.30.1 and pin it. Until then, do not let an untrusted caller choose the attachment URLs `send_message` downloads, or run the server where loopback, private and cloud-metadata addresses are unreachable.",
+      "rule_id": "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
+      "sarif_name": "FastMcpTelegramAttachmentSsrf",
+      "severity": "high",
+      "title": "fast-mcp-telegram below 0.30.1 fetches attachment URLs its SSRF guard never resolved"
+    },
+    {
+      "adversa_references": [
         "ADV-CHAIN-02"
       ],
       "aicm_references": [
@@ -6442,7 +6471,8 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [
-        "CVE-2026-14748"
+        "CVE-2026-14748",
+        "CVE-2026-104120"
       ],
       "description": "An MCP tool handler passes an attacker-controllable URL argument (`url` / `endpoint` / `target` / `uri` and similar) straight into an outbound fetch (`requests` / `httpx` / `urllib` / `aiohttp`) without validating the host or scheme first, so a caller-supplied URL is fetched server-side and can reach loopback, private-range, or cloud-metadata endpoints (CWE-918, server-side request forgery). NVD, CVE-2026-14748: \"A flaw has been found in AIAnytime Awesome-MCP-Server ... the file mcp-wiki/src/mcp_wiki/server.py of the component mcp-wiki/wiki-summary. This manipulation of the argument url causes server-side request forgery. The attack may be initiated remotely. The exploit has been published.\" (CVSS 6.3 MEDIUM, https://nvd.nist.gov/vuln/detail/CVE-2026-14748).",
       "incident_references": [],
