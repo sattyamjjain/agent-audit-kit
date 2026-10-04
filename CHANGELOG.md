@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The container image is published for `linux/arm64` as well as `linux/amd64`. Through 0.6.15 it was amd64-only, so the documented `docker pull ghcr.io/sattyamjjain/agent-audit-kit:<version>` failed on Apple Silicon and ARM runners with "no matching manifest for linux/arm64/v8", unless the caller added `--platform linux/amd64`. The release and nightly workflows build both architectures under QEMU and run the pushed arm64 image before they finish.
 
+### Fixed
+
+- Two rule pages broke the link check: `AAK-LANGCHAIN-SSRF-REDIR-001` and `AAK-SSRF-TOCTOU-001` linked their advisories (GHSA-fv5p-p927-qmxr and GHSA-r7w7-9xr2-qq2r) on advisories.gitlab.com, which on 2026-10-04 answered 404 for every advisory page, including the newest ones in its own feed. Both now link GitHub's advisory pages, where a GHSA id is published and both advisories still resolve.
+
 ## [0.6.15] - 2026-10-03
 
 ### Added
