@@ -13,7 +13,7 @@
 | OWASP Agentic | ASI04 |
 | AICM | IVS-04, AIS-08 |
 | CVE | [CVE-2026-41488](https://nvd.nist.gov/vuln/detail/CVE-2026-41488) |
-| Advisory | [GHSA-r7w7-9xr2-qq2r](https://advisories.gitlab.com/pypi/langchain-openai/GHSA-r7w7-9xr2-qq2r/) |
+| Advisory | [GHSA-r7w7-9xr2-qq2r](https://github.com/advisories/GHSA-r7w7-9xr2-qq2r) |
 
 ## What it catches
 
