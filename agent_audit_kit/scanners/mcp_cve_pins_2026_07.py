@@ -132,7 +132,9 @@ available) before shipping:
     newest and the fix, upstream PR #33, is unmerged)
   - @penpot/mcp                    >= 2.18.0  (CVE-2026-100868; the plugin WebSocket
     bridge listens on every interface. Its own MEDIUM rule beside the CRITICAL 2.15.0
-    REPL pin above, and npm has no 2.18.x yet, so every published release is reported)
+    REPL pin above. The fix is in Penpot's 2.18.0 tag, whose mcp/package.json reads
+    2.17.0, and no npm build has been published from it, so every published release
+    is reported)
   - voice-mode                     >= 8.10.2  (CVE-2026-79535; update_config writes the
     caller's value into a sourced env file, double-quoted at best)
   - @0xshariq/github-mcp-server    presence-only (CVE-2026-102906; git tools run
@@ -1077,15 +1079,20 @@ _PINS: tuple[_Pin, ...] = (
          regexes=(_OFFICEPPT_RE,), ecosystem="py"),
     # @penpot/mcp's plugin WebSocket bridge is `new WebSocketServer({ port })` with
     # no host, so it listens on every interface, unauthenticated in single-user
-    # mode (CVE-2026-100868, CVSS 6.3, GHSA-ch2q-6x56-qg5r). Penpot fixed it in
-    # 2.18.0 (b5274a44), but npm has no @penpot/mcp 2.18.x: 2.17.0 is the newest
-    # published and `latest` is 2.15.4, both affected. A rule of its own, not a
-    # raised floor on the 45805 pin above: that one is a CRITICAL RCE fixed in
-    # 2.15.0, and raising its floor would report 2.15.0-2.17.x as critical.
+    # mode (CVE-2026-100868, CVSS 6.3, GHSA-ch2q-6x56-qg5r). The fix, b5274a44
+    # (2026-09-22), is in Penpot's 2.18.0 tag, but that tag's mcp/package.json still
+    # reads 2.17.0 (penpot/penpot#12007) and npm has no build from it. npm's own
+    # 2.17.0 (2026-07-08) predates the fix, and `latest` is 2.15.4: both affected,
+    # re-checked from the tarball on 2026-10-04. A fixed npm build numbered below
+    # 2.18.0 would be reported until this floor follows it (#872). A rule of its
+    # own, not a raised floor on the 45805 pin above: that one is a CRITICAL RCE
+    # fixed in 2.15.0, and raising its floor would report 2.15.0-2.17.x as critical.
     _Pin("AAK-MCP-PENPOT-CVE-2026-100868-001", "@penpot/mcp", ("@penpot/mcp",),
          (2, 18, 0),
-         fix_label="2.18.0 (not on npm yet, 2.17.0 is the newest published; "
-                   "meanwhile firewall the plugin WebSocket port, 4402 by default)"),
+         fix_label="Penpot 2.18.0, but no npm build has been published from that "
+                   "tag yet (its mcp/package.json reads 2.17.0, penpot/penpot#12007, "
+                   "and npm's 2.17.0 predates the fix); meanwhile firewall the plugin "
+                   "WebSocket port, 4402 by default"),
     # --- 2026-10-03 wave, third batch (#879-#883) ---
     # VoiceMode's update_config MCP tool writes the caller's value into
     # ~/.voicemode/voicemode.env, which the service scripts `source`; before 8.10.2

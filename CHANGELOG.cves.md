@@ -134,6 +134,14 @@ and raising its floor would report 2.15.0 to 2.17.x as critical. GHSA-ch2q-6x56-
 the advisory NVD cites, is a repository advisory that names no npm package; it
 lists `penpot/penpot` up to 2.17.2 as affected.
 
+Re-checked 2026-10-04 (#872): npm's `@penpot/mcp` 2.17.0, published 2026-07-08,
+still calls `new WebSocketServer({ port: port })` in
+`packages/server/src/PluginBridge.ts`, so it predates the fix, which landed on
+2026-09-22. The fix is in Penpot's 2.18.0 tag, but that tag's `mcp/package.json`
+reads 2.17.0 (penpot/penpot#12007) and npm has no build from it: `latest` is
+2.15.4 and `next` is 2.17.0. The floor stays at 2.18.0, and the pin's fix label
+now says the fix has not been published to npm.
+
 **WEBO MCP (CVE-2026-97242), MCP Content Manager Lite (CVE-2026-97239) and Airano
 MCP Bridge (CVE-2026-32585) are out of scope.** All three are wordpress.org
 plugins with no npm or PyPI artifact, and Patchstack is the only reference NVD
@@ -144,7 +152,7 @@ still the newest release on wordpress.org.
 | CVE | CVSS | Package | What changed | Issue |
 |---|---|---|---|---|
 | CVE-2025-71427 | 6.8 | `office-powerpoint-mcp-server` (PyPI) | **New pin** `AAK-MCP-OFFICEPPT-CVE-2025-71427-001`: every version. No fixed release. | #864 |
-| CVE-2026-100868 | 6.3 | `@penpot/mcp` (npm) | **New pin** `AAK-MCP-PENPOT-CVE-2026-100868-001`: below 2.18.0, which npm does not have yet. | #867 |
+| CVE-2026-100868 | 6.3 | `@penpot/mcp` (npm) | **New pin** `AAK-MCP-PENPOT-CVE-2026-100868-001`: below 2.18.0. The fix is in Penpot's 2.18.0 tag, whose `mcp/package.json` reads 2.17.0, and no npm build has been published from it (re-checked 2026-10-04). | #867 |
 | CVE-2026-97242 | 6.8 | WEBO MCP (wordpress.org plugin) | **Out of scope**, non-pinnable. Upgrade the plugin to 3.0.22 or later. | #863 |
 | CVE-2026-97239 | 6.5 | MCP Content Manager Lite (wordpress.org plugin) | **Out of scope**, non-pinnable. Upgrade the plugin to 1.2.0 or later. | #865 |
 | CVE-2026-32585 | 6.5 | Airano MCP Bridge (wordpress.org plugin) | **Out of scope**, non-pinnable, and no fixed release yet. | #866 |

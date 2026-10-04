@@ -10333,17 +10333,20 @@ _r(
     "single-user mode it accepts the connection without authentication. Anyone on "
     "an adjacent network can connect as the plugin, receive the agent's task "
     "payloads and return forged results (CVE-2026-100868, CVSS 3.1 6.3, "
-    "GHSA-ch2q-6x56-qg5r, fix commit `b5274a44`). npm has no 2.18.x yet: 2.17.0 is "
-    "the newest published release and still binds every interface, so every "
-    "published version is reported. The older `@penpot/mcp` pin, for the REPL RCE "
-    "fixed in 2.15.0, stays a separate rule because that one is critical and this "
-    "one is not.",
+    "GHSA-ch2q-6x56-qg5r). The fix, commit `b5274a44` (2026-09-22), is in Penpot's "
+    "2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag yet, "
+    "and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). "
+    "npm's own 2.17.0 was published on 2026-07-08, before the fix, and still binds "
+    "every interface, so every published version is reported. The older "
+    "`@penpot/mcp` pin, for the REPL RCE fixed in 2.15.0, stays a separate rule "
+    "because that one is critical and this one is not.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Upgrade `@penpot/mcp` to 2.18.0 or later once npm has it, and pin it. Until "
-    "then, block the plugin WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by "
-    "default) from every other host, or run the server only on a machine that is "
-    "not reachable from a shared network.",
+    "Upgrade `@penpot/mcp` to the first npm release built from Penpot 2.18.0 or "
+    "later once one is published, and pin it. Until then, block the plugin "
+    "WebSocket port (`PENPOT_MCP_WEBSOCKET_PORT`, 4402 by default) from every "
+    "other host, or run the server only on a machine that is not reachable from a "
+    "shared network.",
     sarif_name="PenpotMcpPluginBridgeAllInterfaces",
     cve_references=["CVE-2026-100868"],
     owasp_mcp_references=["MCP07:2025"],
@@ -10352,10 +10355,13 @@ _r(
     limitations=(
         "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
         "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference is "
-        "reported because what npm installs by default is affected (the `latest` tag "
-        "was 2.15.4 on 2026-10-03; the newest published, 2.17.0, is too). It reads the npm "
-        "version, not Penpot's: a self-hosted Penpot 2.18.0 server does not clear an "
-        "older `@penpot/mcp`, since the bridge runs in the MCP server."
+        "reported because what npm installs by default is affected (re-checked "
+        "2026-10-04: `latest` is 2.15.4 and `next` is 2.17.0, both without the fix). "
+        "The floor is 2.18.0, but the fixed tag's package.json reads 2.17.0 and npm "
+        "already holds a 2.17.0, so a fixed build published under a lower number "
+        "would be reported until the floor follows it. It reads the npm version, not "
+        "Penpot's: a self-hosted Penpot 2.18.0 server does not clear an older "
+        "`@penpot/mcp`, since the bridge runs in the MCP server."
     ),
 )
 
