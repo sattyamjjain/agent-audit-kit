@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The container image is published for `linux/arm64` as well as `linux/amd64`. Through 0.6.15 it was amd64-only, so the documented `docker pull ghcr.io/sattyamjjain/agent-audit-kit:<version>` failed on Apple Silicon and ARM runners with "no matching manifest for linux/arm64/v8", unless the caller added `--platform linux/amd64`. The release and nightly workflows build both architectures under QEMU and run the pushed arm64 image before they finish.
+- The Penpot pin (CVE-2026-100868) now says where the fix is. It landed in Penpot's 2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag, and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). npm's own 2.17.0 predates the fix and is still reported. The floor stays at 2.18.0, and a test pins the fix label's wording so the label gets revisited when npm publishes a fixed build.
 
 ### Fixed
 

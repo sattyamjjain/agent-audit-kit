@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
-from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import scan
+from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, scan
 
 PINS = {
     "AAK-MCP-LITELLM-CVE-2026-59822-001": "high",
@@ -1612,6 +1612,27 @@ def test_penpot_bridge_stays_a_separate_lower_severity_rule() -> None:
     assert RULES[_PENPOT_BRIDGE].severity.value == "medium"
     assert RULES[_PENPOT_REPL].severity.value == "critical"
     assert RULES[_PENPOT_REPL].cve_references == ["CVE-2026-45805"]
+
+
+def test_penpot_bridge_label_says_the_fix_is_not_on_npm_yet() -> None:
+    """Re-checked 2026-10-04 (#872). The fix, b5274a44 (2026-09-22), is in Penpot's
+    2.18.0 tag, but that tag's mcp/package.json reads 2.17.0 (penpot/penpot#12007)
+    and npm has no build from it: `latest` is 2.15.4, and `next` is 2.17.0, which
+    was published on 2026-07-08 and still binds every interface.
+
+    The wording is pinned on purpose. When npm publishes a fixed build, this label
+    and the 2.18.0 floor are both out of date (a fixed build numbered 2.17.x would
+    be reported), so changing either one should mean revisiting both."""
+    pin = next(p for p in _PINS if p.rule_id == _PENPOT_BRIDGE)
+    assert pin.floor == (2, 18, 0)
+    assert pin.fix_label == (
+        "Penpot 2.18.0, but no npm build has been published from that tag yet "
+        "(its mcp/package.json reads 2.17.0, penpot/penpot#12007, and npm's 2.17.0 "
+        "predates the fix); meanwhile firewall the plugin WebSocket port, 4402 by default"
+    )
+    description = RULES[_PENPOT_BRIDGE].description
+    assert "no `@penpot/mcp` has been published to npm from that tag yet" in description
+    assert "still reads 2.17.0 (penpot/penpot#12007)" in description
 
 
 # --- 2026-10-03 wave, third batch (#879-#883) -------------------------------
