@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.16] - 2026-10-05
+
 ### Added
 
 - `AAK-MCP-ZSCALER-CVE-2026-59563-001`: `zscaler-mcp` 0.7.0 and 0.7.1 (CVE-2026-59563, #887). Its 31 delete tools signed an empty parameter set into the HMAC confirmation token, so a token issued for one resource confirmed the delete of any other of the same type. Fixed in 0.7.2.
