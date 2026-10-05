@@ -215,6 +215,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-TOOLBOX-CVE-2026-102242-001": ["AIS-07", "STA-08"],
     "AAK-MCP-NEXTJS-CVE-2026-94486-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": ["IAM-02", "IAM-16", "STA-08"],
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -10677,6 +10678,48 @@ _r(
         "reported, as for the folder-trust pin on the same package: it resolves to "
         "the newest release, and the CLI updates itself. A global install, the usual "
         "one, is in no file AAK reads."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-05 wave, second batch (#900-#901). Two more watcher-filed CVEs while
+# 0.6.16 was being cut: one new pin below, and a WordPress plugin out of scope.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001",
+    "LangGraph SDK 0.1.45 to 0.4.3: resource-scoped auth decorators ignore `actions`",
+    "`langgraph-sdk` (PyPI) supplies the custom-auth decorators a LangGraph server "
+    "deployment uses to authorize access to threads, assistants and crons. From "
+    "0.1.45 until 0.4.4, `@auth.on.threads`, `@auth.on.assistants` and "
+    "`@auth.on.crons` accepted an `actions` argument and registered the handler "
+    "for every action on the resource anyway. That wildcard handler is chosen "
+    "before broader fallback handlers, so an authenticated user can get past "
+    "fallback action, ownership or permission checks and read, update or delete "
+    "another user's thread, assistant or cron (CVE-2026-104873, CVSS 4.0 7.6, "
+    "GHSA-fvww-7h3r-vfhp). Only a Python deployment that passes `actions` to one "
+    "of those decorators is exposed, and one whose handler checks every action "
+    "it receives stays protected. 0.4.4 registers the handler for the named "
+    "actions only.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `langgraph-sdk` to 0.4.4 or later and pin it. Until then, make every "
+    "handler registered with `actions` enforce the checks for all actions on its "
+    "resource, or register it through `@auth.on(resources=..., actions=...)` or a "
+    "per-action decorator such as `@auth.on.threads.create`, which honor the action.",
+    sarif_name="LangGraphSdkAuthActionsIgnored",
+    cve_references=["CVE-2026-104873"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports a reference that names the PyPI package `langgraph-sdk` from 0.1.45 "
+        "up to 0.4.4: a requirements, pyproject or lockfile entry, or the package in "
+        "an MCP config, where an unpinned reference is reported. It reads the "
+        "version, not the auth handlers, so a project that uses the SDK only as a "
+        "client, or never passes `actions` to these decorators, is reported without "
+        "being exposed. The JavaScript `@langchain/langgraph-sdk` is a different "
+        "package and is not read."
     ),
 )
 

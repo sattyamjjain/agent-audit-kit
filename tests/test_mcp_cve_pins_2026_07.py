@@ -107,6 +107,7 @@ PINS = {
     "AAK-MCP-TOOLBOX-CVE-2026-102242-001": "high",
     "AAK-MCP-NEXTJS-CVE-2026-94486-001": "low",
     "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": "low",
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": "high",
 }
 
 
@@ -1901,3 +1902,31 @@ def test_langflow_floor_moves_to_1_12_0_for_cve_2026_101861(tmp_path: Path) -> N
     assert pin.floor == (1, 12, 0)
     assert "CVE-2026-101861" in RULES[_LANGFLOW].cve_references
     assert _LANGFLOW in _ids(tmp_path, "requirements.txt", "langflow==1.11.6\n")
+
+
+# --- 2026-10-05 wave, second batch (#900-#901) ------------------------------
+_LANGGRAPH_SDK = "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001"
+
+
+def test_langgraph_sdk_fixtures_positive_and_negative() -> None:
+    """CVE-2026-104873 (#901): in 0.4.3 `_ResourceOn` registers the handler under
+    "*" whatever `actions` says; 0.4.4 registers each named action."""
+    root = _CVE_FIXTURES / "cve-2026-104873-langgraph-sdk"
+    assert _LANGGRAPH_SDK in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _LANGGRAPH_SDK not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("langgraph-sdk==0.1.44\n", False),  # no `langgraph_sdk.auth` yet
+    ("langgraph-sdk==0.1.45\n", True),   # the auth decorators arrive
+    ("langgraph_sdk==0.4.3\n", True),    # PyPI folds - and _
+    ("langgraph-sdk==0.4.4\n", False),
+    ("langgraph-sdk==0.4.5\n", False),
+])
+def test_langgraph_sdk_version_range(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_LANGGRAPH_SDK in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_langgraph_sdk_ignores_the_javascript_sdk(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"x": {"command": "npx", "args": ["@langchain/langgraph-sdk@0.1.0"]}}}'
+    assert _LANGGRAPH_SDK not in _ids(tmp_path, ".mcp.json", content)

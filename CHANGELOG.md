@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.16] - 2026-10-05
+
 ### Added
 
 - `AAK-MCP-ZSCALER-CVE-2026-59563-001`: `zscaler-mcp` 0.7.0 and 0.7.1 (CVE-2026-59563, #887). Its 31 delete tools signed an empty parameter set into the HMAC confirmation token, so a token issued for one resource confirmed the delete of any other of the same type. Fixed in 0.7.2.
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AAK-MCP-TOOLBOX-CVE-2026-102242-001`: Google MCP Toolbox's npm launcher `@toolbox-sdk/server` from 1.2.0 up to 1.10.0 (CVE-2026-102242, #890). The Cloud Storage tools check local paths lexically and follow symlinks out of the allowed roots. The launcher runs the toolbox binary of its own version, so its number is the server's.
 - `AAK-MCP-NEXTJS-CVE-2026-94486-001`: `next` from 16.0.0 up to 16.3.8, LOW and dev server only (CVE-2026-94486, #892). The `next dev` server's MCP endpoint answers cross-site requests, and production builds do not serve it. Only a `"next": "<version>"` dependency entry or a lockfile is read.
 - `AAK-MCP-CLAUDECODE-CVE-2026-103012-001`: `@anthropic-ai/claude-code` from 2.0.68 up to 2.1.260, LOW (CVE-2026-103012, #893), which fetched managed settings with a stored API key ahead of the Enterprise or Team sign-in. A stated version is required, as for the folder-trust pin on the same package.
+- `AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001`: `langgraph-sdk` from 0.1.45 up to 0.4.4 (CVE-2026-104873, #901). Its resource-scoped auth decorators (`@auth.on.threads`, `.assistants`, `.crons`) registered a handler for every action whatever `actions` said, so one user could read, update or delete another user's resources. Only deployments that pass `actions` are exposed.
 
 ### Changed
 
@@ -21,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Penpot pin (CVE-2026-100868) now says where the fix is. It landed in Penpot's 2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag, and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). npm's own 2.17.0 predates the fix and is still reported. The floor stays at 2.18.0, and a test pins the fix label's wording so the label gets revisited when npm publishes a fixed build.
 - `AAK-MCP-LANGFLOW-CVE-2026-12940-001` now fires below 1.12.0 instead of 1.11.6, and carries CVE-2026-101861 (#888): an authenticated caller's Tool-Mode input options reach `eval()` in `schema.py` up to 1.11.6. 1.11.6 is the one release the new floor adds.
 - Dispositioned #887 to #896, the ten MCP disclosures the watcher opened on 4 October. Each decision and the NVD sentence it rests on is in CHANGELOG.cves.md.
+- Dispositioned #900 and #901, which the watcher opened while 0.6.16 was being cut: the `langgraph-sdk` pin above, and Mindio Magic MCP, a WordPress plugin, out of scope. Both are in CHANGELOG.cves.md.
 
 ### Fixed
 

@@ -160,6 +160,9 @@ available) before shipping:
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
     a stated version is required, and its own rule beside the HIGH 2.1.83 pin in
     `supply_chain`)
+  - langgraph-sdk                  0.1.45 <= v < 0.4.4  (CVE-2026-104873; the
+    resource-scoped auth decorators register a handler for every action whatever
+    `actions` says. Only a deployment that passes `actions` is exposed)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -273,6 +276,12 @@ _TOOLBOX_SERVER_RE = re.compile(
 # exactly "next" whose value starts with a version. `"next": "latest"` or
 # `"canary"` states no version and is not reported.
 _NEXT_RE = re.compile(r'(?<=")next"\s*:\s*"[\^~><=v ]*([0-9][\w.\-]*)', re.IGNORECASE)
+# `langgraph-sdk` (PyPI). PyPI folds `-` and `_`. The JavaScript SDK is the
+# scoped npm `@langchain/langgraph-sdk` on its own version line, which the
+# lookbehind keeps off it.
+_LANGGRAPH_SDK_RE = re.compile(
+    r"(?<![\w./-])langgraph[-_]sdk(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
 # `@anthropic-ai/claude-code` (npm). A stated version is required, as for the
 # folder-trust pin on the same package in `supply_chain`: an unpinned `npx`
 # reference resolves to the newest release, and the CLI updates itself.
@@ -1224,6 +1233,18 @@ _PINS: tuple[_Pin, ...] = (
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
          regexes=(_CLAUDE_CODE_RE,), ecosystem="js"),
+    # --- 2026-10-05 wave, second batch (#900-#901) ---
+    # langgraph-sdk's resource-scoped auth decorators (`@auth.on.threads`,
+    # `.assistants`, `.crons`) took an `actions` argument and registered the
+    # handler for every action anyway, so a narrow handler shadowed the broader
+    # fallbacks and one authenticated user could read, update or delete another's
+    # resource (CVE-2026-104873, CVSS 4.0 7.6, GHSA-fvww-7h3r-vfhp). Checked in the
+    # wheels: `langgraph_sdk.auth` first ships in 0.1.45, 0.4.3's `_ResourceOn`
+    # registers under "*" whatever `actions` says, and 0.4.4 registers each action.
+    _Pin("AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001", "langgraph-sdk", ("langgraph-sdk",),
+         (0, 4, 4), introduced=(0, 1, 45),
+         fix_label="0.4.4 (affected from 0.1.45)",
+         regexes=(_LANGGRAPH_SDK_RE,), ecosystem="py"),
 )
 
 _CANDIDATE_NAMES = (
