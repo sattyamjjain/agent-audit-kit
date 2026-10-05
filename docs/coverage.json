@@ -4544,6 +4544,29 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-104873"
+      ],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001",
+      "severity": "high",
+      "title": "LangGraph SDK 0.1.45 to 0.4.3: resource-scoped auth decorators ignore `actions`"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2025-51482",
         "CVE-2025-6101",
         "CVE-2026-4964",
@@ -8615,7 +8638,7 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 139,
+      "supply-chain": 140,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
@@ -8625,24 +8648,24 @@
       "Art. 10 - Data Governance": 135,
       "Art. 13 - Transparency": 34,
       "Art. 14 - Human Oversight": 41,
-      "Art. 15 - Robustness & Security": 226,
+      "Art. 15 - Robustness & Security": 227,
       "Art. 9 - Risk Management": 130
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 93,
       "Constrain and sandbox tool execution (p.11)": 115,
-      "Design for boundaries (p.10)": 195,
+      "Design for boundaries (p.10)": 196,
       "Filter and monitor output pipelines and chained execution (p.12)": 81,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 169,
-      "Sign and verify MCP messages (p.12)": 168,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 170,
+      "Sign and verify MCP messages (p.12)": 169,
       "Track and patch MCP related vulnerabilities (p.13)": 104,
       "Validate parameters (p.11)": 119
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 55,
-      "ASI03": 78,
+      "ASI03": 79,
       "ASI04": 87,
       "ASI05": 60,
       "ASI06": 51,
@@ -8657,7 +8680,7 @@
       "MCP03:2025": 38,
       "MCP04:2025": 48,
       "MCP05:2025": 58,
-      "MCP06:2025": 21,
+      "MCP06:2025": 22,
       "MCP07:2025": 43,
       "MCP08:2025": 10,
       "MCP09:2025": 33,
@@ -8665,13 +8688,13 @@
     },
     "by_severity": {
       "critical": 89,
-      "high": 169,
+      "high": 170,
       "info": 5,
       "low": 13,
       "medium": 104
     },
-    "total_cves_covered": 294,
-    "total_rules": 380
+    "total_cves_covered": 295,
+    "total_rules": 381
   },
   "tool": "agent-audit-kit"
 }

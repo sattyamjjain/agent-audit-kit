@@ -16,6 +16,42 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-05 (v0.6.16): two more disclosures, one new pin, one WordPress plugin out of scope
+
+The watcher opened two more `cve-response` issues at 14:39Z (#900, #901) while
+0.6.16 was being cut, so the release waited for them, as 0.6.15 did. One is a PyPI
+package, which gets a pin measured on a firing fixture and a negative one. The
+other is a WordPress plugin, out of scope and non-pinnable. NVD text below is
+quoted from the API record, read on 2026-10-05.
+
+**LangGraph SDK (CVE-2026-104873) gets `AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001`,
+0.1.45 up to 0.4.4.** NVD: "From 0.1.45 until 0.4.4, the langgraph-sdk
+resource-scoped authorization decorators @auth.on.threads, @auth.on.assistants,
+and @auth.on.crons ignore the actions argument and register the selected handler
+for every action on the resource." Checked in the wheels: `langgraph_sdk.auth`
+first ships in 0.1.45, 0.4.3's `_ResourceOn.__call__` registers the handler under
+`"*"` whatever `actions` says, and 0.4.4 builds the action list and registers
+each action (GHSA-fvww-7h3r-vfhp, fix `5a77be5e`). AAK already pins two LangGraph
+checkpoint packages. The pin is HIGH, from NVD's CVSS 4.0 score of 7.6, but NVD
+also says "Only Python deployments using actions on the affected decorators are
+vulnerable". The pin reads versions, not handlers, so its limitations say that a
+project using the SDK only as a client is reported without being exposed.
+
+**Mindio Magic MCP (CVE-2026-104402) is out of scope.** NVD: "Insertion of
+Sensitive Information Into Sent Data vulnerability in farvisun Mindio Magic MCP
+mindio-magic-mcp allows Retrieve Embedded Sensitive Data." It is a wordpress.org
+plugin with no npm or PyPI artifact, and Patchstack is the only reference NVD
+gives, so it is non-pinnable like #863, #865 and #866. Patchstack lists it as
+fixed in 0.7.1, the current release on wordpress.org.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-104873 | 7.6 (4.0) | `langgraph-sdk` (PyPI) | **New pin** `AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001`: 0.1.45 up to 0.4.4. | #901 |
+| CVE-2026-104402 | 4.3 | Mindio Magic MCP (wordpress.org plugin) | **Out of scope**, non-pinnable. Upgrade the plugin to 0.7.1 or later. | #900 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
+
 ## 2026-10-05 (v0.6.16): ten disclosures, five new pins, one floor raised, four out of scope
 
 The watcher opened ten `cve-response` issues on 2026-10-04 (#887-#896). Five get a
