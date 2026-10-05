@@ -210,6 +210,11 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001": ["IVS-04", "STA-08"],
     "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001": ["AIS-07", "STA-08"],
     "AAK-MCP-OPENCLAW-CVE-2026-102807-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-ZSCALER-CVE-2026-59563-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-UTCP-CVE-2026-101057-001": ["CEK-08", "STA-08"],
+    "AAK-MCP-TOOLBOX-CVE-2026-102242-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-NEXTJS-CVE-2026-94486-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -8232,7 +8237,7 @@ _r(
 
 _r(
     "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
-    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.11.6)",
+    "Langflow MCP stdio launcher env-var-injection RCE (1.0.0–<1.12.0)",
     "IBM Langflow OSS (`langflow`) from 1.0.0 through 1.10.1 is vulnerable to "
     "unauthenticated remote code execution through its MCP stdio launcher: the "
     "`DANGEROUS_ENV_VARS` blocklist in `src/lfx/base/mcp/util.py` omits `SHELLOPTS`, "
@@ -8262,12 +8267,18 @@ _r(
     "application\'s privilege level by building a flow whose MCP Tools component "
     "uses a local stdio subprocess transport, bypassing both "
     "`LANGFLOW_CUSTOM_COMPONENT_ADMIN_ONLY` and "
-    "`LANGFLOW_BLOCK_CODE_INTERPRETER_COMPONENTS`. Fixed in 1.11.6; treat < 1.11.6 "
-    "(and unpinned) as exposed. Pre-1.0.0 releases predate the MCP "
+    "`LANGFLOW_BLOCK_CODE_INTERPRETER_COMPONENTS`. Those are fixed in 1.11.6. "
+    "CVE-2026-101861 (CVSS 4.1) then moved the floor to 1.12.0: from 1.0.16 through "
+    "1.11.6, an authenticated caller's Tool-Mode input options reach `eval()` in "
+    "`schema.py` when a component is converted into a LangChain tool through "
+    "`ComponentToolkit.get_tools()`, a custom-component save through the API "
+    "included, so an option object with a crafted `__repr__` runs code "
+    "(GHSA-33p4-w7j3-33mw). Treat < 1.12.0 (and unpinned) as exposed; 1.11.6 is "
+    "exposed to that one alone. Pre-1.0.0 releases predate the MCP "
     "stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `langflow` to >= 1.11.6 and pin it. Do not pass an attacker-influenced "
+    "Upgrade `langflow` to >= 1.12.0 and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
     "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. "
     "Derive the client address from the socket, not from a caller-supplied "
@@ -8276,7 +8287,7 @@ _r(
     cve_references=[
         "CVE-2026-12940", "CVE-2026-17623", "CVE-2026-17626",
         "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
-        "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941",
+        "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
     ],
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI04"],
@@ -10498,6 +10509,174 @@ _r(
         "are reported too. A later extended-stable 2026.8.x that backports the fix "
         "would still be reported until the pin learns that line. Releases below "
         "2026.7.1 belong to the older OpenClaw pin."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-05 wave (#887-#896). Ten watcher-filed CVEs: five new pins below, the
+# Langflow pin's floor raised to 1.12.0, and four out of scope. The dispositions
+# are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-ZSCALER-CVE-2026-59563-001",
+    "Zscaler MCP Server 0.7.0 and 0.7.1: delete confirmation tokens are not bound to the resource",
+    "`zscaler-mcp` (PyPI; zscaler/zscaler-mcp-server) asks for confirmation before "
+    "a write tool runs: the first call returns an HMAC token signed over the tool "
+    "name and its arguments, and the second call must present it. In 0.7.0 and "
+    "0.7.1, 31 delete tools across ZIA, ZPA and ZTW passed an empty parameter set "
+    "to `check_confirmation()`, so the token named no resource, and a token issued "
+    "to delete one resource confirmed the delete of any other of the same type "
+    "within its five-minute lifetime (CVE-2026-59563, CVSS 3.1 4.6, CWE-305). An "
+    "agent given one confirmation could spend it on a resource nobody confirmed. "
+    "0.6.2 bound the arguments on every call, and 0.7.2 passes each resource id "
+    "into the token (zscaler/zscaler-mcp-server#41).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `zscaler-mcp` to 0.7.2 or later and pin it.",
+    sarif_name="ZscalerMcpConfirmationTokenReplay",
+    cve_references=["CVE-2026-59563"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02", "ASI09"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports a reference that names the PyPI package `zscaler-mcp` at 0.7.0 or "
+        "0.7.1: a requirements, pyproject or lockfile entry, or the package in an "
+        "MCP config, where an unpinned `uvx zscaler-mcp` is reported as unpinned, as "
+        "for the other PyPI pins. `zscaler-mcp-server`, the name in the README's uvx "
+        "example, is not a PyPI package and is not read. The Docker Hub image has no "
+        "tag below 0.12, so there is no image to pin."
+    ),
+)
+
+_r(
+    "AAK-MCP-UTCP-CVE-2026-101057-001",
+    "utcp-mcp below 1.1.3 dials plain-HTTP MCP server URLs from a call template",
+    "`utcp-mcp` (PyPI), the MCP plugin of python-utcp, connects to the HTTP and "
+    "WebSocket MCP server URLs in a call template's `mcpServers` configuration. "
+    "Before 1.1.3 it dialed them as configured, without the HTTPS/WSS-or-loopback "
+    "check the HTTP-family plugins apply, so a template naming a plain-HTTP, "
+    "non-loopback server sends the MCP handshake in cleartext, open to "
+    "interception, and can reach internal hosts (CVE-2026-101057, CVSS 3.1 3.1, "
+    "CWE-319). The configuration is operator-authored, which limits practical "
+    "exploitation. 1.1.3 adds `_ensure_secure_mcp_url` and runs it on every server "
+    "URL before any connection.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `utcp-mcp` to 1.1.3 or later and pin it, and use `https://` or "
+    "`wss://` for any MCP server that is not on loopback.",
+    sarif_name="UtcpMcpCleartextServerUrl",
+    cve_references=["CVE-2026-101057"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
+    adversa_references=["ADV-TRANSPORT-01"],
+    limitations=(
+        "Reports a reference that names the PyPI package `utcp-mcp` below 1.1.3: a "
+        "requirements, pyproject or lockfile entry, or the package in an MCP config, "
+        "where an unpinned reference is reported. It reads the version, not the call "
+        "template. `AAK-TRANSPORT-001`, which flags an `http://` MCP server URL, reads "
+        "a top-level `mcpServers`, and utcp nests it under the template's `config` "
+        "or passes it inline from Python, so a plain-HTTP URL in a template is not "
+        "reported on its own."
+    ),
+)
+
+_r(
+    "AAK-MCP-TOOLBOX-CVE-2026-102242-001",
+    "Google MCP Toolbox 1.2.0 to 1.9.0: local-path checks follow symlinks out of the allowed roots",
+    "Google MCP Toolbox for Databases (googleapis/mcp-toolbox), which MCP clients "
+    "start through the npm launcher `@toolbox-sdk/server`, checks the local paths "
+    "its Cloud Storage tools read and write (`download_object`, `upload_object`, "
+    "and the `allowedLocalRoots` option from 1.5.0) lexically, with `filepath.Clean` "
+    "and `filepath.Rel`, and never resolves symlinks. A caller allowed to run those "
+    "tools can follow a link inside a permitted root to read or overwrite files "
+    "outside it (CVE-2026-102242, CVSS 4.0 8.6, CWE-22/CWE-59). 1.10.0 resolves "
+    "links with `filepath.EvalSymlinks` before the check "
+    "(googleapis/mcp-toolbox#3810).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@toolbox-sdk/server`, and any toolbox binary or image, to 1.10.0 or "
+    "later and pin it. Until then, keep symlinks out of the directories the Cloud "
+    "Storage tools may use.",
+    sarif_name="McpToolboxSymlinkPathTraversal",
+    cve_references=["CVE-2026-102242"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        "Reports an npm reference to `@toolbox-sdk/server` from 1.2.0 up to 1.10.0: "
+        "a package.json or lockfile entry, or the launcher in an MCP config, where an "
+        "unpinned `npx @toolbox-sdk/server` is reported as unpinned, as for the other "
+        "npm pins. The launcher runs the binary of its own version "
+        "(`@toolbox-sdk/server-<os>-<arch>`), so its number is the server's. A "
+        "toolbox binary started by path, or the container image, states no version "
+        "AAK reads and is not reported."
+    ),
+)
+
+_r(
+    "AAK-MCP-NEXTJS-CVE-2026-94486-001",
+    "Next.js 16.0.0 to 16.3.7: the `next dev` server's MCP endpoint answers cross-site requests (dev server only)",
+    "Next.js 16's development server (`next dev`) serves a Model Context Protocol "
+    "endpoint for coding agents. Before 16.3.8 it did not reliably check which site "
+    "a request came from, so a malicious page the developer visits while the dev "
+    "server runs can reach it and read the project's location on disk, source "
+    "snippets from error reports, the route inventory and the development logs "
+    "(CVE-2026-94486, CVSS 4.0 2.3, CWE-346, GHSA-39w2-rjm5-chcv). Dev server only: "
+    "production deployments (`next start`, a static export, a hosted build) do not "
+    "serve the endpoint. The MCP middleware arrived in 16.0.0, and 16.3.8 fixes it "
+    "(fix commit `2d9f50a`).",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `next` to 16.3.8 or later and pin it. Until then, stop `next dev` when "
+    "it is not in use. Production builds need no change.",
+    sarif_name="NextjsDevServerMcpCrossSite",
+    cve_references=["CVE-2026-94486"],
+    owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-NETWORK-01"],
+    limitations=(
+        "Dev server only, so a project that never runs `next dev` is reported "
+        "without being exposed. Reads a `\"next\": \"<version>\"` dependency entry, "
+        "taking the lowest version a range allows, or the version a lockfile "
+        "resolves. `latest`, `canary` and other tags state no version and are not "
+        "reported, and neither is `next dev` in a script. 16.4.0 canaries compare as "
+        "16.4.0 and are not reported."
+    ),
+)
+
+_r(
+    "AAK-MCP-CLAUDECODE-CVE-2026-103012-001",
+    "Claude Code 2.0.68 to 2.1.259 fetched managed settings with a stored API key ahead of the Enterprise or Team sign-in",
+    "Claude Code (`@anthropic-ai/claude-code`, npm) applies an organization's "
+    "server-managed settings: permission deny rules, model restrictions and "
+    "managed-only locks. From 2.0.68 (Claude for Enterprise; from 2.1.38 for Team) "
+    "until 2.1.260 it fetched those settings with an API key stored by Claude Code, "
+    "from an earlier `/login` or written to its configuration, ahead of the "
+    "session's valid Enterprise or Team sign-in. When the settings endpoint "
+    "rejected that key, the session started without the organization's policy, or "
+    "kept applying a stale cached copy, while still operating as the "
+    "organization's account (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, "
+    "GHSA-gfvf-j8jh-jxxw). Triggering it needed local access to a device holding "
+    "such a key. Endpoint-managed (MDM or file-based) settings were not affected, "
+    "and auto-update has delivered the fix.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@anthropic-ai/claude-code` to 2.1.260 or later and pin it, or leave "
+    "auto-update on. Remove stored API keys from machines that sign in with an "
+    "Enterprise or Team account.",
+    sarif_name="ClaudeCodeManagedSettingsStoredKey",
+    cve_references=["CVE-2026-103012"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `@anthropic-ai/claude-code` from 2.0.68 up to 2.1.260 where a "
+        "project states its version: a package.json or lockfile entry, or a "
+        "versioned `npx` reference in an MCP config. An unpinned reference is not "
+        "reported, as for the folder-trust pin on the same package: it resolves to "
+        "the newest release, and the CLI updates itself. A global install, the usual "
+        "one, is in no file AAK reads."
     ),
 )
 

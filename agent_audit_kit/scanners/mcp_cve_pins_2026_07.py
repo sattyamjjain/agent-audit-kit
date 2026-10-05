@@ -81,9 +81,10 @@ available) before shipping:
   - knowns                          presence-only (CVE-2026-86439 fixed in 0.30.0,
     but CVE-2026-88938 is scoped "through 0.33.0" and 0.33.0 is the newest npm
     release, so there is no floor left to pin to)
-  - langflow                        >= 1.11.6  (CVE-2026-9186 raised the 1.11.0
+  - langflow                        >= 1.12.0  (CVE-2026-9186 raised the 1.11.0
     floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
-    all scoped 1.0.0–1.11.5, then raised it again — same package, same rule)
+    all scoped 1.0.0–1.11.5, then raised it again, and CVE-2026-101861, eval() on
+    Tool-Mode input options up to 1.11.6, raised it to 1.12.0 — same package, same rule)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787 + CVE-2026-87911;
     the second is OS command injection through a crafted COPY-to-PROGRAM
     statement, CRITICAL 9.6, and the floor was already correct — only the rule's
@@ -144,6 +145,21 @@ available) before shipping:
     operator.read token runs operator.write MCP App tools through a standalone
     ticket. Its own MEDIUM rule beside the HIGH 2026.7.1 pin above; the feature is
     absent before 2026.7.2)
+  - zscaler-mcp                    0.7.0 <= v < 0.7.2  (CVE-2026-59563; 31 delete tools
+    signed an empty parameter set into the HMAC confirmation token, so one token
+    confirmed the delete of any resource of that type)
+  - utcp-mcp                       >= 1.1.3   (CVE-2026-101057; a call template's
+    plain-HTTP, non-loopback MCP server URLs are dialed as configured)
+  - @toolbox-sdk/server            1.2.0 <= v < 1.10.0  (CVE-2026-102242; Google MCP
+    Toolbox's local-path checks never resolve symlinks. The npm launcher runs the
+    toolbox binary of its own version)
+  - next                           16.0.0 <= v < 16.3.8  (CVE-2026-94486; the `next dev`
+    server's MCP endpoint answers cross-site requests. Dev server only, LOW, and only
+    a `"next": "<version>"` entry or a lockfile is read)
+  - @anthropic-ai/claude-code      2.0.68 <= v < 2.1.260  (CVE-2026-103012; a stored API
+    key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
+    a stated version is required, and its own rule beside the HIGH 2.1.83 pin in
+    `supply_chain`)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -232,6 +248,36 @@ _SHARIQ_GITHUB_RE = re.compile(
 _OFFICEPPT_RE = re.compile(
     r"(?<![\w./-])office[-_]powerpoint[-_]mcp[-_]server(?![\w-])" + _VER_OPT,
     re.IGNORECASE,
+)
+# `zscaler-mcp` (PyPI). PyPI folds `-` and `_`. The right bound keeps it off
+# `zscaler-mcp-server`, which is the GitHub repository, the Docker Hub image and
+# the name in the README's uvx example, but not a PyPI package; the lookbehind
+# keeps the `zscaler/zscaler-mcp-server` path off it.
+_ZSCALER_MCP_RE = re.compile(
+    r"(?<![\w./-])zscaler[-_]mcp(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `utcp-mcp` (PyPI), python-utcp's MCP plugin. PyPI folds `-` and `_`. The
+# TypeScript plugin is the scoped npm `@utcp/mcp`, which this never matches.
+_UTCP_MCP_RE = re.compile(
+    r"(?<![\w./-])utcp[-_]mcp(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `@toolbox-sdk/server` (npm), Google MCP Toolbox's launcher. Its binaries ship
+# as `@toolbox-sdk/server-<os>-<arch>` at the same version, and the right bound
+# keeps those off it, so one install is one reference.
+_TOOLBOX_SERVER_RE = re.compile(
+    r"(?<![\w./-])@toolbox-sdk/server(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+# `next` (npm). The name is an English word and part of many other package names
+# (`next-auth`, `@next/env`, `eslint-config-next`), and `next dev` sits in most
+# package.json `scripts`, so only the JSON dependency form is read: a key that is
+# exactly "next" whose value starts with a version. `"next": "latest"` or
+# `"canary"` states no version and is not reported.
+_NEXT_RE = re.compile(r'(?<=")next"\s*:\s*"[\^~><=v ]*([0-9][\w.\-]*)', re.IGNORECASE)
+# `@anthropic-ai/claude-code` (npm). A stated version is required, as for the
+# folder-trust pin on the same package in `supply_chain`: an unpinned `npx`
+# reference resolves to the newest release, and the CLI updates itself.
+_CLAUDE_CODE_RE = re.compile(
+    r"(?<![\w./-])@anthropic-ai/claude-code(?![\w-])" + _VER_REQ, re.IGNORECASE
 )
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
@@ -489,10 +535,14 @@ _PINS: tuple[_Pin, ...] = (
     # 1.11.0 through 1.11.2 are exposed to it, so the old floor would have marked
     # three vulnerable releases patched. Same package, same rule, higher floor --
     # the `@apify` shape; a second pin on the name would report one dependency
-    # twice.
+    # twice. CVE-2026-85025 / -78575 / -81941 (1.0.0-1.11.5) then took it to
+    # 1.11.6, and CVE-2026-101861 (CVSS 4.1) takes it to 1.12.0: an authenticated
+    # caller's Tool-Mode input options reach `eval()` in schema.py when a component
+    # becomes a LangChain tool, 1.0.16-1.11.6 per GHSA-33p4-w7j3-33mw. 1.11.6 is the
+    # only release the new floor adds, and it is reported at this rule's CRITICAL.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
-         (1, 11, 6), introduced=(1, 0, 0),
-         fix_label="1.11.6 (affected 1.0.0–1.11.5)"),
+         (1, 12, 0), introduced=(1, 0, 0),
+         fix_label="1.12.0 (affected 1.0.0–1.11.6)"),
     # --- 2026-08-01 wave ---
     # gemini-bridge (PyPI) 1.0.0–1.3.0: `consult_gemini_with_files` inline mode reads
     # any file path in the `files` argument without confining it to the working
@@ -1121,6 +1171,59 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-102807-001", "openclaw", ("openclaw",),
          (2026, 9, 4), introduced=(2026, 7, 2),
          fix_label="2026.9.4 (the 2026.8.x extended-stable line has no fix yet)"),
+    # --- 2026-10-05 wave (#887-#896) ---
+    # Zscaler MCP Server signs an HMAC confirmation token over a write tool's name
+    # and arguments. From 0.7.0, 31 delete tools across ZIA, ZPA and ZTW passed an
+    # empty parameter set to `check_confirmation()`, so a token issued for one
+    # resource confirmed the delete of another of the same type (CVE-2026-59563,
+    # CVSS 4.6, CWE-305). Checked in the wheels: 0.6.2 binds the arguments on every
+    # call, 0.7.0 and 0.7.1 have the 31 empty calls, and 0.7.2
+    # (zscaler/zscaler-mcp-server#41) passes each resource id.
+    _Pin("AAK-MCP-ZSCALER-CVE-2026-59563-001", "zscaler-mcp", ("zscaler-mcp",),
+         (0, 7, 2), introduced=(0, 7, 0),
+         fix_label="0.7.2 (affected 0.7.0 and 0.7.1)",
+         regexes=(_ZSCALER_MCP_RE,), ecosystem="py"),
+    # utcp-mcp dialed the HTTP and WebSocket MCP server URLs in a call template's
+    # mcpServers as configured, so a plain-HTTP, non-loopback server got a
+    # cleartext MCP handshake (CVE-2026-101057, CVSS 3.1, CWE-319). Checked in the
+    # wheels: 1.1.3 adds `_ensure_secure_mcp_url` (HTTPS/WSS, or HTTP/WS to a
+    # literal loopback address) before any connection, and 1.1.2 has no check.
+    # AAK-TRANSPORT-001 does not see the template: it reads a top-level
+    # mcpServers, and utcp nests it under the template's `config`.
+    _Pin("AAK-MCP-UTCP-CVE-2026-101057-001", "utcp-mcp", ("utcp-mcp",),
+         (1, 1, 3), fix_label="1.1.3", regexes=(_UTCP_MCP_RE,), ecosystem="py"),
+    # Google MCP Toolbox's Cloud Storage tools check local paths lexically
+    # (`filepath.Clean`, later `filepath.Rel`) and never resolve symlinks, so a
+    # link inside an allowed root reaches files outside it (CVE-2026-102242,
+    # CVSS 4.0 8.6, CWE-22/59). `ValidateLocalPath` is in v1.2.0, and the fix,
+    # googleapis/mcp-toolbox#3810 (`ResolveSymlinks`), is in v1.10.0 and not v1.9.0.
+    # The server is a Go binary, but the docs register it with an MCP client as
+    # the npm `@toolbox-sdk/server`, which runs the binary of its own version.
+    _Pin("AAK-MCP-TOOLBOX-CVE-2026-102242-001", "@toolbox-sdk/server",
+         ("@toolbox-sdk/server",), (1, 10, 0), introduced=(1, 2, 0),
+         fix_label="1.10.0 (affected 1.2.0–1.9.0)",
+         regexes=(_TOOLBOX_SERVER_RE,), ecosystem="js"),
+    # Next.js 16's `next dev` server serves an MCP endpoint that does not reliably
+    # check where a request comes from, so a page the developer visits can read
+    # the project's path on disk, source snippets from error reports, the route
+    # inventory and the dev logs (CVE-2026-94486, CVSS 4.0 2.3, CWE-346,
+    # GHSA-39w2-rjm5-chcv). Dev server only: production does not serve it. The MCP
+    # middleware is absent at v15.5.7 and present from v16.0.0, and the fix,
+    # 2d9f50a ("Fix MCP middleware DNS rebinding"), is in 16.3.8.
+    _Pin("AAK-MCP-NEXTJS-CVE-2026-94486-001", "next", ("next",),
+         (16, 3, 8), introduced=(16, 0, 0),
+         fix_label="16.3.8 (dev server only; production builds do not serve the endpoint)",
+         regexes=(_NEXT_RE,), ecosystem="js"),
+    # Claude Code fetched the organization's server-managed settings with a stored
+    # API key ahead of the session's Enterprise or Team sign-in, and when that key
+    # was rejected the session ran without the org policy, or on a stale cached
+    # copy (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, GHSA-gfvf-j8jh-jxxw). Local
+    # access only, and auto-update has delivered the fix. LOW, so its own rule
+    # beside the HIGH folder-trust pin in `supply_chain` (< 2.1.83).
+    _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
+         ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
+         fix_label="2.1.260 (affected from 2.0.68)",
+         regexes=(_CLAUDE_CODE_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

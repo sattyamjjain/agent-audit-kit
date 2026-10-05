@@ -101,6 +101,12 @@ PINS = {
     "AAK-MCP-VOICEMODE-CVE-2026-79535-001": "medium",
     "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001": "medium",
     "AAK-MCP-OPENCLAW-CVE-2026-102807-001": "medium",
+    # 2026-10-05 wave (#887-#896)
+    "AAK-MCP-ZSCALER-CVE-2026-59563-001": "medium",
+    "AAK-MCP-UTCP-CVE-2026-101057-001": "low",
+    "AAK-MCP-TOOLBOX-CVE-2026-102242-001": "high",
+    "AAK-MCP-NEXTJS-CVE-2026-94486-001": "low",
+    "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": "low",
 }
 
 
@@ -653,13 +659,14 @@ def test_langflow_in_affected_range_fires(tmp_path: Path) -> None:
 def test_langflow_patched_passes(tmp_path: Path) -> None:
     # Floor moved 1.11.0 -> 1.11.3 on 2026-09-08 for CVE-2026-9186 (affects
     # 1.0.0-1.11.2), then 1.11.3 -> 1.11.6 on 2026-09-12 for CVE-2026-85025,
-    # CVE-2026-78575 and CVE-2026-81941 (all scoped 1.0.0-1.11.5). The version in
-    # this assertion moves each time rather than the test being deleted, because
-    # "the patched release does not fire" is still the property worth holding.
-    # The versions the old floors called patched are asserted to fire in
-    # tests/test_cve_deferral_queue_2026_09_08.py.
+    # CVE-2026-78575 and CVE-2026-81941 (all scoped 1.0.0-1.11.5), then 1.11.6 ->
+    # 1.12.0 on 2026-10-05 for CVE-2026-101861 (eval() on Tool-Mode input options,
+    # 1.0.16-1.11.6). The version in this assertion moves each time rather than the
+    # test being deleted, because "the patched release does not fire" is still the
+    # property worth holding. The versions the old floors called patched are
+    # asserted to fire in tests/test_cve_deferral_queue_2026_09_08.py.
     assert "AAK-MCP-LANGFLOW-CVE-2026-12940-001" not in _ids(
-        tmp_path, "requirements.txt", "langflow==1.11.6\n"
+        tmp_path, "requirements.txt", "langflow==1.12.0\n"
     )
 
 
@@ -1720,3 +1727,177 @@ def test_openclaw_app_is_its_own_medium_rule_beside_the_high_pin() -> None:
     assert RULES[_OPENCLAW_APP].severity.value == "medium"
     assert RULES[_OPENCLAW_OLD].severity.value == "high"
     assert "CVE-2026-102807" not in RULES[_OPENCLAW_OLD].cve_references
+
+
+# --- 2026-10-05 wave (#887-#896) --------------------------------------------
+_ZSCALER = "AAK-MCP-ZSCALER-CVE-2026-59563-001"
+_UTCP = "AAK-MCP-UTCP-CVE-2026-101057-001"
+_TOOLBOX = "AAK-MCP-TOOLBOX-CVE-2026-102242-001"
+_NEXTJS = "AAK-MCP-NEXTJS-CVE-2026-94486-001"
+_CLAUDECODE = "AAK-MCP-CLAUDECODE-CVE-2026-103012-001"
+_CLAUDECODE_TRUST = "AAK-CLAUDECODE-CVE-2026-40068-PIN-001"
+_LANGFLOW = "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+
+
+@pytest.mark.parametrize(("fixture", "rule_id"), [
+    ("cve-2026-59563-zscaler-mcp", _ZSCALER),
+    ("cve-2026-101057-utcp-mcp", _UTCP),
+    ("cve-2026-102242-mcp-toolbox", _TOOLBOX),
+    ("cve-2026-94486-nextjs-dev-mcp", _NEXTJS),
+    ("cve-2026-103012-claude-code", _CLAUDECODE),
+    ("cve-2026-101861-langflow", _LANGFLOW),
+])
+def test_2026_10_05_fixtures_positive_and_negative(fixture: str, rule_id: str) -> None:
+    """Each pin or floor change of the batch, on a firing fixture and a negative
+    one. The Next.js negative also carries a pnpm lockfile whose ESLint plugins lag
+    behind an upgraded `next`, and the Claude Code negative an unpinned npx entry."""
+    root = _CVE_FIXTURES / fixture
+    assert rule_id in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert rule_id not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("zscaler-mcp==0.6.2\n", False),   # binds the arguments on every call
+    ("zscaler-mcp==0.7.0\n", True),    # the 31 empty-parameter calls arrive
+    ("zscaler_mcp==0.7.1\n", True),    # PyPI folds - and _
+    ("zscaler-mcp==0.7.2\n", False),   # zscaler/zscaler-mcp-server#41
+    ("zscaler-mcp==0.15.4\n", False),
+])
+def test_zscaler_version_range(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_ZSCALER in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_zscaler_readme_uvx_name_is_not_the_package(tmp_path: Path) -> None:
+    """The README's uvx example names `zscaler-mcp-server`, which is not on PyPI;
+    the package and its console script are `zscaler-mcp`."""
+    content = ('{"mcpServers": {"zscaler-mcp-server": {"command": "uvx", '
+               '"args": ["--env-file", "/path/to/.env", "zscaler-mcp-server"]}}}')
+    assert _ZSCALER not in _ids(tmp_path, ".mcp.json", content)
+    unpinned = '{"mcpServers": {"zscaler": {"command": "uvx", "args": ["zscaler-mcp"]}}}'
+    assert _ZSCALER in _ids(tmp_path, ".mcp.json", unpinned)
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("utcp-mcp==1.0.0\n", True),
+    ("utcp_mcp==1.1.2\n", True),
+    ("utcp-mcp==1.1.3\n", False),   # `_ensure_secure_mcp_url` on every server URL
+    ("utcp-mcp==1.2.0\n", False),
+])
+def test_utcp_version_range(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_UTCP in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_utcp_call_template_is_not_seen_by_the_cleartext_class_rule(tmp_path: Path) -> None:
+    """Why #889 is a pin: AAK-TRANSPORT-001 reads a top-level `mcpServers`, and a
+    utcp call template nests it under `config`. If the class rule learns the
+    template shape, this fails and the pin's reason should be looked at again."""
+    from agent_audit_kit.scanners import transport_security
+
+    template = ('{"name": "remote_mcp", "call_template_type": "mcp", "config": '
+                '{"mcpServers": {"api": {"transport": "http", '
+                '"url": "http://mcp.internal.example.com:8080/mcp"}}}}')
+    (tmp_path / "remote_mcp.json").write_text(template, encoding="utf-8")
+    fired = {f.rule_id for f in transport_security.scan(tmp_path)[0]}
+    assert "AAK-TRANSPORT-001" not in fired
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("1.1.0", False),   # no local-path tools yet
+    ("1.2.0", True),    # ValidateLocalPath, lexical only
+    ("1.5.0", True),    # allowedLocalRoots arrives, still lexical
+    ("1.9.0", True),
+    ("1.10.0", False),  # ResolveSymlinks (googleapis/mcp-toolbox#3810)
+    ("1.13.1", False),
+])
+def test_toolbox_version_range(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"@toolbox-sdk/server": "%s"}}' % version
+    assert (_TOOLBOX in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_toolbox_platform_binaries_are_not_the_launcher(tmp_path: Path) -> None:
+    content = '{"optionalDependencies": {"@toolbox-sdk/server-linux-x64": "1.9.0"}}'
+    assert _TOOLBOX not in _ids(tmp_path, "package.json", content)
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("15.5.7", False),            # no MCP middleware before 16.0.0
+    ("16.0.0", True),
+    ("^16.2.0", True),            # a range reads as its lowest version
+    ("16.3.7", True),
+    ("16.3.8", False),            # 2d9f50a
+    ("16.4.0-canary.12", False),
+    ("latest", False),            # states no version
+    ("canary", False),
+])
+def test_nextjs_version_range(tmp_path: Path, spec: str, fires: bool) -> None:
+    content = '{"dependencies": {"next": "%s"}}' % spec
+    assert (_NEXTJS in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_nextjs_reads_only_the_next_dependency_entry(tmp_path: Path) -> None:
+    """`next` is a word and part of many package names; none of these is it."""
+    content = ('{"scripts": {"dev": "next dev", "build": "next build"}, '
+               '"dependencies": {"next-auth": "4.24.11", "@next/env": "16.2.0", '
+               '"eslint-config-next": "16.2.0", "@sentry/nextjs": "10.0.0"}}')
+    assert _NEXTJS not in _ids(tmp_path, "package.json", content)
+
+
+def test_pnpm_lockfile_reads_next_and_not_names_ending_in_it(tmp_path: Path) -> None:
+    """The lowest locked version wins, so an unbounded `next@` read an ESLint plugin
+    left on 16.2.0 as `next` itself, and `@vercel/next` hid a vulnerable `next`."""
+    lagging_plugins = ("packages:\n"
+                       "  eslint-config-next@16.2.0:\n    resolution: {integrity: a}\n"
+                       "  '@next/eslint-plugin-next@16.2.0':\n    resolution: {integrity: b}\n"
+                       "  next@16.3.8:\n    resolution: {integrity: c}\n")
+    assert _NEXTJS not in _ids(tmp_path, "pnpm-lock.yaml", lagging_plugins)
+    vercel_builder = ("packages:\n"
+                      "  '@vercel/next@4.4.0':\n    resolution: {integrity: a}\n"
+                      "  /next@16.2.0:\n    resolution: {integrity: b}\n")
+    assert _NEXTJS in _ids(tmp_path, "pnpm-lock.yaml", vercel_builder)
+
+
+def test_nextjs_rule_says_dev_server_only_and_names_the_fix() -> None:
+    rule = RULES[_NEXTJS]
+    assert rule.severity.value == "low"
+    assert "dev server only" in rule.title
+    assert "Dev server only" in rule.description
+    assert "16.3.8" in rule.remediation
+    assert rule.cve_references == ["CVE-2026-94486"]
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("2.0.67", False),
+    ("2.0.68", True),    # Claude for Enterprise affected from here
+    ("2.1.38", True),    # Team from here
+    ("2.1.259", True),
+    ("2.1.260", False),
+    ("2.1.289", False),
+])
+def test_claudecode_version_range(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"devDependencies": {"@anthropic-ai/claude-code": "%s"}}' % version
+    assert (_CLAUDECODE in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_claudecode_needs_a_stated_version(tmp_path: Path) -> None:
+    """As for the folder-trust pin on the same package: an unpinned npx reference
+    resolves to the newest release, and the CLI updates itself."""
+    unpinned = ('{"mcpServers": {"claude": {"command": "npx", '
+                '"args": ["-y", "@anthropic-ai/claude-code", "mcp", "serve"]}}}')
+    assert _CLAUDECODE not in _ids(tmp_path, ".mcp.json", unpinned)
+    versioned = unpinned.replace("claude-code\"", "claude-code@2.1.100\"")
+    assert _CLAUDECODE in _ids(tmp_path, ".mcp.json", versioned)
+
+
+def test_claudecode_is_its_own_low_rule_beside_the_high_pin() -> None:
+    """Raising the folder-trust pin's 2.1.83 floor would have called 2.1.83-2.1.259
+    the HIGH bug."""
+    assert RULES[_CLAUDECODE].severity.value == "low"
+    assert RULES[_CLAUDECODE_TRUST].severity.value == "high"
+    assert "CVE-2026-103012" not in RULES[_CLAUDECODE_TRUST].cve_references
+
+
+def test_langflow_floor_moves_to_1_12_0_for_cve_2026_101861(tmp_path: Path) -> None:
+    pin = next(p for p in _PINS if p.rule_id == _LANGFLOW)
+    assert pin.floor == (1, 12, 0)
+    assert "CVE-2026-101861" in RULES[_LANGFLOW].cve_references
+    assert _LANGFLOW in _ids(tmp_path, "requirements.txt", "langflow==1.11.6\n")

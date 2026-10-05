@@ -16,6 +16,139 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-05 (v0.6.16): ten disclosures, five new pins, one floor raised, four out of scope
+
+The watcher opened ten `cve-response` issues on 2026-10-04 (#887-#896). Five get a
+new pin and one raises the Langflow pin's floor, each measured with the scanner on
+a firing fixture and a negative one. Four are out of scope: a Next.js CVE whose
+NVD text belongs to another advisory, and three path traversals in a RAG web app
+with no MCP surface. NVD text below is quoted from the API record, read on
+2026-10-05.
+
+**Zscaler MCP Server (CVE-2026-59563) gets `AAK-MCP-ZSCALER-CVE-2026-59563-001`,
+0.7.0 up to 0.7.2.** NVD: "Zscaler MCP Server versions 0.7.0 and 0.7.1 has an
+issue where HMAC confirmation tokens were not bound to the target resource
+identifier, allowing an MCP client or agent to replay a token generated for one
+resource to affect another resource of the same type." The PyPI distribution is
+`zscaler-mcp`, and so is its console script. `zscaler-mcp-server`, the name in the
+README's uvx example, is not on PyPI. Checked in the wheels: 0.6.2 has no
+`check_confirmation()` call with an empty parameter set, 0.7.0 and 0.7.1 pass `{}`
+on 31 of their 40 calls (the delete tools across ZIA, ZPA and ZTW), and 0.7.2
+passes each resource id (zscaler/zscaler-mcp-server#41). So the pin starts at
+0.7.0. The Docker Hub image has no tag below 0.12, so there is no image to pin.
+
+**Langflow (CVE-2026-101861) raises `AAK-MCP-LANGFLOW-CVE-2026-12940-001` from
+1.11.6 to 1.12.0.** NVD: "Langflow 1.0.16 before 1.12.0 and 0.0.94 before 1.12.0
+contain an unsafe eval() vulnerability in schema.py that allows authenticated
+attackers to achieve code execution by placing a Python object with a malicious
+__repr__ method into component input options lists." The pin's floor was 1.11.6,
+below the fix, so it rises and the CVE joins the rule. No rule is added: same
+package, same rule, higher floor, as CVE-2026-9186 did to this pin.
+GHSA-33p4-w7j3-33mw gives `langflow` >= 1.0.16, < 1.12.0, patched in 1.12.0, and
+PyPI shipped 1.12.0 the same day as 1.11.6 (2026-09-01). So 1.11.6 is the only
+release the new floor adds, and it is reported at the rule's CRITICAL, although
+this CVE alone is CVSS 4.1.
+
+**utcp-mcp (CVE-2026-101057) gets `AAK-MCP-UTCP-CVE-2026-101057-001`, below
+1.1.3.** NVD: "utcp-mcp (the MCP plugin of python-utcp) through 1.1.2 connects to
+the HTTP and WebSocket MCP server URLs given in a call template's mcpServers
+configuration without the ensure_secure_url validation that the HTTP-family
+plugins apply, so the HTTPS/WSS-or-loopback rule is not enforced." Checked in the
+wheels: 1.1.3 adds `_ensure_secure_mcp_url` and runs it on every server's `url`
+and `ws_url`, and on the OAuth2 token URL, before connecting. 1.1.2 has no check,
+and 1.0.0 already dialed HTTP servers. The class rule was measured first:
+`AAK-TRANSPORT-001` fires on a plain-HTTP, non-loopback server in `.mcp.json`, and
+not on the same URL in a utcp call template, as a JSON file or inline in Python,
+because it reads a top-level `mcpServers` and utcp nests it under the template's
+`config`. The class rule cannot see utcp's config shape, so the pin is the
+coverage.
+
+**Google MCP Toolbox (CVE-2026-102242) gets `AAK-MCP-TOOLBOX-CVE-2026-102242-001`
+on `@toolbox-sdk/server`, 1.2.0 up to 1.10.0.** NVD: "Improper link resolution
+(CWE-59 / CWE-22) in the allowedLocalRoots path validation in Google MCP Toolbox
+for Databases versions 1.2.0 through 1.9.0 allows a remote authenticated attacker
+with tool execution permissions to bypass directory boundary restrictions via
+symbolic links." The 2026-07-31 (v0.3.64) entry below put this upstream out of
+scope as a Go binary the pin scanner does not read. That is still true of the
+binary, but the toolbox also ships on npm as `@toolbox-sdk/server`, published
+since 0.21.0 (2025-11-28), and that is how its docs register it with an MCP client
+(`npx -y @toolbox-sdk/server --prebuilt=...`). The 1.9.0 tarball depends on
+`@toolbox-sdk/server-<os>-<arch>` 1.9.0, and `bin/run.js` spawns that binary, so
+the npm version is the server's. In the source, `ValidateLocalPath` checks paths
+with `filepath.Clean` from v1.2.0, `allowedLocalRoots` arrives in v1.5.0 with a
+`filepath.Rel` check that is still lexical, and `ResolveSymlinks`
+(`filepath.EvalSymlinks`) arrives in v1.10.0 with googleapis/mcp-toolbox#3810,
+which v1.9.0 lacks. The earlier toolbox CVEs may be pinnable the same way; this
+entry does not revisit them.
+
+**Next.js: CVE-2026-94486 gets `AAK-MCP-NEXTJS-CVE-2026-94486-001`, 16.0.0 up to
+16.3.8, dev server only, and CVE-2026-94485 is out of scope.** NVD gives the two
+the same text. For CVE-2026-94486: "From 16.0.0 until 16.3.8, the next dev
+development server exposes a Model Context Protocol endpoint without reliably
+restricting cross-site requests." Neither record is rejected or marked a
+duplicate, but the one for CVE-2026-94485 contradicts itself: its title, its CVSS
+4.0 score (6.3) and the advisory it cites, GHSA-f87g-xv8r-7p7x, are "Information
+disclosure in Next.js App Router metadata image routes via dynamicParams bypass",
+fixed in 16.3.8 by `8db4a62`, and that is not an MCP defect. The MCP advisory is
+GHSA-39w2-rjm5-chcv, which is CVE-2026-94486 (CVSS 4.0 2.3). CVE-2026-94484, which
+shares the 6.3 score, is a third and unrelated advisory: cache poisoning in
+SSG/ISR routes (GHSA-mcj8-r9mp-w47p). The 2026-09-26 decision on a Next.js MCP
+handler (CVE-2026-94044) does not settle this one: that app was `private`, so it
+had no version to pin, and a class-rule arm covered it. Here `next` has a version
+and a fixed release, and no class rule sees a dev server. Because `next` is in a
+great many package.json files and only the dev server serves the endpoint, the pin
+is LOW, and its title, description and fix label say "dev server only". It reads
+only a `"next": "<version>"` dependency entry or a lockfile, never `next dev` in a
+script or a package whose name contains `next`. The MCP middleware
+(`server/mcp/get-mcp-middleware.ts`) is absent at v15.5.7 and present from
+v16.0.0, and the fix, `2d9f50a` ("Fix MCP middleware DNS rebinding"), is in
+16.3.8. Measuring the lockfile path found a resolver bug: pnpm lockfile names were
+matched with no left boundary and the lowest version wins, so
+`eslint-config-next@16.2.0` read as `next@16.2.0` and reported an upgraded `next`.
+The pnpm branch of `_resolve_lockfile_version` is now bounded on the left.
+
+**Claude Code (CVE-2026-103012) gets `AAK-MCP-CLAUDECODE-CVE-2026-103012-001`,
+2.0.68 up to 2.1.260.** NVD: "Triggering this required local access to a device
+with such a stored API key; the no-policy case additionally required that no
+managed settings had previously been cached." The package is usually installed
+globally, which no file AAK reads, but the pin detector already sees it where a
+project lists it: the folder-trust pin `AAK-CLAUDECODE-CVE-2026-40068-PIN-001`
+reads `@anthropic-ai/claude-code` from package.json and lockfiles.
+GHSA-gfvf-j8jh-jxxw gives >= 2.0.68, < 2.1.260, patched in 2.1.260. The CVE is LOW
+(CVSS 4.0 2.0) and that pin is HIGH with a 2.1.83 floor, so this is a separate
+rule: raising that floor would report 2.1.83 to 2.1.259 as the folder-trust bug.
+Like that pin, it needs a stated version: an unpinned `npx -y
+@anthropic-ai/claude-code` resolves to the newest release, and NVD notes that
+auto-update has delivered the fix.
+
+**Langchain-Chatchat (CVE-2026-51882, CVE-2026-51883, CVE-2026-51884) is out of
+scope.** NVD for CVE-2026-51882: "The OpenAI-compatible file upload endpoint
+`/v1/files` in Langchain-Chatchat 0.3.0 is vulnerable to path traversal." The
+other two are the same defect in the `knowledge_base_name` parameter and in
+`/knowledge_base/upload_temp_docs`. All three are in the HTTP upload handlers of
+a RAG web app, not an MCP server or client: the newest PyPI wheel,
+`langchain-chatchat` 0.3.1.3 (2024-07-23), contains no MCP code at all. And as
+with Context7 in the 2026-08-19 entry, no published version separates vulnerable
+from fixed: the three upstream issues (#5466, #5467, #5468) were closed on
+2026-04-20 by a GitHub Actions bot with no fix, and no release has followed
+0.3.1.3.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-59563 | 4.6 | `zscaler-mcp` (PyPI) | **New pin** `AAK-MCP-ZSCALER-CVE-2026-59563-001`: 0.7.0 up to 0.7.2. | #887 |
+| CVE-2026-101861 | 4.1 | `langflow` (PyPI) | **Floor raised** on `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: 1.11.6 to 1.12.0, and the CVE joins the rule. | #888 |
+| CVE-2026-101057 | 3.1 | `utcp-mcp` (PyPI) | **New pin** `AAK-MCP-UTCP-CVE-2026-101057-001`: below 1.1.3. `AAK-TRANSPORT-001` does not see a utcp call template. | #889 |
+| CVE-2026-102242 | 8.6 (4.0) | `@toolbox-sdk/server` (npm) | **New pin** `AAK-MCP-TOOLBOX-CVE-2026-102242-001`: 1.2.0 up to 1.10.0. | #890 |
+| CVE-2026-94485 | 6.3 (4.0) | `next` (npm) | **Out of scope**: the record's title and advisory are a metadata-image `dynamicParams` bug with no MCP surface. Its MCP text belongs to CVE-2026-94486. Upgrade to 16.3.8 anyway. | #891 |
+| CVE-2026-94486 | 2.3 (4.0) | `next` (npm) | **New pin** `AAK-MCP-NEXTJS-CVE-2026-94486-001`: 16.0.0 up to 16.3.8, LOW, dev server only. | #892 |
+| CVE-2026-103012 | 2.0 (4.0) | `@anthropic-ai/claude-code` (npm) | **New pin** `AAK-MCP-CLAUDECODE-CVE-2026-103012-001`: 2.0.68 up to 2.1.260. | #893 |
+| CVE-2026-51882 | n/a | `langchain-chatchat` (PyPI) | **Out of scope**: an upload handler of a RAG web app, with no MCP surface and no fixed release. | #894 |
+| CVE-2026-51883 | n/a | `langchain-chatchat` (PyPI) | **Out of scope**: an upload handler of a RAG web app, with no MCP surface and no fixed release. | #895 |
+| CVE-2026-51884 | n/a | `langchain-chatchat` (PyPI) | **Out of scope**: an upload handler of a RAG web app, with no MCP surface and no fixed release. | #896 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0). The Langchain-Chatchat records carry no score.
+
 ## 2026-10-03 (v0.6.15): five disclosures, four new pins, one more CVE on the Obot pin
 
 The watcher opened five `cve-response` issues at 21:14Z (#879-#883) while 0.6.15
