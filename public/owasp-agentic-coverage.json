@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-03T21:33:20Z",
+  "last_updated": "2026-10-05T14:22:46Z",
   "aak_version": "0.6.15",
-  "rule_count": 375,
+  "rule_count": 380,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 53,
+      "rule_density": 55,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -569,6 +569,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-TOOLBOX-CVE-2026-102242-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-102242"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-TOOLGATE-ASYMMETRY-001",
           "severity": "high",
           "cve_references": [
@@ -582,6 +593,17 @@
           "severity": "critical",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-ZSCALER-CVE-2026-59563-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-59563"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCPCALC-CVE-2026-44717-PIN-001",
@@ -719,7 +741,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 77,
+      "rule_density": 78,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -950,6 +972,18 @@
           "severity": "high",
           "cve_references": [],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CLAUDECODE-CVE-2026-103012-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-103012"
+          ],
+          "aicm_references": [
+            "IAM-02",
+            "IAM-16",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001",
@@ -1404,7 +1438,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 85,
+      "rule_density": 87,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1826,6 +1860,7 @@
           "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
           "severity": "critical",
           "cve_references": [
+            "CVE-2026-101861",
             "CVE-2026-12940",
             "CVE-2026-17623",
             "CVE-2026-17626",
@@ -1951,6 +1986,17 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NEXTJS-CVE-2026-94486-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-94486"
+          ],
+          "aicm_references": [
             "IVS-04",
             "STA-08"
           ]
@@ -2089,6 +2135,17 @@
           "aicm_references": [
             "AIS-08",
             "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-TOOLBOX-CVE-2026-102242-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-102242"
+          ],
+          "aicm_references": [
+            "AIS-07",
             "STA-08"
           ]
         },
@@ -3328,7 +3385,7 @@
     {
       "asi_id": "ASI07",
       "title": "Plan Injection",
-      "rule_density": 10,
+      "rule_density": 11,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -3413,6 +3470,17 @@
             "IVS-04",
             "STA-08"
           ]
+        },
+        {
+          "id": "AAK-MCP-UTCP-CVE-2026-101057-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-101057"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "STA-08"
+          ]
         }
       ]
     },
@@ -3467,7 +3535,7 @@
     {
       "asi_id": "ASI09",
       "title": "Resource Abuse",
-      "rule_density": 18,
+      "rule_density": 19,
       "rules": [
         {
           "id": "AAK-CREWAI-CHAIN-2026-04-001",
@@ -3593,6 +3661,17 @@
           ],
           "aicm_references": [
             "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-ZSCALER-CVE-2026-59563-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-59563"
+          ],
+          "aicm_references": [
+            "IAM-01",
             "STA-08"
           ]
         },

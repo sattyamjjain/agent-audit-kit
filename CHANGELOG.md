@@ -7,13 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-ZSCALER-CVE-2026-59563-001`: `zscaler-mcp` 0.7.0 and 0.7.1 (CVE-2026-59563, #887). Its 31 delete tools signed an empty parameter set into the HMAC confirmation token, so a token issued for one resource confirmed the delete of any other of the same type. Fixed in 0.7.2.
+- `AAK-MCP-UTCP-CVE-2026-101057-001`: `utcp-mcp` below 1.1.3 (CVE-2026-101057, #889), which dials a call template's plain-HTTP, non-loopback MCP server URLs as configured. `AAK-TRANSPORT-001` cannot see the template, because utcp nests `mcpServers` under its `config`.
+- `AAK-MCP-TOOLBOX-CVE-2026-102242-001`: Google MCP Toolbox's npm launcher `@toolbox-sdk/server` from 1.2.0 up to 1.10.0 (CVE-2026-102242, #890). The Cloud Storage tools check local paths lexically and follow symlinks out of the allowed roots. The launcher runs the toolbox binary of its own version, so its number is the server's.
+- `AAK-MCP-NEXTJS-CVE-2026-94486-001`: `next` from 16.0.0 up to 16.3.8, LOW and dev server only (CVE-2026-94486, #892). The `next dev` server's MCP endpoint answers cross-site requests, and production builds do not serve it. Only a `"next": "<version>"` dependency entry or a lockfile is read.
+- `AAK-MCP-CLAUDECODE-CVE-2026-103012-001`: `@anthropic-ai/claude-code` from 2.0.68 up to 2.1.260, LOW (CVE-2026-103012, #893), which fetched managed settings with a stored API key ahead of the Enterprise or Team sign-in. A stated version is required, as for the folder-trust pin on the same package.
+
 ### Changed
 
 - The container image is published for `linux/arm64` as well as `linux/amd64`. Through 0.6.15 it was amd64-only, so the documented `docker pull ghcr.io/sattyamjjain/agent-audit-kit:<version>` failed on Apple Silicon and ARM runners with "no matching manifest for linux/arm64/v8", unless the caller added `--platform linux/amd64`. The release and nightly workflows build both architectures under QEMU and run the pushed arm64 image before they finish.
 - The Penpot pin (CVE-2026-100868) now says where the fix is. It landed in Penpot's 2.18.0 tag, but no `@penpot/mcp` has been published to npm from that tag, and the tag's `mcp/package.json` still reads 2.17.0 (penpot/penpot#12007). npm's own 2.17.0 predates the fix and is still reported. The floor stays at 2.18.0, and a test pins the fix label's wording so the label gets revisited when npm publishes a fixed build.
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` now fires below 1.12.0 instead of 1.11.6, and carries CVE-2026-101861 (#888): an authenticated caller's Tool-Mode input options reach `eval()` in `schema.py` up to 1.11.6. 1.11.6 is the one release the new floor adds.
+- Dispositioned #887 to #896, the ten MCP disclosures the watcher opened on 4 October. Each decision and the NVD sentence it rests on is in CHANGELOG.cves.md.
 
 ### Fixed
 
+- The pin scanner read pnpm lockfiles without a left boundary on the package name, and the lowest locked version wins, so `eslint-config-next@16.2.0` read as `next@16.2.0` and `@vercel/next@4.4.0` hid a vulnerable `next`. Names in `pnpm-lock.yaml` are now bounded on the left.
 - Two rule pages broke the link check: `AAK-LANGCHAIN-SSRF-REDIR-001` and `AAK-SSRF-TOCTOU-001` linked their advisories (GHSA-fv5p-p927-qmxr and GHSA-r7w7-9xr2-qq2r) on advisories.gitlab.com, which on 2026-10-04 answered 404 for every advisory page, including the newest ones in its own feed. Both now link GitHub's advisory pages, where a GHSA id is published and both advisories still resolve.
 
 ## [0.6.15] - 2026-10-03

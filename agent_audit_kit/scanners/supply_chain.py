@@ -568,8 +568,15 @@ def _resolve_lockfile_version(
 
         _walk(data.get("dependencies"))
     elif filename == "pnpm-lock.yaml":
+        # Bounded on the left, because the lowest match wins: unbounded,
+        # `eslint-config-next@16.2.0` and `@next/eslint-plugin-next@16.2.0` read as
+        # `next@16.2.0`, so a plugin left behind reported an upgraded `next` as
+        # unpatched, and `@vercel/next@4.4.0` (from the `vercel` CLI) hid a
+        # vulnerable one below the pin's `introduced`. A `/` still opens the v6 key
+        # form (`/next@16.2.0:`), but not after a scope name.
         for token in lower:
-            for m in re.finditer(re.escape(token) + r"@([0-9][\w.\-]*)", text, re.IGNORECASE):
+            pat = r"(?<![\w.\-])(?<!\w/)" + re.escape(token) + r"@([0-9][\w.\-]*)"
+            for m in re.finditer(pat, text, re.IGNORECASE):
                 found.append(m.group(1))
     elif filename == "yarn.lock":
         for token in lower:
