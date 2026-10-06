@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.17] - 2026-10-06
+
 ### Added
 
 - `AAK-MCP-DIFY-CVE-2026-105761-001`: the `langgenius/dify-api` image below 1.16.0 (CVE-2026-105761, #906). `PUT /console/api/apps/<app_id>/server` loaded an app's MCP server by the id the client sent, without checking app and tenant, so a workspace member could change another app's MCP server.
