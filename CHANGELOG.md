@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `aak scanners` named four of the six images the container image pin scanner reads. Its display name lists Dify and mcp-k6 too.
 - The Langflow pin read `langflow-base` as an unpinned `langflow`, so a patched `langflow-base==1.12.0` was reported whatever its version, and it never read `lfx`. Its package name is bounded on both sides now.
 
 ## [0.6.16] - 2026-10-05

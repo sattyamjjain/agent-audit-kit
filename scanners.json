@@ -40,7 +40,7 @@
     },
     {
       "module": "container_image_pins",
-      "name": "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server)"
+      "name": "Container image tag pins for image-only MCP platforms (Obot, MetaMCP, heym, mcp-filesystem-server, Dify, mcp-k6)"
     },
     {
       "module": "crewai_rce_chain",
