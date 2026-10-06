@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.17] - 2026-10-06
+
 ### Added
 
 - `AAK-MCP-DIFY-CVE-2026-105761-001`: the `langgenius/dify-api` image below 1.16.0 (CVE-2026-105761, #906). `PUT /console/api/apps/<app_id>/server` loaded an app's MCP server by the id the client sent, without checking app and tenant, so a workspace member could change another app's MCP server.
@@ -21,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `aak scanners` named four of the six images the container image pin scanner reads. Its display name lists Dify and mcp-k6 too.
 - The Langflow pin read `langflow-base` as an unpinned `langflow`, so a patched `langflow-base==1.12.0` was reported whatever its version, and it never read `lfx`. Its package name is bounded on both sides now.
 
 ## [0.6.16] - 2026-10-05
