@@ -232,3 +232,73 @@ def test_untagged_from_line_counts_as_an_image_slot(tmp_path: Path) -> None:
     dockerfile = "FROM --platform=linux/amd64 ghcr.io/metatool-ai/metamcp AS app\n"
     assert _write(tmp_path, "Dockerfile", dockerfile) == [METAMCP]
     assert _write(tmp_path, "Dockerfile", "COPY ghcr.io/metatool-ai/metamcp /x\n") == []
+
+
+# --- 2026-10-06 wave (#906, #907): Docker Hub images by their bare name -------
+DIFY = "AAK-MCP-DIFY-CVE-2026-105761-001"
+K6 = "AAK-MCP-K6-CVE-2026-89039-001"
+
+
+def test_dify_and_mcp_k6_pins_carry_their_cves_and_severity() -> None:
+    assert RULES[DIFY].cve_references == ["CVE-2026-105761"]
+    assert RULES[K6].cve_references == ["CVE-2026-89039"]
+    assert [RULES[r].severity.value for r in (DIFY, K6)] == ["high", "medium"]
+
+
+def test_dify_fixtures_positive_and_negative() -> None:
+    """CVE-2026-105761 (#906): 1.15.0, as Dify's compose file pins it, fires on the
+    API service's line; 1.16.0 (62cb5b5) does not, and dify-web is never read."""
+    root = FIXTURES / "cve-2026-105761-dify"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(DIFY, 5)]
+    assert DIFY in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("langgenius/dify-api:1.15.0", True),
+    ("langgenius/dify-api:1.16.0", False),
+    ("langgenius/dify-api:1.16.0-rc1", False),  # read as 1.16.0
+    ("langgenius/dify-api:latest", False),      # 1.17.1 on 2026-10-06
+    ("langgenius/dify-api", False),             # untagged is latest
+    ("langgenius/dify-web:1.15.0", False),      # the endpoint is in the API server
+])
+def test_dify_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  api:\n    image: {ref}\n")
+    assert (DIFY in ids) is fires
+
+
+def test_mcp_k6_fixtures_positive_and_negative() -> None:
+    """CVE-2026-89039 (#907): 0.6.1 in an MCP config's docker args fires; 0.7.0 and
+    0.2.0 (before the prompt existed) do not."""
+    root = FIXTURES / "cve-2026-89039-mcp-k6"
+    assert _ids(root / "vulnerable") == [K6]
+    assert K6 in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("tag", "fires"), [
+    ("0.1.0", False),   # prompts/convert_playwright_script.go is absent
+    ("0.2.0", False),
+    ("0.2", False),     # the whole 0.2 line predates the prompt
+    ("0.3.0", True),    # the prompt arrives
+    ("0.6", True),
+    ("0.6.1", True),
+    ("0.7.0", False),   # grafana/mcp-k6#191
+])
+def test_mcp_k6_tag_reading_honours_the_introduced_bound(tmp_path: Path, tag: str, fires: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  k6:\n    image: grafana/mcp-k6:{tag}\n")
+    assert (K6 in ids) is fires
+
+
+def test_mcp_k6_untagged_reference_is_latest_and_affected(tmp_path: Path) -> None:
+    """`latest` was the 0.6.1 digest on 2026-10-06, and Docker Hub had no 0.7.0 image."""
+    content = '{"mcpServers": {"k6": {"command": "docker", "args": ["run", "-i", "--rm", "grafana/mcp-k6"]}}}'
+    assert _write(tmp_path, ".mcp.json", content) == [K6]
+
+
+def test_docker_io_spelling_is_not_read(tmp_path: Path) -> None:
+    """Both projects document the bare Docker Hub name; the registry-prefixed
+    spelling is a stated limitation, not a silent match."""
+    ids = _write(tmp_path, "compose.yaml", "services:\n  k6:\n    image: docker.io/grafana/mcp-k6:0.6.1\n")
+    assert K6 not in ids

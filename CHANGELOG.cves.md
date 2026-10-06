@@ -16,6 +16,93 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-06 (v0.6.17): six disclosures, four on the Langflow pin and two new image pins
+
+The watcher opened five `cve-response` issues at 00:03Z (#903-#907) and a sixth
+at 06:21Z (#908) while this batch was in review. Four are Langflow advisories
+fixed below the existing pin's floor, so they join it. Measuring them showed the
+pin did not read the other two packages of Langflow's release train. Two get container image pins. Dify's API server and Grafana's
+mcp-k6 publish no PyPI or npm artifact, but both document a Docker Hub image,
+which is the route the 2026-10-03 entries opened. Each pin or package change is
+measured with the scanner on a firing fixture and a negative one. NVD text below
+is quoted from the API record, read on 2026-10-06.
+
+**Langflow (CVE-2026-105697, CVE-2026-105740, CVE-2026-105741,
+CVE-2026-105699) joins `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, which now also
+reads `langflow-base` and `lfx`.** NVD for CVE-2026-105697: "Before Langflow
+1.10.3, the MCP stdio transport launched whatever command / args a user put in an
+MCP server configuration, with no allowlist and (before 1.10.3) wrapped in bash -c
+"exec {command} ..."." CVE-2026-105740 is the same stdio command field before
+1.9.0. CVE-2026-105741 is a spoofed `X-Forwarded-For` on the MCP-config install
+endpoint from 1.5.0 until 1.10.3, the same shape as CVE-2026-9186. For
+CVE-2026-105699 (#908), NVD says "A user with access to any project-scoped MCP
+endpoint could therefore request another user's flow-backed file", from 1.6.8
+until 1.9.1. All four fixes are below the pin's 1.12.0 floor, so the CVEs join the
+rule and no floor moves.
+
+NVD also says "This issue is fixed in Langflow 1.10.3, langflow-base 0.10.3, and
+lfx 1.10.3." Measured before this change, the pin read neither package properly:
+- `lfx==1.10.2` reported nothing.
+- `langflow-base==0.10.2` was reported only because the pin's unbounded name
+  pattern read the `langflow` inside `langflow-base` as an unpinned `langflow`. The
+  same misreading reported the patched `langflow-base==1.12.0`.
+
+The `langflow` pattern is bounded now, and the rule gets two more pins,
+`langflow-base` and `lfx`. Their floor is 1.12.0, not the 0.10.3 and 1.10.3 that
+NVD names for this CVE, for two reasons:
+- GHSA-33p4-w7j3-33mw (CVE-2026-101861, already on the rule) scopes both packages
+  below 1.12.0.
+- PyPI shows all three packages reached 1.12.0 together on 2026-09-01, with
+  `langflow-base` jumping there from 0.11.6.
+
+All three pins are PyPI-only, because npm's `langflow` is a React frontend for
+another product and npm's `lfx` is an empty placeholder. One rule, three pins,
+like `@agenticmail`.
+
+**Dify (CVE-2026-105761) gets `AAK-MCP-DIFY-CVE-2026-105761-001` on the
+`langgenius/dify-api` image, below 1.16.0.** NVD: "Prior to 1.16.0, the `PUT
+/console/api/apps/<app_id>/server` endpoint in
+api/controllers/console/app/mcp_server.py used AppMCPServerController.put() to
+retrieve an AppMCPServer by the client-supplied server ID without verifying that
+the server belonged to the requested application and tenant." The Dify server is
+on neither registry: PyPI has only the `dify-client` SDK, and npm's `dify` is an
+unrelated placeholder. But Dify's compose file runs the API server as
+`langgenius/dify-api:1.15.0`, and since the 2026-10-03 (v0.6.14) image-tag entry
+`container_image_pins` reads image tags. So the SiYuan basis, a desktop binary
+whose version no scanned file states, no longer applies. The fix, `62cb5b5`
+(langgenius/dify#38177), replaces `db.session.get(AppMCPServer, payload.id)` with
+a lookup filtered by app and tenant. It is in 1.16.0 and not in 1.15.0. `latest`
+was 1.17.1, which is fixed, so an untagged reference is not reported.
+`langgenius/dify-web` is not pinned, because the endpoint is in the API server.
+
+**Grafana mcp-k6 (CVE-2026-89039) gets `AAK-MCP-K6-CVE-2026-89039-001` on the
+`grafana/mcp-k6` image, from 0.3.0 up to 0.7.0.** NVD: "A caller who can invoke
+the convert_playwright_script prompt in mcp-k6 can pass a bare file path as the
+playwright_script argument and receive the contents of any file readable by the
+user running the server, including SSH keys and cloud credentials in that user's
+home directory (path traversal)." mcp-k6 is a Go binary with no npm or PyPI
+wrapper, unlike MCP Toolbox. Its README's recommended install is the Docker Hub
+image, though, so it gets an image pin like mark3labs' `mcp-filesystem-server`.
+The fix, grafana/mcp-k6#191 in v0.7.0 (2026-10-05), treats a bare value as script
+text. It reads an `@` reference only inside the working directory, through a
+handle that will not leave it. `prompts/convert_playwright_script.go` is absent at
+v0.1.0 and v0.2.0, so the pin starts at 0.3.0. That needed an `introduced` bound
+on `_ImagePin`, like the one `_Pin` has. Docker Hub had no 0.7.0 image on
+2026-10-06, and `latest` was the 0.6.1 digest. So an untagged or `latest`
+reference is reported until a 0.7.0 image is pushed.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-105697 | 9.9 | `langflow`, `langflow-base`, `lfx` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.10.3, below its 1.12.0 floor. The rule now reads `langflow-base` and `lfx` at 1.12.0 too. | #903 |
+| CVE-2026-105740 | 9.9 | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.9.0, below its floor. | #904 |
+| CVE-2026-105741 | 7.1 | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.10.3, below its floor. | #905 |
+| CVE-2026-105699 | 7.1 (4.0) | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.9.1, below its floor. | #908 |
+| CVE-2026-105761 | 7.1 | `langgenius/dify-api` (image) | **New pin** `AAK-MCP-DIFY-CVE-2026-105761-001`: below 1.16.0. | #906 |
+| CVE-2026-89039 | 6.5 | `grafana/mcp-k6` (image) | **New pin** `AAK-MCP-K6-CVE-2026-89039-001`: 0.3.0 up to 0.7.0, and `latest`. No 0.7.0 image yet. | #907 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
+
 ## 2026-10-05 (v0.6.16): two more disclosures, one new pin, one WordPress plugin out of scope
 
 The watcher opened two more `cve-response` issues at 14:39Z (#900, #901) while

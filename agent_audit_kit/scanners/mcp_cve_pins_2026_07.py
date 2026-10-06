@@ -84,7 +84,9 @@ available) before shipping:
   - langflow                        >= 1.12.0  (CVE-2026-9186 raised the 1.11.0
     floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
     all scoped 1.0.0–1.11.5, then raised it again, and CVE-2026-101861, eval() on
-    Tool-Mode input options up to 1.11.6, raised it to 1.12.0 — same package, same rule)
+    Tool-Mode input options up to 1.11.6, raised it to 1.12.0 — same package, same rule.
+    CVE-2026-105697 / -105740 / -105741 sit under that floor. The same rule reads
+    `langflow-base` and `lfx` at 1.12.0, the release all three reached together)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787 + CVE-2026-87911;
     the second is OS command injection through a crafted COPY-to-PROGRAM
     statement, CRITICAL 9.6, and the floor was already correct — only the rule's
@@ -276,6 +278,18 @@ _TOOLBOX_SERVER_RE = re.compile(
 # exactly "next" whose value starts with a version. `"next": "latest"` or
 # `"canary"` states no version and is not reported.
 _NEXT_RE = re.compile(r'(?<=")next"\s*:\s*"[\^~><=v ]*([0-9][\w.\-]*)', re.IGNORECASE)
+# Langflow ships one release train as three PyPI packages: `langflow`, the
+# `langflow-base` backend (on a 0.x line until 0.11.6, then 1.12.0) and the `lfx`
+# executor. `langflow` used to go through `_mk_re`, which has no boundaries, so
+# `langflow-base==1.12.0` read as an unpinned `langflow` and was reported at any
+# version, and `lfx` was never read. Each name is bounded now, and the pins are
+# PyPI-only because npm's `langflow` is a React frontend for another product and
+# npm's `lfx` an empty 0.0.0 placeholder.
+_LANGFLOW_RE = re.compile(r"(?<![\w./-])langflow(?![\w-])" + _VER_OPT, re.IGNORECASE)
+_LANGFLOW_BASE_RE = re.compile(
+    r"(?<![\w./-])langflow[-_]base(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
+_LFX_RE = re.compile(r"(?<![\w./-])lfx(?![\w-])" + _VER_OPT, re.IGNORECASE)
 # `langgraph-sdk` (PyPI). PyPI folds `-` and `_`. The JavaScript SDK is the
 # scoped npm `@langchain/langgraph-sdk` on its own version line, which the
 # lookbehind keeps off it.
@@ -549,9 +563,22 @@ _PINS: tuple[_Pin, ...] = (
     # caller's Tool-Mode input options reach `eval()` in schema.py when a component
     # becomes a LangChain tool, 1.0.16-1.11.6 per GHSA-33p4-w7j3-33mw. 1.11.6 is the
     # only release the new floor adds, and it is reported at this rule's CRITICAL.
+    # CVE-2026-105697, -105740, -105741 and -105699 (2026-10-06) are fixed in
+    # 1.10.3 and 1.9.x, under the floor, so they join the rule with no floor change.
+    # 105697 names `langflow-base` 0.10.3 and `lfx` 1.10.3 too, and
+    # GHSA-33p4-w7j3-33mw scopes both below 1.12.0, the version all three reached
+    # together on 2026-09-01. So the rule reads them at 1.12.0 as well: one rule,
+    # three pins, the @agenticmail shape.
     _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow", ("langflow",),
          (1, 12, 0), introduced=(1, 0, 0),
-         fix_label="1.12.0 (affected 1.0.0–1.11.6)"),
+         fix_label="1.12.0 (affected 1.0.0–1.11.6)",
+         regexes=(_LANGFLOW_RE,), ecosystem="py"),
+    _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "langflow-base", ("langflow-base",),
+         (1, 12, 0), fix_label="1.12.0 (its 0.x line, up to 0.11.6, is affected)",
+         regexes=(_LANGFLOW_BASE_RE,), ecosystem="py"),
+    _Pin("AAK-MCP-LANGFLOW-CVE-2026-12940-001", "lfx", ("lfx",),
+         (1, 12, 0), fix_label="1.12.0 (affected below 1.12.0)",
+         regexes=(_LFX_RE,), ecosystem="py"),
     # --- 2026-08-01 wave ---
     # gemini-bridge (PyPI) 1.0.0–1.3.0: `consult_gemini_with_files` inline mode reads
     # any file path in the `files` argument without confining it to the working

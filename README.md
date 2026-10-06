@@ -7,7 +7,7 @@
   <a href="https://pypi.org/project/agent-audit-kit/"><img src="https://img.shields.io/pypi/v/agent-audit-kit.svg" alt="PyPI"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
-  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-381-blue.svg" alt="Rules: 381"></a>
+  <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-383-blue.svg" alt="Rules: 383"></a>
   <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.0-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.0"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
@@ -62,12 +62,12 @@ to land findings in the GitHub Security tab. Full
 
 ## What it finds
 
-<!-- rule-count:total -->381<!-- /rule-count --> rules across 14 security categories:
+<!-- rule-count:total -->383<!-- /rule-count --> rules across 14 security categories:
 
 | Category | Rules | What it detects |
 |----------|:-----:|-----------------|
 | **MCP Configuration** | <!-- category-count:MCP_CONFIG -->68<!-- /category-count --> | Missing auth, wildcard CORS, `0.0.0.0` binds, SSRF, OAuth 2.1 and RFC 9728 gaps |
-| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->140<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
+| **Supply Chain** | <!-- category-count:SUPPLY_CHAIN -->142<!-- /category-count --> | Unpinned packages, typosquats, install scripts, and verified CVE version pins |
 | **Tool Poisoning** | <!-- category-count:TOOL_POISONING -->31<!-- /category-count --> | Invisible Unicode, prompt injection in tool and parameter descriptions, rug pulls |
 | **Secret Exposure** | <!-- category-count:SECRET_EXPOSURE -->18<!-- /category-count --> | Provider keys, tokens in configs and env files, credentials in logs |
 | **Agent Config** | <!-- category-count:AGENT_CONFIG -->19<!-- /category-count --> | Permission escalation, auto-approve, headless trust in CI |
@@ -133,7 +133,7 @@ agent-audit-kit vex  . -o vex.openvex.json
 ```
 
 Every control row cites a real clause, and a row the scanner cannot evidence
-says so instead of printing a tick. Full list of the <!-- rule-count:total -->381<!-- /rule-count -->
+says so instead of printing a tick. Full list of the <!-- rule-count:total -->383<!-- /rule-count -->
 rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/owasp-mapping.md).
 
 ### OWASP Agentic Top 10 coverage
@@ -142,9 +142,9 @@ rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyam
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 16 |
-| **ASI02** | Tool Misuse | 55 |
-| **ASI03** | Memory Poisoning | 79 |
-| **ASI04** | Identity & Privilege Abuse | 87 |
+| **ASI02** | Tool Misuse | 56 |
+| **ASI03** | Memory Poisoning | 80 |
+| **ASI04** | Identity & Privilege Abuse | 88 |
 | **ASI05** | Cascading Failures | 60 |
 | **ASI06** | Unauthorized Capability Acquisition | 51 |
 | **ASI07** | Plan Injection | 11 |
@@ -162,7 +162,7 @@ A public leaderboard of scanned public MCP servers, with per-server grade cards
 and a 90-day [disclosure policy](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md):
 [sattyamjjain.github.io/agent-audit-kit](https://sattyamjjain.github.io/agent-audit-kit/).
 
-<!-- index-cadence -->Last published snapshot: **2026-09-28** (8 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
+<!-- index-cadence -->Last published snapshot: **2026-10-05** (9 snapshots in [`history.json`](https://sattyamjjain.github.io/agent-audit-kit/data/history.json)). The build fails if this date falls more than 10 days behind, so a stalled index reports itself.<!-- /index-cadence -->
 
 ## CVE response
 
@@ -176,10 +176,10 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->104<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->2,750<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->2,762<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
-Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->381<!-- /rule-count --> rules
+Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->383<!-- /rule-count --> rules
 (<!-- fix-recipe-coverage:pct -->2.9<!-- /fix-recipe-coverage -->%), applied by `agent-audit-kit fix`. That is a scope
 decision, not a coverage gap: a recipe ships only where the remediation is
 **deterministic and one-line** — exactly one correct edit, confirmable from the

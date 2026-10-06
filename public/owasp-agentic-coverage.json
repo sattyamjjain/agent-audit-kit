@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-05T14:52:52Z",
+  "last_updated": "2026-10-06T17:39:20Z",
   "aak_version": "0.6.16",
-  "rule_count": 381,
+  "rule_count": 383,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse",
-      "rule_density": 55,
+      "rule_density": 56,
       "rules": [
         {
           "id": "AAK-AGENT-SHARED-RES-AUTHZ-001",
@@ -433,6 +433,17 @@
           "aicm_references": [
             "AIS-07",
             "DSP-07"
+          ]
+        },
+        {
+          "id": "AAK-MCP-K6-CVE-2026-89039-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-89039"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
           ]
         },
         {
@@ -741,7 +752,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 79,
+      "rule_density": 80,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -982,6 +993,17 @@
           "aicm_references": [
             "IAM-02",
             "IAM-16",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-DIFY-CVE-2026-105761-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-105761"
+          ],
+          "aicm_references": [
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -1449,7 +1471,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 87,
+      "rule_density": 88,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1848,6 +1870,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-K6-CVE-2026-89039-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-89039"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-KIMICODE-CVE-2026-95660-001",
           "severity": "medium",
           "cve_references": [
@@ -1872,6 +1905,10 @@
           "severity": "critical",
           "cve_references": [
             "CVE-2026-101861",
+            "CVE-2026-105697",
+            "CVE-2026-105699",
+            "CVE-2026-105740",
+            "CVE-2026-105741",
             "CVE-2026-12940",
             "CVE-2026-17623",
             "CVE-2026-17626",

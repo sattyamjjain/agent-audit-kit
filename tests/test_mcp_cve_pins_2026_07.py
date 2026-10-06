@@ -1930,3 +1930,62 @@ def test_langgraph_sdk_version_range(tmp_path: Path, line: str, fires: bool) -> 
 def test_langgraph_sdk_ignores_the_javascript_sdk(tmp_path: Path) -> None:
     content = '{"mcpServers": {"x": {"command": "npx", "args": ["@langchain/langgraph-sdk@0.1.0"]}}}'
     assert _LANGGRAPH_SDK not in _ids(tmp_path, ".mcp.json", content)
+
+
+# --- 2026-10-06 wave (#903-#907): the Langflow rule reads its whole train ----
+_LANGFLOW_CVES_2026_10_06 = (
+    "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
+)
+
+
+def test_langflow_rule_carries_the_october_cves_at_the_same_floor() -> None:
+    """#903-#905 and #908: fixed in 1.10.3, 1.9.0, 1.10.3 and 1.9.1, all under the
+    1.12.0 floor, so they join the rule and no floor moves. One rule, three pins."""
+    for cve in _LANGFLOW_CVES_2026_10_06:
+        assert cve in RULES[_LANGFLOW].cve_references
+    pins = [p for p in _PINS if p.rule_id == _LANGFLOW]
+    assert sorted(p.display for p in pins) == ["langflow", "langflow-base", "lfx"]
+    assert {p.floor for p in pins} == {(1, 12, 0)}
+    assert {p.ecosystem for p in pins} == {"py"}
+
+
+@pytest.mark.parametrize("package", ["langflow-base", "lfx"])
+def test_langflow_train_fixtures_positive_and_negative(package: str) -> None:
+    root = _CVE_FIXTURES / f"cve-2026-105697-{package}"
+    assert _LANGFLOW in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _LANGFLOW not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("langflow-base==0.10.2\n", True),   # before CVE-2026-105697's 0.10.3
+    ("langflow_base==0.11.6\n", True),   # past 0.10.3, still under CVE-2026-101861
+    ("langflow-base==1.12.0\n", False),  # the 0.x line jumped to 1.12.0 here
+    ("lfx==1.10.2\n", True),
+    ("lfx==1.11.6\n", True),
+    ("lfx==1.12.0\n", False),
+])
+def test_langflow_base_and_lfx_versions(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_LANGFLOW in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+def test_langflow_base_is_no_longer_read_as_an_unpinned_langflow(tmp_path: Path) -> None:
+    """The unbounded `_mk_re("langflow")` read `langflow-base==1.12.0` as `langflow`
+    with no version and reported it, whatever the version."""
+    findings = scan(_write_and_root(tmp_path, "requirements.txt", "langflow-base==1.12.0\n"))[0]
+    assert not [f for f in findings if f.rule_id == _LANGFLOW]
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    # npm's `langflow` is a React frontend for another product, and npm's `lfx` an
+    # empty placeholder: neither is the PyPI release train.
+    ("package.json", '{"dependencies": {"langflow": "1.5.1", "lfx": "0.0.0"}}'),
+    # A repository URL names the project, not an installed version.
+    ("requirements.txt", "git+https://github.com/langflow-ai/langflow.git\n"),
+])
+def test_langflow_lookalikes_are_quiet(tmp_path: Path, name: str, content: str) -> None:
+    assert _LANGFLOW not in _ids(tmp_path, name, content)
+
+
+def _write_and_root(tmp_path: Path, name: str, content: str) -> Path:
+    (tmp_path / name).write_text(content, encoding="utf-8")
+    return tmp_path
