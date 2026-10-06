@@ -563,8 +563,8 @@ _PINS: tuple[_Pin, ...] = (
     # caller's Tool-Mode input options reach `eval()` in schema.py when a component
     # becomes a LangChain tool, 1.0.16-1.11.6 per GHSA-33p4-w7j3-33mw. 1.11.6 is the
     # only release the new floor adds, and it is reported at this rule's CRITICAL.
-    # CVE-2026-105697, -105740 and -105741 (2026-10-06) are fixed in 1.10.3 and
-    # 1.9.0, under the floor, so they join the rule with no floor change.
+    # CVE-2026-105697, -105740, -105741 and -105699 (2026-10-06) are fixed in
+    # 1.10.3 and 1.9.x, under the floor, so they join the rule with no floor change.
     # 105697 names `langflow-base` 0.10.3 and `lfx` 1.10.3 too, and
     # GHSA-33p4-w7j3-33mw scopes both below 1.12.0, the version all three reached
     # together on 2026-09-01. So the rule reads them at 1.12.0 as well: one rule,

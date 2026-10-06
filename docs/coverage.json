@@ -4490,6 +4490,7 @@
       "cve_references": [
         "CVE-2026-101861",
         "CVE-2026-105697",
+        "CVE-2026-105699",
         "CVE-2026-105740",
         "CVE-2026-105741",
         "CVE-2026-12940",
@@ -8749,7 +8750,7 @@
       "low": 13,
       "medium": 105
     },
-    "total_cves_covered": 300,
+    "total_cves_covered": 301,
     "total_rules": 383
   },
   "tool": "agent-audit-kit"

@@ -1933,12 +1933,14 @@ def test_langgraph_sdk_ignores_the_javascript_sdk(tmp_path: Path) -> None:
 
 
 # --- 2026-10-06 wave (#903-#907): the Langflow rule reads its whole train ----
-_LANGFLOW_CVES_2026_10_06 = ("CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741")
+_LANGFLOW_CVES_2026_10_06 = (
+    "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
+)
 
 
-def test_langflow_rule_carries_the_three_october_cves_at_the_same_floor() -> None:
-    """#903-#905: fixed in 1.10.3, 1.9.0 and 1.10.3, all under the 1.12.0 floor, so
-    they join the rule and no floor moves. One rule, three pins."""
+def test_langflow_rule_carries_the_october_cves_at_the_same_floor() -> None:
+    """#903-#905 and #908: fixed in 1.10.3, 1.9.0, 1.10.3 and 1.9.1, all under the
+    1.12.0 floor, so they join the rule and no floor moves. One rule, three pins."""
     for cve in _LANGFLOW_CVES_2026_10_06:
         assert cve in RULES[_LANGFLOW].cve_references
     pins = [p for p in _PINS if p.rule_id == _LANGFLOW]

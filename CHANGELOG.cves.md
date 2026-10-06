@@ -16,26 +16,29 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-06 (v0.6.17): five disclosures, three on the Langflow pin and two new image pins
+## 2026-10-06 (v0.6.17): six disclosures, four on the Langflow pin and two new image pins
 
-The watcher opened five `cve-response` issues at 00:03Z (#903-#907). Three are
-Langflow advisories fixed below the existing pin's floor, so they join it, and
-measuring them showed the pin did not read the other two packages of Langflow's
-release train. Two get container image pins. Dify's API server and Grafana's
+The watcher opened five `cve-response` issues at 00:03Z (#903-#907) and a sixth
+at 06:21Z (#908) while this batch was in review. Four are Langflow advisories
+fixed below the existing pin's floor, so they join it. Measuring them showed the
+pin did not read the other two packages of Langflow's release train. Two get container image pins. Dify's API server and Grafana's
 mcp-k6 publish no PyPI or npm artifact, but both document a Docker Hub image,
 which is the route the 2026-10-03 entries opened. Each pin or package change is
 measured with the scanner on a firing fixture and a negative one. NVD text below
 is quoted from the API record, read on 2026-10-06.
 
-**Langflow (CVE-2026-105697, CVE-2026-105740, CVE-2026-105741) joins
-`AAK-MCP-LANGFLOW-CVE-2026-12940-001`, which now also reads `langflow-base` and
-`lfx`.** NVD for CVE-2026-105697: "Before Langflow 1.10.3, the MCP stdio
-transport launched whatever command / args a user put in an MCP server
-configuration, with no allowlist and (before 1.10.3) wrapped in bash -c "exec
-{command} ..."." CVE-2026-105740 is the same stdio command field before 1.9.0.
-CVE-2026-105741 is a spoofed `X-Forwarded-For` on the MCP-config install endpoint
-from 1.5.0 until 1.10.3, the same shape as CVE-2026-9186. All three fixes are
-below the pin's 1.12.0 floor, so the CVEs join the rule and no floor moves.
+**Langflow (CVE-2026-105697, CVE-2026-105740, CVE-2026-105741,
+CVE-2026-105699) joins `AAK-MCP-LANGFLOW-CVE-2026-12940-001`, which now also
+reads `langflow-base` and `lfx`.** NVD for CVE-2026-105697: "Before Langflow
+1.10.3, the MCP stdio transport launched whatever command / args a user put in an
+MCP server configuration, with no allowlist and (before 1.10.3) wrapped in bash -c
+"exec {command} ..."." CVE-2026-105740 is the same stdio command field before
+1.9.0. CVE-2026-105741 is a spoofed `X-Forwarded-For` on the MCP-config install
+endpoint from 1.5.0 until 1.10.3, the same shape as CVE-2026-9186. For
+CVE-2026-105699 (#908), NVD says "A user with access to any project-scoped MCP
+endpoint could therefore request another user's flow-backed file", from 1.6.8
+until 1.9.1. All four fixes are below the pin's 1.12.0 floor, so the CVEs join the
+rule and no floor moves.
 
 NVD also says "This issue is fixed in Langflow 1.10.3, langflow-base 0.10.3, and
 lfx 1.10.3." Measured before this change, the pin read neither package properly:
@@ -93,10 +96,12 @@ reference is reported until a 0.7.0 image is pushed.
 | CVE-2026-105697 | 9.9 | `langflow`, `langflow-base`, `lfx` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.10.3, below its 1.12.0 floor. The rule now reads `langflow-base` and `lfx` at 1.12.0 too. | #903 |
 | CVE-2026-105740 | 9.9 | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.9.0, below its floor. | #904 |
 | CVE-2026-105741 | 7.1 | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.10.3, below its floor. | #905 |
+| CVE-2026-105699 | 7.1 (4.0) | `langflow` (PyPI) | **Added** to `AAK-MCP-LANGFLOW-CVE-2026-12940-001`: fixed in 1.9.1, below its floor. | #908 |
 | CVE-2026-105761 | 7.1 | `langgenius/dify-api` (image) | **New pin** `AAK-MCP-DIFY-CVE-2026-105761-001`: below 1.16.0. | #906 |
 | CVE-2026-89039 | 6.5 | `grafana/mcp-k6` (image) | **New pin** `AAK-MCP-K6-CVE-2026-89039-001`: 0.3.0 up to 0.7.0, and `latest`. No 0.7.0 image yet. | #907 |
 
-CVSS is NVD's CVSS 3.1 score.
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
 
 ## 2026-10-05 (v0.6.16): two more disclosures, one new pin, one WordPress plugin out of scope
 

@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` carries CVE-2026-105697, CVE-2026-105740 and CVE-2026-105741 (#903 to #905), all fixed below its 1.12.0 floor. It now reads `langflow-base` and `lfx` at 1.12.0 as well as `langflow`, and all three pins are PyPI-only.
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` carries CVE-2026-105697, CVE-2026-105740, CVE-2026-105741 (#903 to #905) and CVE-2026-105699 (#908), all fixed below its 1.12.0 floor. It now reads `langflow-base` and `lfx` at 1.12.0 as well as `langflow`, and all three pins are PyPI-only.
 - Container image pins take an optional `introduced` bound, so `grafana/mcp-k6` 0.1.0 and 0.2.0, which predate the vulnerable prompt, are not reported.
 - Disposed #903 to #907. The three Langflow CVEs join the existing Langflow pin. The reasoning for Dify and mcp-k6 is in CHANGELOG.cves.md.
+- Disposed #908, which the watcher opened while that batch was in review. CVE-2026-105699, a fourth Langflow advisory fixed in 1.9.1, joins the same pin.
 
 ### Fixed
 

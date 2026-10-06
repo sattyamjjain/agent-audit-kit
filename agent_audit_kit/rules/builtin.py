@@ -8282,7 +8282,10 @@ _r(
     "transport running a configured command through `bash -c` with no allowlist "
     "(fixed in 1.10.3 and 1.9.0), and CVE-2026-105741 (CVSS 7.1), a spoofed "
     "`X-Forwarded-For` on the MCP-config install endpoint from 1.5.0 (fixed in "
-    "1.10.3). The same code ships as `langflow-base` and `lfx`, which reach 1.12.0 "
+    "1.10.3). So does CVE-2026-105699 (CVSS 4.0 7.1): from 1.6.8, a project-scoped "
+    "MCP connection's `resources/read` returned another user's flow files without "
+    "checking that the flow belonged to the caller (fixed in 1.9.1). The same code "
+    "ships as `langflow-base` and `lfx`, which reach 1.12.0 "
     "in the same release, so both are read at the same floor. Pre-1.0.0 releases "
     "of `langflow` predate the MCP stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
@@ -8298,7 +8301,7 @@ _r(
         "CVE-2026-12940", "CVE-2026-17623", "CVE-2026-17626",
         "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
         "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
-        "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741",
+        "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
     ],
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI04"],
