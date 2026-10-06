@@ -216,6 +216,8 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-NEXTJS-CVE-2026-94486-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": ["IAM-02", "IAM-16", "STA-08"],
     "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-DIFY-CVE-2026-105761-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-K6-CVE-2026-89039-001": ["AIS-07", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -8275,11 +8277,18 @@ _r(
     "`ComponentToolkit.get_tools()`, a custom-component save through the API "
     "included, so an option object with a crafted `__repr__` runs code "
     "(GHSA-33p4-w7j3-33mw). Treat < 1.12.0 (and unpinned) as exposed; 1.11.6 is "
-    "exposed to that one alone. Pre-1.0.0 releases predate the MCP "
-    "stdio launcher and are not in the affected range.",
+    "exposed to that one alone. Three more advisories sit under that floor: "
+    "CVE-2026-105697 (CVSS 9.9) and CVE-2026-105740 (CVSS 9.9), the MCP stdio "
+    "transport running a configured command through `bash -c` with no allowlist "
+    "(fixed in 1.10.3 and 1.9.0), and CVE-2026-105741 (CVSS 7.1), a spoofed "
+    "`X-Forwarded-For` on the MCP-config install endpoint from 1.5.0 (fixed in "
+    "1.10.3). The same code ships as `langflow-base` and `lfx`, which reach 1.12.0 "
+    "in the same release, so both are read at the same floor. Pre-1.0.0 releases "
+    "of `langflow` predate the MCP stdio launcher and are not in the affected range.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `langflow` to >= 1.12.0 and pin it. Do not pass an attacker-influenced "
+    "Upgrade `langflow` (or `langflow-base` / `lfx`, where those are installed "
+    "directly) to >= 1.12.0 and pin it. Do not pass an attacker-influenced "
     "environment through to a launched stdio MCP server; blocklist (or, better, "
     "allowlist) the process environment, including `SHELLOPTS`/`BASHOPTS`/`PS4`. "
     "Derive the client address from the socket, not from a caller-supplied "
@@ -8289,6 +8298,7 @@ _r(
         "CVE-2026-12940", "CVE-2026-17623", "CVE-2026-17626",
         "CVE-2026-8446", "CVE-2026-9077", "CVE-2026-7646", "CVE-2026-9186",
         "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
+        "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741",
     ],
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI04"],
@@ -10720,6 +10730,77 @@ _r(
         "client, or never passes `actions` to these decorators, is reported without "
         "being exposed. The JavaScript `@langchain/langgraph-sdk` is a different "
         "package and is not read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-06 wave (#903-#907). Five watcher-filed CVEs: three join the Langflow
+# pin (which now also reads langflow-base and lfx), and two get container image
+# pins. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-DIFY-CVE-2026-105761-001",
+    "Dify below 1.16.0: a workspace member can change another app's MCP server",
+    "Dify (langgenius/dify), a self-hosted LLM app platform, can publish an app as "
+    "an MCP server. Before 1.16.0, `PUT /console/api/apps/<app_id>/server` loaded "
+    "the AppMCPServer by the server id the client sent, without checking that it "
+    "belonged to the requested app and tenant, so an authenticated workspace member "
+    "could change another app's MCP server status and parameters, redirecting its "
+    "data or switching it off (CVE-2026-105761, CVSS 3.1 7.1, CWE-639, "
+    "GHSA-ccrj-frp2-c945). The server ships as the Docker Hub image "
+    "`langgenius/dify-api`, which Dify's compose file pins by version. 1.16.0 "
+    "looks the server up by its app and tenant (fix commit `62cb5b5`).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the `langgenius/dify-api` image to 1.16.0 or later and pin its tag.",
+    sarif_name="DifyMcpServerCrossAppUpdate",
+    cve_references=["CVE-2026-105761"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `langgenius/dify-api` image references below 1.16.0 in compose files, "
+        "Kubernetes manifests, Helm values, Dockerfiles and MCP configs. The bare "
+        "Docker Hub name is matched, so `docker.io/langgenius/dify-api` is not read. "
+        "`latest` was 1.17.1 on 2026-10-06, so an untagged reference is not "
+        "reported. A source checkout run without the image states no version AAK "
+        "reads, and `langgenius/dify-web` is not pinned because the endpoint is in "
+        "the API server."
+    ),
+)
+
+_r(
+    "AAK-MCP-K6-CVE-2026-89039-001",
+    "Grafana mcp-k6 0.3.0 to 0.6.1: the convert_playwright_script prompt reads any file",
+    "Grafana's `mcp-k6`, an MCP server for the k6 load-testing tool, has a "
+    "`convert_playwright_script` prompt that takes a script path. From 0.3.0, "
+    "when the prompt arrived, until 0.7.0, a caller could pass a bare path and get "
+    "back any file the server's user can read, SSH keys and cloud credentials "
+    "included, and a symlink inside the working directory took an `@`-prefixed "
+    "path outside it (CVE-2026-89039, CVSS 3.1 6.5, CWE-22/CWE-424). It is a Go "
+    "binary, and its recommended install is the Docker Hub image `grafana/mcp-k6`. "
+    "In 0.7.0 a bare value is script text, never a path, and an `@` reference must "
+    "name a `.js`/`.ts`-family file inside the working directory, read through a "
+    "handle that will not leave it, links included (grafana/mcp-k6#191).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp-k6` to 0.7.0 or later. Docker Hub had no 0.7.0 image on "
+    "2026-10-06, so until one is pushed, run the 0.7.0 release binary or build "
+    "the image from the v0.7.0 tag, and do not expose the prompt to untrusted "
+    "callers.",
+    sarif_name="McpK6PlaywrightScriptFileRead",
+    cve_references=["CVE-2026-89039"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        "Reads `grafana/mcp-k6` image references from 0.3.0 up to 0.7.0, and an "
+        "untagged or `latest` reference, because `latest` was the 0.6.1 image on "
+        "2026-10-06. That needs revisiting once a 0.7.0 image is pushed. Tags 0.1.0 "
+        "and 0.2.0 predate the prompt and are not reported. The bare Docker Hub name "
+        "is matched, so `docker.io/grafana/mcp-k6` is not read. A Homebrew install "
+        "or a release binary states no version AAK reads."
     ),
 )
 

@@ -8,7 +8,12 @@ placeholder and PyPI's `obot` an unrelated bot library. MetaMCP's root
 a separate client proxy from another repository. heym is on neither registry and
 ships as `ghcr.io/heymrun/heym`, and mark3labs' `mcp-filesystem-server` is a Go
 binary whose one versioned distribution is
-`ghcr.io/mark3labs/mcp-filesystem-server`. Nothing `mcp_cve_pins_2026_07` reads carries
+`ghcr.io/mark3labs/mcp-filesystem-server`. Dify's API server ships as the Docker
+Hub image `langgenius/dify-api`, which its compose file pins by version; PyPI has
+only the `dify-client` SDK, and npm's `dify` is an unrelated placeholder. Grafana's
+`mcp-k6` is a Go binary whose recommended install is the image `grafana/mcp-k6`.
+Docker Hub images are matched by the bare name their docs use, so
+`docker.io/grafana/mcp-k6` is not read. Nothing `mcp_cve_pins_2026_07` reads carries
 their version, and a pin on a look-alike package name would report somebody
 else's project. The image tag is the only place a deployment states which
 release it runs, so this module reads image references and nothing else.
@@ -75,6 +80,9 @@ class _ImagePin:
     fix_label: str
     cves: tuple[str, ...]
     floating_affected: bool = False  # `latest` resolves inside the range today
+    # The first affected version, for a defect that arrived after the image's
+    # first tag (mcp-k6's prompt is absent before 0.3.0). None: every older tag.
+    introduced: _Ver | None = None
 
 
 _PINS: tuple[_ImagePin, ...] = (
@@ -113,6 +121,28 @@ _PINS: tuple[_ImagePin, ...] = (
         (0, 11, 2), "up to and including 0.11.1", "No fixed release yet.",
         ("CVE-2026-79534",),
         floating_affected=True,
+    ),
+    # CVE-2026-105761: `PUT /console/api/apps/<app_id>/server` loaded an
+    # AppMCPServer by the client's id without checking app and tenant. The fix,
+    # 62cb5b5 (langgenius/dify#38177), is in 1.16.0 and not in 1.15.0, whose
+    # compose file runs `langgenius/dify-api:1.15.0`. `latest` was 1.17.1 on
+    # 2026-10-06, fixed. The endpoint is in the API server, so `dify-web` is not
+    # pinned.
+    _ImagePin(
+        "AAK-MCP-DIFY-CVE-2026-105761-001", "Dify", "langgenius/dify-api",
+        (1, 16, 0), "below 1.16.0", "Fixed in 1.16.0.", ("CVE-2026-105761",),
+    ),
+    # CVE-2026-89039: the `convert_playwright_script` prompt read any file named by
+    # a bare path, and followed a symlink out of the working directory. The prompt
+    # first ships in 0.3.0 (prompts/convert_playwright_script.go is absent at 0.1.0
+    # and 0.2.0); grafana/mcp-k6#191 fixes it in v0.7.0 (2026-10-05). Docker Hub
+    # had no 0.7.0 image on 2026-10-06, and `latest` was the 0.6.1 digest, so
+    # `latest` is affected until the 0.7.0 image is pushed.
+    _ImagePin(
+        "AAK-MCP-K6-CVE-2026-89039-001", "mcp-k6", "grafana/mcp-k6",
+        (0, 7, 0), "from 0.3.0 up to 0.7.0",
+        "Fixed in 0.7.0; Docker Hub had no 0.7.0 image yet.", ("CVE-2026-89039",),
+        floating_affected=True, introduced=(0, 3, 0),
     ),
 )
 
@@ -153,8 +183,14 @@ def _affected(tag: str | None, pin: _ImagePin) -> bool:
         return False
     major, minor = int(m.group(1)), int(m.group(2))
     if m.group(3) is None:
+        # A two-part tag floats over its line, so the line is compared at both ends.
+        if pin.introduced is not None and (major, minor) < pin.introduced[:2]:
+            return False
         return (major, minor) < pin.floor[:2]
-    return (major, minor, int(m.group(3))) < pin.floor
+    version = (major, minor, int(m.group(3)))
+    if pin.introduced is not None and version < pin.introduced:
+        return False
+    return version < pin.floor
 
 
 def _kind(name: str) -> str | None:

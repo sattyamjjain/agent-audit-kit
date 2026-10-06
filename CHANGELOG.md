@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-DIFY-CVE-2026-105761-001`: the `langgenius/dify-api` image below 1.16.0 (CVE-2026-105761, #906). `PUT /console/api/apps/<app_id>/server` loaded an app's MCP server by the id the client sent, without checking app and tenant, so a workspace member could change another app's MCP server.
+- `AAK-MCP-K6-CVE-2026-89039-001`: the `grafana/mcp-k6` image from 0.3.0 up to 0.7.0, and `latest` (CVE-2026-89039, #907). Its `convert_playwright_script` prompt read any file named by a bare path. Docker Hub had no 0.7.0 image on 2026-10-06, and `latest` was 0.6.1.
+
+### Changed
+
+- `AAK-MCP-LANGFLOW-CVE-2026-12940-001` carries CVE-2026-105697, CVE-2026-105740 and CVE-2026-105741 (#903 to #905), all fixed below its 1.12.0 floor. It now reads `langflow-base` and `lfx` at 1.12.0 as well as `langflow`, and all three pins are PyPI-only.
+- Container image pins take an optional `introduced` bound, so `grafana/mcp-k6` 0.1.0 and 0.2.0, which predate the vulnerable prompt, are not reported.
+- Disposed #903 to #907. The three Langflow CVEs join the existing Langflow pin. The reasoning for Dify and mcp-k6 is in CHANGELOG.cves.md.
+
+### Fixed
+
+- The Langflow pin read `langflow-base` as an unpinned `langflow`, so a patched `langflow-base==1.12.0` was reported whatever its version, and it never read `lfx`. Its package name is bounded on both sides now.
+
 ## [0.6.16] - 2026-10-05
 
 ### Added
