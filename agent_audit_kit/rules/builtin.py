@@ -218,6 +218,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": ["IAM-01", "STA-08"],
     "AAK-MCP-DIFY-CVE-2026-105761-001": ["IAM-01", "STA-08"],
     "AAK-MCP-K6-CVE-2026-89039-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-TSSDK-CVE-2026-104850-001": ["IAM-01", "IAM-16", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -10804,6 +10805,58 @@ _r(
         "and 0.2.0 predate the prompt and are not reported. The bare Docker Hub name "
         "is matched, so `docker.io/grafana/mcp-k6` is not read. A Homebrew install "
         "or a release binary states no version AAK reads."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-07 batch (#911-#915). Five watcher-filed CVEs: one new pin below, and
+# four out of scope. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-TSSDK-CVE-2026-104850-001",
+    "MCP TypeScript SDK 1.12.0 to 1.30.1 (2.x client below 2.2.0): the MCP server picks where OAuth credentials go",
+    "The official MCP TypeScript SDK (`@modelcontextprotocol/sdk` on npm for 1.x, "
+    "`@modelcontextprotocol/client` for 2.x) can act as an MCP client over HTTP "
+    "with OAuth. From 1.12.0, when the client began reading the authorization "
+    "server from the MCP server's protected resource metadata, until 1.31.0 and "
+    "2.2.0, stored and pre-provisioned credentials were not bound to the "
+    "authorization server they belong to. A malicious or compromised MCP server "
+    "could name its own authorization server, and with no user interaction the "
+    "client sent it the `refresh_token` and `client_secret` stored from an "
+    "earlier sign-in (1.x), or the `client_secret` or signed assertion of a "
+    "bundled non-interactive provider (1.x and 2.x) (CVE-2026-104850, CVSS 3.1 "
+    "7.5, CWE-345/CWE-522, GHSA-6qxp-vccf-f47h). Only an application that uses "
+    "the SDK as an MCP client over HTTP with an `authProvider` (its own "
+    "`OAuthClientProvider`, or the bundled `ClientCredentialsProvider`, "
+    "`PrivateKeyJwtProvider`, `StaticPrivateKeyJwtProvider` or, on 2.x, "
+    "`CrossAppAccessProvider`) and may connect to an MCP server it does not fully "
+    "trust is exposed. 1.31.0 and 2.2.0 record the authorization server as "
+    "`issuer` on saved credentials and do not send them to another one.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@modelcontextprotocol/sdk` to 1.31.0 or later, or on 2.x "
+    "`@modelcontextprotocol/client` (and `@modelcontextprotocol/core`, if you import "
+    "it directly) to 2.2.0 or later, and pin it. The upgrade alone is not enough: "
+    "pass `expectedIssuer` to the bundled providers, add `issuer` to credentials "
+    "saved before the upgrade or clear them, and have your own `OAuthClientProvider` "
+    "save the `issuer` it is given. Rotate any credential a client may have sent to "
+    "an MCP server you do not trust.",
+    sarif_name="McpTypeScriptSdkOAuthIssuerConfusion",
+    cve_references=["CVE-2026-104850"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reports `@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0 and "
+        "`@modelcontextprotocol/client` below 2.2.0 where a package.json, lockfile or "
+        "MCP config states the version, taking the lowest version a range allows. "
+        "`latest` and other tags state no version and are not reported. It reads the "
+        "version, not how the SDK is used, so an MCP server built on the SDK, or a "
+        "client that speaks only stdio, is reported without being exposed. "
+        "`@modelcontextprotocol/core` is not read: the advisory names it only as an "
+        "upgrade for direct importers, and `@modelcontextprotocol/client` 2.2.0 pins "
+        "it at 2.2.0."
     ),
 )
 

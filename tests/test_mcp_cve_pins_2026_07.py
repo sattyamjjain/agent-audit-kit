@@ -108,6 +108,8 @@ PINS = {
     "AAK-MCP-NEXTJS-CVE-2026-94486-001": "low",
     "AAK-MCP-CLAUDECODE-CVE-2026-103012-001": "low",
     "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": "high",
+    # 2026-10-07 batch (#911-#915)
+    "AAK-MCP-TSSDK-CVE-2026-104850-001": "high",
 }
 
 
@@ -1989,3 +1991,63 @@ def test_langflow_lookalikes_are_quiet(tmp_path: Path, name: str, content: str) 
 def _write_and_root(tmp_path: Path, name: str, content: str) -> Path:
     (tmp_path / name).write_text(content, encoding="utf-8")
     return tmp_path
+
+
+# --- 2026-10-07 batch (#911-#915): the MCP TypeScript SDK -----------------------
+_TSSDK = "AAK-MCP-TSSDK-CVE-2026-104850-001"
+
+
+@pytest.mark.parametrize("fixture", ["cve-2026-104850-mcp-ts-sdk", "cve-2026-104850-mcp-ts-client"])
+def test_ts_sdk_fixtures_positive_and_negative(fixture: str) -> None:
+    root = _CVE_FIXTURES / fixture
+    assert _TSSDK in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _TSSDK not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+def test_ts_sdk_is_one_rule_with_two_pins() -> None:
+    """CVE-2026-104850 (#914): 1.x ships as `@modelcontextprotocol/sdk`, which npm has
+    never published at 2.x, and 2.x as `@modelcontextprotocol/client`."""
+    pins = [p for p in _PINS if p.rule_id == _TSSDK]
+    assert sorted(p.display for p in pins) == [
+        "@modelcontextprotocol/client", "@modelcontextprotocol/sdk",
+    ]
+    assert {p.ecosystem for p in pins} == {"js"}
+
+
+@pytest.mark.parametrize(("dep", "fires"), [
+    ('"@modelcontextprotocol/sdk": "1.11.5"', False),  # no resource-metadata discovery yet
+    ('"@modelcontextprotocol/sdk": "1.12.0"', True),
+    ('"@modelcontextprotocol/sdk": "^1.30.1"', True),
+    ('"@modelcontextprotocol/sdk": "1.31.0"', False),
+    ('"@modelcontextprotocol/sdk": "latest"', False),   # resolves to a fixed release
+    ('"@modelcontextprotocol/client": "2.0.0-beta.5"', True),
+    ('"@modelcontextprotocol/client": "~2.1.0"', True),
+    ('"@modelcontextprotocol/client": "2.2.0"', False),
+    ('"@modelcontextprotocol/server": "2.1.0"', False),  # servers are not affected
+    ('"@modelcontextprotocol/core": "2.1.0"', False),    # NVD names client and sdk only
+])
+def test_ts_sdk_versions(tmp_path: Path, dep: str, fires: bool) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert (_TSSDK in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("version", "fires"), [("1.30.1", True), ("1.31.0", False)])
+def test_ts_sdk_lockfile_reads_the_resolved_version(
+    tmp_path: Path, version: str, fires: bool
+) -> None:
+    lock = (
+        '{"lockfileVersion": 3, "packages": {"": {"name": "client"}, '
+        '"node_modules/@modelcontextprotocol/sdk": {"version": "%s"}}}' % version
+    )
+    assert (_TSSDK in _ids(tmp_path, "package-lock.json", lock)) is fires
+
+
+@pytest.mark.parametrize("content", [
+    # An import path in a script names a module, not an installed version.
+    '{"scripts": {"probe": "node -e \\"import(\'@modelcontextprotocol/sdk/client/auth.js\')\\""}}',
+    # Other packages under the scope are not the SDK.
+    '{"dependencies": {"@modelcontextprotocol/server-filesystem": "0.6.2", '
+    '"@modelcontextprotocol/inspector": "0.16.0"}}',
+])
+def test_ts_sdk_lookalikes_are_quiet(tmp_path: Path, content: str) -> None:
+    assert _TSSDK not in _ids(tmp_path, "package.json", content)

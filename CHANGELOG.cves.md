@@ -16,6 +16,89 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-08 (v0.6.18): the 6 October evening batch, one new pin and four out of scope
+
+The watcher opened five `cve-response` issues at 18:22Z on 2026-10-06 (#911-#915).
+They were researched on 2026-10-07 and merged on 2026-10-08, the date this section
+carries, because the latency page reads it as the shipped date. One gets a new npm
+pin, measured with the scanner on a firing fixture and a negative one for each of
+its two package names. Four are out of scope: two Microsoft UFO CVEs and a
+SimpleChat CVE, applications with no PyPI, npm or image artifact, and a WordPress
+plugin with no fixed release. NVD text below is quoted from the API record, re-read
+on 2026-10-08.
+
+**MCP TypeScript SDK (CVE-2026-104850) gets `AAK-MCP-TSSDK-CVE-2026-104850-001`:
+`@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0, and
+`@modelcontextprotocol/client` below 2.2.0.** NVD: "Starting in version 1.12.0 and
+prior to versions 1.31.0 and 2.2.0, the SDK's OAuth client support let the MCP
+server a client connected to decide which authorization server received the
+client's OAuth credentials." No row in the pin table read the SDK.
+`AAK-DNS-REBIND-002` reads its version, but that is the DNS-rebinding class rule,
+with a 1.21.1 floor for the TypeScript SDK beside its Python, Java and Apollo
+floors, and raising it would report 1.21.1 to 1.30.1 as the DNS-rebinding bug. The
+Python SDK already has this split: `AAK-MCP-SDK-CVE-2026-52869-001` sits beside the
+same class rule. npm carries 1.x as `@modelcontextprotocol/sdk` (latest 1.32.1,
+never a 2.x) and 2.x as separate `client`, `server` and `core` packages. NVD and
+GHSA-6qxp-vccf-f47h name `sdk` and `client` only, so the rule has those two pins,
+like `@agenticmail`. Checked in the tarballs:
+- 1.11.5's client has no protected-resource-metadata discovery.
+- 1.12.0 adds `discoverOAuthProtectedResourceMetadata` and reads the server's
+  `authorization_servers`.
+- 1.31.0 adds `expectedIssuer`, `issuersMatch` and `discardIfIssuerMismatch`,
+  which 1.30.1 lacks.
+- On 2.x, NVD says "2.0.0 and 2.1.0 already accept `expectedIssuer`", and 2.2.0
+  closes the cases the GHSA lists. `client` 2.2.0 depends on exactly
+  `@modelcontextprotocol/core` 2.2.0, so `core` is not read.
+
+The pin is HIGH, from NVD's 7.5. NVD limits the exposure to "applications that use
+the SDK as an MCP client over HTTP with an `authProvider`", and the GHSA says
+servers built with the SDK and stdio clients are not affected. The pin reads
+versions, not transports, so like the LangGraph SDK pin its limitations say that
+such a project is reported without being exposed.
+
+**Microsoft UFO (CVE-2026-105793, CVE-2026-105788) is out of scope.** NVD for
+CVE-2026-105793: "Prior to 3.0.9, the press_key tool in
+ufo/client/mcp/http_servers/mobile_mcp_server.py accepts a free-form key_code
+parameter and passes it to `adb shell input keyevent`." CVE-2026-105788 is the
+same reparsing through `type_text` and `launch_app`, fixed in 3.0.10. UFO installs
+from a source checkout: `pip install -r requirements.txt`, then `python -m galaxy`
+or `python -m ufo`. Its GitHub releases, v3.0.9 and v3.0.10 included, carry no
+assets. No UFO name is on PyPI: `ufo`, `ufo-agent`, `microsoft-ufo`, `ufo3`,
+`ufo-galaxy` and `ufo2` all return 404. Docker Hub and MCR have no image either.
+This is the basis the Dify entry started from before it found an image: no file
+AAK reads states the version of a checkout.
+
+**SimpleChat (CVE-2026-105797) is out of scope.** NVD: "In versions 0.261.003 and
+0.261.027, an authorization ordering flaw in POST /api/user/plugins allows an
+authenticated low-privileged user to omit the top-level MCP type so that
+_reject_non_admin_mcp_stdio skips inspection before the type is restored from
+metadata." microsoft/simplechat deploys with `azd up`, which builds its image from
+the repository's Dockerfile into the deployer's own Azure Container Registry.
+Its GitHub releases carry no assets, and Docker Hub has no
+`microsoft/simplechat`. PyPI's `simplechat` is an unrelated Zope product, last
+released as 1.0dev. NVD gives 0.261.031 as the fix, but the newest release is
+v0.261.027 (2026-09-17), so no release carries it yet.
+
+**IATO MCP (CVE-2026-32582) is out of scope.** NVD: "This issue affects IATO MCP:
+from n/a through 1.12.0." The record the watcher filed read "Contributor Broken
+Access Control in IATO MCP <= 1.11.0 versions". wordpress.org now lists 1.12.0 as
+the current release (plugin last updated at 18:59Z on 2026-10-07), and NVD revised
+the record at 07:16Z on 2026-10-08 to cover it, so there is still no fixed release.
+It is a wordpress.org
+plugin with no npm or PyPI artifact, and Patchstack is the only reference NVD
+gives, so it is non-pinnable like #900, #863, #865 and #866.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-104850 | 7.5 | `@modelcontextprotocol/sdk`, `@modelcontextprotocol/client` (npm) | **New pin** `AAK-MCP-TSSDK-CVE-2026-104850-001`: `sdk` 1.12.0 up to 1.31.0, `client` below 2.2.0. | #914 |
+| CVE-2026-105793 | 9.1 | Microsoft UFO (source checkout) | **Out of scope**, non-pinnable. Upgrade the checkout to v3.0.9 or later. | #911 |
+| CVE-2026-105788 | 8.8 | Microsoft UFO (source checkout) | **Out of scope**, non-pinnable. Upgrade the checkout to v3.0.10 or later. | #912 |
+| CVE-2026-105797 | 8.8 | SimpleChat (built from source with `azd`) | **Out of scope**, non-pinnable, and no release carries the fix yet. | #913 |
+| CVE-2026-32582 | 6.5 | IATO MCP (wordpress.org plugin) | **Out of scope**, non-pinnable, and no fixed release yet: NVD now covers 1.12.0, the current release. | #915 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
+
 ## 2026-10-06 (v0.6.17): six disclosures, four on the Langflow pin and two new image pins
 
 The watcher opened five `cve-response` issues at 00:03Z (#903-#907) and a sixth
