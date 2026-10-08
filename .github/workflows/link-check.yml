@@ -52,7 +52,7 @@ jobs:
         with:
           args: >-
             --no-progress
-            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/|github\.com/snyk/agent-scan/blob/main/docs/(issue-codes|risks)\.md|github\.com/openvex/spec/blob/main/OPENVEX-SPEC\.md'
+            --exclude 'mailto:|agentauditkit\.io|globenewswire\.com|asciinema\.org|linkedin\.com|github\.com/sattyamjjain/agent-audit-kit/(blob|tree)/main|sattyamjjain\.github\.io/agent-audit-kit/docs/|github\.com/snyk/agent-scan/blob/main/docs/(issue-codes|risks)\.md|github\.com/openvex/spec/blob/main/OPENVEX-SPEC\.md|genai\.owasp\.org/resource/owasp-top-10-for-agentic-applications-for-2026/'
             --exclude-path 'docs/changelog/archive'
             --max-retries 3
             --retry-wait-time 5
@@ -82,6 +82,8 @@ jobs:
       # hiding real breakage. Revisit if lychee gains a per-host HTTP/1.1 flag.
       #
       # The snyk/agent-scan and openvex/spec blob pages answered 503 to the runner in runs 252, 253 and 255 (2026-10-02) and 200 elsewhere.
+      #
+      # The OWASP Agentic Top 10 page is excluded because genai.owasp.org started answering every non-browser request, its root included, with a 403 "Checking your browser... Javascript required" challenge after 2026-10-06 (run 37773926053, and from outside CI); the Wayback Machine has the page as of 2026-10-05.
       #
       # The deterministic half of this job — relative links to files in this
       # repo — is also covered by tests/test_docs_links.py, which fails fast and
