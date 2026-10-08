@@ -947,6 +947,7 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-103435",
         "CVE-2026-40068"
       ],
       "eu_ai_act": [
@@ -968,7 +969,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
       "severity": "high",
-      "title": "Anthropic Claude Code folder-trust bypass (CVE-2026-40068, npm <2.1.83)"
+      "title": "Anthropic Claude Code below 2.1.129: folder-trust bypass (CVE-2026-40068) and write-time symlink following (CVE-2026-103435)"
     },
     {
       "category": "composition",
@@ -4488,6 +4489,57 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-106119"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities",
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP03:2025 Supply Chain Attacks"
+      ],
+      "rule_id": "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001",
+      "severity": "medium",
+      "title": "LangChain.js MongoDB chat history through 1.3.0: an object session id reaches another user's conversation"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-105799"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP03:2025 Supply Chain Attacks"
+      ],
+      "rule_id": "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001",
+      "severity": "low",
+      "title": "LangChain.js Redis vector store below 1.1.1: unescaped filter values widen a RediSearch query"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-101861",
         "CVE-2026-105697",
         "CVE-2026-105699",
@@ -5272,6 +5324,30 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-105806"
+      ],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity & Privilege Abuse"
+      ],
+      "owasp_mcp": [
+        "MCP01:2025 Token & Credential Mismanagement",
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-PAYLOAD-CVE-2026-105806-001",
+      "severity": "high",
+      "title": "Payload MCP plugin 3.61.0 to 3.87.x: a user can manage another account's MCP API keys"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-100868"
       ],
       "eu_ai_act": [],
@@ -5450,7 +5526,8 @@
         "CVE-2026-51994",
         "CVE-2026-51995",
         "CVE-2026-51996",
-        "CVE-2026-51997"
+        "CVE-2026-51997",
+        "CVE-2026-52001"
       ],
       "eu_ai_act": [
         "Art. 10 - Data Governance"
@@ -8718,49 +8795,49 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 143,
+      "supply-chain": 146,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 136,
+      "Art. 10 - Data Governance": 138,
       "Art. 13 - Transparency": 34,
       "Art. 14 - Human Oversight": 41,
-      "Art. 15 - Robustness & Security": 230,
+      "Art. 15 - Robustness & Security": 233,
       "Art. 9 - Risk Management": 131
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 94,
+      "Choose supported MCP projects when possible (p.10)": 96,
       "Constrain and sandbox tool execution (p.11)": 116,
-      "Design for boundaries (p.10)": 199,
+      "Design for boundaries (p.10)": 200,
       "Filter and monitor output pipelines and chained execution (p.12)": 81,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 173,
-      "Sign and verify MCP messages (p.12)": 172,
-      "Track and patch MCP related vulnerabilities (p.13)": 105,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 176,
+      "Sign and verify MCP messages (p.12)": 175,
+      "Track and patch MCP related vulnerabilities (p.13)": 107,
       "Validate parameters (p.11)": 120
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 56,
-      "ASI03": 81,
-      "ASI04": 88,
+      "ASI03": 82,
+      "ASI04": 90,
       "ASI05": 60,
-      "ASI06": 51,
+      "ASI06": 52,
       "ASI07": 11,
       "ASI08": 5,
       "ASI09": 19,
       "ASI10": 22
     },
     "by_owasp_mcp": {
-      "MCP01:2025": 93,
+      "MCP01:2025": 94,
       "MCP02:2025": 15,
-      "MCP03:2025": 38,
+      "MCP03:2025": 40,
       "MCP04:2025": 49,
       "MCP05:2025": 58,
-      "MCP06:2025": 23,
+      "MCP06:2025": 24,
       "MCP07:2025": 43,
       "MCP08:2025": 10,
       "MCP09:2025": 33,
@@ -8768,13 +8845,13 @@
     },
     "by_severity": {
       "critical": 89,
-      "high": 172,
+      "high": 173,
       "info": 5,
-      "low": 13,
-      "medium": 105
+      "low": 14,
+      "medium": 106
     },
-    "total_cves_covered": 302,
-    "total_rules": 384
+    "total_cves_covered": 307,
+    "total_rules": 387
   },
   "tool": "agent-audit-kit"
 }

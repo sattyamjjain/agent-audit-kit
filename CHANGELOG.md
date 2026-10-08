@@ -10,10 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `AAK-MCP-TSSDK-CVE-2026-104850-001`: the MCP TypeScript SDK, `@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0 and `@modelcontextprotocol/client` below 2.2.0 (CVE-2026-104850, #914). Its OAuth client sent stored or configured credentials to whichever authorization server the connected MCP server named. Servers built on the SDK and stdio clients are not affected, which a version cannot show, so the limitations say they are reported without being exposed.
+- `AAK-MCP-PAYLOAD-CVE-2026-105806-001`: `@payloadcms/plugin-mcp` from 3.61.0 up to 3.88.0 (CVE-2026-105806, #917). Its API-keys collection had no access rules, so a user could manage MCP API keys outside their own account.
+- `AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001`: `@langchain/redis` below 1.1.1, at LOW (CVE-2026-105799, #918). RediSearch filter values went into the query unescaped.
+- `AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001`: `@langchain/mongodb` below 1.3.1 (CVE-2026-106119, #919). `MongoDBChatMessageHistory` read an object session id as a query condition.
 
 ### Changed
 
 - Disposed #911 to #915. The MCP TypeScript SDK record gets a measured pin. The reasoning for UFO, SimpleChat and IATO MCP is in CHANGELOG.cves.md.
+- The mcp-remote pin now cites CVE-2026-52001 (reported in #921). @payloadcms/plugin-mcp is pinned below 3.88.0. The reasoning for the LangChain, Claude Code and WordPress records is in CHANGELOG.cves.md.
+- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` reports `@anthropic-ai/claude-code` below 2.1.129, up from 2.1.83, and carries CVE-2026-103435 (#920), a write-time symlink-following bug fixed in 2.1.129. Its evidence names the folder-trust bug only below 2.1.83.
+
+### Fixed
+
+- The Claude Code folder-trust rule said 2.1.83 was released on 2026-05-04. npm published it on 2026-03-24.
 
 ## [0.6.17] - 2026-10-06
 

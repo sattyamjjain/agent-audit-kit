@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-08T11:58:25Z",
+  "last_updated": "2026-10-08T12:09:54Z",
   "aak_version": "0.6.17",
-  "rule_count": 384,
+  "rule_count": 387,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -752,7 +752,7 @@
     {
       "asi_id": "ASI03",
       "title": "Memory Poisoning",
-      "rule_density": 81,
+      "rule_density": 82,
       "rules": [
         {
           "id": "AAK-A2A-005",
@@ -803,6 +803,7 @@
           "id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-103435",
             "CVE-2026-40068"
           ],
           "aicm_references": [
@@ -1180,6 +1181,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-PAYLOAD-CVE-2026-105806-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-105806"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-ROUTING-DESYNC-001",
           "severity": "high",
           "cve_references": [],
@@ -1483,7 +1495,7 @@
     {
       "asi_id": "ASI04",
       "title": "Identity & Privilege Abuse",
-      "rule_density": 88,
+      "rule_density": 90,
       "rules": [
         {
           "id": "AAK-AGENT-HARNESS-SHARED-STATE-001",
@@ -1911,6 +1923,30 @@
             "CVE-2026-88938"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-106119"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-105799"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-LANGFLOW-CVE-2026-12940-001",
@@ -2962,7 +2998,7 @@
     {
       "asi_id": "ASI06",
       "title": "Unauthorized Capability Acquisition",
-      "rule_density": 51,
+      "rule_density": 52,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -3169,6 +3205,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-106119"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "DSP-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-MCPHUB-CVE-2026-79748-001",
           "severity": "critical",
           "cve_references": [
@@ -3219,7 +3267,8 @@
             "CVE-2026-51994",
             "CVE-2026-51995",
             "CVE-2026-51996",
-            "CVE-2026-51997"
+            "CVE-2026-51997",
+            "CVE-2026-52001"
           ],
           "aicm_references": [
             "IVS-04",
@@ -3850,6 +3899,7 @@
           "id": "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-103435",
             "CVE-2026-40068"
           ],
           "aicm_references": [

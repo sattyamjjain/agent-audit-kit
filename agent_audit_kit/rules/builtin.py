@@ -219,6 +219,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-DIFY-CVE-2026-105761-001": ["IAM-01", "STA-08"],
     "AAK-MCP-K6-CVE-2026-89039-001": ["AIS-07", "STA-08"],
     "AAK-MCP-TSSDK-CVE-2026-104850-001": ["IAM-01", "IAM-16", "STA-08"],
+    "AAK-MCP-PAYLOAD-CVE-2026-105806-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001": ["STA-08", "AIS-07", "DSP-04"],
+    "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -5814,25 +5817,33 @@ _r(
 
 _r(
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
-    "Anthropic Claude Code folder-trust bypass (CVE-2026-40068, npm <2.1.83)",
+    "Anthropic Claude Code below 2.1.129: folder-trust bypass (CVE-2026-40068) and write-time symlink following (CVE-2026-103435)",
     "Claude Code 2.1.63 → before 2.1.83 derives folder-trust from the "
     "git worktree `commondir` file without validating its contents. A "
     "malicious repo with a crafted `commondir` pointing to a previously-"
     "trusted path silently bypasses the trust prompt — every subsequent "
-    "agent run executes inside that fake-trusted scope. Patched in "
-    "2.1.83 (released 2026-05-04). This pin-only rule fires on the "
-    "scoped npm package `@anthropic-ai/claude-code` < 2.1.83 in any "
-    "consumer manifest. Rule name was pre-allocated in the v0.3.15 "
-    "triage of issue #181 and shipped in v0.3.16.",
+    "agent run executes inside that fake-trusted scope (CVE-2026-40068, "
+    "patched in 2.1.83, published to npm 2026-03-24). Before 2.1.129, "
+    "Claude Code checked that a target file was inside the project when "
+    "it asked for permission, then re-resolved the path at write time "
+    "without checking again, so an attacker who can write to a shared "
+    "workspace and wins the race swaps the file for a symlink and "
+    "redirects the write to a file outside the project, such as a shell "
+    "profile (CVE-2026-103435, CVSS 4.0 7.7, CWE-367, "
+    "GHSA-5j29-h97v-84ch). This pin-only rule fires on the scoped npm "
+    "package `@anthropic-ai/claude-code` < 2.1.129 in any consumer "
+    "manifest, and its evidence names the folder-trust bug only below "
+    "2.1.83. Rule name was pre-allocated in the v0.3.15 triage of issue "
+    "#181 and shipped in v0.3.16; the floor rose from 2.1.83 on "
+    "2026-10-08.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Bump `@anthropic-ai/claude-code` to >=2.1.83 in any npm "
+    "Bump `@anthropic-ai/claude-code` to >=2.1.129 in any npm "
     "manifest pinning Claude Code. The rule fires only on the pin "
-    "shape; runtime detection of crafted commondir attacks against "
-    "an unpinned global install is out of scope (vendor's prompt "
-    "fix is the right fix once 2.1.83+ is installed).",
+    "shape; an unpinned global install is in no file AAK reads, and "
+    "auto-update has delivered both fixes to installs that keep it on.",
     sarif_name="ClaudeCodeFolderTrustBypass",
-    cve_references=["CVE-2026-40068"],
+    cve_references=["CVE-2026-40068", "CVE-2026-103435"],
     owasp_agentic_references=["ASI03", "ASI10"],
     incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
 )
@@ -10013,7 +10024,12 @@ _r(
     "CWE-328) as code execution through `getServerUrlHash` in `src/lib/utils.ts`, "
     "which names each server's OAuth state and token files from an MD5 hash; the "
     "advisory NVD cites (F-04) was corrected in its v1.0.1 to call this hardening, "
-    "with no token takeover shown. The range is the union of the advisories': they were reconfirmed against "
+    "with no token takeover shown. From 0.1.18 NVD also records CVE-2026-52001 "
+    "(CVSS 3.1 7.5 from CISA-ADP, CWE-200) as information disclosure through the SSE "
+    "transport's `eventSourceInit` fetch wrapper, which adds the bearer token with no "
+    "origin check of its own; its advisory (F-11) was likewise corrected in v1.0.1 to "
+    "defense in depth, because the SDK and undici versions it reviewed keep the token "
+    "from crossing origins. The range is the union of the advisories': they were reconfirmed against "
     "0.1.38, and upstream has published neither an advisory nor a fix, so this rule "
     "makes no claim about 0.1.39 or later in either direction.",
     Severity.CRITICAL,
@@ -10025,7 +10041,10 @@ _r(
     "of it that blocks loopback, link-local and private destinations on every request "
     "and redirect.",
     sarif_name="McpRemoteServerChosenUrls",
-    cve_references=["CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997"],
+    cve_references=[
+        "CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997",
+        "CVE-2026-52001",
+    ],
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
@@ -10857,6 +10876,105 @@ _r(
         "`@modelcontextprotocol/core` is not read: the advisory names it only as an "
         "upgrade for direct importers, and `@modelcontextprotocol/client` 2.2.0 pins "
         "it at 2.2.0."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-08 batch (#916-#921). Three new pins below, the Claude Code
+# folder-trust pin's floor raised, CVE-2026-52001 cited on the mcp-remote pin,
+# and a WordPress plugin out of scope. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-PAYLOAD-CVE-2026-105806-001",
+    "Payload MCP plugin 3.61.0 to 3.87.x: a user can manage another account's MCP API keys",
+    "Payload's `@payloadcms/plugin-mcp` serves a Payload CMS app over MCP and "
+    "authenticates MCP clients with API keys kept in a collection the plugin "
+    "creates. From 3.61.0, its first release, until 3.88.0, that collection had no "
+    "access rules, so an authenticated user could manage MCP API keys outside "
+    "their own account, an escalation to account takeover (CVE-2026-105806, "
+    "CVSS 4.0 8.6, CWE-862, GHSA-2q76-m6w6-qgc6). 3.88.0 adds access rules that "
+    "scope each key to its user (payloadcms/payload#17751).",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@payloadcms/plugin-mcp` to 3.88.0 or later and pin it. Then review "
+    "the MCP API keys collection for keys tied to an account other than the user "
+    "who created them, and revoke any you cannot account for.",
+    sarif_name="PayloadMcpApiKeyAccessControl",
+    cve_references=["CVE-2026-105806"],
+    owasp_mcp_references=["MCP01:2025", "MCP06:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `@payloadcms/plugin-mcp` from 3.61.0 up to 3.88.0 where a "
+        "package.json, lockfile or MCP config states the version, taking the lowest "
+        "version a range allows. `latest` was 3.90.2 on 2026-10-08 and states no "
+        "version, so it is not reported, and 4.0.0 canaries compare as 4.0.0 and are "
+        "not reported either. A version below 3.61.0, such as the 0.0.1-alpha.0 "
+        "placeholder that predates the first release, is not reported."
+    ),
+)
+
+_r(
+    "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001",
+    "LangChain.js Redis vector store below 1.1.1: unescaped filter values widen a RediSearch query",
+    "`@langchain/redis` is LangChain.js's Redis vector store. Before 1.1.1 it put "
+    "filter values into RediSearch queries unescaped, in the structured TAG and "
+    "TEXT filters, and only partly escaped in the older string-array filter, so "
+    "injected RediSearch syntax could change or widen the query. An application "
+    "that builds a tenant or document-access boundary from a filter an attacker "
+    "can influence can then return indexed documents outside that boundary "
+    "(CVE-2026-105799, CVSS 4.0 2.3, CWE-943, GHSA-5x6v-p487-7qh2). 1.1.1 escapes "
+    "every filter value (langchainjs#10701).",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@langchain/redis` to 1.1.1 or later and pin it. Until then, do not "
+    "build a tenant or access boundary from a filter value a user controls, or "
+    "enforce the boundary outside the vector search.",
+    sarif_name="LangChainRedisFilterInjection",
+    cve_references=["CVE-2026-105799"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports `@langchain/redis` below 1.1.1 where a package.json, lockfile or MCP "
+        "config states the version, taking the lowest version a range allows. "
+        "`latest` and other tags state no version and are not reported. It reads the "
+        "version, not the filters, so a project whose filters never carry user "
+        "input is reported without being exposed. The Python `langchain-redis` is a "
+        "different package and is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001",
+    "LangChain.js MongoDB chat history through 1.3.0: an object session id reaches another user's conversation",
+    "`@langchain/mongodb`'s `MongoDBChatMessageHistory` keeps agent conversations "
+    "in MongoDB, keyed by session id. Through 1.3.0 it put the session id into its "
+    "`findOne`, `updateOne` and `deleteOne` filters as given, without enforcing "
+    "the documented string type, so a structured id was read as a query condition. "
+    "Where several users' histories share one collection, a caller who controls "
+    "the id can read, change or delete another user's conversation "
+    "(CVE-2026-106119, CVSS 4.0 6.0, CWE-943, GHSA-m6rx-h84q-8r95). An application "
+    "that passes only authenticated, server-controlled string ids is not affected. "
+    "1.3.1 rejects a non-string id and wraps it in `$eq` (langchainjs#11672).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@langchain/mongodb` to 1.3.1 or later and pin it. Until then, give "
+    "`MongoDBChatMessageHistory` only a session id your server derives as a "
+    "string, never one taken from a request.",
+    sarif_name="LangChainMongoChatHistoryQueryInjection",
+    cve_references=["CVE-2026-106119"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04", "ASI06"],
+    adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reports `@langchain/mongodb` below 1.3.1 where a package.json, lockfile or "
+        "MCP config states the version, taking the lowest version a range allows. "
+        "`latest` and other tags state no version and are not reported. It reads the "
+        "version, not where the session id comes from, so a project that passes "
+        "only server-side string ids is reported without being exposed. The Python "
+        "`langchain-mongodb` is a different package and is not read."
     ),
 )
 

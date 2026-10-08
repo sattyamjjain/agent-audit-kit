@@ -16,6 +16,116 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-08 (v0.6.18): five disclosures and a missed citation, three new pins, one floor raised, one out of scope
+
+The watcher opened four `cve-response` issues at 06:00Z on 2026-10-07 (#916-#919)
+and a fifth at 13:24Z (#920). Three get a new npm pin and one raises the Claude
+Code folder-trust pin's floor, each measured with the scanner on a firing fixture
+and a negative one. One is a WordPress plugin, out of scope like #915 below. And
+#921, from playb0t, the researcher credited on the mcp-remote records, found a
+record from 2026-09-24 that the mcp-remote pin did not cite and the watcher never
+opened an issue for. NVD now scores #917 to #920, which the watcher filed as
+`sev/unknown`, so their titles and severity labels were corrected first, as the
+ageing gate asks. NVD text below is quoted from the API record, read on 2026-10-08.
+
+**mcp-remote (CVE-2026-52001) is listed on the pin it falls inside (#921).** NVD:
+"An issue in geelen mcp-remote 0.1.18 through 0.1.38 allows a remote attacker to
+obtain sensitive information via the SSE transport eventSourceInit fetch wrapper".
+cve.org shows the record published on 2026-09-24, and CISA-ADP scored it CVSS 3.1
+7.5 (CWE-200) on 2026-10-06. That is inside the 0.1.16-0.1.38 range
+`AAK-MCP-REMOTE-CVE-2026-51994-001` already reports, so the CVE joins its
+`cve_references` and nothing moves, as CVE-2026-51996 did. No fixture pair is
+added: the CVE-2026-51995 and CVE-2026-51997 entry added none, and the rule's tests
+already cover the range. The advisory NVD cites (playb0t/mcp-remote-oauth-security
+F-11, v1.0.1) reads as hardening, like F-04 for CVE-2026-51996. The wrapper adds the
+bearer token with no origin comparison of its own, but the advisory finds that the
+SDK and undici versions it reviewed keep the token from crossing origins: "These
+controls refute the original claim of a current token-forwarding exploit path", and
+CVSS is "not applicable to the current evidence". It also dates the wrapper from
+0.0.18, which the tarballs bear out: 0.0.17 has no `eventSourceInit` wrapper and
+0.0.18 has one. Below 0.1.16 the pin reports nothing, as its limitations say.
+
+**Payload (CVE-2026-105806) gets `AAK-MCP-PAYLOAD-CVE-2026-105806-001`,
+`@payloadcms/plugin-mcp` from 3.61.0 up to 3.88.0.** NVD: "In
+@payloadcms/plugin-mcp versions from 3.61.0 until 3.88.0, an authenticated user can
+manage MCP API keys outside the intended account, enabling privilege escalation
+through account takeover." 3.61.0 is the plugin's first release, after a
+0.0.1-alpha.0 placeholder the same day, so the fixtures are 3.87.0, which is
+reported, and 3.88.0 and 3.60.0, which are not. Checked in the tarballs:
+`createApiKeysCollection` declares no `access` in 3.61.0 or 3.87.0, and 3.88.0 adds
+user-scoped access rules. That is payloadcms/payload#17751, merge commit
+`025581d8c5`. NVD's commit link reads `025581d5c5…`, one character off, and does
+not resolve.
+
+**LangChain.js Redis (CVE-2026-105799) gets
+`AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001`, `@langchain/redis` below 1.1.1, at
+LOW.** NVD: "Prior to 1.1.1, @langchain/redis does not escape attacker-controlled
+values in structured RediSearch TAG filters and structured RediSearch TEXT filters,
+allowing injected RediSearch syntax to alter or broaden the generated search
+query." Neither this nor CVE-2026-106119 is an MCP component, so the ledger's scope
+precedent decides them. Non-MCP LangChain and LangGraph records with an artifact
+have been pinned: the LangGraph checkpointers (CVE-2026-48121, CVE-2026-55253,
+CVE-2026-71433) and `langchain-core` (CVE-2026-34070, CVE-2025-68664).
+Langchain-Chatchat was out of scope on 2026-10-05 as an application with no fixed
+release, which this is not. Checked in the tarballs:
+- `buildCustomQuery` interpolates TAG and TEXT values raw from 0.1.4.
+- The structured `filters` module ships in 1.1.0.
+- 1.1.1 (langchainjs#10701) also replaces the partial `escapeSpecialChars` of the
+  string-array path, which every release has.
+
+So the GHSA's unbounded range stands, and the pin has no lower bound. LOW, from
+NVD's CVSS 4.0 2.3.
+
+**LangChain.js MongoDB (CVE-2026-106119) gets
+`AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001`, `@langchain/mongodb` below 1.3.1.**
+NVD: "Prior to 1.3.1, MongoDBChatMessageHistory does not enforce the documented
+string type for an untrusted structured session identifier at runtime, allowing
+the identifier to be interpreted as a MongoDB query condition rather than as a
+literal value when multiple users' histories are stored in a shared MongoDB
+collection." NVD names no package. GHSA-m6rx-h84q-8r95 and the fix,
+langchainjs#11672, are the npm `@langchain/mongodb`. The Python
+`langchain-mongodb`, whose `session_id` is typed `str`, is a separate package that
+neither names, and the pin does not read it. CVE-2026-48121 was this defect in the
+LangGraph MongoDB checkpointer, which keeps its own pin. Checked in the tarballs:
+0.0.1 and 1.3.0 pass the session id straight into `findOne`, `updateOne` and
+`deleteOne`, and 1.3.1 throws on a non-string id and wraps it in `$eq`. MEDIUM, from
+NVD's CVSS 4.0 6.0. NVD adds "Applications using authenticated, server-controlled
+string identifiers are not affected", and the limitations say so.
+
+**Claude Code (CVE-2026-103435) raises `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` from
+2.1.83 to 2.1.129.** NVD: "Claude Code validated that a target file path resided
+within the project working directory at permission-check time, but re-resolved the
+path at write time without repeating that validation." NVD gives no version, and
+adds "Users on standard Claude Code auto-update have received this fix already".
+The vendor advisory, GHSA-5j29-h97v-84ch, gives `@anthropic-ai/claude-code` below
+2.1.129, patched in 2.1.129. The npm package is a minified bundle and the 2.1.129
+changelog does not list the fix, so the range is the vendor's. AAK pins the
+package twice. The fix is above the HIGH folder-trust pin's 2.1.83 floor, and this
+CVE is HIGH too (CVSS 4.0 7.7), so that floor rises and the CVE joins the rule. The
+2026-10-05 entry kept CVE-2026-103012 off this pin only because that CVE is LOW,
+and the LOW pin is the wrong home for this one for the same reason, the other way
+round. The rule's title now names both CVEs, and a finding's evidence names
+CVE-2026-40068 only below 2.1.83, where it applies. The rule text dated 2.1.83 to
+2026-05-04, but npm published it on 2026-03-24, and the text is corrected.
+
+**WDS MCP Content Manager (CVE-2026-39599) is out of scope, like IATO MCP (#915).**
+NVD: "Contributor Broken Access Control in WDS MCP Content Manager <= 3.10.4
+versions." It is a wordpress.org plugin with no npm or PyPI artifact, and
+Patchstack is the only reference NVD gives, so it is non-pinnable. The wordpress.org
+API lists 3.10.4 as the current release, so there is no fixed release yet.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-52001 | 7.5 | `mcp-remote` (npm) | No new rule, no new pin. Inside the 0.1.16-0.1.38 range; recorded against `AAK-MCP-REMOTE-CVE-2026-51994-001`. The advisory NVD cites was corrected to hardening, quoted above. | #921 |
+| CVE-2026-105806 | 8.6 (4.0) | `@payloadcms/plugin-mcp` (npm) | **New pin** `AAK-MCP-PAYLOAD-CVE-2026-105806-001`: 3.61.0 up to 3.88.0. | #917 |
+| CVE-2026-105799 | 2.3 (4.0) | `@langchain/redis` (npm) | **New pin** `AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001`: below 1.1.1. | #918 |
+| CVE-2026-106119 | 6.0 (4.0) | `@langchain/mongodb` (npm) | **New pin** `AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001`: below 1.3.1. | #919 |
+| CVE-2026-103435 | 7.7 (4.0) | `@anthropic-ai/claude-code` (npm) | **Floor raised** on `AAK-CLAUDECODE-CVE-2026-40068-PIN-001`: 2.1.83 to 2.1.129, and the CVE joins the rule. | #920 |
+| CVE-2026-39599 | 4.3 | WDS MCP Content Manager (wordpress.org plugin) | **Out of scope**, non-pinnable, and no fixed release yet. | #916 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0). CVE-2026-52001's 7.5 is the CISA-ADP score NVD carries.
+
 ## 2026-10-08 (v0.6.18): the 6 October evening batch, one new pin and four out of scope
 
 The watcher opened five `cve-response` issues at 18:22Z on 2026-10-06 (#911-#915).
