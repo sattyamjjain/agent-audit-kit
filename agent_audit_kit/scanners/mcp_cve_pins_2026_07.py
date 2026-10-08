@@ -165,6 +165,10 @@ available) before shipping:
   - langgraph-sdk                  0.1.45 <= v < 0.4.4  (CVE-2026-104873; the
     resource-scoped auth decorators register a handler for every action whatever
     `actions` says. Only a deployment that passes `actions` is exposed)
+  - @modelcontextprotocol/sdk      1.12.0 <= v < 1.31.0, and
+    @modelcontextprotocol/client   < 2.2.0  (CVE-2026-104850; the OAuth client sends
+    stored or configured credentials to the authorization server the MCP server
+    names. One rule, two pins. Servers and stdio clients are not affected)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -301,6 +305,18 @@ _LANGGRAPH_SDK_RE = re.compile(
 # reference resolves to the newest release, and the CLI updates itself.
 _CLAUDE_CODE_RE = re.compile(
     r"(?<![\w./-])@anthropic-ai/claude-code(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+# The MCP TypeScript SDK: 1.x is `@modelcontextprotocol/sdk`, and 2.x is split into
+# `@modelcontextprotocol/client`, `server` and `core`. Each is a library that a
+# package.json lists with a version, so a stated version is required: `latest`
+# resolved to a fixed release for both on 2026-10-07, and an import path such as
+# `@modelcontextprotocol/sdk/client/auth.js` is not a reference. The right bound
+# keeps `@modelcontextprotocol/sdk` off any longer name.
+_MCP_TS_SDK_RE = re.compile(
+    r"(?<![\w./-])@modelcontextprotocol/sdk(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+_MCP_TS_CLIENT_RE = re.compile(
+    r"(?<![\w./-])@modelcontextprotocol/client(?![\w-])" + _VER_REQ, re.IGNORECASE
 )
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
@@ -1272,6 +1288,25 @@ _PINS: tuple[_Pin, ...] = (
          (0, 4, 4), introduced=(0, 1, 45),
          fix_label="0.4.4 (affected from 0.1.45)",
          regexes=(_LANGGRAPH_SDK_RE,), ecosystem="py"),
+    # --- 2026-10-07 batch (#911-#915) ---
+    # The MCP TypeScript SDK's OAuth client let the MCP server it connected to name
+    # the authorization server that received the client's refresh token, client
+    # secret or signed assertion (CVE-2026-104850, CVSS 3.1 7.5, CWE-345/522,
+    # GHSA-6qxp-vccf-f47h). Checked in the tarballs: 1.11.5's client has no
+    # protected-resource-metadata discovery, 1.12.0 adds it and reads the server's
+    # `authorization_servers`, and 1.31.0 adds `expectedIssuer`, `issuersMatch` and
+    # `discardIfIssuerMismatch`, which 1.30.1 lacks. On 2.x the client is its own
+    # package, fixed in 2.2.0, which also pins `@modelcontextprotocol/core` 2.2.0.
+    # One rule, two pins, like `@agenticmail`. Servers built on the SDK and stdio
+    # clients are not affected, and the version cannot tell them apart.
+    _Pin("AAK-MCP-TSSDK-CVE-2026-104850-001", "@modelcontextprotocol/sdk",
+         ("@modelcontextprotocol/sdk",), (1, 31, 0), introduced=(1, 12, 0),
+         fix_label="1.31.0 (affected from 1.12.0)",
+         regexes=(_MCP_TS_SDK_RE,), ecosystem="js"),
+    _Pin("AAK-MCP-TSSDK-CVE-2026-104850-001", "@modelcontextprotocol/client",
+         ("@modelcontextprotocol/client",), (2, 2, 0),
+         fix_label="2.2.0 (every 2.x release before it)",
+         regexes=(_MCP_TS_CLIENT_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

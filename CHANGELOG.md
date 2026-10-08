@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-TSSDK-CVE-2026-104850-001`: the MCP TypeScript SDK, `@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0 and `@modelcontextprotocol/client` below 2.2.0 (CVE-2026-104850, #914). Its OAuth client sent stored or configured credentials to whichever authorization server the connected MCP server named. Servers built on the SDK and stdio clients are not affected, which a version cannot show, so the limitations say they are reported without being exposed.
+
+### Changed
+
+- Disposed #911 to #915. The MCP TypeScript SDK record gets a measured pin. The reasoning for UFO, SimpleChat and IATO MCP is in CHANGELOG.cves.md.
+
 ## [0.6.17] - 2026-10-06
 
 ### Added
