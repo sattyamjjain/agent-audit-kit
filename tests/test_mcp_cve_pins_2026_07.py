@@ -110,6 +110,10 @@ PINS = {
     "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001": "high",
     # 2026-10-07 batch (#911-#915)
     "AAK-MCP-TSSDK-CVE-2026-104850-001": "high",
+    # 2026-10-08 batch (#916-#921)
+    "AAK-MCP-PAYLOAD-CVE-2026-105806-001": "high",
+    "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001": "low",
+    "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001": "medium",
 }
 
 
@@ -1419,9 +1423,27 @@ def test_mcp_remote_rule_cites_cve_2026_51996_and_its_advisory_correction() -> N
     rule = get_rule(_REMOTE)
     assert set(rule.cve_references) == {
         "CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997",
+        "CVE-2026-52001",
     }
     assert "getServerUrlHash" in rule.description
     assert "no token takeover" in rule.description
+
+
+def test_mcp_remote_finding_lists_cve_2026_52001(tmp_path: Path) -> None:
+    """CVE-2026-52001 (#921): NVD scopes it 0.1.18 through 0.1.38, inside the range
+    the pin already reports, so it joins the rule and nothing moves. Like 51996, its
+    advisory (F-11, v1.0.1) was corrected to defense in depth; the rule says both."""
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"mcp-remote": "0.1.18"}}', encoding="utf-8"
+    )
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == _REMOTE]
+    assert len(hits) == 1
+    assert "CVE-2026-52001" in hits[0].cve_references
+    pin = next(p for p in _PINS if p.rule_id == _REMOTE)
+    assert (pin.introduced, pin.floor) == ((0, 1, 16), (0, 1, 39))
+    from agent_audit_kit.rules.builtin import get_rule
+
+    assert "eventSourceInit" in get_rule(_REMOTE).description
 
 
 def test_mcp_remote_unpinned_passes(tmp_path: Path) -> None:
@@ -1892,8 +1914,8 @@ def test_claudecode_needs_a_stated_version(tmp_path: Path) -> None:
 
 
 def test_claudecode_is_its_own_low_rule_beside_the_high_pin() -> None:
-    """Raising the folder-trust pin's 2.1.83 floor would have called 2.1.83-2.1.259
-    the HIGH bug."""
+    """Raising the folder-trust pin's floor to 2.1.260 would call everything from its
+    own floor (2.1.83 then, 2.1.129 since CVE-2026-103435) to 2.1.259 the HIGH bug."""
     assert RULES[_CLAUDECODE].severity.value == "low"
     assert RULES[_CLAUDECODE_TRUST].severity.value == "high"
     assert "CVE-2026-103012" not in RULES[_CLAUDECODE_TRUST].cve_references
@@ -2051,3 +2073,65 @@ def test_ts_sdk_lockfile_reads_the_resolved_version(
 ])
 def test_ts_sdk_lookalikes_are_quiet(tmp_path: Path, content: str) -> None:
     assert _TSSDK not in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-10-08 batch (#916-#921): three npm pins --------------------------------
+_PAYLOAD = "AAK-MCP-PAYLOAD-CVE-2026-105806-001"
+_LC_REDIS = "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001"
+_LC_MONGO = "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001"
+
+
+@pytest.mark.parametrize(("fixture", "rule_id"), [
+    ("cve-2026-105806-payload-mcp", _PAYLOAD),
+    ("cve-2026-105799-langchain-redis", _LC_REDIS),
+    ("cve-2026-106119-langchain-mongodb", _LC_MONGO),
+])
+def test_october_8_fixtures_positive_and_negative(fixture: str, rule_id: str) -> None:
+    root = _CVE_FIXTURES / fixture
+    assert rule_id in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert rule_id not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+def test_payload_mcp_fixture_below_the_range_is_quiet() -> None:
+    """3.60.0 sits below 3.61.0, the plugin's first release and the GHSA's lower bound."""
+    root = _CVE_FIXTURES / "cve-2026-105806-payload-mcp" / "negative-before-range"
+    assert _PAYLOAD not in {f.rule_id for f in scan(root)[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.0.1-alpha.0", False),  # the placeholder published before the first release
+    ("3.60.0", False),
+    ("3.61.0", True),
+    ("3.87.0", True),
+    ("3.88.0", False),
+    ("4.0.0-canary.38", False),
+])
+def test_payload_mcp_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    """CVE-2026-105806 (#917): the API-keys collection had no access rules from the
+    plugin's first release, 3.61.0, until 3.88.0."""
+    content = '{"dependencies": {"@payloadcms/plugin-mcp": "%s"}}' % version
+    assert (_PAYLOAD in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("dep", "rule_id", "fires"), [
+    ('"@langchain/redis": "0.0.5"', _LC_REDIS, True),   # the string-array path, every release
+    ('"@langchain/redis": "^1.1.0"', _LC_REDIS, True),
+    ('"@langchain/redis": "1.1.1"', _LC_REDIS, False),
+    ('"@langchain/mongodb": "0.0.1"', _LC_MONGO, True),
+    ('"@langchain/mongodb": "1.3.0"', _LC_MONGO, True),
+    ('"@langchain/mongodb": "1.3.1"', _LC_MONGO, False),
+    # The LangGraph checkpointer is a different package with its own pin.
+    ('"@langchain/langgraph-checkpoint-mongodb": "1.3.0"', _LC_MONGO, False),
+])
+def test_langchain_js_integration_versions(
+    tmp_path: Path, dep: str, rule_id: str, fires: bool
+) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert (rule_id in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_langchain_js_pins_skip_the_python_packages(tmp_path: Path) -> None:
+    """`langchain-redis` and `langchain-mongodb` on PyPI are separate packages on
+    their own version lines, and neither advisory names them."""
+    found = _ids(tmp_path, "requirements.txt", "langchain-redis==0.2.0\nlangchain-mongodb==0.6.0\n")
+    assert not {_LC_REDIS, _LC_MONGO} & found

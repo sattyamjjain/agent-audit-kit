@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (384 total; 364 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (387 total; 367 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -211,6 +211,8 @@ Every AgentAuditKit rule (384 total; 364 mapped) against two agentic-security st
 | `AAK-MCP-KNOWNS-CVE-2026-86439-001` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-KONG-CVE-2026-13341-001` | high | tool-poisoning | — | ASI01 Agent Goal Hijacking |
 | `AAK-MCP-LANGBOT-CVE-2026-54449-001` | high | supply-chain | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
+| `AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001` | medium | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities; ASI06 Memory & Context Poisoning |
+| `AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001` | low | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-LANGFLOW-CVE-2026-12940-001` | critical | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001` | medium | supply-chain | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
 | `AAK-MCP-LANGGRAPH-CHECKPOINT-CVE-2026-71433-001` | medium | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
@@ -243,6 +245,7 @@ Every AgentAuditKit rule (384 total; 364 mapped) against two agentic-security st
 | `AAK-MCP-OPENAPI-TANGLED-METHODS-001` | medium | tool-poisoning | Filter and monitor output pipelines and chained execution | — |
 | `AAK-MCP-OPENCLAW-CVE-2026-102807-001` | medium | supply-chain | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
 | `AAK-MCP-OPENCLAW-CVE-2026-62195-001` | high | supply-chain | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
+| `AAK-MCP-PAYLOAD-CVE-2026-105806-001` | high | supply-chain | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity & Privilege Abuse |
 | `AAK-MCP-PENPOT-CVE-2026-100868-001` | medium | supply-chain | — | ASI07 Insecure Inter-Agent Communication |
 | `AAK-MCP-PENPOT-CVE-2026-45805-001` | critical | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Supply Chain Vulnerabilities |
 | `AAK-MCP-PILLMWIKI-CVE-2026-102911-001` | critical | supply-chain | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution |

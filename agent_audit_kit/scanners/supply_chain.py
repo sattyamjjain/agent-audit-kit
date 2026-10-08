@@ -1581,9 +1581,17 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 # named pin row was pre-allocated in the v0.3.15 triage of #181.
 # Pin-arm only — Claude Code is a binary product, not a source shape
 # we statically scan. Closes the v0.3.15 deferral.
+#
+# Floor raised 2.1.83 -> 2.1.129 on 2026-10-08 for CVE-2026-103435 (HIGH,
+# CVSS 4.0 7.7, GHSA-5j29-h97v-84ch): the write path re-resolved a file that
+# the permission check had placed inside the project, so a symlink swapped in
+# between redirected the write outside it. Same package and severity, a higher
+# fix, so the floor moves. The evidence names the folder-trust bug only below
+# 2.1.83, where it applies.
 # ---------------------------------------------------------------------------
 
-_CLAUDECODE_PATCHED = (2, 1, 83)
+_CLAUDECODE_PATCHED = (2, 1, 129)
+_CLAUDECODE_TRUST_PATCHED = (2, 1, 83)
 # Scoped npm package name. Both the JSON-shape (package.json /
 # package-lock.json `packages` map keys) and the lockfile-line shape
 # (yarn.lock / pnpm-lock.yaml) handle the `@anthropic-ai/claude-code`
@@ -1603,16 +1611,20 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
     findings: list[Finding] = []
     seen: set[str] = set()
 
-    def _fire(rel: str, raw: str) -> None:
+    def _fire(rel: str, raw: str, version: tuple[int, int, int]) -> None:
         if rel in seen:
             return
         seen.add(rel)
+        defects = "CVE-2026-103435 write-time symlink following (fixed in 2.1.129)"
+        if version < _CLAUDECODE_TRUST_PATCHED:
+            defects = (
+                "CVE-2026-40068 folder-trust bypass via git worktree commondir "
+                "(fixed in 2.1.83) and " + defects
+            )
         findings.append(make_finding(
             "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
             rel,
-            f"@anthropic-ai/claude-code pinned at {raw!r} — CVE-2026-40068 "
-            f"folder-trust bypass via git worktree commondir; patched in "
-            f"2.1.83.",
+            f"@anthropic-ai/claude-code pinned at {raw!r} — {defects}.",
         ))
 
     for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
@@ -1633,7 +1645,7 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
             version = _semver3(stripped)
             if version is not None and version < _CLAUDECODE_PATCHED:
                 scanned_files.add(rel)
-                _fire(rel, raw)
+                _fire(rel, raw, version)
                 continue
         m2 = _CLAUDECODE_LOCKLINE_RE.search(text)
         if m2:
@@ -1642,7 +1654,7 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
             version = _semver3(stripped)
             if version is not None and version < _CLAUDECODE_PATCHED:
                 scanned_files.add(rel)
-                _fire(rel, raw)
+                _fire(rel, raw, version)
     return findings
 
 

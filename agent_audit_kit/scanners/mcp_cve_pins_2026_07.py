@@ -121,7 +121,9 @@ available) before shipping:
   - mcp-remote                     0.1.16–0.1.38 (CVE-2026-51994 and CVE-2026-51995,
     OAuth discovery SSRF from 0.1.32; CVE-2026-51997, internal URLs reach the
     browser launch from 0.1.16; CVE-2026-51996, MD5-derived token-file names,
-    0.1.16-0.1.38 per NVD. Upstream names no fix, so the pin is the union of
+    0.1.16-0.1.38 per NVD; CVE-2026-52001, the SSE fetch wrapper adds the bearer
+    token with no origin check of its own, 0.1.18-0.1.38 per NVD. Upstream names
+    no fix, so the pin is the union of
     the advisories' ranges, and it needs a stated version: an unpinned
     `npx mcp-remote` resolves to 0.14.x)
   - @moonshot-ai/kimi-code         >= 0.31.1  (CVE-2026-95660; an untrusted workspace's
@@ -160,8 +162,8 @@ available) before shipping:
     a `"next": "<version>"` entry or a lockfile is read)
   - @anthropic-ai/claude-code      2.0.68 <= v < 2.1.260  (CVE-2026-103012; a stored API
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
-    a stated version is required, and its own rule beside the HIGH 2.1.83 pin in
-    `supply_chain`)
+    a stated version is required, and its own rule beside the HIGH folder-trust pin
+    in `supply_chain`, whose floor is 2.1.129)
   - langgraph-sdk                  0.1.45 <= v < 0.4.4  (CVE-2026-104873; the
     resource-scoped auth decorators register a handler for every action whatever
     `actions` says. Only a deployment that passes `actions` is exposed)
@@ -169,6 +171,12 @@ available) before shipping:
     @modelcontextprotocol/client   < 2.2.0  (CVE-2026-104850; the OAuth client sends
     stored or configured credentials to the authorization server the MCP server
     names. One rule, two pins. Servers and stdio clients are not affected)
+  - @payloadcms/plugin-mcp         3.61.0 <= v < 3.88.0  (CVE-2026-105806; the API-keys
+    collection has no access rules, so a user can manage another account's keys)
+  - @langchain/redis               >= 1.1.1   (CVE-2026-105799; RediSearch filter values
+    are not escaped. LOW)
+  - @langchain/mongodb             >= 1.3.1   (CVE-2026-106119; MongoDBChatMessageHistory
+    takes an object session id as a query condition)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -317,6 +325,18 @@ _MCP_TS_SDK_RE = re.compile(
 )
 _MCP_TS_CLIENT_RE = re.compile(
     r"(?<![\w./-])@modelcontextprotocol/client(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+# Payload's MCP plugin and two LangChain.js integrations are libraries too, read
+# the same way: a stated version is required, because `latest` resolved to a fixed
+# release for all three on 2026-10-08.
+_PAYLOAD_MCP_RE = re.compile(
+    r"(?<![\w./-])@payloadcms/plugin-mcp(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+_LANGCHAIN_REDIS_RE = re.compile(
+    r"(?<![\w./-])@langchain/redis(?![\w-])" + _VER_REQ, re.IGNORECASE
+)
+_LANGCHAIN_MONGODB_RE = re.compile(
+    r"(?<![\w./-])@langchain/mongodb(?![\w-])" + _VER_REQ, re.IGNORECASE
 )
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
@@ -1140,8 +1160,10 @@ _PINS: tuple[_Pin, ...] = (
     # through to the browser launch (CVE-2026-51997), so `introduced` is 0.1.16:
     # the union of the advisory ranges. CVE-2026-51996 (MD5-derived names for the
     # per-server OAuth state files, `getServerUrlHash`) is scoped 0.1.16-0.1.38
-    # by NVD, inside that union, so it moved nothing. `_MCP_REMOTE_RE` keeps
-    # unpinned references out.
+    # by NVD, inside that union, so it moved nothing, and neither did
+    # CVE-2026-52001 (#921: the SSE transport's `eventSourceInit` fetch wrapper
+    # adds the bearer token with no origin check of its own), scoped 0.1.18-0.1.38.
+    # `_MCP_REMOTE_RE` keeps unpinned references out.
     _Pin("AAK-MCP-REMOTE-CVE-2026-51994-001", "mcp-remote", ("mcp-remote",), (0, 1, 39),
          introduced=(0, 1, 16),
          fix_label="a release outside 0.1.16–0.1.38 (upstream names no fix)",
@@ -1271,7 +1293,8 @@ _PINS: tuple[_Pin, ...] = (
     # was rejected the session ran without the org policy, or on a stale cached
     # copy (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, GHSA-gfvf-j8jh-jxxw). Local
     # access only, and auto-update has delivered the fix. LOW, so its own rule
-    # beside the HIGH folder-trust pin in `supply_chain` (< 2.1.83).
+    # beside the HIGH folder-trust pin in `supply_chain` (below 2.1.83 then, below
+    # 2.1.129 since CVE-2026-103435 joined it).
     _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
@@ -1307,6 +1330,38 @@ _PINS: tuple[_Pin, ...] = (
          ("@modelcontextprotocol/client",), (2, 2, 0),
          fix_label="2.2.0 (every 2.x release before it)",
          regexes=(_MCP_TS_CLIENT_RE,), ecosystem="js"),
+    # --- 2026-10-08 batch (#916-#921) ---
+    # Payload's MCP plugin created its API-keys collection with no access rules,
+    # so any authenticated user could manage keys outside their own account and
+    # take another one over (CVE-2026-105806, CVSS 4.0 8.6, CWE-862,
+    # GHSA-2q76-m6w6-qgc6). The plugin's first release is 3.61.0; 3.87.0's
+    # `createApiKeysCollection` still declares no `access`, and 3.88.0 adds
+    # user-scoped access rules (payloadcms/payload#17751).
+    _Pin("AAK-MCP-PAYLOAD-CVE-2026-105806-001", "@payloadcms/plugin-mcp",
+         ("@payloadcms/plugin-mcp",), (3, 88, 0), introduced=(3, 61, 0),
+         fix_label="3.88.0 (affected from 3.61.0)",
+         regexes=(_PAYLOAD_MCP_RE,), ecosystem="js"),
+    # LangChain.js's Redis vector store put filter values into RediSearch queries
+    # without escaping them, so an attacker-influenced filter used as a tenant or
+    # document boundary could widen the search (CVE-2026-105799, CVSS 4.0 2.3,
+    # CWE-943, GHSA-5x6v-p487-7qh2). Checked in the tarballs: `buildCustomQuery`
+    # interpolates TAG and TEXT values raw from 0.1.4, the structured `filters`
+    # module ships in 1.1.0, and 1.1.1 (langchainjs#10701) also replaces the
+    # partial `escapeSpecialChars` of the string-array path every release has.
+    _Pin("AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001", "@langchain/redis",
+         ("@langchain/redis",), (1, 1, 1),
+         fix_label="1.1.1",
+         regexes=(_LANGCHAIN_REDIS_RE,), ecosystem="js"),
+    # LangChain.js's MongoDBChatMessageHistory put the session id into
+    # `findOne`/`updateOne`/`deleteOne` filters as given, so an object id became a
+    # query condition and reached another user's conversation (CVE-2026-106119,
+    # CVSS 4.0 6.0, CWE-943, GHSA-m6rx-h84q-8r95). Every release through 1.3.0
+    # does this; 1.3.1 (langchainjs#11672) rejects a non-string id and wraps it in
+    # `$eq`. The same shape as the checkpointer pin for CVE-2026-48121 above.
+    _Pin("AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001", "@langchain/mongodb",
+         ("@langchain/mongodb",), (1, 3, 1),
+         fix_label="1.3.1",
+         regexes=(_LANGCHAIN_MONGODB_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
