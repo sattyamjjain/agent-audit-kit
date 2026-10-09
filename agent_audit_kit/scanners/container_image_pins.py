@@ -98,6 +98,19 @@ _PINS: tuple[_ImagePin, ...] = (
         ("CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064",
          "CVE-2026-101063"),
     ),
+    # CVE-2026-105138 (MEDIUM, GHSA-q5wf-87f5-cxgq): a basic user granted a catalog
+    # entry could read the static configuration an admin set on it, API keys and
+    # tokens in plaintext, from GET /api/all-mcps/entries/{id}. Its own rule, because
+    # the fix is above the CRITICAL pin's floor and raising that floor would report
+    # v0.25.0 to v0.26.1 as the critical bugs. Static configuration on catalog
+    # entries is absent from v0.11.0's types and present from v0.12.0, and the fix,
+    # 644a1fd ("store catalog entry static configuration in credentials"), is in
+    # v0.26.2 and not v0.26.1. `latest` was v0.26.3 on 2026-10-09.
+    _ImagePin(
+        "AAK-MCP-OBOT-CVE-2026-105138-001", "Obot", "ghcr.io/obot-platform/obot",
+        (0, 26, 2), "from v0.12.0 up to v0.26.2", "Fixed in v0.26.2.",
+        ("CVE-2026-105138",), introduced=(0, 12, 0),
+    ),
     # NVD scopes both "up to and including 2.4.22". There is no fixed release, and
     # 2.4.22 is the newest image tag, so the floor is the next patch number.
     _ImagePin(

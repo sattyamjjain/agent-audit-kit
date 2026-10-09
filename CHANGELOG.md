@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-OBOT-CVE-2026-105138-001`: the `ghcr.io/obot-platform/obot` image from v0.12.0 up to v0.26.2, at MEDIUM (CVE-2026-105138, #926). A basic user granted an MCP catalog entry could read the static secrets an admin set on it. It sits beside the CRITICAL Obot pin, whose floor stays at v0.25.0.
+
+### Changed
+
+- Disposed #926 to #930. The Obot record gets a measured image pin. The reasoning for Splunk MCP Server, beam_mcp and Docker Sandboxes is in CHANGELOG.cves.md.
+
 ## [0.6.18] - 2026-10-08
 
 ### Added

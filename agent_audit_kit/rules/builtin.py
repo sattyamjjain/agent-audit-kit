@@ -202,6 +202,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-PILLMWIKI-CVE-2026-102911-001": ["IVS-04", "STA-08"],
     "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001": ["IVS-04", "STA-08"],
     "AAK-MCP-OBOT-CVE-2026-101084-001": ["IAM-01", "IVS-04", "STA-08"],
+    "AAK-MCP-OBOT-CVE-2026-105138-001": ["IAM-01", "STA-08"],
     "AAK-MCP-METAMCP-CVE-2026-79538-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-HEYM-CVE-2026-100858-001": ["IVS-04", "STA-08"],
     "AAK-MCP-OFFICEPPT-CVE-2025-71427-001": ["AIS-07", "STA-08"],
@@ -10975,6 +10976,44 @@ _r(
         "version, not where the session id comes from, so a project that passes "
         "only server-side string ids is reported without being exposed. The Python "
         "`langchain-mongodb` is a different package and is not read."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-09 batch (#926-#930). One new image pin below, beside the CRITICAL
+# Obot pin, and four out of scope. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-OBOT-CVE-2026-105138-001",
+    "Obot image v0.12.0 to v0.26.1: a user granted a catalog entry can read its static secrets",
+    "Obot (`ghcr.io/obot-platform/obot`) lets admins and power users set static "
+    "configuration on an MCP catalog entry, such as the API key or token the server "
+    "uses. From v0.12.0, when static configuration arrived, until v0.26.2, a basic "
+    "user granted that entry by an access control rule could read those values in "
+    "plaintext from `GET /api/all-mcps/entries/{entry_id}` and use them against the "
+    "backend services (CVE-2026-105138, CVSS 3.1 6.5, CWE-522, "
+    "GHSA-q5wf-87f5-cxgq). v0.26.2 stores static configuration in a credential and "
+    "returns the manifest field marked static instead of its value (fix commit "
+    "`644a1fd`).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the Obot image to v0.26.2 or later and pin its tag. Then rotate the "
+    "API keys and tokens set as static configuration on catalog entries that "
+    "basic users could reach.",
+    sarif_name="ObotCatalogEntryStaticSecretRead",
+    cve_references=["CVE-2026-105138"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
+    adversa_references=["ADV-TOKEN-09"],
+    limitations=(
+        "Reads the same image references as the other Obot pin and reports tags from "
+        "v0.12.0 up to v0.26.2. A tag below v0.12.0 is not reported here, though the "
+        "other Obot pin reports it. `latest` (or no tag) is not reported: it was "
+        "v0.26.3 on 2026-10-09. A two-part tag such as `0.26` stands for the newest "
+        "patch on that line and is not reported, because 0.26 has fixed releases. "
+        "The enterprise image `ghcr.io/obot-platform/obot-enterprise` is a different "
+        "image and is not matched."
     ),
 )
 
