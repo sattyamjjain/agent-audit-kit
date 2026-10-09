@@ -10,6 +10,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
+from agent_audit_kit.engine import run_scan
 from agent_audit_kit.scanners import (
     hook_rce,
     langchain_vuln,
@@ -135,6 +138,63 @@ def test_langchain_safe_requirements_is_quiet(tmp_path: Path) -> None:
     shutil.copy(FIX / "langchain" / "safe_requirements.txt", tmp_path / "requirements.txt")
     findings, _ = langchain_vuln.scan(tmp_path)
     assert findings == []
+
+
+# AAK-LANGCHAIN-001 and -003 read Python manifests only, and only the
+# `langchain-core` distribution both advisories name. They used to compare any npm
+# dependency containing "langchain" against these Python floors, so
+# `@langchain/redis` 1.1.1, a fixed release, got a HIGH no upgrade cleared (#924).
+_LANGCHAIN_CORE_PINS = {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"}
+_REDIS = FIX / "cve-2026-105799-langchain-redis"
+
+
+@pytest.mark.parametrize("kind", ["vulnerable", "negative"])
+def test_langchain_core_pins_ignore_npm_langchain_redis(kind: str) -> None:
+    """`@langchain/redis` at 1.1.0 and at the fixed 1.1.1: the core pins stay quiet."""
+    ids = {f.rule_id for f in run_scan(_REDIS / kind).findings}
+    assert not _LANGCHAIN_CORE_PINS & ids
+
+
+def test_langchain_redis_pin_still_fires_on_1_1_0() -> None:
+    ids = {f.rule_id for f in run_scan(_REDIS / "vulnerable").findings}
+    assert "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001" in ids
+
+
+def test_langchain_python_fixture_reports_only_the_core_line(tmp_path: Path) -> None:
+    """The positive fixture pins langchain, langchain-core and langchain-community;
+    only langchain-core is the distribution the floors are for."""
+    shutil.copy(FIX / "langchain" / "vulnerable_requirements.txt", tmp_path / "requirements.txt")
+    findings = [f for f in langchain_vuln.scan(tmp_path)[0] if f.rule_id in _LANGCHAIN_CORE_PINS]
+    assert sorted(f.rule_id for f in findings) == ["AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"]
+    assert all(f.evidence.startswith("langchain-core pinned at 0.3.10") for f in findings)
+
+
+@pytest.mark.parametrize(("line", "expected"), [
+    ("langchain-core==0.3.10\n", {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"}),
+    ("langchain_core==1.2.21\n", {"AAK-LANGCHAIN-001"}),    # a PEP 503 spelling
+    ("LangChain-Core>=1.0.0\n", {"AAK-LANGCHAIN-001"}),     # the lowest a range allows
+    ("langchain-core[all]==0.3.13\n", {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"}),
+    ("langchain-core==1.2.22\n", set()),
+    ("langchain==1.1.5\n", set()),              # the umbrella, on its own version line
+    ("langchain-community==0.1.0\n", set()),
+    ("langchain-core-extras==0.1.0\n", set()),  # a longer name is not langchain-core
+])
+def test_langchain_core_pins_read_the_exact_distribution(
+    tmp_path: Path, line: str, expected: set[str]
+) -> None:
+    (tmp_path / "requirements.txt").write_text(line, encoding="utf-8")
+    ids = {f.rule_id for f in langchain_vuln.scan(tmp_path)[0]}
+    assert ids & _LANGCHAIN_CORE_PINS == expected
+
+
+@pytest.mark.parametrize("deps", [
+    '{"langchain": "0.2.0"}',
+    '{"@langchain/core": "0.3.10"}',
+    '{"langchainjs": "0.2.0"}',
+])
+def test_langchain_core_pins_never_read_package_json(tmp_path: Path, deps: str) -> None:
+    (tmp_path / "package.json").write_text('{"dependencies": %s}' % deps, encoding="utf-8")
+    assert langchain_vuln.scan(tmp_path)[0] == []
 
 
 # ---------------------------------------------------------------------------

@@ -2040,7 +2040,7 @@
       ],
       "rule_id": "AAK-LANGCHAIN-001",
       "severity": "high",
-      "title": "Project depends on LangChain < 1.2.22 (load_prompt path traversal)"
+      "title": "Project depends on langchain-core < 1.2.22 (load_prompt path traversal)"
     },
     {
       "category": "taint-analysis",

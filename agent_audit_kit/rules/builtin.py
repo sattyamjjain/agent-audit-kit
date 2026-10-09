@@ -2914,10 +2914,11 @@ _r(
 
 _r(
     "AAK-LANGCHAIN-001",
-    "Project depends on LangChain < 1.2.22 (load_prompt path traversal)",
-    "A dependency file pins langchain or langchain-core to a version earlier "
-    "than 1.2.22. CVE-2026-34070 allows absolute paths and '..' traversal "
-    "via load_prompt() / load_prompt_from_config().",
+    "Project depends on langchain-core < 1.2.22 (load_prompt path traversal)",
+    "A Python manifest pins `langchain-core`, the PyPI distribution "
+    "CVE-2026-34070 names (GHSA-qh6h-p6c9-ff54), below 1.2.22. Before that "
+    "release, load_prompt() and load_prompt_from_config() accept absolute paths "
+    "and '..' traversal.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade to langchain-core >= 1.2.22. If you must keep the legacy "
@@ -2928,6 +2929,16 @@ _r(
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SUPPLY-01"],
     auto_fixable=True,
+    limitations=(
+        "Reads `langchain-core`, in any PEP 503 spelling, from requirements.txt, "
+        "requirements-dev.txt, requirements-prod.txt, dev-requirements.txt and "
+        "pyproject.toml, taking the lowest version a range allows. npm packages are "
+        "not read: the advisory names only the PyPI distribution, and npm's "
+        "`@langchain/*` packages have version lines of their own. The umbrella "
+        "`langchain` and `langchain-community` distributions are not read either, "
+        "because their version numbers are not langchain-core's, so a project that "
+        "pins only those is not reported."
+    ),
 )
 
 _r(
@@ -2950,19 +2961,28 @@ _r(
 _r(
     "AAK-LANGCHAIN-003",
     "LangChain deserialization of untrusted data",
-    "A dependency file pins langchain / langchainjs to a version vulnerable "
-    "to GHSA-r399-636x-v7f6 / CVE-2025-68664, a serialization-injection "
-    "chain that extracts secrets through crafted saved chains.",
+    "A Python manifest pins `langchain-core` below 0.3.14. CVE-2025-68664 "
+    "(GHSA-c67j-w6g6-q2cm) is a serialization-injection chain in langchain-core's "
+    "dumps/loads that extracts secrets through crafted saved chains.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade to the patched LangChain / langchainjs release; avoid loading "
-    "serialized chains from sources you do not fully control.",
+    "Upgrade langchain-core to 0.3.81 or later on the 0.3 line, or to 1.2.5 or "
+    "later on 1.x, and pin it. Avoid loading serialized chains from sources you "
+    "do not fully control.",
     sarif_name="LangchainDeserializeUntrusted",
     cve_references=["CVE-2025-68664"],
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-03"],
     auto_fixable=True,
+    limitations=(
+        "Reads `langchain-core` from the same Python manifests as AAK-LANGCHAIN-001, "
+        "never npm. The floor is the rule's original 0.3.14, below the advisory's "
+        "fixes, which are 0.3.81 on 0.3 and 1.2.5 on 1.x, so langchain-core 0.3.14 "
+        "to 0.3.80 and 1.0.0 to 1.2.4 are affected and not reported. Every version "
+        "below 0.3.14 is also below AAK-LANGCHAIN-001's 1.2.22, which does report it. "
+        "LangChain.js has a separate advisory, which no rule cites."
+    ),
 )
 
 # ---------------------------------------------------------------------------

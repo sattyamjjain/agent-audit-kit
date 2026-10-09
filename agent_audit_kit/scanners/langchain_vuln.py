@@ -1,10 +1,21 @@
 """LangChain-specific vulnerability scanner.
 
-Fires AAK-LANGCHAIN-001..003. Reads Python requirements files and
-package.json to detect pinned/installed langchain versions vulnerable to
-CVE-2026-34070 (path traversal) and CVE-2025-68664 (serialization
-injection). Also pattern-matches load_prompt() calls with user-controlled
-paths in source code.
+Fires AAK-LANGCHAIN-001..003. AAK-LANGCHAIN-001 and -003 are version pins on
+`langchain-core`, the PyPI distribution both advisories name: CVE-2026-34070
+(load_prompt path traversal, fixed in 1.2.22) and CVE-2025-68664
+(serialization injection). They read Python manifests only, the requirements
+files below and pyproject.toml, and match that one distribution name in any
+PEP 503 spelling. AAK-LANGCHAIN-002 pattern-matches load_prompt() calls with
+user-controlled paths in source code.
+
+Both pins used to read package.json as well, and compared any npm dependency
+whose name contained "langchain" against these Python floors. Neither advisory
+names an npm package, and npm's `@langchain/*` integrations have version lines
+of their own, so `@langchain/redis` 1.1.1, a fixed release, got a HIGH that no
+upgrade could clear (found while measuring #918). The umbrella `langchain` and
+`langchain-community` distributions were compared with langchain-core's floors
+the same way, and are not read either: their version numbers are not
+langchain-core's.
 
 References:
 - https://nvd.nist.gov/vuln/detail/CVE-2026-34070
@@ -13,7 +24,6 @@ References:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -43,9 +53,14 @@ def _version_lt(a: tuple[int, int, int], b: tuple[int, int, int]) -> bool:
     return a < b
 
 
+# `langchain-core` as PEP 503 normalises it: any run of `-`, `_` or `.` between
+# the two words, in any case, and an optional extras bracket. Anchored at the
+# start of a requirement line, with the version straight after the name, so
+# `langchain-community` or a longer name that starts with `langchain-core` is
+# never read as it.
 _REQ_PIN_RE = re.compile(
-    r"""^\s*(langchain(?:-core|-community|js)?)\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)""",
-    re.MULTILINE,
+    r"""^\s*(langchain[-_.]+core)\s*(?:\[[^\]\n]*\])?\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)""",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 _LOAD_PROMPT_RE = re.compile(
@@ -59,10 +74,6 @@ def _iter_manifest_files(project_root: Path) -> list[Path]:
         p = project_root / name
         if p.is_file():
             out.append(p)
-    for pkg in project_root.rglob("package.json"):
-        if any(part in SKIP_DIRS for part in pkg.parts):
-            continue
-        out.append(pkg)
     for toml in project_root.rglob("pyproject.toml"):
         if any(part in SKIP_DIRS for part in toml.parts):
             continue
@@ -91,7 +102,7 @@ def _check_requirements_text(text: str, rel: str) -> list[Finding]:
         version = _parse_version(match.group(2))
         if version is None:
             continue
-        if name.startswith("langchain") and _version_lt(version, _LANGCHAIN_PATH_TRAVERSAL_PATCHED):
+        if _version_lt(version, _LANGCHAIN_PATH_TRAVERSAL_PATCHED):
             findings.append(
                 make_finding(
                     "AAK-LANGCHAIN-001",
@@ -100,7 +111,7 @@ def _check_requirements_text(text: str, rel: str) -> list[Finding]:
                     line_number=find_line_number(text, match.group(0)),
                 )
             )
-        if name.startswith("langchain") and _version_lt(version, _LANGCHAIN_DESERIALIZE_PATCHED):
+        if _version_lt(version, _LANGCHAIN_DESERIALIZE_PATCHED):
             findings.append(
                 make_finding(
                     "AAK-LANGCHAIN-003",
@@ -109,41 +120,6 @@ def _check_requirements_text(text: str, rel: str) -> list[Finding]:
                     line_number=find_line_number(text, match.group(0)),
                 )
             )
-    return findings
-
-
-def _check_package_json(text: str, rel: str) -> list[Finding]:
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        return []
-    findings: list[Finding] = []
-    for section in ("dependencies", "devDependencies", "peerDependencies"):
-        deps = data.get(section) or {}
-        if not isinstance(deps, dict):
-            continue
-        for name, spec in deps.items():
-            if "langchain" not in name.lower():
-                continue
-            v = _parse_version(str(spec))
-            if v and _version_lt(v, _LANGCHAIN_PATH_TRAVERSAL_PATCHED):
-                findings.append(
-                    make_finding(
-                        "AAK-LANGCHAIN-001",
-                        rel,
-                        f"{name} @ {spec} — CVE-2026-34070 patched in 1.2.22",
-                        line_number=find_line_number(text, name),
-                    )
-                )
-            if v and _version_lt(v, _LANGCHAIN_DESERIALIZE_PATCHED):
-                findings.append(
-                    make_finding(
-                        "AAK-LANGCHAIN-003",
-                        rel,
-                        f"{name} @ {spec} — CVE-2025-68664 fix in 0.3.14+",
-                        line_number=find_line_number(text, name),
-                    )
-                )
     return findings
 
 
@@ -172,10 +148,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             text = manifest.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if manifest.name == "package.json":
-            findings.extend(_check_package_json(text, rel))
-        else:
-            findings.extend(_check_requirements_text(text, rel))
+        findings.extend(_check_requirements_text(text, rel))
     for py in _iter_python_sources(project_root):
         rel = str(py.relative_to(project_root))
         scanned.add(rel)
