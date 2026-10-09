@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.20] - 2026-10-09
+
 ### Changed
 
 - AAK-LANGCHAIN-001 and -003 read `langchain-core` only, the PyPI distribution both advisories name, in any PEP 503 spelling. The umbrella `langchain` and `langchain-community` are on version lines of their own and are no longer compared against its floors. AAK-LANGCHAIN-003 now cites the pip advisory, and its limitations say its 0.3.14 floor sits below that advisory's fixes (0.3.81, and 1.2.5 on 1.x).

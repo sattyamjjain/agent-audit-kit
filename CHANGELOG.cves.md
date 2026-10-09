@@ -48,6 +48,8 @@ names the product Splunk MCP Server, base version 1.2, fixed in 1.2.1: a Splunk 
 installed into a Splunk deployment, whose version no file AAK reads states. PyPI has
 no `splunk-mcp-server`, and npm's `splunk-mcp-server` (0.1.1) is a community MCP
 server for Splunk's REST API, not this app. Upgrade the app to 1.2.1 or later.
+That is the basis CVE-2026-76404 took for the same app on 2026-08-21 (#622),
+fixed in the same 1.2.1.
 
 **beam_mcp (CVE-2026-104634, CVE-2026-88257) is out of scope.** NVD for
 CVE-2026-104634: "Incorrect Type Conversion or Cast vulnerability in BeamMCP.Server
