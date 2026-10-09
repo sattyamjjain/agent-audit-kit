@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.19] - 2026-10-09
+
 ### Added
 
 - `AAK-MCP-OBOT-CVE-2026-105138-001`: the `ghcr.io/obot-platform/obot` image from v0.12.0 up to v0.26.2, at MEDIUM (CVE-2026-105138, #926). A basic user granted an MCP catalog entry could read the static secrets an admin set on it. It sits beside the CRITICAL Obot pin, whose floor stays at v0.25.0.

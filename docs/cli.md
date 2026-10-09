@@ -109,7 +109,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: sattyamjjain/agent-audit-kit@v0.6.18
+  - uses: sattyamjjain/agent-audit-kit@v0.6.19
     id: scan
     with:
       fail-on: high
