@@ -26,6 +26,9 @@ from agent_audit_kit.scanners.container_image_pins import scan
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cves"
 OBOT = "AAK-MCP-OBOT-CVE-2026-101084-001"
+# CVE-2026-105138 (#926): v0.12.0 up to v0.26.2, so every Obot tag below the
+# CRITICAL pin's v0.25.0 floor from v0.12.0 on is reported by both rules.
+OBOT_STATIC = "AAK-MCP-OBOT-CVE-2026-105138-001"
 METAMCP = "AAK-MCP-METAMCP-CVE-2026-79538-001"
 HEYM = "AAK-MCP-HEYM-CVE-2026-100858-001"
 MARK3LABS_FS = "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
@@ -59,7 +62,7 @@ def test_obot_registry_auth_cve_rides_the_existing_floor(tmp_path: Path) -> None
     """CVE-2026-101063 (#882) is fixed in v0.23.0, below the pin's v0.25.0 floor, so
     every version it affects is already reported: it joins the rule, no new pin."""
     ids = _write(tmp_path, "compose.yaml", "services:\n  o:\n    image: ghcr.io/obot-platform/obot:v0.22.0\n")
-    assert ids == [OBOT]
+    assert ids == [OBOT, OBOT_STATIC]
 
 
 @pytest.mark.parametrize("case, line", [("vulnerable", 10), ("vulnerable-tagged", 5)])
@@ -100,13 +103,16 @@ def test_mark3labs_filesystem_tag_reading(tmp_path: Path, tag: str, fires: bool)
 )
 def test_obot_fixtures_fire(case: str, line: int) -> None:
     findings = scan(FIXTURES / "cve-2026-101084-obot" / case)[0]
-    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT, line)]
+    # Every fixture here is also inside CVE-2026-105138's v0.12.0-v0.26.2 range.
+    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT, line), (OBOT_STATIC, line)]
     assert OBOT in {f.rule_id for f in run_scan(FIXTURES / "cve-2026-101084-obot" / case).findings}
 
 
 def test_obot_v0_25_0_latest_enterprise_and_empty_helm_tag_are_quiet() -> None:
+    """Quiet for the CRITICAL pin. v0.25.0 is still inside CVE-2026-105138's range,
+    so the compose file reports that rule once."""
     root = FIXTURES / "cve-2026-101084-obot" / "negative"
-    assert _ids(root) == []
+    assert _ids(root) == [OBOT_STATIC]
     assert OBOT not in {f.rule_id for f in run_scan(root).findings}
 
 
@@ -165,7 +171,7 @@ def test_metamcp_release_past_nvd_range_is_not_claimed(tmp_path: Path) -> None:
 
 def test_helm_registry_and_repository_are_joined(tmp_path: Path) -> None:
     values = "image:\n  registry: ghcr.io\n  repository: obot-platform/obot\n  tag: v0.22.1\n"
-    assert _write(tmp_path, "values.yaml", values) == [OBOT]
+    assert _write(tmp_path, "values.yaml", values) == [OBOT, OBOT_STATIC]
 
 
 def test_helm_tag_is_read_as_written_not_as_a_float(tmp_path: Path) -> None:
@@ -173,7 +179,7 @@ def test_helm_tag_is_read_as_written_not_as_a_float(tmp_path: Path) -> None:
     fire; composed, it stays "0.30", a line above the v0.25.0 floor."""
     values = "image:\n  repository: ghcr.io/obot-platform/obot\n  tag: %s\n"
     assert _write(tmp_path, "values.yaml", values % "0.30") == []
-    assert _write(tmp_path, "values.yaml", values % "0.20") == [OBOT]
+    assert _write(tmp_path, "values.yaml", values % "0.20") == [OBOT, OBOT_STATIC]
 
 
 def test_helm_repository_with_a_fixed_tag_is_not_read_as_latest(tmp_path: Path) -> None:
@@ -213,7 +219,7 @@ def test_one_finding_per_pin_per_file(tmp_path: Path) -> None:
         "  c:\n    image: ghcr.io/heymrun/heym:0.0.100\n"
     )
     findings = scan(_write_root(tmp_path, "compose.yml", compose))[0]
-    assert sorted((f.rule_id, f.line_number) for f in findings) == [(HEYM, 7), (OBOT, 3)]
+    assert sorted((f.rule_id, f.line_number) for f in findings) == [(HEYM, 7), (OBOT, 3), (OBOT_STATIC, 3)]
 
 
 def test_every_read_file_counts_as_scanned(tmp_path: Path) -> None:
@@ -302,3 +308,39 @@ def test_docker_io_spelling_is_not_read(tmp_path: Path) -> None:
     spelling is a stated limitation, not a silent match."""
     ids = _write(tmp_path, "compose.yaml", "services:\n  k6:\n    image: docker.io/grafana/mcp-k6:0.6.1\n")
     assert K6 not in ids
+
+
+# --- 2026-10-09 (#926): a second Obot pin, for CVE-2026-105138 -------------------
+
+
+def test_obot_static_secret_pin_is_its_own_medium_rule() -> None:
+    """The fix (v0.26.2) is above the CRITICAL pin's v0.25.0 floor, and raising that
+    floor would report v0.25.0 to v0.26.1 as the critical bugs."""
+    assert RULES[OBOT_STATIC].cve_references == ["CVE-2026-105138"]
+    assert RULES[OBOT_STATIC].severity.value == "medium"
+    assert "CVE-2026-105138" not in RULES[OBOT].cve_references
+
+
+def test_obot_static_secret_fixtures_positive_and_negative() -> None:
+    root = FIXTURES / "cve-2026-105138-obot"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(OBOT_STATIC, 6)]
+    assert OBOT_STATIC in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("tag", "static", "critical"), [
+    ("v0.11.0", False, True),   # static configuration on catalog entries is absent
+    ("0.11", False, True),
+    ("v0.12.0", True, True),
+    ("v0.24.2", True, True),
+    ("0.25", True, False),      # the whole 0.25 line is inside 0.12.0-0.26.2
+    ("v0.26.1", True, False),
+    ("0.26", False, False),     # 0.26 has fixed releases
+    ("v0.26.2", False, False),  # 644a1fd
+    ("v0.26.3", False, False),  # latest on 2026-10-09
+    ("latest", False, False),
+])
+def test_obot_pins_split_the_range(tmp_path: Path, tag: str, static: bool, critical: bool) -> None:
+    ids = _write(tmp_path, "compose.yaml", f"services:\n  o:\n    image: ghcr.io/obot-platform/obot:{tag}\n")
+    assert (OBOT_STATIC in ids, OBOT in ids) == (static, critical)

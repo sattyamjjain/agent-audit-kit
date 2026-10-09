@@ -16,6 +16,70 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-09 (v0.6.19): five disclosures, one new image pin, four out of scope
+
+The watcher opened two `cve-response` issues at 13:29Z on 2026-10-08 (#926, #927)
+and three at 23:21Z (#928-#930). One gets a container image pin, measured with the
+scanner on a firing fixture and a negative one. Four are out of scope: a Splunk
+app, an Elixir library on Hex with two records, and Docker's sandbox CLI, none with
+an artifact the pin scanner reads. NVD now scores #928 to #930, which the watcher
+filed as `sev/unknown`, so their titles and severity labels were corrected first.
+NVD text below is quoted from the API record, read on 2026-10-09.
+
+**Obot (CVE-2026-105138) gets `AAK-MCP-OBOT-CVE-2026-105138-001` on the
+`ghcr.io/obot-platform/obot` image, v0.12.0 up to v0.26.2, at MEDIUM.** NVD: "Obot
+0.12.0 before 0.26.2 contains an insufficiently protected credentials vulnerability
+that allows authenticated users to read static secrets set on MCP catalog entries
+by admins or power users." The fix is above the CRITICAL Obot pin's v0.25.0 floor,
+and this CVE is MEDIUM (CVSS 3.1 6.5), so it gets its own rule beside that pin, as
+the Penpot bridge CVE did beside the CRITICAL REPL pin. Raising the CRITICAL floor
+would report v0.25.0 to v0.26.1 as the critical bugs. GHSA-q5wf-87f5-cxgq gives the
+Go module `>= 0.12.0, < 0.26.2`, and the image tags follow the release tags. Checked
+in the source: `apiclient/types/mcpserver.go` has no static configuration at
+v0.11.0 and has it at v0.12.0. The fix, `644a1fd` ("store catalog entry static
+configuration in credentials"), is in v0.26.2 and not v0.26.1. `latest` was v0.26.3
+on 2026-10-09, so an untagged reference is not reported.
+
+**Splunk MCP Server (CVE-2026-76286) is out of scope.** NVD: "In Splunk MCP Server
+versions below 1.2.1, Splunk MCP Server could send the Splunk platform
+authentication token of a user who runs a custom Application Programming Interface
+(API) tool to the URL configured for that tool." Splunk's advisory, SVD-2026-1004,
+names the product Splunk MCP Server, base version 1.2, fixed in 1.2.1: a Splunk app,
+installed into a Splunk deployment, whose version no file AAK reads states. PyPI has
+no `splunk-mcp-server`, and npm's `splunk-mcp-server` (0.1.1) is a community MCP
+server for Splunk's REST API, not this app. Upgrade the app to 1.2.1 or later.
+
+**beam_mcp (CVE-2026-104634, CVE-2026-88257) is out of scope.** NVD for
+CVE-2026-104634: "Incorrect Type Conversion or Cast vulnerability in BeamMCP.Server
+in ScriptKittyOS beam_mcp allows an MCP client's JSON true, false and null tool
+arguments to reach the host's dispatch function as the strings "true", "false" and
+"nil"." CVE-2026-88257 is the advertised input schema enforced at the top level
+only. `beam_mcp` is an Elixir library on Hex, and both GHSAs (GHSA-wv7p-j6qh-3hj4,
+GHSA-mrg2-4747-fmpw) give every release before 0.10.1, fixed in 0.10.1. AAK reads no
+`mix.exs` or `mix.lock`, so a Hex version is invisible to the pin scanner, the basis
+the MCP Ruby SDK records took (#508-#512). Upgrade to 0.10.1 or later.
+
+**Docker Sandboxes (CVE-2026-101998) is out of scope.** NVD: "Docker Sandboxes could
+fail open while masking credentials in protected proxy responses." NVD names no
+version. Docker Sandboxes is the `sbx` CLI, installed from Homebrew
+(`docker/tap/sbx`), winget or the `docker-sbx` apt package, with no PyPI, npm or
+image artifact and no file AAK reads that states its version. Docker's Sandboxes
+release notes describe the fix under 0.47.0 (2026-10-05): "The proxy returns an
+error when it cannot safely mask a successful Anthropic API-key creation response,
+instead of forwarding the unmasked response to the sandbox." Neither source names
+the other, so that version is the release notes' word, not NVD's.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-105138 | 6.5 | `ghcr.io/obot-platform/obot` (image) | **New pin** `AAK-MCP-OBOT-CVE-2026-105138-001`: v0.12.0 up to v0.26.2, beside the CRITICAL Obot pin. | #926 |
+| CVE-2026-76286 | 5.3 | Splunk MCP Server (Splunk app) | **Out of scope**, non-pinnable. Upgrade the app to 1.2.1 or later. | #927 |
+| CVE-2026-104634 | 2.3 (4.0) | `beam_mcp` (Hex) | **Out of scope**, non-pinnable. Upgrade to 0.10.1 or later. | #928 |
+| CVE-2026-88257 | 5.3 (4.0) | `beam_mcp` (Hex) | **Out of scope**, non-pinnable. Upgrade to 0.10.1 or later. | #929 |
+| CVE-2026-101998 | 5.9 (4.0) | Docker Sandboxes (`sbx` CLI) | **Out of scope**, non-pinnable. Docker's release notes put the fix in `sbx` 0.47.0. | #930 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
+
 ## 2026-10-08 (v0.6.18): five disclosures and a missed citation, three new pins, one floor raised, one out of scope
 
 The watcher opened four `cve-response` issues at 06:00Z on 2026-10-07 (#916-#919)
