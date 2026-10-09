@@ -24,13 +24,18 @@ def test_cve_fix_bumps_requirements(tmp_path: Path) -> None:
     fixes = fix.run_cve_fixes(tmp_path, dry_run=False)
     assert fixes
     text = (tmp_path / "requirements.txt").read_text()
-    assert ">=1.2.22" in text
-    # requests line should be untouched
+    # Both AAK-LANGCHAIN-001 (floor 1.2.22) and -003 (floor 0.3.14) fire on the
+    # langchain-core line; the second bump must not lower the first one's floor.
+    assert "langchain-core>=1.2.22" in text
+    assert ">=0.3.14" not in text
+    # The umbrella `langchain` is on its own version line and is not rewritten,
+    # and the requests line is untouched.
+    assert "langchain==1.1.5" in text
     assert "requests==2.31.0" in text
 
 
 def test_cve_fix_dry_run_does_not_modify(tmp_path: Path) -> None:
-    original = "langchain==1.1.5\n"
+    original = "langchain-core==1.1.5\n"
     (tmp_path / "requirements.txt").write_text(original)
     fixes = fix.run_cve_fixes(tmp_path, dry_run=True)
     # The fix is proposed but not applied.
@@ -38,25 +43,23 @@ def test_cve_fix_dry_run_does_not_modify(tmp_path: Path) -> None:
     assert fixes and all(not f.applied for f in fixes)
 
 
-def test_cve_fix_bumps_package_json(tmp_path: Path) -> None:
-    # Use a compact package.json that triggers AAK-LANGCHAIN-001
-    (tmp_path / "package.json").write_text(
-        json.dumps(
-            {
-                "name": "my-mcp",
-                "dependencies": {
-                    "langchainjs": "0.2.0",
-                    "express": "^4.18.0",
-                },
-            }
-        )
+def test_cve_fix_leaves_npm_langchain_packages_alone(tmp_path: Path) -> None:
+    """AAK-LANGCHAIN-001 and -003 read Python manifests only, so an npm
+    LangChain dependency is never reported and never rewritten (#924)."""
+    original = json.dumps(
+        {
+            "name": "my-mcp",
+            "dependencies": {
+                "langchainjs": "0.2.0",
+                "@langchain/redis": "1.1.1",
+                "express": "^4.18.0",
+            },
+        }
     )
+    (tmp_path / "package.json").write_text(original)
     fixes = fix.run_cve_fixes(tmp_path, dry_run=False)
-    data = json.loads((tmp_path / "package.json").read_text())
-    # langchainjs bumped, express untouched
-    assert data["dependencies"]["langchainjs"].startswith(">=")
-    assert data["dependencies"]["express"] == "^4.18.0"
-    assert fixes
+    assert fixes == []
+    assert (tmp_path / "package.json").read_text() == original
 
 
 def test_cve_fix_ignores_non_langchain_rules(tmp_path: Path) -> None:
@@ -71,7 +74,7 @@ def test_cve_fix_ignores_non_langchain_rules(tmp_path: Path) -> None:
 
 
 def test_cli_fix_cve_flag(tmp_path: Path) -> None:
-    (tmp_path / "requirements.txt").write_text("langchain==1.1.5\n")
+    (tmp_path / "requirements.txt").write_text("langchain-core==1.1.5\n")
     runner = CliRunner()
     r = runner.invoke(cli, ["fix", str(tmp_path), "--cve", "--dry-run"])
     assert r.exit_code == 0, r.output

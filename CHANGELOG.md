@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- AAK-LANGCHAIN-001 and -003 read `langchain-core` only, the PyPI distribution both advisories name, in any PEP 503 spelling. The umbrella `langchain` and `langchain-community` are on version lines of their own and are no longer compared against its floors. AAK-LANGCHAIN-003 now cites the pip advisory, and its limitations say its 0.3.14 floor sits below that advisory's fixes (0.3.81, and 1.2.5 on 1.x).
+
+### Fixed
+
+- AAK-LANGCHAIN-001 and -003 only read Python manifests now. Before this, any npm package with "langchain" in its name got a HIGH that no upgrade could clear, @langchain/redis 1.1.1 included.
+- `aak fix --cve` could lower a LangChain floor it had just raised. When both rules fired on one line, the second bump wrote `>=0.3.14` over `>=1.2.22`. A bump now never lowers a pin.
+
 ## [0.6.19] - 2026-10-09
 
 ### Added

@@ -135,13 +135,15 @@ def _apply_fix(
 
 _CVE_FIXABLE_RULES: frozenset[str] = frozenset({
     "AAK-LANGCHAIN-001",  # CVE-2026-34070 — bump langchain-core >=1.2.22
-    "AAK-LANGCHAIN-003",  # CVE-2025-68664 — bump langchain >=0.3.14
+    "AAK-LANGCHAIN-003",  # CVE-2025-68664 — bump langchain-core >=0.3.14
     "AAK-LITELLM-CVE-2026-30623-PIN-001",  # CVE-2026-30623 — bump litellm >=1.83.7
 })
 
+# Both floors are langchain-core's, so both bumps rewrite that one distribution,
+# in any PEP 503 spelling, the same name `langchain_vuln` reports.
 _LANGCHAIN_MIN_VERSIONS = {
-    "AAK-LANGCHAIN-001": ("1.2.22", r"langchain(?:-core|-community)?"),
-    "AAK-LANGCHAIN-003": ("0.3.14", r"langchain(?:js)?"),
+    "AAK-LANGCHAIN-001": ("1.2.22", r"langchain[-_.]+core"),
+    "AAK-LANGCHAIN-003": ("0.3.14", r"langchain[-_.]+core"),
 }
 
 
@@ -172,13 +174,12 @@ def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
 
 
 def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction:
-    """Bump a vulnerable langchain dependency to the patched version.
+    """Bump a vulnerable langchain-core pin to the patched version.
 
-    Handles both requirements.txt / requirements-*.txt (line-based) and
-    package.json (JSON dependencies map). No other manifest formats are
-    auto-edited; poetry's pyproject.toml, uv.lock, and npm lockfiles
-    are intentionally out of scope because their locking semantics make
-    a naive text bump unsafe.
+    Rewrites requirements.txt / requirements-*.txt line by line. The rules
+    read only Python manifests, so there is no package.json case. poetry's
+    pyproject.toml and uv.lock are intentionally out of scope because their
+    locking semantics make a naive text bump unsafe.
     """
     import re as _re
 
@@ -188,45 +189,34 @@ def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction
     except OSError:
         return FixAction(rule_id, str(path), "Unable to read file", False)
 
-    if path.name == "package.json":
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError:
-            return FixAction(rule_id, str(path), "package.json is not valid JSON", False)
-        bumped = 0
-        for section in ("dependencies", "devDependencies", "peerDependencies"):
-            deps = data.get(section)
-            if not isinstance(deps, dict):
-                continue
-            for dep_name in list(deps):
-                if _re.fullmatch(name_pattern, dep_name):
-                    deps[dep_name] = f">={min_version}"
-                    bumped += 1
-        if bumped == 0:
-            return FixAction(rule_id, str(path), "No matching langchain dep found", False)
-        if not dry_run:
-            path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        return FixAction(
-            rule_id,
-            str(path),
-            f"Bumped {bumped} langchain dep(s) to >={min_version} (package.json)",
-            not dry_run,
-        )
-
     if path.name.endswith(".txt"):
         pin_re = _re.compile(
-            rf"^(\s*)({name_pattern})\s*(?:==|>=|<=|<|>|~=|!=)?\s*[0-9][0-9a-zA-Z.\-_]*",
-            _re.MULTILINE,
+            rf"^(\s*)({name_pattern})\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)",
+            _re.MULTILINE | _re.IGNORECASE,
         )
-        new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
+        floor = tuple(int(n) for n in min_version.split("."))
+        count = 0
+
+        def _bump(m: _re.Match[str]) -> str:
+            # Never lower a pin. AAK-LANGCHAIN-001 and -003 both rewrite
+            # langchain-core, and whichever runs second must leave the higher
+            # floor the first one wrote.
+            nonlocal count
+            current = tuple(int(n) for n in _re.findall(r"\d+", m.group(3))[:3])
+            if current >= floor:
+                return m.group(0)
+            count += 1
+            return f"{m.group(1)}{m.group(2)}>={min_version}"
+
+        new_text = pin_re.sub(_bump, text)
         if count == 0:
-            return FixAction(rule_id, str(path), "No matching langchain pin", False)
+            return FixAction(rule_id, str(path), "No langchain-core pin below the fix", False)
         if not dry_run:
             path.write_text(new_text, encoding="utf-8")
         return FixAction(
             rule_id,
             str(path),
-            f"Bumped {count} langchain pin(s) to >={min_version}",
+            f"Bumped {count} langchain-core pin(s) to >={min_version}",
             not dry_run,
         )
 
