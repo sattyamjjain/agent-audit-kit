@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
+
 ## [0.6.20] - 2026-10-09
 
 ### Changed

@@ -16,6 +16,38 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-10 (v0.6.21): two x64dbg-MCP Server disclosures, both out of scope
+
+The watcher opened two `cve-response` issues at 22:38Z on 2026-10-09 (#936, #937),
+both for duty1g/x64dbg-mcp-server. NVD now scores #936, which the watcher filed as
+`sev/unknown`, so its title and severity label were corrected first. NVD text below
+is quoted from the API record, read on 2026-10-10.
+
+**x64dbg-MCP Server (CVE-2026-107824, CVE-2026-107820) is out of scope.** NVD for
+CVE-2026-107824: "Prior to 1.1, x64dbg-MCP Server exposes all MCP debugger tools over
+HTTP and SSE without authentication while listening on 0.0.0.0 by default."
+CVE-2026-107820 is an unbounded `Content-Length` that panics the server before token
+authentication, fixed in 1.2. The server is a native x64dbg plugin written in Zig. Its
+GitHub releases ship a zip of `.dp64` and `.dp32` plugin files that the README says to
+drop into x64dbg's plugins folder, and no file AAK reads states which version is
+installed: an MCP client registers it by URL (`http://localhost:9094/sse`). npm has
+`x64dbg-mcp-server` (2.3.0) and `x64dbg-mcp` (1.3.1), but they are bromoket/x64dbg_mcp
+and ouonet/x64dbg-mcp, other projects on version lines of their own. A pin on either
+name would report these CVEs against the wrong package, the collision the
+`mcp-server-splunk` name set up for CVE-2026-76404 (#622). The exposure itself is
+visible: measured on a client config, `AAK-MCP-001` reports a server reached with no
+credentials, on loopback or over the network. Upgrade the plugin to v1.2 or later.
+From v1.1 every request needs a Bearer token, which the plugin generates on first
+run (commits `e1daba0` and `1aad0f8`).
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-107824 | 9.3 (4.0) | x64dbg-MCP Server (x64dbg plugin) | **Out of scope**, non-pinnable. v1.1 makes Bearer-token authentication mandatory. | #936 |
+| CVE-2026-107820 | 5.3 | x64dbg-MCP Server (x64dbg plugin) | **Out of scope**, non-pinnable. Upgrade to v1.2 or later. | #937 |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that,
+marked (4.0).
+
 ## 2026-10-09 (v0.6.19): five disclosures, one new image pin, four out of scope
 
 The watcher opened two `cve-response` issues at 13:29Z on 2026-10-08 (#926, #927)
