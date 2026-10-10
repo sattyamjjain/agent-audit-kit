@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An instruction-file benign slice for the false-positive benchmark (#945), so the rules that read `CLAUDE.md`, `AGENTS.md` and the like get a measured number like the MCP rules have. It covers 892 public repositories from the 930-repo corpus behind #771, every file pinned by commit and SHA-256, with the predicate committed before any pin or scan. The shipped engine finds 29 HIGH/CRITICAL findings on 15 of those repos. They are listed for adjudication and not yet adjudicated, so the page states no false-positive rate. `make fp-instruction-fetch` fills a local cache once (third-party files are never committed), `make fp-instruction` re-runs the measurement, and `make fp-check` now checks it too.
+
 ### Security
 
 - The MCP Security Index published rule ids for servers still under embargo, and its 90-day clock never ran (#943). `data/index.json` carried `rule_hits` for every withheld card, though the disclosure policy promises aggregate counts only, and the builder never saw the previous index, so every embargoed card was restamped with the date of the latest weekly run. The clock now starts at a private notice recorded in `benchmarks/disclosure_ledger.json`; a server with no notice stays withheld, and withheld rows carry no rule ids. Every deploy path (a push included) publishes the cleaned file, and the stale server pages that still promised dates from the old clock are gone. `docs/disclosure-policy.md` now says which steps are automated and which are not.

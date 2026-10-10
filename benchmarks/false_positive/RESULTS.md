@@ -227,6 +227,16 @@ would have caught this from the committed data alone: **no server labelled
 the class was missing — `_to_config` and `_auth_mode` read the same record and
 disagreed about it, and nothing compared their answers.
 
+## Instruction-file slice (pending adjudication)
+
+The rules that read `CLAUDE.md`, `AGENTS.md` and the other instruction files are
+measured on a separate benign slice, built the same way as this one: a pinned
+corpus, a pre-registered predicate, the shipped engine, and a human adjudication
+no script writes. Its page is
+[`instruction_files/RESULTS.md`](instruction_files/RESULTS.md). Its findings are
+listed for adjudication and not yet adjudicated, so it states no false-positive
+rate, and neither does this page.
+
 ## Limitations (stated plainly)
 
 - **"Benign" is a proxy.** A declared-auth, active, non-CVE registry server is a
@@ -259,12 +269,12 @@ disagreed about it, and nothing compared their answers.
   drive operational action.
 - **MCP server configs only.** The slice is built from MCP Registry server
   records, so the rate covers MCP server configs and nothing else. Instruction
-  files (`CLAUDE.md`, `AGENTS.md` and the like) are not in it, and the
-  instruction-file rules (`AAK-AGENT-*`) are not measured by this benchmark. An
-  outside report on 930 repositories
-  ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) is what
-  exposed `AAK-AGENT-002` on them, fixed in v0.6.8. There is no number for
-  instruction files here.
+  files (`CLAUDE.md`, `AGENTS.md` and the like) are not in it; they have their
+  own slice, [`instruction_files/`](instruction_files/RESULTS.md), built from the
+  930-repository corpus of the outside report
+  ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) that
+  exposed `AAK-AGENT-002` on them, fixed in v0.6.8. That slice is pending
+  adjudication, so there is still no false-positive rate for instruction files.
 
 ## History
 
