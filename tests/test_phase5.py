@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 from click.testing import CliRunner
 
+from agent_audit_kit import __version__
 from agent_audit_kit.cli import cli
 
 
@@ -18,7 +19,9 @@ def test_install_precommit_creates_file(tmp_path: Path) -> None:
     assert cfg.is_file()
     text = cfg.read_text()
     assert "agent-audit-kit" in text
-    assert "rev: v0.3.0" in text
+    # The hook pins the release that wrote it. This asserted a literal
+    # v0.3.0 for as long as the command hard-coded one.
+    assert f"rev: v{__version__}\n" in text
 
 
 def test_install_precommit_is_idempotent(tmp_path: Path) -> None:

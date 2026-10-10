@@ -10,7 +10,8 @@ Nothing here was cut; it is the same content with a home of its own.
 |---------|-------------|
 | `agent-audit-kit scan .` | Full security scan |
 | `agent-audit-kit scan . --ci` | CI mode: SARIF + `--fail-on high` |
-| `agent-audit-kit discover` | Find all AI agent configs on the machine |
+| `agent-audit-kit discover` | Find the AI agent configs in your home directory |
+| `agent-audit-kit discover .` | Same, plus the project's own per-platform configs (`.mcp.json`, `.cursor/mcp.json`, ...) |
 | `agent-audit-kit pin .` | Pin tool definitions (SHA-256 hashes) |
 | `agent-audit-kit verify .` | Check tools against pins (detect rug pulls) |
 | `agent-audit-kit fix . --dry-run` | Auto-fix common misconfigurations |
