@@ -24,7 +24,18 @@ jobs:
           persist-credentials: false
 
       - name: Run OSSF Scorecard
-        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        # Held at v2.4.3. v2.4.4 ships Scorecard v5.5.0, whose Vulnerabilities
+        # check runs PyPI transitive resolution on every requirements file
+        # without hashes (ossf/scorecard#5234). On the requirements fixtures
+        # under tests/fixtures/cves/ it stopped finishing once #899 added six
+        # more, and every push run hung until GitHub cancelled it. Leave v2.4.3
+        # only for a release that ships the fix; dependabot.yml skips 2.4.4.
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        # The limit sits on the step, not the job. A job that runs out of time
+        # is cancelled, and a cancelled run doesn't read as a failure, which is
+        # how the hang above went unnoticed for five days. A step that runs out
+        # of time fails the run. A healthy run takes under three minutes.
+        timeout-minutes: 15
         with:
           results_file: results.sarif
           results_format: sarif

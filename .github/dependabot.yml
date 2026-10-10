@@ -28,6 +28,13 @@ updates:
       github-actions:
         patterns:
           - "*"
+    ignore:
+      # scorecard.yml holds ossf/scorecard-action at v2.4.3: v2.4.4's
+      # Vulnerabilities check never finishes on this repo's requirements
+      # fixtures (ossf/scorecard#5234). Don't propose 2.4.4 again; a later
+      # release that ships the fix is still offered.
+      - dependency-name: "ossf/scorecard-action"
+        versions: ["2.4.4"]
 
   - package-ecosystem: "docker"
     directory: "/"
