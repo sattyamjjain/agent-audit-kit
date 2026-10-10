@@ -1,0 +1,310 @@
+{
+  "benign_slice_predicate": "listed in the SENTINEL bench manifests (main or held-out) at commit 2b70c363512d AND public, not archived, not a fork at pin time AND SENTINEL-recorded stars >= 1000 AND not in AAK's shipped CVE/advisory feed (vuln_db.json + CVE-pin package names) AND at least one instruction file fetched at the pinned commit",
+  "files_scanned": 1422,
+  "finding_set_digest": "80df7fbdd26a8b1e5df61155cb4c410344028d1ecadc7eeece1b3cd5df044b4d",
+  "findings_by_rule": {
+    "AAK-AGENT-001": 12,
+    "AAK-AGENT-002": 893,
+    "AAK-AGENT-003": 10,
+    "AAK-AGENT-004": 15,
+    "AAK-AGENT-005": 290,
+    "AAK-AGENT-006": 2,
+    "AAK-AGENT-TRUST-004": 1,
+    "AAK-AIACT50-001": 101,
+    "AAK-AIACT50-002": 11,
+    "AAK-AIACT50-003": 9,
+    "AAK-HEALTHCARE-AI-004": 19,
+    "AAK-IPI-WILD-CORPUS-001": 5
+  },
+  "high_critical": [
+    {
+      "evidence_sha256": "38732665d4df600c252a94fa95229247807b4db841fcd6ca24f2de1a2940ebd4",
+      "line": 20,
+      "path": "AGENTS.md",
+      "repo": "garrytan/gbrain",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "a9fae77100011c2b417bdfecdb8926461045e976a7ce103a50751670361f5136",
+      "line": 157,
+      "path": ".github/copilot-instructions.md",
+      "repo": "home-assistant/core",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "a9fae77100011c2b417bdfecdb8926461045e976a7ce103a50751670361f5136",
+      "line": 17,
+      "path": "AGENTS.md",
+      "repo": "home-assistant/core",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "480bbd7c4ee86e75e105c3e3c1949cc0582d0e72668739692c0fb843e857e5a7",
+      "line": 20,
+      "path": "AGENTS.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "854cf60386c4f963eadd938a571f9bff98bef9182df556c24808320bbd2379dc",
+      "line": 26,
+      "path": "AGENTS.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "e5f59fed150220822bc9ce5ffb0058f0dc146de3aa7837c730bbf8bb4cab8dfb",
+      "line": 32,
+      "path": "AGENTS.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "480bbd7c4ee86e75e105c3e3c1949cc0582d0e72668739692c0fb843e857e5a7",
+      "line": 20,
+      "path": "CLAUDE.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "854cf60386c4f963eadd938a571f9bff98bef9182df556c24808320bbd2379dc",
+      "line": 26,
+      "path": "CLAUDE.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "e5f59fed150220822bc9ce5ffb0058f0dc146de3aa7837c730bbf8bb4cab8dfb",
+      "line": 32,
+      "path": "CLAUDE.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "da5b95c8162b86408a28ce5f08153e9fc1fe05fa68adc65988e31fe211975714",
+      "line": 218,
+      "path": "AGENTS.md",
+      "repo": "tw93/Mole",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "6a970b22fbc07a8271ba02dce17c5f465a9adf696bb4f02156875bb30bb0fbfa",
+      "line": 30,
+      "path": "AGENTS.md",
+      "repo": "usestrix/strix",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "a9fae77100011c2b417bdfecdb8926461045e976a7ce103a50751670361f5136",
+      "line": 50,
+      "path": "AGENTS.md",
+      "repo": "vllm-project/vllm",
+      "rule_id": "AAK-AGENT-001",
+      "severity": "critical",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 208,
+      "path": "AGENTS.md",
+      "repo": "colbymchenry/codegraph",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "793c1d3bfb2d9a8aef470a21ecef93b7825f1e29cd484a296864dec1dd0e313f",
+      "line": 26,
+      "path": "AGENTS.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "793c1d3bfb2d9a8aef470a21ecef93b7825f1e29cd484a296864dec1dd0e313f",
+      "line": 26,
+      "path": "CLAUDE.md",
+      "repo": "laravel/laravel",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 17,
+      "path": "AGENTS.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 36,
+      "path": "AGENTS.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 47,
+      "path": "AGENTS.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 48,
+      "path": "AGENTS.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 49,
+      "path": "AGENTS.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 27,
+      "path": "CLAUDE.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "08e1540530053b6fc0dda7485965cb2518f930df5165e1d8f867194ee0fd72f0",
+      "line": 41,
+      "path": "CLAUDE.md",
+      "repo": "zhaoxuya520/reverse-skill",
+      "rule_id": "AAK-AGENT-003",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "8c008fb1bfc198724ea00223e61ed752aa0928dfc28889e609ba6a48eede7f90",
+      "line": 417,
+      "path": "AGENTS.md",
+      "repo": "nvm-sh/nvm",
+      "rule_id": "AAK-AGENT-006",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "5a60796d857772bed8d8083ef3fcf5f632b5bc3d81b4785a5f2c65c05e887304",
+      "line": 1,
+      "path": "AGENTS.md",
+      "repo": "pypa/setuptools",
+      "rule_id": "AAK-AGENT-006",
+      "severity": "high",
+      "split": "heldout"
+    },
+    {
+      "evidence_sha256": "9a46438f6f4e60f0901252df7ecf2fbdaf53c8c08521ea72fa3bf0646c52b18d",
+      "line": 507,
+      "path": "AGENTS.md",
+      "repo": "block/buzz",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "9a46438f6f4e60f0901252df7ecf2fbdaf53c8c08521ea72fa3bf0646c52b18d",
+      "line": 112,
+      "path": "AGENTS.md",
+      "repo": "garrytan/gstack",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "9a46438f6f4e60f0901252df7ecf2fbdaf53c8c08521ea72fa3bf0646c52b18d",
+      "line": 292,
+      "path": "CLAUDE.md",
+      "repo": "ghostwright/phantom",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "severity": "high",
+      "split": "heldout"
+    },
+    {
+      "evidence_sha256": "9a46438f6f4e60f0901252df7ecf2fbdaf53c8c08521ea72fa3bf0646c52b18d",
+      "line": 33,
+      "path": ".github/copilot-instructions.md",
+      "repo": "netalertx/NetAlertX",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "severity": "high",
+      "split": "main"
+    },
+    {
+      "evidence_sha256": "9a46438f6f4e60f0901252df7ecf2fbdaf53c8c08521ea72fa3bf0646c52b18d",
+      "line": 171,
+      "path": "AGENTS.md",
+      "repo": "superplanehq/superplane",
+      "rule_id": "AAK-IPI-WILD-CORPUS-001",
+      "severity": "high",
+      "split": "main"
+    }
+  ],
+  "high_critical_by_rule": {
+    "AAK-AGENT-001": 12,
+    "AAK-AGENT-003": 10,
+    "AAK-AGENT-006": 2,
+    "AAK-IPI-WILD-CORPUS-001": 5
+  },
+  "high_critical_by_split": {
+    "heldout": 2,
+    "main": 27
+  },
+  "high_critical_findings": 29,
+  "high_critical_repo_rate": 0.0168,
+  "repos_with_high_critical": 15,
+  "scanner_failures": 0,
+  "severity_buckets": {
+    "critical": 12,
+    "high": 17,
+    "info": 0,
+    "low": 893,
+    "medium": 446
+  },
+  "slice_n": 892,
+  "slice_n_by_split": {
+    "heldout": 322,
+    "main": 570
+  },
+  "tool": "agent-audit-kit",
+  "total_findings": 1368
+}

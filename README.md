@@ -106,6 +106,9 @@ the like) are not in the slice, and an outside report on 930 repositories
 ([#771](https://github.com/sattyamjjain/agent-audit-kit/issues/771)) is what
 exposed `AAK-AGENT-002` on them, fixed in
 [v0.6.8](https://github.com/sattyamjjain/agent-audit-kit/releases/tag/v0.6.8).
+Instruction files now have
+[their own benign slice](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/instruction_files/RESULTS.md),
+built from that report's corpus; it is pending adjudication, so it has no rate yet.
 
 ## What we measured
 
@@ -176,7 +179,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->104<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->2,783<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->2,806<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->388<!-- /rule-count --> rules

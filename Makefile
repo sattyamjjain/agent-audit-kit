@@ -16,6 +16,7 @@ RESULTS  := $(RESEARCH)/results.json
         cve-latency cve-latency-check cve-latency-queue-check cve-latency-refresh \
         remediation-corpus remediation-corpus-check \
         fp fp-check \
+        fp-instruction fp-instruction-check fp-instruction-pin fp-instruction-fetch \
         registry-parity cve-deferral-check
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
@@ -77,6 +78,39 @@ fp-check:
 	  || (echo "results.json is stale - run 'make fp', re-adjudicate by hand, and commit" && exit 1)
 	@python scripts/sync_fp_badge.py --check
 	@python scripts/check_fp_results_page.py
+	@$(MAKE) --no-print-directory fp-instruction-check
+
+## fp-instruction: re-derive the instruction-file slice (slice.json) and re-scan it
+## (results.json) from the committed manifest and the local cache. Offline once
+## `fp-instruction-fetch` has filled the cache. Like `fp`, it never touches
+## adjudication.json: a run that moves the findings needs a fresh adjudication
+## (`run.py --init-adjudication`, which refuses to overwrite a set verdict).
+fp-instruction:
+	python benchmarks/false_positive/instruction_files/corpus.py --write
+	python benchmarks/false_positive/instruction_files/run.py --write
+
+## fp-instruction-check: the instruction slice's drift guard. The manifest validates and
+## matches the scanners' instruction paths, slice.json matches a fresh derivation, the
+## scan matches results.json (only when the cache is filled; otherwise it says NOT
+## CHECKED, which is a skip and not a pass), and RESULTS.md states no rate while the
+## adjudication is pending, then exactly the adjudicated one.
+fp-instruction-check:
+	@python benchmarks/false_positive/instruction_files/corpus.py --check
+	@python benchmarks/false_positive/instruction_files/run.py --check
+	@python scripts/check_fp_instruction_page.py
+
+## fp-instruction-pin: (network, one-time) re-pin the instruction-file corpus from the
+## SENTINEL bench manifests: repository metadata and head commits through `gh api graphql`,
+## every instruction file by SHA-256. A re-pin is a corpus refresh and moves the slice.
+fp-instruction-pin:
+	python benchmarks/false_positive/instruction_files/fetch.py pin
+
+## fp-instruction-fetch: (network) fill the cache from manifest.json, verifying every SHA-256.
+## Third-party file contents live only there, never in a commit: the cache is a user cache
+## directory outside the repo ($XDG_CACHE_HOME/agent-audit-kit/fp-instruction-files, or
+## AAK_FP_INSTRUCTION_CACHE), so no scan of the repo reads it.
+fp-instruction-fetch:
+	python benchmarks/false_positive/instruction_files/fetch.py fetch
 
 ## count-check: fail if ANY rendered count is stale. Two guards, because they cover
 ## different halves and each one alone gives a false all-clear:

@@ -16,7 +16,7 @@ benign, not audited one by one", which is the reporter's own description and the
 reason they are a fair benign proxy: nobody selected them for what AAK says
 about them. `manifest.json` pins every instruction file AAK reads by repository,
 commit SHA, path and SHA-256. File contents are never committed; `fetch.py`
-fills a gitignored cache and verifies every hash.
+fills a cache outside the repository (`CACHE_DIR`) and verifies every hash.
 
 Pre-registered predicate. A repository is in the benign slice iff ALL hold:
 
@@ -50,6 +50,7 @@ unless asked to (`--write`).
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from collections import Counter
@@ -66,7 +67,25 @@ if str(REPO_ROOT) not in sys.path:
 
 MANIFEST = _HERE / "manifest.json"
 SLICE_JSON = _HERE / "slice.json"
-CACHE_DIR = _HERE / "cache"
+
+
+def _default_cache_dir() -> Path:
+    """Where fetched instruction files live: outside the repository, on purpose.
+
+    The first draft kept them under this directory, gitignored, and the next full
+    test run failed: `test_scanner_is_silent_on_this_repository` scans the repo
+    root, so 1,445 third-party CLAUDE.md / AGENTS.md files read as AAK's own
+    surface. A self-scan would have reported them too. A user cache directory is
+    outside every scan of the repo, and outside every `git add`.
+    """
+    override = os.environ.get("AAK_FP_INSTRUCTION_CACHE")
+    if override:
+        return Path(override).expanduser()
+    base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(base) / "agent-audit-kit" / "fp-instruction-files"
+
+
+CACHE_DIR = _default_cache_dir()
 
 SENTINEL_REPOSITORY = "GarvitAgrawal04/SENTINEL"
 SENTINEL_COMMIT = "2b70c363512dc7ba76f86d7e16bdedb82740cd66"

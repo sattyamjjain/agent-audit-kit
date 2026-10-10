@@ -9,13 +9,14 @@ Two subcommands, both read-only against public GitHub:
          fetch each instruction file at that commit, and write manifest.json with
          the SHA-256 and size of every file. A re-pin is a corpus refresh: it
          moves the slice, so it is never part of `make fp-instruction`.
-  fetch  Fill the gitignored cache from manifest.json, verifying every SHA-256.
-         A file already cached with the right hash is not downloaded again. Exit
-         1 on any mismatch or failed download.
+  fetch  Fill the cache from manifest.json, verifying every SHA-256. A file
+         already cached with the right hash is not downloaded again. Exit 1 on
+         any mismatch or failed download.
 
-File contents only ever land in cache/, which is gitignored. manifest.json
-carries commits, paths and hashes; the raw URL of every file is
-`RAW_URL_TEMPLATE` filled in from them.
+File contents only ever land in `corpus.CACHE_DIR`, a user cache directory
+outside the repository (`$XDG_CACHE_HOME/agent-audit-kit/fp-instruction-files`,
+or `AAK_FP_INSTRUCTION_CACHE`). manifest.json carries commits, paths and hashes;
+the raw URL of every file is `RAW_URL_TEMPLATE` filled in from them.
 """
 
 from __future__ import annotations
