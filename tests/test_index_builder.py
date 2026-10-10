@@ -202,16 +202,31 @@ def test_rule_hit_section_withheld_hides_detail() -> None:
     html = index_builder._rule_hit_section(pending)
     assert "AAK-MCP-001" not in html  # specific rules hidden while withheld
     assert " ".join(html.split()) == (
-        '<p class="muted">Rule-level detail is withheld until 90 days after the '
-        "maintainer is notified. Aggregate severity counts above.</p>"
+        '<p class="muted">We have not privately told the maintainer yet, so no publication '
+        "date is set. For now, this page shows only the Critical, High, Medium and Low totals.</p>"
     )
     notified = _card("x", rule_hits={"AAK-MCP-001": 2}, notified_at="2026-07-01", embargo_ends="2026-09-29")
     html = index_builder._rule_hit_section(notified)
     assert "AAK-MCP-001" not in html
     assert " ".join(html.split()) == (
-        '<p class="muted">Rule-level detail is withheld until 2026-09-29, 90 days after '
-        "the maintainer was notified. Aggregate severity counts above.</p>"
+        '<p class="muted">We privately told the maintainer. Rule IDs and per-rule counts appear '
+        "at the first weekly scan on or after 2026-09-29, or sooner if a fix ships. Until then, "
+        "this page shows only the Critical, High, Medium and Low totals.</p>"
     )
+
+
+def test_pages_say_withheld_and_declare_a_language(tmp_path: Path) -> None:
+    """A reader meets one word for the state; index.json keeps the stable value."""
+    site = tmp_path / "site"
+    index_builder.write_site([_card("acme__x", rule_hits={"AAK-MCP-001": 1})], site, ledger={})
+    page = (site / "server" / "acme__x.html").read_text(encoding="utf-8")
+    index_html = (site / "index.html").read_text(encoding="utf-8")
+    assert '<html lang="en">' in page
+    assert "<strong>withheld</strong>" in page and ">embargoed<" not in page
+    assert ">withheld<" in index_html and ">embargoed<" not in index_html
+    assert "T00:00:00" not in page  # the card shows the date, as the index does
+    rows = json.loads((site / "data" / "index.json").read_text(encoding="utf-8"))
+    assert rows[0]["disclosure_state"] == "embargoed"
 
 
 def test_rule_hit_section_public_shows_detail() -> None:

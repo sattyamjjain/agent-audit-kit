@@ -114,8 +114,8 @@ _TEMPLATE_INDEX = """<!doctype html>
 <h1>MCP Security Index</h1>
 <p class="muted">Weekly grade across {total} public MCP servers. Scanner:
 <a href="https://github.com/sattyamjjain/agent-audit-kit">agent-audit-kit</a>. Snapshot: {snapshot}.</p>
-<p class="muted">Findings are reported privately to each maintainer first. Rule-level detail appears here only
-90 days after that notice, under our
+<p class="muted">Grades and severity counts are public from a server's first scan. We publish rule IDs and
+per-rule counts 90 days after we privately tell the maintainer, or sooner if a fix ships. See our
 <a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
 
 <h2 style="margin-top:1.5rem;font-size:1.1rem">Week-over-week grade distribution</h2>
@@ -197,7 +197,7 @@ _TEMPLATE_ROW = """<tr>
 
 
 _TEMPLATE_CARD = """<!doctype html>
-<html><head>
+<html lang="en"><head>
 <meta charset="utf-8"><title>{name} — MCP Security Index</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, Inter, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }}
@@ -224,23 +224,26 @@ _TEMPLATE_CARD = """<!doctype html>
 
 {rule_hit_section}
 
-<p class="muted">Findings are shown as aggregate counts only until 90 days after
-the maintainer is privately notified; rule IDs and per-rule counts are
-published after that.
-<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">Disclosure policy</a>.</p>
+<p class="muted">Grades and severity counts are public from a server's first scan. We publish rule IDs and
+per-rule counts 90 days after we privately tell the maintainer, or sooner if a fix ships. See our
+<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
 </body></html>
 """
 
 
-_TEMPLATE_RULE_HIT_SECTION_WITHHELD_NOTIFIED = """<p class="muted">Rule-level detail is withheld until
-{embargo_ends}, 90 days after the maintainer was notified. Aggregate severity counts above.</p>"""
+# Card copy reviewed for cognitive accessibility (literal language): name the
+# totals the page shows instead of pointing "above", and say when detail is
+# published (the first weekly scan on or after the date, not on the date).
+_TEMPLATE_RULE_HIT_SECTION_WITHHELD_NOTIFIED = """<p class="muted">We privately told the maintainer. Rule IDs and
+per-rule counts appear at the first weekly scan on or after {embargo_ends}, or sooner if a fix ships.
+Until then, this page shows only the Critical, High, Medium and Low totals.</p>"""
 
 
-_TEMPLATE_RULE_HIT_SECTION_WITHHELD_PENDING = """<p class="muted">Rule-level detail is withheld until
-90 days after the maintainer is notified. Aggregate severity counts above.</p>"""
+_TEMPLATE_RULE_HIT_SECTION_WITHHELD_PENDING = """<p class="muted">We have not privately told the maintainer yet,
+so no publication date is set. For now, this page shows only the Critical, High, Medium and Low totals.</p>"""
 
 
-_TEMPLATE_RULE_HIT_SECTION_PUBLIC = """<h3 style="margin-top:1.5rem">Rule hits</h3>
+_TEMPLATE_RULE_HIT_SECTION_PUBLIC = """<h2 style="margin-top:1.5rem;font-size:1.1rem">Rule hits</h2>
 <table class="rules">
 <thead><tr><th>Rule</th><th>Hits</th></tr></thead>
 <tbody>{rule_rows}</tbody>
@@ -597,6 +600,16 @@ def cards_from_index(index_path: Path) -> list[ServerCard]:
     return cards
 
 
+def _state_label(state: str) -> str:
+    """The disclosure state as a reader sees it.
+
+    ``data/index.json`` keeps the value ``embargoed`` so consumers do not break,
+    but the pages say "withheld", the word the rest of the copy uses, so a
+    reader never meets two words for one state.
+    """
+    return "withheld" if state == "embargoed" else state
+
+
 def _rule_hit_section(card: ServerCard) -> str:
     """C11 — render the rule-hit breakdown for a card (or the withheld notice)."""
     if card.disclosure_state == "embargoed":
@@ -711,7 +724,7 @@ def write_site(
             idx=i + 1,
             slug=html.escape(c.slug),
             name=html.escape(c.name),
-            badge=f'<span class="badge">{html.escape(c.disclosure_state)}</span>' if c.disclosure_state != "public" else "",
+            badge=f'<span class="badge">{html.escape(_state_label(c.disclosure_state))}</span>' if c.disclosure_state != "public" else "",
             grade=c.grade,
             grade_letter=c.grade,
             score=c.score,
@@ -743,8 +756,8 @@ def write_site(
                 high=c.high,
                 medium=c.medium,
                 low=c.low,
-                last_scanned=c.last_scanned,
-                disclosure_state=c.disclosure_state,
+                last_scanned=c.last_scanned.split("T")[0],
+                disclosure_state=html.escape(_state_label(c.disclosure_state)),
                 rule_hit_section=_rule_hit_section(c),
             ),
             encoding="utf-8",
