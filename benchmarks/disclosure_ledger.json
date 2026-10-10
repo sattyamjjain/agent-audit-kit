@@ -1,0 +1,4 @@
+{
+  "_about": "Private disclosure notices sent to the maintainers of servers in the MCP Security Index, keyed by index slug. The 90-day clock in docs/disclosure-policy.md starts at notified_at; a server with findings and no entry here stays withheld. This file is public: never record rule IDs, email addresses or advisory URLs in it. Entry shape: {\"notified_at\": \"YYYY-MM-DD\", \"channel\": \"private-advisory\" | \"security-md\" | \"email\", \"reminders\": [\"YYYY-MM-DD\"], \"fixed_at\": null | \"YYYY-MM-DD\"}.",
+  "notices": {}
+}

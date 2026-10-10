@@ -1,6 +1,6 @@
 """Corpus manifest loader + verifier (digest-pinned, Sigstore TODO).
 
-The signed manifest at `public/corpora/manifest.json` lists each
+The manifest at `public/corpora/manifest.json` (unsigned) lists each
 payload corpus AAK ships with its current SHA-256, source URL, and
 last-updated timestamp. `aak corpus update` fetches the manifest,
 verifies the named corpus's expected digest, and writes the body to

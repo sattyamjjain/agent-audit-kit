@@ -6,7 +6,7 @@
 
 repos:
   - repo: https://github.com/sattyamjjain/agent-audit-kit
-    rev: v0.2.0
+    rev: v0.6.20
     hooks:
       - id: agent-audit-kit
         # Optional: customize severity threshold

@@ -154,8 +154,8 @@ remediation-corpus:
 	python scripts/gen_remediation_key_corpus.py
 
 ## remediation-corpus-check: fail if remediation-key-corpus.json is stale vs benchmarks/data.
-## Also asserted by tests/test_remediation_keys_are_real.py, so CI covers it via pytest;
-## this target is for regenerating locally without running the suite.
+## tests/test_remediation_keys_are_real.py runs the same comparison but skips without the
+## gitignored benchmarks/data crawl, so CI never does: run this locally when a rule change can move it.
 remediation-corpus-check:
 	@python scripts/gen_remediation_key_corpus.py --check
 

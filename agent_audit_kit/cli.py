@@ -73,6 +73,11 @@ cli.add_command(scan_cmd)
 
 @cli.command("discover")
 @click.version_option(version=__version__)
+@click.argument(
+    "path",
+    required=False,
+    type=click.Path(exists=True, file_okay=False, resolve_path=True),
+)
 @click.option("--verbose", "-v", is_flag=True, default=False)
 @click.option(
     "--format",
@@ -81,14 +86,23 @@ cli.add_command(scan_cmd)
     default="console",
     help="Output format. JSON emits a stable schema for programmatic use.",
 )
-def discover_cmd(verbose: bool, output_format: str) -> None:
-    """Discover all AI agent configurations on this machine."""
+def discover_cmd(path: str | None, verbose: bool, output_format: str) -> None:
+    """Discover AI agent configurations.
+
+    Without PATH, lists the home-directory configs on this machine. With
+    PATH, also checks that project for each platform's own config files
+    (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, ...).
+    """
     from dataclasses import asdict
     import json as _json
 
     from agent_audit_kit.discovery import discover_agents
 
-    agents = discover_agents(verbose=verbose)
+    # Project-level configs (discovery.AGENT_CONFIGS) are only read under a
+    # project root. Until PATH existed the command never passed one, so the
+    # per-platform list was reachable from tests alone and `discover` saw
+    # nothing but the home directory.
+    agents = discover_agents(project_root=Path(path) if path else None, verbose=verbose)
 
     if output_format == "json":
         # Stable schema: {"count": int, "agents": [{...DiscoveredAgent}]}
@@ -310,11 +324,11 @@ def corpus_cmd() -> None:
 @click.option("--ipi", "update_ipi", is_flag=True, default=False, help="Update the wild IPI payload corpus.")
 @click.option("--fhi", "update_fhi", is_flag=True, default=False, help="Update the FHI universal-suffix corpus.")
 @click.option("--all", "update_all", is_flag=True, default=False, help="Update every corpus listed in the manifest.")
-@click.option("--manifest", "manifest_url", default=None, help="Override the manifest URL (default: gh-pages).")
+@click.option("--manifest", "manifest_url", default=None, help="Override the manifest URL (default: public/corpora/manifest.json on main).")
 def corpus_update_cmd(
     update_ipi: bool, update_fhi: bool, update_all: bool, manifest_url: str | None
 ) -> None:
-    """Pull a signed corpus manifest and refresh local data files."""
+    """Pull the corpus manifest and refresh local data files (SHA-256 pinned)."""
     from agent_audit_kit.corpus.manifest import (
         CorpusVerificationError,
         fetch_and_verify,
@@ -619,9 +633,12 @@ def install_precommit_cmd(path: str) -> None:
     """Add an agent-audit-kit entry to the project's .pre-commit-config.yaml."""
     project = Path(path)
     cfg_path = project / ".pre-commit-config.yaml"
+    # Pin the release that is running this command. A literal here (it was
+    # v0.3.0) froze every new install on a months-old hook no matter which
+    # version wrote it.
     snippet = (
         "  - repo: https://github.com/sattyamjjain/agent-audit-kit\n"
-        "    rev: v0.3.0\n"
+        f"    rev: v{__version__}\n"
         "    hooks:\n"
         "      - id: agent-audit-kit\n"
     )

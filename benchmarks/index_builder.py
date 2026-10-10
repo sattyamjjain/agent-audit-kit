@@ -14,10 +14,19 @@ Outputs:
 Usage:
     python benchmarks/index_builder.py \\
         --input benchmarks/results.json \\
-        --site-dir benchmarks/site
+        --site-dir benchmarks/site \\
+        --ledger benchmarks/disclosure_ledger.json
 
-Per-server disclosure follows docs/disclosure-policy.md: findings are
-only surfaced in the public leaderboard 90 days after private notice.
+    # Re-render the published index without a new crawl or snapshot:
+    python benchmarks/index_builder.py \\
+        --from-index pages_staging/data/index.json \\
+        --site-dir benchmarks/site \\
+        --ledger benchmarks/disclosure_ledger.json
+
+Per-server disclosure follows docs/disclosure-policy.md: rule-level detail
+is published only 90 days after the maintainer was privately notified, and
+the notice date comes from benchmarks/disclosure_ledger.json. A server with
+findings and no notice in the ledger stays withheld.
 """
 
 from __future__ import annotations
@@ -27,9 +36,10 @@ import datetime as dt
 import html
 import json
 import logging
+import re
 import shutil
 from collections import Counter
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
 
@@ -46,13 +56,41 @@ class ServerCard:
     low: int
     last_scanned: str
     disclosure_state: str  # "embargoed" | "public" | "no-findings"
-    # C11 — which rules fired for this server.
+    # C11 — which rules fired for this server. Never published while withheld.
     rule_hits: dict[str, int] = field(default_factory=dict)
-    # C16 — when findings were first seen (used to transition embargoed -> public after 90 days).
+    # When findings were first seen. Informational only: the disclosure clock
+    # is the ledger's notice date, not this.
     first_seen: str = ""
+    # From benchmarks/disclosure_ledger.json. Both None while no notice has
+    # been sent, which is how a consumer tells "notice pending" apart.
+    notified_at: str | None = None
+    embargo_ends: str | None = None
 
 
 EMBARGO_DAYS = 90
+
+LEDGER_CHANNELS: frozenset[str] = frozenset({"private-advisory", "security-md", "email"})
+_LEDGER_TOP_KEYS: frozenset[str] = frozenset({"_about", "notices"})
+_LEDGER_ENTRY_KEYS: frozenset[str] = frozenset({"notified_at", "channel", "reminders", "fixed_at"})
+# The slug _build_card derives: lowercase, "/" -> "__", "." -> "_". A key in
+# owner/repo form is the likeliest ledger typo, and it would silently match
+# nothing, so it is rejected instead.
+_SLUG_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
+_DAY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+class LedgerError(ValueError):
+    """benchmarks/disclosure_ledger.json is malformed. Raised, never skipped."""
+
+
+@dataclass(frozen=True)
+class Notice:
+    """One private disclosure notice, as recorded in the ledger."""
+
+    notified_at: dt.date
+    channel: str
+    reminders: tuple[dt.date, ...] = ()
+    fixed_at: dt.date | None = None
 
 
 _TEMPLATE_INDEX = """<!doctype html>
@@ -76,8 +114,9 @@ _TEMPLATE_INDEX = """<!doctype html>
 <h1>MCP Security Index</h1>
 <p class="muted">Weekly grade across {total} public MCP servers. Scanner:
 <a href="https://github.com/sattyamjjain/agent-audit-kit">agent-audit-kit</a>. Snapshot: {snapshot}.</p>
-<p class="muted">New vulnerabilities are reported privately first and surfaced here only after our 90-day
-<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a> window.</p>
+<p class="muted">Grades and severity counts are public from a server's first scan. We publish rule IDs and
+per-rule counts 90 days after we privately tell the maintainer, or sooner if a fix ships. See our
+<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
 
 <h2 style="margin-top:1.5rem;font-size:1.1rem">Week-over-week grade distribution</h2>
 {trend_svg}
@@ -158,7 +197,7 @@ _TEMPLATE_ROW = """<tr>
 
 
 _TEMPLATE_CARD = """<!doctype html>
-<html><head>
+<html lang="en"><head>
 <meta charset="utf-8"><title>{name} — MCP Security Index</title>
 <style>
   body {{ font-family: -apple-system, Segoe UI, Inter, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }}
@@ -185,19 +224,26 @@ _TEMPLATE_CARD = """<!doctype html>
 
 {rule_hit_section}
 
-<p class="muted">Findings within the 90-day embargo window are shown as
-aggregate counts only; specific rule IDs + locations are held until
-embargo expiry.
-<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">Disclosure policy</a>.</p>
+<p class="muted">Grades and severity counts are public from a server's first scan. We publish rule IDs and
+per-rule counts 90 days after we privately tell the maintainer, or sooner if a fix ships. See our
+<a href="https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/disclosure-policy.md">disclosure policy</a>.</p>
 </body></html>
 """
 
 
-_TEMPLATE_RULE_HIT_SECTION_EMBARGOED = """<p class="muted">Rule-level detail is embargoed until
-{embargo_expires}. Aggregate severity counts above.</p>"""
+# Card copy reviewed for cognitive accessibility (literal language): name the
+# totals the page shows instead of pointing "above", and say when detail is
+# published (the first weekly scan on or after the date, not on the date).
+_TEMPLATE_RULE_HIT_SECTION_WITHHELD_NOTIFIED = """<p class="muted">We privately told the maintainer. Rule IDs and
+per-rule counts appear at the first weekly scan on or after {embargo_ends}, or sooner if a fix ships.
+Until then, this page shows only the Critical, High, Medium and Low totals.</p>"""
 
 
-_TEMPLATE_RULE_HIT_SECTION_PUBLIC = """<h3 style="margin-top:1.5rem">Rule hits</h3>
+_TEMPLATE_RULE_HIT_SECTION_WITHHELD_PENDING = """<p class="muted">We have not privately told the maintainer yet,
+so no publication date is set. For now, this page shows only the Critical, High, Medium and Low totals.</p>"""
+
+
+_TEMPLATE_RULE_HIT_SECTION_PUBLIC = """<h2 style="margin-top:1.5rem;font-size:1.1rem">Rule hits</h2>
 <table class="rules">
 <thead><tr><th>Rule</th><th>Hits</th></tr></thead>
 <tbody>{rule_rows}</tbody>
@@ -237,6 +283,10 @@ def cards_from_results(results_path: Path) -> list[ServerCard]:
     - embargoed if the entry has embargoed=true (still inside the
       90-day window from docs/disclosure-policy.md),
     - public otherwise.
+
+    That is only the input's view. write_site re-decides every card with
+    findings from the disclosure ledger (`_apply_disclosure`), so no input
+    can publish a card whose maintainer was not notified 90 days earlier.
     """
     raw = json.loads(results_path.read_text(encoding="utf-8"))
     cards: list[ServerCard] = []
@@ -330,64 +380,244 @@ def _build_card(
     )
 
 
-def _apply_embargo_transitions(
+def _parse_day(value: object, where: str) -> dt.date:
+    if not isinstance(value, str) or not _DAY_RE.fullmatch(value):
+        raise LedgerError(f"{where}: expected a YYYY-MM-DD date, got {value!r}")
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError as exc:
+        raise LedgerError(f"{where}: {exc}") from None
+
+
+def _parse_notice(slug: str, entry: object, today: dt.date) -> Notice:
+    where = f"disclosure ledger notices[{slug!r}]"
+    if not isinstance(entry, dict):
+        raise LedgerError(f"{where}: expected an object, got {type(entry).__name__}")
+    unknown = set(entry) - _LEDGER_ENTRY_KEYS
+    if unknown:
+        raise LedgerError(f"{where}: unknown key(s) {sorted(unknown)}")
+    for required in ("notified_at", "channel"):
+        if required not in entry:
+            raise LedgerError(f"{where}: missing {required!r}")
+    notified_at = _parse_day(entry["notified_at"], f"{where}.notified_at")
+    if notified_at > today:
+        raise LedgerError(f"{where}.notified_at: {notified_at} is in the future")
+    channel = entry["channel"]
+    if channel not in LEDGER_CHANNELS:
+        raise LedgerError(
+            f"{where}.channel: {channel!r} is not one of {sorted(LEDGER_CHANNELS)}"
+        )
+    raw_reminders = entry.get("reminders", [])
+    if not isinstance(raw_reminders, list):
+        raise LedgerError(f"{where}.reminders: expected a list of dates")
+    reminders = tuple(
+        _parse_day(day, f"{where}.reminders[{i}]") for i, day in enumerate(raw_reminders)
+    )
+    for day in reminders:
+        if day < notified_at:
+            raise LedgerError(f"{where}.reminders: {day} is before notified_at {notified_at}")
+    fixed_at = None
+    if entry.get("fixed_at") is not None:
+        fixed_at = _parse_day(entry["fixed_at"], f"{where}.fixed_at")
+        if fixed_at < notified_at:
+            raise LedgerError(f"{where}.fixed_at: {fixed_at} is before notified_at {notified_at}")
+    return Notice(notified_at=notified_at, channel=channel, reminders=reminders, fixed_at=fixed_at)
+
+
+def load_ledger(ledger_path: Path | None, today: dt.date | None = None) -> dict[str, Notice]:
+    """Load and validate benchmarks/disclosure_ledger.json.
+
+    The ledger is the only disclosure clock, so a malformed one fails the
+    build instead of being skipped: a skipped entry would silently re-withhold
+    a server, and a mis-read date would publish one early. No ledger path
+    means no notices, and with no notices nothing that has findings is ever
+    published.
+
+    Args:
+        ledger_path: The ledger file, or None for "no notices sent".
+        today: The build date, for rejecting a notice dated in the future.
+
+    Returns:
+        ``{slug: Notice}``.
+
+    Raises:
+        LedgerError: The file is missing, not JSON, or any entry is malformed.
+    """
+    if ledger_path is None:
+        return {}
+    today = today or dt.datetime.now(dt.timezone.utc).date()
+    try:
+        raw = json.loads(ledger_path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise LedgerError(f"cannot read disclosure ledger {ledger_path}: {exc}") from None
+    except json.JSONDecodeError as exc:
+        raise LedgerError(f"disclosure ledger {ledger_path} is not valid JSON: {exc}") from None
+    if not isinstance(raw, dict):
+        raise LedgerError("disclosure ledger: expected a JSON object at the top level")
+    unknown = set(raw) - _LEDGER_TOP_KEYS
+    if unknown:
+        raise LedgerError(f"disclosure ledger: unknown top-level key(s) {sorted(unknown)}")
+    notices = raw.get("notices", {})
+    if not isinstance(notices, dict):
+        raise LedgerError("disclosure ledger: 'notices' must be an object keyed by server slug")
+    ledger: dict[str, Notice] = {}
+    for slug, entry in notices.items():
+        if not isinstance(slug, str) or not _SLUG_RE.fullmatch(slug):
+            raise LedgerError(
+                f"disclosure ledger: {slug!r} is not an index slug "
+                "(lowercase, '/' written as '__', '.' as '_')"
+            )
+        ledger[slug] = _parse_notice(slug, entry, today)
+    return ledger
+
+
+def _carry_first_seen(
     cards: list[ServerCard],
     prior_index: dict[str, dict],
     now: dt.datetime,
 ) -> list[ServerCard]:
-    """C16 — auto-transition embargoed -> public after 90 days.
+    """Keep each card's first_seen from the previously published index.
 
-    Reads the previous snapshot's index.json (keyed by slug) to find the
-    `first_seen` timestamp per card. Brand-new cards inherit today's
-    timestamp; existing cards preserve theirs. When now - first_seen >
-    EMBARGO_DAYS AND the card is embargoed, flip it to public.
+    first_seen is informational. It used to be the disclosure clock, and it
+    was restamped on every run, because the prior index the workflow fetched
+    was never passed in: every card was always "first seen" this week, so
+    nothing ever reached day 90. The clock is now the ledger's notice date
+    (`_apply_disclosure`), so a wrong first_seen can no longer publish or
+    withhold anything.
     """
     today = now.isoformat(timespec="seconds")
     for card in cards:
         prior = prior_index.get(card.slug)
         if prior and prior.get("first_seen"):
             card.first_seen = prior["first_seen"]
-        else:
-            card.first_seen = today if card.disclosure_state == "embargoed" else ""
+        elif not card.first_seen:
+            card.first_seen = today if card.disclosure_state != "no-findings" else ""
+    return cards
 
-        if card.disclosure_state != "embargoed" or not card.first_seen:
+
+def _apply_disclosure(
+    cards: list[ServerCard],
+    ledger: dict[str, Notice],
+    now: dt.datetime,
+    *,
+    allow_publish: bool = True,
+) -> list[ServerCard]:
+    """Decide what each card may publish. The ledger is the only clock.
+
+    docs/disclosure-policy.md starts the 90 days at the private notice to
+    the maintainer, so a card with findings is withheld ("embargoed") until
+    EMBARGO_DAYS after its ledger notice, or until the ledger records a fix
+    landing earlier. A card with no ledger entry has had no notice, so it
+    stays withheld however long it has been in the index: it never becomes
+    public on time alone. Whatever the input said about disclosure is
+    overridden here, so no input format can publish around the ledger.
+
+    With ``allow_publish=False`` (re-rendering an already published index,
+    with no fresh crawl), a card is public only if it was already public in
+    that input. The published index carries no rule detail for withheld
+    cards, so a card that came due in between would be published with an
+    empty rule table; it waits for the next weekly snapshot instead.
+
+    Args:
+        cards: Cards to update in place.
+        ledger: ``{slug: Notice}`` from `load_ledger`.
+        now: The build time.
+        allow_publish: False to never publish a card that was not public.
+
+    Returns:
+        The same list, updated.
+    """
+    today = now.date()
+    for card in cards:
+        card.notified_at = None
+        card.embargo_ends = None
+        if card.disclosure_state == "no-findings":
             continue
-        try:
-            seen = dt.datetime.fromisoformat(card.first_seen)
-        except ValueError:
+        was_public = card.disclosure_state == "public"
+        card.disclosure_state = "embargoed"
+        notice = ledger.get(card.slug)
+        if notice is None:
             continue
-        if seen.tzinfo is None:
-            seen = seen.replace(tzinfo=dt.timezone.utc)
-        if (now - seen).days >= EMBARGO_DAYS:
+        ends = notice.notified_at + dt.timedelta(days=EMBARGO_DAYS)
+        card.notified_at = notice.notified_at.isoformat()
+        card.embargo_ends = ends.isoformat()
+        due = today >= ends or (notice.fixed_at is not None and notice.fixed_at <= today)
+        if due and (allow_publish or was_public):
             card.disclosure_state = "public"
     return cards
 
 
-def _load_prior_index(site_dir: Path) -> dict[str, dict]:
-    """Return {slug: dict} from the previous snapshot's index.json."""
-    prior = site_dir / "data" / "index.json"
-    if not prior.is_file():
-        return {}
+def _public_row(card: ServerCard) -> dict:
+    """The data/index.json row for a card, without rule ids while withheld.
+
+    write_site used to dump ``asdict(card)`` for every card, so the published
+    JSON carried the rule ids of every embargoed server while the HTML card
+    hid them, against docs/disclosure-policy.md's "aggregate counts only".
+    """
+    row = asdict(card)
+    if card.disclosure_state != "public":
+        row["rule_hits"] = {}
+    return row
+
+
+def _load_index_rows(index_path: Path) -> list[dict]:
+    """Rows of a published data/index.json, or [] if absent or unreadable."""
+    if not index_path.is_file():
+        return []
     try:
-        rows = json.loads(prior.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
+        rows = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
     if not isinstance(rows, list):
-        return {}
-    return {row.get("slug"): row for row in rows if isinstance(row, dict) and row.get("slug")}
+        return []
+    return [row for row in rows if isinstance(row, dict) and row.get("slug")]
 
 
-def _rule_hit_section(card: ServerCard, now: dt.datetime) -> str:
-    """C11 — render the rule-hit breakdown for a card (or an embargo notice)."""
-    if card.disclosure_state == "embargoed":
+def _rows_by_slug(rows: list[dict]) -> dict[str, dict]:
+    return {row["slug"]: row for row in rows}
+
+
+def _load_prior_index(site_dir: Path) -> dict[str, dict]:
+    """Return {slug: dict} from site_dir's own previous index.json, if any."""
+    return _rows_by_slug(_load_index_rows(site_dir / "data" / "index.json"))
+
+
+def cards_from_index(index_path: Path) -> list[ServerCard]:
+    """Rebuild cards from a published data/index.json, keeping its order.
+
+    Used to re-render the site without a new crawl (the workflow's push
+    path), so a fix to the builder or a new ledger notice reaches the
+    published site without waiting for Monday's snapshot.
+    """
+    names = {f.name for f in fields(ServerCard)}
+    cards: list[ServerCard] = []
+    for row in _load_index_rows(index_path):
+        known = {k: v for k, v in row.items() if k in names}
         try:
-            seen = dt.datetime.fromisoformat(card.first_seen) if card.first_seen else now
-        except ValueError:
-            seen = now
-        if seen.tzinfo is None:
-            seen = seen.replace(tzinfo=dt.timezone.utc)
-        expires = (seen + dt.timedelta(days=EMBARGO_DAYS)).date().isoformat()
-        return _TEMPLATE_RULE_HIT_SECTION_EMBARGOED.format(embargo_expires=expires)
+            cards.append(ServerCard(**known))
+        except TypeError:
+            logger.warning("Skipping malformed index row for %s", row.get("slug"))
+    return cards
+
+
+def _state_label(state: str) -> str:
+    """The disclosure state as a reader sees it.
+
+    ``data/index.json`` keeps the value ``embargoed`` so consumers do not break,
+    but the pages say "withheld", the word the rest of the copy uses, so a
+    reader never meets two words for one state.
+    """
+    return "withheld" if state == "embargoed" else state
+
+
+def _rule_hit_section(card: ServerCard) -> str:
+    """C11 — render the rule-hit breakdown for a card (or the withheld notice)."""
+    if card.disclosure_state == "embargoed":
+        if card.embargo_ends:
+            return _TEMPLATE_RULE_HIT_SECTION_WITHHELD_NOTIFIED.format(
+                embargo_ends=html.escape(card.embargo_ends)
+            )
+        return _TEMPLATE_RULE_HIT_SECTION_WITHHELD_PENDING
     if not card.rule_hits:
         return ""
     rows = "".join(
@@ -397,20 +627,53 @@ def _rule_hit_section(card: ServerCard, now: dt.datetime) -> str:
     return _TEMPLATE_RULE_HIT_SECTION_PUBLIC.format(rule_rows=rows)
 
 
+def _snapshot_label(history: list[dict], fallback: dt.datetime) -> str:
+    """The last published snapshot's time, to the minute, else the fallback."""
+    if history:
+        raw = str(history[-1].get("snapshot") or "").replace("Z", "+00:00")
+        try:
+            return dt.datetime.fromisoformat(raw).isoformat(timespec="minutes")
+        except ValueError:
+            pass
+    return fallback.isoformat(timespec="minutes")
+
+
 def write_site(
-    cards: list[ServerCard], site_dir: Path, history_seed: Path | None = None
+    cards: list[ServerCard],
+    site_dir: Path,
+    history_seed: Path | None = None,
+    *,
+    ledger: dict[str, Notice] | None = None,
+    prior_index: Path | None = None,
+    republish: bool = False,
 ) -> None:
+    """Write data/index.json, data/history.json, index.html and server pages.
+
+    Args:
+        cards: The cards to publish.
+        site_dir: Output directory.
+        history_seed: The previously published history.json.
+        ledger: Disclosure notices from `load_ledger`; None means none sent.
+        prior_index: The previously published index.json, for first_seen.
+        republish: Re-render an already published index: no new history
+            snapshot (README's index-cadence line counts snapshots) and no
+            card published that was not public before.
+    """
     (site_dir / "data").mkdir(parents=True, exist_ok=True)
     (site_dir / "server").mkdir(parents=True, exist_ok=True)
     now = dt.datetime.now(dt.timezone.utc)
 
-    # C16 — apply embargo transition using the prior snapshot's first_seen.
-    prior_index = _load_prior_index(site_dir)
-    cards = _apply_embargo_transitions(cards, prior_index, now)
+    prior_rows = (
+        _rows_by_slug(_load_index_rows(prior_index))
+        if prior_index is not None
+        else _load_prior_index(site_dir)
+    )
+    cards = _carry_first_seen(cards, prior_rows, now)
+    cards = _apply_disclosure(cards, ledger or {}, now, allow_publish=not republish)
 
     index_json = site_dir / "data" / "index.json"
     index_json.write_text(
-        json.dumps([asdict(c) for c in cards], indent=2),
+        json.dumps([_public_row(c) for c in cards], indent=2),
         encoding="utf-8",
     )
 
@@ -437,27 +700,31 @@ def write_site(
                 history = loaded
         except json.JSONDecodeError:
             history = []
-    history.append(
-        {
-            "snapshot": now.isoformat(timespec="seconds"),
-            "total": len(cards),
-            "distribution": {
-                "A": sum(1 for c in cards if c.grade == "A"),
-                "B": sum(1 for c in cards if c.grade == "B"),
-                "C": sum(1 for c in cards if c.grade == "C"),
-                "D": sum(1 for c in cards if c.grade == "D"),
-                "F": sum(1 for c in cards if c.grade == "F"),
-            },
-        }
-    )
+    if not republish:
+        history.append(
+            {
+                "snapshot": now.isoformat(timespec="seconds"),
+                "total": len(cards),
+                "distribution": {
+                    "A": sum(1 for c in cards if c.grade == "A"),
+                    "B": sum(1 for c in cards if c.grade == "B"),
+                    "C": sum(1 for c in cards if c.grade == "C"),
+                    "D": sum(1 for c in cards if c.grade == "D"),
+                    "F": sum(1 for c in cards if c.grade == "F"),
+                },
+            }
+        )
     history_path.write_text(json.dumps(history, indent=2), encoding="utf-8")
+    # A re-render is not a new snapshot, so the page keeps the date of the
+    # crawl its data came from.
+    snapshot = _snapshot_label(history, now) if republish else now.isoformat(timespec="minutes")
 
     rows = "\n".join(
         _TEMPLATE_ROW.format(
             idx=i + 1,
             slug=html.escape(c.slug),
             name=html.escape(c.name),
-            badge=f'<span class="badge">{html.escape(c.disclosure_state)}</span>' if c.disclosure_state != "public" else "",
+            badge=f'<span class="badge">{html.escape(_state_label(c.disclosure_state))}</span>' if c.disclosure_state != "public" else "",
             grade=c.grade,
             grade_letter=c.grade,
             score=c.score,
@@ -470,7 +737,7 @@ def write_site(
     (site_dir / "index.html").write_text(
         _TEMPLATE_INDEX.format(
             total=len(cards),
-            snapshot=now.isoformat(timespec="minutes"),
+            snapshot=snapshot,
             rows=rows,
             trend_svg=_render_trend_svg(history),
         ),
@@ -489,15 +756,15 @@ def write_site(
                 high=c.high,
                 medium=c.medium,
                 low=c.low,
-                last_scanned=c.last_scanned,
-                disclosure_state=c.disclosure_state,
-                rule_hit_section=_rule_hit_section(c, now),
+                last_scanned=c.last_scanned.split("T")[0],
+                disclosure_state=html.escape(_state_label(c.disclosure_state)),
+                rule_hit_section=_rule_hit_section(c),
             ),
             encoding="utf-8",
         )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build the MCP Security Index site.")
     parser.add_argument(
         "--input",
@@ -523,10 +790,53 @@ def main() -> int:
             "site_dir, so without a seed each run starts from an empty history."
         ),
     )
-    args = parser.parse_args()
-    input_path = Path(args.input)
+    parser.add_argument(
+        "--ledger",
+        default=None,
+        help=(
+            "Disclosure notices (benchmarks/disclosure_ledger.json). The 90-day "
+            "clock starts at each notice; without one, no server with findings "
+            "is ever published."
+        ),
+    )
+    parser.add_argument(
+        "--prior-index",
+        default=None,
+        help="Previously published data/index.json, so first_seen persists across runs.",
+    )
+    parser.add_argument(
+        "--from-index",
+        default=None,
+        help=(
+            "Re-render this published data/index.json instead of reading --input: "
+            "no new history snapshot, and no card published that was not already "
+            "public. A missing file is a no-op."
+        ),
+    )
+    args = parser.parse_args(argv)
     site_dir = Path(args.site_dir)
+    ledger = load_ledger(Path(args.ledger) if args.ledger else None)
 
+    if args.from_index:
+        source = Path(args.from_index)
+        if not source.is_file():
+            print(f"no published index at {source}; nothing to re-render")
+            return 0
+        if args.clean and site_dir.exists():
+            shutil.rmtree(site_dir)
+        cards = cards_from_index(source)
+        write_site(
+            cards,
+            site_dir,
+            history_seed=Path(args.history) if args.history else None,
+            ledger=ledger,
+            prior_index=source,
+            republish=True,
+        )
+        print(f"re-rendered {len(cards)} cards to {site_dir}/ (no new snapshot)")
+        return 0
+
+    input_path = Path(args.input)
     if args.clean and site_dir.exists():
         shutil.rmtree(site_dir)
 
@@ -538,6 +848,8 @@ def main() -> int:
         cards,
         site_dir,
         history_seed=Path(args.history) if args.history else None,
+        ledger=ledger,
+        prior_index=Path(args.prior_index) if args.prior_index else None,
     )
     print(f"wrote {len(cards)} cards to {site_dir}/")
     return 0

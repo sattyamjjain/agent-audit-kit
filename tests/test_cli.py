@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from agent_audit_kit import __version__
@@ -324,3 +325,81 @@ def test_discover_verbose_flag() -> None:
     """The ``discover --verbose`` flag should not crash."""
     result = runner.invoke(cli, ["discover", "--verbose"])
     assert result.exit_code == 0
+
+
+# ---------------------------------------------------------------------------
+# discover PATH: the per-platform project configs (discovery.AGENT_CONFIGS)
+# are read only under a project root, and until PATH existed the command
+# never passed one, so they were reachable from tests alone.
+# ---------------------------------------------------------------------------
+
+
+def _discover_json(args: list[str]) -> dict:
+    result = runner.invoke(cli, ["discover", *args, "--format", "json"])
+    assert result.exit_code == 0, result.output
+    return json.loads(result.output)
+
+
+def _empty_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    return home
+
+
+def test_discover_path_reads_project_configs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _empty_home(tmp_path, monkeypatch)
+    project = tmp_path / "project"
+    (project / ".cursor").mkdir(parents=True)
+    (project / ".mcp.json").write_text(json.dumps({"mcpServers": {"a": {}, "b": {}}}))
+    (project / ".cursor" / "mcp.json").write_text(json.dumps({"mcpServers": {"c": {}}}))
+
+    payload = _discover_json([str(project)])
+
+    by_name = {a["name"]: a for a in payload["agents"]}
+    assert set(by_name) == {"Claude Code", "Cursor"}
+    assert payload["count"] == 2
+    assert by_name["Claude Code"]["mcp_server_count"] == 2
+    assert by_name["Cursor"]["mcp_server_count"] == 1
+    assert by_name["Cursor"]["config_files"] == [str(project.resolve() / ".cursor" / "mcp.json")]
+
+
+def test_discover_path_keeps_home_configs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    home = _empty_home(tmp_path, monkeypatch)
+    (home / ".claude.json").write_text("{}")
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".mcp.json").write_text(json.dumps({"mcpServers": {}}))
+
+    names = {a["name"] for a in _discover_json([str(project)])["agents"]}
+
+    assert names == {"Claude Code", "Claude Code (user)"}
+
+
+def test_discover_without_path_ignores_the_cwd_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No PATH keeps the old home-directory-only behaviour."""
+    _empty_home(tmp_path, monkeypatch)
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".mcp.json").write_text(json.dumps({"mcpServers": {"a": {}}}))
+    monkeypatch.chdir(project)
+
+    assert _discover_json([]) == {"count": 0, "agents": []}
+
+
+def test_discover_nonexistent_path_exits_2(tmp_path: Path) -> None:
+    result = runner.invoke(cli, ["discover", str(tmp_path / "missing")])
+    assert result.exit_code == 2
+
+
+def test_discover_file_path_exits_2(tmp_path: Path) -> None:
+    config = tmp_path / ".mcp.json"
+    config.write_text("{}")
+    result = runner.invoke(cli, ["discover", str(config)])
+    assert result.exit_code == 2

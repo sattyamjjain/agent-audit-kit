@@ -5,7 +5,8 @@ Three jobs:
 
 1. Rewrite every `sattyamjjain/agent-audit-kit@vX.Y.Z` reference, pre-commit
    `rev:` and pinned `ghcr.io/sattyamjjain/agent-audit-kit:X.Y.Z` image in
-   README.md + docs/**/*.md to the version recorded in pyproject.toml.
+   README.md + docs/**/*.md + the copy-paste examples in EXAMPLE_FILES to the
+   version recorded in pyproject.toml.
 2. Keep CITATION.cff's `version` / `date-released` on the shipped release.
 3. Generate the target GitHub repo-description string so CI can
    `gh repo edit --description "$(python scripts/sync_repo_metadata.py --description)"`.
@@ -168,10 +169,21 @@ def _is_frozen(path: Path) -> bool:
     return any(part in posix for part in _FROZEN_DIR_PARTS)
 
 
+# Copy-paste examples outside README and docs/ that pin a release. Nothing
+# rewrote them, so by 0.6.20 the Action example still pinned v0.3.34 and the
+# pre-commit example v0.2.0: the two files a new user is most likely to copy
+# verbatim. Listing them here puts them under the same --check as the README.
+EXAMPLE_FILES: tuple[Path, ...] = (
+    REPO_ROOT / "examples" / "ci-integration" / "github-actions-sarif.yml",
+    REPO_ROOT / "examples" / "ci-integration" / "pre-commit-config.yaml",
+)
+
+
 def _iter_docs() -> list[Path]:
     out: list[Path] = [README] if README.is_file() else []
     if DOCS_DIR.is_dir():
         out.extend(p for p in DOCS_DIR.rglob("*.md") if not _is_frozen(p))
+    out.extend(p for p in EXAMPLE_FILES if p.is_file())
     return out
 
 

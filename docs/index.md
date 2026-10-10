@@ -32,7 +32,7 @@ agent-audit-kit scan .
 | Command | Description |
 |---------|-------------|
 | `agent-audit-kit scan .` | Scan a project |
-| `agent-audit-kit discover` | Find all AI agent configs |
+| `agent-audit-kit discover .` | Find AI agent configs in a project and your home directory |
 | `agent-audit-kit pin` | Pin tool definitions |
 | `agent-audit-kit verify` | Verify tool pins |
 | `agent-audit-kit fix` | Auto-fix issues |
