@@ -91,6 +91,7 @@ echo "::endgroup::"
 FINDINGS_COUNT=0
 CRITICAL_COUNT=0
 HIGH_COUNT=0
+INCOMPLETE_COUNT=0
 
 if [ -f "${SARIF_FILE}" ]; then
     FINDINGS_COUNT=$(python3 -c "
@@ -135,6 +136,21 @@ try:
         if 7.0 <= score < 9.0:
             count += 1
     print(count)
+except Exception:
+    print(0)
+")
+
+    # A crashed scanner also exits 1, so exit 1 alone cannot tell "findings
+    # over the threshold" from "the scan did not finish" (#743). The crash is
+    # always in the SARIF as an AAK-INTERNAL-SCANNER-FAIL result, which no
+    # --severity or --rules filter drops, so count it here.
+    INCOMPLETE_COUNT=$(python3 -c "
+import json
+try:
+    with open('${SARIF_FILE}') as f:
+        sarif = json.load(f)
+    results = sarif.get('runs', [{}])[0].get('results', [])
+    print(sum(1 for r in results if r.get('ruleId') == 'AAK-INTERNAL-SCANNER-FAIL'))
 except Exception:
     print(0)
 ")
@@ -186,6 +202,8 @@ echo "========================================="
 
 if [ "${SCAN_EXIT}" -eq 0 ]; then
     echo "  Result: PASSED"
+elif [ "${SCAN_EXIT}" -eq 1 ] && [ "${INCOMPLETE_COUNT}" -gt 0 ]; then
+    echo "  Result: INCOMPLETE (${INCOMPLETE_COUNT} scanner(s) crashed; see the scan log)"
 elif [ "${SCAN_EXIT}" -eq 1 ]; then
     echo "  Result: FAILED (findings exceed --fail-on ${INPUT_FAIL_ON} threshold)"
 else
@@ -209,6 +227,8 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         echo ""
         if [ "${SCAN_EXIT}" -eq 0 ]; then
             echo "**Result: PASSED**"
+        elif [ "${SCAN_EXIT}" -eq 1 ] && [ "${INCOMPLETE_COUNT}" -gt 0 ]; then
+            echo "**Result: INCOMPLETE** -- ${INCOMPLETE_COUNT} scanner(s) crashed, so the rules they own did not run (see the scan log)"
         elif [ "${SCAN_EXIT}" -eq 1 ]; then
             echo "**Result: FAILED** -- findings exceed \`--fail-on ${INPUT_FAIL_ON}\` threshold"
         else

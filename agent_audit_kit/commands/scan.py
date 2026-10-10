@@ -92,8 +92,8 @@ __all__ = ["scan_cmd"]
 @click.option("--score", "show_score", is_flag=True, default=False, help="Show security score and grade.")
 @click.option("--owasp-report", is_flag=True, default=False, help="Show OWASP coverage matrix.")
 @click.option("--compliance", default=None, help="Compliance framework: eu-ai-act, soc2, iso27001, iso42001, hipaa, nist-ai-rmf, nsa-mcp-csi-2026 (NSA AISC MCP Security CSI, U/OO/6030316-26), aicm (CSA AI Controls Matrix, CSV output), mcp-2026-roadmap (MCP 2026 Roadmap conformance).")
-@click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify if detected secrets are live (makes network calls).")
-@click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main).")
+@click.option("--verify-secrets", is_flag=True, default=False, help="Actively verify whether detected Anthropic, OpenAI, GitHub and GitLab keys are live (makes network calls; AWS and GCP keys are reported but not checked).")
+@click.option("--diff", "diff_base", default=None, help="Only report findings in files changed since BASE_REF (e.g., HEAD~1, main), untracked files included. If git cannot answer (not a repository, unknown ref), every finding is reported and a warning says so.")
 @click.option("--llm-scan", is_flag=True, default=False, help="Run LLM semantic analysis on tool descriptions (opt-in).")
 @click.option(
     "--sessions",
@@ -348,13 +348,25 @@ def _run_scan(
     if diff_base:
         from agent_audit_kit.diff import filter_by_diff
 
-        result = filter_by_diff(result, project_root, diff_base)
+        filtered = filter_by_diff(result, project_root, diff_base)
+        # filter_by_diff hands back the same object when git could not list
+        # the changed files. That fallback reports everything, which is the
+        # safe direction, but silently it reads as "these are the findings in
+        # your change" when no diff was taken at all.
+        if filtered is result:
+            click.echo(
+                f"Warning: --diff {diff_base}: git could not list the changed files "
+                "(not a git repository, or the ref does not resolve), so every "
+                "finding is reported.",
+                err=True,
+            )
+        result = filtered
 
     # Active secret verification
     if verify_secrets:
         from agent_audit_kit.verification import verify_findings
 
-        result = verify_findings(result)
+        result = verify_findings(result, project_root)
 
     # LLM semantic analysis (opt-in, provider chosen by --llm)
     if llm_scan:

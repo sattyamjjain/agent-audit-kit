@@ -18,25 +18,39 @@ When our weekly crawl discovers a previously-unseen finding, we:
 3. If no private-issue channel is available, we email the addresses
    listed in `SECURITY.md` / `security@<domain>` / the last-committing
    author address — in that order.
+4. Record the notice in
+   [`benchmarks/disclosure_ledger.json`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/disclosure_ledger.json):
+   the date and the channel, nothing else. That file is public, so it
+   never holds rule IDs, email addresses or advisory links. The index
+   reads its 90-day clock from this record and from nothing else.
 
 ## Disclosure timeline
 
-- **Day 0:** private notice sent.
+- **Day 0:** the private notice is sent and recorded in the ledger. A
+  server whose maintainer has not been notified has no Day 0: its
+  rule-level detail stays withheld however long it has been in the
+  index.
 - **Day 30:** reminder if no response or fix yet.
 - **Day 60:** second reminder.
-- **Day 90:** the finding is added to the public per-server card on the
-  MCP Security Index with full evidence. The maintainer is notified
-  again 24 hours before publication.
-- **Maintainer-fix earlier:** if the maintainer ships a fix before
-  day 90, the finding is published the day the fix lands, with a
-  thank-you credit.
+- **Day 90:** the server's rule IDs and per-rule counts are added to
+  its public card on the MCP Security Index, with the first weekly
+  snapshot on or after day 90 that includes the server. File and line
+  locations are not published. The maintainer is notified again
+  24 hours before publication.
+- **Maintainer fix earlier:** if the maintainer ships a fix before
+  day 90, we record the date as `fixed_at` and the detail is published
+  with the next weekly snapshot after it, with a thank-you credit.
+
+Reminders, the 24-hour heads-up and the credit are sent by hand. The
+index automates only the dates: it withholds detail until the ledger
+says the 90 days have passed or a fix has landed.
 
 ## What we publish during embargo
 
-During the 90-day window, a server's grade can still shift (e.g. from
-**B** to **C**), but the public per-server card shows only the
-aggregate counts, not the specific rule IDs or file locations. Any
-research-grade detail is held until embargo expiry.
+Until then, a server's grade can still shift (e.g. from **B** to
+**C**), but its public card and its row in `data/index.json` show only
+the aggregate severity counts, not the rule IDs. Any research-grade
+detail is held until embargo expiry.
 
 ## What we do *not* do
 
@@ -49,8 +63,9 @@ research-grade detail is held until embargo expiry.
 
 Security reports about agent-audit-kit itself: open a private advisory
 at <https://github.com/sattyamjjain/agent-audit-kit/security/advisories>.
-This is the only supported channel — it creates a timestamped, triaged
-record and starts the 90-day disclosure clock automatically.
+This is the only supported channel. It creates a timestamped, triaged
+record, and the 90-day clock for a report about agent-audit-kit runs
+from that record.
 
 ## Scope
 
@@ -64,3 +79,4 @@ the affected project's own policy and has its own timeline.
 | Date | Change |
 |---|---|
 | 2026-04-18 | Initial version (v0.3.0 launch). 90-day embargo. |
+| 2026-10-10 | The clock starts at the recorded private notice (`benchmarks/disclosure_ledger.json`), not at first scan. Until 2026-10-10 the index restarted it every weekly run, so nothing ever reached day 90, and `data/index.json` carried the rule IDs of withheld servers. Servers not yet notified now stay withheld, `data/index.json` carries no rule IDs while a server is withheld, and the doc says which steps are manual. |

@@ -37,6 +37,28 @@ def test_readme_pins_match_pyproject_version() -> None:
         )
 
 
+def test_example_pins_are_under_the_sync() -> None:
+    """The copy-paste examples sat at v0.3.34 / v0.2.0 because nothing rewrote them."""
+    module = _load_module()
+    version = module._read_version()
+    covered = set(module._iter_docs())
+    for example in module.EXAMPLE_FILES:
+        assert example.is_file(), f"{example} is in EXAMPLE_FILES but does not exist"
+        assert example in covered, f"{example} is listed but not rewritten by --write"
+        text = example.read_text(encoding="utf-8")
+        pins = re.findall(r"sattyamjjain/agent-audit-kit@v(\d+\.\d+\.\d+)", text)
+        revs = re.findall(
+            r"repo:\s*https://github\.com/sattyamjjain/agent-audit-kit\s*\n\s*rev:\s*v(\d+\.\d+\.\d+)",
+            text,
+        )
+        assert pins or revs, f"{example} pins no release, so it does not belong in EXAMPLE_FILES"
+        for found in (*pins, *revs):
+            assert found == version, (
+                f"{example.relative_to(REPO_ROOT)} pins v{found}, pyproject is v{version}. "
+                "Run `python scripts/sync_repo_metadata.py --write`."
+            )
+
+
 def test_description_string_carries_every_derived_count() -> None:
     """The canonical description states counts that are all substituted from code.
 
