@@ -26,6 +26,7 @@ from agent_audit_kit.commands._common import (
     _to_list,
 )
 from agent_audit_kit.engine import run_scan
+from agent_audit_kit.models import Finding
 
 __all__ = ["scan_cmd"]
 
@@ -566,9 +567,27 @@ def _run_scan(
         sys.exit(EXIT_FINDINGS)
 
     # --- Fail-on threshold check ---
+    #
+    # Rules in `rules.gating.NOT_GATING` still report at their severity but do
+    # not count toward the threshold until their precision is published; see
+    # that module for the promise and the exit criterion. They are listed
+    # separately so a build that passes with a HIGH finding says why.
     if fail_on != "none":
+        from agent_audit_kit.rules.gating import NOT_GATING_REASON, gates_build
+
         threshold_severity = SEVERITY_MAP[fail_on]
-        exceeding = [f for f in result.findings if f.severity >= threshold_severity]
+        at_threshold = [f for f in result.findings if f.severity >= threshold_severity]
+        exceeding = [f for f in at_threshold if gates_build(f.rule_id)]
+        held = [f for f in at_threshold if not gates_build(f.rule_id)]
+        if held:
+            click.echo("", err=True)
+            click.echo(
+                f"Reported, not gating: {len(held)} finding(s) at or above --fail-on "
+                f"{fail_on} come from {NOT_GATING_REASON}, so they do not fail this build:",
+                err=True,
+            )
+            for f in held:
+                click.echo(f"  {_finding_line(f)}", err=True)
         if exceeding:
             click.echo("", err=True)
             click.echo(
@@ -576,11 +595,13 @@ def _run_scan(
                 err=True,
             )
             for f in exceeding:
-                location = f.file_path
-                if f.line_number:
-                    location = f"{f.file_path}:{f.line_number}"
-                click.echo(
-                    f"  {f.rule_id} [{f.severity.value.upper()}] {f.title} -> {location}",
-                    err=True,
-                )
+                click.echo(f"  {_finding_line(f)}", err=True)
             sys.exit(EXIT_FINDINGS)
+
+
+def _finding_line(f: Finding) -> str:
+    """One-line summary of a finding for the gate's stderr report."""
+    location = f.file_path
+    if f.line_number:
+        location = f"{f.file_path}:{f.line_number}"
+    return f"{f.rule_id} [{f.severity.value.upper()}] {f.title} -> {location}"

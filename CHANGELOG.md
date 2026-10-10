@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The instruction-file rules AAK-AGENT-001 (CRITICAL), AAK-AGENT-003 and AAK-AGENT-006 (both HIGH) no longer fail a build (#945). `scan --fail-on` and `--ci`, the GitHub Action, the pre-commit hook (which runs `--ci`) and `aak diff --fail-on-new` skip them and list them under "Reported, not gating", and the Action's job summary counts them. Their severities, scores and SARIF levels are unchanged. The 2026-09-25 post promised that no rule reading `CLAUDE.md` or `AGENTS.md` would fail a build at HIGH before the instruction-file benign slice had a published false-positive rate; the slice exists but is not adjudicated, and from 0.6.8 to 0.6.36 these three failed builds anyway. They gate again in the change that publishes the rate in `benchmarks/false_positive/RESULTS.md`, which `tests/test_gating.py` holds together with `agent_audit_kit/rules/gating.py`.
+
 ## [0.6.36] - 2026-11-12
 
 ### Added

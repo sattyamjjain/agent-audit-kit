@@ -64,6 +64,11 @@ in the GitHub Security tab. Full
 [CLI reference](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/cli.md) ·
 [pre-commit hook](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/ci-cd.md).
 
+`fail-on` (and `--ci`) doesn't count the instruction-file rules `AAK-AGENT-001`,
+`-003` and `-006` yet: they report at their severities but don't fail a build
+until their precision is published in
+[RESULTS.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md).
+
 ## What it finds
 
 <!-- rule-count:total -->501<!-- /rule-count --> rules across 14 security categories:
@@ -209,7 +214,7 @@ Four of them read what an install leaves behind, not only what the repository de
 
 `runtime_advisories` reads the runtime a project runs on, which no dependency pin sees: Node.js, PHP and Python versions in Dockerfile `FROM` lines, version files, `engines.node`, managed `runtime:` keys and MCP launcher paths, plus Brotli and brotlicffi in lockfiles, against a bundled advisory file (PHP2Shell, CVE-2026-111497, Node.js's 11 Nov 2026 security release).
 
-<!-- test-count:total -->5,765<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->5,778<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->501<!-- /rule-count --> rules

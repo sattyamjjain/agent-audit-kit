@@ -45,6 +45,11 @@ What the SARIF carries is in the CLI reference's
 | `comment-on-pr` | `true` | On a `pull_request` event with `GITHUB_TOKEN` in the step's env, post one sticky comment summarising the findings and update it on later runs. A Markdown table goes to the job summary on every run |
 | `fingerprint-strategy` | `auto` | SARIF fingerprints: `auto` (content hash when the source is present, else location hash), `line-hash` (always content hash) or `disabled` |
 
+`fail-on` skips the instruction-file rules `AAK-AGENT-001`, `AAK-AGENT-003` and
+`AAK-AGENT-006` until their precision is published. Their findings still land
+in the SARIF at their severities, and the job summary counts them as not gating.
+See the [CLI exit codes](cli.md#exit-codes).
+
 ### Outputs
 
 | Output | Description |
