@@ -49,6 +49,9 @@ Thumbs.db
 benchmarks/data/
 benchmarks/results.json
 benchmarks/site/
+# Instruction-file FP slice: third-party file contents, fetched by
+# `make fp-instruction-fetch` and verified against manifest.json. Never committed.
+benchmarks/false_positive/instruction_files/cache/
 
 # v0.3.3: cve-watcher persistent state
 .aak/cve-watcher-state.json
