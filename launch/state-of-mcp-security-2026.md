@@ -3,9 +3,9 @@
 > **⚠️ Superseded — earlier marketing draft.** The canonical, reproducible report is
 > **[`research/state-of-mcp-2026/REPORT.md`](../research/state-of-mcp-2026/REPORT.md)**
 > (raw aggregate: [`results.json`](../research/state-of-mcp-2026/results.json)),
-> regenerated against the current engine (v0.3.41, 225 rules): **571 distinct
-> configs, 25.7% with a critical finding, ~29% grade A.** Some derived figures in
-> the body below are from an earlier run — trust REPORT.md for any number you quote.
+> which is regenerated against the current engine and corpus: quote numbers from
+> there. The body below is this draft's own run (v0.3.41, 225 rules, 571 configs),
+> kept as written.
 
 ## We scanned 571 public MCP server configs. 1 in 4 ships a critical flaw.
 

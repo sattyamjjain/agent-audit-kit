@@ -7,7 +7,7 @@ advertising ``0/1 (n=1)`` — a rate measured against a slice that no longer
 existed — and no guard noticed, because there was no guard.
 
 ``make fp-check`` is the full drift guard, but it re-scans 536 configs and takes
-minutes, so it is a tag-time check rather than a pytest one. These tests are the
+minutes, so it is a local check rather than a pytest one (no workflow runs it). These tests are the
 fast half: they never re-scan, they only assert that the four committed
 artifacts tell the same story.
 

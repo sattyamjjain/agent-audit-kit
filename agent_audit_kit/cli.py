@@ -310,11 +310,11 @@ def corpus_cmd() -> None:
 @click.option("--ipi", "update_ipi", is_flag=True, default=False, help="Update the wild IPI payload corpus.")
 @click.option("--fhi", "update_fhi", is_flag=True, default=False, help="Update the FHI universal-suffix corpus.")
 @click.option("--all", "update_all", is_flag=True, default=False, help="Update every corpus listed in the manifest.")
-@click.option("--manifest", "manifest_url", default=None, help="Override the manifest URL (default: gh-pages).")
+@click.option("--manifest", "manifest_url", default=None, help="Override the manifest URL (default: public/corpora/manifest.json on main).")
 def corpus_update_cmd(
     update_ipi: bool, update_fhi: bool, update_all: bool, manifest_url: str | None
 ) -> None:
-    """Pull a signed corpus manifest and refresh local data files."""
+    """Pull the corpus manifest and refresh local data files (SHA-256 pinned)."""
     from agent_audit_kit.corpus.manifest import (
         CorpusVerificationError,
         fetch_and_verify,
