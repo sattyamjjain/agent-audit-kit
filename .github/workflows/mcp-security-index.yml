@@ -13,6 +13,10 @@ on:
       - "docs/**"
       - "mkdocs.yml"
       - ".github/workflows/mcp-security-index.yml"
+      # A recorded notice or a builder fix re-renders the published index
+      # (no new crawl or snapshot) instead of waiting for Monday.
+      - "benchmarks/disclosure_ledger.json"
+      - "benchmarks/index_builder.py"
   workflow_dispatch: {}
 
 permissions:
@@ -41,7 +45,7 @@ jobs:
           pip install -e .
           pip install mkdocs mkdocs-material
 
-      # ---- MCP Security Index (only on schedule / manual dispatch) ----
+      # ---- MCP Security Index crawl (only on schedule / manual dispatch) ----
       # --limit was 500. Every scheduled run from 2026-06-15 failed except one
       # (2026-07-20), which is exactly why data/history.json held a single
       # snapshot while the site rendered "not enough snapshots yet for a trend
@@ -78,6 +82,13 @@ jobs:
             git --work-tree=pages_staging checkout gh-pages-remote -- . || true
           fi
 
+      # The disclosure clock is benchmarks/disclosure_ledger.json: rule-level
+      # detail is published 90 days after a recorded notice, and a server with
+      # no notice stays withheld. It used to be first_seen, read from a prior
+      # index.json that this step never received (benchmarks/site is
+      # gitignored and --clean wipes it), so first_seen was restamped every
+      # Monday and nothing could reach day 90. --prior-index now carries
+      # first_seen across runs, but only as information.
       - name: Build MCP Security Index site
         if: github.event_name != 'push'
         run: |
@@ -85,7 +96,25 @@ jobs:
             --input benchmarks/results.json \
             --site-dir benchmarks/site \
             --clean \
-            --history pages_staging/data/history.json
+            --history pages_staging/data/history.json \
+            --prior-index pages_staging/data/index.json \
+            --ledger benchmarks/disclosure_ledger.json
+
+      # A push used to deploy the preserved gh-pages copy of the index as it
+      # was, so a published file kept whatever it held, rule ids for withheld
+      # servers included, until the next Monday. Re-render it instead: the
+      # same sanitizing and ledger clock, but no crawl, no new history
+      # snapshot (README's index-cadence line counts snapshots), and no card
+      # published that was not already public. A missing index is a no-op.
+      - name: Re-render the published index (no crawl, no snapshot)
+        if: github.event_name == 'push'
+        run: |
+          python benchmarks/index_builder.py \
+            --from-index pages_staging/data/index.json \
+            --site-dir benchmarks/site \
+            --clean \
+            --history pages_staging/data/history.json \
+            --ledger benchmarks/disclosure_ledger.json
 
       # ---- MkDocs ----
       - name: Build MkDocs
@@ -97,8 +126,13 @@ jobs:
           # docs always rebuilt from latest main
           rm -rf pages_staging/docs
           mv docs_build pages_staging/docs
-          # index only refreshed on schedule / dispatch
+          # index rebuilt on every run: from a fresh crawl on schedule /
+          # dispatch, re-rendered from the published index on push. The old
+          # server pages go first: copying over them kept every page any past
+          # run wrote, and most of those still promised an embargo date from
+          # the restamped first_seen clock.
           if [ -d benchmarks/site ]; then
+            rm -rf pages_staging/server
             cp -r benchmarks/site/. pages_staging/
           fi
           # .nojekyll so GitHub Pages serves the raw HTML
