@@ -7,9 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The MCP Security Index published rule ids for servers still under embargo, and its 90-day clock never ran (#943). `data/index.json` carried `rule_hits` for every withheld card, though the disclosure policy promises aggregate counts only, and the builder never saw the previous index, so every embargoed card was restamped with the date of the latest weekly run. The clock now starts at a private notice recorded in `benchmarks/disclosure_ledger.json`; a server with no notice stays withheld, and withheld rows carry no rule ids. Every deploy path (a push included) publishes the cleaned file, and the stale server pages that still promised dates from the old clock are gone. `docs/disclosure-policy.md` now says which steps are automated and which are not.
+
 ### Changed
 
 - Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
+
+### Fixed
+
+- `scan --verify-secrets` reported live keys as rotated (#944). It read each key back out of evidence that holds only its first 12 characters, so an Anthropic key was probed as `sk-ant-api03...`, got a 401 and came back INACTIVE/ROTATED. OpenAI keys were never extracted, and the GCP check never sent the key at all. The key is now re-read from the file and never stored. Anthropic and OpenAI keys are probed, and so are GitHub and GitLab tokens (AAK-SECRET-008), for the first time. AWS and GCP keys are reported as not checked, since both need a signed request. A 401 from github.com or gitlab.com reads "not valid on github.com", not "rotated", because self-hosted instances issue the same token formats.
+- `scan --diff` dropped findings it should keep (#946). A scanner crash disappeared because its finding has no file path, so the run never ended INCOMPLETE (#743). Scanning a subdirectory dropped every finding because git printed repo-root paths, and untracked files never counted. All three are fixed, and when git can't answer (not a repository, an unknown ref) the scan now says it reported everything. One behaviour change: `--diff` on a path with no changes now reports no file findings instead of all of them.
+- `aak discover` never read a project (#948). The 10 platforms' project-level configs were reachable only from tests; `aak discover PATH` now reads them, and without PATH it reads the home directory as before. `aak install-precommit` wrote `rev: v0.3.0` into every config; it now pins the version that runs it.
+- The GitHub Action's summary called every exit 1 "findings exceed --fail-on", a crashed scanner included; it now says INCOMPLETE. `docs/ci-cd.md` named a pre-commit hook, `agent-audit-kit-strict`, that never existed. The Action and pre-commit examples in `examples/ci-integration/` pinned v0.3.34 and v0.2.0; `sync_repo_metadata.py` now keeps them on the release.
 
 ## [0.6.20] - 2026-10-09
 
