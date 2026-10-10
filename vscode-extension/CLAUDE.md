@@ -3,7 +3,7 @@
 <!-- AUTO-MANAGED: module-description -->
 ## Purpose
 
-VS Code extension providing in-editor security scanning for MCP configuration files. Activates on JSON, YAML, and JSONC files and shells out to the `agent-audit-kit` CLI, surfacing findings as editor diagnostics.
+VS Code extension that runs the `agent-audit-kit` CLI over a whole workspace folder and surfaces its findings as editor diagnostics, so they cover every file there, not only MCP configs. It activates on JSON, YAML and JSONC files, scans the first folder on activation and from the scan command, and rescans a folder when a JSON/YAML/JSONC file in it is saved (`autoScanOnSave`).
 
 Versioned independently of the Python package (its own `version` in `package.json`; the manifest's `license` mirrors the root Apache-2.0), and not yet published to the Marketplace.
 
@@ -21,7 +21,7 @@ vscode-extension/
   package-lock.json    # Gitignored (vscode-extension/.gitignore): local only, so the repo does not lock devDependency versions
   tsconfig.json        # TypeScript config
   README.md            # Marketplace-facing readme
-  .vscodeignore        # Package exclusions
+  .vscodeignore        # Package exclusions, including this CLAUDE.md: the wheel's **/CLAUDE.md exclude does not reach the .vsix (#877)
   out/                 # Compiled JS output (generated, untracked)
 ```
 
@@ -33,7 +33,7 @@ vscode-extension/
 - **Two diagnostic collections**: scans write to `agent-audit-kit`, SARIF imports to `agent-audit-kit-sarif`, so an imported report never overwrites live scan results.
 - **CLI contract**: `AuditFinding` / `AuditReport` in `extension.ts` mirror the camelCase keys of `output/json_report.py`, read from `scan <folder> --format json --severity <sev>`. `tests/test_vscode_json_contract.py` parses those interfaces and fails when `json_report.py` stops writing a key they read.
 
-**A command needs both halves.** `registerCommand` in code makes it callable; `contributes.commands` in the manifest makes it reachable from the Command Palette. `sarifReader.ts` was unreachable for a long stretch because `activate()` never called `registerSarifCommands`, and the two scan commands were registered but undeclared, so none of the extension's commands appeared in the palette. When adding a command, do both, then confirm with `npm run compile` that `out/extension.js` requires the new module.
+**A command needs both halves.** `registerCommand` in code makes it callable; `contributes.commands` in the manifest makes it reachable from the Command Palette. `sarifReader.ts` was unreachable for a long stretch because `activate()` never called `registerSarifCommands`, and `scan` and `showOutput` were registered but undeclared, so none of the extension's commands appeared in the palette. When adding a command, do both, then confirm with `npm run compile` that `out/extension.js` requires the new module.
 
 <!-- END AUTO-MANAGED -->
 
@@ -43,7 +43,7 @@ vscode-extension/
 - **Language**: TypeScript, compiled with `tsc` (no bundler)
 - **Build**: `npm run compile` (`tsc -p ./`)
 - **Watch**: `npm run watch` (`tsc -watch -p ./`)
-- **Lint**: `npm run lint` (`eslint src --ext ts`) — note `eslint` is not in `devDependencies`, so this script needs it installed separately
+- **Lint**: `npm run lint` (`eslint src --ext ts`) cannot run as is: `eslint` is not in `devDependencies`, and there is no ESLint config or TypeScript parser, so installing eslint alone still fails. Until one is added, `npm run compile` under `strict` is the only local check
 - **Package**: `npx @vscode/vsce package`; its `vscode:prepublish` script runs `npm run compile` first, so a package never ships a stale `out/`
 - **Engine**: VS Code `^1.85.0`
 - **Category**: `Linters`
