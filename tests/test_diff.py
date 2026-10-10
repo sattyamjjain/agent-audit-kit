@@ -301,3 +301,25 @@ def test_a_scanner_crash_under_diff_still_ends_incomplete(
 
     assert res.exit_code == 1, res.output
     assert "INCOMPLETE" in res.output
+
+
+_FALLBACK_WARNING = "git could not list the changed files"
+
+
+def test_diff_says_so_when_git_cannot_answer(tmp_path: Path) -> None:
+    """Outside a repository --diff reports every finding; the run must say it did."""
+    project = tmp_path / "not-a-repo"
+    project.mkdir()
+    shutil.copy(FIXTURES / "vulnerable_mcp.json", project / ".mcp.json")
+
+    res = runner.invoke(cli, ["scan", str(project), "--diff", "HEAD"])
+
+    assert _FALLBACK_WARNING in res.output
+
+
+def test_diff_does_not_warn_when_git_answers(repo: Path) -> None:
+    sub = _vulnerable_subproject(repo)
+
+    res = runner.invoke(cli, ["scan", str(sub), "--diff", "HEAD"])
+
+    assert _FALLBACK_WARNING not in res.output

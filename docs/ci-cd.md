@@ -25,8 +25,9 @@ repos:
     rev: v0.6.20
     hooks:
       - id: agent-audit-kit
-      # Or strict mode:
-      - id: agent-audit-kit-strict
+        # Stricter: fail on MEDIUM and above. This replaces the hook's default
+        # `--ci` (which always means --fail-on high), so set the threshold here.
+        # args: ['--fail-on', 'medium']
 ```
 
 ## GitLab CI
