@@ -2,10 +2,11 @@
 
 `vscode-extension/src/extension.ts` runs `agent-audit-kit scan <folder> --format
 json --severity <sev>` and reads stdout through its `AuditFinding` and
-`AuditReport` interfaces. The extension has no test suite and no workflow builds
-it, so renaming a camelCase key in `output/json_report.py` would leave every
-editor diagnostic `undefined` with nothing failing anywhere. This pins the two
-sides together from the Python side.
+`AuditReport` interfaces. The extension has no test suite, and its CI job
+(`vscode-extension.yml`) only compiles and packages it, so renaming a camelCase
+key in `output/json_report.py` would leave every editor diagnostic `undefined`
+with nothing failing anywhere. This pins the two sides together from the
+Python side.
 """
 
 from __future__ import annotations

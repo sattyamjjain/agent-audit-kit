@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Retired the stale claims #947 lists. The frozen security baseline still said its re-measure was scheduled for 2026-08-11; it ran on 2026-08-24, and the page now says so and links the State of MCP report instead of quoting figures nothing re-checks. Two launch notes' dated labels described a build long gone. The Makefile, the `docs/cve-latency.md` banner, two test docstrings and `aak corpus update` described checks, a signature and a default that don't exist.
 - Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
 
 ## [0.6.20] - 2026-10-09
