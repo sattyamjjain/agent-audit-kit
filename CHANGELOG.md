@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An instruction-file benign slice for the false-positive benchmark (#945), so the rules that read `CLAUDE.md`, `AGENTS.md` and the like get a measured number like the MCP rules have. It covers 892 public repositories from the 930-repo corpus behind #771, every file pinned by commit and SHA-256, with the predicate committed before any pin or scan. The shipped engine finds 29 HIGH/CRITICAL findings on 15 of those repos. They are listed for adjudication and not yet adjudicated, so the page states no false-positive rate. `make fp-instruction-fetch` fills a local cache once (third-party files are never committed), `make fp-instruction` re-runs the measurement, and `make fp-check` now checks it too.
+
 ### Changed
 
 - Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
