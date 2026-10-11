@@ -121,8 +121,8 @@ class TestRunLlmAnalysis:
             findings = run_llm_analysis(tmp_path)
 
         assert len(findings) == 1
-        assert findings[0].rule_id == "AAK-POISON-002"
-        assert "evil_tool" in findings[0].description
+        assert findings[0].rule_id == "AAK-LLM-001"
+        assert "evil_tool" in findings[0].evidence
 
     def test_skips_non_suspicious_tools(self, tmp_path: Path) -> None:
         mcp_cfg = {
@@ -236,19 +236,31 @@ def test_extract_json_malformed_returns_none() -> None:
     assert llm_scan._extract_json('{"unterminated": ') is None
 
 
-def test_anthropic_without_key_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+_TOOL = llm_scan.ToolText("mcp-config", ".mcp.json", 1, "t", "Reads a file.")
+
+
+# A missing key used to return None, which the caller could not tell apart from
+# "the model saw nothing suspicious". It is now a fatal error that names the
+# variable, and the run files it as AAK-LLM-002.
+def test_anthropic_without_key_is_a_fatal_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    assert llm_scan._call_anthropic("claude-haiku-4-5", "hi") is None
+    with pytest.raises(llm_scan.LlmCallError, match="ANTHROPIC_API_KEY") as exc:
+        llm_scan._call_anthropic("claude-haiku-5-5", _TOOL)
+    assert exc.value.fatal
 
 
-def test_openai_without_key_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_openai_without_key_is_a_fatal_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    assert llm_scan._call_openai("gpt-5.4-mini", "hi") is None
+    with pytest.raises(llm_scan.LlmCallError, match="OPENAI_API_KEY") as exc:
+        llm_scan._call_openai("gpt-5.4-mini", _TOOL)
+    assert exc.value.fatal
 
 
-def test_gemini_without_key_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_gemini_without_key_is_a_fatal_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    assert llm_scan._call_gemini("gemini-3.1-flash", "hi") is None
+    with pytest.raises(llm_scan.LlmCallError, match="GEMINI_API_KEY") as exc:
+        llm_scan._call_gemini("gemini-3.1-flash", _TOOL)
+    assert exc.value.fatal
 
 
 def test_run_analysis_fires_when_provider_flags(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -267,12 +279,14 @@ def test_run_analysis_fires_when_provider_flags(tmp_path: Path, monkeypatch: pyt
         )
     )
 
-    def fake(model: str, prompt: str) -> dict:
-        return {"suspicious": True, "reason": "prompt-injection trigger"}
+    def fake(model: str, tool: llm_scan.ToolText) -> llm_scan.LlmVerdict:
+        return llm_scan.LlmVerdict(status="flagged", reason="prompt-injection trigger",
+                                   category="instruction_override", served_model=model)
 
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setattr(llm_scan, "_call_anthropic", fake)
-    findings = llm_scan.run_llm_analysis(tmp_path, model="claude-haiku-4-5")
+    findings = llm_scan.run_llm_analysis(tmp_path, model="claude-haiku-5-5")
     assert len(findings) == 1
-    assert findings[0].rule_id == "AAK-POISON-002"
-    assert "anthropic" in findings[0].title
+    assert findings[0].rule_id == "AAK-LLM-001"
+    assert "claude-haiku-5-5" in findings[0].evidence
     assert "prompt-injection trigger" in findings[0].evidence

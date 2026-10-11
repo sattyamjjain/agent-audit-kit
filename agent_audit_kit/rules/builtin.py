@@ -281,6 +281,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-POISON-004": ["AIS-07"],
     "AAK-POISON-005": ["AIS-07"],
     "AAK-POISON-006": ["AIS-07"],
+    "AAK-LLM-001": ["AIS-07"],
     "AAK-SSRF-001": ["IVS-04"],
     "AAK-SSRF-002": ["IVS-04"],
     "AAK-SSRF-003": ["IVS-04"],
@@ -1635,6 +1636,57 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-06"],
+)
+
+# The two rules behind the opt-in `scan --llm-scan` (agent_audit_kit/llm_scan.py).
+# Through 0.6.20 a model's verdict was filed as AAK-POISON-002, hand-built at
+# HIGH where the registry says CRITICAL, under a title ("prompt injection
+# patterns") that describes a regex, not a judgement. A model's opinion is a
+# different kind of evidence from a pattern match, so it gets its own id, and
+# the analysis it could not complete gets one too.
+_r(
+    "AAK-LLM-001",
+    "Model flagged tool metadata as manipulative",
+    "With `scan --llm-scan`, the chosen model read a tool's metadata (an MCP tool's "
+    "name, description and parameter descriptions, or a skill's instructions) and "
+    "judged that it tries to manipulate the agent that reads it: an action the user "
+    "did not ask for, collecting or sending data the tool does not need, hijacking "
+    "other tools, overriding the agent's instructions, impersonation, deception or "
+    "concealment. This is a model's judgement, not a pattern match; the evidence "
+    "quotes its reason.",
+    Severity.HIGH,
+    Category.TOOL_POISONING,
+    "Read the flagged text and the model's reason. Remove any instruction aimed at "
+    "the agent rather than the user: hidden directives, requests to read or send "
+    "data the tool does not need, references that steer other tools. If you do not "
+    "control the tool, stop using it until its publisher fixes the description.",
+    sarif_name="LlmFlaggedToolMetadata",
+    limitations=(
+        "Reads only metadata AAK can extract without running anything: inline tools "
+        "in MCP configs, saved `tools/list` responses (`*tools*.json`), Python tools "
+        "registered with `@x.tool`, `@tool` or `Tool(name=..., description=...)` "
+        "string literals, TypeScript/JavaScript `server.tool(...)` and "
+        "`registerTool(...)` string literals, and SKILL.md. A description a server "
+        "builds at runtime, concatenates from several strings, or returns only from "
+        "a live `tools/list` is never seen. The verdict is a model's: it can miss "
+        "manipulation phrased as ordinary documentation and flag benign text."
+    ),
+)
+
+_r(
+    "AAK-LLM-002",
+    "LLM analysis did not cover a tool",
+    "`scan --llm-scan` was asked to analyze a tool's metadata and could not: the "
+    "provider credential is missing, the request failed, the reply was cut off "
+    "before the verdict, the provider declined to analyze it, or the text exceeded "
+    "the analysed length. The scan cannot show a clean result for what it skipped, "
+    "so, like a crashed scanner, this makes the run INCOMPLETE.",
+    Severity.INFO,
+    Category.TOOL_POISONING,
+    "Fix the cause the evidence names and re-run, or pass --allow-scanner-failure to "
+    "accept the gap. When the model declined to analyze a tool, read that tool's "
+    "metadata yourself: a refusal is not a clean result.",
+    sarif_name="LlmAnalysisIncomplete",
 )
 
 # ---------------------------------------------------------------------------

@@ -109,6 +109,14 @@ class Finding:
 # rather than being spelled out as a literal in five places.
 SCANNER_FAIL_RULE_ID = "AAK-INTERNAL-SCANNER-FAIL"
 
+# `scan --llm-scan` files this for every tool it was asked to analyze and did
+# not: no credential, a failed request, a refusal, a reply cut off before the
+# verdict. It answers the same question as a crashed scanner (did the run cover
+# what it was asked to cover?), so it is exempt from the same floors and makes
+# the run INCOMPLETE the same way.
+LLM_INCOMPLETE_RULE_ID = "AAK-LLM-002"
+INCOMPLETE_RULE_IDS: frozenset[str] = frozenset({SCANNER_FAIL_RULE_ID, LLM_INCOMPLETE_RULE_ID})
+
 
 @dataclass
 class ScanResult:
@@ -159,13 +167,25 @@ class ScanResult:
         filter; this is the same exemption for the reporting floor, and it is
         done here rather than by re-grading the rule so the severity keeps
         meaning "how bad is the finding" rather than "how loudly is it shown".
+        AAK-LLM-002, a tool ``--llm-scan`` was asked to analyze and did not, is
+        exempt for the same reason.
         """
         return [
             f for f in self.findings
-            if f.severity >= min_severity or f.rule_id == SCANNER_FAIL_RULE_ID
+            if f.severity >= min_severity or f.rule_id in INCOMPLETE_RULE_IDS
         ]
 
     @property
     def scanner_failures(self) -> list[Finding]:
         """Findings recording a scanner that raised during this run."""
         return [f for f in self.findings if f.rule_id == SCANNER_FAIL_RULE_ID]
+
+    @property
+    def llm_gaps(self) -> list[Finding]:
+        """Findings recording a tool that ``--llm-scan`` was asked to analyze and did not."""
+        return [f for f in self.findings if f.rule_id == LLM_INCOMPLETE_RULE_ID]
+
+    @property
+    def incomplete(self) -> bool:
+        """True when something this run was asked to evaluate was not evaluated."""
+        return any(f.rule_id in INCOMPLETE_RULE_IDS for f in self.findings)

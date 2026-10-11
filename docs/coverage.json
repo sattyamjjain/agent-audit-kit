@@ -2254,6 +2254,28 @@
       "title": "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)"
     },
     {
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [],
+      "owasp_mcp": [],
+      "rule_id": "AAK-LLM-001",
+      "severity": "high",
+      "title": "Model flagged tool metadata as manipulative"
+    },
+    {
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "eu_ai_act": [],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [],
+      "owasp_mcp": [],
+      "rule_id": "AAK-LLM-002",
+      "severity": "info",
+      "title": "LLM analysis did not cover a tool"
+    },
+    {
       "category": "taint-analysis",
       "cve_references": [
         "CVE-2026-25879"
@@ -8820,7 +8842,7 @@
       "secret-exposure": 18,
       "supply-chain": 147,
       "taint-analysis": 14,
-      "tool-poisoning": 31,
+      "tool-poisoning": 33,
       "transport-security": 15,
       "trust-boundary": 17
     },
@@ -8868,13 +8890,13 @@
     },
     "by_severity": {
       "critical": 89,
-      "high": 173,
-      "info": 5,
+      "high": 174,
+      "info": 6,
       "low": 14,
       "medium": 107
     },
     "total_cves_covered": 308,
-    "total_rules": 388
+    "total_rules": 390
   },
   "tool": "agent-audit-kit"
 }

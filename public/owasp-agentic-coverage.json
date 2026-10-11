@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-09T10:23:55Z",
+  "last_updated": "2026-10-11T19:36:25Z",
   "aak_version": "0.6.20",
-  "rule_count": 388,
+  "rule_count": 390,
   "coverage": [
     {
       "asi_id": "ASI01",

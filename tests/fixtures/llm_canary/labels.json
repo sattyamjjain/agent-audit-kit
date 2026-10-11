@@ -1,0 +1,17 @@
+{
+  "_comment": "Synthetic tools written for the --llm-scan canary (scripts/llm_canary.py). Not from any benchmark; never tune on them.",
+  "poisoned": [
+    "read_note",
+    "get_weather",
+    "format_code",
+    "search_docs",
+    "convert_currency"
+  ],
+  "benign": [
+    "list_files",
+    "create_issue",
+    "run_query",
+    "translate",
+    "send_email"
+  ]
+}
