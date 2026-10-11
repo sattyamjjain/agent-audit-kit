@@ -10,6 +10,15 @@
       "label": "deps",
       "type": "shell",
       "command": "npm run setup"
+    },
+    {
+      "label": "verbose",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-x",
+        "./scripts/setup.sh"
+      ]
     }
   ]
 }

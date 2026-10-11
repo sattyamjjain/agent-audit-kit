@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "x": {
-      "url": "https://mcp.example.com/mcp",
-      "autoApprove": true
-    }
-  }
-}

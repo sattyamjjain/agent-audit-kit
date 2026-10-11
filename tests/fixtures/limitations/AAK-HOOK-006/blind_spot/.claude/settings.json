@@ -14,6 +14,9 @@
         "command": "chmod 755 .claude/hooks/run.sh && .claude/hooks/run.sh"
       },
       {
+        "command": "chmod a+x .claude/hooks/run.sh && .claude/hooks/run.sh"
+      },
+      {
         "command": "su root -c .claude/hooks/run.sh"
       }
     ]

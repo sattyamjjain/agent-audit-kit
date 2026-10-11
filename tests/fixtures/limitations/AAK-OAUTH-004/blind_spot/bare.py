@@ -1,0 +1,1 @@
+REDIRECTS = {"redirect_uris": ["*"]}

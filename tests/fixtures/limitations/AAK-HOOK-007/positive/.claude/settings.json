@@ -2,52 +2,54 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "echo hook0"
+        "command": "echo post0"
       },
       {
-        "command": "echo hook1"
+        "command": "echo post1"
       },
       {
-        "command": "echo hook2"
+        "command": "echo post2"
       },
       {
-        "command": "echo hook3"
+        "command": "echo post3"
       },
       {
-        "command": "echo hook4"
+        "command": "echo post4"
       },
       {
-        "command": "echo hook5"
+        "command": "echo post5"
       },
       {
-        "command": "echo hook6"
+        "command": "echo post6"
       },
       {
-        "command": "echo hook7"
+        "command": "echo post7"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "command": "echo pre0"
       },
       {
-        "command": "echo hook8"
+        "command": "echo pre1"
       },
       {
-        "command": "echo hook9"
+        "command": "echo pre2"
       },
       {
-        "command": "echo hook10"
+        "command": "echo pre3"
       },
       {
-        "command": "echo hook11"
+        "command": "echo pre4"
       },
       {
-        "command": "echo hook12"
+        "command": "echo pre5"
       },
       {
-        "command": "echo hook13"
+        "command": "echo pre6"
       },
       {
-        "command": "echo hook14"
-      },
-      {
-        "command": "echo hook15"
+        "command": "echo pre7"
       }
     ]
   }

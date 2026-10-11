@@ -3,6 +3,10 @@
     "x": {
       "type": "sse",
       "url": "https://mcp.example.com/events"
+    },
+    "y": {
+      "type": "sse",
+      "url": "https://mcp.example.com/sse_events"
     }
   }
 }
