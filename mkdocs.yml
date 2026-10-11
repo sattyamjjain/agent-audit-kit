@@ -59,8 +59,13 @@ nav:
 hooks:
   - scripts/mkdocs_hooks.py
 
+# `def_list` renders the facts block of every rule page (Severity, Category, ...)
+# as a description list, which a screen reader announces term by term; a
+# two-column Markdown table has no row headers. tests/test_rule_pages.py insists
+# on it, because a page built without it prints the `:   value` lines as text.
 markdown_extensions:
   - tables
+  - def_list
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences

@@ -121,15 +121,20 @@ def test_a_known_page_reads_as_expected(pages: dict[str, str]) -> None:
     the loop above agreeing with itself."""
     text = pages["rules/AAK-MCP-003.md"]
     assert text.startswith('---\ntitle: "AAK-MCP-003: ')
-    assert "\n# AAK-MCP-003\n" in text
-    assert "| Severity | HIGH |" in text
-    assert "| Category | MCP Configuration (`mcp-config`) |" in text
+    # The title is in the h1 (WCAG 2.4.6), and there is no second line repeating it.
+    assert re.search(r"\n# AAK-MCP-003: \S[^\n]*\n\nSeverity\n", text)
+    assert "\n**" not in text.split("\n## ")[0]
+    # The facts are a description list: a term, then its definition, a blank line between pairs.
+    assert "\nSeverity\n:   HIGH\n\nCategory\n:   MCP Configuration (`mcp-config`)\n\nScanner\n:   [" in text
+    assert "| Field |" not in text
     assert (
         "[`agent_audit_kit/scanners/mcp_config.py`]"
         "(https://github.com/sattyamjjain/agent-audit-kit/blob/main/agent_audit_kit/scanners/mcp_config.py)"
     ) in text
-    for heading in ("## What it detects", "## How to fix", "## Limitations", "## References", "## Deep dive"):
+    for heading in ("## What it detects", "## How to fix", "## Limitations", "## References"):
         assert heading in text
+    assert "## Deep dive" not in text  # nothing to dive into: no shared page covers this rule
+    assert "[All rules](index.md#all-rules)" in text
     assert "agent-audit-kit scan . --rules AAK-MCP-003" in text
 
 
@@ -156,6 +161,17 @@ def _own_page_ids() -> list[str]:
     return sorted(p.stem for p in (DOCS / "rules").glob("AAK-*.md"))
 
 
+def _strip_front_matter(text: str) -> str:
+    """A page's body as MkDocs reads it: the YAML block removed, and the blank lines after it."""
+    lines = text.split("\n")
+    if lines[0].rstrip() != "---":
+        return text
+    for index, line in enumerate(lines[1:], start=1):
+        if line.rstrip() in {"---", "..."}:
+            return "\n".join(lines[index + 1 :]).lstrip("\n")
+    return text
+
+
 def test_hand_written_pages_are_published_verbatim_with_the_registry_appended(
     pages: dict[str, str],
 ) -> None:
@@ -164,12 +180,53 @@ def test_hand_written_pages_are_published_verbatim_with_the_registry_appended(
     for rule_id in own:
         written = (DOCS / "rules" / f"{rule_id}.md").read_text(encoding="utf-8")
         published = pages[rp.page_uri(rule_id)]
-        assert published.startswith(written.rstrip("\n") + "\n\n---\n\n## Registry reference"), (
-            f"{rule_id}: the hand-written text was altered or no longer comes first"
-        )
+        # Only a `title:` block is put in front, and MkDocs removes it before rendering, so what
+        # the reader gets of the page's own text is still exactly what was written.
+        assert published.startswith(f'---\ntitle: "{rule_id}: '), f"{rule_id}: no title in front"
+        assert _strip_front_matter(published).startswith(
+            written.rstrip("\n") + "\n\n---\n\n## Registry reference"
+        ), f"{rule_id}: the hand-written text was altered or no longer comes first"
         assert published.count("## Registry reference") == 1
-        assert f"| Severity | {RULES[rule_id].severity.value.upper()} |" in published
+        assert f"\nSeverity\n:   {RULES[rule_id].severity.value.upper()}\n" in published
         assert "### What it detects" in published  # one level down, so the outline stays a tree
+
+
+def test_a_hand_written_page_gets_a_title_unless_it_brings_its_own() -> None:
+    """MkDocs titles a page from front matter, else its first h1: which is only the rule id here."""
+    rule = _rule(title="Readable title")
+    plain = rp.render_page(rule, rp.Sources(), "# AAK-TEST-001\n\nWords.\n", names={}, category_display={})
+    assert plain.startswith('---\ntitle: "AAK-TEST-001: Readable title"\ndescription: "Readable title"\n---\n\n# AAK-TEST-001\n')
+    own = "---\ntitle: Mine\n---\n\n# AAK-TEST-001\n\nWords.\n"
+    kept = rp.render_page(rule, rp.Sources(), own, names={}, category_display={})
+    assert kept.startswith(own.rstrip("\n")) and kept.count("title:") == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("---\ntitle: x\n---\n\nbody", True),
+        ("---  \ntitle: x\n...\nbody", True),
+        ("# Heading\n\n---\n\ntext", False),
+        ("---\nno closing delimiter", False),
+        ("", False),
+    ],
+)
+def test_front_matter_is_recognised_the_way_mkdocs_reads_it(text: str, expected: bool) -> None:
+    assert rp.has_front_matter(text) is expected
+    meta = pytest.importorskip("mkdocs.utils.meta")
+    assert bool(meta.get_data(text)[1]) is expected
+
+
+def test_a_card_heading_a_hand_written_page_already_uses_is_qualified(pages: dict[str, str]) -> None:
+    """Two headings both called "References" are indistinguishable in a screen reader's heading list."""
+    own = rp.render_page(
+        _rule(), rp.Sources(), "# AAK-TEST-001\n\n## References\n\n- a\n\n## `Limitations`\n", names={}, category_display={}
+    )
+    assert "### References (registry)" in own and "### Limitations (registry)" in own
+    assert "### What it detects" in own and "### How to fix" in own  # no clash, no suffix
+    published = pages[rp.page_uri("AAK-MCP-AUTH-PATHTRAVERSAL-001")]
+    assert "\n## References\n" in published and "\n### References (registry)\n" in published
+    assert "\n### References\n" not in published
 
 
 def test_building_never_writes_into_the_docs_tree() -> None:
@@ -339,13 +396,12 @@ def test_a_fully_populated_rule_shows_every_field() -> None:
         names=_TITLES,
     )
     for needed in (
-        "# AAK-TEST-001",
-        "**A test rule**",
-        "| Severity | HIGH |",
-        "| Category | MCP Configuration (`mcp-config`) |",
+        "\n# AAK-TEST-001: A test rule\n",
+        "\nSeverity\n:   HIGH\n",
+        "\nCategory\n:   MCP Configuration (`mcp-config`)\n",
         "blob/main/agent_audit_kit/scanners/x.py",
-        "| Auto-fixable | Yes. `agent-audit-kit fix` can apply it. |",
-        "| SARIF name | `TestRule` |",
+        "\nAuto-fixable\n:   Yes. `agent-audit-kit fix` can apply it.\n",
+        "\nSARIF name\n:   `TestRule`\n",
         "It finds a thing.",
         "Fix the thing.",
         "`--dry-run`",
@@ -382,9 +438,9 @@ def test_a_fixable_rule_in_the_registry_says_so(pages: dict[str, str]) -> None:
     fixable = [r for r in RULES.values() if r.auto_fixable]
     assert fixable, "no auto-fixable rules; the assertion below would be vacuous"
     for rule in fixable:
-        assert "| Auto-fixable | Yes." in pages[rp.page_uri(rule.rule_id)]
+        assert "\nAuto-fixable\n:   Yes." in pages[rp.page_uri(rule.rule_id)]
     other = next(r for r in RULES.values() if not r.auto_fixable)
-    assert "| Auto-fixable | No. |" in pages[rp.page_uri(other.rule_id)]
+    assert "\nAuto-fixable\n:   No.\n" in pages[rp.page_uri(other.rule_id)]
 
 
 @pytest.mark.parametrize(
@@ -445,7 +501,7 @@ def test_a_title_full_of_markdown_cannot_break_the_page_or_the_index_table() -> 
     text = rp.render_page(rule, rp.Sources(), names={}, category_display={})
     body, front = meta.get_data(text)
     assert front["title"] == f"AAK-TEST-001: {rp.plain_text(title)}"
-    assert "<script>" not in markdown.Markdown(extensions=["tables"]).convert(body)
+    assert "<script>" not in markdown.Markdown(extensions=_RENDER_EXTENSIONS).convert(body)
 
     listing = rp.render_index_listing({rule.rule_id: rule}, {})
     html = markdown.Markdown(extensions=["tables"]).convert(listing)
@@ -538,6 +594,49 @@ def test_the_real_shared_deep_dive_is_linked_from_the_composition_rules(pages: d
     assert "skill-composition.md#" in pages[rp.page_uri("AAK-AGENT-COMPOSE-001")]
 
 
+def test_a_deep_dive_section_appears_only_where_there_is_something_to_dive_into(
+    pages: dict[str, str],
+) -> None:
+    """An empty "Deep dive" heading is one more stop for a screen reader user to hear and skip."""
+    shared = rp.Sources(shared=("skill-composition", "Skill composition", "aak-compose-001"))
+    with_page = rp.render_page(_rule(), shared, names={}, category_display={})
+    assert "\n## Deep dive\n\nThis rule is written up in [Skill composition](skill-composition.md#aak-compose-001).\n" in with_page
+    without = rp.render_page(_rule(), rp.Sources(), names={}, category_display={})
+    assert "Deep dive" not in without and "no hand-written page" not in without
+
+    with_section = {rule_id for rule_id in RULES if "\n## Deep dive\n" in pages[rp.page_uri(rule_id)]}
+    assert with_section == set(rp.shared_deep_dives(DOCS / "rules", RULES)) - set(_own_page_ids())
+    assert {"AAK-COMPOSE-001", "AAK-AGENT-COMPOSE-001"} <= with_section
+
+
+def test_the_footer_says_how_to_add_a_hand_written_page_and_it_is_true(tmp_path: Path) -> None:
+    """The old note said a hand-written file would be "shown here automatically". It
+    replaces the generated layout instead, and the generated part is appended to it."""
+    pkg = _package(tmp_path)
+    docs = tmp_path / "docs"
+    (docs / "rules").mkdir(parents=True)
+    rules = {"AAK-A-001": _rule(rule_id="AAK-A-001")}
+
+    generated = rp.build_pages(docs, rules, pkg)["rules/AAK-A-001.md"]
+    footer = generated.split("\n---\n")[-1]
+    assert "[All rules](index.md#all-rules)" in footer
+    assert "`docs/rules/AAK-A-001.md`" in footer and "shown here automatically" not in generated
+
+    (docs / "rules" / "AAK-A-001.md").write_text("# AAK-A-001\n\nWritten by hand.\n", encoding="utf-8")
+    written = _strip_front_matter(rp.build_pages(docs, rules, pkg)["rules/AAK-A-001.md"])
+    assert written.startswith("# AAK-A-001\n\nWritten by hand.\n\n---\n\n## Registry reference")
+    assert "# AAK-A-001: A test rule" in generated and "# AAK-A-001: A test rule" not in written  # layout replaced
+    assert "### What it detects" in written  # and the registry reference is appended, one level down
+
+
+def test_both_footers_lead_to_the_list_of_all_rules(pages: dict[str, str]) -> None:
+    """`index.md#all-rules` is the generated listing's heading; the link must reach it."""
+    for rule_id in ("AAK-MCP-003", "AAK-TOXICFLOW-001"):  # a generated page, a hand-written one
+        assert "[All rules](index.md#all-rules)" in pages[rp.page_uri(rule_id)]
+    listing = rp.render_index_listing(RULES, {})
+    assert "\n## All rules\n" in "\n" + listing and rp.slugify("All rules") == "all-rules"
+
+
 # --------------------------------------------------------------------------
 # Text -> Markdown
 # --------------------------------------------------------------------------
@@ -590,18 +689,63 @@ def test_a_list_after_a_sentence_gets_its_blank_lines() -> None:
     assert rp.separate_lists("a\n\n- already\n\nb") == "a\n\n- already\n\nb"
 
 
-class _Tags(HTMLParser):
+#: What the rule pages are rendered with in these tests: the extensions they rely on.
+#: `test_the_site_enables_the_extensions_the_pages_rely_on` holds mkdocs.yml to the same
+#: list, so a page cannot pass here and print `:   HIGH` as text on the real site.
+_RENDER_EXTENSIONS = ["tables", "fenced_code", "toc", "def_list"]
+
+_FIXED_SECTIONS = ["What it detects", "How to fix", "Limitations", "References"]
+
+
+class _Page(HTMLParser):
+    """What a rendered page is made of: its tags, its headings in order, its fact terms."""
+
     def __init__(self) -> None:
         super().__init__()
         self.tags: set[str] = set()
+        self.counts: dict[str, int] = {}
+        self.headings: list[tuple[str, str]] = []
+        self.terms: list[str] = []
+        self._tag: str | None = None
+        self._text: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
         self.tags.add(tag)
+        self.counts[tag] = self.counts.get(tag, 0) + 1
+        if tag in {"h1", "h2", "h3", "h4", "h5", "h6", "dt"}:
+            self._tag, self._text = tag, []
+
+    def handle_data(self, data: str) -> None:
+        if self._tag:
+            self._text.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag != self._tag:
+            return
+        text = "".join(self._text).strip()
+        if tag == "dt":
+            self.terms.append(text)
+        else:
+            self.headings.append((tag, text))
+        self._tag = None
+
+    def titles(self, tag: str) -> list[str]:
+        return [text for name, text in self.headings if name == tag]
+
+
+def _render(markdown_source: str) -> tuple[str, _Page, dict]:
+    """A page's Markdown through the renderer: (html, what it contains, its front matter)."""
+    markdown = pytest.importorskip("markdown")
+    meta = pytest.importorskip("mkdocs.utils.meta")
+    body, front = meta.get_data(markdown_source)
+    html = markdown.Markdown(extensions=_RENDER_EXTENSIONS).convert(body)
+    page = _Page()
+    page.feed(html)
+    return html, page, front
 
 
 _PAGE_TAGS = {
-    "h1", "h2", "p", "table", "thead", "tbody", "tr", "th", "td", "a", "code", "pre",
-    "strong", "em", "ul", "ol", "li", "hr",
+    "h1", "h2", "p", "dl", "dt", "dd", "a", "code", "pre", "strong", "em", "ul", "ol", "li", "hr",
 }
 
 
@@ -609,36 +753,149 @@ def test_rendering_keeps_the_words_and_invents_no_tags(pages: dict[str, str]) ->
     """Render every generated page and fail on any tag the page structure does not own.
 
     `<handle>` in a rule description used to render as an unknown HTML element and
-    the words disappeared; any such tag now shows up here as an unexpected one.
+    the words disappeared; any such tag now shows up here as an unexpected one. A
+    generated page has no table at all: its facts are a description list.
     """
-    markdown = pytest.importorskip("markdown")
-    meta = pytest.importorskip("mkdocs.utils.meta")
     own = set(_own_page_ids())
     stray: dict[str, list[str]] = {}
     bad_front_matter: list[str] = []
     for rule_id in RULES:
         if rule_id in own:
             continue
-        body, front = meta.get_data(pages[rp.page_uri(rule_id)])
+        _html, page, front = _render(pages[rp.page_uri(rule_id)])
         # The title and description are YAML written by hand-rolled quoting; a title with a
         # quote, a colon or a backslash must still parse to exactly the plain-text title.
         title = rp.plain_text(RULES[rule_id].title)
         if front.get("title") != f"{rule_id}: {title}" or front.get("description") != title:
             bad_front_matter.append(rule_id)
-        html = markdown.Markdown(extensions=["tables", "fenced_code", "toc"]).convert(body)
-        parser = _Tags()
-        parser.feed(html)
-        extra = parser.tags - _PAGE_TAGS
+        extra = page.tags - _PAGE_TAGS
         if extra:
             stray[rule_id] = sorted(extra)
     assert not stray, f"rule text produced HTML elements: {stray}"
     assert not bad_front_matter, f"front matter did not parse back to the title: {bad_front_matter[:5]}"
-    body, _front = meta.get_data(pages["rules/AAK-INDIA-PII-003.md"])
-    html = markdown.Markdown(extensions=["tables", "fenced_code"]).convert(body)
+    html, _page, _front = _render(pages["rules/AAK-INDIA-PII-003.md"])
     assert "(&lt;handle&gt;@&lt;psp&gt;)" in html
-    body, _front = meta.get_data(pages["rules/AAK-SECRET-005.md"])
-    html = markdown.Markdown(extensions=["tables", "fenced_code"]).convert(body)
+    html, _page, _front = _render(pages["rules/AAK-SECRET-005.md"])
     assert "(*.pem, *.key, id_rsa, etc.)" in html and "<em>" not in html
+
+
+def test_the_facts_are_a_description_list_with_a_term_for_every_definition(
+    pages: dict[str, str],
+) -> None:
+    """WCAG 1.3.1: a `Field | Value` table has no row headers, so a screen reader read the
+    value ("HIGH") without saying which fact it was. A `dl` names each one."""
+    own = set(_own_page_ids())
+    for rule_id, rule in RULES.items():
+        _html, page, _front = _render(pages[rp.page_uri(rule_id)])
+        expected = ["Severity", "Category", "Scanner", "Auto-fixable"] + (
+            ["SARIF name"] if rule.sarif_name else []
+        )
+        assert page.terms == expected, rule_id
+        assert page.counts.get("dd") == len(expected) and page.counts.get("dl") == 1, rule_id
+        if rule_id not in own:
+            assert "table" not in page.tags, f"{rule_id}: a generated page has a table"
+
+
+def test_a_page_never_gets_a_second_field_value_table(pages: dict[str, str]) -> None:
+    """The hand-written pages carry a `Field | Value` table of their own; the registry
+    reference appended under it must not add a second one with the same header."""
+    for rule_id in _own_page_ids():
+        written = (DOCS / "rules" / f"{rule_id}.md").read_text(encoding="utf-8")
+        assert pages[rp.page_uri(rule_id)].count("| Field | Value |") == written.count("| Field | Value |")
+
+
+def test_every_page_has_one_h1_and_the_expected_h2s(pages: dict[str, str]) -> None:
+    """The outline is how a screen reader user finds their way around, so it is pinned.
+
+    A generated page is one h1 (the rule id and title, which is also its `<title>`) over
+    four h2 sections, plus "Deep dive" when a shared hand-written page covers the rule.
+    A hand-written page keeps whatever outline it has, and gains one h2, "Registry
+    reference", with the four sections as h3 under it.
+    """
+    own = set(_own_page_ids())
+    shared = rp.shared_deep_dives(DOCS / "rules", RULES)
+    wrong: dict[str, object] = {}
+    for rule_id in RULES:
+        _html, page, front = _render(pages[rp.page_uri(rule_id)])
+        h1 = page.titles("h1")
+        if len(h1) != 1:
+            wrong[rule_id] = ("h1", h1)
+        elif rule_id in own:
+            at = [i for i, (tag, text) in enumerate(page.headings) if (tag, text) == ("h2", "Registry reference")]
+            tail = (
+                [(tag, re.sub(r" \(registry\)$", "", text)) for tag, text in page.headings[at[0] + 1 :]]
+                if len(at) == 1
+                else None
+            )
+            if tail != [("h3", name) for name in _FIXED_SECTIONS]:
+                wrong[rule_id] = ("registry reference", tail)
+        else:
+            sections = _FIXED_SECTIONS + (["Deep dive"] if rule_id in shared else [])
+            if page.titles("h2") != sections or len(page.headings) != 1 + len(sections):
+                wrong[rule_id] = ("h2", page.titles("h2"), len(page.headings))
+            elif h1 != [front["title"]]:
+                wrong[rule_id] = ("h1 is not the tab title", h1, front["title"])
+    assert not wrong, f"{len(wrong)} pages with an unexpected outline, e.g. {dict(list(wrong.items())[:3])}"
+
+
+def test_registry_text_cannot_add_headings_to_the_outline() -> None:
+    """A line starting `#` or an underline of `---` or `===` is a heading to the renderer."""
+    nasty = "\n".join(
+        [
+            "Intro line",
+            "# Injected h1",
+            "#nospace",
+            "- # in a list item",
+            "Setext text",
+            "---",
+            "More text",
+            "===",
+            "```bash",
+            "# a comment inside a fence stays code",
+            "---",
+            "```",
+            "tail",
+        ]
+    )
+    rule = _rule(title="Ends with a hash #", description=nasty, remediation=nasty, limitations=nasty)
+    html, page, front = _render(rp.render_page(rule, rp.Sources(), names={}, category_display={}))
+    assert page.titles("h1") == ["AAK-TEST-001: Ends with a hash #"] == [front["title"]]
+    assert page.titles("h2") == _FIXED_SECTIONS
+    assert len(page.headings) == 1 + len(_FIXED_SECTIONS), page.headings
+    # Nothing was dropped to get there: the words, the fenced code, the underlines as text.
+    for kept in ("Injected h1", "nospace", "in a list item", "Setext text", "More text"):
+        assert kept in html, kept
+    assert html.count("# a comment inside a fence stays code") == 3  # description, remediation, limitations
+    assert "\\#" not in html and "\\-" not in html
+    assert html.count("<hr") == 1  # the footer's rule, and none made out of the text
+
+
+def test_headings_are_neutralised_only_where_the_renderer_would_make_one() -> None:
+    assert rp.neutralize_headings("a\n# b") == "a\n\\# b"
+    assert rp.neutralize_headings("#b") == "\\#b"
+    assert rp.neutralize_headings("- # b\n  * ## c\n1. # d") == "- \\# b\n  * \\## c\n1. \\# d"
+    assert rp.neutralize_headings("a\n---") == "a\n\\---"
+    assert rp.neutralize_headings("a\n===") == "a\n&#61;=="
+    assert rp.neutralize_headings("a\n-") == "a\n\\-"
+    assert rp.neutralize_headings("- item\n---") == "- item\n\\---"
+    # Not an underline: nothing above it, or a blank line between, or part of a longer line.
+    for untouched in ("---", "a\n\n---", "a\n--- b", "issue #22 and `# x` mid-line", "\\# already escaped"):
+        assert rp.neutralize_headings(untouched) == untouched
+    # A fenced block is code, whichever fence opens it; an unclosed fence is not a fence.
+    fenced = "```bash\n# c\n---\n```"
+    assert rp.neutralize_headings(fenced) == fenced
+    assert rp.neutralize_headings("~~~sh\n# c\n~~~\n# d") == "~~~sh\n# c\n~~~\n\\# d"
+    assert rp.neutralize_headings("```bash\n# not closed") == "```bash\n\\# not closed"
+    assert rp.neutralize_headings("a ```x``` span\n# d") == "a ```x``` span\n\\# d"
+    assert rp.neutralize_headings("```x``` then\n# d") == "```x``` then\n\\# d"
+
+
+def test_a_title_keeps_its_trailing_hash_and_stays_on_one_line() -> None:
+    assert rp.heading_text("Ends in #") == "Ends in \\#"
+    assert rp.heading_text("Ends in ##") == "Ends in \\#\\#"
+    assert rp.heading_text("Has # inside") == "Has # inside"
+    assert rp.heading_text("A  title\nover two lines") == "A title over two lines"
+    assert rp.heading_text("Uses `*.pem` and <angle>") == "Uses `*.pem` and &lt;angle&gt;"
 
 
 def test_the_slug_matches_the_anchors_the_renderer_generates() -> None:
@@ -674,6 +931,29 @@ def test_help_uri_is_the_page_url_of_every_rule() -> None:
     assert nav.source_to_url(rp.page_uri("AAK-MCP-003"), site) == _help_uri("AAK-MCP-003")
 
 
+def _declared_extensions() -> list[str]:
+    """`markdown_extensions` as mkdocs.yml lists them, in order."""
+    text = (REPO_ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    assert "\nmarkdown_extensions:\n" in text, "mkdocs.yml has no markdown_extensions"
+    names: list[str] = []
+    for line in text.split("\nmarkdown_extensions:\n", 1)[1].splitlines():
+        if line.strip() and not line.startswith((" ", "\t", "#")):
+            break  # the next top-level key
+        match = re.match(r"\s+-\s+(\S+)\s*$", line)
+        if match:
+            names.append(match.group(1))
+    return names
+
+
+def test_the_site_enables_the_extensions_the_pages_rely_on() -> None:
+    """The facts are a `dl`, which needs `def_list`; without it they print as `:   HIGH` text."""
+    declared = _declared_extensions()
+    for needed in ("tables", "def_list", "admonition"):
+        assert needed in declared, f"mkdocs.yml does not enable {needed}"
+    # MkDocs switches the other two on by itself, which is why the site does not list them.
+    assert set(_RENDER_EXTENSIONS) <= set(declared) | {"fenced_code", "toc"}
+
+
 def _mkdocs_config(site_dir: Path):
     pytest.importorskip("mkdocs.config")
     from mkdocs.config import load_config
@@ -684,7 +964,7 @@ def _mkdocs_config(site_dir: Path):
         # The deployed site uses Material; the layout does not depend on a theme, and CI
         # installs MkDocs alone (the `dev` extra), so build with the built-in one.
         theme="mkdocs",
-        markdown_extensions=["tables", "admonition"],
+        markdown_extensions=["tables", "admonition", "def_list"],
         validation={"anchors": "warn"},
     )
 
@@ -713,7 +993,13 @@ def test_the_hook_adds_every_page_outside_the_nav_and_keeps_the_index_in_it(tmp_
     assert "[AAK-MCP-003](AAK-MCP-003.md)" in index.content_string
     toxic = files.get_file_from_path("rules/AAK-TOXICFLOW-001.md")
     written = (DOCS / "rules" / "AAK-TOXICFLOW-001.md").read_text(encoding="utf-8")
-    assert toxic is not None and toxic.content_string.startswith(written.rstrip("\n"))
+    assert toxic is not None
+    # What MkDocs renders of a hand-written page is its own text; the title block in front
+    # of it is stripped by the same function MkDocs uses, and becomes the page title.
+    meta = pytest.importorskip("mkdocs.utils.meta")
+    body, front = meta.get_data(toxic.content_string)
+    assert body.startswith(written.rstrip("\n"))
+    assert front["title"].startswith("AAK-TOXICFLOW-001: ")
     assert len({f.src_uri for f in files}) == len(list(files)), "duplicate src_uri after the hook"
 
 

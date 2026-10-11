@@ -52,10 +52,29 @@ composition.md`` covers several rules in one page; those rules link to the
 heading that names them, found by reading the page's headings rather than by
 listing them here.
 
+Structure
+---------
+A generated page has one ``h1`` (``AAK-MCP-003: <title>``, the words the browser
+tab shows too), a description list of facts, and a fixed set of ``h2`` sections:
+What it detects, How to fix, Limitations, References, plus Deep dive when the rule
+is written up inside a page shared with other rules. Two choices there are
+accessibility fixes, not taste:
+
+* The facts are a description list (``dt``/``dd``), not a ``Field | Value`` table.
+  A Markdown table has no row headers, so a screen reader read "HIGH" without
+  saying which fact it was. The list needs the ``def_list`` extension, which
+  ``mkdocs.yml`` enables and ``tests/test_rule_pages.py`` insists on.
+* The title is in the ``h1``, so the heading list says what the page is about
+  and not only which rule it is.
+
+Hand-written pages get the same ``title:`` front matter when they have none
+(MkDocs strips it before rendering, so their text is still published unchanged);
+without it the browser tab said only ``AAK-AZURE-MCP-001``.
+
 Escaping
 --------
 Rule text is written as Markdown (it carries backticks, bold and links), so it is
-rendered as Markdown, with four repairs for text written for a terminal and for
+rendered as Markdown, with five repairs for text written for a terminal and for
 SARIF, where none of them mattered:
 
 * ``<handle>@<psp>`` is not an HTML tag, but the renderer treats it as one and
@@ -66,6 +85,11 @@ SARIF, where none of them mattered:
 * ``__route__`` is a word, not bold (``escape_dunders``).
 * An indented list directly after a sentence is folded into the paragraph by
   Python-Markdown, so a blank line is put around list items.
+* A line starting with ``#`` is a heading to Python-Markdown (no space needed, and
+  after a list marker too), and a line of only dashes or equals signs under a
+  line of text is a Setext underline. Rule text with either would add headings to
+  the page's outline, so the ``#`` is escaped and the underline is broken up
+  (``neutralize_headings``). Fenced code is left alone.
 
 Code spans, and the asterisks and underscores scanning above, are found by
 walking the string, not with a regex: the text is short, but a pattern with nested
@@ -479,9 +503,126 @@ def separate_lists(text: str) -> str:
     return "\n".join(out)
 
 
+def _marker_end(line: str, start: int) -> int:
+    """Index just past a list marker and the blanks after it, or ``start`` if none is there."""
+    size = len(line)
+    end = start
+    if end < size and line[end] in "-*+":
+        end += 1
+    else:
+        while end < size and end - start < 9 and line[end].isdigit():
+            end += 1
+        if end == start or end >= size or line[end] not in ".)":
+            return start
+        end += 1
+    if end >= size or line[end] not in " \t":
+        return start
+    while end < size and line[end] in " \t":
+        end += 1
+    return end
+
+
+def _text_start(line: str) -> int:
+    """Index of the first character of a line's own text, past indentation and list markers.
+
+    ``- # x`` and ``1. # x`` are headings inside a list item to Python-Markdown, so
+    the character that matters is the one after the markers, not the first one.
+    """
+    start = 0
+    while True:
+        while start < len(line) and line[start] in " \t":
+            start += 1
+        after = _marker_end(line, start)
+        if after == start:
+            return start
+        start = after
+
+
+def _fence_run(stripped: str) -> str:
+    """The run of backticks or tildes that opens or closes a code fence on this line, else ``""``.
+
+    A backtick run followed by more backticks is an inline code span that happens
+    to start the line, which is text and not a fence.
+    """
+    if not stripped or stripped[0] not in "`~":
+        return ""
+    width = 1
+    while width < len(stripped) and stripped[width] == stripped[0]:
+        width += 1
+    if width < 3 or (stripped[0] == "`" and "`" in stripped[width:]):
+        return ""
+    return stripped[:width]
+
+
+def neutralize_headings(text: str) -> str:
+    """Keep registry prose from adding headings to the page it is dropped into.
+
+    Python-Markdown makes a heading of any line that starts with ``#`` (a space
+    after it is optional, and a list marker before it does not stop it), and of a
+    line of text followed by a line of only ``-`` or ``=`` (a Setext underline).
+    Registry text has neither today, but it is free text that two contributors
+    edit, and a stray ``# comment`` line would put an extra ``h1`` into every
+    reader's heading list, which is how a screen reader user finds their way
+    around. So a leading ``#`` is backslash-escaped, and an underline that follows
+    text has its first character escaped (``\\-``, or the entity ``&#61;`` for
+    ``=``, because Python-Markdown does not treat ``\\=`` as an escape and would
+    print the backslash).
+
+    Fenced code blocks are skipped: a ``# comment`` there is code, and an escape
+    would show up in it. A fence that is never closed is not a fence to the
+    renderer either, so what follows it is treated as text. Indented code blocks
+    are not recognised, so registry text that needs a literal block must fence it.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    follows_text = False
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        stripped = line.strip()
+        run = _fence_run(stripped)
+        closer = next(
+            (
+                later
+                for later in range(index + 1, len(lines))
+                if run and set(lines[later].strip()) == {run[0]} and len(lines[later].strip()) >= len(run)
+            ),
+            None,
+        )
+        if closer is not None:
+            out.extend(lines[index : closer + 1])
+            follows_text = False
+            index = closer + 1
+            continue
+        start = _text_start(line)
+        if line[start:].startswith("#"):
+            line = line[:start] + "\\" + line[start:]
+        elif follows_text and stripped and (set(stripped) == {"-"} or set(stripped) == {"="}):
+            first = len(line) - len(line.lstrip())
+            escaped = "\\-" if stripped[0] == "-" else "&#61;"
+            line = line[:first] + escaped + line[first + 1 :]
+        out.append(line)
+        follows_text = bool(stripped)
+        index += 1
+    return "\n".join(out)
+
+
+def heading_text(title: str) -> str:
+    """A rule title as the text of a one-line ATX heading, markup kept.
+
+    A heading line may end in a closing run of ``#`` which the renderer drops, so
+    a title that ends in ``#`` would lose it; each trailing ``#`` is escaped.
+    Whitespace is collapsed so a title with a newline in it cannot end the heading
+    early.
+    """
+    line = " ".join(escape_markdown(title).split())
+    bare = line.rstrip("#")
+    return bare + "\\#" * (len(line) - len(bare))
+
+
 def markdown_text(text: str) -> str:
     """Registry prose, made safe to drop into a page body."""
-    return escape_markdown(separate_lists(text.strip()))
+    return neutralize_headings(escape_markdown(separate_lists(text.strip())))
 
 
 def plain_text(text: str) -> str:
@@ -679,6 +820,11 @@ def render_scanner_row(sources: Sources) -> str:
     )
 
 
+def _one_line(text: str) -> str:
+    """Collapse ``text`` onto one line, so it stays the whole of a definition."""
+    return " ".join(text.split())
+
+
 def render_card(
     rule: Any,
     sources: Sources,
@@ -686,16 +832,31 @@ def render_card(
     level: int,
     category_display: Mapping[str, str] | None = None,
     names: Mapping[str, Mapping[str, str]] | None = None,
+    reserved: Iterable[str] = (),
 ) -> str:
-    """The registry-derived body of a page: facts table, then the four sections.
+    """The registry-derived body of a page: a list of facts, then the four sections.
 
     ``level`` is the heading level of the sections: 2 on a page of its own, 3
     when appended under a hand-written page, so the outline stays a tree.
+
+    The facts are a description list. Each pair is a term and a definition
+    separated from the next by a blank line: without the blank line Python-Markdown
+    folds the next term into the previous definition.
+
+    ``reserved`` is the text of headings the page already has (a hand-written page
+    has its own "References"). A section that would repeat one is named
+    "References (registry)" instead, so the headings a screen reader lists stay
+    distinct.
     """
     h = "#" * level
+    taken = {plain_text(name).casefold() for name in reserved}
+
+    def heading(name: str) -> str:
+        return f"{h} {name} (registry)" if name.casefold() in taken else f"{h} {name}"
+
     severity = str(getattr(rule.severity, "value", rule.severity)).upper()
     display = category_names() if category_display is None else category_display
-    rows = [
+    facts = [
         ("Severity", severity),
         ("Category", category_label(rule.category, display)),
         ("Scanner", render_scanner_row(sources)),
@@ -705,14 +866,15 @@ def render_card(
         ),
     ]
     if getattr(rule, "sarif_name", ""):
-        rows.append(("SARIF name", f"`{rule.sarif_name}`"))
+        facts.append(("SARIF name", f"`{rule.sarif_name}`"))
 
-    out = ["| Field | Value |", "|---|---|"]
-    out.extend(f"| {name} | {_table_cell(value)} |" for name, value in rows)
+    out: list[str] = []
+    for term, definition in facts:
+        out += [term, f":   {_one_line(definition)}", ""]
 
-    out += ["", f"{h} What it detects", "", markdown_text(rule.description)]
+    out += [heading("What it detects"), "", markdown_text(rule.description)]
 
-    out += ["", f"{h} How to fix", "", markdown_text(rule.remediation)]
+    out += ["", heading("How to fix"), "", markdown_text(rule.remediation)]
     if rule.auto_fixable:
         out += [
             "",
@@ -728,7 +890,7 @@ def render_card(
     ]
 
     limitations = (getattr(rule, "limitations", "") or "").strip()
-    out += ["", f"{h} Limitations", ""]
+    out += ["", heading("Limitations"), ""]
     if limitations:
         out.append(markdown_text(limitations))
     else:
@@ -738,43 +900,75 @@ def render_card(
         )
 
     references = render_references(rule, names)
-    out += ["", f"{h} References", ""]
+    out += ["", heading("References"), ""]
     out.extend(references or ["No external references are recorded for this rule."])
     return "\n".join(out)
 
 
-def render_deep_dive(rule_id: str, sources: Sources) -> str:
-    """The closing section of a page that has no hand-written text of its own."""
-    if sources.shared:
-        stem, title, anchor = sources.shared
-        body = f"This rule is written up in [{escape_markdown(title)}]({stem}.md#{anchor})."
-    else:
-        body = (
-            "There is no hand-written page for this rule yet. If one is added at "
-            f"`docs/rules/{rule_id}.md`, it is shown here automatically."
-        )
-    return f"## Deep dive\n\n{body}"
+def render_deep_dive(sources: Sources) -> str:
+    """The closing section of a page whose rule is written up in a page shared with others.
+
+    Empty for every other rule: a "Deep dive" heading over a sentence saying there
+    is nothing to dive into is noise for a screen reader user, who navigates by
+    headings. How a hand-written page is added is said once, in the footer.
+    """
+    if not sources.shared:
+        return ""
+    stem, title, anchor = sources.shared
+    return f"## Deep dive\n\nThis rule is written up in [{escape_markdown(title)}]({stem}.md#{anchor})."
 
 
-_FOOTER = (
-    "---\n\n"
-    "[All rules](index.md). This page is generated from the rule registry when the "
-    "documentation is built; to change it, change the rule in "
-    "`agent_audit_kit/rules/builtin.py`."
-)
+#: Where "All rules" leads: the generated listing's heading, whose id is its slug.
+_ALL_RULES_LINK = "index.md#all-rules"
+
+
+def _footer(rule_id: str) -> str:
+    return (
+        "---\n\n"
+        f"[All rules]({_ALL_RULES_LINK}). This page is generated from the rule registry when "
+        "the documentation is built; to change it, change the rule in "
+        "`agent_audit_kit/rules/builtin.py`. To give the rule a hand-written write-up, add "
+        f"`docs/rules/{rule_id}.md`: the page then shows that text, with the registry "
+        "reference appended under it."
+    )
+
 
 #: A hand-written page already explains itself in `_APPENDED_INTRO`, so its
 #: footer is only the way back to the list.
-_APPENDED_FOOTER = "---\n\n[All rules](index.md)."
+_APPENDED_FOOTER = f"---\n\n[All rules]({_ALL_RULES_LINK})."
 
+#: Says which part of the page is which without pointing at where it sits
+#: ("above", "below"): the page is read by screen reader, and by search.
 _APPENDED_INTRO = (
     "---\n\n"
     "## Registry reference\n\n"
-    "The text above is hand-written. Everything from here down is generated from the "
-    "rule registry (`agent_audit_kit/rules/builtin.py`) when the documentation is "
-    "built, so it follows the scanner; where the two disagree, the registry is what "
-    "runs.\n"
+    "This section is generated from the rule registry "
+    "(`agent_audit_kit/rules/builtin.py`) when the documentation is built, so it "
+    "follows the scanner. The rest of the page is hand-written; where the two "
+    "disagree, the registry is what runs.\n"
 )
+
+
+def front_matter(rule: Any) -> str:
+    """The YAML block that gives a page its ``<title>`` and meta description.
+
+    Without it MkDocs takes the title from the page's first ``h1``, which on a
+    hand-written page is only the rule id. MkDocs removes the block before the
+    page is rendered, so it never appears in the body.
+    """
+    title = f"{rule.rule_id}: {plain_text(rule.title)}"
+    return (
+        "---\n"
+        f"title: {_json_string(title)}\n"
+        f"description: {_json_string(plain_text(rule.title))}\n"
+        "---\n\n"
+    )
+
+
+def has_front_matter(text: str) -> bool:
+    """Whether ``text`` opens with a YAML front matter block, as MkDocs reads one."""
+    lines = text.split("\n")
+    return lines[0].rstrip() == "---" and any(line.rstrip() in {"---", "..."} for line in lines[1:])
 
 
 def render_page(
@@ -788,15 +982,23 @@ def render_page(
     """The full Markdown of one rule's page.
 
     With ``own_text`` (the hand-written page) the page is that text, verbatim,
-    followed by the registry reference. Without it the page is the registry card
-    and a pointer to any shared deep dive.
+    followed by the registry reference; the only thing put before it is the
+    ``title:`` front matter, unless the page brings its own front matter, in which
+    case it is trusted to carry a title. Without ``own_text`` the page is the
+    registry card, and a pointer to a shared deep dive when the rule has one.
     """
     if own_text is not None:
         card = render_card(
-            rule, sources, level=3, category_display=category_display, names=names
+            rule,
+            sources,
+            level=3,
+            category_display=category_display,
+            names=names,
+            reserved=[text for _level, text in _headings(own_text)],
         )
         return (
-            own_text.rstrip("\n")
+            ("" if has_front_matter(own_text) else front_matter(rule))
+            + own_text.rstrip("\n")
             + "\n\n"
             + _APPENDED_INTRO
             + "\n"
@@ -807,24 +1009,13 @@ def render_page(
         )
 
     card = render_card(rule, sources, level=2, category_display=category_display, names=names)
-    front = [
-        "---",
-        f"title: {_json_string(f'{rule.rule_id}: {plain_text(rule.title)}')}",
-        f"description: {_json_string(plain_text(rule.title))}",
-        "---",
-        "",
+    parts = [
+        front_matter(rule) + f"# {rule.rule_id}: {heading_text(rule.title)}",
+        card,
+        render_deep_dive(sources),
+        _footer(rule.rule_id),
     ]
-    head = [f"# {rule.rule_id}", "", f"**{escape_markdown(rule.title.strip())}**", ""]
-    return (
-        "\n".join(front + head)
-        + "\n"
-        + card
-        + "\n\n"
-        + render_deep_dive(rule.rule_id, sources)
-        + "\n\n"
-        + _FOOTER
-        + "\n"
-    )
+    return "\n\n".join(part for part in parts if part) + "\n"
 
 
 def render_index_listing(
