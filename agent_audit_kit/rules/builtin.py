@@ -7998,8 +7998,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`). A `n8nio/n8n` image tag in a "
-        "compose file is not read."
+        "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
+        "tag is not read."
     ),
 )
 
@@ -8847,8 +8847,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`). A `n8nio/n8n` image tag in a "
-        "compose file is not read."
+        "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
+        "tag is not read."
     ),
 )
 
@@ -9282,8 +9282,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`). A `n8nio/n8n` image tag in a "
-        "compose file is not read."
+        "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
+        "tag is not read."
     ),
 )
 
@@ -9880,8 +9880,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). A `letta/letta` image tag in a compose "
-        "file is not read."
+        "reader does not parse (`pdm.lock`). A compose file's `letta/letta` image "
+        "tag is not read."
     ),
 )
 
@@ -9997,8 +9997,8 @@ _r(
         "allows and reporting a reference that states no version. The dependency is "
         "not read when it is declared in a sub-directory manifest "
         "(`services/api/pyproject.toml`) or in a lockfile format the reader does "
-        "not parse (`pdm.lock`). A `langflowai/langflow` image tag in a compose "
-        "file is not read."
+        "not parse (`pdm.lock`). A compose file's `langflowai/langflow` image tag "
+        "is not read."
     ),
 )
 
@@ -11581,8 +11581,8 @@ _r(
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`). A `flowiseai/flowise` image tag in a "
-        "compose file is not read."
+        "parse (a Yarn 2+ `yarn.lock`). A compose file's `flowiseai/flowise` image "
+        "tag is not read."
     ),
 )
 
