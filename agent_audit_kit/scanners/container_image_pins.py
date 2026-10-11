@@ -17,8 +17,9 @@ release; npm's `suna` is an unrelated 2025 placeholder, and the desktop app and
 the `kortix` CLI are binaries. Docker Hub images are matched by the bare name
 their docs use, so `docker.io/grafana/mcp-k6` is not read. Nothing
 `mcp_cve_pins_2026_07` reads carries their version, and a pin on a look-alike
-package name would report somebody else's project. The image tag is the only place a deployment states which
-release it runs, so this module reads image references and nothing else.
+package name would report somebody else's project. The image tag is the only
+place a deployment states which release it runs, so this module reads image
+references and nothing else.
 
 Where a reference is read
 -------------------------
