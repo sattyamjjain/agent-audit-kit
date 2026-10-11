@@ -1,0 +1,17 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import anthropic\n",
+    "client = anthropic.Anthropic(api_key=\"sk-ant-api03-FIXTUREFIXTUREFIXTUREFIXTUREFIXTUREFIXTURE\")\n"
+   ]
+  }
+ ],
+ "metadata": {},
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

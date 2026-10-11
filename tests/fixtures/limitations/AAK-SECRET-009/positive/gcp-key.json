@@ -1,0 +1,5 @@
+{
+  "type": "service_account",
+  "project_id": "fixture-project",
+  "client_email": "fixture@fixture-project.iam.gserviceaccount.com"
+}

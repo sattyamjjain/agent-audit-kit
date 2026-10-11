@@ -1,0 +1,4 @@
+splunk:
+  inputs:
+    - index: _internal
+      sourcetype: mcp_auth

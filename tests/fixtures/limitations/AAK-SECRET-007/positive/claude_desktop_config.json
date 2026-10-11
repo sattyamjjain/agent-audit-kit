@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "pg-mcp"
+      ],
+      "env": {
+        "POSTGRES_PASSWORD": "fixture-password-value"
+      }
+    }
+  }
+}

