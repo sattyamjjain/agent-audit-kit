@@ -332,7 +332,11 @@ class _RowHeaders(HTMLParser):
                 self._decide(table)
             elif tag == "tr":
                 table.column = 0
+                table.candidate = None
             elif tag in {"th", "td"}:
+                # A cell whose end tag was left out (HTML allows it) is left as written: only
+                # a cell that is seen to close is ever rewritten, so the tags stay paired.
+                table.candidate = None
                 table.column += 1  # every cell counts, a row header that is already one included
                 if tag == "th" and table.in_head:
                     cell: list[str] = []
@@ -361,6 +365,8 @@ class _RowHeaders(HTMLParser):
             if tag == "thead":
                 self._decide(table)
                 table.in_head = False
+            elif tag == "tr":
+                table.candidate = None
             elif tag == "th":
                 table.reading_header = None
             elif tag == "td" and table.candidate is not None:

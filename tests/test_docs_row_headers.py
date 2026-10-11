@@ -156,6 +156,20 @@ def test_a_cell_that_already_says_what_it_is_is_left_alone() -> None:
     assert '<th scope="row">Scanner</th>' in converted  # the next row is still converted
 
 
+def test_a_cell_whose_end_tag_was_left_out_is_left_as_written() -> None:
+    """HTML lets `</td>` be omitted. A cell is only rewritten once it is seen to close, so a
+    page written that way keeps its tags paired instead of getting a `<th>` closed by `</td>`."""
+    page = _TABLE.replace("<td>Severity</td>", "<td>Severity")  # the label cell never closes
+    converted = hooks.row_headers(page)
+    assert "<tr>\n<td>Severity\n<td>HIGH</td>\n</tr>" in converted  # left as it was written
+    assert '<th scope="row">Scanner</th>' in converted  # the well-formed row after it is still converted
+    opened = converted.count("<th ") + converted.count("<th>")
+    assert opened == converted.count("</th>") == 3  # every <th> opened is closed as a <th>
+    # And with the end tag of the *second* cell missing instead, the first still converts.
+    later = hooks.row_headers(_TABLE.replace("<td>HIGH</td>", "<td>HIGH"))
+    assert '<th scope="row">Severity</th>\n<td>HIGH\n</tr>' in later
+
+
 def test_a_table_inside_a_cell_is_judged_on_its_own() -> None:
     inner = _table("Rule", "Severity", "Title", rows=(("AAK-X-001", "HIGH", "T"),))
     page = _TABLE.replace("<td>HIGH</td>", f"<td>{inner}</td>")
