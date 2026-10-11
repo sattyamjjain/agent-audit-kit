@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (412 total; 373 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (412 total; 374 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -116,7 +116,7 @@ Every AgentAuditKit rule (412 total; 373 mapped) against two agentic-security st
 | `AAK-LEGAL-002` | medium | legal-compliance | — | — |
 | `AAK-LEGAL-003` | critical | legal-compliance | — | — |
 | `AAK-LITELLM-CVE-2026-30623-PIN-001` | high | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities; ASI05 Unexpected Code Execution (RCE) |
-| `AAK-LLM-001` | high | tool-poisoning | — | — |
+| `AAK-LLM-001` | high | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-LLM-002` | info | tool-poisoning | — | — |
 | `AAK-LLM-SQL-RCE-001` | critical | taint-analysis | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI02 Tool Misuse and Exploitation; ASI05 Unexpected Code Execution (RCE) |
 | `AAK-LMDEPLOY-VL-SSRF-001` | high | transport-security | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Track and patch MCP related vulnerabilities | ASI02 Tool Misuse and Exploitation |

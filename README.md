@@ -149,9 +149,9 @@ it detects the risk, or the absence of a control the entry prescribes for it.
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Agent Goal Hijack | 17 |
-| **ASI02** | Tool Misuse and Exploitation | 99 |
+| **ASI02** | Tool Misuse and Exploitation | 100 |
 | **ASI03** | Identity and Privilege Abuse | 107 |
-| **ASI04** | Agentic Supply Chain Vulnerabilities | 198 |
+| **ASI04** | Agentic Supply Chain Vulnerabilities | 199 |
 | **ASI05** | Unexpected Code Execution (RCE) | 93 |
 | **ASI06** | Memory & Context Poisoning | 5 |
 | **ASI07** | Insecure Inter-Agent Communication | 24 |

@@ -2160,10 +2160,27 @@
     {
       "category": "tool-poisoning",
       "cve_references": [],
-      "eu_ai_act": [],
-      "nsa_mcp_csi": [],
-      "owasp_agentic": [],
-      "owasp_mcp": [],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse and Exploitation",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP03:2025 Tool Poisoning"
+      ],
       "rule_id": "AAK-LLM-001",
       "severity": "high",
       "title": "Model flagged tool metadata as manipulative"
@@ -10142,28 +10159,28 @@
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 200,
+      "Art. 10 - Data Governance": 201,
       "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 304,
-      "Art. 9 - Risk Management": 207
+      "Art. 15 - Robustness & Security": 305,
+      "Art. 9 - Risk Management": 208
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 200,
-      "Constrain and sandbox tool execution (p.11)": 190,
-      "Design for boundaries (p.10)": 294,
+      "Choose supported MCP projects when possible (p.10)": 201,
+      "Constrain and sandbox tool execution (p.11)": 191,
+      "Design for boundaries (p.10)": 295,
       "Filter and monitor output pipelines and chained execution (p.12)": 113,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 260,
-      "Sign and verify MCP messages (p.12)": 270,
-      "Track and patch MCP related vulnerabilities (p.13)": 205,
-      "Validate parameters (p.11)": 194
+      "Scan local network for open or vulnerable MCP servers (p.14)": 261,
+      "Sign and verify MCP messages (p.12)": 271,
+      "Track and patch MCP related vulnerabilities (p.13)": 206,
+      "Validate parameters (p.11)": 195
     },
     "by_owasp_agentic": {
       "ASI01": 17,
-      "ASI02": 99,
+      "ASI02": 100,
       "ASI03": 107,
-      "ASI04": 198,
+      "ASI04": 199,
       "ASI05": 93,
       "ASI06": 5,
       "ASI07": 24,
@@ -10174,7 +10191,7 @@
     "by_owasp_mcp": {
       "MCP01:2025": 32,
       "MCP02:2025": 16,
-      "MCP03:2025": 12,
+      "MCP03:2025": 13,
       "MCP04:2025": 149,
       "MCP05:2025": 115,
       "MCP06:2025": 4,

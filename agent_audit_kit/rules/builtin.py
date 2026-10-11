@@ -2538,6 +2538,12 @@ _r(
     "data the tool does not need, references that steer other tools. If you do not "
     "control the tool, stop using it until its publisher fixes the description.",
     sarif_name="LlmFlaggedToolMetadata",
+    # Same class as AAK-POISON-*: OWASP MCP03 (Tool Poisoning); the Agentic
+    # Top 10 puts descriptor poisoning under ASI02, plus ASI04 when the tool
+    # is malicious at source. AAK-LLM-002 reports a gap in AAK's own run, not a
+    # risk, so it carries no OWASP id.
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     limitations=(
         "Reads only metadata AAK can extract without running anything: inline tools "
         "in MCP configs, saved `tools/list` responses (`*tools*.json`), Python tools "

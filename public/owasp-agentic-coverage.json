@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-20T09:50:13Z",
+  "last_updated": "2026-10-20T09:50:20Z",
   "aak_version": "0.6.22",
   "rule_count": 412,
   "coverage": [
@@ -156,7 +156,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 99,
+      "rule_density": 100,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -305,6 +305,14 @@
           "aicm_references": [
             "AIS-08",
             "IVS-04"
+          ]
+        },
+        {
+          "id": "AAK-LLM-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
           ]
         },
         {
@@ -2258,7 +2266,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 198,
+      "rule_density": 199,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2494,6 +2502,14 @@
           "aicm_references": [
             "AIS-08",
             "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-LLM-001",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "AIS-07"
           ]
         },
         {
