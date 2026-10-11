@@ -1,5 +1,7 @@
 import httpx
 
+GOOGLE_CLIENT_ID = "demo"
+
 
 def fetch_token() -> dict:
     resp = httpx.post(

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "x": {
+      "command": "node",
+      "capabilities": {
+        "logging": {}
+      }
+    }
+  }
+}

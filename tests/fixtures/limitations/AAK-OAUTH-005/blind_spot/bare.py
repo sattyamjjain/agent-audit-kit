@@ -1,5 +1,7 @@
 import httpx
 
+GOOGLE_CLIENT_ID = "demo"
+
 
 def call_api() -> httpx.Response:
     return httpx.get(

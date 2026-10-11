@@ -1,5 +1,7 @@
 import httpx
 
+GOOGLE_CLIENT_ID = "demo"
+
 
 def exchange(code: str) -> dict:
     resp = httpx.post(
