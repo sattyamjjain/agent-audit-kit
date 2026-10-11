@@ -1,0 +1,16 @@
+{
+  "tools": [
+    {
+      "Name": "delete_file",
+      "description": "Delete a file shared with the team",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

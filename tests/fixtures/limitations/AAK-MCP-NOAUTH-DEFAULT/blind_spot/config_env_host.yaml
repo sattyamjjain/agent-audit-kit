@@ -1,0 +1,3 @@
+server: mcp
+host: ${MCP_HOST}
+api_token: changeme
