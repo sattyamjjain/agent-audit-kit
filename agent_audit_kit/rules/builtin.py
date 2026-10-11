@@ -1337,10 +1337,12 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-REDIRECT-01"],
     limitations=(
-        "Tests the `env.ANTHROPIC_BASE_URL` value with a plain substring check for "
-        "`anthropic.com`. A proxy whose URL merely contains that text, such as "
-        "`https://anthropic.com.attacker.example/v1`, is treated as Anthropic's own "
-        "endpoint."
+        "Parses `env.ANTHROPIC_BASE_URL` in `.claude/settings.json` and "
+        "`.claude/settings.local.json` at the root of the scanned directory and accepts "
+        "it when the host is `anthropic.com` or a subdomain of it, whatever the "
+        "scheme, so a cleartext `http://api.anthropic.com/v1` passes. The same "
+        "override in the settings file of a subdirectory "
+        "(`packages/web/.claude/settings.json`) is not read."
     ),
 )
 

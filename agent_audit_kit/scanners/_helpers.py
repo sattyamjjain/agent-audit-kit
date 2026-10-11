@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import AbstractSet, Any, Iterator
+from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
@@ -128,6 +129,48 @@ def make_finding(
         owasp_ast_references=rule.owasp_ast_references,
         related_locations=related_locations or [],
     )
+
+
+_C0_CONTROL_OR_SPACE = "".join(chr(c) for c in range(0x21))
+_HOSTNAME_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-.")
+
+
+def url_host(value: str) -> str | None:
+    """The host a client would connect to for `value`, or None when there is none.
+
+    Read the way a WHATWG URL parser reads it (Node's ``new URL``, so Claude
+    Code), not the way ``urlsplit`` does, because the two disagree on exactly the
+    input an attacker writes. For an http(s) URL WHATWG treats ``\\`` as ``/``:
+    ``https://evil.example\\@api.anthropic.com`` connects to ``evil.example``,
+    while ``urlsplit`` reads its host as ``api.anthropic.com``, and it reads
+    ``https://evil.example\\.anthropic.com`` as a subdomain of anthropic.com. An
+    allowlist built on raw ``urlsplit`` waves both through. So, before parsing:
+    leading and trailing C0 controls and spaces are stripped and tab, CR and LF
+    removed, as WHATWG does (``urlsplit`` does so only on newer Python
+    releases); ``\\`` becomes ``/``; and a value with no ``://`` is read as a
+    bare authority (``api.anthropic.com/v1``, ``localhost:8080``).
+
+    The host comes back lower-cased without a trailing dot, and only when it is a
+    plain DNS name or IPv4 address: anything else (a space, ``%``, non-ASCII, an
+    IPv6 literal, a malformed authority) returns None, so a caller comparing the
+    host against an allowlist fails closed on it.
+    """
+    url = value.strip(_C0_CONTROL_OR_SPACE)
+    for ch in "\t\r\n":
+        url = url.replace(ch, "")
+    url = url.replace("\\", "/")
+    if "://" not in url:
+        url = "//" + url
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        return None
+    if not host:
+        return None
+    host = host.rstrip(".")
+    if not host or not set(host) <= _HOSTNAME_CHARS:
+        return None
+    return host
 
 
 #: The keys an MCP client config keeps its server map under. `mcpServers` is the

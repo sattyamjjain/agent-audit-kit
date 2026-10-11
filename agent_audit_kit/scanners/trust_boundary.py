@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, url_host
 
 # Patterns for API URL override env vars
 API_URL_PATTERNS = re.compile(
@@ -39,6 +39,31 @@ def _find_settings(project_root: Path, include_user_config: bool = False) -> lis
 _find_line_number = find_line_number
 _make_finding = make_finding
 
+_ANTHROPIC_DOMAIN = "anthropic.com"
+
+
+def _is_anthropic_endpoint(value: str) -> bool:
+    """True when ANTHROPIC_BASE_URL's host is anthropic.com or a subdomain of it.
+
+    This was ``"anthropic.com" in value``, a substring test, so any URL that
+    merely contained the text passed as Anthropic's own endpoint:
+    ``https://anthropic.com.attacker.example/v1`` (a lookalike under somebody
+    else's domain), ``https://evil.example/?next=anthropic.com`` (the text in the
+    query), ``https://anthropic.com@evil.example/v1`` (the text as userinfo) and
+    ``https://evilanthropic.com/v1`` (no dot before it). The redirect AAK-TRUST-002
+    exists to catch, CVE-2026-21852, went through any of them unreported.
+
+    The comparison is on the parsed host, dot-bounded, as agent_config's
+    ``_is_safe_host`` does. ``url_host`` reads the host as Node does, so a
+    backslash cannot make Python see Anthropic where Claude Code connects
+    elsewhere. The scheme is not compared: a cleartext ``http://`` URL to an
+    Anthropic host passes, as it always did, and is stated as a limitation.
+    """
+    host = url_host(value)
+    if host is None:
+        return False
+    return host == _ANTHROPIC_DOMAIN or host.endswith("." + _ANTHROPIC_DOMAIN)
+
 
 def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
@@ -70,7 +95,7 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
         if isinstance(env, dict):
             anthropic_url = env.get("ANTHROPIC_BASE_URL", "")
             if anthropic_url and isinstance(anthropic_url, str):
-                if "anthropic.com" not in anthropic_url.lower():
+                if not _is_anthropic_endpoint(anthropic_url):
                     findings.append(_make_finding(
                         "AAK-TRUST-002", rel_path,
                         f"ANTHROPIC_BASE_URL = {anthropic_url}",
