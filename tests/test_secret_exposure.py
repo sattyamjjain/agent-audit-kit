@@ -10,6 +10,7 @@ from agent_audit_kit.scanners._helpers import find_line_number
 from agent_audit_kit.scanners.secret_exposure import (
     GITHUB_TOKEN,
     OPENAI_KEY,
+    _secret_assignments,
     _shannon_entropy,
     scan,
 )
@@ -355,11 +356,11 @@ def test_the_key_patterns_scan_a_crafted_file_in_linear_time(unit: str) -> None:
     assert time.perf_counter() - started < 5.0
 
 
-@pytest.mark.parametrize("unit", ["sk-proj-", "sk-svcacct-", "sk-admin-"])
+@pytest.mark.parametrize("unit", ["sk-proj-", "sk-svcacct-", "sk-admin-", "github_pat_", "ghp_"])
 def test_scanning_a_crafted_file_of_prefixed_key_heads_is_linear(tmp_path: Path, unit: str) -> None:
-    """Through the scanner, with units that carry a hyphen: a long unbroken run of word
-    characters (``github_pat_`` repeated, say) reaches the quadratic key=value pattern of
-    ``AAK-SECRET-004``, which this fix neither touches nor is measured against."""
+    """Through the scanner. ``github_pat_`` and ``ghp_`` repeated make one unbroken run of
+    word characters (the underscore is one), which used to reach the quadratic key=value
+    patterns of ``AAK-SECRET-004`` and hold the scan for hours at this size."""
     (tmp_path / "blob.json").write_text(unit * (600_000 // len(unit)), encoding="utf-8")
     started = time.perf_counter()
     scan(tmp_path)
@@ -377,3 +378,197 @@ def test_many_keys_in_one_file_report_their_lines_in_one_pass(tmp_path: Path) ->
     hits = _hits(findings, "AAK-SECRET-008")
     assert [f.line_number for f in hits] == list(range(1, count + 1))
     assert time.perf_counter() - started < 20.0
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-004 reads a line in linear time
+#
+# It was two ``re.findall`` patterns that opened ``\w*(?:SECRET|...)\w*``. Along a
+# long run of word characters with no "=" after it, the leading ``\w*`` reached the
+# end of the run from every start position and backed off looking for a keyword: a
+# 10 KB line took 3.4 s, 20 KB 13.7 s, 40 KB 54 s, so the 200 KB lines below would
+# have taken about 20 minutes each, and a file at the 1 MB limit hours. One crafted
+# line could stall the scan of a repository.
+#
+# ``_secret_assignments`` is the rewrite: word runs cut once, each tested for a
+# keyword, what follows read with classes that cannot backtrack. It must return what
+# the two patterns returned, so the table below was produced by running the
+# ORIGINAL patterns over each line, quirks included. The patterns themselves are not
+# kept here: they are the quadratic part. The rewrite was also compared with them
+# offline, with no difference, on 2.4 million random lines, on every line of the
+# repository's tracked files and of the local crawl, and on mutated copies of each
+# line that holds a keyword.
+# ---------------------------------------------------------------------------
+
+_KELVIN = chr(0x212A)  # case-folds to "k", so it spells KEY under re.IGNORECASE
+_NBSP = chr(0xA0)  # \s, so it separates like a space
+
+_ORIGINAL_PATTERNS_RETURNED = [
+    (
+        "an env assignment",
+        "SESSION_SECRET=aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7",
+        [("SESSION_SECRET", "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7")],
+    ),
+    ("export", "export API_KEY=abcdefghijklmnop1234", [("API_KEY", "abcdefghijklmnop1234")]),
+    ("spaces around the equals sign", "API_KEY = abcdefghijklmnop1234", [("API_KEY", "abcdefghijklmnop1234")]),
+    (
+        "a JSON object with two pairs",
+        '{"api_key": "abcdefghijklmnop", "token": "qrstuvwxyz012345"}',
+        [("api_key", "abcdefghijklmnop"), ("token", "qrstuvwxyz012345")],
+    ),
+    ("compact JSON", '{"password":"hunter2hunter2hunter2"}', [("password", "hunter2hunter2hunter2")]),
+    (
+        "single quotes, read both quoted and bare",
+        "credential = 'abcdefghijklmnop1234'",
+        [("credential", "abcdefghijklmnop1234"), ("credential", "'abcdefghijklmnop1234'")],
+    ),
+    ("mixed quotes", "\"KEY\": 'abcdefghijklmnop'", [("KEY", "abcdefghijklmnop")]),
+    (
+        "a Python call: the bare read runs to the next space",
+        "client = Client(api_key=\"abcdefghijklmnop\", secret='qrstuvwxyz012345')",
+        [
+            ("api_key", "abcdefghijklmnop"),
+            ("secret", "qrstuvwxyz012345"),
+            ("api_key", '"abcdefghijklmnop",'),
+            ("secret", "'qrstuvwxyz012345')"),
+        ],
+    ),
+    (
+        "a query string: the value runs to the next space",
+        "https://example.test/cb?next=1&api_key=abcdefghijklmnop1234&x=2",
+        [("api_key", "abcdefghijklmnop1234&x=2")],
+    ),
+    ("a name inside an earlier value", "FOO=KEY=abcdefghijklmnop1234", [("KEY", "abcdefghijklmnop1234")]),
+    (
+        "a keyword inside a quoted value",
+        'X_TOKEN="see KEY=abcdefghijklmnop for details"',
+        [("X_TOKEN", "see KEY=abcdefghijklmnop for details"), ("X_TOKEN", '"see'), ("KEY", "abcdefghijklmnop")],
+    ),
+    ("no value", "API_KEY=", []),
+    ("no value, trailing space", "API_KEY= ", []),
+    ("empty quotes", 'API_KEY=""', [("API_KEY", '""')]),
+    ("an unterminated quote", 'API_KEY="abcdefghijklmnop', [("API_KEY", '"abcdefghijklmnop')]),
+    ("a doubled equals sign", "API_KEY==abcdefghijklmnop", [("API_KEY", "=abcdefghijklmnop")]),
+    ("YAML, unquoted: not read", "api_key: abcdefghijklmnop1234", []),
+    ("YAML, quoted", 'api_key: "abcdefghijklmnop1234"', [("api_key", "abcdefghijklmnop1234")]),
+    (
+        "TOML",
+        'secret_key = "abcdefghijklmnop1234"',
+        [("secret_key", "abcdefghijklmnop1234"), ("secret_key", '"abcdefghijklmnop1234"')],
+    ),
+    (
+        "mixed case names",
+        "Api_Key=abcdefghijklmnop1234 PassWord=qrstuvwxyz0123456",
+        [("Api_Key", "abcdefghijklmnop1234"), ("PassWord", "qrstuvwxyz0123456")],
+    ),
+    ("a keyword inside a longer name", "MY_SECRETS_FILE=/etc/app/secrets.json", [("MY_SECRETS_FILE", "/etc/app/secrets.json")]),
+    (
+        "a name with three keywords",
+        'KEY_TOKEN_SECRET="abcdefghijklmnop"',
+        [("KEY_TOKEN_SECRET", "abcdefghijklmnop"), ("KEY_TOKEN_SECRET", '"abcdefghijklmnop"')],
+    ),
+    ("tabs around the equals sign", "PASSWORD\t=\tabcdefghijklmnop1234", [("PASSWORD", "abcdefghijklmnop1234")]),
+    (
+        "no-break spaces around the equals sign",
+        "PASSWORD" + _NBSP + "=" + _NBSP + "abcdefghijklmnop1234",
+        [("PASSWORD", "abcdefghijklmnop1234")],
+    ),
+    ("no keyword at all", "PORT=8080 HOST=localhost", []),
+    ("a keyword and no assignment", "the api key is abcdefghijklmnop1234", []),
+    ("a quoted name and a quoted value", "'TOKEN'='abcdefghijklmnop1234'", [("TOKEN", "abcdefghijklmnop1234")]),
+    ("spaces around a colon", '"token" : "abcdefghijklmnop"', [("token", "abcdefghijklmnop")]),
+    (
+        "a Kelvin sign spelling the keyword",
+        _KELVIN + "EY=abcdefghijklmnop1234",
+        [(_KELVIN + "EY", "abcdefghijklmnop1234")],
+    ),
+    ("a non-ASCII letter in the name", "clé_token=abcdefghijklmnop", [("clé_token", "abcdefghijklmnop")]),
+    (
+        "two bare pairs",
+        "TOKEN=aaaaaaaaaaaaaaaaaaaa KEY=bbbbbbbbbbbbbbbbbbbb",
+        [("TOKEN", "aaaaaaaaaaaaaaaaaaaa"), ("KEY", "bbbbbbbbbbbbbbbbbbbb")],
+    ),
+    ("text after a closing quote", 'TOKEN="abc"def', [("TOKEN", "abc"), ("TOKEN", '"abc"def')]),
+    (
+        "nested JSON",
+        '{"auth": {"token": "abcdefghijklmnop", "secret": "qrstuvwxyz"}}',
+        [("token", "abcdefghijklmnop"), ("secret", "qrstuvwxyz")],
+    ),
+    ("a variable reference", "TOKEN=$TOKEN_VALUE_FROM_ENV", [("TOKEN", "$TOKEN_VALUE_FROM_ENV")]),
+    ("equals signs inside the value", "API_KEY=abc=def==", [("API_KEY", "abc=def==")]),
+    ("a bare keyword", "KEY", []),
+    (
+        "a closing quote that opens the next name",
+        'KEY="abcdefghijklmnop"SECRET="qrstuvwxyz012345"',
+        [
+            ("KEY", "abcdefghijklmnop"),
+            ("SECRET", "qrstuvwxyz012345"),
+            ("KEY", '"abcdefghijklmnop"SECRET="qrstuvwxyz012345"'),
+        ],
+    ),
+    ("a quote between name and separator", 'KEY"="abcdefghijklmnop"', [("KEY", "abcdefghijklmnop")]),
+    ("colon then equals", 'KEY:="abcdefghijklmnop"', []),
+]
+
+
+@pytest.mark.parametrize(
+    ("line", "pairs"),
+    [(line, pairs) for _label, line, pairs in _ORIGINAL_PATTERNS_RETURNED],
+    ids=[label for label, _line, _pairs in _ORIGINAL_PATTERNS_RETURNED],
+)
+def test_the_linear_reader_returns_what_the_original_patterns_returned(
+    line: str, pairs: list[tuple[str, str]]
+) -> None:
+    assert _secret_assignments(line) == pairs
+
+
+_HIGH_ENTROPY = "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7"
+
+# 200 KB lines. Most are, or contain, one long run of word characters, the shape the
+# original patterns could not take. The rest are shapes a rewrite could get wrong: a
+# gap before and after the equals sign, many names each followed by a value, quotes
+# that never close, a value as long as the line.
+_CRAFTED_LINES = [
+    ("word characters", "a" * 200_000),
+    ("word characters then a keyword", "a" * 200_000 + "KEY"),
+    ("keywords back to back", "KEY" * 70_000),
+    ("a name then a long gap", "KEY" + " " * 200_000),
+    ("a gap before and after the equals sign", "KEY" + " " * 100_000 + "=" + " " * 100_000 + "x" * 20),
+    ("names each followed by a value", "KEY=v " * 33_000),
+    ("names each followed by an opening quote", 'KEY="' * 40_000),
+    ("one value as long as the line", "KEY=" + "x" * 200_000),
+    ("a quoted value that never closes", 'KEY="' + "x" * 200_000),
+    ("non-ASCII word characters", "é" * 200_000),
+    ("an underscore run", "github_pat_" * 18_000),
+]
+_CRAFTED_IDS = [label for label, _line in _CRAFTED_LINES]
+
+
+@pytest.mark.parametrize("line", [line for _label, line in _CRAFTED_LINES], ids=_CRAFTED_IDS)
+def test_the_linear_reader_takes_a_200_kb_line_in_linear_time(line: str) -> None:
+    """About 20 minutes per case with the original patterns, tens of milliseconds now.
+    The bound is far above that so a slow runner cannot trip it."""
+    started = time.perf_counter()
+    _secret_assignments(line)
+    assert time.perf_counter() - started < 10.0
+
+
+@pytest.mark.parametrize("line", [line for _label, line in _CRAFTED_LINES], ids=_CRAFTED_IDS)
+def test_scanning_a_200_kb_line_is_linear(tmp_path: Path, line: str) -> None:
+    (tmp_path / "blob.json").write_text(line, encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 10.0
+
+
+def test_a_secret_at_the_end_of_a_200_kb_line_is_still_found(tmp_path: Path) -> None:
+    line = "a" * 200_000 + " SESSION_SECRET=" + _HIGH_ENTROPY
+    (tmp_path / "app.cfg").write_text(line + "\n", encoding="utf-8")
+    started = time.perf_counter()
+
+    findings, _ = scan(tmp_path)
+
+    (hit,) = _hits(findings, "AAK-SECRET-004")
+    assert hit.line_number == 1
+    assert hit.evidence.startswith("SESSION_SECRET = (high entropy value")
+    assert time.perf_counter() - started < 10.0

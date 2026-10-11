@@ -124,6 +124,99 @@ class LineIndex:
         return bisect_right(self._starts, offset)
 
 
+# AAK-SECRET-004 reads two shapes, each a secret-looking name followed by a value:
+#
+#   "NAME": "value"  or  NAME = 'value'    a quoted value after ":" or "=" (either quote
+#                                          may close it), the name optionally quoted
+#   NAME=value                             everything up to the next whitespace
+#
+# where NAME is a run of word characters that contains SECRET, PASSWORD, TOKEN, KEY,
+# CREDENTIAL or API_KEY in any case (``SECRET_KEY_NAMES``).
+#
+# These were two ``re.findall`` patterns that opened ``\w*(?:SECRET|...)\w*``. Run from
+# every start position along a long stretch of word characters with no "=" after it,
+# the leading ``\w*`` reached the end of the stretch and backed off one character at a
+# time looking for a keyword, so the time grew with the square of the line: 3.4 s for
+# a 10 KB line, 13.7 s for 20 KB, 54 s for 40 KB, and hours at the 1 MB file limit. Any
+# repository under scan could stall a run with one crafted line.
+#
+# Nothing in the grammar needs that backtracking. A name is a whole run of word
+# characters (a keyword can sit anywhere in it, and the character after it is never a
+# word character), and every step after it is a class that cannot overlap the next
+# token: whitespace, then "=" or ":", then whitespace, then a quote or a non-space.
+# So the line is cut into word runs once, each run is tested for a keyword, and what
+# follows is read with a class that always matches and so cannot backtrack. The
+# patterns below are single classes for that reason; none is followed by a token that
+# could make it give characters back. Like ``findall``, a read resumes where the last
+# one ended, so a name inside an earlier value is not read again.
+_WORD_RUN = re.compile(r"\w+")
+_SPACE_RUN = re.compile(r"\s*")
+_NON_SPACE_RUN = re.compile(r"\S*")
+_NON_QUOTE_RUN = re.compile(r"""[^"']*""")
+_QUOTES = frozenset("\"'")
+_ASSIGNERS = frozenset(":=")
+
+
+def _run_end(pattern: re.Pattern[str], line: str, at: int) -> int:
+    """Where the run ``pattern`` reads from ``at`` ends. Each pattern passed in is one class
+    followed by ``*``, so it always matches, if only the empty run."""
+    match = pattern.match(line, at)
+    return match.end() if match else at
+
+
+def _bare_value(line: str, at: int) -> tuple[str, int] | None:
+    """``\\s*=\\s*(\\S+)`` read at ``at``: the value and where it ends, or None."""
+    i = _run_end(_SPACE_RUN, line, at)
+    if line[i : i + 1] != "=":
+        return None
+    start = _run_end(_SPACE_RUN, line, i + 1)
+    end = _run_end(_NON_SPACE_RUN, line, start)
+    return (line[start:end], end) if end > start else None
+
+
+def _quoted_value(line: str, at: int) -> tuple[str, int] | None:
+    """``["']?\\s*[:=]\\s*["']([^"']+)["']`` read at ``at``: the value and where it ends, or None."""
+    i = at + 1 if line[at : at + 1] in _QUOTES else at
+    i = _run_end(_SPACE_RUN, line, i)
+    if line[i : i + 1] not in _ASSIGNERS:
+        return None
+    i = _run_end(_SPACE_RUN, line, i + 1)
+    if line[i : i + 1] not in _QUOTES:
+        return None
+    close = _run_end(_NON_QUOTE_RUN, line, i + 1)
+    # Empty, or no quote left on the line to close it
+    if close == i + 1 or close >= len(line):
+        return None
+    return line[i + 1 : close], close + 1
+
+
+def _secret_assignments(line: str) -> list[tuple[str, str]]:
+    """``(name, value)`` for each secret-looking assignment on one line.
+
+    The quoted shape comes first, then the bare one, each in line order: the order the
+    two patterns this replaces were applied in. A line can yield the same assignment
+    in both shapes (``SECRET_KEY="..."`` is quoted and also runs to the next space).
+    """
+    quoted: list[tuple[str, str]] = []
+    bare: list[tuple[str, str]] = []
+    quoted_from = bare_from = 0
+    for word in _WORD_RUN.finditer(line):
+        start, end = word.span()
+        if not SECRET_KEY_NAMES.search(line, start, end):
+            continue
+        if start >= quoted_from:
+            found = _quoted_value(line, end)
+            if found is not None:
+                quoted.append((word.group(), found[0]))
+                quoted_from = found[1]
+        if start >= bare_from:
+            found = _bare_value(line, end)
+            if found is not None:
+                bare.append((word.group(), found[0]))
+                bare_from = found[1]
+    return quoted + bare
+
+
 def _should_scan_file(path: Path) -> bool:
     name = path.name
     suffix = path.suffix.lower()
@@ -215,26 +308,24 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
 
     # AAK-SECRET-004: Generic high-entropy secrets
     for line_num, line in enumerate(content.splitlines(), 1):
+        # Most lines name nothing secret-looking; one pass tells them apart
+        if not SECRET_KEY_NAMES.search(line):
+            continue
         # Look for KEY=VALUE or "KEY": "VALUE" patterns
-        kv_patterns = [
-            re.findall(r'["\']?(\w*(?:SECRET|PASSWORD|TOKEN|KEY|CREDENTIAL|API_KEY)\w*)["\']?\s*[:=]\s*["\']([^"\']+)["\']', line, re.IGNORECASE),
-            re.findall(r'(\w*(?:SECRET|PASSWORD|TOKEN|KEY|CREDENTIAL|API_KEY)\w*)\s*=\s*(\S+)', line, re.IGNORECASE),
-        ]
-        for matches in kv_patterns:
-            for key, value in matches:
-                # Skip variable references and short values
-                if value.startswith("${") or value.startswith("$") or len(value) < 16:
-                    continue
-                # Skip common non-secret values
-                if value.lower() in ("true", "false", "null", "none", "undefined"):
-                    continue
-                entropy = _shannon_entropy(value)
-                if entropy > 4.5:
-                    findings.append(_make_finding(
-                        "AAK-SECRET-004", rel_path,
-                        f"{key} = (high entropy value, Shannon entropy: {entropy:.2f})",
-                        line_num,
-                    ))
+        for key, value in _secret_assignments(line):
+            # Skip variable references and short values
+            if value.startswith("${") or value.startswith("$") or len(value) < 16:
+                continue
+            # Skip common non-secret values
+            if value.lower() in ("true", "false", "null", "none", "undefined"):
+                continue
+            entropy = _shannon_entropy(value)
+            if entropy > 4.5:
+                findings.append(_make_finding(
+                    "AAK-SECRET-004", rel_path,
+                    f"{key} = (high entropy value, Shannon entropy: {entropy:.2f})",
+                    line_num,
+                ))
 
     # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files)
     if file_path.suffix == ".json" and file_path.name != ".mcp.json":
