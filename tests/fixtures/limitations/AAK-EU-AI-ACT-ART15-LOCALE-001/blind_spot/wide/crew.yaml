@@ -1,0 +1,5 @@
+name: support-bot
+role: assistant
+user_facing: true
+multilingual: true
+default_locale: en

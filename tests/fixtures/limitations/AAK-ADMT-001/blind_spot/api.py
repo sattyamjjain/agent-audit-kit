@@ -1,6 +1,4 @@
-from fastapi import FastAPI
-
-app = FastAPI()
+from lender.web import app
 
 
 @app.post("/score")

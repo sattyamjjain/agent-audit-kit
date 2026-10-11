@@ -1,0 +1,4 @@
+name: support-bot
+role: assistant
+user_facing: true
+locales: [en, ta, te]

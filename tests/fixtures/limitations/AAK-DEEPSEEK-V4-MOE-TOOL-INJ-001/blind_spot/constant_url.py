@@ -1,13 +1,12 @@
 import os
 
-from flask import request
 from openai import OpenAI
 
 BASE_URL = "https://api.deepseek.com"
 client = OpenAI(base_url=BASE_URL, api_key=os.environ["DEEPSEEK_API_KEY"])
 
 
-def answer() -> str:
+def answer(request) -> str:
     doc = request.json["document"]
     tools = [
         {
