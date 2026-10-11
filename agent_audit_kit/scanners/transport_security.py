@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    iter_mcp_servers,
+    make_finding,
+)
 
 # ---- MCP config file discovery (mirrors mcp_config.py) ----
 _MCP_CONFIG_FILES: list[str] = [
@@ -176,14 +181,11 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        servers = data.get("mcpServers", {})
-        if not isinstance(servers, dict):
-            continue
-
-        for server_name, server_cfg in servers.items():
-            if isinstance(server_cfg, dict):
-                findings.extend(
-                    _check_server(server_name, server_cfg, rel_path, raw_text)
-                )
+        # `mcpServers`, and VS Code's `servers`, which this read past until
+        # mcp_server_maps: a cleartext VS Code server came back clean.
+        for server_name, server_cfg in iter_mcp_servers(data):
+            findings.extend(
+                _check_server(server_name, server_cfg, rel_path, raw_text)
+            )
 
     return findings, scanned_files

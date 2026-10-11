@@ -1,8 +1,0 @@
-{
-  "servers": {
-    "srv": {
-      "type": "stdio",
-      "command": "my-mcp-server"
-    }
-  }
-}

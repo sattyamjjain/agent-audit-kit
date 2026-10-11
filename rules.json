@@ -2719,7 +2719,7 @@
       "cve_references": [],
       "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom X-*-Key / *-API-Key credential-header family, and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. Unauthenticated remote servers can be MITM'd or spoofed.",
       "incident_references": [],
-      "limitations": "Reads the `url` field of each server in `mcpServers` and looks for an `Authorization`, `Bearer`, `X-API-Key` or `API-Key` header, or for one of a fixed family of custom credential headers (`X-*-Key`, `X-*-Token` but not `X-CSRF-Token` or `X-XSRF-Token`, `X-*-Secret`, `*-API-Key`, `*-API-Token`, `*-Access-Key`, `*-Client-Secret`, `ApiKey`, `X-Auth-Token`, `X-Access-Token`, `X-Payment`) whose value is empty or blank, or contains a `${VAR}`, `$VAR`, `{{VAR}}`, `<VAR>` or `%VAR%` reference, your, change-me (also change_me and change me), changeme, placeholder, redacted, dummy or four x's anywhere, `_here` at the end of a word, or example or sample as a whole word (an underscore joins words, so `example_key` does not count); `\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared scheme. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Reads the `url` field of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and looks for an `Authorization`, `Bearer`, `X-API-Key` or `API-Key` header, or for one of a fixed family of custom credential headers (`X-*-Key`, `X-*-Token` but not `X-CSRF-Token` or `X-XSRF-Token`, `X-*-Secret`, `*-API-Key`, `*-API-Token`, `*-Access-Key`, `*-Client-Secret`, `ApiKey`, `X-Auth-Token`, `X-Access-Token`, `X-Payment`) whose value is empty or blank, or contains a `${VAR}`, `$VAR`, `{{VAR}}`, `<VAR>` or `%VAR%` reference, your, change-me (also change_me and change me), changeme, placeholder, redacted, dummy or four x's anywhere, `_here` at the end of a word, or example or sample as a whole word (an underscore joins words, so `example_key` does not count); `\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared scheme. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2743,7 +2743,7 @@
       "cve_references": [],
       "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
       "incident_references": [],
-      "limitations": "Looks at the `command` string of servers in `mcpServers` only, for one of the characters | ; & ` $ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`. The same wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by this rule, and neither is a server under `servers` in VS Code's `.vscode/mcp.json`.",
+      "limitations": "Looks only at the `command` string of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, for one of the characters | ; & ` $ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`. The same wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by this rule.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2767,7 +2767,7 @@
       "cve_references": [],
       "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
       "incident_references": [],
-      "limitations": "Reads the `env` block of each server in `mcpServers` and flags a value that is not a bare `${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: Bearer ...`), inside a connection string under another name (`DATABASE_URL=postgres://user:pass@host/db`), or in a server under `servers` in VS Code's `.vscode/mcp.json`, is not matched.",
+      "limitations": "Reads the `env` block of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags a value that is not a bare `${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: Bearer ...`) or inside a connection string under another name (`DATABASE_URL=postgres://user:pass@host/db`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2793,7 +2793,7 @@
       ],
       "description": "More than 10 MCP servers in a single config. Large tool surface increases attack surface.",
       "incident_references": [],
-      "limitations": "Counts the entries of `mcpServers` in one config file and fires above 10. A VS Code `.vscode/mcp.json` keeps its servers under `servers`, which is not read, so any number of them passes.",
+      "limitations": "Counts the entries of one server map (`mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`) in one config file and fires above 10. Servers split across files are not added up: six in `.vscode/mcp.json` and six in the `.mcp.json` beside it, which VS Code's agent host loads together, pass.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2801,7 +2801,7 @@
       "owasp_mcp_references": [
         "MCP02:2025"
       ],
-      "remediation": "Remove the servers this project does not use until `mcpServers` lists 10 or fewer. The rule counts the entries in each config file and fires above 10.",
+      "remediation": "Remove the servers this project does not use until each server map, `mcpServers` or VS Code's `servers`, lists 10 or fewer. The rule counts each map on its own and fires above 10.",
       "rule_id": "AAK-MCP-004",
       "sarif_name": "ExcessiveMcpServers",
       "severity": "high",
@@ -2817,7 +2817,7 @@
       "cve_references": [],
       "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
       "incident_references": [],
-      "limitations": "Fires when the first word of `command` is npx, uvx, bunx or pnpx. The same fetch through another launcher is not matched: `pnpm dlx`, `pipx run`, `cmd /c npx`, or an absolute path such as `/usr/local/bin/npx`. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Fires when the first word of `command` is npx, uvx, bunx or pnpx. The same fetch through another launcher is not matched: `pnpm dlx`, `pipx run`, `cmd /c npx`, or an absolute path such as `/usr/local/bin/npx`.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2841,7 +2841,7 @@
       "cve_references": [],
       "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
       "incident_references": [],
-      "limitations": "Fires on a `command` that is not an absolute path, except for a fixed list of common launchers (node, python, python3, npx, uvx, bunx, pnpx, docker, deno, bun, cargo, go, java, ruby). Those are resolved through PATH in the same way and are never reported. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Fires on a `command` that is not an absolute path, except for a fixed list of common launchers (node, python, python3, npx, uvx, bunx, pnpx, docker, deno, bun, cargo, go, java, ruby). Those are resolved through PATH in the same way and are never reported.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2865,7 +2865,7 @@
       "cve_references": [],
       "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions. Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
       "incident_references": [],
-      "limitations": "Looks for a package argument after npx, uvx, bunx or pnpx that has no `@version` suffix. Any suffix counts as a pin, including the floating tag `@latest`. The same package fetched through `cmd /c npx`, or declared in VS Code's `.vscode/mcp.json` (servers under `servers`), is not checked.",
+      "limitations": "Looks for a package argument after npx, uvx, bunx or pnpx that has no `@version` suffix. Any suffix counts as a pin, including the floating tag `@latest`. The same package fetched through `cmd /c npx` is not checked.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2889,7 +2889,7 @@
       "cve_references": [],
       "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
       "incident_references": [],
-      "limitations": "Reads the `headersHelper` field of servers under `mcpServers` in `.mcp.json`, `.cursor/mcp.json`, `.continue/config.json`, `.gemini/settings.json` and other `*mcp*.json` files. Servers declared inline in a Claude Code plugin manifest (`.claude-plugin/plugin.json`) are not read.",
+      "limitations": "Reads the `headersHelper` field of servers under `mcpServers` (or `servers`) in `.mcp.json`, `.cursor/mcp.json`, `.continue/config.json`, `.gemini/settings.json` and other `*mcp*.json` files. Servers declared inline in a Claude Code plugin manifest (`.claude-plugin/plugin.json`) are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2913,7 +2913,7 @@
       "cve_references": [],
       "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
       "incident_references": [],
-      "limitations": "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, 172.16-31.x and 192.168.x ranges and a `.local` name. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, 172.16-31.x and 192.168.x ranges and a `.local` name. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -2935,7 +2935,7 @@
       "cve_references": [],
       "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
       "incident_references": [],
-      "limitations": "Fires when an argument is exactly `/`, `~`, `/home`, `/Users`, `/etc` or `/var`. A home directory written as a specific path (`/Users/alice`), as `~/` or as `${HOME}` is not matched. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Fires when an argument is exactly `/`, `~`, `/home`, `/Users`, `/etc` or `/var`. A home directory written as a specific path (`/Users/alice`), as `~/` or as `${HOME}` is not matched.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3724,7 +3724,7 @@
       "incident_references": [
         "arXiv:2605.24248"
       ],
-      "limitations": "Fires on a `mcpServers` entry with a `command` or `url` that has none of 13 attestation keys (`attestation`, `clearance`, `clearance_url`, `clearance_uri`, `clearance_document`, `clearancedocument`, `mcp_clearance`, `wellknown_clearance`, `well_known_clearance`, `trust_root`, `trustroot`, `trust_anchor`, `pinned_trust_root`; any case, `-` for `_`) and no header named like `MCP-Clearance` or `MCP-Attestation`. A key only has to exist: `\"attestation\": \"\"` satisfies it, a top-level `trust_root` key silences every server in the file, and so does the text `.well-known/mcp-clearance` anywhere in the file; no clearance document or trust root is ever checked. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Fires on an entry of `mcpServers` (or `servers` in VS Code's `.vscode/mcp.json`) with a `command` or `url` that has none of 13 attestation keys (`attestation`, `clearance`, `clearance_url`, `clearance_uri`, `clearance_document`, `clearancedocument`, `mcp_clearance`, `wellknown_clearance`, `well_known_clearance`, `trust_root`, `trustroot`, `trust_anchor`, `pinned_trust_root`; any case, `-` for `_`) and no header named like `MCP-Clearance` or `MCP-Attestation`. A key only has to exist: `\"attestation\": \"\"` satisfies it, a top-level `trust_root` key silences every server in the file, and so does the text `.well-known/mcp-clearance` anywhere in the file; no clearance document or trust root is ever checked.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4211,7 +4211,7 @@
       "cve_references": [],
       "description": "An `mcpServers` entry declares a field whose type does not match the MCP client schema -- most often `args` as a scalar instead of a list of strings. Clients disagree about what to do with it: some coerce, some ignore the field, some refuse to start the server. A config that one client launches and another silently drops is a security fact, not a cosmetic one, because the reviewed configuration and the running configuration stop being the same thing. AAK's own composition pass crashed on `\"args\": 42` (issue #743), which is how this was found: the scan reported a clean project because the scanner that would have objected died before it could.",
       "incident_references": [],
-      "limitations": "Checks the JSON type of `args`, `command`, `env` and `url` on each entry of an `mcpServers` object. A config whose `mcpServers` is an array, a server entry that is a bare string, a wrong-typed `headersHelper`, and any server under `servers` in VS Code's `.vscode/mcp.json` are skipped without a finding.",
+      "limitations": "Checks the JSON type of `args`, `command`, `env` and `url` on each entry of an `mcpServers` object, or of the `servers` object in VS Code's `.vscode/mcp.json`. A config whose `mcpServers` is an array, a server entry that is a bare string, and a wrong-typed `headersHelper` are skipped without a finding.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -10544,7 +10544,7 @@
       ],
       "description": "An MCP server URL uses a cleartext scheme, exposing all traffic including credentials to interception. **Applies to: `http://` and `ws://`.** A `ws://` handshake is an unencrypted HTTP upgrade, so it is the same defect and not a milder one -- the handshake headers and every frame after them are on the wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), or `stdio` (no URL, no network hop).** Loopback URLs (`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) are excluded on either scheme, since the traffic does not leave the host.",
       "incident_references": [],
-      "limitations": "Reads the `url` field of each server under `mcpServers` and flags `http://` and `ws://` unless the host is localhost, 127.0.0.1, 0.0.0.0 or ::1. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Reads the `url` field of each server under `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is localhost, 127.0.0.1, 0.0.0.0 or ::1. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -10570,7 +10570,7 @@
       "cve_references": [],
       "description": "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, enabling MITM attacks. **Applies to: every TLS-bearing transport -- `https://`, `wss://`, and TLS-wrapped SSE/Streamable HTTP.** The setting is read from the server's `env` block rather than its URL, so it is transport-independent: it disables peer verification for whatever the process connects to. **Does not apply to: `stdio`** (no TLS peer to verify).",
       "incident_references": [],
-      "limitations": "Matches `NODE_TLS_REJECT_UNAUTHORIZED=0` and any `SSL_CERT_FILE` in the `env` block of a server under `mcpServers`. Other switches that turn certificate checking off, such as `NPM_CONFIG_STRICT_SSL=false`, are not read. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Matches `NODE_TLS_REJECT_UNAUTHORIZED=0` and any `SSL_CERT_FILE` in the `env` block of a server under `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`. Other switches that turn certificate checking off, such as `NPM_CONFIG_STRICT_SSL=false`, are not read.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -10596,7 +10596,7 @@
       "cve_references": [],
       "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP. **Applies to: `sse` only** -- matched from an explicit `\"transport\": \"sse\"` or a `/sse` path in the URL. **Does not apply to: `stdio`, `http`/`streamable-http`, or `ws`/`wss`.** WebSocket is a different transport, not a deprecated one: it is outside this rule rather than silently passing it.",
       "incident_references": [],
-      "limitations": "Fires on a server whose `url` contains `/sse` as a whole word (`/sse_events` does not count) or whose `transport` key is `sse`. A server declared with `\"type\": \"sse\"`, the key Claude Code configs use, at a URL without a whole-word `/sse` is not matched. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Fires on a server whose `url` contains `/sse` as a whole word (`/sse_events` does not count) or whose `transport` key is `sse`. A server declared with `\"type\": \"sse\"`, the key Claude Code and VS Code configs use, at a URL without a whole-word `/sse` is not matched.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -10620,7 +10620,7 @@
       "cve_references": [],
       "description": "A session token or API key is passed as a URL query parameter, risking exposure in logs and referrer headers. **Applies to: every URL-bearing transport -- `http`/`https`, `ws`/`wss`, and SSE/Streamable HTTP**, including loopback URLs, since the exposure is the URL being written down (proxy logs, shell history, referrer headers) rather than the hop being observed. A WebSocket handshake URL is logged by the same intermediaries as any other request line. **Does not apply to: `stdio`** (no URL).",
       "incident_references": [],
-      "limitations": "Looks for `?` or `&` followed by token, key, api_key, apikey, secret, auth, access_token or session_token and `=` in the server `url`. Other parameter names (`?api-key=`, `?jwt=`) and a credential carried in the URL path (`/s/abc123/mcp`) are not matched. VS Code's `.vscode/mcp.json` keeps its servers under `servers`, which is not read.",
+      "limitations": "Looks for `?` or `&` followed by token, key, api_key, apikey, secret, auth, access_token or session_token and `=` in the server `url`. Other parameter names (`?api-key=`, `?jwt=`) and a credential carried in the URL path (`/s/abc123/mcp`) are not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],

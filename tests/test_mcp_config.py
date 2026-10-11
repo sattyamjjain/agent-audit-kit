@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
+import pytest
+
+from agent_audit_kit.scanners._helpers import iter_mcp_servers, mcp_server_maps
 from agent_audit_kit.scanners.mcp_config import scan
 
 
@@ -175,3 +180,111 @@ def test_absolute_path_command_not_flagged(tmp_path: Path) -> None:
     findings, _ = scan(tmp_path)
     relative_findings = [f for f in findings if f.rule_id == "AAK-MCP-006"]
     assert len(relative_findings) == 0
+
+
+# ---------------------------------------------------------------------------
+# VS Code's `.vscode/mcp.json` keeps its servers under `servers`, not
+# `mcpServers`. Until mcp_server_maps this scanner read only `mcpServers`, so
+# every rule below passed a VS Code server unread.
+# ---------------------------------------------------------------------------
+
+
+def _write_vscode(root: Path, servers: Any) -> None:
+    vscode = root / ".vscode"
+    vscode.mkdir(exist_ok=True)
+    (vscode / "mcp.json").write_text(json.dumps({"servers": servers}, indent=2), encoding="utf-8")
+
+
+@pytest.mark.parametrize(("rule_id", "server"), [
+    ("AAK-MCP-001", {"type": "http", "url": "https://mcp.example.com/mcp"}),
+    ("AAK-MCP-002", {"type": "stdio", "command": "bash -c 'node server.js'"}),
+    ("AAK-MCP-003", {"type": "stdio", "command": "node", "args": ["s.js"],
+                     "env": {"GITHUB_TOKEN": "example-token-value"}}),
+    ("AAK-MCP-005", {"type": "stdio", "command": "npx", "args": ["-y", "@acme/mcp-server@1.0.0"]}),
+    ("AAK-MCP-006", {"type": "stdio", "command": "my-mcp-server"}),
+    ("AAK-MCP-007", {"type": "stdio", "command": "npx", "args": ["-y", "@acme/mcp-server"]}),
+    ("AAK-MCP-008", {"type": "http", "url": "https://mcp.example.com/mcp", "headersHelper": "./h.sh"}),
+    ("AAK-MCP-009", {"type": "http", "url": "http://192.168.1.20:8080/mcp"}),
+    ("AAK-MCP-010", {"type": "stdio", "command": "npx",
+                     "args": ["-y", "@modelcontextprotocol/server-filesystem@1.0.0", "/"]}),
+    ("AAK-MCP-ATTEST-001", {"type": "stdio", "command": "node", "args": ["docs-server.js"]}),
+    ("AAK-MCP-CONFIG-MALFORMED-001", {"type": "stdio", "command": "node", "args": "server.js"}),
+])
+def test_a_vscode_server_is_read(tmp_path: Path, rule_id: str, server: dict[str, Any]) -> None:
+    _write_vscode(tmp_path, {"srv": server})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == rule_id]
+    assert [f.file_path for f in hits] == [".vscode/mcp.json"]
+
+
+def test_mcp_004_counts_a_vscode_map(tmp_path: Path) -> None:
+    _write_vscode(tmp_path, {f"s{i}": {"command": "node", "args": [f"s{i}.js"]} for i in range(11)})
+    raw = (tmp_path / ".vscode" / "mcp.json").read_text(encoding="utf-8")
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-MCP-004"]
+    assert [f.evidence for f in hits] == ["11 MCP servers declared (threshold: 10)"]
+    assert hits[0].line_number is not None
+    assert raw.splitlines()[hits[0].line_number - 1].strip() == '"servers": {'
+
+
+def test_both_maps_in_one_file_are_read_and_counted_apart(tmp_path: Path) -> None:
+    """A client loads one map of a file, so six and six is not twelve."""
+    config = {
+        "mcpServers": {f"a{i}": {"url": f"https://a{i}.example/mcp"} for i in range(6)},
+        "servers": {f"b{i}": {"url": f"https://b{i}.example/mcp"} for i in range(6)},
+    }
+    (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
+    ids = [f.rule_id for f in scan(tmp_path)[0]]
+    assert ids.count("AAK-MCP-001") == 12
+    assert "AAK-MCP-004" not in ids
+
+
+def test_vscode_input_variables_count_as_references(tmp_path: Path) -> None:
+    """`${input:id}` is VS Code's prompt-for-a-value reference: not a literal
+    secret for AAK-MCP-003, and a declared credential for AAK-MCP-001."""
+    _write_vscode(tmp_path, {
+        "local": {"type": "stdio", "command": "/usr/local/bin/srv", "attestation": "x",
+                  "env": {"PERPLEXITY_API_KEY": "${input:perplexity-key}"}},
+        "remote": {"type": "http", "url": "https://mcp.example.com/mcp", "attestation": "x",
+                   "headers": {"Authorization": "Bearer ${input:api-token}"}},
+    })
+    assert scan(tmp_path)[0] == []
+
+
+def test_a_servers_array_is_not_a_server_map(tmp_path: Path) -> None:
+    """An MCP Registry listing keeps `servers` as an array of records."""
+    listing = {"servers": [{"name": "x", "url": "http://x.example/mcp"}]}
+    (tmp_path / "registry-mcp.json").write_text(json.dumps(listing), encoding="utf-8")
+    assert scan(tmp_path)[0] == []
+
+
+def test_a_nested_server_map_is_not_read(tmp_path: Path) -> None:
+    nested = {"config": {"servers": {"x": {"url": "https://x.example/mcp"}}}}
+    (tmp_path / "tool-mcp.json").write_text(json.dumps(nested), encoding="utf-8")
+    assert scan(tmp_path)[0] == []
+
+
+def test_windsurf_check_keeps_windsurfs_own_key(tmp_path: Path) -> None:
+    """Windsurf reads `mcpServers` only, so a `servers` map there is not its server."""
+    windsurf = tmp_path / ".windsurf"
+    windsurf.mkdir(mode=0o700)
+    (windsurf / "mcp.json").write_text(
+        json.dumps({"servers": {"x": {"command": "/usr/local/bin/srv"}}}), encoding="utf-8"
+    )
+    assert "AAK-WINDSURF-001" not in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:
+    """`data.get` on a JSON array raised AttributeError and failed the scanner."""
+    (tmp_path / ".mcp.json").write_text("[1, 2]", encoding="utf-8")
+    assert scan(tmp_path) == ([], {".mcp.json"})
+
+
+def test_mcp_server_maps_reads_both_keys_at_the_top_only() -> None:
+    data = {
+        "mcpServers": {"a": {}},
+        "servers": {"b": {}, "c": "not an object"},
+        "config": {"mcpServers": {"d": {}}},
+    }
+    assert [key for key, _ in mcp_server_maps(data)] == ["mcpServers", "servers"]
+    assert [name for name, _ in iter_mcp_servers(data)] == ["a", "b"]
+    assert mcp_server_maps({"servers": [{"name": "x"}]}) == []
+    assert mcp_server_maps(["not", "a", "config"]) == []

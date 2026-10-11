@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "p0": {
+      "command": "node",
+      "args": [
+        "p0.js"
+      ]
+    },
+    "p1": {
+      "command": "node",
+      "args": [
+        "p1.js"
+      ]
+    },
+    "p2": {
+      "command": "node",
+      "args": [
+        "p2.js"
+      ]
+    },
+    "p3": {
+      "command": "node",
+      "args": [
+        "p3.js"
+      ]
+    },
+    "p4": {
+      "command": "node",
+      "args": [
+        "p4.js"
+      ]
+    },
+    "p5": {
+      "command": "node",
+      "args": [
+        "p5.js"
+      ]
+    }
+  }
+}

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from agent_audit_kit.scanners.transport_security import scan
 
@@ -255,3 +258,40 @@ def test_empty_mcpservers_block(tmp_path: Path) -> None:
     findings, scanned = scan(tmp_path)
     assert ".mcp.json" in scanned
     assert len(findings) == 0
+
+
+# ---------------------------------------------------------------------------
+# VS Code's `.vscode/mcp.json` keeps its servers under `servers`. This scanner
+# read only `mcpServers` until mcp_server_maps, so a cleartext VS Code server,
+# or one with TLS checking off, came back clean.
+# ---------------------------------------------------------------------------
+
+
+def _write_vscode(root: Path, servers: dict[str, Any]) -> None:
+    vscode = root / ".vscode"
+    vscode.mkdir(exist_ok=True)
+    (vscode / "mcp.json").write_text(json.dumps({"servers": servers}), encoding="utf-8")
+
+
+@pytest.mark.parametrize(("rule_id", "server"), [
+    ("AAK-TRANSPORT-001", {"type": "http", "url": "http://mcp.example.com/mcp"}),
+    ("AAK-TRANSPORT-002", {"type": "stdio", "command": "node", "args": ["server.js"],
+                           "env": {"NODE_TLS_REJECT_UNAUTHORIZED": "0"}}),
+    ("AAK-TRANSPORT-003", {"type": "sse", "url": "https://mcp.example.com/sse"}),
+    ("AAK-TRANSPORT-004", {"type": "http", "url": "https://mcp.example.com/mcp?token=abc123"}),
+])
+def test_a_vscode_server_is_read(tmp_path: Path, rule_id: str, server: dict[str, Any]) -> None:
+    _write_vscode(tmp_path, {"x": server})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == rule_id]
+    assert [f.file_path for f in hits] == [".vscode/mcp.json"]
+
+
+def test_a_loopback_vscode_server_is_not_cleartext(tmp_path: Path) -> None:
+    _write_vscode(tmp_path, {"x": {"type": "http", "url": "http://localhost:3000/mcp"}})
+    assert scan(tmp_path)[0] == []
+
+
+def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:
+    """`data.get` on a JSON array raised AttributeError and failed the scanner."""
+    (tmp_path / ".mcp.json").write_text("[1, 2]", encoding="utf-8")
+    assert scan(tmp_path) == ([], {".mcp.json"})

@@ -7,7 +7,12 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+    mcp_server_maps,
+)
 from agent_audit_kit.scanners._launchers import launch_evidence
 
 # Patterns for secret-like keys in MCP server env blocks
@@ -368,31 +373,38 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
 
         rel_path = str(config_path.relative_to(project_root)) if config_path.is_relative_to(project_root) else str(config_path)
         scanned_files.add(rel_path)
-        servers = data.get("mcpServers", {})
-        if not isinstance(servers, dict):
+        if not isinstance(data, dict):
             continue
 
-        # AAK-MCP-004: Excessive server count
-        if len(servers) > 10:
-            findings.append(_make_finding(
-                "AAK-MCP-004", rel_path,
-                f"{len(servers)} MCP servers declared (threshold: 10)",
-                _find_line_number(raw_text, "mcpServers"),
-            ))
+        # Every server map in the file: `mcpServers`, and VS Code's `servers`,
+        # which went unread until mcp_server_maps (see its docstring).
+        for container, servers in mcp_server_maps(data):
+            # AAK-MCP-004: Excessive server count, per map, since a client loads
+            # one map of a file and not both.
+            if len(servers) > 10:
+                findings.append(_make_finding(
+                    "AAK-MCP-004", rel_path,
+                    f"{len(servers)} MCP servers declared (threshold: 10)",
+                    _find_line_number(raw_text, f'"{container}"'),
+                ))
 
-        for server_name, server_cfg in servers.items():
-            if isinstance(server_cfg, dict):
-                findings.extend(_check_malformed_fields(server_name, server_cfg, rel_path, raw_text))
-                findings.extend(_check_server(server_name, server_cfg, rel_path, raw_text))
+            for server_name, server_cfg in servers.items():
+                if isinstance(server_cfg, dict):
+                    findings.extend(_check_malformed_fields(server_name, server_cfg, rel_path, raw_text))
+                    findings.extend(_check_server(server_name, server_cfg, rel_path, raw_text))
 
-        # AAK-MCP-ATTEST-001: Servers admitted without attestation
-        # (no signed clearance / well-known URI / pinned trust root).
-        # Reference: Metere 2026, arXiv:2605.24248 — Attested Tool-Server Admission.
-        findings.extend(_check_attestation(data, servers, rel_path, raw_text))
+            # AAK-MCP-ATTEST-001: Servers admitted without attestation
+            # (no signed clearance / well-known URI / pinned trust root).
+            # Reference: Metere 2026, arXiv:2605.24248 — Attested Tool-Server Admission.
+            findings.extend(_check_attestation(data, servers, rel_path, raw_text))
 
-        # AAK-WINDSURF-001: Windsurf-specific hardening (CVE-2026-30615)
-        if _is_windsurf_config(config_path):
-            findings.extend(_check_windsurf_registration(data, servers, config_path, rel_path, raw_text))
+        # AAK-WINDSURF-001: Windsurf-specific hardening (CVE-2026-30615). Windsurf
+        # reads `mcpServers` and nothing else, so this check keeps that key, and
+        # its old gate: an absent map still checks the file-level flags, a
+        # non-object one skips the file.
+        windsurf_servers = data.get("mcpServers", {})
+        if _is_windsurf_config(config_path) and isinstance(windsurf_servers, dict):
+            findings.extend(_check_windsurf_registration(data, windsurf_servers, config_path, rel_path, raw_text))
 
     return findings, scanned_files
 

@@ -1,8 +1,0 @@
-{
-  "servers": {
-    "x": {
-      "type": "http",
-      "url": "http://mcp.example.com/mcp"
-    }
-  }
-}

@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_audit_kit.scanners._helpers import iter_hook_handlers
+from agent_audit_kit.scanners._helpers import iter_hook_handlers, mcp_server_maps
 
 
 @dataclass
@@ -124,11 +124,13 @@ def discover_agents(
                     except (json.JSONDecodeError, OSError):
                         continue
 
-                    # Count MCP servers from mcp config files
+                    # Count MCP servers from mcp config files, under either key:
+                    # VS Code's `.vscode/mcp.json` uses `servers`, so reading
+                    # only `mcpServers` reported every VS Code workspace as 0.
                     if "mcp" in fp.name.lower():
-                        servers = data.get("mcpServers", {})
-                        if isinstance(servers, dict):
-                            agent.mcp_server_count += len(servers)
+                        agent.mcp_server_count += sum(
+                            len(servers) for _, servers in mcp_server_maps(data)
+                        )
 
                     # Count hooks from known hook config files
                     rel_path = str(fp.relative_to(project_root))

@@ -116,9 +116,14 @@ CASES: list[Case] = [
     Case("mcp-003 literal secret", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "abc123"}}}), True),
     Case("mcp-003 bare $NAME is not accepted", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "$API_KEY"}}}), True),
     Case("mcp-003 ${NAME}", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "${API_KEY}"}}}), False),
-    # ---- AAK-MCP-004: fires above 10 servers per config -------------------
+    # ---- AAK-MCP-004: fires above 10 servers per server map ---------------
     Case("mcp-004 eleven servers", "AAK-MCP-004", mcp_config, _mcp({f"s{i}": {"command": "node"} for i in range(11)}), True),
     Case("mcp-004 ten servers", "AAK-MCP-004", mcp_config, _mcp({f"s{i}": {"command": "node"} for i in range(10)}), False),
+    Case(
+        "mcp-004 eleven VS Code servers", "AAK-MCP-004", mcp_config,
+        {".vscode/mcp.json": json.dumps({"servers": {f"s{i}": {"command": "node"} for i in range(11)}})},
+        True,
+    ),
     # ---- AAK-MCP-005: pinning does not clear it, leaving npx does ---------
     Case("mcp-005 npx", "AAK-MCP-005", mcp_config, _mcp({"s": {"command": "npx", "args": ["-y", "pkg"]}}), True),
     Case("mcp-005 npx with a pinned version", "AAK-MCP-005", mcp_config, _mcp({"s": {"command": "npx", "args": ["-y", "pkg@1.2.3"]}}), True),

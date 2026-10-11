@@ -130,6 +130,43 @@ def make_finding(
     )
 
 
+#: The keys an MCP client config keeps its server map under. `mcpServers` is the
+#: key of Claude Code, Cursor, Windsurf, Gemini CLI and most other clients; VS
+#: Code's `.vscode/mcp.json` keeps the same map under `servers`.
+MCP_SERVER_KEYS: tuple[str, ...] = ("mcpServers", "servers")
+
+
+def mcp_server_maps(data: object) -> list[tuple[str, dict[str, Any]]]:
+    """Return ``(key, servers)`` for each server map at the top of an MCP config.
+
+    A scanner that read only ``mcpServers`` passed every server in a VS Code
+    ``.vscode/mcp.json`` unread, so a cleartext URL, a literal token or an
+    unpinned ``npx`` package there came back clean. This is the one place that
+    knows both keys; ``mcp_stdio_launcher`` read both already.
+
+    Only a JSON object counts as a map, and only at the top level: a ``servers``
+    array (an MCP Registry listing) is not one, and neither is a map nested under
+    another key, such as a utcp call template's ``config.mcpServers``
+    (``test_utcp_call_template_is_not_seen_by_the_cleartext_class_rule`` pins
+    that). When a file has both keys each map comes back on its own, because a
+    client loads one of them, not both.
+    """
+    if not isinstance(data, dict):
+        return []
+    return [(key, data[key]) for key in MCP_SERVER_KEYS if isinstance(data.get(key), dict)]
+
+
+def iter_mcp_servers(data: object) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Yield ``(name, server)`` for every server object in a config's server maps.
+
+    An entry that is not a JSON object is skipped, as every reader here did.
+    """
+    for _key, servers in mcp_server_maps(data):
+        for name, server in servers.items():
+            if isinstance(server, dict):
+                yield str(name), server
+
+
 def _entry_handlers(entry: object) -> Iterator[dict[str, Any]]:
     """Yield the hook handlers one entry of an event's list contributes.
 

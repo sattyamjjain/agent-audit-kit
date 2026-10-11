@@ -67,6 +67,22 @@ class TestDiscoverAgents:
         assert len(cursor) == 1
         assert cursor[0].mcp_server_count == 1
 
+    def test_vscode_servers_are_counted(self, tmp_path: Path) -> None:
+        """`.vscode/mcp.json` keeps its servers under `servers`; reading only
+        `mcpServers` reported every VS Code workspace as having none."""
+        vscode = tmp_path / ".vscode"
+        vscode.mkdir()
+        cfg = {"servers": {
+            "a": {"type": "stdio", "command": "node", "args": ["a.js"]},
+            "b": {"type": "http", "url": "https://mcp.example.com/mcp"},
+        }}
+        (vscode / "mcp.json").write_text(json.dumps(cfg))
+
+        agents = discover_agents(project_root=tmp_path)
+        vs_code = [a for a in agents if a.name == "VS Code Copilot"]
+        assert len(vs_code) == 1
+        assert vs_code[0].mcp_server_count == 2
+
     def test_hook_counting_from_claude_settings(self, tmp_path: Path) -> None:
         claude_dir = tmp_path / ".claude"
         claude_dir.mkdir()

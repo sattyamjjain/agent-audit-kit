@@ -2,7 +2,7 @@
   "servers": {
     "x": {
       "type": "sse",
-      "url": "https://mcp.example.com/sse"
+      "url": "https://mcp.example.com/events"
     }
   }
 }
