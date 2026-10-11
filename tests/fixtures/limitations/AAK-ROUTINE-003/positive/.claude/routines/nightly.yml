@@ -1,0 +1,2 @@
+name: nightly
+schedule: "0 3 * * *"

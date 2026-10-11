@@ -2976,6 +2976,12 @@ _r(
     "Fix the JSON/JSONC syntax so the file can be audited. If it is intentionally "
     "not a VS Code task/launch config, move it out of `.vscode/`.",
     sarif_name="IdeTaskConfigUnparsable",
+    limitations=(
+        "Parses only `tasks.json` and `launch.json` directly inside a `.vscode` "
+        "folder. A broken `.vscode/settings.json`, or a `.code-workspace` file, "
+        "which can carry a `tasks` block of its own, is not parsed and never "
+        "reported."
+    ),
 )
 
 
@@ -3363,6 +3369,13 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-AGENCY-01"],
+    limitations=(
+        "Reads the `permissions` (or `tools`) list of a file in `.claude/routines/` "
+        "and reports an entry only when it is exactly `fs:*`, `shell:exec`, "
+        "`network:*`, `credentials:*`, `env:*` or `*:*`. Other spellings of the "
+        "same breadth (`shell:*`, `Bash(*)`, `*`) are not reported, and neither is "
+        "a `permissions` block written as a mapping (`allow: [...]`)."
+    ),
 )
 
 _r(
@@ -3379,6 +3392,12 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-AGENCY-02"],
+    limitations=(
+        "Reads the first of `schedule`, `cron` or `trigger` that is set, and only "
+        "when it is a string containing `${`, `{{` or `%{`. A `trigger` written as "
+        "a mapping (`type: webhook` with a `url` holding `${TENANT}`), a webhook "
+        "URL in a key of its own, and `$(...)` substitution are not read."
+    ),
 )
 
 _r(
@@ -3395,6 +3414,11 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-AGENCY-03"],
+    limitations=(
+        "Looks for the key `audit_log`, `audit`, `log` or `output_log` and not at "
+        "its value, so `audit_log: false` or an empty `log:` counts as an audit "
+        "trail."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4508,6 +4532,13 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-PATH-01"],
+    limitations=(
+        "Needs a `managed-settings.json` whose own path contains `ProgramData`, so "
+        "a file staged elsewhere and copied into `%ProgramData%\\ClaudeCode` by an "
+        "installer is not seen. A sibling `setup.ps1` that mentions `icacls` clears "
+        "the finding whatever the command grants, `icacls ... /grant "
+        "Everyone:(OI)(CI)F` included."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -5669,6 +5700,15 @@ _r(
     sarif_name="ProjectDealEconomicDrift",
     owasp_agentic_references=["ASI06"],
     incident_references=["ANTHROPIC-PROJECT-DEAL-2026-04-26"],
+    limitations=(
+        "Python only, and only for a function whose whole name is `set_price`, "
+        "`quote`, `bid`, `list_price`, `negotiate`, `price_item` or "
+        "`compute_price`: `get_quote` is not checked. The LLM call must be one of "
+        "the listed SDK spellings with a `model=` keyword (`litellm.acompletion`, "
+        "or a model passed inside `**params`, is not matched), and the module must "
+        "import `stripe`, `shopify`, `medusa` or `commercetools` or have `pricing/` "
+        "or `commerce/` in its path; a file under `marketplace/` is out of scope."
+    ),
 )
 
 _r(
@@ -5691,6 +5731,13 @@ _r(
     sarif_name="LangGraphToolNodePositionalList",
     auto_fixable=True,
     owasp_agentic_references=["ASI09"],
+    limitations=(
+        "Fires on `ToolNode(...)` with a list literal or a bare name as its first "
+        "positional argument, in a file with a single-line `from langgraph.prebuilt "
+        "import ... ToolNode`. A parenthesised multi-line import, `from "
+        "langgraph.prebuilt.tool_node import ToolNode`, and an argument that is an "
+        "attribute or a call (`ToolNode(self.tools)`) are not matched."
+    ),
 )
 
 _r(
@@ -5791,6 +5838,14 @@ _r(
     owasp_agentic_references=["ASI01", "ASI05", "ASI09"],
     incident_references=["CERT-CC-VU-221883"],
     aicm_references=["AIS-07", "STA-08"],
+    limitations=(
+        "Fires only when all four shapes (an unsafe-mode `CodeInterpreterTool`, a "
+        "`JSONSearchTool` or `JSONLoader` path, a `RagTool` or `WebsiteSearchTool` "
+        "URL, and a missing Docker check) are found in one file. The same shapes "
+        "split across two modules are never reported as the chain, and a comment "
+        "that mentions `assert_codeinterp_safe_mode(` removes one shape from the "
+        "count."
+    ),
 )
 
 _r(
@@ -5814,6 +5869,13 @@ _r(
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-01"],
     incident_references=["CERT-CC-VU-221883"],
+    limitations=(
+        "Fires on a literal `unsafe_mode=True` in a `CodeInterpreterTool(...)` call "
+        "in a file that imports crewai. `unsafe_mode` taken from a variable or a "
+        "setting is not read, and the guard is looked for as text in the enclosing "
+        "function, so a comment that mentions `assert_codeinterp_safe_mode(` "
+        "silences it."
+    ),
 )
 
 _r(
@@ -5834,6 +5896,13 @@ _r(
     cve_references=["CVE-2026-2285"],
     owasp_agentic_references=["ASI02"],
     incident_references=["CERT-CC-VU-221883"],
+    limitations=(
+        "Needs a non-constant path argument and, in the same function, one of a "
+        "short list of source spellings (`request.json`, `request.args`, "
+        "`request.form`, `event`, `user_input`, `agent.kickoff(`, ...). "
+        "`request.get_json()`, or a path that arrives as a function parameter, is "
+        "not a source, so the call is not reported."
+    ),
 )
 
 _r(
@@ -5876,6 +5945,12 @@ _r(
     cve_references=["CVE-2026-2287"],
     owasp_agentic_references=["ASI09"],
     incident_references=["CERT-CC-VU-221883"],
+    limitations=(
+        "Fires on every `CodeInterpreterTool(...)` call that has no literal "
+        "`docker_required=True` and no `require_docker_liveness(` in the enclosing "
+        "function. That text is matched as source, so a comment that mentions "
+        "`require_docker_liveness(` silences it."
+    ),
 )
 
 _r(

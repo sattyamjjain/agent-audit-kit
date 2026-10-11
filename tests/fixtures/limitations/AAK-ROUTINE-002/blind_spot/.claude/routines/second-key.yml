@@ -1,0 +1,4 @@
+name: nightly
+schedule: "0 3 * * *"
+webhook_url: "https://hooks.example.com/${TENANT}"
+audit_log: logs/second.log

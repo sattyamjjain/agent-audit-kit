@@ -1,0 +1,7 @@
+name: nightly
+schedule: "0 3 * * *"
+permissions:
+  allow:
+    - shell:exec
+    - fs:*
+audit_log: logs/mapping.log

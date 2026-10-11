@@ -1,0 +1,3 @@
+name: nightly
+schedule: "0 3 * * *"
+audit_log: false

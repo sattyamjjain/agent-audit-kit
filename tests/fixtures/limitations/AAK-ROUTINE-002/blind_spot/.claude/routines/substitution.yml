@@ -1,0 +1,3 @@
+name: hourly
+schedule: "$(date +%M) * * * *"
+audit_log: logs/hourly.log

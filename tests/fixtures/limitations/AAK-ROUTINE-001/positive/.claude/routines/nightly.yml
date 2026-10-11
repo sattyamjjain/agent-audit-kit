@@ -1,0 +1,5 @@
+name: nightly
+schedule: "0 3 * * *"
+permissions:
+  - shell:exec
+audit_log: logs/nightly.log

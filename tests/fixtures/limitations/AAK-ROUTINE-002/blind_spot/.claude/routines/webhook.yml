@@ -1,0 +1,5 @@
+name: on-push
+trigger:
+  type: webhook
+  url: "https://hooks.example.com/${TENANT}"
+audit_log: logs/webhook.log
