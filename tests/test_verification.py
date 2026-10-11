@@ -49,6 +49,19 @@ def _gitlab(tag: str = "T") -> str:
     return "glpat-" + (tag + "estOnly") * 3
 
 
+def _openai_family(family: str, tag: str = "P") -> str:
+    """A fake OpenAI project, service-account or admin key: the prefix, then a body
+    that carries the ``-`` and ``_`` the legacy ``sk-`` format never had."""
+    return (
+        "sk-" + family + "-" + tag * 12 + "_" + tag.lower() * 10 + "-"
+        + "T3Blbk" + "FJ" + tag * 24
+    )
+
+
+def _github_fine_grained(tag: str = "F") -> str:
+    return "github_pat_" + tag * 22 + "_" + tag.lower() * 59
+
+
 def _aws() -> str:
     return "AKIA" + "TESTONLY" * 2
 
@@ -167,6 +180,110 @@ def test_gitlab_probe_sends_the_full_token(tmp_path: Path, provider: _Provider) 
     assert "CONFIRMED ACTIVE" in finding.evidence
 
 
+@pytest.mark.parametrize("family", ["proj", "svcacct"])
+def test_openai_project_and_service_account_keys_are_probed_with_the_full_key(
+    tmp_path: Path, provider: _Provider, family: str
+) -> None:
+    # #951: the scanner now reports these, and they go to the same endpoint, the
+    # same way, as a legacy key: a pure pattern match, nothing new to call.
+    key = _openai_family(family)
+    result = _scan(tmp_path, f"OPENAI_API_KEY={key}\n")
+    (finding,) = _only(result, "AAK-SECRET-002")
+    assert key not in finding.evidence
+
+    verify_findings(result, tmp_path)
+
+    (req,) = provider.requests
+    assert req.full_url == "https://api.openai.com/v1/models"
+    assert req.get_header("Authorization") == f"Bearer {key}"
+    assert "CONFIRMED ACTIVE" in finding.evidence
+
+
+def test_an_openai_admin_key_is_annotated_not_probed(tmp_path: Path, provider: _Provider) -> None:
+    # OpenAI's Admin APIs guide: admin keys cannot be used for non-administration
+    # endpoints, so the models endpoint refuses a live one, and "refused" read as
+    # INACTIVE/ROTATED would tell a user a live admin key is dead.
+    result = _scan(tmp_path, f"OPENAI_ADMIN_KEY={_openai_family('admin')}\n")
+    (finding,) = _only(result, "AAK-SECRET-002")
+
+    verify_findings(result, tmp_path)
+
+    assert provider.requests == []
+    assert "active check skipped" in finding.evidence
+    assert "admin key" in finding.evidence
+    assert "ROTATED" not in finding.evidence
+    assert finding.severity == Severity.CRITICAL  # unchanged
+
+
+def test_github_fine_grained_probe_sends_the_full_token(tmp_path: Path, provider: _Provider) -> None:
+    token = _github_fine_grained()
+    result = _scan(tmp_path, f"GITHUB_TOKEN={token}\n")
+    (finding,) = _only(result, "AAK-SECRET-008")
+    assert token not in finding.evidence
+
+    verify_findings(result, tmp_path)
+
+    (req,) = provider.requests
+    assert req.full_url == "https://api.github.com/user"
+    assert req.get_header("Authorization") == f"token {token}"
+    assert "CONFIRMED ACTIVE" in finding.evidence
+
+
+def test_two_project_keys_sharing_a_prefix_are_each_probed_as_themselves(
+    tmp_path: Path, provider: _Provider
+) -> None:
+    # Same first 12 characters, so the same evidence. They sit on different lines,
+    # and each finding now reports its own, which is what pairs it with its key.
+    first = _openai_family("proj")
+    second = first[:-1] + "Q"
+    result = _scan(tmp_path, f"PRIMARY={first}\nFALLBACK={second}\n")
+    assert [f.line_number for f in _only(result, "AAK-SECRET-002")] == [1, 2]
+
+    verify_findings(result, tmp_path)
+
+    assert [r.get_header("Authorization") for r in provider.requests] == [
+        f"Bearer {first}",
+        f"Bearer {second}",
+    ]
+
+
+def test_two_project_keys_on_one_line_are_still_each_probed_as_themselves(
+    tmp_path: Path, provider: _Provider
+) -> None:
+    # Both findings report line 1, so file order, not line, pairs them with keys.
+    first = _openai_family("proj")
+    second = first[:-1] + "Q"
+    result = _scan(tmp_path, f"PAIR={first},{second}\n")
+    assert [f.line_number for f in _only(result, "AAK-SECRET-002")] == [1, 1]
+
+    verify_findings(result, tmp_path)
+
+    assert [r.get_header("Authorization") for r in provider.requests] == [
+        f"Bearer {first}",
+        f"Bearer {second}",
+    ]
+
+
+def test_keys_are_paired_by_line_in_a_file_with_breaks_other_than_newline(
+    tmp_path: Path, provider: _Provider
+) -> None:
+    # A form feed ends a line for ``str.splitlines``, which is how a finding counts.
+    # Counted by "\n" alone, the second key sat on line 3 while its finding said 4,
+    # and the first finding (line 3) took the second key: each key was probed as the
+    # other. Verification now numbers lines with the scanner's own LineIndex.
+    first = _openai_family("proj")
+    second = first[:-1] + "Q"
+    result = _scan(tmp_path, f"x\ny\x0cPRIMARY={first}\nFALLBACK={second}\n")
+    assert [f.line_number for f in _only(result, "AAK-SECRET-002")] == [3, 4]
+
+    verify_findings(result, tmp_path)
+
+    assert [r.get_header("Authorization") for r in provider.requests] == [
+        f"Bearer {first}",
+        f"Bearer {second}",
+    ]
+
+
 def test_two_keys_sharing_a_prefix_are_each_probed_as_themselves(tmp_path: Path, provider: _Provider) -> None:
     # Every Anthropic key starts "sk-ant-api03", so both findings carry the
     # same evidence and the same reported line; order is what tells them apart.
@@ -232,7 +349,11 @@ def test_provider_answers_map_to_statuses(
 
 @pytest.mark.parametrize(
     ("make_token", "status"),
-    [(_github, "NOT VALID ON GITHUB.COM"), (_gitlab, "NOT VALID ON GITLAB.COM")],
+    [
+        (_github, "NOT VALID ON GITHUB.COM"),
+        (_github_fine_grained, "NOT VALID ON GITHUB.COM"),
+        (_gitlab, "NOT VALID ON GITLAB.COM"),
+    ],
 )
 def test_a_token_rejected_by_the_public_service_is_not_called_rotated(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, make_token: Callable[[], str], status: str
@@ -372,10 +493,19 @@ def test_non_secret_findings_are_left_alone(tmp_path: Path, provider: _Provider)
 
 
 def test_the_full_key_is_in_no_finding_field_and_no_output(tmp_path: Path, provider: _Provider) -> None:
-    keys = [_anthropic(), _openai(), _github(), _gitlab()]
-    result = _scan(tmp_path, "".join(f"K{i}={k}\n" for i, k in enumerate(keys)))
+    keys = [
+        _anthropic(),
+        _openai(),
+        _openai_family("proj"),
+        _openai_family("svcacct", "S"),
+        _github(),
+        _github_fine_grained(),
+        _gitlab(),
+    ]
+    admin = _openai_family("admin", "M")  # never sent anywhere, so never in an output either
+    result = _scan(tmp_path, "".join(f"K{i}={k}\n" for i, k in enumerate([*keys, admin])))
     verify_findings(result, tmp_path)
-    assert len(provider.requests) == 4
+    assert len(provider.requests) == len(keys)
 
     rendered = [
         json_report.format_results(result),
@@ -383,7 +513,7 @@ def test_the_full_key_is_in_no_finding_field_and_no_output(tmp_path: Path, provi
         console.format_results(result),
         json.dumps([dataclasses.asdict(f) for f in result.findings], default=str),
     ]
-    for key in keys:
+    for key in [*keys, admin]:
         for text in rendered:
             assert key not in text
 

@@ -1125,7 +1125,8 @@ _r(
 _r(
     "AAK-SECRET-002",
     "OpenAI API key exposed",
-    "An OpenAI API key (sk-*) was found in a project file.",
+    "An OpenAI API key was found in a project file: a legacy user key (sk-*), or a "
+    "project (sk-proj-*), service-account (sk-svcacct-*) or admin (sk-admin-*) key.",
     Severity.CRITICAL,
     Category.SECRET_EXPOSURE,
     "Remove key, rotate immediately, use environment variables.",
@@ -1215,7 +1216,7 @@ _r(
 _r(
     "AAK-SECRET-008",
     "GitHub/GitLab personal access token exposed",
-    "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
+    "A GitHub or GitLab personal access token (ghp_*, github_pat_*, glpat-*) was found in a project file.",
     Severity.CRITICAL,
     Category.SECRET_EXPOSURE,
     "Remove token, rotate immediately, use environment variables.",

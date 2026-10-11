@@ -17,20 +17,28 @@ What is probed:
 
 - AAK-SECRET-001 (Anthropic) and AAK-SECRET-002 (OpenAI), against each
   provider's models endpoint. Each key belongs to that one provider, so a
-  401/403 means the key is dead.
-- AAK-SECRET-008: GitHub ``ghp_`` tokens against api.github.com, GitLab
-  ``glpat-`` tokens against gitlab.com. Self-hosted instances (GitHub
-  Enterprise Server, self-managed GitLab) issue the same formats, so a 401
-  there says only that the token is not valid on the public service, and the
-  status says exactly that instead of INACTIVE/ROTATED, which would be another
-  false all-clear.
+  401/403 means the key is dead. OpenAI's legacy ``sk-`` keys and its project
+  (``sk-proj-``) and service-account (``sk-svcacct-``) keys are all sent to the
+  one endpoint the same way.
+- AAK-SECRET-008: GitHub ``ghp_`` and fine-grained ``github_pat_`` tokens
+  against api.github.com, GitLab ``glpat-`` tokens against gitlab.com.
+  Self-hosted instances (GitHub Enterprise Server, self-managed GitLab) issue
+  the same formats, so a 401 there says only that the token is not valid on the
+  public service, and the status says exactly that instead of INACTIVE/ROTATED,
+  which would be another false all-clear.
 
 What is not: an AWS key (AAK-SECRET-003) needs an STS request signed with its
 secret key, and a GCP service-account key (AAK-SECRET-009) needs a JWT signed
 with its private key. Neither is possible with the standard library, so both
 are annotated as detected but not checked. (A ``_verify_gcp`` that called
 tokeninfo without any token used to stand in for the second; every call it
-made failed, so every GCP key it saw was reported INACTIVE/ROTATED.)
+made failed, so every GCP key it saw was reported INACTIVE/ROTATED.) An OpenAI
+admin key (``sk-admin-``) is detected but not checked either: OpenAI's Admin
+APIs guide says admin keys cannot be used for non-administration endpoints, so
+the models endpoint refuses a live admin key, and a refusal read as
+INACTIVE/ROTATED would be the same false all-clear. Probing it would take an
+administration endpoint, which is a choice about what to call on the user's
+organisation, not a pattern match.
 """
 from __future__ import annotations
 
@@ -46,6 +54,7 @@ from agent_audit_kit.scanners.secret_exposure import (
     GITHUB_TOKEN,
     GITLAB_TOKEN,
     OPENAI_KEY,
+    LineIndex,
 )
 
 _VERIFIABLE_RULES: frozenset[str] = frozenset({
@@ -150,7 +159,7 @@ def _verify_github(token: str) -> str:
     """Verify a GitHub personal access token against api.github.com.
 
     Args:
-        token: The ``ghp_`` token to verify.
+        token: The ``ghp_`` or ``github_pat_`` token to verify.
 
     Returns:
         A verification status string: CONFIRMED ACTIVE, NOT VALID ON
@@ -197,10 +206,24 @@ def _probe_for(rule_id: str, prefix: str) -> tuple[re.Pattern[str], Callable[[st
     if rule_id == "AAK-SECRET-002":
         return OPENAI_KEY, _verify_openai
     if rule_id == "AAK-SECRET-008":
-        if prefix.startswith("ghp_"):
+        if prefix.startswith(("ghp_", "github_pat_")):
             return GITHUB_TOKEN, _verify_github
         if prefix.startswith("glpat-"):
             return GITLAB_TOKEN, _verify_gitlab
+    return None
+
+
+def _not_probed(rule_id: str, prefix: str) -> str | None:
+    """Why a finding of ``rule_id`` whose key starts ``prefix`` is never probed, or None.
+
+    The rule-level table (``_NOT_PROBED``) covers rules no key of which can be
+    checked. This covers a key family inside a rule that is otherwise checked.
+    """
+    if rule_id == "AAK-SECRET-002" and prefix.startswith("sk-admin-"):
+        return (
+            "OpenAI admin key detected; active check skipped"
+            " (admin keys are refused by every non-administration endpoint)"
+        )
     return None
 
 
@@ -215,30 +238,31 @@ def _read(file_path: Path) -> str | None:
 def _candidates(text: str | None, pattern: re.Pattern[str], prefix: str) -> list[tuple[int, str]]:
     """``(line, full secret)`` for each match in ``text`` starting with ``prefix``.
 
-    Lines are counted incrementally between matches, so a file with many
-    matches costs one pass, not one pass per match.
+    Lines are numbered by the scanner's own ``LineIndex``, so a candidate's line
+    is the line its finding reports even in a file whose line breaks are not
+    all ``\\n``, and a file with many matches costs one pass, not one per match.
     """
     if text is None:
         return []
-    found: list[tuple[int, str]] = []
-    line, pos = 1, 0
-    for match in pattern.finditer(text):
-        line += text.count("\n", pos, match.start())
-        pos = match.start()
-        if match.group().startswith(prefix):
-            found.append((line, match.group()))
-    return found
+    lines = LineIndex(text)
+    return [
+        (lines.at(match.start()), match.group())
+        for match in pattern.finditer(text)
+        if match.group().startswith(prefix)
+    ]
 
 
 def _take(candidates: list[tuple[int, str]], line_number: int | None) -> str | None:
     """Remove and return one finding's key: the one on its reported line if
     there is one, else the next in file order.
 
-    Findings that share a prefix share a reported line as well: every
-    Anthropic key starts ``sk-ant-api03``, and secret_exposure reports the
-    first line containing the prefix. Taking in file order then gives the
-    n-th such finding the n-th key, which is the order the scanner emitted
-    them in, so two keys in one file are each probed as themselves.
+    A finding reports the line its own match sits on, so two keys on different
+    lines are each taken by line. Two keys on one line, or a file edited since
+    the scan, leave findings that share a line or match none; taking in file
+    order then gives the n-th such finding the n-th key, which is the order the
+    scanner emitted them in, so each is still probed as itself. (A finding used
+    to report the first line containing its 12-character prefix, so every
+    Anthropic key in a file shared a line and this fallback did all the work.)
     """
     if not candidates:
         return None
@@ -279,6 +303,10 @@ def verify_findings(result: ScanResult, project_root: Path) -> ScanResult:
 
         shown = _EVIDENCE_PREFIX_RE.search(finding.evidence)
         prefix = shown.group(1) if shown else ""
+        skipped = _not_probed(finding.rule_id, prefix)
+        if skipped is not None:
+            finding.evidence += f" [verification: {skipped}]"
+            continue
         probe = _probe_for(finding.rule_id, prefix) if prefix else None
         if probe is None:
             finding.evidence += " [verification: no verifier available]"

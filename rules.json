@@ -9132,7 +9132,7 @@
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
-      "description": "An OpenAI API key (sk-*) was found in a project file.",
+      "description": "An OpenAI API key was found in a project file: a legacy user key (sk-*), or a project (sk-proj-*), service-account (sk-svcacct-*) or admin (sk-admin-*) key.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
@@ -9288,7 +9288,7 @@
       "auto_fixable": false,
       "category": "secret-exposure",
       "cve_references": [],
-      "description": "A GitHub or GitLab personal access token (ghp_*, glpat-*) was found in a project file.",
+      "description": "A GitHub or GitLab personal access token (ghp_*, github_pat_*, glpat-*) was found in a project file.",
       "incident_references": [],
       "limitations": "",
       "owasp_agentic_references": [
