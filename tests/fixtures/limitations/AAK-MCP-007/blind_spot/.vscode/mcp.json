@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "srv": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@acme/mcp-server"
+      ]
+    }
+  }
+}

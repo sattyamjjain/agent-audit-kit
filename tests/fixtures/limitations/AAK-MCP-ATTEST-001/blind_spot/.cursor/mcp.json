@@ -1,0 +1,11 @@
+{
+  "trust_root": "",
+  "mcpServers": {
+    "docs": {
+      "command": "node",
+      "args": [
+        "docs-server.js"
+      ]
+    }
+  }
+}

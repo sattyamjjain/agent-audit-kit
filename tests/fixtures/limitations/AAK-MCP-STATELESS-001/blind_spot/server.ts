@@ -1,6 +1,2 @@
-import { randomUUID } from "node:crypto";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-
-export const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: () => randomUUID(),
-});
+export const sessionOf = (req: { headers: Record<string, string> }) =>
+  req.headers["mcp-session-id"];

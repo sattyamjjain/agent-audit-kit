@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "x": {
+      "type": "sse",
+      "url": "https://mcp.example.com/sse"
+    }
+  }
+}

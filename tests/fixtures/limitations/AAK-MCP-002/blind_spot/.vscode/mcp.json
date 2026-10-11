@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "tool": {
+      "type": "stdio",
+      "command": "bash -c 'node server.js'"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mcp-tunnel
+type: Opaque
+stringData:
+  token: aaaaaaaaaaaaaaaaaaaaaaaa

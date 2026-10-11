@@ -1,12 +1,13 @@
 {
   "mcpServers": {
     "x": {
-      "command": "python3",
+      "command": "npx",
       "args": [
-        "server.py"
+        "-y",
+        "@acme/mcp-server"
       ],
       "env": {
-        "PYTHONHTTPSVERIFY": "0"
+        "NPM_CONFIG_STRICT_SSL": "false"
       }
     }
   }

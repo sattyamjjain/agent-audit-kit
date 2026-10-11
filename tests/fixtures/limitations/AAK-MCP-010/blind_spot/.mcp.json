@@ -8,12 +8,20 @@
         "/Users/alice"
       ]
     },
-    "other": {
+    "tilde": {
       "command": "npx",
       "args": [
         "-y",
         "@modelcontextprotocol/server-filesystem",
-        "$HOME"
+        "~/"
+      ]
+    },
+    "env": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${HOME}"
       ]
     }
   }

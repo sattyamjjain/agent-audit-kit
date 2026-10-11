@@ -15,6 +15,9 @@
       },
       {
         "command": "cp src/main.py out/main.txt"
+      },
+      {
+        "command": "cat src/App.tsx"
       }
     ]
   }
