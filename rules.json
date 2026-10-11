@@ -2544,6 +2544,44 @@
       "title": "LiteLLM pin floor for CVE-2026-30623 (<1.83.7)"
     },
     {
+      "adversa_references": [],
+      "aicm_references": [
+        "AIS-07"
+      ],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "With `scan --llm-scan`, the chosen model read a tool's metadata (an MCP tool's name, description and parameter descriptions, or a skill's instructions) and judged that it tries to manipulate the agent that reads it: an action the user did not ask for, collecting or sending data the tool does not need, hijacking other tools, overriding the agent's instructions, impersonation, deception or concealment. This is a model's judgement, not a pattern match; the evidence quotes its reason.",
+      "incident_references": [],
+      "limitations": "Reads only metadata AAK can extract without running anything: inline tools in MCP configs, saved `tools/list` responses (`*tools*.json`), Python tools registered with `@x.tool`, `@tool` or `Tool(name=..., description=...)` string literals, TypeScript/JavaScript `server.tool(...)` and `registerTool(...)` string literals, and SKILL.md. A description a server builds at runtime, concatenates from several strings, or returns only from a live `tools/list` is never seen. The verdict is a model's: it can miss manipulation phrased as ordinary documentation and flag benign text.",
+      "owasp_agentic_references": [],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Read the flagged text and the model's reason. Remove any instruction aimed at the agent rather than the user: hidden directives, requests to read or send data the tool does not need, references that steer other tools. If you do not control the tool, stop using it until its publisher fixes the description.",
+      "rule_id": "AAK-LLM-001",
+      "sarif_name": "LlmFlaggedToolMetadata",
+      "severity": "high",
+      "title": "Model flagged tool metadata as manipulative"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "tool-poisoning",
+      "cve_references": [],
+      "description": "`scan --llm-scan` was asked to analyze a tool's metadata and could not: the provider credential is missing, the request failed, the reply was cut off before the verdict, the provider declined to analyze it, or the text exceeded the analysed length. The scan cannot show a clean result for what it skipped, so, like a crashed scanner, this makes the run INCOMPLETE.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Fix the cause the evidence names and re-run, or pass --allow-scanner-failure to accept the gap. When the model declined to analyze a tool, read that tool's metadata yourself: a refusal is not a clean result.",
+      "rule_id": "AAK-LLM-002",
+      "sarif_name": "LlmAnalysisIncomplete",
+      "severity": "info",
+      "title": "LLM analysis did not cover a tool"
+    },
+    {
       "adversa_references": [
         "ADV-INJECT-07"
       ],

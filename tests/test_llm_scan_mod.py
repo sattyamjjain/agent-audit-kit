@@ -183,8 +183,11 @@ class TestRunLlmAnalysisSuspicious:
             findings = run_llm_analysis(tmp_path)
 
         assert len(findings) == 1
-        assert findings[0].rule_id == "AAK-POISON-002"
-        assert "evil_tool" in findings[0].description
+        # A model's verdict has its own rule since 0.6.23 (it was filed as
+        # AAK-POISON-002, a regex rule, before). The tool is named in the
+        # evidence, the way every registry-built finding names its subject.
+        assert findings[0].rule_id == "AAK-LLM-001"
+        assert "evil_tool" in findings[0].evidence
         assert "prompt injection" in findings[0].evidence
 
 

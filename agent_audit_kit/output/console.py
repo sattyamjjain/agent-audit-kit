@@ -92,12 +92,21 @@ def format_results(
             f"{RED}  The rules they own may be missing findings. "
             f"Absence of findings below does not mean absence of issues.{RESET}\n"
         )
+    gaps = result.llm_gaps
+    if gaps:
+        lines.append(
+            f"{RED}{BOLD}\u26a0 INCOMPLETE LLM ANALYSIS: --llm-scan did not analyze "
+            f"every tool ({len(gaps)} AAK-LLM-002 finding(s)).{RESET}"
+        )
+        lines.append(
+            f"{RED}  A tool the model did not analyze is not a clean tool.{RESET}\n"
+        )
 
     if not filtered:
         if quiet:
             return ""
         clean = f"  \u2705 No findings at or above {min_severity.value} severity.\n"
-        lines.append(clean if not failures else
+        lines.append(clean if not result.incomplete else
                      f"  {RED}No findings at or above {min_severity.value} severity, "
                      f"but the scan was incomplete (see above).{RESET}\n")
     else:

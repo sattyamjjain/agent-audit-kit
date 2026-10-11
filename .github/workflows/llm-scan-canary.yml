@@ -1,0 +1,57 @@
+name: LLM scan canary
+
+# Does `scan --llm-scan` still work against the live Claude API?
+#
+# The deterministic suite never talks to a model, so it cannot see the ways the
+# opt-in LLM layer breaks: a model retired (every call 404s), a provider that
+# starts declining tool descriptions, a response shape that no longer parses.
+# Through 0.6.22 each of those read as a clean scan. scripts/llm_canary.py runs
+# the real code path over ten synthetic tools and fails on any of them. It is a
+# smoke alarm, not a measurement: the published numbers are the MCPTox eval in
+# benchmarks/llm_scan_eval/.
+#
+# Needs a repository secret named LLM_CANARY_ANTHROPIC_API_KEY. Use a key from
+# a Console workspace with a small monthly spend limit: one run is 20 short
+# requests (well under one US cent on Haiku 5.5 and Sonnet 5.5). Without the
+# secret the job reports that it skipped and passes, so forks stay green.
+#
+# Schedule and manual runs only. Pull requests never get the secret, and this
+# check has no business gating one: whether a provider is up is not a property
+# of the change under review.
+
+on:
+  schedule:
+    # 05:17 UTC on Mondays. Off the hour: :00 is where every cron lands.
+    - cron: "17 5 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: --llm-scan works on the live API
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.LLM_CANARY_ANTHROPIC_API_KEY }}
+    steps:
+      - name: Skip without a key
+        if: env.ANTHROPIC_API_KEY == ''
+        run: echo "LLM_CANARY_ANTHROPIC_API_KEY is not set; the canary did not run."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        if: env.ANTHROPIC_API_KEY != ''
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        if: env.ANTHROPIC_API_KEY != ''
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        if: env.ANTHROPIC_API_KEY != ''
+        run: pip install -e .
+
+      - name: Canary
+        if: env.ANTHROPIC_API_KEY != ''
+        run: python scripts/llm_canary.py --model claude-haiku-5-5 --model claude-sonnet-5-5
