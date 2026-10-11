@@ -1,0 +1,31 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "api_error_status": null,
+ "duration_ms": 3577,
+ "duration_api_ms": 3548,
+ "num_turns": 2,
+ "stop_reason": "tool_use",
+ "terminal_reason": "completed",
+ "safety_stops": 0,
+ "total_cost_usd": 0.032686,
+ "usage": {"input_tokens": 2, "output_tokens": 557, "cache_creation_input_tokens": 6778, "cache_read_input_tokens": 0},
+ "modelUsage": {
+  "claude-sonnet-5-5": {"inputTokens": 2, "outputTokens": 557, "costUSD": 0.032686, "costBasis": "list"}
+ },
+ "result": "{\"is_noise\":false}",
+ "structured_output": {
+  "is_noise": false,
+  "disposition": "version-pin",
+  "affected": [
+   {
+    "name": {"value": "example-mcp-toolkit", "source": "ghsa[0].vulnerabilities[0].name"},
+    "ecosystem": {"value": "pip", "source": "ghsa[0].vulnerabilities[0].ecosystem"},
+    "ranges": [{"value": "< 2.4.0", "source": "ghsa[0].vulnerabilities[0].vulnerable_version_range"}],
+    "fixed_versions": [{"value": "2.4.0", "source": "ghsa[0].vulnerabilities[0].first_patched_version"}]
+   }
+  ],
+  "rationale": "PyPI package with a fixed release; versions are visible in Python manifests."
+ }
+}

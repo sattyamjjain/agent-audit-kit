@@ -1,0 +1,14 @@
+{
+ "ghsa_id": "GHSA-bbbb-cccc-dddd",
+ "cve_id": "CVE-2099-10001",
+ "summary": "Gateway exposes catalog secrets",
+ "description": "## Summary\r\n\r\nStatic values were readable by any user who could see the entry.",
+ "severity": "medium",
+ "state": "published",
+ "published_at": "2099-01-03T00:00:00Z",
+ "withdrawn_at": null,
+ "cwe_ids": ["CWE-522"],
+ "vulnerabilities": [
+  {"package": {"ecosystem": "go", "name": "github.com/example/gateway"}, "vulnerable_version_range": ">= 0.12.0, < 0.26.2", "patched_versions": "0.26.2", "vulnerable_functions": []}
+ ]
+}

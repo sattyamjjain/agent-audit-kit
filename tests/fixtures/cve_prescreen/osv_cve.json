@@ -1,0 +1,21 @@
+{
+ "id": "CVE-2099-10001",
+ "summary": "Example MCP Toolkit: tool argument path traversal",
+ "details": "Same text as NVD.",
+ "aliases": ["PYSEC-2099-7", "GHSA-aaaa-bbbb-cccc"],
+ "modified": "2099-01-04T00:00:00Z",
+ "published": "2099-01-02T12:00:00Z",
+ "affected": [
+  {
+   "ranges": [
+    {
+     "type": "GIT",
+     "repo": "https://github.com/example/example-mcp-toolkit",
+     "events": [{"introduced": "0"}, {"fixed": "0123456789abcdef0123456789abcdef01234567"}],
+     "database_specific": {"extracted_events": [{"introduced": "0"}, {"fixed": "2.4.0"}], "source": ["AFFECTED_FIELD"]}
+    }
+   ],
+   "versions": ["v2.3.0", "v2.2.0", "v2.1.0"]
+  }
+ ]
+}

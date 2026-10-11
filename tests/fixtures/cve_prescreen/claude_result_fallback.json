@@ -1,0 +1,24 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "api_error_status": null,
+ "duration_ms": 2100,
+ "duration_api_ms": 2050,
+ "num_turns": 2,
+ "stop_reason": "tool_use",
+ "terminal_reason": "completed",
+ "safety_stops": 0,
+ "total_cost_usd": 0.002,
+ "usage": {"input_tokens": 2, "output_tokens": 200, "cache_creation_input_tokens": 5000, "cache_read_input_tokens": 0},
+ "modelUsage": {
+  "claude-haiku-5-5": {"inputTokens": 2, "outputTokens": 200, "costUSD": 0.002, "costBasis": "list"}
+ },
+ "result": "{}",
+ "structured_output": {
+  "is_noise": false,
+  "disposition": "version-pin",
+  "affected": [],
+  "rationale": "Answered by a model other than the one requested."
+ }
+}

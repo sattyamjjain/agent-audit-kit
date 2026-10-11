@@ -30,6 +30,14 @@ harnesses (no LLM in the loop):
 
 Recall on a public labelled malicious set, untuned and rules-only: **[MCPTox](mcptox/RESULTS.md)**, 1,348 poisoned MCP tools on 45 real servers.
 
+One benchmark has a model in the loop and is published separately:
+
+- **[CVE pre-screen backtest](cve_prescreen/RESULTS.md)**: a candidate
+  disposition for each `cve-response` issue (`claude -p` on the subscription,
+  retrieval from NVD, GHSA and OSV), scored against what the maintainer
+  actually decided in `CHANGELOG.cves.md` and the closed issues. Not offline
+  and not deterministic; see `cve_prescreen/README.md`.
+
 ## Quick Start
 
 ```bash
@@ -52,6 +60,7 @@ benchmarks/
     sample_03_no_auth.json
     sample_04_shell_injection.json
     sample_05_mixed.json
+  cve_prescreen/        # CVE pre-screen and its backtest (model in the loop)
   data/                 # Downloaded configs from GitHub (git-ignored)
   results.json          # Aggregate benchmark output (git-ignored)
 ```

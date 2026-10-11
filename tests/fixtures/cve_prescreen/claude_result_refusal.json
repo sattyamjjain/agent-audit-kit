@@ -1,0 +1,18 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "api_error_status": null,
+ "duration_ms": 1200,
+ "duration_api_ms": 1150,
+ "num_turns": 1,
+ "stop_reason": "refusal",
+ "terminal_reason": "completed",
+ "safety_stops": 1,
+ "total_cost_usd": 0.004,
+ "usage": {"input_tokens": 2, "output_tokens": 12, "cache_creation_input_tokens": 3000, "cache_read_input_tokens": 0},
+ "modelUsage": {
+  "claude-haiku-5-5": {"inputTokens": 2, "outputTokens": 12, "costUSD": 0.004, "costBasis": "list"}
+ },
+ "result": "I can't help with that."
+}

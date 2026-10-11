@@ -1,0 +1,4447 @@
+{
+ "records": [
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2025-51482",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 161,
+   "notes": "",
+   "package": "letta",
+   "rules_cited": [
+    "AAK-MCP-LETTA-CVE-2025-51482-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2025-6101",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 161,
+   "notes": "",
+   "package": "letta",
+   "rules_cited": [
+    "AAK-MCP-LETTA-CVE-2025-51482-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2025-71427",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 864,
+   "notes": "",
+   "package": "`office-powerpoint-mcp-server` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-OFFICEPPT-CVE-2025-71427-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-100585",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor raised",
+   "is_noise": false,
+   "issue": 809,
+   "notes": "",
+   "package": "`openclaw` (npm)",
+   "rules_cited": [
+    "AAK-MCP-OPENCLAW-CVE-2026-62195-001"
+   ],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-100587",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 839,
+   "notes": "",
+   "package": "`openclaw` (npm)",
+   "rules_cited": [
+    "AAK-MCP-OPENCLAW-CVE-2026-62195-001"
+   ],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-100596",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 840,
+   "notes": "",
+   "package": "`openclaw` (npm)",
+   "rules_cited": [],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-100858",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 854,
+   "notes": "",
+   "package": "heym (container image `ghcr.io/heymrun/heym`)",
+   "rules_cited": [
+    "AAK-MCP-HEYM-CVE-2026-100858-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-100868",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 867,
+   "notes": "",
+   "package": "`@penpot/mcp` (npm)",
+   "rules_cited": [
+    "AAK-MCP-PENPOT-CVE-2026-100868-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101057",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 889,
+   "notes": "",
+   "package": "`utcp-mcp` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-UTCP-CVE-2026-101057-001",
+    "AAK-TRANSPORT-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101062",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin.",
+   "is_noise": false,
+   "issue": 842,
+   "notes": "",
+   "package": "Obot (container image)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101063",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Added",
+   "is_noise": false,
+   "issue": 882,
+   "notes": "",
+   "package": "`ghcr.io/obot-platform/obot` (image)",
+   "rules_cited": [
+    "AAK-MCP-OBOT-CVE-2026-101084-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101064",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin.",
+   "is_noise": false,
+   "issue": 849,
+   "notes": "",
+   "package": "Obot (container image)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-101065",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 835,
+   "notes": "",
+   "package": "Obot quickstart (a documented `docker run`)",
+   "rules_cited": [],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101084",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 837,
+   "notes": "",
+   "package": "Obot (container image `ghcr.io/obot-platform/obot`)",
+   "rules_cited": [
+    "AAK-MCP-OBOT-CVE-2026-101084-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-101861",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor raised",
+   "is_noise": false,
+   "issue": 888,
+   "notes": "",
+   "package": "`langflow` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-101998",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 930,
+   "notes": "",
+   "package": "Docker Sandboxes (`sbx` CLI)",
+   "rules_cited": [],
+   "section_date": "2026-10-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-102242",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 890,
+   "notes": "",
+   "package": "`@toolbox-sdk/server` (npm)",
+   "rules_cited": [
+    "AAK-MCP-TOOLBOX-CVE-2026-102242-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-102807",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 883,
+   "notes": "",
+   "package": "`openclaw` (npm)",
+   "rules_cited": [
+    "AAK-MCP-OPENCLAW-CVE-2026-102807-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-102906",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 880,
+   "notes": "",
+   "package": "`@0xshariq/github-mcp-server` (npm)",
+   "rules_cited": [
+    "AAK-MCP-SHARIQ-GITHUB-CVE-2026-102906-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-102911",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 833,
+   "notes": "",
+   "package": "`@zosmaai/pi-llm-wiki` (npm)",
+   "rules_cited": [
+    "AAK-MCP-PILLMWIKI-CVE-2026-102911-001"
+   ],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-103012",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 893,
+   "notes": "",
+   "package": "`@anthropic-ai/claude-code` (npm)",
+   "rules_cited": [
+    "AAK-MCP-CLAUDECODE-CVE-2026-103012-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-103068",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 846,
+   "notes": "",
+   "package": "ByteCoreStack MCP Connector for AI Tools (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-103435",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor raised",
+   "is_noise": false,
+   "issue": 920,
+   "notes": "",
+   "package": "`@anthropic-ai/claude-code` (npm)",
+   "rules_cited": [
+    "AAK-CLAUDECODE-CVE-2026-40068-PIN-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-103758",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin.",
+   "is_noise": false,
+   "issue": 848,
+   "notes": "",
+   "package": "Obot (container image)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-104120",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin:",
+   "is_noise": false,
+   "issue": 851,
+   "notes": "",
+   "package": "`mcp-server-fetch` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-SSRF-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-104402",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 900,
+   "notes": "",
+   "package": "Mindio Magic MCP (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-104634",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 928,
+   "notes": "",
+   "package": "`beam_mcp` (Hex)",
+   "rules_cited": [],
+   "section_date": "2026-10-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-104850",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 914,
+   "notes": "",
+   "package": "`@modelcontextprotocol/sdk`, `@modelcontextprotocol/client` (npm)",
+   "rules_cited": [
+    "AAK-MCP-TSSDK-CVE-2026-104850-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-104873",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 901,
+   "notes": "",
+   "package": "`langgraph-sdk` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGGRAPHSDK-CVE-2026-104873-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105138",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 926,
+   "notes": "",
+   "package": "`ghcr.io/obot-platform/obot` (image)",
+   "rules_cited": [
+    "AAK-MCP-OBOT-CVE-2026-105138-001"
+   ],
+   "section_date": "2026-10-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105697",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Added",
+   "is_noise": false,
+   "issue": 903,
+   "notes": "",
+   "package": "`langflow`, `langflow-base`, `lfx` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105699",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Added",
+   "is_noise": false,
+   "issue": 908,
+   "notes": "",
+   "package": "`langflow` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105740",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Added",
+   "is_noise": false,
+   "issue": 904,
+   "notes": "",
+   "package": "`langflow` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105741",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Added",
+   "is_noise": false,
+   "issue": 905,
+   "notes": "",
+   "package": "`langflow` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105761",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 906,
+   "notes": "",
+   "package": "`langgenius/dify-api` (image)",
+   "rules_cited": [
+    "AAK-MCP-DIFY-CVE-2026-105761-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-105788",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 912,
+   "notes": "",
+   "package": "Microsoft UFO (source checkout)",
+   "rules_cited": [],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-105793",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 911,
+   "notes": "",
+   "package": "Microsoft UFO (source checkout)",
+   "rules_cited": [],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-105797",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 913,
+   "notes": "",
+   "package": "SimpleChat (built from source with `azd`)",
+   "rules_cited": [],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105799",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 918,
+   "notes": "",
+   "package": "`@langchain/redis` (npm)",
+   "rules_cited": [
+    "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-105806",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 917,
+   "notes": "",
+   "package": "`@payloadcms/plugin-mcp` (npm)",
+   "rules_cited": [
+    "AAK-MCP-PAYLOAD-CVE-2026-105806-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-106119",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 919,
+   "notes": "",
+   "package": "`@langchain/mongodb` (npm)",
+   "rules_cited": [
+    "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-107820",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 937,
+   "notes": "",
+   "package": "x64dbg-MCP Server (x64dbg plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-10",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-107824",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 936,
+   "notes": "",
+   "package": "x64dbg-MCP Server (x64dbg plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-10",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-18482",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned presence-only",
+   "is_noise": false,
+   "issue": 625,
+   "notes": "",
+   "package": "neo.mjs",
+   "rules_cited": [
+    "AAK-MCP-NEOMJS-CVE-2026-18482-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-18486",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 696,
+   "notes": "",
+   "package": "mcp-contextforge-gateway",
+   "rules_cited": [
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-18489",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 697,
+   "notes": "",
+   "package": "mcp-contextforge-gateway",
+   "rules_cited": [
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-18875",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 788,
+   "notes": "",
+   "package": "IBM Financial Transaction Manager (no registry artifact)",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-18905",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 692,
+   "notes": "",
+   "package": "mcp-contextforge-gateway",
+   "rules_cited": [
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-19516",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "Pinned",
+   "is_noise": false,
+   "issue": 566,
+   "notes": "",
+   "package": "mcp-grafana",
+   "rules_cited": [
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001"
+   ],
+   "section_date": "2026-08-11",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-19591",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 679,
+   "notes": "",
+   "package": "OpenAI Codex CLI / Codex Desktop",
+   "rules_cited": [
+    "AAK-APPROVAL-PARSER-DESYNC-001",
+    "AAK-POLICY-TRUNCATION-001",
+    "AAK-MCP-ARGV-TOCTOU-001"
+   ],
+   "section_date": "2026-09-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-19751",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope, not pinnable.",
+   "is_noise": false,
+   "issue": 580,
+   "notes": "",
+   "package": "EnzoVezzaro mcp-dominican-layer",
+   "rules_cited": [
+    "AAK-MCP-SSRF-TOOLARG-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-19752",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope, not pinnable.",
+   "is_noise": false,
+   "issue": 581,
+   "notes": "",
+   "package": "EnzoVezzaro mcp-dominican-layer",
+   "rules_cited": [
+    "AAK-MCP-SSRF-TOOLARG-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-19753",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope, not pinnable.",
+   "is_noise": false,
+   "issue": 582,
+   "notes": "",
+   "package": "Model Context Protocol mcp-rdf-explorer",
+   "rules_cited": [
+    "AAK-MCP-SSRF-TOOLARG-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-19801",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 634,
+   "notes": "",
+   "package": "BetterLinks for WordPress",
+   "rules_cited": [],
+   "section_date": "2026-08-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-19807",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 845,
+   "notes": "",
+   "package": "ByteCoreStack MCP Connector for AI Tools (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-19984",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 608,
+   "notes": "",
+   "package": "mcp-florence2",
+   "rules_cited": [
+    "AAK-MCP-FLORENCE2-CVE-2026-19984-001"
+   ],
+   "section_date": "2026-08-17",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-30624",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 160,
+   "notes": "",
+   "package": "Agent Zero",
+   "rules_cited": [
+    "AAK-AGENT-ZERO-CVE-2026-30624-PIN-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-32582",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 915,
+   "notes": "",
+   "package": "IATO MCP (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-32585",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 866,
+   "notes": "",
+   "package": "Airano MCP Bridge (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-34884",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 613,
+   "notes": "",
+   "package": "Apache SkyWalking MCP",
+   "rules_cited": [
+    "AAK-MCP-GRAFANA-CVE-2026-19516-001",
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-37006",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "#662 deferred, then closed by #685 alongside #660, which widened the transport rules to WebSocket",
+   "is_noise": false,
+   "issue": 662,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-03",
+   "source": "override"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-38924",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule and no detector change.",
+   "is_noise": false,
+   "issue": 727,
+   "notes": "",
+   "package": "`serena` (Oraios AI, before 1.0.0)",
+   "rules_cited": [
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-39599",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 916,
+   "notes": "",
+   "package": "WDS MCP Content Manager (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-4964",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 161,
+   "notes": "",
+   "package": "letta",
+   "rules_cited": [
+    "AAK-MCP-LETTA-CVE-2025-51482-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-4965",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 161,
+   "notes": "",
+   "package": "letta",
+   "rules_cited": [
+    "AAK-MCP-LETTA-CVE-2025-51482-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-49856",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 577,
+   "notes": "",
+   "package": "@jshookmcp/jshook",
+   "rules_cited": [
+    "AAK-MCP-JSHOOK-CVE-2026-49856-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-49857",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 578,
+   "notes": "",
+   "package": "auth-fetch-mcp",
+   "rules_cited": [
+    "AAK-MCP-AUTHFETCH-CVE-2026-49857-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-49986",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 585,
+   "notes": "",
+   "package": "neuro-cortex-memory",
+   "rules_cited": [
+    "AAK-MCP-CORTEX-CVE-2026-49986-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-50027",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 589,
+   "notes": "",
+   "package": "mcp-memory-service",
+   "rules_cited": [
+    "AAK-MCP-MEMSERVICE-CVE-2026-50027-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-50143",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "In scope, existing pin floor moved",
+   "is_noise": false,
+   "issue": 617,
+   "notes": "",
+   "package": "@apify/actors-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-APIFY-CVE-2026-46341-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-50158",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin — npm's `yutu` is an unrelated single 0.0.1 release.",
+   "is_noise": false,
+   "issue": 766,
+   "notes": "",
+   "package": "`yutu` (Go module)",
+   "rules_cited": [
+    "AAK-MCP-015"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-51882",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 894,
+   "notes": "",
+   "package": "`langchain-chatchat` (PyPI)",
+   "rules_cited": [],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-51883",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 895,
+   "notes": "",
+   "package": "`langchain-chatchat` (PyPI)",
+   "rules_cited": [],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-51884",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 896,
+   "notes": "",
+   "package": "`langchain-chatchat` (PyPI)",
+   "rules_cited": [],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-51994",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 808,
+   "notes": "",
+   "package": "`mcp-remote` (npm)",
+   "rules_cited": [
+    "AAK-MCP-REMOTE-CVE-2026-51994-001"
+   ],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-51995",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 821,
+   "notes": "",
+   "package": "`mcp-remote` (npm)",
+   "rules_cited": [
+    "AAK-MCP-REMOTE-CVE-2026-51994-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-51996",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 834,
+   "notes": "",
+   "package": "`mcp-remote` (npm)",
+   "rules_cited": [
+    "AAK-MCP-REMOTE-CVE-2026-51994-001"
+   ],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-51997",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Range widened",
+   "is_noise": false,
+   "issue": 827,
+   "notes": "",
+   "package": "`mcp-remote` (npm)",
+   "rules_cited": [
+    "AAK-MCP-REMOTE-CVE-2026-51994-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-52001",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 921,
+   "notes": "",
+   "package": "`mcp-remote` (npm)",
+   "rules_cited": [
+    "AAK-MCP-REMOTE-CVE-2026-51994-001"
+   ],
+   "section_date": "2026-10-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-53509",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, already covered - no rule change.",
+   "is_noise": false,
+   "issue": 630,
+   "notes": "",
+   "package": "@aborruso/ckan-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-CKAN-CVE-2026-73846-001"
+   ],
+   "section_date": "2026-08-22",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-53708",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "In scope, existing rule widened",
+   "is_noise": false,
+   "issue": null,
+   "notes": "",
+   "package": "mcp-contextforge-gateway",
+   "rules_cited": [
+    "AAK-SSRF-TOCTOU-001"
+   ],
+   "section_date": "2026-08-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-53710",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule and no new pin.",
+   "is_noise": false,
+   "issue": 746,
+   "notes": "",
+   "package": "`mcp-contextforge-gateway`",
+   "rules_cited": [],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-53937",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 705,
+   "notes": "",
+   "package": "io.modelcontextprotocol:kotlin-sdk",
+   "rules_cited": [
+    "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001"
+   ],
+   "section_date": "2026-09-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-53957",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 765,
+   "notes": "",
+   "package": "`@contentful/mcp-server`, `@contentful/mcp-tools`",
+   "rules_cited": [
+    "AAK-MCP-CONTENTFUL-CVE-2026-53957-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-53965",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 648,
+   "notes": "",
+   "package": "mcp/sdk",
+   "rules_cited": [],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-54446",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 764,
+   "notes": "",
+   "package": "`netlicensing-mcp`",
+   "rules_cited": [
+    "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-54449",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned presence-only",
+   "is_noise": false,
+   "issue": 626,
+   "notes": "",
+   "package": "LangBot",
+   "rules_cited": [
+    "AAK-MCP-LANGBOT-CVE-2026-54449-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-54504",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin.",
+   "is_noise": false,
+   "issue": 759,
+   "notes": "",
+   "package": "MCP Documentation Server (no resolvable registry name)",
+   "rules_cited": [
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-54549",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor raised 1.0.109 to 1.0.115.",
+   "is_noise": false,
+   "issue": 754,
+   "notes": "",
+   "package": "`meta-ads-mcp`",
+   "rules_cited": [],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-54618",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin.",
+   "is_noise": false,
+   "issue": 758,
+   "notes": "",
+   "package": "Obsidian Web MCP (no resolvable registry name)",
+   "rules_cited": [
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-55071",
+   "detail": "pin-and-detection",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned + pattern rules.",
+   "is_noise": false,
+   "issue": null,
+   "notes": "",
+   "package": "stata-mcp",
+   "rules_cited": [
+    "AAK-MCP-STATA-CVE-2026-47708-001"
+   ],
+   "section_date": "2026-08-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55096",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 853,
+   "notes": "",
+   "package": "`fast-mcp-telegram` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-FASTMCPTELEGRAM-CVE-2026-55096-001",
+    "AAK-SSRF-TOCTOU-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-55156",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, pattern rules",
+   "is_noise": false,
+   "issue": null,
+   "notes": "",
+   "package": "@ooples/token-optimizer-mcp",
+   "rules_cited": [
+    "AAK-MCP-SIDECAR-NOAUTH-001",
+    "AAK-MCP-SIDECAR-REBIND-001"
+   ],
+   "section_date": "2026-08-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-55157",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, pattern rules",
+   "is_noise": false,
+   "issue": null,
+   "notes": "",
+   "package": "@ooples/token-optimizer-mcp",
+   "rules_cited": [
+    "AAK-SHELL-QUOTED-INTERP-001",
+    "AAK-SHELL-DEFAULT-PROFILE-001",
+    "AAK-TAINT-001"
+   ],
+   "section_date": "2026-08-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55235",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New rule",
+   "is_noise": false,
+   "issue": 741,
+   "notes": "",
+   "package": "`langgraph-api`",
+   "rules_cited": [
+    "AAK-MCP-LANGGRAPH-API-CVE-2026-55235-001"
+   ],
+   "section_date": "2026-09-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55253",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "Two new pins on the existing rule.",
+   "is_noise": false,
+   "issue": 738,
+   "notes": "",
+   "package": "`langgraph-checkpoint-mongodb`, `langgraph-store-mongodb`",
+   "rules_cited": [],
+   "section_date": "2026-09-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55529",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, already covered - no rule change.",
+   "is_noise": false,
+   "issue": 636,
+   "notes": "",
+   "package": "praisonai",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55531",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, already covered - no rule change.",
+   "is_noise": false,
+   "issue": 637,
+   "notes": "",
+   "package": "praisonai",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55532",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, already covered - no rule change.",
+   "is_noise": false,
+   "issue": 638,
+   "notes": "",
+   "package": "praisonai",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55546",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 639,
+   "notes": "",
+   "package": "qwed-mcp",
+   "rules_cited": [
+    "AAK-MCP-QWED-CVE-2026-55546-001",
+    "AAK-MCP-TOOL-UNSAFE-EVAL-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55557",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 644,
+   "notes": "",
+   "package": "browse-mcp",
+   "rules_cited": [
+    "AAK-MCP-BROWSEMCP-CVE-2026-55557-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-55580",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 640,
+   "notes": "",
+   "package": "mcp-shell",
+   "rules_cited": [
+    "AAK-MCP-002",
+    "AAK-MCP-STDIO-CMD-INJ"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-55581",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 641,
+   "notes": "",
+   "package": "mcp-shell",
+   "rules_cited": [
+    "AAK-MCP-002",
+    "AAK-MCP-STDIO-CMD-INJ"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-55582",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 642,
+   "notes": "",
+   "package": "mcp-shell",
+   "rules_cited": [
+    "AAK-MCP-002",
+    "AAK-MCP-STDIO-CMD-INJ"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55609",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 646,
+   "notes": "",
+   "package": "sublinear-time-solver",
+   "rules_cited": [
+    "AAK-MCP-SUBLINEAR-CVE-2026-55609-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55637",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 645,
+   "notes": "",
+   "package": "genieacs-mcp",
+   "rules_cited": [
+    "AAK-MCP-GENIEACS-CVE-2026-55637-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55640",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 643,
+   "notes": "",
+   "package": "nextcloud-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-NEXTCLOUD-CVE-2026-55640-001"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-55837",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor raised 1.17.1 to 1.20.0.",
+   "is_noise": false,
+   "issue": 739,
+   "notes": "",
+   "package": "`dbt-mcp`",
+   "rules_cited": [],
+   "section_date": "2026-09-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-57124",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule.",
+   "is_noise": false,
+   "issue": 732,
+   "notes": "",
+   "package": "`praisonai`",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-CVE-2026-61427-001"
+   ],
+   "section_date": "2026-09-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-57134",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule and **no new pin**.",
+   "is_noise": false,
+   "issue": 761,
+   "notes": "",
+   "package": "`praisonai` (npm)",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-57139",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 747,
+   "notes": "",
+   "package": "`praisonai` (npm, TypeScript)",
+   "rules_cited": [
+    "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001"
+   ],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-58197",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin.",
+   "is_noise": false,
+   "issue": 760,
+   "notes": "",
+   "package": "ToolHive (Go CLI + Electron app)",
+   "rules_cited": [
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-58483",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 767,
+   "notes": "",
+   "package": "`mcp-searxng`",
+   "rules_cited": [
+    "AAK-MCP-SEARXNG-CVE-2026-58483-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-59279",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 628,
+   "notes": "",
+   "package": "Spring AI",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-59563",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 887,
+   "notes": "",
+   "package": "`zscaler-mcp` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-ZSCALER-CVE-2026-59563-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-59809",
+   "detail": "out-of-scope-class-covered",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope as a pin, already covered as a class.",
+   "is_noise": false,
+   "issue": 631,
+   "notes": "",
+   "package": "SiYuan",
+   "rules_cited": [
+    "AAK-TRANSPORT-004",
+    "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001"
+   ],
+   "section_date": "2026-08-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-59971",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 745,
+   "notes": "",
+   "package": "`mysql-mcp-server`",
+   "rules_cited": [
+    "AAK-MCP-MYSQLMCP-CVE-2026-59971-001",
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-59973",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 748,
+   "notes": "",
+   "package": "`mcp-from-openapi`, `frontmcp`, `@frontmcp/adapters`",
+   "rules_cited": [
+    "AAK-MCP-FROMOPENAPI-CVE-2026-59973-001"
+   ],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-60083",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 632,
+   "notes": "",
+   "package": "SiYuan",
+   "rules_cited": [],
+   "section_date": "2026-08-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-61559",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin.",
+   "is_noise": false,
+   "issue": 752,
+   "notes": "",
+   "package": "`@zereight/mcp-gitlab`",
+   "rules_cited": [],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-61560",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 750,
+   "notes": "",
+   "package": "`@zereight/mcp-gitlab`",
+   "rules_cited": [
+    "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001"
+   ],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-61568",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Same pin, and it is this one that sets the floor at **2.1.30**:",
+   "is_noise": false,
+   "issue": 751,
+   "notes": "",
+   "package": "`@zereight/mcp-gitlab`",
+   "rules_cited": [],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-61612",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 824,
+   "notes": "",
+   "package": "`@aborruso/ckan-mcp-server` (npm)",
+   "rules_cited": [
+    "AAK-MCP-CKAN-CVE-2026-73846-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-62674",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 629,
+   "notes": "",
+   "package": "omnigent",
+   "rules_cited": [
+    "AAK-MCP-OMNIGENT-CVE-2026-62674-001"
+   ],
+   "section_date": "2026-08-22",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-63127",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "No new rule, no pin — see the note above on the PyPI name collision.",
+   "is_noise": false,
+   "issue": 762,
+   "notes": "",
+   "package": "`rmcp` (crates.io, the official Rust MCP SDK)",
+   "rules_cited": [
+    "AAK-OAUTH-008"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-68456",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "#598 closed with no comment; scripts/cve_watcher.py records it as a ueagle-atm USB driver race whose description never says mcp, the case is_relevant() was written for",
+   "is_noise": true,
+   "issue": 598,
+   "notes": "Linux kernel ueagle-atm USB driver; the description never says mcp (#598, scripts/cve_watcher.py)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-08-15",
+   "source": "override"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-71424",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 611,
+   "notes": "",
+   "package": "Onyx",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-18",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-72768",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 568,
+   "notes": "",
+   "package": "n8n",
+   "rules_cited": [
+    "AAK-MCP-N8N-CVE-2026-72768-001"
+   ],
+   "section_date": "2026-08-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-72846",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 627,
+   "notes": "",
+   "package": "Lightdash",
+   "rules_cited": [
+    "AAK-MCP-001",
+    "AAK-SSRF-TOCTOU-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-73037",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope.",
+   "is_noise": false,
+   "issue": 579,
+   "notes": "",
+   "package": "Next AI Draw.io",
+   "rules_cited": [],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73222",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 569,
+   "notes": "",
+   "package": "claude-code-templates",
+   "rules_cited": [
+    "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001"
+   ],
+   "section_date": "2026-08-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-73296",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, detection rule (not pinned)",
+   "is_noise": false,
+   "issue": 573,
+   "notes": "",
+   "package": "Microsoft UFO",
+   "rules_cited": [
+    "AAK-MCP-UFO-CVE-2026-73296-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73496",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule.",
+   "is_noise": false,
+   "issue": 737,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-16",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73497",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "ledger 2026-09-16: 'No new rule ... Same 0.22.0 fix release', the mcp-atlassian pin's floor, with no pin wording the rules can read",
+   "is_noise": false,
+   "issue": 740,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-16",
+   "source": "override"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73498",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 574,
+   "notes": "",
+   "package": "mcp-atlassian",
+   "rules_cited": [
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73601",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, already covered",
+   "is_noise": false,
+   "issue": 575,
+   "notes": "",
+   "package": "Flowise",
+   "rules_cited": [
+    "AAK-FLOWISE-001"
+   ],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-73614",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope, not pinnable.",
+   "is_noise": false,
+   "issue": 576,
+   "notes": "",
+   "package": "Network-AI ClaudeHookBridge",
+   "rules_cited": [],
+   "section_date": "2026-08-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73844",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 586,
+   "notes": "",
+   "package": "@aborruso/ckan-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-CKAN-CVE-2026-73846-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73845",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 587,
+   "notes": "",
+   "package": "@aborruso/ckan-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-CKAN-CVE-2026-73846-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-73846",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 588,
+   "notes": "",
+   "package": "@aborruso/ckan-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-CKAN-CVE-2026-73846-001"
+   ],
+   "section_date": "2026-08-15",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-74798",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 609,
+   "notes": "",
+   "package": "SiYuan kernel",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-17",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-75060",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 610,
+   "notes": "",
+   "package": "JetBrains PyCharm",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-18",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-75130",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 618,
+   "notes": "",
+   "package": "Context7",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-75149",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 621,
+   "notes": "",
+   "package": "marimo",
+   "rules_cited": [
+    "AAK-MCP-MARIMO-CVE-2026-75149-001",
+    "AAK-MCP-STDIO-LAUNCHER-INJECT-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-75845",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 614,
+   "notes": "",
+   "package": "ArcadeDB",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-75857",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 615,
+   "notes": "",
+   "package": "codewhale",
+   "rules_cited": [
+    "AAK-MCP-CODEWHALE-CVE-2026-75858-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-75858",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, pinned",
+   "is_noise": false,
+   "issue": 616,
+   "notes": "",
+   "package": "codewhale",
+   "rules_cited": [
+    "AAK-MCP-CODEWHALE-CVE-2026-75858-001"
+   ],
+   "section_date": "2026-08-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-76286",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 927,
+   "notes": "",
+   "package": "Splunk MCP Server (Splunk app)",
+   "rules_cited": [],
+   "section_date": "2026-10-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-76404",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 622,
+   "notes": "",
+   "package": "Splunk MCP Server app",
+   "rules_cited": [
+    "AAK-MCP-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77068",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "In scope, existing pin floor moved",
+   "is_noise": false,
+   "issue": 623,
+   "notes": "",
+   "package": "n8n",
+   "rules_cited": [
+    "AAK-MCP-N8N-CVE-2026-72768-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77073",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "In scope, existing pin floor moved",
+   "is_noise": false,
+   "issue": 624,
+   "notes": "",
+   "package": "n8n",
+   "rules_cited": [
+    "AAK-MCP-N8N-CVE-2026-72768-001"
+   ],
+   "section_date": "2026-08-21",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77242",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 785,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-77243",
+   "detail": "pin-and-detection",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 776,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-TOOLGATE-ASYMMETRY-001"
+   ],
+   "section_date": "2026-09-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-77244",
+   "detail": "pin-and-detection",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 774,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001",
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77246",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 786,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-77248",
+   "detail": "pin-and-detection",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 777,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-015"
+   ],
+   "section_date": "2026-09-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77250",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 822,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77252",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 811,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+   ],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77253",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 790,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin",
+    "new-detection"
+   ],
+   "cve": "CVE-2026-77254",
+   "detail": "pin-and-detection",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 775,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77255",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 781,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [
+    "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+   ],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77258",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 783,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77259",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 784,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77261",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 789,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77262",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 782,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77265",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 823,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77266",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 813,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77268",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 825,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77269",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 814,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77270",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 812,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77272",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "No new rule, no new pin.",
+   "is_noise": false,
+   "issue": 830,
+   "notes": "",
+   "package": "`mcp-atlassian`",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-77519",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 829,
+   "notes": "",
+   "package": "MaxKB (no registry artifact)",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-77521",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 773,
+   "notes": "",
+   "package": "MaxKB (no registry artifact)",
+   "rules_cited": [],
+   "section_date": "2026-09-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-77822",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 691,
+   "notes": "",
+   "package": "mcp-contextforge-gateway",
+   "rules_cited": [
+    "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-78430",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 633,
+   "notes": "",
+   "package": "mcp-ffmpeg-helper",
+   "rules_cited": [
+    "AAK-MCP-TOOL-ARG-OSCMD-001"
+   ],
+   "section_date": "2026-08-25",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-78573",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Default credentials, 1.0.0–1.0.7, already under the 1.0.9 floor.",
+   "is_noise": false,
+   "issue": 711,
+   "notes": "",
+   "package": "`mcp-contextforge-gateway`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-78575",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "same floor",
+   "is_noise": false,
+   "issue": 712,
+   "notes": "",
+   "package": "`langflow`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79534",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 881,
+   "notes": "",
+   "package": "`ghcr.io/mark3labs/mcp-filesystem-server` (image)",
+   "rules_cited": [
+    "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79535",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 879,
+   "notes": "",
+   "package": "`voice-mode` (PyPI)",
+   "rules_cited": [
+    "AAK-MCP-VOICEMODE-CVE-2026-79535-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79537",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin.",
+   "is_noise": false,
+   "issue": 838,
+   "notes": "",
+   "package": "MetaMCP (container image)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79538",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 836,
+   "notes": "",
+   "package": "MetaMCP (container image `ghcr.io/metatool-ai/metamcp`)",
+   "rules_cited": [
+    "AAK-MCP-METAMCP-CVE-2026-79538-001"
+   ],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79743",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 671,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79744",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 672,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79745",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 673,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79746",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 674,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79747",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 675,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79748",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 676,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79749",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 677,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-79750",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 678,
+   "notes": "",
+   "package": "@samanhappy/mcphub",
+   "rules_cited": [
+    "AAK-MCP-MCPHUB-CVE-2026-79748-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-79786",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 647,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-OAUTH-008"
+   ],
+   "section_date": "2026-08-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-80347",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 649,
+   "notes": "",
+   "package": "mcp-fetch",
+   "rules_cited": [
+    "AAK-SSRF-BRACKETED-HOST-001",
+    "AAK-MCP-SSRF-001",
+    "AAK-LANGCHAIN-SSRF-REDIR-001"
+   ],
+   "section_date": "2026-09-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81091",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-MCP-SSRF-001`)",
+   "is_noise": false,
+   "issue": 651,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-SSRF-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81092",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-DNS-REBIND-001`)",
+   "is_noise": false,
+   "issue": 652,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81093",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-MCP-SSRF-001`)",
+   "is_noise": false,
+   "issue": 653,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-SSRF-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81094",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-MCP-TRANSPORT-SESSION-UNAUTH-001`)",
+   "is_noise": false,
+   "issue": 654,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-TRANSPORT-SESSION-UNAUTH-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81095",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-DNS-REBIND-001`)",
+   "is_noise": false,
+   "issue": 655,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-81096",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 656,
+   "notes": "",
+   "package": "tooluniverse",
+   "rules_cited": [
+    "AAK-MCP-TOOLUNIVERSE-CVE-2026-81096-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81098",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-MCP-TRANSPORT-SESSION-UNAUTH-001`)",
+   "is_noise": false,
+   "issue": 657,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-TRANSPORT-SESSION-UNAUTH-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81099",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-DNS-REBIND-001`)",
+   "is_noise": false,
+   "issue": 658,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81100",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-DNS-REBIND-001`)",
+   "is_noise": false,
+   "issue": 659,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81102",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "#660 deferred, then closed by #685 (253207b14), which widened AAK-DNS-REBIND-001 to Python FastMCP",
+   "is_noise": false,
+   "issue": 660,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-03",
+   "source": "override"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-81315",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "unreachable (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 670,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-81486",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "unreachable (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 650,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-81735",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-MCP-TRANSPORT-SESSION-UNAUTH-001`)",
+   "is_noise": false,
+   "issue": 661,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-TRANSPORT-SESSION-UNAUTH-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-81835",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "out of scope (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 663,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-81845",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 664,
+   "notes": "",
+   "package": "mcp-sequential-thinking",
+   "rules_cited": [
+    "AAK-MCP-SEQTHINKING-CVE-2026-81845-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-81846",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 680,
+   "notes": "",
+   "package": "runZero Platform MCP service",
+   "rules_cited": [],
+   "section_date": "2026-09-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-81941",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "same floor",
+   "is_noise": false,
+   "issue": 713,
+   "notes": "",
+   "package": "`langflow`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-82021",
+   "detail": "existing-detection",
+   "disposition": "new-detection",
+   "evidence": "rule shipped (`AAK-SUPPLY-001 / AAK-MCP-007 / AAK-MCP-ATTEST-001`)",
+   "is_noise": false,
+   "issue": 666,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-SUPPLY-001",
+    "AAK-MCP-007",
+    "AAK-MCP-ATTEST-001"
+   ],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-82233",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "unreachable (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 665,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-01",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-82427",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT OF SCOPE",
+   "is_noise": true,
+   "issue": 735,
+   "notes": "Apache Storm; matched 'Claude agents' in an acknowledgement line (#735)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-15",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-82428",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT OF SCOPE",
+   "is_noise": true,
+   "issue": 734,
+   "notes": "Apache Storm; matched 'Claude agents' in an acknowledgement line (#734)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-15",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-82429",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT OF SCOPE",
+   "is_noise": true,
+   "issue": 736,
+   "notes": "Apache Storm; matched 'Claude agents' in an acknowledgement line (#736)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-15",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-82439",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT OF SCOPE",
+   "is_noise": true,
+   "issue": 733,
+   "notes": "Apache Storm; matched 'Claude agents' in an acknowledgement line (#733)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-15",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-82456",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 667,
+   "notes": "",
+   "package": "argocd-mcp",
+   "rules_cited": [
+    "AAK-MCP-TRANSPORT-SESSION-UNAUTH-001",
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001",
+    "AAK-DNS-REBIND-001"
+   ],
+   "section_date": "2026-08-31",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-84289",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 681,
+   "notes": "",
+   "package": "hermes-agent",
+   "rules_cited": [
+    "AAK-MCP-TOOLS-LIST-UNBOUNDED-001",
+    "AAK-MCP-016"
+   ],
+   "section_date": "2026-09-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-84779",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT-OF-SCOPE (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 686,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-04",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-85025",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor 1.11.3 → **1.11.6**",
+   "is_noise": false,
+   "issue": 710,
+   "notes": "",
+   "package": "`langflow`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-85166",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "In scope, existing pin floor moved",
+   "is_noise": false,
+   "issue": 683,
+   "notes": "",
+   "package": "n8n",
+   "rules_cited": [
+    "AAK-MCP-N8N-CVE-2026-72768-001"
+   ],
+   "section_date": "2026-09-04",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-85178",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT-OF-SCOPE (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 684,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-04",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-85306",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "OUT-OF-SCOPE (`wontfix-static`)",
+   "is_noise": false,
+   "issue": 687,
+   "notes": "",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-04",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-85580",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope, no pinnable artifact.",
+   "is_noise": false,
+   "issue": 694,
+   "notes": "",
+   "package": "SiYuan",
+   "rules_cited": [],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-85620",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 690,
+   "notes": "",
+   "package": "Postgres MCP Pro",
+   "rules_cited": [
+    "AAK-MCP-POSTGRESMCP-CVE-2026-85620-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-85666",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "RESOLVED — rule shipped, eight days ahead of the 2026-09-20 target",
+   "is_noise": false,
+   "issue": 693,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-DEST-UNVALIDATED-001",
+    "AAK-SSRF",
+    "AAK-MCP-SSRF-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-85787",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 698,
+   "notes": "",
+   "package": "awslabs.postgres-mcp-server",
+   "rules_cited": [
+    "AAK-MCP-AWSPOSTGRES-CVE-2026-85787-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-86122",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "RESOLVED — rule shipped, eight days ahead of the 2026-09-20 target",
+   "is_noise": false,
+   "issue": 699,
+   "notes": "",
+   "package": "",
+   "rules_cited": [
+    "AAK-MCP-DEST-UNVALIDATED-001",
+    "AAK-SSRF",
+    "AAK-MCP-SSRF-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-86439",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "In scope, rule shipped",
+   "is_noise": false,
+   "issue": 703,
+   "notes": "",
+   "package": "knowns",
+   "rules_cited": [
+    "AAK-MCP-KNOWNS-CVE-2026-86439-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-87911",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Nothing in the version logic — the 1.1.7 floor already covered it.",
+   "is_noise": false,
+   "issue": 707,
+   "notes": "",
+   "package": "`awslabs.postgres-mcp-server`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-87913",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New rule",
+   "is_noise": false,
+   "issue": 708,
+   "notes": "",
+   "package": "`awslabs.security-agent-mcp-server`",
+   "rules_cited": [
+    "AAK-MCP-AWSSECAGENT-CVE-2026-87913-001"
+   ],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-88257",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 929,
+   "notes": "",
+   "package": "`beam_mcp` (Hex)",
+   "rules_cited": [],
+   "section_date": "2026-10-09",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-88938",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "Floor **removed** — presence-only",
+   "is_noise": false,
+   "issue": 709,
+   "notes": "",
+   "package": "`knowns`",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-89039",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 907,
+   "notes": "",
+   "package": "`grafana/mcp-k6` (image)",
+   "rules_cited": [
+    "AAK-MCP-K6-CVE-2026-89039-001"
+   ],
+   "section_date": "2026-10-06",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-89622",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "out of scope",
+   "is_noise": true,
+   "issue": 714,
+   "notes": "Linux kernel HID mcp2221 driver: 'The acronym collides with Model Context Protocol' (#714)",
+   "package": "",
+   "rules_cited": [],
+   "section_date": "2026-09-12",
+   "source": "issue"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-90617",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "No new rule.",
+   "is_noise": false,
+   "issue": 728,
+   "notes": "",
+   "package": "`pentestagent` (rolling release, no pinnable version)",
+   "rules_cited": [
+    "AAK-TAINT-001",
+    "AAK-MCP-HTTP-NOAUTH-SERVER-001"
+   ],
+   "section_date": "2026-09-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-90898",
+   "detail": "new-rule",
+   "disposition": "new-detection",
+   "evidence": "New rule",
+   "is_noise": false,
+   "issue": 729,
+   "notes": "",
+   "package": "`bifrost` (`transports`, Go; fixed `transports/v2.1.0`)",
+   "rules_cited": [
+    "AAK-MCP-STDIO-CMD-INJ-005",
+    "AAK-MCP-NOAUTH-DEFAULT"
+   ],
+   "section_date": "2026-09-14",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-91161",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 828,
+   "notes": "",
+   "package": "OpenWA gateway (no registry artifact)",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-9186",
+   "detail": "floor-change",
+   "disposition": "version-pin",
+   "evidence": "In scope, existing pin floor moved",
+   "is_noise": false,
+   "issue": 695,
+   "notes": "",
+   "package": "IBM Langflow OSS",
+   "rules_cited": [
+    "AAK-MCP-LANGFLOW-CVE-2026-12940-001"
+   ],
+   "section_date": "2026-09-08",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-91931",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 749,
+   "notes": "",
+   "package": "`flowise`",
+   "rules_cited": [
+    "AAK-MCP-FLOWISE-CVE-2026-91931-001"
+   ],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-91932",
+   "detail": "existing-pin",
+   "disposition": "version-pin",
+   "evidence": "Same pin, same 3.1.4 release.",
+   "is_noise": false,
+   "issue": 753,
+   "notes": "",
+   "package": "`flowise`",
+   "rules_cited": [],
+   "section_date": "2026-09-19",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-91988",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 763,
+   "notes": "",
+   "package": "`atomic-agents-stack`",
+   "rules_cited": [
+    "AAK-MCP-ATOMICAGENTS-CVE-2026-91988-001",
+    "AAK-TRANSPORT-001"
+   ],
+   "section_date": "2026-09-24",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-92874",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 831,
+   "notes": "",
+   "package": "GitLab CE/EE (the instance)",
+   "rules_cited": [],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-93529",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 815,
+   "notes": "",
+   "package": "WSP MCP - AI Agents Connector (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-93965",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "Arm added",
+   "is_noise": false,
+   "issue": 810,
+   "notes": "",
+   "package": "SxDevOps (no registry artifact)",
+   "rules_cited": [
+    "AAK-MCP-STDIO-CMD-INJ-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-94031",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "Arm extended",
+   "is_noise": false,
+   "issue": 816,
+   "notes": "",
+   "package": "nexus-mcp (no registry artifact)",
+   "rules_cited": [
+    "AAK-SHELL-QUOTED-INTERP-001"
+   ],
+   "section_date": "2026-09-30",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "new-detection"
+   ],
+   "cve": "CVE-2026-94044",
+   "detail": "new-arm",
+   "disposition": "new-detection",
+   "evidence": "Arm added",
+   "is_noise": false,
+   "issue": 787,
+   "notes": "",
+   "package": "03-lovepreetSingh MCP (private, unversioned)",
+   "rules_cited": [
+    "AAK-MCP-015"
+   ],
+   "section_date": "2026-09-26",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-94485",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 891,
+   "notes": "",
+   "package": "`next` (npm)",
+   "rules_cited": [],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-94486",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 892,
+   "notes": "",
+   "package": "`next` (npm)",
+   "rules_cited": [
+    "AAK-MCP-NEXTJS-CVE-2026-94486-001"
+   ],
+   "section_date": "2026-10-05",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "version-pin"
+   ],
+   "cve": "CVE-2026-95660",
+   "detail": "new-pin",
+   "disposition": "version-pin",
+   "evidence": "New pin",
+   "is_noise": false,
+   "issue": 817,
+   "notes": "",
+   "package": "`@moonshot-ai/kimi-code` (npm)",
+   "rules_cited": [
+    "AAK-MCP-KIMICODE-CVE-2026-95660-001"
+   ],
+   "section_date": "2026-09-27",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-96524",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 841,
+   "notes": "",
+   "package": "MCP Server for WordPress (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-02",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-96561",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 852,
+   "notes": "",
+   "package": "AI Engine (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-97239",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 865,
+   "notes": "",
+   "package": "MCP Content Manager Lite (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  },
+  {
+   "acceptable": [
+    "out-of-scope"
+   ],
+   "cve": "CVE-2026-97242",
+   "detail": "out-of-scope",
+   "disposition": "out-of-scope",
+   "evidence": "Out of scope",
+   "is_noise": false,
+   "issue": 863,
+   "notes": "",
+   "package": "WEBO MCP (wordpress.org plugin)",
+   "rules_cited": [],
+   "section_date": "2026-10-03",
+   "source": "ledger"
+  }
+ ],
+ "report": {
+  "issues_in_window": 252,
+  "ledger_issue_disagreements": [],
+  "ledger_rows": 204,
+  "open_issues_excluded": [
+   "CVE-2026-102243",
+   "CVE-2026-102878",
+   "CVE-2026-108115",
+   "CVE-2026-108542",
+   "CVE-2026-108582",
+   "CVE-2026-108585",
+   "CVE-2026-108586",
+   "CVE-2026-108591",
+   "CVE-2026-108604",
+   "CVE-2026-108671"
+  ],
+  "since": "2026-08-11",
+  "unlabelled": []
+ },
+ "schema": "aak-cve-prescreen-ground-truth/1",
+ "since": "2026-08-11",
+ "summary": {
+  "by_class": {
+   "needs-human": 0,
+   "new-detection": 35,
+   "out-of-scope": 67,
+   "version-pin": 150
+  },
+  "by_source": {
+   "issue": 24,
+   "ledger": 224,
+   "override": 4
+  },
+  "multi_label": 6,
+  "noise": 6,
+  "records": 252
+ }
+}

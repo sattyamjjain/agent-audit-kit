@@ -1,0 +1,82 @@
+[
+ {
+  "number": 9001,
+  "title": "CVE-response: CVE-2099-20001 (MEDIUM CVSS 6.8)",
+  "state": "closed",
+  "state_reason": "completed",
+  "labels": ["cve-response", "sev/medium"],
+  "created_at": "2099-03-01T10:00:00Z",
+  "closed_at": "2099-03-05T16:00:00Z",
+  "comments": [
+   {"created_at": "2099-03-05T11:00:00Z", "body": "## Disposition: out of scope\n\nNon-pinnable at the time."},
+   {"created_at": "2099-03-05T16:00:00Z", "body": "## Disposition: new pin (was out of scope)\n\nThe image-tag reader landed."}
+  ]
+ },
+ {
+  "number": 9010,
+  "title": "CVE-response: CVE-2099-30001 (CRITICAL CVSS 9.8)",
+  "state": "closed",
+  "state_reason": "not_planned",
+  "labels": ["cve-response", "sev/critical"],
+  "created_at": "2099-03-02T10:00:00Z",
+  "closed_at": "2099-03-03T10:00:00Z",
+  "comments": [
+   {"created_at": "2099-03-03T10:00:00Z", "body": "## Disposition: OUT OF SCOPE\n\nA stream processor. It matched because the advisory credits the finder's tooling in an acknowledgement line."}
+  ]
+ },
+ {
+  "number": 9011,
+  "title": "CVE-response: CVE-2099-30002 (HIGH CVSS 7.5)",
+  "state": "closed",
+  "state_reason": "completed",
+  "labels": ["cve-deferred", "cve-response", "sev/high"],
+  "created_at": "2099-03-02T10:00:00Z",
+  "closed_at": "2099-03-08T10:00:00Z",
+  "comments": [
+   {"created_at": "2099-03-04T10:00:00Z", "body": "## Disposition: DEFERRED (`cve-deferred`) — in scope, rule class identified\n\n**Target: 2099-03-20.**"},
+   {"created_at": "2099-03-08T10:00:00Z", "body": "## Disposition: RESOLVED — rule shipped, ahead of the target\n\n`AAK-MCP-DEST-EXAMPLE-001` (MCP_CONFIG, **HIGH**)."}
+  ]
+ },
+ {
+  "number": 9012,
+  "title": "CVE-response: CVE-2099-30003 (HIGH CVSS 8.6)",
+  "state": "closed",
+  "state_reason": "completed",
+  "labels": ["cve-response"],
+  "created_at": "2099-03-02T10:00:00Z",
+  "closed_at": "2099-03-04T10:00:00Z",
+  "comments": [
+   {"created_at": "2099-03-04T10:00:00Z", "body": "## Disposition: rule shipped (`AAK-MCP-SSRF-001`)\n\nNo new rule: the class detector already covers it."}
+  ]
+ },
+ {
+  "number": 9013,
+  "title": "CVE-response: CVE-2099-30004 (MEDIUM CVSS 5.0)",
+  "state": "open",
+  "state_reason": null,
+  "labels": ["cve-response", "sev/medium"],
+  "created_at": "2099-03-06T10:00:00Z",
+  "closed_at": null,
+  "comments": []
+ },
+ {
+  "number": 9014,
+  "title": "CVE-response: CVE-2099-30005 (LOW CVSS 3.1)",
+  "state": "closed",
+  "state_reason": "not_planned",
+  "labels": ["cve-response", "wontfix-static"],
+  "created_at": "2099-03-02T10:00:00Z",
+  "closed_at": "2099-03-03T10:00:00Z",
+  "comments": []
+ },
+ {
+  "number": 7000,
+  "title": "CVE-response: CVE-2099-00500 (CRITICAL CVSS 9.8)",
+  "state": "closed",
+  "state_reason": "completed",
+  "labels": ["cve-response"],
+  "created_at": "2098-12-30T10:00:00Z",
+  "closed_at": "2099-01-01T10:00:00Z",
+  "comments": []
+ }
+]

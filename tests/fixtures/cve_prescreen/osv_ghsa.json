@@ -1,0 +1,19 @@
+{
+ "id": "GHSA-aaaa-bbbb-cccc",
+ "summary": "Example MCP Toolkit tool argument path traversal",
+ "details": "A tool argument reaches open() without containment.",
+ "aliases": ["CVE-2099-10001", "PYSEC-2099-7"],
+ "modified": "2099-01-04T00:00:00Z",
+ "published": "2099-01-01T08:00:00Z",
+ "affected": [
+  {
+   "package": {"name": "example-mcp-toolkit", "ecosystem": "PyPI", "purl": "pkg:pypi/example-mcp-toolkit"},
+   "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "2.4.0"}]}],
+   "versions": ["2.3.0", "2.2.0"]
+  },
+  {
+   "package": {"name": "example-mcp-store", "ecosystem": "PyPI", "purl": "pkg:pypi/example-mcp-store"},
+   "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0.2.0"}, {"fixed": "0.9.1"}]}]
+  }
+ ]
+}
