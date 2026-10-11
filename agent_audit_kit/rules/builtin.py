@@ -1767,6 +1767,18 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. A "
+        "shell call (`os.system`, `os.popen`, "
+        "`subprocess.run/call/Popen/check_output/check_call/getoutput/getstatusoutput`, "
+        "`asyncio.create_subprocess_shell`) is reported only when a parameter's "
+        "bare name is its argument. A command built from the parameter (`f\"ls "
+        "{path}\"`, `\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 "
+        "reports the f-string form, and neither is a sink imported by name (`from "
+        "subprocess import run`)."
+    ),
 )
 
 _r(
@@ -1781,6 +1793,15 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-05"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
+        "`eval`, `exec` and `compile` are reported only when a parameter's bare "
+        "name is the argument, so `eval(expression.strip())` and `exec(\"result = \" "
+        "+ code)` are not. The TypeScript arm reads `.ts` and `.tsx` files only: "
+        "the same `eval(...)` in a `.js` file is not read."
+    ),
 )
 
 _r(
@@ -1795,6 +1816,16 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
+        "`open(...)` and `pathlib.Path(...)` are reported only when a parameter's "
+        "bare name is the argument, so `open(os.path.join(ROOT, name))` is not, and "
+        "`Path(path)` after `from pathlib import Path` is not matched at all. The "
+        "TypeScript arm looks at `fs.writeFile` and `appendFile` calls only: a tool "
+        "that reads a path with `fs.readFileSync(path)` is not reported."
+    ),
 )
 
 _r(
@@ -1809,6 +1840,16 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
+        "Reports `requests.get/post/put/delete`, `httpx.get/post` and "
+        "`urllib.request.urlopen`, written that way, with a parameter's bare name "
+        "as the argument. A client instance (`await client.get(url)` on an "
+        "`httpx.AsyncClient`), `requests.request(\"GET\", url)` and `from "
+        "urllib.request import urlopen` are not matched."
+    ),
 )
 
 _r(
@@ -1823,6 +1864,17 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
+        "Reports `cursor.execute`, `connection.execute` and `session.execute` only "
+        "when a parameter's bare name is the whole argument, that is, a "
+        "caller-supplied query. A query built by formatting "
+        "(`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), the "
+        "usual shape of SQL injection, is not reported, and neither is the same "
+        "call on a variable under another name (`conn.execute(query)`)."
+    ),
 )
 
 _r(
@@ -1837,6 +1889,15 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-08"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
+        "Reports `pickle.load/loads`, `yaml.load/unsafe_load` and `marshal.loads` "
+        "with a parameter's bare name as the argument. Other loaders that can run "
+        "code from the data are not sinks: `torch.load`, `joblib.load` and "
+        "`dill.loads` are not reported."
+    ),
 )
 
 _r(
@@ -1850,6 +1911,14 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-VALID-01"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. A "
+        "tool counts as typed once any one parameter carries an annotation: `def "
+        "search(query: str, limit, path)` is not reported, however many parameters "
+        "have none."
+    ),
 )
 
 _r(
@@ -1864,6 +1933,14 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-05"],
+    limitations=(
+        "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
+        "so a FastMCP instance under another name (`@app.tool()`) is skipped. Sink "
+        "categories are counted only for calls made in the body of the decorated "
+        "function, so a tool that reaches a shell, a file and the network through "
+        "module-level helper functions it calls is not reported."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -2128,6 +2205,14 @@ _r(
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-01"],
     incident_references=["DEADBUGZ-2026-09"],
+    limitations=(
+        "Compares the tool definitions written in the MCP config files with "
+        "`.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` "
+        "at run time is never compared. The hash covers a tool's name, description "
+        "and `inputSchema` only, so a change to its `annotations` (for example "
+        "flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` "
+        "is not a change here."
+    ),
 )
 
 _r(
@@ -2145,6 +2230,13 @@ _r(
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-02"],
     incident_references=["DEADBUGZ-2026-09"],
+    limitations=(
+        "Counts only tools declared in a server's `tools` array in a config file. A "
+        "server added with just a `command`, whose tools arrive at run time through "
+        "`tools/list`, adds no pinned tool, and neither does a tool listed under "
+        "`toolDescriptions`, so a new server or a new tool of those shapes is not "
+        "reported here."
+    ),
 )
 
 _r(
@@ -2159,6 +2251,12 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RUGPULL-03"],
+    limitations=(
+        "Needs a pin file that parses. If `.agent-audit-kit/tool-pins.json` is not "
+        "valid JSON (a half-resolved merge conflict, a truncated write), the scan "
+        "returns no rug-pull findings at all and gives no warning, so a removed "
+        "tool is not reported."
+    ),
 )
 
 

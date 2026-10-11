@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "notes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "notes-mcp@1.2.3"
+      ],
+      "tools": [
+        {
+          "name": "add_note",
+          "description": "Add a note.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "description": "The note text."
+              }
+            },
+            "required": [
+              "text"
+            ]
+          },
+          "annotations": {
+            "readOnlyHint": false,
+            "destructiveHint": true
+          },
+          "title": "Add note"
+        },
+        {
+          "name": "search_notes",
+          "description": "Search notes by keyword.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
