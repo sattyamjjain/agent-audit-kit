@@ -1,11 +1,11 @@
 {
+  "description": "clearance at .well-known/mcp-clearance",
   "mcpServers": {
     "docs": {
       "command": "node",
       "args": [
         "docs-server.js"
-      ],
-      "description": "clearance at .well-known/mcp-clearance"
+      ]
     },
     "tools": {
       "command": "node",
