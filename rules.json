@@ -43,7 +43,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Add authentication requirements (OAuth 2.0 or API key) to Agent Card.",
+      "remediation": "Add an `authentication` object to the Agent Card that names a real scheme (for example OAuth 2.0 or an API key) rather than `none`. The rule reads the card's `authentication` (or `auth`) field and fires when it is missing or its `type` is `none`.",
       "rule_id": "AAK-A2A-002",
       "sarif_name": "A2aNoAuth",
       "severity": "high",
@@ -67,7 +67,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Define explicit JSON schemas for all skill inputs.",
+      "remediation": "Give every entry in the card's `skills` a non-empty `inputSchema`: a JSON Schema object with `type`, `properties` and `required`. The rule fires on a skill with no `inputSchema` or an empty one.",
       "rule_id": "AAK-A2A-003",
       "sarif_name": "A2aNoInputSchema",
       "severity": "medium",
@@ -190,7 +190,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Require mutual TLS or dual-bearer auth for all A2A flows.",
+      "remediation": "Require mutual authentication and declare it on the card: set `mutual` (or `mutual_tls`) to `true` in the `authentication` object, or use a `scheme` such as `mtls`. The rule fires when the scheme is bearer or OAuth and none of those is present.",
       "rule_id": "AAK-A2A-008",
       "sarif_name": "A2aNoMutualAuth",
       "severity": "high",
@@ -264,7 +264,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Include jti/nonce and iat/exp claims; reject duplicates inside a replay window.",
+      "remediation": "Declare replay protection in the card's `tokens` block with `jti`, `nonce`, `require_jti` or `replay_window`, and enforce it: put `jti` or `nonce` and `iat`/`exp` claims in every token and reject a repeated `jti` inside the replay window.",
       "rule_id": "AAK-A2A-011",
       "sarif_name": "A2aReplayable",
       "severity": "medium",
@@ -288,7 +288,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Require an explicit schema version in every message; reject mismatches.",
+      "remediation": "Add a `schema_version` (or `a2a_version` or `apiVersion`) field to the Agent Card, and have the agent reject messages whose version does not match. The rule asks for it on cards that carry a `tokens`, `delegation` or `trust` section.",
       "rule_id": "AAK-A2A-012",
       "sarif_name": "A2aSchemaConfusion",
       "severity": "medium",
@@ -473,7 +473,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Remove hidden content. All agent instructions should be human-readable.",
+      "remediation": "Delete what the finding points at: an HTML comment (`<!-- ... -->`), a Markdown comment (`[//]: # (...)`) or an invisible character (U+200B, U+2060, U+202E, or a joiner or byte order mark in the wrong place). If the text is guidance for the agent, move it into visible prose; if it is a note for humans, keep it out of the instruction file.",
       "rule_id": "AAK-AGENT-005",
       "sarif_name": "AgentHiddenContent",
       "severity": "medium",
@@ -1769,7 +1769,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Hooks should never reference credential environment variables.",
+      "remediation": "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, `$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY`, `$AWS_ACCESS_KEY_ID`, `$HOME` and `$PATH`, and the pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. Let the program the hook runs read its own credentials from its environment, and use a project-relative path or a plain program name instead of `$HOME` or `$PATH`.",
       "rule_id": "AAK-HOOK-002",
       "sarif_name": "HookCredentialExfiltration",
       "severity": "critical",
@@ -1793,7 +1793,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Constrain all hook file operations to project directory.",
+      "remediation": "Keep every path in the hook command inside the project. The rule matches `/tmp/`, `~/`, `/etc/`, `/var/`, `/usr/` and `/home/` anywhere in the command, so use project-relative paths for anything the hook writes, and call tools by name instead of by an absolute path under those directories.",
       "rule_id": "AAK-HOOK-003",
       "sarif_name": "HookWriteOutsideProject",
       "severity": "high",
@@ -1865,7 +1865,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Hooks should never require elevated privileges.",
+      "remediation": "Remove `sudo`, `doas`, `pkexec` and `chmod +x` from the hook command. A hook needs no elevated rights; to run a script, commit it with its executable bit set (`git update-index --chmod=+x script.sh`) instead of changing the mode from the hook.",
       "rule_id": "AAK-HOOK-006",
       "sarif_name": "HookPrivilegeEscalation",
       "severity": "medium",
@@ -1887,7 +1887,7 @@
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Minimize hooks to essential operations only.",
+      "remediation": "Remove hooks that are not essential, or fold related ones into one script, until each settings file has 15 or fewer hook entries. The rule counts the entries in `.claude/settings.json` and `.claude/settings.local.json` separately and fires above 15.",
       "rule_id": "AAK-HOOK-007",
       "sarif_name": "ExcessiveHookCount",
       "severity": "medium",
@@ -1909,7 +1909,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "All hook commands should be human-readable. Reject obfuscated commands.",
+      "remediation": "Rewrite the hook so its command is plain and short: remove `\\xNN` and `\\uNNNN` escapes and nested `sh -c ... sh -c` chains, and move anything over 500 characters into a script file in the repository that the hook calls by path, where it can be reviewed.",
       "rule_id": "AAK-HOOK-008",
       "sarif_name": "HookObfuscatedPayload",
       "severity": "critical",
@@ -1931,7 +1931,7 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Hooks should not access source files. Use dedicated build tools instead.",
+      "remediation": "Remove the `cat`, `head`, `tail`, `less`, `more`, `grep`, `sed` or `awk` call, or the `<` redirect, that reads a `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, `.rb`, `.c`, `.cpp` or `.h` file in the hook command. If the hook needs the source for a check, run the project's own linter or formatter on the file instead of reading its contents.",
       "rule_id": "AAK-HOOK-009",
       "sarif_name": "HookReferencesSourceFiles",
       "severity": "medium",
@@ -2731,7 +2731,7 @@
       "owasp_mcp_references": [
         "MCP05:2025"
       ],
-      "remediation": "Use direct executable paths without shell wrappers.",
+      "remediation": "Put only the program in `command` and every argument in `args`. This rule matches `sh -c`, `bash -c`, `cmd /c` and any of `|`, `;`, `&`, `$`, `(`, `)` or a backtick in `command`, so a path such as `$HOME/bin/server`, or one containing parentheses, fires it too.",
       "rule_id": "AAK-MCP-002",
       "sarif_name": "McpCommandShellInjection",
       "severity": "critical",
@@ -2755,7 +2755,7 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Use environment variable references or a secrets manager.",
+      "remediation": "Replace the literal value with a reference of the form `${NAME}`, which is the only form this rule accepts, set `NAME` in your shell or secrets manager, and rotate the secret if it was ever committed.",
       "rule_id": "AAK-MCP-003",
       "sarif_name": "McpEnvExposesSecrets",
       "severity": "high",
@@ -2781,7 +2781,7 @@
       "owasp_mcp_references": [
         "MCP02:2025"
       ],
-      "remediation": "Audit and remove unnecessary servers. Pin to minimum required set.",
+      "remediation": "Remove the servers this project does not use until `mcpServers` lists 10 or fewer. The rule counts the entries in each config file and fires above 10.",
       "rule_id": "AAK-MCP-004",
       "sarif_name": "ExcessiveMcpServers",
       "severity": "high",
@@ -2805,7 +2805,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Pin exact package versions or use locally installed packages.",
+      "remediation": "Install the server ahead of time at a fixed version and point `command` at the installed program (for example `node` with the path to its entry file), so nothing is downloaded when the client starts. Pinning a version in `args` (AAK-MCP-007) lowers the risk but does not clear this rule, which fires on `npx`, `uvx`, `bunx` or `pnpx` as the command.",
       "rule_id": "AAK-MCP-005",
       "sarif_name": "McpRuntimePackageFetch",
       "severity": "medium",
@@ -2899,7 +2899,7 @@
       "owasp_mcp_references": [
         "MCP09:2025"
       ],
-      "remediation": "Ensure local MCP servers are intentional and document the trust assumption.",
+      "remediation": "Confirm you run and trust the server at that address. If it should not be there, remove the entry or point `url` at the intended public HTTPS endpoint. If it is deliberate (a local dev server or a sidecar), accept it by listing `AAK-MCP-009` under `exclude-rules` in `.agent-audit-kit.yml`, with a comment saying why. The rule matches `localhost`, loopback, RFC 1918 private addresses and `.local` hosts.",
       "rule_id": "AAK-MCP-009",
       "sarif_name": "McpLocalhostInternalUrl",
       "severity": "high",
@@ -3123,7 +3123,7 @@
       "owasp_mcp_references": [
         "MCP07:2025"
       ],
-      "remediation": "Add per-IP and per-token rate limits. Reject bursts above the limit with 429.",
+      "remediation": "Add per-IP and per-token rate limits to the server that declares the `/mcp` route, and answer bursts with 429. This check looks for `ratelimit`, `rate_limit`, `throttle` or `limiter` in the same file as the route, so a limit enforced only at a gateway or reverse proxy is not seen; in that case accept the finding under `exclude-rules` in `.agent-audit-kit.yml`.",
       "rule_id": "AAK-MCP-018",
       "sarif_name": "McpNoRateLimit",
       "severity": "medium",
@@ -8715,7 +8715,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Remove injection patterns from tool descriptions.",
+      "remediation": "Delete or reword the phrase quoted in the finding so the description only says what the tool does. The rule matches `ignore previous`, `system:`, `you are`, `forget`, `new instructions`, `override`, `admin mode`, `<hidden>` and `<system>` (case-insensitive), so a harmless phrase such as 'the files you are allowed to read' needs rewording too.",
       "rule_id": "AAK-POISON-002",
       "sarif_name": "ToolDescPromptInjection",
       "severity": "critical",
@@ -8769,7 +8769,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "All tool description content should be plain text.",
+      "remediation": "Replace the encoded text with plain text, or delete it. The rule matches 40 or more consecutive letters, digits, `+` or `/` (base64-like), three or more consecutive `\\xNN` escapes, and three or more consecutive `%NN` sequences in a description.",
       "rule_id": "AAK-POISON-004",
       "sarif_name": "ToolDescEncodedContent",
       "severity": "high",
@@ -9040,7 +9040,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Review the new tool's definition and permissions. Pin if approved.",
+      "remediation": "Review the new tool's definition and permissions. If it is expected, run `agent-audit-kit pin .` to record it in `.agent-audit-kit/tool-pins.json`; if not, delete its entry from the server's `tools` list. Pinning records every current tool, so deal with any other drift findings first.",
       "rule_id": "AAK-RUGPULL-002",
       "sarif_name": "NewToolSincePin",
       "severity": "high",
@@ -9064,7 +9064,7 @@
       "owasp_mcp_references": [
         "MCP03:2025"
       ],
-      "remediation": "Investigate why the tool was removed. Update pins if removal was intentional.",
+      "remediation": "Find out why the tool left the server's `tools` list. If the removal is intended, run `agent-audit-kit pin .` to refresh `.agent-audit-kit/tool-pins.json`; if not, restore the entry. Pinning records every current tool, so deal with any other drift findings first.",
       "rule_id": "AAK-RUGPULL-003",
       "sarif_name": "ToolRemovedSincePin",
       "severity": "medium",
@@ -9193,7 +9193,7 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Use IAM roles, AWS SSO, or secrets manager.",
+      "remediation": "Delete the access key from the file and deactivate or rotate it in IAM, since it is exposed once committed. Then use an IAM role, AWS SSO or a secrets manager so that no static key is needed.",
       "rule_id": "AAK-SECRET-003",
       "sarif_name": "AwsCredentialsExposed",
       "severity": "critical",
@@ -9758,7 +9758,7 @@
       "owasp_mcp_references": [
         "MCP05:2025"
       ],
-      "remediation": "Block loopback and link-local addresses after DNS resolution.",
+      "remediation": "Take the loopback or private address out of the outbound call's URL: use the real public host, or read the target from configuration. The rule matches `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to `172.31.x` and `192.168.x`. Where the URL can also come from the caller, resolve the host and refuse loopback, private and link-local results before connecting.",
       "rule_id": "AAK-SSRF-002",
       "sarif_name": "SsrfLoopbackReachable",
       "severity": "high",
@@ -9836,7 +9836,7 @@
       "owasp_mcp_references": [
         "MCP05:2025"
       ],
-      "remediation": "Maintain an explicit allowlist of hostnames; reject anything else.",
+      "remediation": "Check the URL's host against an explicit allowlist before the request and reject any other host. Keep the list in a variable this check recognises: `ALLOWED_HOSTS`, `ALLOWED_HOST`, `ALLOW_HOSTS`, `ALLOW_HOST`, `URL_ALLOW_LIST`, `allowed_hosts` or `allowlist`; a list under another name is not seen.",
       "rule_id": "AAK-SSRF-005",
       "sarif_name": "SsrfNoAllowlist",
       "severity": "high",
@@ -10042,7 +10042,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Update to patched version or remove dependency.",
+      "remediation": "Upgrade the package named in the finding to a release outside its affected range (currently axios 1.7.4 or later, openclaw 2.1.0 or later), or remove it. A 'Potential typosquat' finding is a name check: confirm the package is the one you meant to install, and replace it with the real package if it is not.",
       "rule_id": "AAK-SUPPLY-002",
       "sarif_name": "KnownVulnerablePackage",
       "severity": "high",
@@ -10095,7 +10095,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Generate and commit lockfile.",
+      "remediation": "Generate the lockfile for the manifest named in the finding and commit it: `npm install` (`package-lock.json`), `yarn` or `pnpm install`, `uv lock`, `poetry lock`, `pdm lock`, `pipenv lock` or `cargo generate-lockfile`.",
       "rule_id": "AAK-SUPPLY-004",
       "sarif_name": "NoLockfilePresent",
       "severity": "medium",
@@ -10121,7 +10121,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Audit and remove unused dependencies. Consider lighter alternatives.",
+      "remediation": "Remove unused dependencies, or swap heavy ones for lighter ones, until the lockfile lists 200 or fewer packages. The rule counts every entry in `package-lock.json` or `Cargo.lock`, transitive dependencies included.",
       "rule_id": "AAK-SUPPLY-005",
       "sarif_name": "ExcessiveDependencyCount",
       "severity": "low",
@@ -10147,7 +10147,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Update to patched version as listed in the vulnerability database.",
+      "remediation": "Change the package version in the server's `args` to one outside the affected range recorded in the vulnerability database (currently axios 1.7.4 or later, openclaw 2.1.0 or later), and pin it exactly.",
       "rule_id": "AAK-SUPPLY-006",
       "sarif_name": "McpSpecificVulnDep",
       "severity": "high",
@@ -10253,7 +10253,7 @@
       "owasp_mcp_references": [
         "MCP05:2025"
       ],
-      "remediation": "Validate URLs against an allowlist. Block internal/private IP ranges.",
+      "remediation": "Validate the URL against a host allowlist and refuse internal and private addresses, then give the validated value to the request through a call or a new name, such as `requests.get(checked_url(url))`. The rule fires whenever a tool parameter is passed to the HTTP call under its own name, validated or not.",
       "rule_id": "AAK-TAINT-004",
       "sarif_name": "TaintSsrf",
       "severity": "high",
@@ -10357,7 +10357,7 @@
       "owasp_mcp_references": [
         "MCP02:2025"
       ],
-      "remediation": "Split into smaller, focused tool functions with minimal privileges.",
+      "remediation": "Split the tool so that each function reaches at most two of the sink categories behind AAK-TAINT-001 to AAK-TAINT-006 (shell, `eval`/`exec`, file access, HTTP, SQL, unsafe deserialization). The rule fires at three.",
       "rule_id": "AAK-TAINT-008",
       "sarif_name": "TaintExcessiveSinks",
       "severity": "medium",
@@ -10558,7 +10558,7 @@
       "owasp_mcp_references": [
         "MCP07:2025"
       ],
-      "remediation": "Remove TLS validation overrides. Use proper certificate management.",
+      "remediation": "Delete `NODE_TLS_REJECT_UNAUTHORIZED` (when it is `0`) and `SSL_CERT_FILE` from the server's `env`, the two settings this rule matches. If the server must trust a private CA, add it through the runtime's extra-CA setting (for Node, `NODE_EXTRA_CA_CERTS`) instead of switching verification off or replacing the CA bundle.",
       "rule_id": "AAK-TRANSPORT-002",
       "sarif_name": "McpTlsValidationDisabled",
       "severity": "high",

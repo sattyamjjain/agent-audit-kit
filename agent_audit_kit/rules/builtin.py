@@ -436,7 +436,10 @@ _r(
     "This enables command injection via argument composition.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
-    "Use direct executable paths without shell wrappers.",
+    "Put only the program in `command` and every argument in `args`. This rule matches "
+    "`sh -c`, `bash -c`, `cmd /c` and any of `|`, `;`, `&`, `$`, `(`, `)` or a backtick "
+    "in `command`, so a path such as `$HOME/bin/server`, or one containing parentheses, "
+    "fires it too.",
     sarif_name="McpCommandShellInjection",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
@@ -457,7 +460,9 @@ _r(
     "Secrets in project-scoped MCP config are committed to git.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Use environment variable references or a secrets manager.",
+    "Replace the literal value with a reference of the form `${NAME}`, which is the "
+    "only form this rule accepts, set `NAME` in your shell or secrets manager, and "
+    "rotate the secret if it was ever committed.",
     sarif_name="McpEnvExposesSecrets",
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
@@ -479,7 +484,8 @@ _r(
     "Large tool surface increases attack surface.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Audit and remove unnecessary servers. Pin to minimum required set.",
+    "Remove the servers this project does not use until `mcpServers` lists 10 or fewer. "
+    "The rule counts the entries in each config file and fires above 10.",
     sarif_name="ExcessiveMcpServers",
     cve_references=["CVE-2026-21852"],
     owasp_mcp_references=["MCP02:2025"],
@@ -499,7 +505,11 @@ _r(
     "a registry at runtime, vulnerable to typosquatting and dependency confusion.",
     Severity.MEDIUM,
     Category.MCP_CONFIG,
-    "Pin exact package versions or use locally installed packages.",
+    "Install the server ahead of time at a fixed version and point `command` at the "
+    "installed program (for example `node` with the path to its entry file), so nothing "
+    "is downloaded when the client starts. Pinning a version in `args` (AAK-MCP-007) "
+    "lowers the risk but does not clear this rule, which fires on `npx`, `uvx`, `bunx` "
+    "or `pnpx` as the command.",
     sarif_name="McpRuntimePackageFetch",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -579,7 +589,11 @@ _r(
     "which may expose internal services (SSRF pattern).",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Ensure local MCP servers are intentional and document the trust assumption.",
+    "Confirm you run and trust the server at that address. If it should not be there, "
+    "remove the entry or point `url` at the intended public HTTPS endpoint. If it is "
+    "deliberate (a local dev server or a sidecar), accept it by listing `AAK-MCP-009` "
+    "under `exclude-rules` in `.agent-audit-kit.yml`, with a comment saying why. The "
+    "rule matches `localhost`, loopback, RFC 1918 private addresses and `.local` hosts.",
     sarif_name="McpLocalhostInternalUrl",
     owasp_mcp_references=["MCP09:2025"],
     adversa_references=["ADV-SSRF-01"],
@@ -1113,7 +1127,11 @@ _r(
     "This enables direct credential theft via hook execution.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
-    "Hooks should never reference credential environment variables.",
+    "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, "
+    "`$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY`, `$AWS_ACCESS_KEY_ID`, `$HOME` and "
+    "`$PATH`, and the pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. "
+    "Let the program the hook runs read its own credentials from its environment, and "
+    "use a project-relative path or a plain program name instead of `$HOME` or `$PATH`.",
     sarif_name="HookCredentialExfiltration",
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-02"],
@@ -1134,7 +1152,10 @@ _r(
     "which can modify system configs, plant persistence, or stage exfiltration.",
     Severity.HIGH,
     Category.HOOK_INJECTION,
-    "Constrain all hook file operations to project directory.",
+    "Keep every path in the hook command inside the project. The rule matches `/tmp/`, "
+    "`~/`, `/etc/`, `/var/`, `/usr/` and `/home/` anywhere in the command, so use "
+    "project-relative paths for anything the hook writes, and call tools by name "
+    "instead of by an absolute path under those directories.",
     sarif_name="HookWriteOutsideProject",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-ESCAPE-01"],
@@ -1194,7 +1215,9 @@ _r(
     "Hooks should never require elevated privileges.",
     Severity.MEDIUM,
     Category.HOOK_INJECTION,
-    "Hooks should never require elevated privileges.",
+    "Remove `sudo`, `doas`, `pkexec` and `chmod +x` from the hook command. A hook needs "
+    "no elevated rights; to run a script, commit it with its executable bit set (`git "
+    "update-index --chmod=+x script.sh`) instead of changing the mode from the hook.",
     sarif_name="HookPrivilegeEscalation",
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PRIV-01"],
@@ -1213,7 +1236,10 @@ _r(
     "Large hook surface increases audit burden and risk of hidden malicious hooks.",
     Severity.MEDIUM,
     Category.HOOK_INJECTION,
-    "Minimize hooks to essential operations only.",
+    "Remove hooks that are not essential, or fold related ones into one script, until "
+    "each settings file has 15 or fewer hook entries. The rule counts the entries in "
+    "`.claude/settings.json` and `.claude/settings.local.json` separately and fires "
+    "above 15.",
     sarif_name="ExcessiveHookCount",
     adversa_references=["ADV-SCOPE-03"],
     limitations=(
@@ -1231,7 +1257,10 @@ _r(
     "or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
-    "All hook commands should be human-readable. Reject obfuscated commands.",
+    "Rewrite the hook so its command is plain and short: remove `\\xNN` and `\\uNNNN` "
+    "escapes and nested `sh -c ... sh -c` chains, and move anything over 500 characters "
+    "into a script file in the repository that the hook calls by path, where it can be "
+    "reviewed.",
     sarif_name="HookObfuscatedPayload",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-02"],
@@ -1251,7 +1280,11 @@ _r(
     "which could enable code exfiltration.",
     Severity.MEDIUM,
     Category.HOOK_INJECTION,
-    "Hooks should not access source files. Use dedicated build tools instead.",
+    "Remove the `cat`, `head`, `tail`, `less`, `more`, `grep`, `sed` or `awk` call, or "
+    "the `<` redirect, that reads a `.py`, `.js`, `.ts`, `.go`, `.rs`, `.java`, `.rb`, "
+    "`.c`, `.cpp` or `.h` file in the hook command. If the hook needs the source for a "
+    "check, run the project's own linter or formatter on the file instead of reading "
+    "its contents.",
     sarif_name="HookReferencesSourceFiles",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-02"],
@@ -1458,7 +1491,9 @@ _r(
     "AWS access key ID or secret access key found in a project file.",
     Severity.CRITICAL,
     Category.SECRET_EXPOSURE,
-    "Use IAM roles, AWS SSO, or secrets manager.",
+    "Delete the access key from the file and deactivate or rotate it in IAM, since it "
+    "is exposed once committed. Then use an IAM role, AWS SSO or a secrets manager so "
+    "that no static key is needed.",
     sarif_name="AwsCredentialsExposed",
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
@@ -1633,7 +1668,10 @@ _r(
     "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Update to patched version or remove dependency.",
+    "Upgrade the package named in the finding to a release outside its affected range "
+    "(currently axios 1.7.4 or later, openclaw 2.1.0 or later), or remove it. A "
+    "'Potential typosquat' finding is a name check: confirm the package is the one you "
+    "meant to install, and replace it with the real package if it is not.",
     sarif_name="KnownVulnerablePackage",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1681,7 +1719,9 @@ _r(
     "Without lockfiles, dependency versions float and can be silently updated.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Generate and commit lockfile.",
+    "Generate the lockfile for the manifest named in the finding and commit it: `npm "
+    "install` (`package-lock.json`), `yarn` or `pnpm install`, `uv lock`, `poetry "
+    "lock`, `pdm lock`, `pipenv lock` or `cargo generate-lockfile`.",
     sarif_name="NoLockfilePresent",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1704,7 +1744,9 @@ _r(
     "Each dependency is a trust decision.",
     Severity.LOW,
     Category.SUPPLY_CHAIN,
-    "Audit and remove unused dependencies. Consider lighter alternatives.",
+    "Remove unused dependencies, or swap heavy ones for lighter ones, until the "
+    "lockfile lists 200 or fewer packages. The rule counts every entry in "
+    "`package-lock.json` or `Cargo.lock`, transitive dependencies included.",
     sarif_name="ExcessiveDependencyCount",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1723,7 +1765,9 @@ _r(
     "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Update to patched version as listed in the vulnerability database.",
+    "Change the package version in the server's `args` to one outside the affected "
+    "range recorded in the vulnerability database (currently axios 1.7.4 or later, "
+    "openclaw 2.1.0 or later), and pin it exactly.",
     sarif_name="McpSpecificVulnDep",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1882,7 +1926,11 @@ _r(
     "zero-width characters, or Unicode tricks that may manipulate agent behavior covertly.",
     Severity.MEDIUM,
     Category.AGENT_CONFIG,
-    "Remove hidden content. All agent instructions should be human-readable.",
+    "Delete what the finding points at: an HTML comment (`<!-- ... -->`), a Markdown "
+    "comment (`[//]: # (...)`) or an invisible character (U+200B, U+2060, U+202E, or a "
+    "joiner or byte order mark in the wrong place). If the text is guidance for the "
+    "agent, move it into visible prose; if it is a note for humans, keep it out of the "
+    "instruction file.",
     sarif_name="AgentHiddenContent",
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-05"],
@@ -1998,7 +2046,11 @@ _r(
     "'system:', or role-switching directives.",
     Severity.CRITICAL,
     Category.TOOL_POISONING,
-    "Remove injection patterns from tool descriptions.",
+    "Delete or reword the phrase quoted in the finding so the description only says "
+    "what the tool does. The rule matches `ignore previous`, `system:`, `you are`, "
+    "`forget`, `new instructions`, `override`, `admin mode`, `<hidden>` and `<system>` "
+    "(case-insensitive), so a harmless phrase such as 'the files you are allowed to "
+    "read' needs rewording too.",
     sarif_name="ToolDescPromptInjection",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
@@ -2041,7 +2093,10 @@ _r(
     "malicious instructions.",
     Severity.HIGH,
     Category.TOOL_POISONING,
-    "All tool description content should be plain text.",
+    "Replace the encoded text with plain text, or delete it. The rule matches 40 or "
+    "more consecutive letters, digits, `+` or `/` (base64-like), three or more "
+    "consecutive `\\xNN` escapes, and three or more consecutive `%NN` sequences in a "
+    "description.",
     sarif_name="ToolDescEncodedContent",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
@@ -2186,7 +2241,10 @@ _r(
     "enabling SSRF attacks.",
     Severity.HIGH,
     Category.TAINT_ANALYSIS,
-    "Validate URLs against an allowlist. Block internal/private IP ranges.",
+    "Validate the URL against a host allowlist and refuse internal and private "
+    "addresses, then give the validated value to the request through a call or a new "
+    "name, such as `requests.get(checked_url(url))`. The rule fires whenever a tool "
+    "parameter is passed to the HTTP call under its own name, validated or not.",
     sarif_name="TaintSsrf",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
@@ -2279,7 +2337,9 @@ _r(
     "overly broad permissions.",
     Severity.MEDIUM,
     Category.TAINT_ANALYSIS,
-    "Split into smaller, focused tool functions with minimal privileges.",
+    "Split the tool so that each function reaches at most two of the sink categories "
+    "behind AAK-TAINT-001 to AAK-TAINT-006 (shell, `eval`/`exec`, file access, HTTP, "
+    "SQL, unsafe deserialization). The rule fires at three.",
     sarif_name="TaintExcessiveSinks",
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI02"],
@@ -2348,7 +2408,11 @@ _r(
     "**Does not apply to: `stdio`** (no TLS peer to verify).",
     Severity.HIGH,
     Category.TRANSPORT_SECURITY,
-    "Remove TLS validation overrides. Use proper certificate management.",
+    "Delete `NODE_TLS_REJECT_UNAUTHORIZED` (when it is `0`) and `SSL_CERT_FILE` from "
+    "the server's `env`, the two settings this rule matches. If the server must trust a "
+    "private CA, add it through the runtime's extra-CA setting (for Node, "
+    "`NODE_EXTRA_CA_CERTS`) instead of switching verification off or replacing the CA "
+    "bundle.",
     sarif_name="McpTlsValidationDisabled",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI07"],
@@ -2446,7 +2510,10 @@ _r(
     "An A2A Agent Card does not require authentication for interactions.",
     Severity.HIGH,
     Category.A2A_PROTOCOL,
-    "Add authentication requirements (OAuth 2.0 or API key) to Agent Card.",
+    "Add an `authentication` object to the Agent Card that names a real scheme (for "
+    "example OAuth 2.0 or an API key) rather than `none`. The rule reads the card's "
+    "`authentication` (or `auth`) field and fires when it is missing or its `type` is "
+    "`none`.",
     sarif_name="A2aNoAuth",
     owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-A2A-02"],
@@ -2469,7 +2536,9 @@ _r(
     "gap OWASP ASI07 (Insecure Inter-Agent Communication) names.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
-    "Define explicit JSON schemas for all skill inputs.",
+    "Give every entry in the card's `skills` a non-empty `inputSchema`: a JSON Schema "
+    "object with `type`, `properties` and `required`. The rule fires on a skill with no "
+    "`inputSchema` or an empty one.",
     sarif_name="A2aNoInputSchema",
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-03"],
@@ -2658,7 +2727,10 @@ _r(
     "comparison has to run again after the server is already trusted.",
     Severity.HIGH,
     Category.TOOL_POISONING,
-    "Review the new tool's definition and permissions. Pin if approved.",
+    "Review the new tool's definition and permissions. If it is expected, run "
+    "`agent-audit-kit pin .` to record it in `.agent-audit-kit/tool-pins.json`; if not, "
+    "delete its entry from the server's `tools` list. Pinning records every current "
+    "tool, so deal with any other drift findings first.",
     sarif_name="NewToolSincePin",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
@@ -2680,7 +2752,10 @@ _r(
     "covering tracks after an attack.",
     Severity.MEDIUM,
     Category.TOOL_POISONING,
-    "Investigate why the tool was removed. Update pins if removal was intentional.",
+    "Find out why the tool left the server's `tools` list. If the removal is intended, "
+    "run `agent-audit-kit pin .` to refresh `.agent-audit-kit/tool-pins.json`; if not, "
+    "restore the entry. Pinning records every current tool, so deal with any other "
+    "drift findings first.",
     sarif_name="ToolRemovedSincePin",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
@@ -2900,7 +2975,11 @@ _r(
     "access allows credential stuffing and enumeration attacks.",
     Severity.MEDIUM,
     Category.MCP_CONFIG,
-    "Add per-IP and per-token rate limits. Reject bursts above the limit with 429.",
+    "Add per-IP and per-token rate limits to the server that declares the `/mcp` route, "
+    "and answer bursts with 429. This check looks for `ratelimit`, `rate_limit`, "
+    "`throttle` or `limiter` in the same file as the route, so a limit enforced only at "
+    "a gateway or reverse proxy is not seen; in that case accept the finding under "
+    "`exclude-rules` in `.agent-audit-kit.yml`.",
     sarif_name="McpNoRateLimit",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
@@ -3001,7 +3080,11 @@ _r(
     "127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Block loopback and link-local addresses after DNS resolution.",
+    "Take the loopback or private address out of the outbound call's URL: use the real "
+    "public host, or read the target from configuration. The rule matches `localhost`, "
+    "`127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to `172.31.x` and `192.168.x`. "
+    "Where the URL can also come from the caller, resolve the host and refuse loopback, "
+    "private and link-local results before connecting.",
     sarif_name="SsrfLoopbackReachable",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
@@ -3075,7 +3158,10 @@ _r(
     "reliable defense against SSRF chains.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Maintain an explicit allowlist of hostnames; reject anything else.",
+    "Check the URL's host against an explicit allowlist before the request and reject "
+    "any other host. Keep the list in a variable this check recognises: "
+    "`ALLOWED_HOSTS`, `ALLOWED_HOST`, `ALLOW_HOSTS`, `ALLOW_HOST`, `URL_ALLOW_LIST`, "
+    "`allowed_hosts` or `allowlist`; a list under another name is not seen.",
     sarif_name="SsrfNoAllowlist",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
@@ -4071,7 +4157,10 @@ _r(
     "authenticates. The callee is trusted by URL alone — easy to spoof.",
     Severity.HIGH,
     Category.A2A_PROTOCOL,
-    "Require mutual TLS or dual-bearer auth for all A2A flows.",
+    "Require mutual authentication and declare it on the card: set `mutual` (or "
+    "`mutual_tls`) to `true` in the `authentication` object, or use a `scheme` such as "
+    "`mtls`. The rule fires when the scheme is bearer or OAuth and none of those is "
+    "present.",
     sarif_name="A2aNoMutualAuth",
     owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-A2A-05"],
@@ -4130,8 +4219,10 @@ _r(
     "of the OWASP ASI07 (Insecure Inter-Agent Communication) examples.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
-    "Include jti/nonce and iat/exp claims; reject duplicates inside a "
-    "replay window.",
+    "Declare replay protection in the card's `tokens` block with `jti`, `nonce`, "
+    "`require_jti` or `replay_window`, and enforce it: put `jti` or `nonce` and "
+    "`iat`/`exp` claims in every token and reject a repeated `jti` inside the replay "
+    "window.",
     sarif_name="A2aReplayable",
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-08"],
@@ -4153,7 +4244,9 @@ _r(
     "Communication) names.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
-    "Require an explicit schema version in every message; reject mismatches.",
+    "Add a `schema_version` (or `a2a_version` or `apiVersion`) field to the Agent Card, "
+    "and have the agent reject messages whose version does not match. The rule asks for "
+    "it on cards that carry a `tokens`, `delegation` or `trust` section.",
     sarif_name="A2aSchemaConfusion",
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-09"],
