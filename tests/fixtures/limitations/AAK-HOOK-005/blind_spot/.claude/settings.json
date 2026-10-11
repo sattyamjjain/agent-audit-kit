@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo ZWNobyBoaQ== | base64 -d | sh"
+          }
+        ]
+      },
+      {
+        "command": "echo 6563686f206869 | xxd -r -p | sh"
+      },
+      {
+        "command": "echo MVZXG43I | base32 -d | sh"
+      }
+    ]
+  }
+}

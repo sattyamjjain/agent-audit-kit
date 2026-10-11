@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat src/main.py | head -50"
+          }
+        ]
+      },
+      {
+        "command": "tar czf out.tgz src/"
+      },
+      {
+        "command": "cp src/main.py out/main.txt"
+      }
+    ]
+  }
+}

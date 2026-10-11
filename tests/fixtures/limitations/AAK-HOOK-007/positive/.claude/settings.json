@@ -1,0 +1,54 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "echo hook0"
+      },
+      {
+        "command": "echo hook1"
+      },
+      {
+        "command": "echo hook2"
+      },
+      {
+        "command": "echo hook3"
+      },
+      {
+        "command": "echo hook4"
+      },
+      {
+        "command": "echo hook5"
+      },
+      {
+        "command": "echo hook6"
+      },
+      {
+        "command": "echo hook7"
+      },
+      {
+        "command": "echo hook8"
+      },
+      {
+        "command": "echo hook9"
+      },
+      {
+        "command": "echo hook10"
+      },
+      {
+        "command": "echo hook11"
+      },
+      {
+        "command": "echo hook12"
+      },
+      {
+        "command": "echo hook13"
+      },
+      {
+        "command": "echo hook14"
+      },
+      {
+        "command": "echo hook15"
+      }
+    ]
+  }
+}

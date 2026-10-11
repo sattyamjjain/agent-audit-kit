@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "command": "bash .claude/hooks/check.sh"
+      }
+    ]
+  }
+}

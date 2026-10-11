@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "setup",
+      "type": "shell",
+      "command": "echo ready",
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    }
+  ]
+}

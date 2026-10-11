@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "command": "bash scripts/guard.sh"
+      }
+    ]
+  }
+}

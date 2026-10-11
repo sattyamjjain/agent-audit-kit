@@ -881,6 +881,14 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-01"],
+    limitations=(
+        "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name in the "
+        "`command` string of each hook entry in `.claude/settings.json` and "
+        "`.claude/settings.local.json`. A hook nested under an entry's own `hooks` "
+        "array, the shape Claude Code documents, is not read. What a script file does "
+        "is not followed, so `bash .claude/hooks/report.sh` passes even when the "
+        "script runs curl."
+    ),
 )
 
 _r(
@@ -895,6 +903,14 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-02"],
+    limitations=(
+        "Matches six names written as a bare `$NAME` (ANTHROPIC_API_KEY, "
+        "OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, HOME, PATH) and "
+        "three exfiltration pipelines. The braced form `${ANTHROPIC_API_KEY}` and any "
+        "other credential variable (`$GITHUB_TOKEN`) are not matched. A hook nested "
+        "under an entry's own `hooks` array, the shape Claude Code documents, is not "
+        "read."
+    ),
 )
 
 _r(
@@ -909,6 +925,12 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-ESCAPE-01"],
+    limitations=(
+        "Looks for the literal prefixes /tmp/, ~/, /etc/, /var/, /usr/ and /home/ in a "
+        "hook command. A path reached through `$HOME` or a relative climb "
+        "(`../../shared/out.json`) is not matched. A hook nested under an entry's own "
+        "`hooks` array, the shape Claude Code documents, is not read."
+    ),
 )
 
 _r(
@@ -924,6 +946,14 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-HOOK-01"],
+    limitations=(
+        "Fires only for a hook on PreToolUse, PostToolUse, SessionStart or "
+        "UserPromptSubmit whose command names none of a list of formatters. The same "
+        "command on any other event, such as Stop, is not reported, and a command that "
+        "merely contains a formatter name anywhere, even in a trailing comment (`# "
+        "prettier`), counts as a formatter. A hook nested under an entry's own `hooks` "
+        "array, the shape Claude Code documents, is not read."
+    ),
 )
 
 _r(
@@ -938,6 +968,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-01"],
+    limitations=(
+        "Matches the words base64, btoa, atob, b64encode and b64decode in a hook "
+        "command. Other encodings that hide a payload the same way, hex through `xxd "
+        "-r -p` or `base32 -d`, are not matched. A hook nested under an entry's own "
+        "`hooks` array, the shape Claude Code documents, is not read."
+    ),
 )
 
 _r(
@@ -952,6 +988,12 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PRIV-01"],
+    limitations=(
+        "Matches sudo, doas, pkexec and the exact text `chmod +x`. `chmod 755` and `su "
+        "root -c`, which grant the same execute or root rights, are not matched. A "
+        "hook nested under an entry's own `hooks` array, the shape Claude Code "
+        "documents, is not read."
+    ),
 )
 
 _r(
@@ -966,6 +1008,12 @@ _r(
     owasp_mcp_references=["MCP02:2025", "MCP08:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-03"],
+    limitations=(
+        "Counts the entries listed under each event in a single settings file and "
+        "fires above 15. Hooks split between `.claude/settings.json` and "
+        "`.claude/settings.local.json` are not added up, and a `matcher` entry counts "
+        "once however many hooks its own `hooks` array holds."
+    ),
 )
 
 _r(
@@ -980,6 +1028,13 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-02"],
+    limitations=(
+        "Matches `\\x41` and `\\u0041` escapes, a nested `sh -c ... sh -c`, and a "
+        "command longer than 500 characters. The same text written as bash octal "
+        "escapes (`$'\\143\\165\\162\\154'`) or reassembled from shell variables "
+        "(`$a$b`) is not matched. A hook nested under an entry's own `hooks` array, "
+        "the shape Claude Code documents, is not read."
+    ),
 )
 
 _r(
@@ -994,6 +1049,13 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-02"],
+    limitations=(
+        "Matches a reader command (cat, head, tail, less, more, grep, sed, awk) "
+        "followed by a path ending in a source extension, or a `<` redirect from one. "
+        "Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py out/`) "
+        "is not matched. A hook nested under an entry's own `hooks` array, the shape "
+        "Claude Code documents, is not read."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -2915,6 +2977,13 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-RCE-01"],
+    limitations=(
+        "Reads command strings in the Claude Code settings files and scripts under a "
+        "`hooks` directory inside `.claude/`, looking for `${`, `$(`, a backtick or a "
+        "string `+` directly before input, args, event, payload, user, argv or "
+        "request. The same script kept outside `.claude/hooks/` (`scripts/guard.sh`) "
+        "is not read, and a plain `$cmd` filled from `jq` is not matched."
+    ),
 )
 
 _r(
@@ -2932,6 +3001,13 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-RCE-02"],
+    limitations=(
+        "Matches `shell=True` (or `{ shell: true }`) before the first closing "
+        "parenthesis of a subprocess.run, call, Popen or check_output, os.system, exec "
+        "or Node spawn call in a script under `.claude/.../hooks/`. A call with "
+        "another call ahead of it (`subprocess.run(build(cmd), shell=True)`) and "
+        "`subprocess.check_call` are not matched."
+    ),
 )
 
 _r(
@@ -2950,6 +3026,11 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-RCE-03"],
+    limitations=(
+        "Reports a hook command only in a file named `settings.local.json`. The same "
+        "hook committed in `.claude/settings.json`, which a repository ships to "
+        "everyone who opens it, and hook script files are not reported."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -2980,6 +3061,11 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-04"],
+    limitations=(
+        "Reads the `tasks` array of `.vscode/tasks.json` for `runOptions.runOn: "
+        "folderOpen`. A task declared in the `tasks` block of a workspace file "
+        "(`*.code-workspace`) is not read."
+    ),
 )
 
 _r(
@@ -2999,6 +3085,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-05"],
+    limitations=(
+        "Judges a task by its own `command` and `args` text: a pipe into a shell, an "
+        "interpreter (bash, python, node) run on a repository script path, or an "
+        "interpolated variable. A script run directly (`./scripts/setup.sh`) or "
+        "through a runner (`npm run setup`) is not followed."
+    ),
 )
 
 _r(
@@ -3017,6 +3109,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-06"],
+    limitations=(
+        "Matches a launch configuration's `preLaunchTask` by label against tasks that "
+        "AAK-IDE-TASK-001 or AAK-IDE-TASK-002 flagged in the `tasks.json` next to it. "
+        "A `preLaunchTask` that names a compound task (`dependsOn: [\"setup\"]`) "
+        "reaches the same script but is not matched, and `postDebugTask` is not read."
+    ),
 )
 
 _r(

@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "echo ZWNobyBoaQ== | base64 -d | sh"
+      }
+    ]
+  }
+}

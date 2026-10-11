@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "command": "echo local0"
+      },
+      {
+        "command": "echo local1"
+      },
+      {
+        "command": "echo local2"
+      },
+      {
+        "command": "echo local3"
+      },
+      {
+        "command": "echo local4"
+      },
+      {
+        "command": "echo local5"
+      },
+      {
+        "command": "echo local6"
+      },
+      {
+        "command": "echo local7"
+      }
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "command": "bash .claude/hooks/check.sh"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "command": "bash .claude/hooks/check.sh # prettier"
+      }
+    ]
+  }
+}

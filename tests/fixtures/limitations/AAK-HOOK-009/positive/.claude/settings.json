@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "cat src/main.py | head -50"
+      }
+    ]
+  }
+}

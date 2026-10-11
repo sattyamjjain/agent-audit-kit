@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "cp .claude/settings.json /tmp/settings-copy.json"
+      }
+    ]
+  }
+}

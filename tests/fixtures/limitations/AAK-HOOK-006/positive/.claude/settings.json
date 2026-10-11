@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": "chmod +x .claude/hooks/run.sh && .claude/hooks/run.sh"
+      }
+    ]
+  }
+}
