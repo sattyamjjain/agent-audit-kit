@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "docs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.example.com/mcp"
+      ]
+    },
+    "other": {
+      "serverUrl": "https://mcp.example.com/mcp"
+    }
+  }
+}

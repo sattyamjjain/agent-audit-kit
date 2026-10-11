@@ -1,0 +1,9 @@
+name: deploy
+on: push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MCP_TUNNEL_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaa
+    steps:
+      - run: echo deploying

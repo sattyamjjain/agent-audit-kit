@@ -410,6 +410,12 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads the `url` field of each server in `mcpServers` and looks for an "
+        "Authorization, API-key or custom `X-*-Key` header. A remote URL given any "
+        "other way is not examined: as an argument to a bridge (`npx mcp-remote "
+        "https://...`) or under another key such as `serverUrl`."
+    ),
 )
 
 _r(
@@ -424,6 +430,11 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Looks at the `command` string only, for shell metacharacters or a leading `sh "
+        "-c`, `bash -c` or `cmd /c`. The same wrapper split into `command: bash` and "
+        "`args: [\"-c\", ...]` is not read by this rule."
+    ),
 )
 
 _r(
@@ -438,6 +449,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-01"],
+    limitations=(
+        "Reads the `env` block of each server and flags a value that is not a bare "
+        "`${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, "
+        "CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` "
+        "(`Authorization: Bearer ...`) or inside a connection string under another "
+        "name (`DATABASE_URL=postgres://user:pass@host/db`) is not matched."
+    ),
 )
 
 _r(
@@ -453,6 +471,11 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-01"],
+    limitations=(
+        "Counts the entries of `mcpServers` in one config file and fires above 10. A "
+        "VS Code `.vscode/mcp.json` keeps its servers under `servers`, which is not "
+        "read, so any number of them passes."
+    ),
 )
 
 _r(
@@ -467,6 +490,11 @@ _r(
     owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
+    limitations=(
+        "Fires when the first word of `command` is npx, uvx, bunx or pnpx. Other "
+        "launchers that fetch and run a package from a registry the same way, `pnpm "
+        "dlx` and `pipx run`, are not matched."
+    ),
 )
 
 _r(
@@ -480,6 +508,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-02"],
+    limitations=(
+        "Fires on a `command` that is not an absolute path, except for a fixed list of "
+        "common launchers (node, python, python3, npx, uvx, bunx, pnpx, docker, deno, "
+        "bun, cargo, go, java, ruby). Those are resolved through PATH in the same way "
+        "and are never reported."
+    ),
 )
 
 _r(
@@ -494,6 +528,11 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-02"],
+    limitations=(
+        "Looks for a package argument after npx, uvx, bunx or pnpx that has no "
+        "`@version` suffix. Any suffix counts as a pin, including the floating tag "
+        "`@latest`."
+    ),
 )
 
 _r(
@@ -508,6 +547,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-03"],
+    limitations=(
+        "Reads the `headersHelper` field of servers in the MCP config files it finds "
+        "(`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json` and any file with `mcp` "
+        "in its name). Servers declared inline in a Claude Code plugin manifest "
+        "(`.claude-plugin/plugin.json`) are not read."
+    ),
 )
 
 _r(
@@ -522,6 +567,12 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, "
+        "172.16-31.x and 192.168.x ranges and a `.local` name. Other internal "
+        "addresses are not matched: a name such as `mcp.corp.internal` or the shared "
+        "range 100.64.0.0/10."
+    ),
 )
 
 _r(
@@ -536,6 +587,11 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-02"],
+    limitations=(
+        "Fires when an argument is exactly `/`, `~`, `/home`, `/Users`, `/etc` or "
+        "`/var`. A home directory given as a specific path (`/Users/alice`) or through "
+        "a variable (`$HOME`) grants the same access and is not matched."
+    ),
 )
 
 _r(
@@ -555,6 +611,13 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
     incident_references=["arXiv:2605.24248"],
+    limitations=(
+        "Fires on a server entry with a `command` or `url` that has none of the "
+        "attestation keys (`attestation`, `clearance`, `trust_root` and variants), no "
+        "`MCP-Clearance` header and no `.well-known/mcp-clearance` text. The key only "
+        "has to exist: `\"attestation\": \"\"` satisfies it, and no clearance document "
+        "or trust root is ever checked."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -586,6 +649,13 @@ _r(
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
     ],
+    limitations=(
+        "Reads a YAML file named config, proxy or values (.yaml or .yml), or one under "
+        "a directory called mcp-gateway, mcp-tunnel, tunnel or gateway, and only when "
+        "it parses as a single document with `tunnel_domain` and `routes` at the top "
+        "(or under `gateway.config`). The same settings embedded as a string in a "
+        "Kubernetes ConfigMap's `data:` are not read."
+    ),
 )
 
 _r(
@@ -610,6 +680,12 @@ _r(
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
     ],
+    limitations=(
+        "Reads a YAML file only when its name is config, proxy or values (.yaml or "
+        ".yml) or it sits under a directory called mcp-gateway, mcp-tunnel, tunnel or "
+        "gateway. The same proxy configuration saved under another name in another "
+        "directory (`deploy/proxy-prod.yaml`) is not read."
+    ),
 )
 
 _r(
@@ -641,6 +717,13 @@ _r(
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security",
     ],
+    limitations=(
+        "Looks for a literal tunnel token (`MCP_TUNNEL_TOKEN` and similar names) on a "
+        "`KEY: value` line of a GitHub Actions, GitLab CI, Azure Pipelines or CircleCI "
+        "file, a PEM private key under a tunnel or gateway directory, and a Kubernetes "
+        "Secret named `mcp-tunnel*`. The same literal in a `docker-compose.yml` is not "
+        "examined."
+    ),
 )
 
 _r(
@@ -663,6 +746,13 @@ _r(
     owasp_mcp_references=["MCP07:2025", "MCP02:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-02"],
+    limitations=(
+        "Fires on a repository that declares an MCP SDK, uses sampling "
+        "(`create_message(`, `sampling/createMessage`, `CreateMessageRequestSchema` or "
+        "a `sampling` capability) and has no consent marker anywhere. One `elicit(` "
+        "call, `requires_consent` or `human_in_the_loop` in any source file clears "
+        "every sampling finding, whatever it guards."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -715,6 +805,12 @@ _r(
     sarif_name="McpSessionIdReliance",
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Runs only when a manifest declares an MCP SDK, and in `pyproject.toml` that "
+        "means the bare quoted string `\"mcp\"`: `\"mcp>=1.2.0\"` does not count, so "
+        "the rule stays silent for the whole project. When it runs, it looks for the "
+        "header text `Mcp-Session-Id` or `MCP_SESSION_ID` in source files."
+    ),
 )
 
 _r(
@@ -735,6 +831,11 @@ _r(
     "client-side and re-query them with `tasks/get` style point lookups.",
     sarif_name="McpTasksListRemoved",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Runs only when a manifest declares an MCP SDK. Matches the quoted method name "
+        "`tasks/list` and calls spelled `tasks.list(` or `tasks_list(`. An SDK call "
+        "named `listTasks()` is not matched."
+    ),
 )
 
 _r(
@@ -756,6 +857,13 @@ _r(
     "2026-07-28 cutover.",
     sarif_name="McpStickySessionDependency",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes "
+        "`sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik "
+        "`sticky:` cookie block, in YAML, conf and TOML files that mention MCP. "
+        "Pinning clients some other way, such as nginx `hash $http_mcp_session_id "
+        "consistent;`, is not matched."
+    ),
 )
 
 _r(
@@ -776,6 +884,13 @@ _r(
     "that may differ between instances under the stateless transport.",
     sarif_name="McpClientNoToolsListCache",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Runs only when a manifest declares an MCP SDK. Fires on a file that calls "
+        "`tools/list` (or `list_tools(`) at least twice, has no cache marker "
+        "(`lru_cache`, `TTLCache`, `ttlMs`, `memoize` and similar) and mentions "
+        "`session_id` or `Mcp-Session-Id`. A single `tools/list` call inside a "
+        "per-request handler is not counted."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -820,6 +935,12 @@ _r(
     "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedRoots",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Looks for `roots/list`, `notifications/roots/list_changed` and the SDK type "
+        "names in source files with the extensions .py, .ts, .tsx, .js, .jsx, .mjs, "
+        ".cjs, .rs, .java and .kt, and in a few named config files. The same "
+        "`roots/list` request in a Go file is not read."
+    ),
 )
 
 _r(
@@ -842,6 +963,12 @@ _r(
     "ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedSampling",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Looks for the method name `sampling/createMessage`, the "
+        "`CreateMessageRequest` type, `create_message(` and a `capabilities` object "
+        "that lists sampling. The TypeScript SDK call `server.createMessage({...})` "
+        "uses none of them and is not matched."
+    ),
 )
 
 _r(
@@ -862,6 +989,13 @@ _r(
     "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedLogging",
     owasp_mcp_references=["MCP07:2025"],
+    limitations=(
+        "Looks for the method name `logging/setLevel`, the `SetLevelRequest`, "
+        "`LoggingMessageNotification` and `LoggingLevel` types, and a `capabilities` "
+        "object that lists logging. Sending log notifications through the SDK "
+        "(`server.sendLoggingMessage({...})`, `await ctx.info(...)`) uses none of them "
+        "and is not matched."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -1076,6 +1210,11 @@ _r(
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-TRUST-01"],
     auto_fixable=True,
+    limitations=(
+        "Reads `.claude/settings.json` and `.claude/settings.local.json` at the root "
+        "of the scanned directory. The same flag in the settings file of a "
+        "subdirectory (`packages/web/.claude/settings.json`) is not read."
+    ),
 )
 
 _r(
@@ -1091,6 +1230,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-REDIRECT-01"],
+    limitations=(
+        "Tests the `env.ANTHROPIC_BASE_URL` value with a plain substring check for "
+        "`anthropic.com`. A proxy whose URL merely contains that text, such as "
+        "`https://anthropic.com.attacker.example/v1`, is treated as Anthropic's own "
+        "endpoint."
+    ),
 )
 
 _r(
@@ -1105,6 +1250,11 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-SCOPE-04"],
+    limitations=(
+        "Matches only the exact strings `*`, `mcp__*`, `Bash(*)`, `Edit(**)`, "
+        "`Read(**)` and `Write(**)` in `permissions.allow`. A bare tool name (`Bash`) "
+        "or a prefix grant (`Bash(sudo:*)`) is not matched."
+    ),
 )
 
 _r(
@@ -1120,6 +1270,11 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TRUST-02"],
     auto_fixable=True,
+    limitations=(
+        "Fires when `permissions.allow` has entries and `permissions.deny` is empty or "
+        "missing. Any non-empty deny list clears it, whatever it denies: "
+        "`Read(./docs/notes.md)` beside `Bash(curl:*)` passes."
+    ),
 )
 
 _r(
@@ -1135,6 +1290,11 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-REDIRECT-02"],
+    limitations=(
+        "Matches `env` names that end in `_BASE_URL`, `_API_URL` or `_ENDPOINT`. Other "
+        "spellings that point a client at another server (`OPENAI_API_BASE`, "
+        "`LLM_GATEWAY_URL`) are not matched."
+    ),
 )
 
 _r(
@@ -1149,6 +1309,10 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-TRUST-03"],
+    limitations=(
+        "Counts an allow entry only when its text contains Bash, Edit, Write, Read or "
+        "`mcp__`. Allowing `WebFetch` or `Task` with no deny list is not reported."
+    ),
 )
 
 _r(
@@ -1164,6 +1328,11 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TRUST-04"],
     auto_fixable=True,
+    limitations=(
+        "Fires only when a settings file at the root of the scanned directory sits "
+        "beside a root `.mcp.json`. A package directory that carries its own "
+        "`.claude/settings.json` and `.mcp.json` (`packages/web/`) is not looked at."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -2478,6 +2647,12 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Looks for a FastAPI handler declared with `@app.post(\"/mcp...\")` (or get, "
+        "put, patch, delete) in a file that names an MCP server class, with no "
+        "`Depends(` or `@require_auth` in the 200 characters before it. The same "
+        "handler declared on an `APIRouter` (`@router.post(\"/mcp\")`) is not matched."
+    ),
 )
 
 _r(
@@ -2495,6 +2670,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-02"],
+    limitations=(
+        "Looks for one of three names (`ip_allowlist`, `allowed_ips`, "
+        "`cidr_allowlist`) assigned a literal empty list, `None`, `null` or `\"\"` "
+        "directly. A type-annotated default (`allowed_ips: list[str] = []`) or another "
+        "name for the same list (`ip_whitelist = []`) is not matched."
+    ),
 )
 
 _r(
@@ -2511,6 +2692,13 @@ _r(
     owasp_mcp_references=["MCP08:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-03"],
+    limitations=(
+        "Looks for the literal header names `Access-Control-Allow-Origin: *` and "
+        "`Access-Control-Allow-Credentials: true` in one file. The usual framework "
+        "options (`CORSMiddleware(..., allow_origins=[\"*\"], "
+        "allow_credentials=True)`, `cors({ origin: \"*\", credentials: true })`) do "
+        "not contain those names and are not matched."
+    ),
 )
 
 _r(
@@ -2526,6 +2714,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-04"],
+    limitations=(
+        "Looks for `?token=`-style text, `query_params.get(\"token\")` and "
+        "`req.query.token` with the names access_token, api_key, token, auth or "
+        "bearer. Other ways to read a credential from the query string, `new "
+        "URL(req.url).searchParams.get(\"token\")` or Flask's "
+        "`request.args.get(\"token\")`, are not matched."
+    ),
 )
 
 _r(
@@ -2607,6 +2802,12 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TRANSPORT-01"],
+    limitations=(
+        "Looks for a call to listen, bind or serve whose first argument is an "
+        "`http://` URL. A server started the usual way, without a URL string "
+        "(`uvicorn.run(app, host=\"0.0.0.0\", port=8080)`, `app.listen(8080)`), is not "
+        "matched."
+    ),
 )
 
 _r(
@@ -2621,6 +2822,12 @@ _r(
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-DOS-02"],
+    limitations=(
+        "Fires on a file that names an MCP server class and contains the text `/mcp` "
+        "but none of the words ratelimit, rate_limit, throttle or limiter. A server "
+        "that never writes `/mcp` is not examined, and the word in a comment (`# TODO: "
+        "add rate_limit middleware`) counts as rate limiting."
+    ),
 )
 
 _r(
@@ -2679,6 +2886,14 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Follows a URL into a recognised fetch call only when it derives from a name "
+        "such as `args`, `arguments`, `params`, `payload`, `request` or `input`, so a "
+        "tool's own `url` parameter is not treated as caller input. A fetch is "
+        "recognised by its callee (`requests.get` and the like, or `.get` on a "
+        "variable called `client` or `session`), so `http.get(...)` is missed, and a "
+        "`urlparse(` call or `https` check anywhere in the file counts as validation."
+    ),
 )
 
 _r(
@@ -2693,6 +2908,12 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-02"],
+    limitations=(
+        "Looks for the text 127.0.0.1, localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x "
+        "or 192.168.x address in a string that reaches a recognised fetch call. Other "
+        "spellings of loopback and private space (`127.0.0.2`, the decimal form "
+        "`http://2130706433/`, an IPv6 unique-local address) are not matched."
+    ),
 )
 
 _r(
@@ -2709,6 +2930,10 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-03"],
+    limitations=(
+        "Recognises `169.254.169.254` and `metadata.google.internal` only. Other cloud "
+        "credential endpoints (`169.254.170.2`, `100.100.100.200`) are not matched."
+    ),
 )
 
 _r(
@@ -2725,6 +2950,12 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-04"],
+    limitations=(
+        "Fires on an explicit `follow_redirects=True`, `allow_redirects=True` or "
+        "`redirect: \"follow\"` in a file with a recognised fetch call. A client left "
+        "at its default, which follows redirects (`requests.get(url)`), is not "
+        "reported."
+    ),
 )
 
 _r(
@@ -2740,6 +2971,12 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-05"],
+    limitations=(
+        "Fires on a recognised fetch call whose URL derives from caller input, in a "
+        "file that never writes `ALLOWED_HOSTS`, `ALLOW_HOST`, `URL_ALLOW_LIST`, "
+        "`allowed_hosts =` or `allowlist =`. Declaring one of those names is enough: "
+        "nothing checks that the list is applied to the URL."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -2769,6 +3006,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-06"],
+    limitations=(
+        "Fires on a call to `authorize(` or the name `authorization_endpoint` when "
+        "none of `code_verifier`, `pkce` or `code_challenge` appears in the file. An "
+        "authorization URL written out as a literal "
+        "(`https://auth.example.com/authorize?response_type=code`) is not recognised "
+        "as an authorization request."
+    ),
 )
 
 _r(
@@ -2785,6 +3029,11 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-07"],
+    limitations=(
+        "Fires only on an explicit `code_challenge_method` of `plain`. A request that "
+        "sends a `code_challenge` with no method at all, which RFC 7636 treats as "
+        "plain, is not reported."
+    ),
 )
 
 _r(
@@ -2801,6 +3050,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-08"],
+    limitations=(
+        "Matches `\"Authorization\": request.headers[...]` and "
+        "`headers[\"Authorization\"] = request....` (also req, event, input). The same "
+        "forwarding written with `.get`, `{\"Authorization\": "
+        "request.headers.get(\"Authorization\")}`, is not matched."
+    ),
 )
 
 _r(
@@ -2816,6 +3071,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-09"],
+    limitations=(
+        "Matches a `redirect_uri` or `redirect_uris` value of `*` or `[\"*\"]`, one "
+        "that begins with `https://*`, or one that points at `http://localhost`. A "
+        "wildcard inside a longer URL (`\"https://*.example.com/callback\"`, "
+        "`\"https://app.example.com/*\"`) is not matched."
+    ),
 )
 
 _r(
@@ -2832,6 +3093,11 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-10"],
+    limitations=(
+        "Matches a literal `Bearer <token>` string in a file that also contains "
+        "`Authorization` and neither `DPoP` nor `cnf`. A token attached the usual way, "
+        "from a variable (`f\"Bearer {token}\"`), is not matched."
+    ),
 )
 
 # AAK-OAUTH-006 — RFC 9207 `iss` validation (MCP 2026-07-28 RC, SEP-2468).
@@ -2865,6 +3131,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
+    limitations=(
+        "Fires on a code exchange (`grant_type=authorization_code`, "
+        "`exchange_code_for_token`, or a read of `code` from the query arguments) when "
+        "the word `iss` appears nowhere in the file. Any `iss` counts as validating "
+        "the authorization response, including a JWT claim check on the ID token "
+        "(`claims[\"iss\"]`)."
+    ),
 )
 
 # AAK-OAUTH-007 — RFC 8707 Resource Indicators (`resource` parameter).
@@ -2901,6 +3174,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
+    limitations=(
+        "Fires on a token request (`grant_type=...`, `response_type=code`, "
+        "`authorize(`, a `token_endpoint`) in a file with no `resource` parameter. Any "
+        "`resource = ...` assignment or `\"resource\":` key counts as the RFC 8707 "
+        "parameter, including an unrelated local variable named `resource`."
+    ),
 )
 
 # AAK-OAUTH-008 — RFC 9728 Protected Resource Metadata discovery gap.
@@ -2950,6 +3229,14 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
+    limitations=(
+        "Fires on a remote-server config file that carries an inline credential (an "
+        "`Authorization` header, a `Bearer` value, an `auth` block, or an "
+        "`access_token`, `api_key` or `token` field) and mentions none of "
+        "`oauth-protected-resource`, `authorization_servers` or `resource_metadata`. A "
+        "static key in another header (`X-API-Key`) is not recognised as an inline "
+        "credential."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3759,6 +4046,13 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TASKS-01"],
+    limitations=(
+        "Looks for a Python `def` named get_task, read_task, task_read, get_by_id or "
+        "findTask and clears it when owner, current_user, principal, tenant_id or a "
+        "similar word appears in the next 1200 characters. A TypeScript or JavaScript "
+        "handler (`async function getTask`) is not matched, and the word `owner` "
+        "counts even when the function only returns it."
+    ),
 )
 
 _r(
@@ -3775,6 +4069,15 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TASKS-02"],
+    limitations=(
+        "Looks for `self.credentials`, `self.api_key`, `self.token`, `self.secret` or "
+        "`self.password` assigned in a file with a task class and a terminal-state "
+        "word (completed, failed, cancelled, done), and clears the finding when any "
+        "`self.<name> = None`, `del self.<name>` or `zeroize(` appears in the file. A "
+        "different attribute name (`self.access_token`) is not matched, and a clearing "
+        "statement that never runs on the terminal transition, such as a `reset()` "
+        "nothing calls, still counts."
+    ),
 )
 
 _r(
@@ -3790,6 +4093,12 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TASKS-03"],
+    limitations=(
+        "Fires on a task class or store with no `ttl`, `expires_at`, `expiry` or "
+        "`deadline` assignment and no `def cancel_*`, `abort_*` or `terminate_*` in "
+        "the file. Any such assignment counts, whatever it applies to: a `ttl=60` on "
+        "an unrelated cache call clears it."
+    ),
 )
 
 _r(
@@ -3811,6 +4120,14 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI08"],
     adversa_references=["ADV-TASKS-04"],
+    limitations=(
+        "Fires when a file with a task class has a creation path (`tasks/create`, `def "
+        "create_task`, `enqueue_*`, `submit_*`, or a call to `create_task(`, "
+        "`enqueueTask(`, `submitTask(` or `addTask(`) and none of the words quota, "
+        "max_tasks, max_concurrency, Semaphore, rate_limit or backpressure. "
+        "`createTask(` is not recognised as a creation path, and the word `quota` in a "
+        "comment counts as a bound."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4702,6 +5019,17 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
     incident_references=["OX-MCP-2026-04-15"],
+    limitations=(
+        "A Python value counts as caller input when it is named stdin, request, req, "
+        "event, params, tool_input, input_data, args or payload; a tool's own "
+        "parameters are added only when the decorator is written without parentheses "
+        "(`@mcp.tool`), so `run(command)` under `@mcp.tool()` is missed. The sinks are "
+        "`subprocess.*`, `os.system`, `os.popen`, `os.exec*`, `eval` and `exec`, so "
+        "`asyncio.create_subprocess_shell` is not one. In TypeScript a command counts "
+        "as request-derived only when it contains a name such as req, request, body, "
+        "params, event, stdin or tool_input, so a destructured tool argument "
+        "(`exec(`git log ${branch}`)`) is not."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4726,6 +5054,10 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-RCE-05"],
+    limitations=(
+        "Examines only a file named `mcp.json` inside a `.windsurf` directory. A file "
+        "of another name, such as `.windsurf/mcp_config.json`, is not examined."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4896,6 +5228,13 @@ _r(
     owasp_agentic_references=["ASI01", "ASI02"],
     adversa_references=["ADV-AUTH-01"],
     incident_references=["MCPWN-2026-04-16"],
+    limitations=(
+        "Compares MCP routes inside one file: it fires on an unauthenticated route "
+        "(`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only "
+        "when another MCP route in the same file has an auth marker. Twin routes "
+        "placed in two modules are not paired, and a path such as `/mcp/sse` is not "
+        "recognised as an MCP route."
+    ),
 )
 
 
@@ -5513,6 +5852,14 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
     incident_references=["MSRC-2026-04-03-AZUREMCP"],
+    limitations=(
+        "Decides per file, not per server: it fires on a config file that names an "
+        "Azure host (`*.azurewebsites.net`, `*.azure.com` and similar) and contains "
+        "none of Authorization, a client certificate, api_key, mtls, "
+        "`DefaultAzureCredential` or a similar word anywhere in the file. An "
+        "unauthenticated Azure server beside any server that carries an "
+        "`Authorization` header passes."
+    ),
 )
 
 
@@ -5784,6 +6131,13 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-02"],
     incident_references=["MSRC-2026-04-03-AZUREMCP"],
+    limitations=(
+        "Fires only for a repository whose pyproject.toml, package.json, Cargo.toml or "
+        "pom.xml names an Azure MCP server, on a file with a `/mcp` route and no auth "
+        "marker anywhere in it. `DefaultAzureCredential` and "
+        "`ManagedIdentityCredential` count as markers, so a server that only uses its "
+        "own credential to call Azure, and authenticates nobody who calls it, passes."
+    ),
 )
 
 
@@ -7318,6 +7672,13 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05", "ASI02"],
     adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Fires when the launcher is npx, node, bash, sh, python or python3 and an "
+        "argument is exactly `-c`, `-e`, `-eval` or `--eval`, or when an argument "
+        "carries a `${...}`, `{{...}}` or `%s` that is not a standalone variable. "
+        "Combined short flags (`bash -lc \"...\"`) and other shells (`zsh -c`) are not "
+        "matched."
+    ),
 )
 
 _r(
@@ -7361,6 +7722,13 @@ _r(
     ],
     owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI04", "ASI02"],
+    limitations=(
+        "Compares the bodies of the functions named or decorated `list_tools` and "
+        "`call_tool` (or dispatch, execute, run or invoke tool). The gate has to be "
+        "named in the list handler itself, so filtering done in a helper it calls is "
+        "not seen, and any mention of the gate in the call handler, a log line "
+        "included, counts as enforcing it."
+    ),
 )
 
 _r(
@@ -7499,6 +7867,14 @@ _r(
     ],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
+    limitations=(
+        "Source files are checked for a literal `0.0.0.0` or `::` bind or a wildcard "
+        "CORS setting, so a Node server that calls `listen(3000)` with no host, which "
+        "binds every interface, is not treated as exposed. In compose, Dockerfile and "
+        "JSON or YAML launch files, any `api_key`, `bearer`, `Authorization` or "
+        "`--token` text counts as inbound authentication, including the server's own "
+        "outbound `OPENAI_API_KEY`."
+    ),
 )
 
 _r(
@@ -7626,6 +8002,14 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "In Python a spawn is recognised only as `subprocess.run`, `call`, `Popen`, "
+        "`check_call` or `check_output`, or an `os.system`/`os.exec*` call, so a "
+        "function imported by name (`from subprocess import run`) is missed. In "
+        "TypeScript only the first argument of `spawn`, `exec` or `execFile` is "
+        "followed, so an argv array passed second (`spawn(bin, args)`) and changed "
+        "after the check is not."
+    ),
 )
 
 _r(
@@ -7660,6 +8044,13 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Flags a secret-named variable set to a known placeholder (`\"changeme\"`, "
+        "`\"secret\"`, `\"admin\"` and similar) or read from the environment with an "
+        "empty default (`os.environ.get(\"X\", \"\")`), and auth functions with "
+        "specific names that return True when the secret is empty. A weak non-empty "
+        "environment default (`os.environ.get(\"X\", \"changeme\")`) is not flagged."
+    ),
 )
 
 _r(
@@ -7695,6 +8086,12 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-RES-01"],
+    limitations=(
+        "Treats any `startswith`, `..`, `resolve(`, `abspath`, `normpath`, `realpath` "
+        "or `sep` in the same function as a guard against traversal. The "
+        "`authorization.startswith(\"Bearer \")` that extracts the token is enough to "
+        "silence it, though it checks nothing about the path."
+    ),
 )
 
 
@@ -7921,6 +8318,13 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "A parameter counts as a URL only when it is named url, uri, endpoint, target, "
+        "link, href, webhook or callback (with one optional prefix word and an "
+        "optional plural), so `website` is not followed. Any `urlparse`, `deny`, "
+        "`ssrf`, `ip_address` or similar token in the handler counts as validation, "
+        "even when its result is only logged."
+    ),
 )
 
 
@@ -7959,6 +8363,12 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or "
+        "below 1.5.2, in the root dependency manifests and lockfiles and in the root "
+        "`.mcp.json`, `mcp.json` and `claude_desktop_config.json`. The same server "
+        "launched from `.cursor/mcp.json` or any other config file is not read."
+    ),
 )
 
 
@@ -9558,6 +9968,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "The dependency check recognises a UFO checkout only as an "
+        "`https://github.com/microsoft/UFO` URL, unpinned or below 3.0.8. The same "
+        "checkout referenced over SSH "
+        "(`git+ssh://git@github.com/microsoft/UFO.git@v3.0.2`) is not matched."
+    ),
 )
 
 
@@ -11136,6 +11552,11 @@ _r(
     # a scanner cannot substantiate is worse than a blank.
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
+    limitations=(
+        "Checks the JSON type of `args`, `command`, `env` and `url` on each entry of "
+        "an `mcpServers` object. A config whose `mcpServers` is an array is skipped "
+        "without a finding, and a wrong-typed `headersHelper` is not checked."
+    ),
 )
 
 _r(

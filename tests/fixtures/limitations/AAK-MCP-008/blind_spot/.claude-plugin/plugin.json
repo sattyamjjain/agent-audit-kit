@@ -1,0 +1,10 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "mcpServers": {
+    "api": {
+      "url": "https://mcp.example.com/mcp",
+      "headersHelper": "./get-headers.sh"
+    }
+  }
+}

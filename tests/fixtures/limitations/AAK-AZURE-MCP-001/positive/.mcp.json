@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "azure": {
+      "url": "https://azure-mcp.example.azurewebsites.net/mcp"
+    }
+  }
+}

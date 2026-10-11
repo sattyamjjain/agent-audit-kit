@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "tool": {
+      "command": "bash -c 'node server.js'"
+    }
+  }
+}

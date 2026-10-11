@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "x": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "node server.js"
+      ]
+    },
+    "y": {
+      "command": "zsh",
+      "args": [
+        "-c",
+        "node server.js"
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-gateway-config
+data:
+  config.yaml: |
+    tunnel_domain: tunnel.example.com
+    routes:
+      crm: http://crm.internal:8080
+    upstream:
+      disable_ip_validation: true

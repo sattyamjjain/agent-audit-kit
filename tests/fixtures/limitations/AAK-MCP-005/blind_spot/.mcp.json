@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "srv": {
+      "command": "pnpm",
+      "args": [
+        "dlx",
+        "@acme/mcp-server"
+      ]
+    },
+    "other": {
+      "command": "pipx",
+      "args": [
+        "run",
+        "acme-mcp-server"
+      ]
+    }
+  }
+}

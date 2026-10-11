@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "srv": {
+      "command": "my-mcp-server"
+    }
+  }
+}

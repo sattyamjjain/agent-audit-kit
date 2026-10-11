@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "internal": {
+      "url": "http://mcp.corp.internal:8080/mcp"
+    },
+    "vpn": {
+      "url": "http://100.64.0.12:8080/mcp"
+    }
+  }
+}

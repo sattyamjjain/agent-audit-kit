@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "srv": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@acme/mcp-server"
+      ]
+    }
+  }
+}

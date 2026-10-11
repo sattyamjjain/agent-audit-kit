@@ -1,0 +1,70 @@
+{
+  "mcpServers": {
+    "s0": {
+      "command": "node",
+      "args": [
+        "s0.js"
+      ]
+    },
+    "s1": {
+      "command": "node",
+      "args": [
+        "s1.js"
+      ]
+    },
+    "s2": {
+      "command": "node",
+      "args": [
+        "s2.js"
+      ]
+    },
+    "s3": {
+      "command": "node",
+      "args": [
+        "s3.js"
+      ]
+    },
+    "s4": {
+      "command": "node",
+      "args": [
+        "s4.js"
+      ]
+    },
+    "s5": {
+      "command": "node",
+      "args": [
+        "s5.js"
+      ]
+    },
+    "s6": {
+      "command": "node",
+      "args": [
+        "s6.js"
+      ]
+    },
+    "s7": {
+      "command": "node",
+      "args": [
+        "s7.js"
+      ]
+    },
+    "s8": {
+      "command": "node",
+      "args": [
+        "s8.js"
+      ]
+    },
+    "s9": {
+      "command": "node",
+      "args": [
+        "s9.js"
+      ]
+    },
+    "s10": {
+      "command": "node",
+      "args": [
+        "s10.js"
+      ]
+    }
+  }
+}

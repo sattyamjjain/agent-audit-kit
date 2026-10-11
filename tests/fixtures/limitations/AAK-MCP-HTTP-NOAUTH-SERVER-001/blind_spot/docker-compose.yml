@@ -1,0 +1,6 @@
+services:
+  mcp:
+    image: example/fastmcp-server:1.0
+    command: fastmcp run server.py --transport sse --host 0.0.0.0
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}

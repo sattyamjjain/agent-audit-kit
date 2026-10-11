@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "srv": {
+      "command": "python",
+      "args": [
+        "server.py"
+      ]
+    }
+  }
+}

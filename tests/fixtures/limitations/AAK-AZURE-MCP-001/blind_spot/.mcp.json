@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "azure": {
+      "url": "https://azure-mcp.example.azurewebsites.net/mcp"
+    },
+    "github": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

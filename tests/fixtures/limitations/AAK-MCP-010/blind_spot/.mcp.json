@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "fs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/alice"
+      ]
+    },
+    "other": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "$HOME"
+      ]
+    }
+  }
+}

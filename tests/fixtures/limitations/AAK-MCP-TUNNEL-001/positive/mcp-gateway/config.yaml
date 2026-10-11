@@ -1,0 +1,5 @@
+tunnel_domain: tunnel.example.com
+routes:
+  crm: http://crm.internal:8080
+upstream:
+  disable_ip_validation: true

@@ -1,0 +1,5 @@
+services:
+  gateway:
+    image: example/mcp-gateway:1.0
+    environment:
+      MCP_TUNNEL_TOKEN: aaaaaaaaaaaaaaaaaaaaaaaa

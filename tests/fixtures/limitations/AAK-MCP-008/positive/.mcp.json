@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "api": {
+      "url": "https://mcp.example.com/mcp",
+      "headersHelper": "./get-headers.sh"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "api": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-API-Key": "${API_KEY}"
+      }
+    }
+  }
+}

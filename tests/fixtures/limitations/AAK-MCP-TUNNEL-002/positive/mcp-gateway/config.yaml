@@ -1,0 +1,3 @@
+tunnel_domain: tunnel.example.com
+routes:
+  crm: https://crm.internal:8443

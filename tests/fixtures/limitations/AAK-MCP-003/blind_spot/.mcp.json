@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "gh": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer example-token-value"
+      },
+      "env": {
+        "DATABASE_URL": "postgres://app:example-password@db.example.internal:5432/app"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Bash(sudo:*)"
+    ],
+    "deny": [
+      "Read(.env)"
+    ]
+  }
+}
