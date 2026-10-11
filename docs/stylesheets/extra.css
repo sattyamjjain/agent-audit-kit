@@ -1,0 +1,10 @@
+/* Site-wide overrides on top of Material for MkDocs, wired in by `extra_css` in
+   mkdocs.yml. The tests in tests/test_docs_row_headers.py read this file. */
+
+/* Row headers. scripts/mkdocs_hooks.py turns the labels of a `Field | Value` table into
+   <th scope="row"> cells, so a screen reader says which fact a value belongs to (WCAG
+   1.3.1). Material draws the line between rows on `td` only, so without this rule the
+   first column would lose its row separators. */
+.md-typeset table:not([class]) tbody th {
+  border-top: 0.05rem solid var(--md-typeset-table-color);
+}
