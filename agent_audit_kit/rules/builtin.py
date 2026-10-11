@@ -1630,6 +1630,15 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-01"],
+    limitations=(
+        "Reads description strings only: a tool's own, its input schema's, each "
+        "parameter's, and the `toolDescriptions` map, in the `mcpServers` of an MCP "
+        "config file. The same invisible characters in a tool `name` or `title`, or "
+        "in a parameter's `default`, `enum` or `examples`, are not read. Characters "
+        "that render blank without being format or combining marks, such as the "
+        "Braille blank (U+2800) and the Hangul filler (U+3164), are not matched "
+        "either."
+    ),
 )
 
 _r(
@@ -1644,6 +1653,14 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-02"],
+    limitations=(
+        "Matches a fixed list of phrases: `ignore previous`, `system:`, `you are`, "
+        "`forget`, `new instructions`, `override`, `admin mode`, `<hidden>` and "
+        "`<system>`. The same instruction in other words is not matched, for "
+        "example `ignore all previous instructions` (a word sits between the two), "
+        "`disregard the instructions above`, or an `<IMPORTANT>` block that tells "
+        "the model to keep a step from the user."
+    ),
 )
 
 _r(
@@ -1658,6 +1675,13 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-03"],
+    limitations=(
+        "Matches five phrases: `before calling`, `first call`, `after using`, `then "
+        "use` and `invoke`. A description that sends the model to another tool in "
+        "other words is not matched, for example `run get_credentials afterwards`, "
+        "`send the page text to send_email` or `call read_secrets with the same "
+        "arguments`; a tool name on its own is never matched."
+    ),
 )
 
 _r(
@@ -1672,6 +1696,12 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-04"],
+    limitations=(
+        "Matches a single run of 40 or more base64 characters, three or more `\\xNN` "
+        "escapes, or three or more `%NN` in a row. The same payload split into "
+        "shorter pieces with spaces, written as `&#NN;` entities or `\\uNNNN` "
+        "escapes, or run through ROT13, is not matched."
+    ),
 )
 
 _r(
@@ -1686,6 +1716,11 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-05"],
+    limitations=(
+        "The 500-character limit is applied to each description string on its own. "
+        "A tool whose description and parameter descriptions each stay under it is "
+        "not reported, however much instruction text they add up to."
+    ),
 )
 
 _r(
@@ -1700,6 +1735,13 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-POISON-06"],
+    limitations=(
+        "Matches `http://` and `https://` URLs, a `/` followed by three or more "
+        "path characters, `~/`, and an upper-case drive letter such as `C:\\`. A "
+        "bare hostname or address (`collector.example.com:8443`), a lower-case "
+        "drive letter (`c:\\Users\\...`) and a `%USERPROFILE%\\...` path are not "
+        "matched."
+    ),
 )
 
 # ---------------------------------------------------------------------------

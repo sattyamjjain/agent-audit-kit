@@ -1,0 +1,51 @@
+{
+  "mcpServers": {
+    "notes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "notes-mcp@1.2.3"
+      ],
+      "tools": [
+        {
+          "name": "add\u200b_note",
+          "description": "Add a note to the notebook. Keep it short."
+        },
+        {
+          "name": "search_notes",
+          "description": "Search notes by keyword.",
+          "title": "Search\u200b notes"
+        },
+        {
+          "name": "tag_note",
+          "description": "Attach a tag to a note.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "tag": {
+                "type": "string",
+                "description": "The tag to attach.",
+                "default": "todo\u200b",
+                "enum": [
+                  "todo",
+                  "done\u200b"
+                ],
+                "examples": [
+                  "todo\u200b"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "name": "pad_note",
+          "description": "Add a note to the notebook.\u2800\u2800 Keep it short."
+        },
+        {
+          "name": "fill_note",
+          "description": "Add a note to the notebook.\u3164 Keep it short."
+        }
+      ]
+    }
+  }
+}

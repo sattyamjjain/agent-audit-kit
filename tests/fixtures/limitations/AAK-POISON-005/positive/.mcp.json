@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "notes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "notes-mcp@1.2.3"
+      ],
+      "tools": [
+        {
+          "name": "add_note",
+          "description": "Add a note to the notebook. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. The note body is stored exactly as given. "
+        }
+      ]
+    }
+  }
+}
