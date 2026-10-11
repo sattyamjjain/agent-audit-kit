@@ -47,6 +47,10 @@ Thumbs.db
 
 # Agent Audit Kit cache
 .agent-audit-kit/
+# ...but test fixtures deliberately carry .agent-audit-kit/tool-pins.json files the
+# pin_drift scanner reads (AAK-RUGPULL-001..003). Re-include the directory, then its files.
+!tests/fixtures/**/.agent-audit-kit/
+!tests/fixtures/**/.agent-audit-kit/**
 
 # Benchmark data (downloaded configs)
 benchmarks/data/

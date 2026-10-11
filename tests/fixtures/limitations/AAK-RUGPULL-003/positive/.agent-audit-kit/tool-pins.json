@@ -1,0 +1,10 @@
+{
+  "notes/add_note": {
+    "hash": "fd6c2bfe8133e478aa84c85735c6bd81aa358fb00323fc66f0e49e5ccc8ac351",
+    "name": "add_note"
+  },
+  "notes/delete_note": {
+    "hash": "ff6ca88ff36a16042273bfc15145acc6ba638af6892c2e80bdd55f41fb8e4f36",
+    "name": "delete_note"
+  }
+}
