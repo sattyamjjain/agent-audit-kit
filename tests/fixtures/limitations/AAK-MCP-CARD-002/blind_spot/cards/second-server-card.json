@@ -1,0 +1,21 @@
+{
+  "serverInfo": {
+    "name": "notes",
+    "version": "1.0.0"
+  },
+  "capabilities": {
+    "tools": {}
+  },
+  "authentication": {
+    "required": false,
+    "schemes": []
+  },
+  "signature": "MEUCIQDexampleexampleexample",
+  "tools": [
+    {
+      "name": "add_note",
+      "description": "Add a note."
+    }
+  ],
+  "url": "https://notes.example.com/mcp"
+}

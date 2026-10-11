@@ -1,0 +1,72 @@
+openapi: 3.0.3
+info:
+  title: Notes
+  version: '1.0'
+paths:
+  /notes:
+    post:
+      description: Create a note with every field the editor supports today.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Note'
+      responses:
+        '200':
+          description: ok
+  /archive:
+    parameters:
+      - {name: q0, in: query, schema: {type: string}}
+      - {name: q1, in: query, schema: {type: string}}
+      - {name: q2, in: query, schema: {type: string}}
+      - {name: q3, in: query, schema: {type: string}}
+      - {name: q4, in: query, schema: {type: string}}
+      - {name: q5, in: query, schema: {type: string}}
+      - {name: q6, in: query, schema: {type: string}}
+      - {name: q7, in: query, schema: {type: string}}
+      - {name: q8, in: query, schema: {type: string}}
+      - {name: q9, in: query, schema: {type: string}}
+      - {name: q10, in: query, schema: {type: string}}
+      - {name: q11, in: query, schema: {type: string}}
+      - {name: q12, in: query, schema: {type: string}}
+      - {name: q13, in: query, schema: {type: string}}
+    get:
+      description: Read the archive with the shared filters above.
+      responses:
+        '200':
+          description: ok
+components:
+  schemas:
+    Note:
+      type: object
+      properties:
+        f0: {type: string}
+        f1: {type: string}
+        f2: {type: string}
+        f3: {type: string}
+        f4: {type: string}
+        f5: {type: string}
+        f6: {type: string}
+        f7: {type: string}
+        f8: {type: string}
+        f9: {type: string}
+        f10: {type: string}
+        f11: {type: string}
+        f12: {type: string}
+        f13: {type: string}
+        f14: {type: string}
+        f15: {type: string}
+        f16: {type: string}
+        f17: {type: string}
+        f18: {type: string}
+        f19: {type: string}
+        f20: {type: string}
+        f21: {type: string}
+        f22: {type: string}
+        f23: {type: string}
+        f24: {type: string}
+        f25: {type: string}
+        f26: {type: string}
+        f27: {type: string}
+        f28: {type: string}
+        f29: {type: string}

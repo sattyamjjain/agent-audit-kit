@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Notes
+  version: '1.0'
+paths:
+  /notes:
+    get:
+      description: List notes with every filter the editor supports today.
+      parameters:
+        - {name: p0, in: query, schema: {type: string}}
+        - {name: p1, in: query, schema: {type: string}}
+        - {name: p2, in: query, schema: {type: string}}
+        - {name: p3, in: query, schema: {type: string}}
+        - {name: p4, in: query, schema: {type: string}}
+        - {name: p5, in: query, schema: {type: string}}
+        - {name: p6, in: query, schema: {type: string}}
+        - {name: p7, in: query, schema: {type: string}}
+        - {name: p8, in: query, schema: {type: string}}
+        - {name: p9, in: query, schema: {type: string}}
+        - {name: p10, in: query, schema: {type: string}}
+        - {name: p11, in: query, schema: {type: string}}
+        - {name: p12, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: ok

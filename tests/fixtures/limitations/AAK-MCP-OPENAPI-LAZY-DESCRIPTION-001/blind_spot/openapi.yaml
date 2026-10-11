@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Notes
+  version: '1.0'
+paths:
+  /notes:
+    get:
+      summary: Return every note stored for the signed in user
+      responses:
+        '200':
+          description: ok

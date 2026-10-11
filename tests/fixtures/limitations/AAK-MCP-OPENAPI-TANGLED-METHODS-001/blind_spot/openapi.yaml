@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Notes
+  version: '1.0'
+paths:
+  /createUser:
+    get:
+      description: Returns the form used to create a user account.
+      responses:
+        '200':
+          description: ok
+  /users/get-by-email:
+    post:
+      description: Looks a user up by email address, without changing anything.
+      responses:
+        '200':
+          description: ok

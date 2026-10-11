@@ -1,0 +1,26 @@
+{
+  "serverInfo": {
+    "name": "notes",
+    "version": "1.0.0"
+  },
+  "transport": {
+    "type": "http",
+    "endpoint": "https://notes.example.com/mcp"
+  },
+  "capabilities": {
+    "tools": {}
+  },
+  "authentication": {
+    "required": true,
+    "schemes": [
+      "oauth2"
+    ]
+  },
+  "tools": [
+    {
+      "name": "add_note",
+      "description": "Add a note."
+    }
+  ],
+  "verified": true
+}

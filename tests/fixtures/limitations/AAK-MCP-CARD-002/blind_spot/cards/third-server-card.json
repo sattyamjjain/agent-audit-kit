@@ -1,0 +1,24 @@
+{
+  "serverInfo": {
+    "name": "notes",
+    "version": "1.0.0"
+  },
+  "transport": {
+    "type": "http",
+    "endpoint": "https://notes.example.com/mcp"
+  },
+  "capabilities": {
+    "tools": {}
+  },
+  "authentication": {
+    "required": "false",
+    "schemes": []
+  },
+  "signature": "MEUCIQDexampleexampleexample",
+  "tools": [
+    {
+      "name": "add_note",
+      "description": "Add a note."
+    }
+  ]
+}
