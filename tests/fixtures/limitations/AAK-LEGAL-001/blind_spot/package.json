@@ -1,0 +1,8 @@
+{
+  "name": "notes-app",
+  "version": "1.0.0",
+  "license": "MIT",
+  "dependencies": {
+    "notes-sync": "^2.1.0"
+  }
+}

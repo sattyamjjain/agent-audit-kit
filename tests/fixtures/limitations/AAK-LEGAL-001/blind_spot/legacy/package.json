@@ -1,0 +1,10 @@
+{
+  "name": "legacy-tool",
+  "version": "1.0.0",
+  "licenses": [
+    {
+      "type": "AGPL-3.0",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+    }
+  ]
+}

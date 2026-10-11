@@ -1,0 +1,9 @@
+{
+  "name": "notes-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "cc-tools": "npm:claude-code-leaked@^1.0.0",
+    "claude-code-leak": "^1.0.0"
+  },
+  "license": "MIT"
+}

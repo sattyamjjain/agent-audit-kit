@@ -2203,6 +2203,12 @@ _r(
     sarif_name="CopyleftLicenseDep",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
+    limitations=(
+        "Reads the `license` field of each `package.json` in the scanned tree and "
+        "matches a value that starts with `AGPL`, `SSPL`, `GPL-3` or `EUPL`. "
+        "`node_modules` is skipped, so the licence of an installed dependency is "
+        "not checked, and the legacy `licenses` array is not read."
+    ),
 )
 
 _r(
@@ -2215,6 +2221,12 @@ _r(
     sarif_name="NoLicenseDep",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
+    limitations=(
+        "Reads the `license` key of each `package.json` in the scanned tree and "
+        "skips `node_modules`, so an installed dependency with no license is not "
+        "checked. Any value counts as declared, an empty string and `UNLICENSED` "
+        "included."
+    ),
 )
 
 _r(
@@ -2227,6 +2239,13 @@ _r(
     sarif_name="DmcaFlaggedPackage",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
+    limitations=(
+        "Matches three package names (`claude-code-leaked`, `anthropic-internal` "
+        "and `copilot-source`, with or without a scope) in the direct dependency "
+        "maps of each `package.json`. An `npm:` alias (`\"cc-tools\": "
+        "\"npm:claude-code-leaked@^1.0.0\"`), a lockfile entry, a Python requirement "
+        "and any other name are not matched."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3902,6 +3921,15 @@ _r(
     sarif_name="HealthcareAiMentalHealthClaim",
     owasp_mcp_references=["MCP10:2025"],
     owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches a short "
+        "phrase list: `I am a/your therapist`, `act as a/your counselor`, `provide "
+        "therapy`, `deliver psychotherapy`, `replace your therapist` and `licensed "
+        "mental health professional`. The contraction `I'm your therapist`, `acting "
+        "as your counselor` and the third-person `provides licensed therapy` or "
+        "`delivers psychotherapy` are not matched, and neither is a persona written "
+        "in a `.py` file."
+    ),
 )
 
 _r(
@@ -3917,6 +3945,15 @@ _r(
     "licensed-physician review step; expose that review in the audit log.",
     sarif_name="HealthcareAiPriorAuthSolo",
     owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches an "
+        "adverb or a `no human` phrase, a verb in its base form and a decision "
+        "object, as in `automatically approve prior authorization`. The same "
+        "decision in the third person or another form (`automatically approves "
+        "prior authorization requests`, `auto-denies medical necessity appeals`, "
+        "`with no physician review`) is not matched, and neither is a rule written "
+        "in a `.py` file."
+    ),
 )
 
 _r(
@@ -3931,6 +3968,14 @@ _r(
     "involvement to the consumer.",
     sarif_name="HealthcareAiInsuranceSolo",
     owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `AI`, "
+        "`algorithm` or `model`, then `only`, `solely` or `alone`, a decision verb "
+        "and a singular object, as in `AI solely determines coverage`. `AI solely "
+        "denies claims` (a plural object), `AI-only coverage decisions` (a hyphen) "
+        "and `the model alone decides whether a benefit applies` (a clause in "
+        "between) are not matched."
+    ),
 )
 
 _r(
@@ -3946,6 +3991,13 @@ _r(
     "advice and is not a substitute for licensed care' disclosure.",
     sarif_name="HealthcareAiNoDisclosure",
     owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context "
+        "is one of nine whole words (`patient`, `clinical`, `medical`, `mental "
+        "health`, `therapy`, `diagnosis`, `symptom`, `treatment`, `medication`), so "
+        "plurals do not count: a persona about `symptoms` and `medications` is "
+        "skipped, as is one about a nurse, a prescription or a dosage."
+    ),
 )
 
 _r(
@@ -3962,6 +4014,14 @@ _r(
     "phrases and escalate before generating any other reply.",
     sarif_name="HealthcareAiNoCrisisEscalation",
     owasp_agentic_references=["ASI05"],
+    limitations=(
+        "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches "
+        "`suicid*`, `self-harm`, `overdose`, `harm myself`, `kill yourself`, `end "
+        "my life` and similar; `want to die`, `self-injury` and `hurting "
+        "themselves` are not matched. The escalation check passes on any `988`, "
+        "`911`, `crisis line`, `emergency services` or `call 112` anywhere in the "
+        "file, an unrelated number such as `ORD-911` included."
+    ),
 )
 
 
@@ -4115,6 +4175,13 @@ _r(
     "requires records demonstrating compliance to be kept for not less than three "
     "years, including system version identifiers and changelogs.",
     sarif_name="AdmtNoDeveloperDocumentation",
+    limitations=(
+        "A covered-domain decision is declared only by the name and docstring of a "
+        "Python function whose decorator name contains the word `tool`, or by the "
+        "names and descriptions in an MCP config. An HTTP route "
+        "(`@app.post(\"/score\")`) or a TypeScript `server.tool(...)` that scores "
+        "loan applicants declares nothing, and no ADMT rule reports for it."
+    ),
 )
 
 
@@ -4133,6 +4200,13 @@ _r(
     "categories rather than the data itself, so this is compatible with the "
     "trade-secret protection subsection (1) preserves.",
     sarif_name="AdmtNoTrainingDataCategories",
+    limitations=(
+        "Passes as soon as the documentation contains `training data`, `training "
+        "set`, `training corpus`, `data used to train`, `categories of data` or "
+        "`trained on`, and does not check that any category of data is named: "
+        "`Training data: not disclosed` satisfies it. Nothing is reported unless a "
+        "covered-domain decision is declared first (see AAK-ADMT-001)."
+    ),
 )
 
 
@@ -4151,6 +4225,13 @@ _r(
     "names the non-use circumstances explicitly, so a list of accuracy caveats "
     "alone does not answer it.",
     sarif_name="AdmtNoKnownLimitations",
+    limitations=(
+        "Passes as soon as the documentation contains `limitation`, `limitations`, "
+        "`known risk`, `should not be used`, `out-of-scope` or `failure mode`, "
+        "wherever it occurs: a licence footer ending `permissions and limitations "
+        "under the License` satisfies it. Nothing is reported unless a "
+        "covered-domain decision is declared first (see AAK-ADMT-001)."
+    ),
 )
 
 
@@ -4171,6 +4252,13 @@ _r(
     "6-1-1702(1)(d). Note that 6-1-1705 gives the consumer a separate right to "
     "human review, which the deployer cannot exercise without this instruction.",
     sarif_name="AdmtNoHumanReviewInstruction",
+    limitations=(
+        "Passes on `human review`, `human-in-the-loop`, `human oversight`, `manual "
+        "review` or `reviewed by a human` anywhere in the documentation, including "
+        "in a sentence that denies it: `No human review is performed` satisfies it. "
+        "Nothing is reported unless a covered-domain decision is declared first "
+        "(see AAK-ADMT-001)."
+    ),
 )
 
 
@@ -4185,6 +4273,14 @@ _r(
     "Add a 'Do Not Sell / Share My Personal Information' section and a "
     "usable opt-out mechanism.",
     sarif_name="StatePrivacyNoOptOut",
+    limitations=(
+        "Reads `.md`, `.html` and `.txt` files whose own name contains `privacy`, "
+        "`policy`, `terms`, `tos` or `legal`, and only when the text uses a phrase "
+        "such as `privacy policy`, `data collection` or `personal data`. A policy "
+        "named `how-we-use-data.md` or `privacy.rst`, or one that says only "
+        "`Privacy` and `your email address`, is skipped. The opt-out test is the "
+        "phrase `right to opt out`, which an opt-out of marketing email satisfies."
+    ),
 )
 
 _r(
@@ -4198,6 +4294,13 @@ _r(
     "Describe DSAR submission, 45-day cure window where applicable, and "
     "the portability format.",
     sarif_name="StatePrivacyNoConsumerRights",
+    limitations=(
+        "Reads the same files as AAK-STATE-PRIVACY-001. Passes on `right to "
+        "access`, `right to know`, `request your data`, `data subject request` or "
+        "`DSAR` anywhere in a qualifying file, whatever it says about them: `the "
+        "right to access the Service` in terms of service, or `we do not accept any "
+        "data subject request`, satisfies it."
+    ),
 )
 
 _r(
@@ -4210,6 +4313,13 @@ _r(
     Category.LEGAL_COMPLIANCE,
     "Add a privacy@ inbox and a postal mailing address for DSARs.",
     sarif_name="StatePrivacyNoContact",
+    limitations=(
+        "Reads the same files as AAK-STATE-PRIVACY-001. Passes on `data protection "
+        "officer`, `privacy officer`, `dpo@` or `privacy@` anywhere in a qualifying "
+        "file, including a sentence that says there is none (`We have no data "
+        "protection officer`); nothing checks that an address or a postal contact "
+        "follows."
+    ),
 )
 
 
@@ -4263,6 +4373,13 @@ _r(
     "evidence. The EU AI Act Article 15 evidence pack must show "
     "robustness testing across each user-facing language.",
     sarif_name="EuAiActArt15LocaleCoverage",
+    limitations=(
+        "Counts a locale as evaluated when its code appears in the path of any file "
+        "under a directory named `evals`, `eval`, `fixtures`, `scenarios`, `i18n`, "
+        "`locales`, `benchmarks` and the like, whatever the file holds. "
+        "`locales/fr.json`, a file of UI translation strings, therefore counts as "
+        "an eval for French."
+    ),
 )
 
 
