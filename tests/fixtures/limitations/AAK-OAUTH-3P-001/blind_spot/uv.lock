@@ -1,0 +1,5 @@
+version = 1
+
+[[package]]
+name = "langfuse"
+version = "2.0.0"

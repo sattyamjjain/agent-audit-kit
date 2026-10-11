@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "flow": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "flowise@3.0.0",
+        "start"
+      ]
+    }
+  }
+}

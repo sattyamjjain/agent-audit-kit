@@ -4651,6 +4651,16 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     auto_fixable=True,
+    limitations=(
+        "The pin reads requirements.txt, requirements-dev.txt, "
+        "requirements-prod.txt and dev-requirements.txt at the project root, on a "
+        "line that starts with `mcp-neo4j-cypher` and a version below 0.6.0. A name "
+        "with extras, an unpinned line, pyproject.toml, uv.lock, "
+        "`requirements/base.txt` and a `uvx mcp-neo4j-cypher==0.5.0 --read-only` "
+        "launcher in .mcp.json are not read. The source arm needs `read_only = "
+        "True` and a `CALL apoc.` or `runWrite` reference in the same Python file, "
+        "so a query kept in another module is not matched."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4846,6 +4856,18 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RCE-04"],
     auto_fixable=True,
+    limitations=(
+        "The version arm reads `flowise` and `flowise-components` under "
+        "`dependencies`, `devDependencies` and `peerDependencies` of the root "
+        "package.json only, and reports a range whose first version is below 3.1.3. "
+        "package-lock.json, yarn.lock, pnpm-lock.yaml, `optionalDependencies`, "
+        "`overrides`, a sub-directory package.json, an `npx flowise` launcher in "
+        ".mcp.json and a `flowiseai/flowise` image tag in a compose file are not "
+        "read. The flow arm reads `.flowise/*.json`, `flows/*.json` and "
+        "`flows/**/*.json` that mention MCP and carry a `customFunction`, `runCode` "
+        "or `executeCommand` key, so an export saved as `chatflows/export.json` is "
+        "not reported."
+    ),
 )
 
 
@@ -4895,6 +4917,17 @@ _r(
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI04"],
     incident_references=["VERCEL-2026-04-19"],
+    limitations=(
+        "Reads the dependency names of the root package.json (`dependencies`, "
+        "`devDependencies`, `peerDependencies`), the `[project].dependencies` of "
+        "the root pyproject.toml and the root requirements*.txt, and matches each "
+        "name exactly against a fixed list (context-ai, langsmith, helicone, "
+        "langfuse, humanloop, `@langchain/langsmith`, `@modelcontextprotocol/sdk` "
+        "and the Python mcp, langsmith-py and helicone-py). A requirement with "
+        "extras (`mcp[cli]>=1.2.0`), another capitalisation (`Langfuse`), "
+        "`[project.optional-dependencies]` or Poetry tables, a lockfile and a "
+        "sub-directory manifest are not reported."
+    ),
 )
 
 
@@ -5006,6 +5039,14 @@ _r(
     adversa_references=["ADV-INJECT-01"],
     incident_references=["OX-MCP-2026-04-15"],
     aicm_references=["AIS-07", "STA-08"],
+    limitations=(
+        "Recognises a sanitizer or opt-out by name in any file that uses a STDIO "
+        "transport: a `shlex.quote(` or `shlex.split(` call, an `ALLOWED_*`, "
+        "`WHITELIST_*` or `VALID_TOOLS` constant, or an HTTP-only transport "
+        "setting. One such file clears every STDIO file in the project, whatever "
+        "the name guards: an `ALLOWED_ORIGINS` list in `src/cors.ts` silences an "
+        "unguarded `StdioServerTransport` in `src/server.ts`."
+    ),
 )
 
 
@@ -5090,6 +5131,15 @@ _r(
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-SUPPLY-01"],
     incident_references=["MCP-DNS-REBIND-2026-04"],
+    limitations=(
+        "Reads `mcp` below 1.23.0 in the root requirements*.txt (pinned with `==`, "
+        "`<` or `<=`) and pyproject.toml, `@modelcontextprotocol/sdk` below 1.21.1 "
+        "and `@apollo/mcp-server` below 1.7.0 in the root package.json, and "
+        "`io.modelcontextprotocol.sdk:mcp-core` below 0.11.0 in the root pom.xml "
+        "and Gradle files. A name with extras (`mcp[cli]==1.22.0`), the Poetry "
+        "table form (`mcp = \"1.22.0\"`), a lockfile (uv.lock, package-lock.json) and "
+        "a requirements file in a sub-directory are not read."
+    ),
 )
 
 
@@ -5160,6 +5210,15 @@ _r(
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-SUPPLY-02"],
     incident_references=["GHA-IMMUTABLE-2026-04"],
+    limitations=(
+        "Reads the `uses:` entries of the files directly inside `.github/workflows` "
+        "and reports an `owner/action@ref` whose ref is not a 40-character commit "
+        "SHA, except for the owners `actions` and `github`, local `./` actions and "
+        "`docker://` images. A third-party action referenced from a local composite "
+        "action (`.github/actions/setup/action.yml`) is not read, and neither is an "
+        "`actions/` or `github/` action pinned to a branch "
+        "(`actions/checkout@main`) or a `docker://` image tag."
+    ),
 )
 
 

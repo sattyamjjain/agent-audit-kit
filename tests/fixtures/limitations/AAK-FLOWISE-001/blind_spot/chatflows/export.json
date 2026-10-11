@@ -1,0 +1,10 @@
+{
+  "nodes": [
+    {
+      "type": "mcp",
+      "customFunction": {
+        "code": "return 1"
+      }
+    }
+  ]
+}

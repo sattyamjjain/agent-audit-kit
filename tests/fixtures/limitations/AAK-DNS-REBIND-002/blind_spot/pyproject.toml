@@ -1,0 +1,7 @@
+[project]
+name = "demo"
+version = "0.1.0"
+dependencies = ["mcp[cli]==1.22.0"]
+
+[tool.poetry.dependencies]
+mcp = "1.22.0"

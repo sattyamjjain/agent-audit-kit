@@ -1,0 +1,6 @@
+name: setup
+runs:
+  using: composite
+  steps:
+    - uses: acme/deploy-action@v1
+      shell: bash

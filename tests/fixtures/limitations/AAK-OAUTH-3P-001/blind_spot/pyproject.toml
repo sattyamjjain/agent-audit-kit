@@ -1,0 +1,9 @@
+[project]
+name = "demo"
+version = "0.1.0"
+
+[project.optional-dependencies]
+obs = ["langfuse>=2"]
+
+[tool.poetry.dependencies]
+langsmith = "^0.1"

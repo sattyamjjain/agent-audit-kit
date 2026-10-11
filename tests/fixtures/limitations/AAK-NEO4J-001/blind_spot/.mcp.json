@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "neo4j": {
+      "command": "uvx",
+      "args": [
+        "mcp-neo4j-cypher==0.5.0",
+        "--read-only"
+      ]
+    }
+  }
+}

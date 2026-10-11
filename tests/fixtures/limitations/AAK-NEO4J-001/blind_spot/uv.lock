@@ -1,0 +1,5 @@
+version = 1
+
+[[package]]
+name = "mcp-neo4j-cypher"
+version = "0.5.0"
