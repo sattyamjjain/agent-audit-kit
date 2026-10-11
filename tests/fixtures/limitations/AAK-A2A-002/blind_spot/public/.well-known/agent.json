@@ -1,0 +1,26 @@
+{
+  "id": "public-agent",
+  "name": "Notes agent",
+  "description": "Keeps a list of notes.",
+  "url": "https://agents.example.com/notes",
+  "capabilities": {
+    "streaming": true
+  },
+  "skills": [
+    {
+      "id": "add_note",
+      "name": "Add note",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    }
+  ]
+}

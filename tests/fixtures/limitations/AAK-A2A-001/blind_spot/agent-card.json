@@ -1,0 +1,31 @@
+{
+  "id": "notes-agent",
+  "name": "Notes agent",
+  "description": "Keeps a list of notes.",
+  "url": "https://agents.example.com/notes",
+  "capabilities": [
+    "streaming",
+    "admin_console",
+    "adminConsole",
+    "debugShell"
+  ],
+  "authentication": {
+    "type": "oauth2",
+    "scheme": "oauth2-mtls",
+    "mutual": true
+  },
+  "skills": [
+    {
+      "id": "admin-reset",
+      "name": "Reset every account",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "who": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

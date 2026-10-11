@@ -1,0 +1,29 @@
+{
+  "id": "second-agent",
+  "name": "Notes agent",
+  "description": "Keeps a list of notes.",
+  "url": "https://agents.example.com/notes",
+  "capabilities": {
+    "streaming": true
+  },
+  "authentication": {
+    "type": "oauth2",
+    "scheme": "oauth2-mtls",
+    "mutual": true
+  },
+  "skills": [
+    {
+      "id": "stream_notes",
+      "name": "Stream notes",
+      "endpoint": "ws://agents.example.com/notes/stream",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -2052,6 +2052,16 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-01"],
+    limitations=(
+        "Reads the `capabilities` entries only (a list of strings, or the keys of "
+        "an object) and matches `admin`, `system`, `internal`, `debug` or `root` as "
+        "a whole word: `admin-console` is reported, but `admin_console`, "
+        "`adminConsole` and `debugShell` are not, and a skill such as `admin-reset` "
+        "under `skills` is not looked at. Cards are found at `agent-card.json` and "
+        "`.well-known/agent.json` in the project root and in any file named "
+        "`*agent-card*.json`; a card at `public/.well-known/agent.json` is not "
+        "found."
+    ),
 )
 
 _r(
@@ -2065,6 +2075,15 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-02"],
+    limitations=(
+        "Reads the `authentication` (or `auth`) key and reports it when it is "
+        "absent, `null`, the string `none`, or an object whose `type` is `none`. An "
+        "empty `authentication: {}` or an object that lists no real scheme "
+        "(`{\"schemes\": [\"none\"]}`) counts as declared. Only `agent-card.json` and "
+        "`.well-known/agent.json` in the project root and files named "
+        "`*agent-card*.json` are read; a card at `public/.well-known/agent.json` is "
+        "not."
+    ),
 )
 
 _r(
@@ -2080,6 +2099,11 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-03"],
+    limitations=(
+        "Reports a skill whose `inputSchema` is absent or an empty object. Any "
+        "non-empty schema passes, including one that accepts everything (`{\"type\": "
+        "\"object\"}` or `{\"type\": \"object\", \"additionalProperties\": true}`)."
+    ),
 )
 
 _r(
@@ -2093,6 +2117,12 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-04"],
+    limitations=(
+        "Reads `url`, `endpoint`, `baseUrl` and `base_url` on the card and `url` "
+        "and `endpoint` on each skill, and matches a value that starts with "
+        "`http://`. A plain-HTTP address under `additionalInterfaces`, an OAuth "
+        "`tokenUrl`, or a `ws://` endpoint is not read or not matched."
+    ),
 )
 
 _r(
@@ -2107,6 +2137,13 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `tokenLifetime`, `token_lifetime`, `expiresIn` and `expires_in` "
+        "anywhere in the card, as a number of seconds or an `Nh` string. A lifetime "
+        "written in days or minutes (`\"7d\"`, `\"120m\"`), as an ISO 8601 duration "
+        "(`PT24H`), or under another key (`ttl`, `accessTokenLifetimeSeconds`) is "
+        "not read."
+    ),
 )
 
 _r(
@@ -2121,6 +2158,13 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `verifySignature` or `verify_signature` set to false, and an "
+        "`algorithms` list that contains `none`. `algorithm: none` (singular), "
+        "`skipSignatureVerification: true`, `verify: false`, and switched-off "
+        "expiry or audience checks (`verify_exp: false`, `verify_aud: false`) are "
+        "not read."
+    ),
 )
 
 _r(
@@ -2135,6 +2179,13 @@ _r(
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Checks only that an `id` or `identity` key exists, not what it holds: "
+        "`\"id\": \"\"` and `\"identity\": null` both satisfy it, and nothing looks for a "
+        "signature or any other proof of the identity. The other condition, an "
+        "`http://` address in a top-level `url`, `endpoint`, `baseUrl` or "
+        "`base_url`, does not look under `additionalInterfaces`."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3353,6 +3404,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-05"],
+    limitations=(
+        "Reads `authentication.scheme`, a single string, and reports it when it "
+        "contains `bearer` or `oauth` and the block declares no `mutual` flag or "
+        "`mtls` scheme. A card that lists its schemes (`\"schemes\": [\"Bearer\"]`) or "
+        "uses another scheme (`apikey`, `basic`) is not reported."
+    ),
 )
 
 _r(
@@ -3368,6 +3425,11 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-06"],
+    limitations=(
+        "Reports a `delegation` block that sets neither `max_depth` nor `max_hops`. "
+        "Any value satisfies it (`\"max_depth\": 1000` is accepted), and whether the "
+        "scope shrinks at each hop is not examined."
+    ),
 )
 
 _r(
@@ -3383,6 +3445,12 @@ _r(
     owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-07"],
+    limitations=(
+        "Reads one key, `trust.accepts_relayed_claims`, and only when it is the "
+        "JSON boolean `true`. The string `\"true\"`, the spelling "
+        "`acceptsRelayedClaims`, and any other key that accepts relayed claims "
+        "(`relay_trust`) are not read."
+    ),
 )
 
 _r(
@@ -3399,6 +3467,12 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-08"],
+    limitations=(
+        "Checks that the `tokens` block contains a `jti`, `nonce`, `require_jti` or "
+        "`replay_window` key and does not look at its value, so `\"require_jti\": "
+        "false` or `\"replay_window\": 0` satisfies it. A card with no `tokens` "
+        "block, or an empty one, is not examined."
+    ),
 )
 
 _r(
@@ -3415,6 +3489,12 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI07", "ASI08"],
     adversa_references=["ADV-A2A-09"],
+    limitations=(
+        "Asks for a `schema_version`, `a2a_version` or `apiVersion` only from a "
+        "card that has a `tokens`, `delegation` or `trust` block, and only checks "
+        "that the key exists: a card with none of those blocks, or with "
+        "`\"schema_version\": \"\"`, is not reported."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -5807,6 +5887,15 @@ _r(
     sarif_name="MultiAgentSharedStateNoLock",
     owasp_agentic_references=["ASI04", "ASI06"],
     incident_references=["ARXIV-2605.18747"],
+    limitations=(
+        "Tracks only module-level `dict`, `list` and `set` objects that methods of "
+        "classes whose names end in `Agent`, `Worker` or `Harness` mutate. The same "
+        "shared state held as a class attribute (`self.registry[key] = value`), or "
+        "mutated by classes named `Researcher` and `Writer`, is not seen. A method "
+        "that mentions a name such as `Lock` or `acquire` counts as locking, so "
+        "`with threading.Lock():`, which makes a new lock on every call and "
+        "excludes nothing, clears it."
+    ),
 )
 
 _r(

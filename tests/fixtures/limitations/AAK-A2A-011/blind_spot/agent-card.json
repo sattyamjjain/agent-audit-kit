@@ -1,0 +1,38 @@
+{
+  "id": "notes-agent",
+  "name": "Notes agent",
+  "description": "Keeps a list of notes.",
+  "url": "https://agents.example.com/notes",
+  "capabilities": {
+    "streaming": true
+  },
+  "authentication": {
+    "type": "oauth2",
+    "scheme": "oauth2-mtls",
+    "mutual": true
+  },
+  "skills": [
+    {
+      "id": "add_note",
+      "name": "Add note",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    }
+  ],
+  "tokens": {
+    "format": "jwt",
+    "lifetime": 600,
+    "require_jti": false,
+    "replay_window": 0
+  },
+  "schema_version": "1"
+}
