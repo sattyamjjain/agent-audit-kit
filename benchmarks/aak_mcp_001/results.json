@@ -1,0 +1,233 @@
+{
+  "corpus": {
+    "by_source": {
+      "crawl": 664,
+      "registry": 1639
+    },
+    "distinct_configs": 2303,
+    "same_as": "research/state-of-mcp-2026/results.json (run_report.py iteration order)"
+  },
+  "rule": "AAK-MCP-001",
+  "step0": {
+    "aak_mcp_001": {
+      "configs": {
+        "denominator": 2303,
+        "n": 1201,
+        "pct": 52.1
+      },
+      "configs_also_carrying_critical": 1201,
+      "findings": 1311,
+      "findings_per_config": {
+        "1": 1162,
+        "11": 2,
+        "2": 20,
+        "3": 8,
+        "4": 2,
+        "6": 1,
+        "7": 2,
+        "8": 1,
+        "9": 3
+      }
+    },
+    "configs_with_a_critical_other_than_aak_mcp_001": {
+      "denominator": 2303,
+      "n": 14,
+      "pct": 0.6
+    },
+    "configs_with_aak_mcp_001_and_another_critical": 2,
+    "configs_with_critical": {
+      "denominator": 2303,
+      "n": 1213,
+      "pct": 52.7
+    },
+    "configs_with_critical_but_no_aak_mcp_001": 12,
+    "distinct_configs_scanned": 2303,
+    "other_critical_rules_by_config": {
+      "AAK-MCP-002": 9,
+      "AAK-POISON-001": 1,
+      "AAK-POISON-002": 1,
+      "AAK-SECRET-008": 2,
+      "AAK-TRANSPORT-001": 2
+    },
+    "published_check": {
+      "aak_mcp_001_configs": {
+        "equal": true,
+        "fresh": 1201,
+        "published": 1201
+      },
+      "configs_with_critical": {
+        "equal": true,
+        "fresh": 1213,
+        "published": 1213
+      },
+      "configs_with_critical_pct": {
+        "equal": true,
+        "fresh": 52.7,
+        "published": 52.7
+      },
+      "distinct_configs_scanned": {
+        "equal": true,
+        "fresh": 2303,
+        "published": 2303
+      }
+    },
+    "scenarios": [
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 1201,
+          "pct": 52.1
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 1213,
+          "pct": 52.7
+        },
+        "description": "the rule as shipped",
+        "scenario": "as-published"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 0,
+          "pct": 0.0
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 14,
+          "pct": 0.6
+        },
+        "description": "every AAK-MCP-001 hit is a false positive",
+        "scenario": "every-hit-wrong"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 1167,
+          "pct": 50.7
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 1180,
+          "pct": 51.2
+        },
+        "description": "loopback hosts exempt",
+        "scenario": "loopback-exempt"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 1166,
+          "pct": 50.6
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 1180,
+          "pct": 51.2
+        },
+        "description": "loopback and private-network hosts exempt",
+        "scenario": "loopback-and-private-exempt"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 40,
+          "pct": 1.7
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 52,
+          "pct": 2.3
+        },
+        "description": "https without a header downgraded below critical",
+        "scenario": "https-downgraded"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 4,
+          "pct": 0.2
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 17,
+          "pct": 0.7
+        },
+        "description": "loopback exempt and https downgraded",
+        "scenario": "loopback-exempt-and-https-downgraded"
+      }
+    ]
+  },
+  "step1": {
+    "declared_type": {
+      "(none)": 10,
+      "http": 1257,
+      "sse": 41,
+      "url": 3
+    },
+    "header_auth": {
+      "literal-value": 1,
+      "none": 1302,
+      "unrecognized-name": 8
+    },
+    "hits": 1311,
+    "hits_by_source": {
+      "crawl": 271,
+      "registry": 1040
+    },
+    "host_class": {
+      "loopback": 45,
+      "placeholder": 1,
+      "private": 4,
+      "public": 1254,
+      "template": 7
+    },
+    "host_class_by_scheme": {
+      "loopback/http": 45,
+      "placeholder/https": 1,
+      "private/http": 4,
+      "public/https": 1254,
+      "template/https": 4,
+      "template/none": 3
+    },
+    "probe_plan": {
+      "candidate_distinct_endpoints": 1157,
+      "candidate_distinct_hosts": 1081,
+      "candidate_hits": 1230,
+      "skipped_hits": {
+        "credential in URL": 14,
+        "credential in URL (suspected)": 8,
+        "non-public host": 49,
+        "placeholder host": 1,
+        "template host": 7,
+        "template in URL": 2
+      }
+    },
+    "public_https_distinct_hosts": 1094,
+    "registry_auth_mode": {
+      "header-nonsecret": 3,
+      "none": 1037
+    },
+    "scheme": {
+      "http": 49,
+      "https": 1259,
+      "none": 3
+    },
+    "transport": {
+      "sse": 41,
+      "stdio": 1,
+      "streamable-http": 1269
+    },
+    "url_credential": {
+      "literal": 4,
+      "none": 1296,
+      "template": 11
+    },
+    "url_credential_where": {
+      "path": 9,
+      "query": 6
+    }
+  },
+  "tool": "agent-audit-kit",
+  "unit": "hit = one AAK-MCP-001 finding = one (config, server entry) pair"
+}

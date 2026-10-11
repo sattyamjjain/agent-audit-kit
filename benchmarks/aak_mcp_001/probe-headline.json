@@ -1,0 +1,140 @@
+{
+  "distinct_configs": 2303,
+  "hits": 1311,
+  "hits_by_evidence": {
+    "accepted unauthenticated initialize": {
+      "denominator": 1311,
+      "n": 448,
+      "pct": 34.2
+    },
+    "no DNS answer": {
+      "denominator": 1311,
+      "n": 169,
+      "pct": 12.9
+    },
+    "no HTTP answer (timeout or TLS)": {
+      "denominator": 1311,
+      "n": 17,
+      "pct": 1.3
+    },
+    "non-public host": {
+      "denominator": 1311,
+      "n": 49,
+      "pct": 3.7
+    },
+    "not in probe log": {
+      "denominator": 1311,
+      "n": 0,
+      "pct": 0.0
+    },
+    "not probed: credential or template in URL": {
+      "denominator": 1311,
+      "n": 24,
+      "pct": 1.8
+    },
+    "other HTTP answer": {
+      "denominator": 1311,
+      "n": 82,
+      "pct": 6.3
+    },
+    "refused: HTTP 401/403": {
+      "denominator": 1311,
+      "n": 501,
+      "pct": 38.2
+    },
+    "refused: HTTP 402": {
+      "denominator": 1311,
+      "n": 13,
+      "pct": 1.0
+    },
+    "unresolvable host": {
+      "denominator": 1311,
+      "n": 8,
+      "pct": 0.6
+    }
+  },
+  "hits_by_evidence_and_source": {
+    "crawl": {
+      "accepted unauthenticated initialize": 47,
+      "no DNS answer": 13,
+      "no HTTP answer (timeout or TLS)": 2,
+      "non-public host": 49,
+      "not probed: credential or template in URL": 13,
+      "other HTTP answer": 12,
+      "refused: HTTP 401/403": 131,
+      "unresolvable host": 4
+    },
+    "registry": {
+      "accepted unauthenticated initialize": 401,
+      "no DNS answer": 156,
+      "no HTTP answer (timeout or TLS)": 15,
+      "not probed: credential or template in URL": 11,
+      "other HTTP answer": 70,
+      "refused: HTTP 401/403": 370,
+      "refused: HTTP 402": 13,
+      "unresolvable host": 4
+    }
+  },
+  "probe_dates_utc": [
+    "2026-10-11"
+  ],
+  "rule": "AAK-MCP-001",
+  "scenarios": [
+    {
+      "configs_where_aak_mcp_001_stays_critical": {
+        "denominator": 2303,
+        "n": 1201,
+        "pct": 52.1
+      },
+      "configs_with_critical": {
+        "denominator": 2303,
+        "n": 1213,
+        "pct": 52.7
+      },
+      "description": "every hit counts",
+      "scenario": "as-published"
+    },
+    {
+      "configs_where_aak_mcp_001_stays_critical": {
+        "denominator": 2303,
+        "n": 761,
+        "pct": 33.0
+      },
+      "configs_with_critical": {
+        "denominator": 2303,
+        "n": 773,
+        "pct": 33.6
+      },
+      "description": "a hit on a server that refused the unauthenticated client does not count",
+      "scenario": "refused-exempt"
+    },
+    {
+      "configs_where_aak_mcp_001_stays_critical": {
+        "denominator": 2303,
+        "n": 724,
+        "pct": 31.4
+      },
+      "configs_with_critical": {
+        "denominator": 2303,
+        "n": 738,
+        "pct": 32.0
+      },
+      "description": "neither does a hit on a loopback or private host",
+      "scenario": "refused-and-non-public-exempt"
+    },
+    {
+      "configs_where_aak_mcp_001_stays_critical": {
+        "denominator": 2303,
+        "n": 438,
+        "pct": 19.0
+      },
+      "configs_with_critical": {
+        "denominator": 2303,
+        "n": 452,
+        "pct": 19.6
+      },
+      "description": "only a hit on a server that accepted the unauthenticated initialize counts",
+      "scenario": "only-accepted-count"
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "accepted": {
+    "endpoints": 423,
+    "hits": 448,
+    "with_mcp_session_id": 87,
+    "with_prm_served": 120
+  },
+  "accepted_protocol_versions": {
+    "2024-11-05": 32,
+    "2025-03-26": 34,
+    "2025-06-18": 73,
+    "2025-11-05": 1,
+    "2025-11-25": 283
+  },
+  "auth_required": {
+    "endpoints": 458,
+    "hits": 501,
+    "with_any_challenge": 424,
+    "with_bearer_challenge": 424,
+    "with_prm_authorization_servers": 420,
+    "with_prm_served": 425,
+    "with_resource_metadata_param": 406
+  },
+  "dns_lookups": {
+    "dns-error": 164,
+    "ok": 920
+  },
+  "initialize_elapsed_ms": {
+    "max": 8687,
+    "n": 975,
+    "p50": 675,
+    "p90": 1274
+  },
+  "initialize_http_status": {
+    "200": 424,
+    "201": 1,
+    "301": 6,
+    "307": 6,
+    "308": 5,
+    "400": 1,
+    "401": 445,
+    "402": 13,
+    "403": 13,
+    "404": 36,
+    "405": 8,
+    "410": 2,
+    "429": 2,
+    "500": 2,
+    "502": 1,
+    "503": 6,
+    "520": 1,
+    "530": 3
+  },
+  "initialize_outcome_endpoints": {
+    "2xx-other": 2,
+    "accepted": 423,
+    "auth-required": 458,
+    "client-error-other": 3,
+    "error: timeout": 11,
+    "error: tls-certificate": 4,
+    "error: tls-error": 2,
+    "method-not-allowed": 8,
+    "not-found": 38,
+    "payment-required": 13,
+    "redirect": 17,
+    "server-error": 13,
+    "skipped: dns dns-error": 165
+  },
+  "initialize_outcome_hits": {
+    "2xx-other": 2,
+    "accepted": 448,
+    "auth-required": 501,
+    "client-error-other": 3,
+    "error: timeout": 11,
+    "error: tls-certificate": 4,
+    "error: tls-error": 2,
+    "method-not-allowed": 8,
+    "not-found": 39,
+    "payment-required": 13,
+    "redirect": 17,
+    "server-error": 13,
+    "skipped: dns dns-error": 169
+  },
+  "initialize_outcome_hits_by_source": {
+    "crawl": {
+      "accepted": 47,
+      "auth-required": 131,
+      "error: tls-certificate": 2,
+      "method-not-allowed": 1,
+      "not-found": 8,
+      "redirect": 1,
+      "server-error": 2,
+      "skipped: dns dns-error": 13
+    },
+    "registry": {
+      "2xx-other": 2,
+      "accepted": 401,
+      "auth-required": 370,
+      "client-error-other": 3,
+      "error: timeout": 11,
+      "error: tls-certificate": 2,
+      "error: tls-error": 2,
+      "method-not-allowed": 7,
+      "not-found": 31,
+      "payment-required": 13,
+      "redirect": 16,
+      "server-error": 11,
+      "skipped: dns dns-error": 156
+    }
+  },
+  "observed_limits": {
+    "duration_s": 784.5,
+    "methods": {
+      "GET": 1830,
+      "POST": 1004
+    },
+    "min_same_host_start_gap_s": 1.0,
+    "non_https_requests": 0,
+    "peak_requests_in_flight": 4,
+    "requests_with_userinfo": 0
+  },
+  "planned_endpoints": 1157,
+  "planned_hits": 1230,
+  "probe": {
+    "max_connections": 4,
+    "max_retries": 1,
+    "per_host_interval_s": 1.0,
+    "protocol_version": "2025-11-25",
+    "request_kinds": [
+      "initialize",
+      "prm-path",
+      "prm-root",
+      "prm-resource-metadata"
+    ],
+    "run_dates_utc": [
+      "2026-10-11"
+    ],
+    "runs": 1,
+    "timeout_s": 10.0,
+    "user_agent": "agent-audit-kit-research (+https://github.com/sattyamjjain/agent-audit-kit)"
+  },
+  "request_errors": {
+    "timeout": 30,
+    "tls-certificate": 4,
+    "tls-error": 2
+  },
+  "requests_by_kind": {
+    "initialize": 1004,
+    "prm-path": 902,
+    "prm-resource-metadata": 23,
+    "prm-root": 905
+  },
+  "requests_sent": 2834,
+  "retried_requests": 17,
+  "rfc9728_metadata": {
+    "probed_endpoints": 992,
+    "resource_matches_endpoint_via_named-in-challenge": 331,
+    "resource_matches_endpoint_via_path-inserted": 317,
+    "resource_matches_endpoint_via_root": 292,
+    "served_any_variant": 564,
+    "served_via_named-in-challenge": 401,
+    "served_via_path-inserted": 346,
+    "served_via_root": 474,
+    "valid_any_variant": 556,
+    "with_authorization_servers": 539
+  },
+  "rfc9728_metadata_hits": {
+    "served_any_variant": 613,
+    "with_authorization_servers": 588
+  },
+  "rule": "AAK-MCP-001"
+}

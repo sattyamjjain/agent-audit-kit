@@ -1,0 +1,908 @@
+{
+  "_comment": "Human adjudication of the AAK-MCP-001 sample. No script writes a verdict except sample.py --import-csv, which copies them from the sheet you filled. Codes: hosted-oauth, public-by-design, loopback, truly-open, auth-other, unknown (CODEBOOK.md). While any verdict is null the measurement is pending and no rate may be stated.",
+  "rater": null,
+  "run_date": null,
+  "codebook": "benchmarks/aak_mcp_001/CODEBOOK.md",
+  "verdicts": [
+    {
+      "sheet_no": 1,
+      "hit_id": "3ba5b22fd1db825a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 2,
+      "hit_id": "1f82f84ea07684cc",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 3,
+      "hit_id": "cd796cf71dace6d5",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 4,
+      "hit_id": "54adda0fbad5a93f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 5,
+      "hit_id": "381b95d63fbddc9a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 6,
+      "hit_id": "d8935e9e5b76d6ab",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 7,
+      "hit_id": "083c6792bd96f2f5",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 8,
+      "hit_id": "6254b9fee6b35d5b",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 9,
+      "hit_id": "5695dda75f809e6f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 10,
+      "hit_id": "e36907a48717fb66",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 11,
+      "hit_id": "c42dbfeb1856d745",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 12,
+      "hit_id": "be5a0b8b7e7c320c",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 13,
+      "hit_id": "6c14c4a59f3b5665",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 14,
+      "hit_id": "f7181796cfdf00df",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 15,
+      "hit_id": "82b4d5b28ae25c07",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 16,
+      "hit_id": "eaedf3ddf92eac9b",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 17,
+      "hit_id": "65375176e271e361",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 18,
+      "hit_id": "aefbc53180b55033",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 19,
+      "hit_id": "333602e031eda96c",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 20,
+      "hit_id": "4bfb73785059ceec",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 21,
+      "hit_id": "22c122ada2665cb3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 22,
+      "hit_id": "0efa2e55415b41a7",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 23,
+      "hit_id": "4a231559d2738b56",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 24,
+      "hit_id": "74bfe839a533f80d",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 25,
+      "hit_id": "6a4313daf2bf6856",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 26,
+      "hit_id": "0a7fbe2c338900fc",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 27,
+      "hit_id": "15a5c204ca6201fc",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 28,
+      "hit_id": "3d65ba2dd94b9044",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 29,
+      "hit_id": "7c7002ac5b56d776",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 30,
+      "hit_id": "dccac3c694003be2",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 31,
+      "hit_id": "3965f473c6b2f65a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 32,
+      "hit_id": "e316b0c6fd9fa45a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 33,
+      "hit_id": "97a76a159cfa1c6e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 34,
+      "hit_id": "152235ed476fe369",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 35,
+      "hit_id": "a8e55689005105b3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 36,
+      "hit_id": "e3e9a79e01aafe6a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 37,
+      "hit_id": "f79b6af3e2e728ad",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 38,
+      "hit_id": "b051d4f3e8619516",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 39,
+      "hit_id": "e3e0c049885ea554",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 40,
+      "hit_id": "5e2ea250d891d575",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 41,
+      "hit_id": "a234535dcdf7d047",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 42,
+      "hit_id": "f87d09408d1a4b6f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 43,
+      "hit_id": "39b40330373539b8",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 44,
+      "hit_id": "496eb4d043bc12bc",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 45,
+      "hit_id": "2a7df38fbf4ddf38",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 46,
+      "hit_id": "871268673264eb31",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 47,
+      "hit_id": "40d0480931dca7db",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 48,
+      "hit_id": "04c8320dc8e5b417",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 49,
+      "hit_id": "42bc977cacce196c",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 50,
+      "hit_id": "26e7d712640059d9",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 51,
+      "hit_id": "9245a44f95d229a9",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 52,
+      "hit_id": "ff92bdbfd244e4e1",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 53,
+      "hit_id": "e53272a2c6cb6e84",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 54,
+      "hit_id": "c1ddc8065b0fc965",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 55,
+      "hit_id": "6b5bd43d053e12e6",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 56,
+      "hit_id": "7073badcdd8dacd3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 57,
+      "hit_id": "d8ee66488a97d0ad",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 58,
+      "hit_id": "c53dbf052b70d522",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 59,
+      "hit_id": "8be949bddc2ebb0e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 60,
+      "hit_id": "3614088822cc91ce",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 61,
+      "hit_id": "8cd21091e2869ad5",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 62,
+      "hit_id": "ab03d64204633914",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 63,
+      "hit_id": "988dc05bf11d037a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 64,
+      "hit_id": "92e12491c949f05f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 65,
+      "hit_id": "3ce87dc01b6c764e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 66,
+      "hit_id": "c0e22c0a01a1e9a0",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 67,
+      "hit_id": "d4bba0c1cf1831d0",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 68,
+      "hit_id": "445235633027853d",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 69,
+      "hit_id": "db1780f67026745e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 70,
+      "hit_id": "3d2d64f700610df8",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 71,
+      "hit_id": "33a51d3a6350dc9f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 72,
+      "hit_id": "3184d0bce4843eec",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 73,
+      "hit_id": "1760c3064b74c2b0",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 74,
+      "hit_id": "5dee0ea9e79a96f5",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 75,
+      "hit_id": "3b3f7263b0dbeee1",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 76,
+      "hit_id": "7f55a1ad1b671632",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 77,
+      "hit_id": "5ec8e86fa44f721a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 78,
+      "hit_id": "ff5fda536882357b",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 79,
+      "hit_id": "dbbe95d5df0d7d97",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 80,
+      "hit_id": "644e2476c37c454c",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 81,
+      "hit_id": "ce4881b7b43504eb",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 82,
+      "hit_id": "f48b3716d1f346e3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 83,
+      "hit_id": "240635967253914e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 84,
+      "hit_id": "eee36b954bfa0f01",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 85,
+      "hit_id": "4626e735bddba639",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 86,
+      "hit_id": "7488f4998b262cf2",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 87,
+      "hit_id": "764789df146c066a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 88,
+      "hit_id": "19c933dbba2bfdb6",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 89,
+      "hit_id": "98426846a06e51bf",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 90,
+      "hit_id": "4b5cd6fbc995d9f3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 91,
+      "hit_id": "8e9b633fc65a17c0",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 92,
+      "hit_id": "475161d698f39916",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 93,
+      "hit_id": "8502a8ca562823e5",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 94,
+      "hit_id": "020a41146b9b4e16",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 95,
+      "hit_id": "6818e989bfceec08",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 96,
+      "hit_id": "2f309a57818fb715",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 97,
+      "hit_id": "3fd6c9659f6c3b2a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 98,
+      "hit_id": "e978cb1d0b68cdfd",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 99,
+      "hit_id": "e6e30265b3c9dda7",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 100,
+      "hit_id": "d362302161b150e3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 101,
+      "hit_id": "eeb788732b81e2ce",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 102,
+      "hit_id": "ef8e86e45f3c5fb9",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 103,
+      "hit_id": "f638e4741aba5c7a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 104,
+      "hit_id": "1987d065707542da",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 105,
+      "hit_id": "9589b6e3e4292ae2",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 106,
+      "hit_id": "052e709bb39c8098",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 107,
+      "hit_id": "9ad71a3a1797e3e2",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 108,
+      "hit_id": "0e1ca608f5f640fd",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 109,
+      "hit_id": "57baf458e9804afa",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 110,
+      "hit_id": "92b561206ae99af9",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 111,
+      "hit_id": "c86fe1a7e8fad4e6",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 112,
+      "hit_id": "9686b6fe0a33345c",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 113,
+      "hit_id": "4e032d32ea51503f",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 114,
+      "hit_id": "89a27d92c14d79ca",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 115,
+      "hit_id": "29017427eeb3deab",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 116,
+      "hit_id": "572f9c8d38bda667",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 117,
+      "hit_id": "810d80d501394cce",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 118,
+      "hit_id": "7b6f8594ac47579a",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 119,
+      "hit_id": "9bcdb221153caded",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 120,
+      "hit_id": "d14a6ba5229c2ba6",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 121,
+      "hit_id": "b76780a7343d0e77",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 122,
+      "hit_id": "7d9752484b5c0f87",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 123,
+      "hit_id": "6565ec33a4d58268",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 124,
+      "hit_id": "b6fd131833578130",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 125,
+      "hit_id": "a05c35d3a1902436",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 126,
+      "hit_id": "b2cfe719c30946bc",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 127,
+      "hit_id": "114a628fa43870bd",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 128,
+      "hit_id": "f868e347eafcc01d",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 129,
+      "hit_id": "32eb9bff9ed648be",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 130,
+      "hit_id": "80b8f3224fb87f65",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 131,
+      "hit_id": "bc6d2c5a5dc15eb6",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 132,
+      "hit_id": "0cea09f2bd620897",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 133,
+      "hit_id": "eb34a6b4886ca371",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 134,
+      "hit_id": "aeea22e5fd9d3c33",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 135,
+      "hit_id": "61bd7c41c38d8653",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 136,
+      "hit_id": "c8d47628f371cb44",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 137,
+      "hit_id": "dd7f2733f954da40",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 138,
+      "hit_id": "d04c49d9f15d5ce3",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 139,
+      "hit_id": "39e1454aff1b0845",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 140,
+      "hit_id": "fbd8ac143b348d3e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 141,
+      "hit_id": "bce2444dc4d8521e",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 142,
+      "hit_id": "bf0c7a8b72c3fae1",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 143,
+      "hit_id": "47bc684c2a45a79b",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 144,
+      "hit_id": "a83e24a00dd6a085",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 145,
+      "hit_id": "36c33d749c8419b8",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 146,
+      "hit_id": "5666d5544c7fdc63",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 147,
+      "hit_id": "177011a46b45330b",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 148,
+      "hit_id": "edf949073f0ab837",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 149,
+      "hit_id": "2e101e8ade42ca19",
+      "verdict": null,
+      "note": ""
+    },
+    {
+      "sheet_no": 150,
+      "hit_id": "473c56791370f826",
+      "verdict": null,
+      "note": ""
+    }
+  ]
+}
