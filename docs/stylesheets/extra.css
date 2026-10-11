@@ -41,6 +41,20 @@
   --md-accent-fg-color: #b9440a;
 }
 
+/* Syntax highlighting (1.4.3). Material colours the operators, punctuation, comments and
+   two more kinds of token in code blocks with its secondary text colour, rgba(0,0,0,.54).
+   On the grey of a code block that is 4.48:1 as a browser reports it (the exact #0000008a
+   composites to 4.54:1, but tools read the rounded 0.54), so a highlighted block that has
+   one of those tokens fails an audit. #666666 is 5.27:1 and still reads as the quiet
+   colour next to the code's own #36464e. */
+body[data-md-color-scheme="default"] {
+  --md-code-hl-operator-color: #666666;
+  --md-code-hl-punctuation-color: #666666;
+  --md-code-hl-comment-color: #666666;
+  --md-code-hl-generic-color: #666666;
+  --md-code-hl-variable-color: #666666;
+}
+
 /* The hover colour is close to the link colour now, so a hovered or focused link also
    gets an underline: colour alone is not a cue for everyone (WCAG 1.4.1, technique G183). */
 .md-typeset a:hover,

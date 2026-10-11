@@ -117,6 +117,16 @@ HOVER_TINT = {"orange": "#ff91001a"}
 #: The colours Material itself gives `red` and `orange`, which the stylesheet replaces.
 MATERIAL_OWN = {"primary": "#ef5552", "primary_dark": "#e53734", "accent": "#ff9100"}
 
+#: The syntax-highlighting variables Material sets to its secondary text colour,
+#: `--md-default-fg-color--light` (#0000008a), and the stylesheet therefore replaces.
+TOKEN_VARIABLES = (
+    "--md-code-hl-operator-color",
+    "--md-code-hl-punctuation-color",
+    "--md-code-hl-comment-color",
+    "--md-code-hl-generic-color",
+    "--md-code-hl-variable-color",
+)
+
 
 def test_the_figures_quoted_for_materials_own_colours_are_right() -> None:
     """The stylesheet's comment says why it exists in numbers; they are checked here."""
@@ -127,6 +137,10 @@ def test_the_figures_quoted_for_materials_own_colours_are_right() -> None:
     assert contrast(MATERIAL_OWN["accent"], code) == pytest.approx(2.07, abs=0.005)
     assert contrast("#ffffff", MATERIAL_OWN["primary"]) == pytest.approx(3.45, abs=0.005)
     assert contrast("#ffffff", MATERIAL_OWN["primary_dark"]) == pytest.approx(4.26, abs=0.005)
+    # Browsers report the secondary text colour as rgba(0, 0, 0, 0.54), and that rounded value
+    # is what a contrast checker computes from; the exact 0x8a / 255 is a hair kinder (4.54).
+    assert contrast(over("rgba(0,0,0,.54)", code), code) == pytest.approx(4.48, abs=0.005)
+    assert contrast(over("#0000008a", code), code) == pytest.approx(4.54, abs=0.005)
 
 
 # --------------------------------------------------------------------------
@@ -190,13 +204,15 @@ def rules(css: str) -> list[tuple[str, dict[str, str]]]:
     return parsed
 
 
-def declared(scheme: str, attribute: str, value: str, prop: str) -> str | None:
-    """What the stylesheet sets `prop` to for `<body>` with `data-md-color-<attribute>=<value>` in `scheme`."""
+def declared(
+    scheme: str, prop: str, attribute: str | None = None, value: str | None = None
+) -> str | None:
+    """What the stylesheet sets `prop` to for `<body>` in `scheme`, and with `data-md-color-<attribute>=<value>` if given."""
     found = None
     for selector, declarations in rules(CSS.read_text(encoding="utf-8")):
         if (
             f'[data-md-color-scheme="{scheme}"]' in selector
-            and f'[data-md-color-{attribute}="{value}"]' in selector
+            and (attribute is None or f'[data-md-color-{attribute}="{value}"]' in selector)
             and prop in declarations
         ):
             found = declarations[prop]
@@ -204,13 +220,16 @@ def declared(scheme: str, attribute: str, value: str, prop: str) -> str | None:
 
 
 def ratios(palette: dict[str, str]) -> dict[str, float]:
-    """Every contrast this palette's link, header and hover colours make, from the stylesheet."""
+    """Every contrast this palette's link, header, hover and code-token colours make, from the stylesheet."""
     scheme, primary, accent = palette["scheme"], palette["primary"], palette["accent"]
     colours = SCHEMES[scheme]
-    link = declared(scheme, "primary", primary, "--md-primary-fg-color")
-    dark = declared(scheme, "primary", primary, "--md-primary-fg-color--dark")
-    hover = declared(scheme, "accent", accent, "--md-accent-fg-color")
-    assert link and dark and hover, f"{palette}: docs/stylesheets/extra.css does not set all of its colours"
+    link = declared(scheme, "--md-primary-fg-color", "primary", primary)
+    dark = declared(scheme, "--md-primary-fg-color--dark", "primary", primary)
+    hover = declared(scheme, "--md-accent-fg-color", "accent", accent)
+    tokens = [declared(scheme, prop) for prop in TOKEN_VARIABLES]
+    assert link and dark and hover and all(tokens), (
+        f"{palette}: docs/stylesheets/extra.css does not set all of its colours"
+    )
     tinted = over(HOVER_TINT[accent], colours["page"])
     tinted_in_row = over(HOVER_TINT[accent], colours["row_hover"])
     on_primary = TEXT_ON_PRIMARY[primary]
@@ -225,6 +244,9 @@ def ratios(palette: dict[str, str]) -> dict[str, float]:
         "hovered link on code": contrast(hover, colours["code"]),
         "hovered link in code": contrast(hover, tinted),
         "hovered link in code, in a hovered row": contrast(hover, tinted_in_row),
+        "operator, punctuation and comment tokens on code": min(
+            contrast(token, colours["code"]) for token in tokens if token
+        ),
     }
 
 
@@ -241,6 +263,7 @@ SHIPPED = {
     "hovered link on code": 4.95,
     "hovered link in code": 4.96,
     "hovered link in code, in a hovered row": 4.62,
+    "operator, punctuation and comment tokens on code": 5.27,
 }
 
 
@@ -293,17 +316,19 @@ def test_a_link_is_still_told_from_the_text_around_it_by_more_than_colour_alone(
 
 
 def test_the_overrides_outrank_materials_own_palette_rules() -> None:
-    """Material sets these on `[data-md-color-primary=red]` (one attribute); naming the scheme
-    as well makes ours more specific, so the order the stylesheets load in does not matter."""
+    """Material sets these on `[data-md-color-primary=red]` or `[data-md-color-scheme=default]`
+    (one attribute); naming a second attribute, or `body` as well, makes ours more specific, so
+    the order the stylesheets load in does not matter."""
+    overridden = {"--md-primary-fg-color", "--md-primary-fg-color--dark", "--md-accent-fg-color", *TOKEN_VARIABLES}
     checked = 0
     for selector, declarations in rules(CSS.read_text(encoding="utf-8")):
-        if any(
-            prop in declarations
-            for prop in ("--md-primary-fg-color", "--md-primary-fg-color--dark", "--md-accent-fg-color")
-        ):
+        if overridden & declarations.keys():
             checked += 1
-            assert selector.count("[data-md-color-") >= 2, f"{selector!r} is no more specific than Material's own rule"
-    assert checked >= 2
+            specific = selector.count("[data-md-color-") >= 2 or (
+                selector.startswith("body[") and selector.count("[data-md-color-") >= 1
+            )
+            assert specific, f"{selector!r} is no more specific than Material's own rule"
+    assert checked >= 3
 
 
 def test_the_stylesheet_is_wired_into_the_site() -> None:
@@ -383,6 +408,17 @@ def test_materials_own_colours_are_the_ones_used_here() -> None:
     assert _material(main, ".md-header", "background-color") == "var(--md-primary-fg-color)"
     assert _material(main, ".md-header", "color") == "var(--md-primary-bg-color)"
     assert _material(main, ".md-nav__source", "background-color") == "var(--md-primary-fg-color--dark)"
+    assert _same(_material(main, scheme, "--md-default-fg-color--light"), "#0000008a")
+    on_secondary = {
+        name
+        for rule in _rules_named(main, scheme)
+        for name, value in rule.items()
+        if name.startswith("--md-code-hl-") and value == "var(--md-default-fg-color--light)"
+    }
+    assert on_secondary == set(TOKEN_VARIABLES), (
+        f"the syntax tokens on Material's secondary colour are now {sorted(on_secondary)}; "
+        f"update TOKEN_VARIABLES and the rule in docs/stylesheets/extra.css"
+    )
     assert _same(_material(palette, "[data-md-color-primary=red]", "--md-primary-bg-color"), TEXT_ON_PRIMARY["red"])
     assert _same(
         _material(palette, "[data-md-color-accent=orange]", "--md-accent-fg-color--transparent"), HOVER_TINT["orange"]
