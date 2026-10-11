@@ -10,6 +10,18 @@
     },
     "other": {
       "serverUrl": "https://mcp.example.com/mcp"
+    },
+    "empty": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-Foo-Key": ""
+      }
+    },
+    "embedded": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-Foo-Key": "k9f2-example-77a1"
+      }
     }
   }
 }
