@@ -6,18 +6,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cat src/main.py | head -50"
+            "command": "tar czf out.tgz src/"
+          },
+          {
+            "type": "command",
+            "command": "cp src/main.py out/main.txt"
+          },
+          {
+            "type": "command",
+            "command": "cat src/App.tsx"
           }
         ]
-      },
-      {
-        "command": "tar czf out.tgz src/"
-      },
-      {
-        "command": "cp src/main.py out/main.txt"
-      },
-      {
-        "command": "cat src/App.tsx"
       }
     ]
   }

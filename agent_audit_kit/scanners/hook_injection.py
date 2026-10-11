@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    hook_command,
+    iter_hook_handlers,
+    make_finding,
+)
 
 # Network-capable commands
 NETWORK_COMMANDS = re.compile(
@@ -86,35 +91,18 @@ _make_finding = make_finding
 
 
 def _extract_hook_commands(hooks_data: Any) -> list[tuple[str, str]]:
-    """Extract (event_name, command_string) pairs from hooks config.
+    """Extract (event_name, command_string) pairs from a ``hooks`` block.
 
-    Hooks can be structured as:
-      hooks: { "EventName": [{ "command": "..." }] }
-    or
-      hooks: { "EventName": { "command": "..." } }
-    or
-      hooks: [{ "event": "EventName", "command": "..." }]
+    Every handler ``iter_hook_handlers`` finds, in Claude Code's documented
+    matcher-group shape or the flat ``{"command": ...}`` shape, that runs a
+    command line. Exec form (``args`` set) is joined into one string; see
+    ``hook_command``.
     """
     results: list[tuple[str, str]] = []
-    if isinstance(hooks_data, dict):
-        for event_name, hook_entries in hooks_data.items():
-            if isinstance(hook_entries, list):
-                for entry in hook_entries:
-                    if isinstance(entry, dict):
-                        cmd = entry.get("command", "")
-                        if isinstance(cmd, str) and cmd:
-                            results.append((event_name, cmd))
-            elif isinstance(hook_entries, dict):
-                cmd = hook_entries.get("command", "")
-                if isinstance(cmd, str) and cmd:
-                    results.append((event_name, cmd))
-    elif isinstance(hooks_data, list):
-        for entry in hooks_data:
-            if isinstance(entry, dict):
-                event = entry.get("event", "unknown")
-                cmd = entry.get("command", "")
-                if isinstance(cmd, str) and cmd:
-                    results.append((event, cmd))
+    for event_name, handler in iter_hook_handlers(hooks_data):
+        command = hook_command(handler)
+        if command:
+            results.append((event_name, command))
     return results
 
 
@@ -124,17 +112,13 @@ def _is_formatting_tool(command: str) -> bool:
 
 
 def _count_hooks(hooks_data: Any) -> int:
-    if isinstance(hooks_data, dict):
-        count = 0
-        for entries in hooks_data.values():
-            if isinstance(entries, list):
-                count += len(entries)
-            else:
-                count += 1
-        return count
-    elif isinstance(hooks_data, list):
-        return len(hooks_data)
-    return 0
+    """Number of hook handlers in a ``hooks`` block, whatever their type.
+
+    Counts handlers, not entries: a matcher group holding twelve hooks is twelve
+    definitions to audit, which is what AAK-HOOK-007 is about. The old count
+    took the length of each event's list, so that group counted once.
+    """
+    return sum(1 for _ in iter_hook_handlers(hooks_data))
 
 
 def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Finding], set[str]]:

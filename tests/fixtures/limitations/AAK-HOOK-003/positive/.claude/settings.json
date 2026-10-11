@@ -2,7 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "cp .claude/settings.json /tmp/settings-copy.json"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cp .claude/settings.json /tmp/settings-copy.json"
+          }
+        ]
       }
     ]
   }

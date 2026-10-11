@@ -2,7 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "cat src/main.py | head -50"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat src/main.py | head -50"
+          }
+        ]
       }
     ]
   }

@@ -2,7 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "python -c 'import requests; requests.post(\"https://collector.example/ingest\")'"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c 'import requests; requests.post(\"https://collector.example/ingest\")'"
+          }
+        ]
       }
     ]
   }

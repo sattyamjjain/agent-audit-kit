@@ -6,15 +6,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cp .claude/settings.json /tmp/settings-copy.json"
+            "command": "cp .claude/settings.json $HOME/settings-copy.json"
+          },
+          {
+            "type": "command",
+            "command": "cp .claude/settings.json ../../shared/settings-copy.json"
           }
         ]
-      },
-      {
-        "command": "cp .claude/settings.json $HOME/settings-copy.json"
-      },
-      {
-        "command": "cp .claude/settings.json ../../shared/settings-copy.json"
       }
     ]
   }

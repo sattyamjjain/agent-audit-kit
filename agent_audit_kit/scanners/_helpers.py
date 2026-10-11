@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import AbstractSet
+from typing import AbstractSet, Any, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
@@ -128,3 +128,85 @@ def make_finding(
         owasp_ast_references=rule.owasp_ast_references,
         related_locations=related_locations or [],
     )
+
+
+def _entry_handlers(entry: object) -> Iterator[dict[str, Any]]:
+    """Yield the hook handlers one entry of an event's list contributes.
+
+    An entry with a ``hooks`` array is a matcher group and contributes each
+    object in that array. Any other object entry is itself a handler, the flat
+    shape. A group that also carries its own ``command`` contributes that entry
+    as well: a command string in a hook entry is read wherever it sits, rather
+    than guessing which of the two a client would run.
+    """
+    if not isinstance(entry, dict):
+        return
+    nested = entry.get("hooks")
+    if isinstance(nested, list):
+        for handler in nested:
+            if isinstance(handler, dict):
+                yield handler
+        if "command" in entry:
+            yield entry
+    else:
+        yield entry
+
+
+def iter_hook_handlers(hooks: object) -> Iterator[tuple[str, dict[str, Any]]]:
+    """Yield ``(event, handler)`` for every handler in a settings ``hooks`` block.
+
+    Claude Code documents three levels: an event maps to a list of matcher
+    groups, and each group's own ``hooks`` array holds the handlers that run::
+
+        {"hooks": {"PreToolUse": [{"matcher": "Bash",
+                                   "hooks": [{"type": "command", "command": "..."}]}]}}
+
+    The hook scanner used to read only a flat ``{"command": ...}`` placed straight
+    under the event, which is not a shape Claude Code documents, so a hook written
+    the way the documentation shows was never analysed. A matcher group has no
+    ``command`` of its own, so every AAK-HOOK rule passed it, and AAK-HOOK-007
+    counted a group of twelve hooks as one.
+
+    Both shapes are read, in any mix, as are an event mapped to a single object
+    instead of a list, and a top-level list of entries that name their own
+    ``event``. A handler of any ``type`` is yielded (``command``, ``http``,
+    ``prompt``, ``agent``, ``mcp_tool``): a counter wants all of them, and a
+    command rule asks ``hook_command`` for the text, which only a command has.
+    """
+    if isinstance(hooks, dict):
+        for event, entries in hooks.items():
+            if isinstance(entries, dict):
+                entries = [entries]
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                for handler in _entry_handlers(entry):
+                    yield str(event), handler
+    elif isinstance(hooks, list):
+        for entry in hooks:
+            if isinstance(entry, dict):
+                event = str(entry.get("event", "unknown"))
+                for handler in _entry_handlers(entry):
+                    yield event, handler
+
+
+def hook_command(handler: dict[str, Any]) -> str:
+    """The command line a hook handler runs, or "" when it runs none.
+
+    That is ``command``, followed by ``args`` when it is set. With ``args`` Claude
+    Code runs exec form: ``command`` is only the executable, spawned directly
+    with ``args`` as its argument vector, so ``{"command": "bash", "args": ["-c",
+    "curl ..."]}`` keeps the whole payload in ``args``. Joining them gives the
+    command rules the same text the shell form would have carried. A handler
+    without a string ``command`` (``http``, ``prompt``, ``agent``, ``mcp_tool``)
+    runs no command line.
+    """
+    command = handler.get("command")
+    if not isinstance(command, str) or not command:
+        return ""
+    args = handler.get("args")
+    if isinstance(args, list):
+        words = [str(a) for a in args if isinstance(a, (str, int, float))]
+        if words:
+            return " ".join([command, *words])
+    return command

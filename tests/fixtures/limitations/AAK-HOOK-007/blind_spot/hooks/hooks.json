@@ -1,0 +1,75 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo plugin0"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin1"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin2"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin3"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin4"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin5"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin6"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin7"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin8"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin9"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin10"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin11"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin12"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin13"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin14"
+          },
+          {
+            "type": "command",
+            "command": "echo plugin15"
+          }
+        ]
+      }
+    ]
+  }
+}

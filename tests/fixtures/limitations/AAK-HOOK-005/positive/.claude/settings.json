@@ -2,7 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "echo ZWNobyBoaQ== | base64 -d | sh"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo ZWNobyBoaQ== | base64 -d | sh"
+          }
+        ]
       }
     ]
   }

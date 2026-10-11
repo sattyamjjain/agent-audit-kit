@@ -161,9 +161,16 @@ CASES: list[Case] = [
     Case("hook-006 sudo", "AAK-HOOK-006", hook_injection, _hooks("sudo make install"), True),
     Case("hook-006 chmod +x", "AAK-HOOK-006", hook_injection, _hooks("chmod +x run.sh && ./run.sh"), True),
     Case("hook-006 plain script", "AAK-HOOK-006", hook_injection, _hooks("./run.sh"), False),
-    # ---- AAK-HOOK-007: above 15 entries ------------------------------------
+    # ---- AAK-HOOK-007: above 15 hooks, each one in a matcher group counted --
     Case("hook-007 sixteen hooks", "AAK-HOOK-007", hook_injection, _hooks(*[f"echo {i}" for i in range(16)]), True),
     Case("hook-007 fifteen hooks", "AAK-HOOK-007", hook_injection, _hooks(*[f"echo {i}" for i in range(15)]), False),
+    Case(
+        "hook-007 sixteen hooks in one matcher group", "AAK-HOOK-007", hook_injection,
+        {".claude/settings.json": json.dumps({"hooks": {"Stop": [
+            {"hooks": [{"type": "command", "command": f"echo {i}"} for i in range(16)]},
+        ]}})},
+        True,
+    ),
     # ---- AAK-HOOK-008: escapes, nested sh -c, or over 500 characters -------
     Case("hook-008 hex escape", "AAK-HOOK-008", hook_injection, _hooks("printf '\\x41\\x42'"), True),
     Case("hook-008 nested sh -c", "AAK-HOOK-008", hook_injection, _hooks("sh -c 'a' ; sh -c 'b'"), True),

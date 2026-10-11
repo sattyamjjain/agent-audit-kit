@@ -84,6 +84,29 @@ class TestDiscoverAgents:
         claude = [a for a in agents if a.name == "Claude Code"][0]
         assert claude.hook_count == 3
 
+    def test_hook_counting_counts_each_hook_in_a_matcher_group(self, tmp_path: Path) -> None:
+        """Claude Code's documented shape nests the hooks in a matcher group; the
+        count is of hooks, not of groups (it read 2 here before)."""
+        claude_dir = tmp_path / ".claude"
+        claude_dir.mkdir()
+        settings = {
+            "hooks": {
+                "PreToolUse": [{
+                    "matcher": "Bash",
+                    "hooks": [
+                        {"type": "command", "command": "echo 1"},
+                        {"type": "command", "command": "echo 2"},
+                    ],
+                }],
+                "Stop": [{"hooks": [{"type": "command", "command": "echo 3"}]}],
+            }
+        }
+        (claude_dir / "settings.json").write_text(json.dumps(settings))
+
+        agents = discover_agents(project_root=tmp_path)
+        claude = [a for a in agents if a.name == "Claude Code"][0]
+        assert claude.hook_count == 3
+
     def test_malformed_json_skipped(self, tmp_path: Path) -> None:
         (tmp_path / ".mcp.json").write_text("{invalid json")
         agents = discover_agents(project_root=tmp_path)
@@ -111,8 +134,14 @@ class TestCountHooks:
         assert _count_hooks(data) == 3
 
     def test_hooks_non_list_value(self) -> None:
-        data = {"hooks": {"event1": "single-value"}}
+        data = {"hooks": {"event1": {"command": "a"}}}
         assert _count_hooks(data) == 1
+
+    def test_a_bare_string_under_an_event_is_not_a_hook(self) -> None:
+        """Counted as one while the count was of entries; it defines no hook a
+        client would run, so a count of hooks leaves it out."""
+        data = {"hooks": {"event1": "single-value"}}
+        assert _count_hooks(data) == 0
 
     def test_hooks_not_dict_returns_zero(self) -> None:
         data = {"hooks": "invalid"}

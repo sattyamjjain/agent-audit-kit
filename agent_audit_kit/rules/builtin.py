@@ -1113,11 +1113,12 @@ _r(
     limitations=(
         "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name, and the "
         "one-liners `python -c ... import requests` (not `python3 -c`) and `node -e "
-        "... fetch(`, in the `command` string of each hook entry in "
-        "`.claude/settings.json` and `.claude/settings.local.json`. A hook nested "
-        "under an entry's own `hooks` array, the shape Claude Code documents, is not "
-        "read. What a script file does is not followed, so `bash "
-        ".claude/hooks/report.sh` passes even when the script runs curl."
+        "... fetch(`, in the command line of each hook (its `command`, followed by "
+        "`args` when set) in `.claude/settings.json` and `.claude/settings.local.json`. "
+        "What a script file does is not followed, so `bash .claude/hooks/report.sh` "
+        "passes even when the script runs curl. An `http` hook, which posts the event "
+        "to its `url` without running a command, is not read, and neither are the "
+        "hooks a plugin ships in `hooks/hooks.json`."
     ),
 )
 
@@ -1140,9 +1141,10 @@ _r(
         "Matches six names written as a bare `$NAME` (ANTHROPIC_API_KEY, "
         "OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, HOME, PATH) and "
         "three exfiltration pipelines. The braced form `${ANTHROPIC_API_KEY}` and any "
-        "other credential variable on its own (`$GITHUB_TOKEN`) are not matched. A "
-        "hook nested under an entry's own `hooks` array, the shape Claude Code "
-        "documents, is not read."
+        "other credential variable on its own (`$GITHUB_TOKEN`) are not matched. An "
+        "`http` hook that sends `$ANTHROPIC_API_KEY` in a header it lists in "
+        "`allowedEnvVars` is not read, and neither are the hooks a plugin ships in "
+        "`hooks/hooks.json`."
     ),
 )
 
@@ -1163,8 +1165,8 @@ _r(
     limitations=(
         "Looks for the text /tmp/, ~/, /etc/, /var/, /usr/ or /home/ anywhere in a "
         "hook command. A path reached through `$HOME` or a relative climb "
-        "(`../../shared/out.json`) is not matched. A hook nested under an entry's own "
-        "`hooks` array, the shape Claude Code documents, is not read."
+        "(`../../shared/out.json`) is not matched. Hooks a plugin ships in "
+        "`hooks/hooks.json` are not read."
     ),
 )
 
@@ -1185,8 +1187,9 @@ _r(
         "UserPromptSubmit whose command names none of a list of formatters. The same "
         "command on any other event, such as Stop, is not reported, and a command that "
         "merely contains a formatter name anywhere, even in a trailing comment (`# "
-        "prettier`), counts as a formatter. A hook nested under an entry's own `hooks` "
-        "array, the shape Claude Code documents, is not read."
+        "prettier`), counts as a formatter. A hook that runs no command (`http`, "
+        "`prompt`, `agent`, `mcp_tool`) is not reported on any event, and the hooks a "
+        "plugin ships in `hooks/hooks.json` are not read."
     ),
 )
 
@@ -1204,8 +1207,8 @@ _r(
     limitations=(
         "Matches the words base64, btoa, atob, b64encode and b64decode in a hook "
         "command. Other encodings that hide a payload the same way, hex through `xxd "
-        "-r -p` or `base32 -d`, are not matched. A hook nested under an entry's own "
-        "`hooks` array, the shape Claude Code documents, is not read."
+        "-r -p` or `base32 -d`, are not matched. Hooks a plugin ships in "
+        "`hooks/hooks.json` are not read."
     ),
 )
 
@@ -1225,8 +1228,8 @@ _r(
     limitations=(
         "Matches sudo, doas, pkexec and `chmod` followed by whitespace and `+x`. "
         "`chmod 755`, `chmod a+x` and `su root -c`, which grant the same execute or "
-        "root rights, are not matched. A hook nested under an entry's own `hooks` "
-        "array, the shape Claude Code documents, is not read."
+        "root rights, are not matched. Hooks a plugin ships in `hooks/hooks.json` are "
+        "not read."
     ),
 )
 
@@ -1238,16 +1241,16 @@ _r(
     Severity.MEDIUM,
     Category.HOOK_INJECTION,
     "Remove hooks that are not essential, or fold related ones into one script, until "
-    "each settings file has 15 or fewer hook entries. The rule counts the entries in "
-    "`.claude/settings.json` and `.claude/settings.local.json` separately and fires "
-    "above 15.",
+    "each settings file has 15 or fewer hooks. The rule counts every hook, each one in "
+    "a matcher group's `hooks` array on its own, in `.claude/settings.json` and "
+    "`.claude/settings.local.json` separately, and fires above 15.",
     sarif_name="ExcessiveHookCount",
     adversa_references=["ADV-SCOPE-03"],
     limitations=(
-        "Adds up the entries of all events in one settings file and fires above 15. "
-        "Hooks split between `.claude/settings.json` and `.claude/settings.local.json` "
-        "are not added up, and a `matcher` entry counts once however many hooks its "
-        "own `hooks` array holds."
+        "Counts the hooks of all events in one settings file, each hook in a "
+        "`matcher` group's `hooks` array separately, and fires above 15. Hooks split "
+        "between `.claude/settings.json` and `.claude/settings.local.json` are not "
+        "added up, and the hooks a plugin ships in `hooks/hooks.json` are not counted."
     ),
 )
 
@@ -1269,8 +1272,8 @@ _r(
         "Matches `\\x41` and `\\u0041` escapes, `sh -c` twice in one command (inside "
         "`bash -c` too), and a command longer than 500 characters. The same text "
         "written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from "
-        "shell variables (`$a$b`) is not matched. A hook nested under an entry's own "
-        "`hooks` array, the shape Claude Code documents, is not read."
+        "shell variables (`$a$b`) is not matched. Hooks a plugin ships in "
+        "`hooks/hooks.json` are not read."
     ),
 )
 
@@ -1295,8 +1298,7 @@ _r(
         ".js, .ts, .go, .rs, .java, .rb, .c, .cpp or .h, or a `< file` redirect from "
         "one. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py "
         "out/`) and reading a file of another type (`cat src/App.tsx`) are not "
-        "matched. A hook nested under an entry's own `hooks` array, the shape Claude "
-        "Code documents, is not read."
+        "matched. Hooks a plugin ships in `hooks/hooks.json` are not read."
     ),
 )
 

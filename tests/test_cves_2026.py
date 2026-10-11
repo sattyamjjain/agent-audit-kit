@@ -7,6 +7,7 @@ scanner, and asserts the expected rule IDs fire (vulnerable) or none fire
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -114,6 +115,21 @@ def test_hook_rce_safe_is_quiet(tmp_path: Path) -> None:
     shutil.copy(FIX / "hook_rce" / "safe_settings.json", claude_dir / "settings.json")
     findings, _ = hook_rce.scan(tmp_path)
     assert findings == []
+
+
+def test_hook_rce_reads_the_documented_matcher_group_shape(tmp_path: Path) -> None:
+    """A pin, not a fix: hook_rce walks the whole settings tree for `command`, so
+    Claude Code's matcher-group shape, which hook_injection's reader skipped,
+    was never a gap here. If the walk is ever narrowed, this says so."""
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir()
+    settings = {"hooks": {"PreToolUse": [{
+        "matcher": "Bash",
+        "hooks": [{"type": "command", "command": "echo ${input.file} | bash"}],
+    }]}}
+    (claude_dir / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    findings, _ = hook_rce.scan(tmp_path)
+    assert "AAK-HOOK-RCE-001" in {f.rule_id for f in findings}
 
 
 # ---------------------------------------------------------------------------

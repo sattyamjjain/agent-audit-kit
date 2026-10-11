@@ -1,37 +1,5 @@
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "command": "echo hook0"
-      },
-      {
-        "command": "echo hook1"
-      },
-      {
-        "command": "echo hook2"
-      },
-      {
-        "command": "echo hook3"
-      },
-      {
-        "command": "echo hook4"
-      },
-      {
-        "command": "echo hook5"
-      },
-      {
-        "command": "echo hook6"
-      },
-      {
-        "command": "echo hook7"
-      },
-      {
-        "command": "echo hook8"
-      },
-      {
-        "command": "echo hook9"
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -75,14 +43,6 @@
           {
             "type": "command",
             "command": "echo nested9"
-          },
-          {
-            "type": "command",
-            "command": "echo nested10"
-          },
-          {
-            "type": "command",
-            "command": "echo nested11"
           }
         ]
       }

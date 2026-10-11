@@ -2,54 +2,80 @@
   "hooks": {
     "PostToolUse": [
       {
-        "command": "echo post0"
-      },
-      {
-        "command": "echo post1"
-      },
-      {
-        "command": "echo post2"
-      },
-      {
-        "command": "echo post3"
-      },
-      {
-        "command": "echo post4"
-      },
-      {
-        "command": "echo post5"
-      },
-      {
-        "command": "echo post6"
-      },
-      {
-        "command": "echo post7"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo post0"
+          },
+          {
+            "type": "command",
+            "command": "echo post1"
+          },
+          {
+            "type": "command",
+            "command": "echo post2"
+          },
+          {
+            "type": "command",
+            "command": "echo post3"
+          },
+          {
+            "type": "command",
+            "command": "echo post4"
+          },
+          {
+            "type": "command",
+            "command": "echo post5"
+          },
+          {
+            "type": "command",
+            "command": "echo post6"
+          },
+          {
+            "type": "command",
+            "command": "echo post7"
+          }
+        ]
       }
     ],
     "PreToolUse": [
       {
-        "command": "echo pre0"
-      },
-      {
-        "command": "echo pre1"
-      },
-      {
-        "command": "echo pre2"
-      },
-      {
-        "command": "echo pre3"
-      },
-      {
-        "command": "echo pre4"
-      },
-      {
-        "command": "echo pre5"
-      },
-      {
-        "command": "echo pre6"
-      },
-      {
-        "command": "echo pre7"
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo pre0"
+          },
+          {
+            "type": "command",
+            "command": "echo pre1"
+          },
+          {
+            "type": "command",
+            "command": "echo pre2"
+          },
+          {
+            "type": "command",
+            "command": "echo pre3"
+          },
+          {
+            "type": "command",
+            "command": "echo pre4"
+          },
+          {
+            "type": "command",
+            "command": "echo pre5"
+          },
+          {
+            "type": "command",
+            "command": "echo pre6"
+          },
+          {
+            "type": "command",
+            "command": "echo pre7"
+          }
+        ]
       }
     ]
   }
