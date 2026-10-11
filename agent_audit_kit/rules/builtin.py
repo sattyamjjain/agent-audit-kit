@@ -5498,6 +5498,16 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
+    limitations=(
+        "Reads one function at a time. A `StdioServerParameters(command=, args=)` "
+        "call counts as tainted when its command or args come straight from a "
+        "request, HTTP-client, `os.environ`, `json.loads` or `yaml.load` "
+        "expression, from a parameter named body, payload, req, request, event, "
+        "untrusted or user_input, or from a local assigned from such an expression. "
+        "A value that arrives through any other parameter name (`def build(spec)` "
+        "called with `request.json()`), through a helper's return value or through "
+        "an attribute stored on `self` is not followed."
+    ),
 )
 
 _r(
@@ -5520,6 +5530,16 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
+    limitations=(
+        "Reads one file at a time. A `new StdioClientTransport(...)` or `new "
+        "StdioServerTransport(...)` counts as tainted when its command or args "
+        "derive, through assignments, destructuring, template strings or one helper "
+        "return, from `req`, `request`, `ctx` or `context` `.body`, `.query`, "
+        "`.params` or `.headers`, `process.env`, `JSON.parse` or an awaited fetch "
+        "or axios call in that file. A config object passed in from another file "
+        "(`connect(req.body)` in routes.ts, `connect(cfg)` in client.ts) is not "
+        "followed, with or without the optional tree-sitter extra."
+    ),
 )
 
 _r(
@@ -5543,6 +5563,13 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
+    limitations=(
+        "Matches the spelling `StdioServerParameters.Builder()` followed by "
+        "`.build()` in .java files, with a request parameter, HTTP client, "
+        "`ObjectMapper` read or `System.getenv` call in the preceding 2 KB or in "
+        "the chain. The MCP Java SDK's own `ServerParameters.builder(command)` is "
+        "not matched, and neither is the same code in a Kotlin file."
+    ),
 )
 
 _r(
@@ -5569,6 +5596,15 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
+    limitations=(
+        "Treats a Rust file as MCP code only if it mentions `mcp_sdk`, "
+        "`modelcontextprotocol` or `mcp::client::stdio`, so a file that uses the "
+        "`rmcp` crate and none of those names is not scanned. It also needs a "
+        "`reqwest`, `serde_json::from_str` or `from_slice`, `std::env::var`, "
+        "`hyper`, `actix_web::web::Json` or `axum::extract::Json` call in the 2 KB "
+        "before `Command::new`, which a command taken from `std::env::args()` is "
+        "not."
+    ),
 )
 
 
@@ -5604,6 +5640,16 @@ _r(
     owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-SUPPLY-03"],
     incident_references=["OX-MCP-2026-04-25", "CLOUDFLARE-MCP-DEFENDER-2026-04-25"],
+    limitations=(
+        "Python: reports a `get`, `post`, `request` or `urlopen` call on "
+        "`requests`, `httpx` or `urllib` (or a bare `urlopen`) followed, in the "
+        "same function, by a `StdioServerParameters` or `StdioClientTransport` "
+        "call, without checking that the fetched value reaches it. A request made "
+        "through a session object (`session = requests.Session(); "
+        "session.get(url)`) or in a different function is not seen. TypeScript: "
+        "needs `await fetch(` within 2 KB before a `new Stdio*Transport`, so "
+        "`axios.get` and `fetch(...).then(...)` are not matched."
+    ),
 )
 
 
@@ -10878,6 +10924,14 @@ _r(
     cve_references=["CVE-2026-90898"],
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI10"],
+    limitations=(
+        "Matches an `exec.Command` or `exec.CommandContext` call in an MCP-shaped "
+        "Go file with a request-decoding marker (`json.NewDecoder(r.Body)`, an "
+        "`*http.Request` handler, `ShouldBindJSON`, `mux.Vars`) in the preceding 2 "
+        "KB, unless its first argument is a string literal. A literal program with "
+        "the request in the arguments, such as `exec.Command(\"sh\", \"-c\", "
+        "req.Command)`, is therefore not reported."
+    ),
 )
 
 _r(
