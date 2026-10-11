@@ -22,6 +22,7 @@ nav:
       - Configuration & rule schema: rule-schema.md
   - Rules & coverage:
       - Rule reference: rules.md
+      - Per-rule pages: rules/index.md
       - OWASP mapping: owasp-mapping.md
       - OWASP Agentic coverage: owasp-agentic-coverage.md
       - Session transcripts: session-transcripts.md
@@ -50,6 +51,11 @@ nav:
 # `research/state-of-mcp-2026/` lives outside docs/, so MkDocs cannot see it and
 # the corpus study had no https address. The hook adds those files to the build
 # from where they already are — one source of truth, no copy in the tree.
+#
+# The same hook generates one page per rule in the registry (`docs/rules/<ID>/`,
+# the target of every SARIF `helpUri`) and appends the full list to
+# `docs/rules/index.md`. Nothing generated is committed; a hand-written
+# `docs/rules/<ID>.md` is shown verbatim with the registry reference below it.
 hooks:
   - scripts/mkdocs_hooks.py
 

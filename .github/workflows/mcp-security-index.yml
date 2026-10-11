@@ -13,6 +13,14 @@ on:
       - "docs/**"
       - "mkdocs.yml"
       - ".github/workflows/mcp-security-index.yml"
+      # Every rule's SARIF helpUri points at a page the docs build generates from
+      # the registry (scripts/rule_pages.py), reading the scanner sources for the
+      # "Scanner" row and the OWASP titles for the references. A rule merged
+      # without a redeploy would 404 from its own "more info" link until the next
+      # Monday run, so a change to any of those inputs redeploys the docs.
+      - "agent_audit_kit/**"
+      - "scripts/rule_pages.py"
+      - "scripts/mkdocs_hooks.py"
       # A recorded notice or a builder fix re-renders the published index
       # (no new crawl or snapshot) instead of waiting for Monday.
       - "benchmarks/disclosure_ledger.json"
@@ -22,6 +30,17 @@ on:
 permissions:
   contents: write
   issues: write
+
+# This workflow rebuilds gh-pages from nothing and force-pushes it, so two runs
+# that overlap race for the branch and the one that finishes last wins, whichever
+# commit it was built from. Deploying on a change to agent_audit_kit/ (above)
+# makes overlap likelier: two merges can land minutes apart. Queue instead of
+# cancelling: a scheduled crawl is the slow run and must not be killed by a
+# push, and GitHub keeps only the newest pending run, so the last commit is the
+# one built last.
+concurrency:
+  group: gh-pages-publish
+  cancel-in-progress: false
 
 jobs:
   snapshot:

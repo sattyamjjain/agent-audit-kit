@@ -146,7 +146,6 @@ mcptox-fetch:
 count-check:
 	@PYTHONPATH=. python scripts/check_counts.py
 	@PYTHONPATH=. python scripts/sync_rule_count.py --check
-	@PYTHONPATH=. python scripts/sync_rule_doc_pages.py --check
 	@PYTHONPATH=. python scripts/render_repo_metadata.py --check-live sattyamjjain/agent-audit-kit
 
 ## cve-latency: regenerate docs/cve-latency.md from the ledger. Not offline: the

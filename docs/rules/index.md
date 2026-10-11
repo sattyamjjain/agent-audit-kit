@@ -1,13 +1,17 @@
-# Rule reference
+# Per-rule pages
 
-Per-rule pages for the AAK rule registry. The canonical source of truth
-is `agent_audit_kit/rules/builtin.py` — these pages exist to give
-operators a click-through reference with the full description, the
-remediation recipe, and the linked CVE/OWASP/AICM mapping.
+Every rule in the AAK registry has a page: what it detects, how to fix it, what
+it does not catch, which scanner implements it, and which CVEs and standards it
+maps to. The canonical source of truth is `agent_audit_kit/rules/builtin.py`.
+The "more info" link on a finding in GitHub code scanning (the SARIF `helpUri`)
+opens the page for that rule. The full list, grouped by category, closes this
+page on the published site (it is added when the site is built, so it is not in
+this file).
 
-The pages are written by hand for high-traffic rules (CVE-driven, public
-SLA) and from `RuleDefinition` data for the rest. v0.3.5 ships the
-first batch — expect coverage to fill in over subsequent releases.
+Most pages are generated from the registry when this site is built, so they
+cannot say something the scanner does not. The CVE-driven and high-traffic rules
+also have a hand-written deep dive, listed below. That text is shown on the
+rule's page exactly as written, with the registry reference appended under it.
 
 ## v0.3.84 (2026-08-19) — net-new
 

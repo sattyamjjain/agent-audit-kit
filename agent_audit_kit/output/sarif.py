@@ -6,22 +6,32 @@ from pathlib import Path
 
 from agent_audit_kit import __version__
 from agent_audit_kit.models import Finding, ScanResult, Severity
-from agent_audit_kit.output._rule_doc_pages import RULE_DOC_PAGES
 from agent_audit_kit.rules.builtin import RULES
 
-# Public rule-doc URL per finding. Keep this stable — SARIF ingesters
-# cache helpUri and follow it from the GH Security tab.
+# Public rule-doc URL per finding. Keep this stable -- SARIF ingesters cache
+# helpUri and follow it from the GH Security tab.
 #
 # This pointed at agent-audit-kit.dev until 2026-09-05, on a domain that has
 # never been registered (NXDOMAIN: no NS, A or MX), so every "more info" link
 # the Security tab offered was dead. It now points at the published docs site,
 # which is served from the gh-pages branch and resolves.
 #
-# Deep-linking every rule was the tempting fix and is wrong: 13 of 332 rules
-# have a hand-written page and the rest do not, so per-rule URLs everywhere
-# would swap a link that fails uniformly for one that fails 96% of the time --
-# harder to notice, not better. Rules without a page get the index, which
-# resolves for all of them.
+# Every rule links to its own page, `<base>/<rule id>/`. The page exists for
+# every registered rule because the docs build generates it from the registry:
+# scripts/rule_pages.py renders one per rule and scripts/mkdocs_hooks.py adds
+# them to the build, and a rule with a hand-written docs/rules/<id>.md keeps that
+# text on its page.
+#
+# This used to link only the rules that had a hand-written page (13 of 388) and
+# send the rest to the rules index, because a per-rule URL with no page behind it
+# is a 404. A frozen set in this package recorded which rules had one. The set is
+# gone: "which rules have a page" can no longer differ from "which rules exist".
+# tests/test_rule_pages.py builds the site and fails unless each registered
+# rule's page sits exactly where this URL points.
+#
+# A rule's page is published when the docs are rebuilt, which is why
+# mcp-security-index.yml also deploys on a change to agent_audit_kit/: a rule
+# merged on a Tuesday must not 404 from its own "more info" link until Monday.
 _HELP_URI_BASE = "https://sattyamjjain.github.io/agent-audit-kit/docs/rules"
 
 SEVERITY_TO_LEVEL: dict[Severity, str] = {
@@ -42,15 +52,13 @@ SEVERITY_TO_SCORE: dict[Severity, str] = {
 
 
 def _help_uri(rule_id: str) -> str:
-    """Deep-link a rule's own page when it has one, else the rules index.
+    """The rule's own help page.
 
-    Both forms resolve. The trailing slash matters: the docs site is MkDocs
-    with directory URLs, so `/rules/AAK-FOO-001` redirects and `/rules/
-    AAK-FOO-001/` is the canonical address an ingester should cache.
+    The trailing slash matters: the docs site is MkDocs with directory URLs, so
+    `/rules/AAK-FOO-001` redirects and `/rules/AAK-FOO-001/` is the canonical
+    address an ingester should cache.
     """
-    if rule_id in RULE_DOC_PAGES:
-        return f"{_HELP_URI_BASE}/{rule_id}/"
-    return f"{_HELP_URI_BASE}/"
+    return f"{_HELP_URI_BASE}/{rule_id}/"
 
 
 def _build_fingerprint(finding: Finding) -> str:

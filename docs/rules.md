@@ -72,6 +72,8 @@ _Counts are generated from the rule registry; run `agent-audit-kit export-rules`
 
 ## Full Rule List
 
+Every rule has its own page, with its description, remediation, limitations and references: see [Per-rule pages](rules/index.md).
+
 Run `agent-audit-kit scan . --owasp-report` for a complete mapping of rules to OWASP frameworks.
 
 Each rule includes:

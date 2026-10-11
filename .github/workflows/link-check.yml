@@ -71,7 +71,10 @@ jobs:
       # file requests every mkdocs nav entry against the deployed site on a daily
       # cron, which is the right clock for a published page: it asks after the
       # deploy rather than during it. The Pages root and its /data/ files stay in
-      # lychee's scope — only the /docs/ subtree moves to that job.
+      # lychee's scope — only the /docs/ subtree moves to that job. That includes
+      # the per-rule help pages, which the docs build generates from the registry
+      # and so never exist as a file for lychee to read: the same job requests
+      # every rule's page, the target of its SARIF helpUri.
       #
       # globenewswire.com is excluded above because lychee fails its HTTP/2
       # negotiation from the runner ("HTTP/2 protocol error. Server may not
@@ -147,9 +150,16 @@ jobs:
   # check that is red for a legitimate reason gets ignored. It runs on the daily
   # cron instead — a dead entry is caught within a day of opening, not a week —
   # and on demand, which is what to use straight after a deploy.
+  #
+  # It also requests the help page of every rule in rules.json. Those are not nav
+  # entries, but each is the "more info" link GitHub code scanning shows for that
+  # rule (the SARIF helpUri), and the docs only redeploy on certain pushes, so a
+  # rule can exist in the registry before its page exists on the site. This is
+  # the check that would say so (the deploy workflow also redeploys on a change
+  # to agent_audit_kit/ so the window stays short).
   # --------------------------------------------------------------------------
   nav-liveness:
-    name: Every mkdocs nav entry is served
+    name: Every nav entry and rule page is served
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.event.schedule == '31 6 * * *')

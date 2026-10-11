@@ -10,7 +10,9 @@ poor joke to reintroduce it one level down.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
+import urllib.error
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -140,3 +142,85 @@ def test_published_assets_do_not_duplicate_nav_pages() -> None:
     """REPORT.md and PREVALENCE.md are in the nav; they must not be probed twice."""
     overlap = set(nav.nav_urls()) & set(nav.published_asset_urls())
     assert not overlap, f"probed twice: {sorted(overlap)}"
+
+
+# --------------------------------------------------------------------------
+# Rule help pages: the SARIF helpUri targets
+# --------------------------------------------------------------------------
+
+
+def test_every_rule_page_is_probed_and_none_is_probed_twice() -> None:
+    """`rules.json` lists every rule; each rule's page is a helpUri target.
+
+    A rule can exist in the registry before its page exists on the site (the docs
+    only redeploy on certain pushes), so a liveness check that skipped these would
+    be silent about exactly the state it was added to catch.
+    """
+    bundle = json.loads((REPO_ROOT / "rules.json").read_text(encoding="utf-8"))["rules"]
+    urls = nav.rule_page_urls()
+    assert len(urls) == len({r["rule_id"] for r in bundle}) > 300
+    assert all(u.startswith("https://") and u.endswith("/") for u in urls)
+    assert any(u.endswith("/docs/rules/AAK-MCP-003/") for u in urls)
+    assert not set(urls) & set(nav.nav_urls()), "a nav page is also swept as a rule page"
+    assert not set(urls) & set(nav.published_asset_urls())
+
+
+def test_rule_page_urls_follow_the_site_layout(tmp_path: Path) -> None:
+    bundle = tmp_path / "rules.json"
+    bundle.write_text(json.dumps({"rules": [{"rule_id": "AAK-X-001"}, {"rule_id": "AAK-A-001"}]}))
+    base = "https://example.test/docs/"
+    assert nav.rule_page_urls(base, bundle, True) == [
+        "https://example.test/docs/rules/AAK-A-001/",
+        "https://example.test/docs/rules/AAK-X-001/",
+    ]
+    # use_directory_urls: false publishes <id>.html, and the sweep must follow it.
+    assert nav.rule_page_urls(base, bundle, False)[0] == "https://example.test/docs/rules/AAK-A-001.html"
+
+
+def test_a_missing_rule_bundle_yields_no_rule_pages(tmp_path: Path) -> None:
+    assert nav.rule_page_urls("https://example.test/docs/", tmp_path / "none.json", True) == []
+
+
+class _Ok:
+    status = 200
+
+    def __enter__(self) -> "_Ok":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+
+def _server(statuses: list[int]):
+    """A urlopen stand-in answering with `statuses` in turn (the last one repeats)."""
+    calls: list[int] = []
+
+    def urlopen(request, timeout):  # noqa: ARG001
+        calls.append(1)
+        code = statuses[min(len(calls), len(statuses)) - 1]
+        if code == 200:
+            return _Ok()
+        raise urllib.error.HTTPError(request.full_url, code, "reason", {}, None)  # type: ignore[arg-type]
+
+    return urlopen, calls
+
+
+def test_a_transient_cdn_status_is_retried_but_a_404_is_not(monkeypatch) -> None:
+    """Several hundred requests will meet a 429 or a 503 sooner or later; that must not
+    turn the daily check red. A 404 is the answer the check exists to give."""
+    monkeypatch.setattr(nav.time, "sleep", lambda _seconds: None)
+
+    urlopen, calls = _server([503, 429, 200])
+    monkeypatch.setattr(nav.urllib.request, "urlopen", urlopen)
+    assert nav.probe("https://example.test/a/") == (200, "")
+    assert len(calls) == 3
+
+    urlopen, calls = _server([404])
+    monkeypatch.setattr(nav.urllib.request, "urlopen", urlopen)
+    assert nav.probe("https://example.test/b/")[0] == 404
+    assert len(calls) == 1
+
+    urlopen, calls = _server([503])
+    monkeypatch.setattr(nav.urllib.request, "urlopen", urlopen)
+    assert nav.probe("https://example.test/c/")[0] == 503  # gives up after the retries
+    assert len(calls) == nav._RETRIES

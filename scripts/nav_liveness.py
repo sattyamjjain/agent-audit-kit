@@ -15,6 +15,14 @@ Deliberately *not* a link checker. lychee already walks the prose links inside
 pages. This asks a narrower question with a sharper answer: is every page the
 navigation offers actually served?
 
+It asks the same of every rule's help page. Those are not in the nav (a reader
+reaches them from the rules index, and the SARIF `helpUri` of each finding links
+straight to them), but they are the one set of URLs this project hands to other
+people's tooling, so a rule with no page is a dead "more info" link in somebody's
+Security tab. The pages are generated at docs build time from the registry, and
+the docs only redeploy on certain pushes, so "the registry has a rule the site
+does not" is a real state and this is the check that sees it.
+
 Usage:
     python scripts/nav_liveness.py --list          # print the URLs, one per line
     python scripts/nav_liveness.py --check-live    # request each; non-200 fails
@@ -24,18 +32,29 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MKDOCS_YML = REPO_ROOT / "mkdocs.yml"
 HOOKS_PY = REPO_ROOT / "scripts" / "mkdocs_hooks.py"
+#: The committed rule bundle. Read for the ids rather than importing the
+#: package, because this script is standard library only (see `_nav_block`).
+RULES_JSON = REPO_ROOT / "rules.json"
 
 _TIMEOUT = 30
 _RETRIES = 3
+#: A rule-page sweep is several hundred requests, so one 429 or 5xx from the CDN
+#: must not turn the daily check red. A 404 is still an answer and is never retried.
+_RETRYABLE = frozenset({429, 500, 502, 503, 504})
+_BACKOFF_SECONDS = 2
+_RULE_PAGE_WORKERS = 4
 # A plain urllib request is answered with 403 by some CDNs; GitHub Pages does
 # not care, but saying who we are costs nothing and makes the logs legible.
 _UA = "agent-audit-kit-nav-liveness/1.0 (+https://github.com/sattyamjjain/agent-audit-kit)"
@@ -161,6 +180,31 @@ def published_asset_urls(base: str | None = None) -> list[str]:
     return out
 
 
+def rule_page_urls(
+    base: str | None = None,
+    rules_json: Path | None = None,
+    directory_urls: bool | None = None,
+) -> list[str]:
+    """The help page of every rule in `rules.json`, as deployed URLs.
+
+    These are the `helpUri` targets (`agent_audit_kit/output/sarif.py`), generated
+    at docs build time by `scripts/rule_pages.py`. The URL layout comes from
+    `mkdocs.yml` the same way the nav's does, so a change to `site_url` or
+    `use_directory_urls` moves both. The rules index is a nav entry and is walked
+    there; it is not repeated here.
+    """
+    if base is None or directory_urls is None:
+        text = MKDOCS_YML.read_text(encoding="utf-8")
+        base = site_url(text) if base is None else base
+        directory_urls = _use_directory_urls(text) if directory_urls is None else directory_urls
+    path = RULES_JSON if rules_json is None else rules_json
+    if not path.is_file():
+        return []
+    rules = json.loads(path.read_text(encoding="utf-8")).get("rules", [])
+    rule_ids = sorted({r["rule_id"] for r in rules if r.get("rule_id")})
+    return [source_to_url(f"rules/{rule_id}.md", base, directory_urls) for rule_id in rule_ids]
+
+
 def probe(url: str) -> tuple[int, str]:
     """Request `url`, returning (status, detail). Status 0 means no response."""
     last = ""
@@ -170,7 +214,12 @@ def probe(url: str) -> tuple[int, str]:
             with urllib.request.urlopen(request, timeout=_TIMEOUT) as response:
                 return response.status, ""
         except urllib.error.HTTPError as exc:
-            # A 4xx is an answer, not a flake: report it without retrying.
+            # A 4xx is an answer, not a flake: report it without retrying. The
+            # exceptions are the statuses a CDN returns under load.
+            if exc.code in _RETRYABLE and attempt < _RETRIES - 1:
+                last = f"HTTP {exc.code}"
+                time.sleep(_BACKOFF_SECONDS * (attempt + 1))
+                continue
             return exc.code, exc.reason or ""
         except Exception as exc:  # network/DNS/TLS - worth one more try
             last = f"{type(exc).__name__}: {exc}"
@@ -179,16 +228,29 @@ def probe(url: str) -> tuple[int, str]:
     return 0, last
 
 
+def _report(results: list[tuple[str, int, str]], *, quiet: bool) -> list[tuple[str, int, str]]:
+    """Print one line per URL (failures only when `quiet`); return the failures."""
+    for url, status, _detail in results:
+        if quiet and status == 200:
+            continue
+        print(f"{status or 'ERR':>4}  {url}")
+    return [(url, status, detail) for url, status, detail in results if status != 200]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--list", action="store_true", help="print the nav URLs")
+    mode.add_argument("--list", action="store_true", help="print the URLs to be checked")
     mode.add_argument(
         "--check-live", action="store_true", help="request each; non-200 fails"
     )
     args = parser.parse_args(argv)
 
-    urls = nav_urls() + published_asset_urls()
+    nav = nav_urls()
+    assets = published_asset_urls()
+    walked = set(nav) | set(assets)
+    rule_pages = [u for u in rule_page_urls() if u not in walked]
+    urls = nav + assets + rule_pages
     if not urls:
         print(
             "nav_liveness: parsed zero nav entries from mkdocs.yml. Either the "
@@ -202,16 +264,15 @@ def main(argv: list[str] | None = None) -> int:
         print("\n".join(urls))
         return 0
 
-    failures: list[tuple[str, int, str]] = []
-    for url in urls:
-        status, detail = probe(url)
-        if status != 200:
-            failures.append((url, status, detail))
-        print(f"{status or 'ERR':>4}  {url}")
+    failures = _report([(url, *probe(url)) for url in nav + assets], quiet=False)
+    # The rule pages are the long tail: swept concurrently, and only failures print.
+    with ThreadPoolExecutor(max_workers=_RULE_PAGE_WORKERS) as pool:
+        swept = list(zip(rule_pages, pool.map(probe, rule_pages)))
+    failures += _report([(url, *result) for url, result in swept], quiet=True)
 
     if failures:
         print(
-            f"\nnav_liveness: {len(failures)} of {len(urls)} nav entries are not "
+            f"\nnav_liveness: {len(failures)} of {len(urls)} published URLs are not "
             f"served:",
             file=sys.stderr,
         )
@@ -219,16 +280,18 @@ def main(argv: list[str] | None = None) -> int:
             suffix = f" ({detail})" if detail else ""
             print(f"  {status or 'no response'}  {url}{suffix}", file=sys.stderr)
         print(
-            "\nEvery one of these is offered to a reader by the site navigation. "
-            "Either the deploy did not publish it or the nav names a page that no "
-            "longer exists.",
+            "\nEvery one of these is offered to a reader by the site navigation, "
+            "or is the \"more info\" link of a rule in code scanning. Either the "
+            "deploy did not publish it or the page no longer exists; a missing rule "
+            "page usually means the docs were not redeployed after the rule was "
+            "added.",
             file=sys.stderr,
         )
         return 1
 
     print(
         f"\nnav liveness: all {len(urls)} published URLs return 200 "
-        f"({len(nav_urls())} nav pages + {len(published_asset_urls())} assets)."
+        f"({len(nav)} nav pages + {len(assets)} assets + {len(rule_pages)} rule pages)."
     )
     return 0
 

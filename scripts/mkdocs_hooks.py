@@ -26,15 +26,31 @@ reason.
 `tests/test_docs_research_publishing.py` fails if a published file grows a
 relative link this table does not cover, so the next one is caught at test time
 instead of becoming a 404 nobody sees.
+
+**The second job: a help page for every rule.** Every rule's SARIF ``helpUri``
+points at ``.../docs/rules/<ID>/``, and only 13 rules had a page there. The same
+``on_files`` event now adds one page per rule in the registry, rendered by
+``scripts/rule_pages.py``, and appends the full list to ``docs/rules/index.md``.
+A rule that already has a hand-written ``docs/rules/<ID>.md`` keeps its text
+verbatim, with the registry reference appended below it; the file on disk is
+never written to and no generated page is committed, so there is nothing to
+drift and no ``--check`` to forget. The pages are marked ``NOT_IN_NAV`` (they are
+reached from the rules index and from SARIF, not from the sidebar), which also
+keeps them out of MkDocs' "pages not in nav" log, where there would be one line
+per rule.
+`tests/test_rule_pages.py` builds the site and fails unless every registered
+rule's page exists exactly where its ``helpUri`` points.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
-from mkdocs.structure.files import File
+from mkdocs.structure.files import File, InclusionLevel
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESEARCH_DIR = "research/state-of-mcp-2026"
@@ -119,8 +135,57 @@ class _RewrittenFile(File):
         return rewrite_links(Path(src).read_text(encoding="utf-8"))
 
 
+_RULE_PAGES_MODULE = "aak_rule_pages"
+
+
+def _rule_pages() -> Any:
+    """Load ``scripts/rule_pages.py``, the page renderer, once.
+
+    Loaded by path rather than imported by name: MkDocs executes this file as a
+    hook, not as a member of a package, so a sibling import would depend on
+    ``scripts/`` being on ``sys.path``. Registered in ``sys.modules`` before it
+    runs because its dataclasses resolve their own module while being defined.
+    """
+    module = sys.modules.get(_RULE_PAGES_MODULE)
+    if module is not None:
+        return module
+    path = Path(__file__).with_name("rule_pages.py")
+    spec = importlib.util.spec_from_file_location(_RULE_PAGES_MODULE, path)
+    if spec is None or spec.loader is None:  # pragma: no cover - the file is next to this one
+        raise ImportError(f"mkdocs_hooks: cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[_RULE_PAGES_MODULE] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _publish_rule_pages(files: Any, config: Any) -> None:
+    """Add one page per registered rule, and the full list to the rules index.
+
+    The repository root goes on ``sys.path`` first, so the registry rendered is
+    the one in the checkout being built rather than whichever copy happens to be
+    installed. A page that already exists on disk (a hand-written deep dive, the
+    rules index) is replaced in the build by the same text plus the generated
+    part; ``Files.remove`` before ``append`` because appending over an existing
+    ``src_uri`` is deprecated.
+    """
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    rule_pages = _rule_pages()
+    pages = rule_pages.build_pages(Path(config["docs_dir"]))
+    for src_uri, markdown in pages.items():
+        current = files.get_file_from_path(src_uri)
+        inclusion = InclusionLevel.NOT_IN_NAV
+        if current is not None:
+            files.remove(current)
+            if src_uri == rule_pages.INDEX_URI:
+                # The index is the one page a reader is meant to navigate to.
+                inclusion = current.inclusion
+        files.append(File.generated(config, src_uri, content=markdown, inclusion=inclusion))
+
+
 def on_files(files: Any, config: Any) -> Any:
-    """Add the research artifacts to the build, read from their real location."""
+    """Add the research artifacts and the per-rule pages to the build."""
     for name in PUBLISHED_FILES:
         source = REPO_ROOT / RESEARCH_DIR / name
         if not source.is_file():
@@ -140,4 +205,5 @@ def on_files(files: Any, config: Any) -> Any:
                 use_directory_urls=bool(config["use_directory_urls"]),
             )
         )
+    _publish_rule_pages(files, config)
     return files

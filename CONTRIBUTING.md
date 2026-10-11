@@ -69,6 +69,12 @@ mypy agent_audit_kit
    rewrites the rule table in `docs/rules.md` between its `BEGIN/END rules-summary`
    markers, and the counts in `README.md` and `__init__.py`. Editing that table by
    hand works until the next sync overwrites it.
+6. Write nothing for the rule's help page. It is generated from the registry when the
+   docs are built (`scripts/rule_pages.py`), and it is where the finding's "more info"
+   link in GitHub code scanning lands. For a long-form write-up, add
+   `docs/rules/<RULE-ID>.md`: it is shown on the rule's page exactly as written, with
+   the registry reference appended. `python scripts/rule_pages.py <RULE-ID>` prints the
+   page as it will be published.
 
 ## Pull Request Process
 

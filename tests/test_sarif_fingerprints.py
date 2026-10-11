@@ -3,8 +3,9 @@
 - partialFingerprints.primaryLocationLineHash is a SHA256 of (line content +
   rule ID), stable across unrelated line shifts, different when the line
   content changes.
-- helpUri per rule points at a URL that resolves: the rule's own docs page
-  when one exists, the published rules index otherwise.
+- helpUri per rule points at that rule's own docs page. The page exists for
+  every registered rule because the docs build generates it from the registry
+  (tests/test_rule_pages.py builds the site and proves the URL resolves).
 - results[].properties.security-severity mirrors the rule's severity score.
 """
 
@@ -15,7 +16,6 @@ import json
 from pathlib import Path
 
 from agent_audit_kit.models import Category, Finding, ScanResult, Severity
-from agent_audit_kit.output._rule_doc_pages import RULE_DOC_PAGES
 from agent_audit_kit.output.sarif import format_results
 
 
@@ -91,20 +91,20 @@ def _help_uri_for(tmp_path: Path, rule_id: str) -> str:
 
 
 def test_helpuri_deep_links_a_rule_that_has_a_docs_page(tmp_path: Path) -> None:
-    """AAK-TOXICFLOW-001 has docs/rules/AAK-TOXICFLOW-001.md, so it earns a
-    per-rule URL. The trailing slash is the canonical MkDocs directory URL."""
+    """AAK-TOXICFLOW-001 has a hand-written docs/rules/AAK-TOXICFLOW-001.md, and
+    its URL is in people's SARIF history, so it must not move. The trailing slash
+    is the canonical MkDocs directory URL."""
     assert _help_uri_for(tmp_path, "AAK-TOXICFLOW-001") == (
         "https://sattyamjjain.github.io/agent-audit-kit/docs/rules/AAK-TOXICFLOW-001/"
     )
 
 
-def test_helpuri_falls_back_to_the_index_for_a_rule_with_no_page(tmp_path: Path) -> None:
-    """The other 319. Deep-linking these would produce a 404 per finding --
-    a link that fails 96% of the time is harder to notice than one that always
-    does, which is the failure this replaced."""
-    assert "AAK-STDIO-001" not in RULE_DOC_PAGES
+def test_helpuri_deep_links_a_rule_with_no_hand_written_page(tmp_path: Path) -> None:
+    """AAK-STDIO-001 used to get the rules index, because only 13 rules had a
+    page and a per-rule URL for the rest would have been a 404. The docs build
+    now generates a page for every registered rule, so it links to its own."""
     assert _help_uri_for(tmp_path, "AAK-STDIO-001") == (
-        "https://sattyamjjain.github.io/agent-audit-kit/docs/rules/"
+        "https://sattyamjjain.github.io/agent-audit-kit/docs/rules/AAK-STDIO-001/"
     )
 
 
