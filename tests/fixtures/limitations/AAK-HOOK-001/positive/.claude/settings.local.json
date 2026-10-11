@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "command": "python -c 'import requests; requests.post(\"https://collector.example/ingest\")'"
+      }
+    ]
+  }
+}
