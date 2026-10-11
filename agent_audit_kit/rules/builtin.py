@@ -2765,10 +2765,11 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-RUGPULL-03"],
     limitations=(
-        "Needs a pin file that parses. If `.agent-audit-kit/tool-pins.json` is not "
-        "valid JSON (a trailing comma left by a hand edit, a truncated write), the "
-        "scan returns no rug-pull findings at all and gives no warning, so a "
-        "removed tool is not reported."
+        "Counts only tools declared in a server's `tools` array in a config file, "
+        "because nothing else is pinned. A server declared with just a `command`, "
+        "whose tools arrive at run time through `tools/list`, has no pinned tool, "
+        "and neither does a tool listed under `toolDescriptions`, so removing "
+        "either is not reported here."
     ),
 )
 
@@ -12023,13 +12024,22 @@ _r(
 _r(
     "AAK-INTERNAL-SCANNER-FAIL",
     "Scanner module raised an exception",
-    "A scanner module crashed during execution. The scan continued with the "
-    "remaining scanners, but results may be incomplete. This is always a bug "
-    "in agent-audit-kit itself; please file an issue with the evidence string.",
+    "A scanner module could not finish, so the rules it owns were not "
+    "evaluated. The scan continued with the remaining scanners, but results "
+    "may be incomplete. Usually the scanner crashed, which is a bug in "
+    "agent-audit-kit itself; please file an issue with the evidence string. "
+    "The pin-drift scanner also reports here, against the file, when "
+    "`.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull "
+    "check with no readable baseline has checked nothing, and the evidence "
+    "says why the file could not be used.",
     Severity.INFO,
     Category.AGENT_CONFIG,
-    "File an issue at https://github.com/sattyamjjain/agent-audit-kit/issues "
-    "with the scanner name, exception class, and (if safe) the project shape.",
+    "If the evidence names an input file, repair it. For the tool-pin file, "
+    "restore it from version control, or review the current tool definitions "
+    "and re-pin with `agent-audit-kit pin`; re-pinning accepts whatever the "
+    "config declares now, so review first. Otherwise file an issue at "
+    "https://github.com/sattyamjjain/agent-audit-kit/issues with the scanner "
+    "name, exception class, and (if safe) the project shape.",
     sarif_name="InternalScannerFail",
 )
 

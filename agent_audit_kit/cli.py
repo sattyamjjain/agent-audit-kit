@@ -143,10 +143,16 @@ def pin_cmd(path: str) -> None:
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def verify_cmd(path: str) -> None:
     """Verify MCP tool definitions against pinned hashes."""
-    from agent_audit_kit.pinning import verify_pins
+    from agent_audit_kit.pinning import PinFileError, verify_pins
 
     project_root = Path(path)
-    findings = verify_pins(project_root)
+    try:
+        findings = verify_pins(project_root)
+    except PinFileError as exc:
+        # This printed "All tool definitions match their pins." and exited 0:
+        # nothing had been compared, because the pin file did not parse.
+        click.echo(f"Cannot verify: {exc}. No tool definition was compared with its pin.", err=True)
+        sys.exit(EXIT_ERROR)
     if not findings:
         click.echo("All tool definitions match their pins.")
     else:
@@ -557,7 +563,8 @@ def watch_cmd(path: str, interval_seconds: int, webhook_url: str | None, once: b
         max_iterations=1 if once else None,
     )
     click.echo(
-        f"watch: exited after {result.iterations} iteration(s), {result.drift_events} drift event(s).",
+        f"watch: exited after {result.iterations} iteration(s), {result.drift_events} drift event(s), "
+        f"{result.unverified} not verified.",
         err=True,
     )
 

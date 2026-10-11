@@ -249,6 +249,17 @@ def test_verify_command_exits_zero(tmp_path: Path) -> None:
     )
 
 
+def test_verify_command_errors_on_an_unparseable_pin_file(tmp_path: Path) -> None:
+    """It printed "All tool definitions match their pins." and exited 0."""
+    pin_dir = tmp_path / ".agent-audit-kit"
+    pin_dir.mkdir()
+    (pin_dir / "tool-pins.json").write_text('{"srv/tool": {"hash": "abc"},}')
+    result = runner.invoke(cli, ["verify", str(tmp_path)])
+    assert result.exit_code == 2, result.output
+    assert "match their pins" not in result.output
+    assert "not valid JSON" in result.output
+
+
 def test_update_command() -> None:
     """The ``update`` subcommand should exit 0 regardless of network availability."""
     result = runner.invoke(cli, ["update"])

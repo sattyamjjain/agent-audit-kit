@@ -26,13 +26,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_audit_kit.pinning import verify_pins
+from agent_audit_kit.pinning import PinFileError, verify_pins
 
 
 @dataclass
 class WatchResult:
     iterations: int
     drift_events: int
+    #: Checks that compared nothing: the pin file could not be read, or
+    #: `verify_pins` raised. Each is reported as "not verified", never "clean".
+    unverified: int = 0
 
 
 def _post_webhook(url: str, payload: dict) -> None:
@@ -86,6 +89,7 @@ def run_watch(
     webhook = webhook_url or os.environ.get("AAK_WEBHOOK_URL")
     iterations = 0
     drift_events = 0
+    unverified = 0
     stop = {"flag": False}
 
     def _handle_stop(_signum, _frame):
@@ -99,10 +103,18 @@ def run_watch(
             break
         iterations += 1
         ts = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+        # Why nothing was compared this iteration, when nothing was. Both arms
+        # used to fall through to "clean": an unreadable pin file is the common
+        # one, and any other failure leaves the same question unanswered.
+        not_verified: str | None = None
         try:
             findings = verify_pins(project_root)
+        except PinFileError as exc:
+            not_verified = str(exc)
+            findings = []
         except Exception as exc:  # noqa: BLE001
             sys.stderr.write(f"watch: verify_pins raised {type(exc).__name__}: {exc}\n")
+            not_verified = f"verify_pins raised {type(exc).__name__}"
             findings = []
 
         if findings:
@@ -116,6 +128,10 @@ def run_watch(
                 _post_webhook(webhook, _shape_for_slack(project_root, findings))
             if on_drift:
                 on_drift(iterations, findings)
+        elif not_verified is not None:
+            unverified += 1
+            sys.stdout.write(f"[{ts}] not verified: {not_verified}\n")
+            sys.stdout.flush()
         else:
             sys.stdout.write(f"[{ts}] clean\n")
             sys.stdout.flush()
@@ -129,4 +145,4 @@ def run_watch(
         while not stop["flag"] and time.monotonic() < end:
             time.sleep(min(0.5, max(0.0, end - time.monotonic())))
 
-    return WatchResult(iterations=iterations, drift_events=drift_events)
+    return WatchResult(iterations=iterations, drift_events=drift_events, unverified=unverified)

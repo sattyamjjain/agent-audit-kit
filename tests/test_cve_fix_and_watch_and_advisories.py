@@ -146,6 +146,31 @@ def test_cli_watch_once(tmp_path: Path, monkeypatch) -> None:
     assert r.exit_code == 0, r.output
 
 
+def test_watch_does_not_call_an_unreadable_pin_file_clean(tmp_path: Path, capsys) -> None:
+    """A pin file that does not parse printed "clean" on every iteration."""
+    pin_dir = tmp_path / ".agent-audit-kit"
+    pin_dir.mkdir()
+    (pin_dir / "tool-pins.json").write_text('{"srv/tool": {"hash": "abc"},}')
+    result = watch.run_watch(tmp_path, interval_seconds=0, max_iterations=1)
+    out = capsys.readouterr().out
+    assert "clean" not in out
+    assert "not verified" in out and "not valid JSON" in out
+    assert (result.drift_events, result.unverified) == (0, 1)
+
+
+def test_watch_does_not_call_a_raising_check_clean(tmp_path: Path, monkeypatch, capsys) -> None:
+    def boom(_p: Path) -> list:
+        raise RuntimeError("disk on fire")
+
+    monkeypatch.setattr(watch, "verify_pins", boom)
+    result = watch.run_watch(tmp_path, interval_seconds=0, max_iterations=1)
+    captured = capsys.readouterr()
+    assert "clean" not in captured.out
+    assert "not verified" in captured.out
+    assert "RuntimeError: disk on fire" in captured.err
+    assert result.unverified == 1
+
+
 # ---------------------------------------------------------------------------
 # B7 — GitHub Security Advisories
 # ---------------------------------------------------------------------------

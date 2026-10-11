@@ -129,6 +129,74 @@ def create_pins(project_root: Path) -> int:
     return len(pins)
 
 
+#: Where `create_pins` writes and `verify_pins` reads, relative to the project root.
+PIN_FILE = ".agent-audit-kit/tool-pins.json"
+
+
+class PinFileError(ValueError):
+    """The pin file exists but cannot serve as the baseline `verify_pins` compares against.
+
+    `verify_pins` used to return ``[]`` here, which is also its answer for
+    "every tool matches its pin". So a trailing comma left by a hand edit, a
+    merge conflict or a truncated write turned AAK-RUGPULL-001, -002 and -003
+    off without a word: `aak scan` passed, `aak verify` printed that all tool
+    definitions matched their pins, and `aak watch` printed "clean". A rug-pull
+    check that cannot read its baseline has checked nothing, so this is raised
+    instead and every caller reports it in its own terms: the pin-drift
+    scanner marks the scan incomplete, `verify` exits with an error, and
+    `watch` prints "not verified".
+
+    Attributes:
+        line: 1-based line of the JSON syntax error, or ``None`` when the
+            problem is not a syntax error.
+    """
+
+    def __init__(self, message: str, line: int | None = None) -> None:
+        super().__init__(message)
+        self.line = line
+
+
+_JSON_TYPE_NAMES: dict[type, str] = {
+    list: "array",
+    str: "string",
+    int: "number",
+    float: "number",
+    bool: "boolean",
+    type(None): "null",
+}
+
+
+def _load_pins(pin_file: Path) -> dict[str, dict[str, Any]]:
+    """The pins in ``pin_file``, or `PinFileError` when it cannot be used.
+
+    Beyond parsing, the shape is checked: the top level must be an object and
+    every entry an object with a string ``hash``, the one field the comparison
+    reads. A JSON array or an entry without a hash used to raise from inside the
+    comparison (``AttributeError``, ``KeyError``), which reached the user as a
+    scanner crash with no hint that the pin file was the cause.
+    """
+    try:
+        text = pin_file.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise PinFileError(f"{PIN_FILE} is not UTF-8 text ({exc.reason} at byte {exc.start})") from exc
+    except OSError as exc:
+        raise PinFileError(f"{PIN_FILE} could not be read ({exc.strerror or exc})") from exc
+    try:
+        pins = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise PinFileError(
+            f"{PIN_FILE} is not valid JSON ({exc.msg} at line {exc.lineno}, column {exc.colno})",
+            line=exc.lineno,
+        ) from exc
+    if not isinstance(pins, dict):
+        kind = _JSON_TYPE_NAMES.get(type(pins), type(pins).__name__)
+        raise PinFileError(f"{PIN_FILE} holds a JSON {kind}, not an object of server/tool pins")
+    for key, entry in pins.items():
+        if not isinstance(entry, dict) or not isinstance(entry.get("hash"), str):
+            raise PinFileError(f"{PIN_FILE} entry {key!r} has no string `hash`")
+    return pins
+
+
 def verify_pins(project_root: Path) -> list[Finding]:
     """Verify current tool definitions against previously pinned hashes.
 
@@ -142,14 +210,16 @@ def verify_pins(project_root: Path) -> list[Finding]:
     Returns:
         A list of Finding objects for any pin mismatches. Returns an
         empty list if no pin file exists or no changes are detected.
+
+    Raises:
+        PinFileError: the pin file exists but cannot be read, is not valid
+            JSON, or is not a map of pins. Nothing was compared, so an empty
+            list would claim a match that was never checked.
     """
-    pin_file = project_root / ".agent-audit-kit" / "tool-pins.json"
+    pin_file = project_root / PIN_FILE
     if not pin_file.is_file():
         return []
-    try:
-        old_pins = json.loads(pin_file.read_text())
-    except (json.JSONDecodeError, OSError):
-        return []
+    old_pins = _load_pins(pin_file)
 
     current_tools = _discover_tools(project_root)
     findings: list[Finding] = []

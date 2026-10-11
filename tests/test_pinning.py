@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.pinning import (
     _discover_tools,
     _hash_tool,
@@ -194,13 +196,44 @@ class TestVerifyPins:
         findings = verify_pins(tmp_path)
         assert findings == []
 
-    def test_malformed_pin_file_returns_empty(self, tmp_path: Path) -> None:
+    def test_malformed_pin_file_raises(self, tmp_path: Path) -> None:
+        """It used to return [], which every caller read as "matches its pins"."""
+        from agent_audit_kit.pinning import PinFileError
+
         pin_dir = tmp_path / ".agent-audit-kit"
         pin_dir.mkdir()
         (pin_dir / "tool-pins.json").write_text("{bad json")
 
-        findings = verify_pins(tmp_path)
-        assert findings == []
+        with pytest.raises(PinFileError, match="not valid JSON") as excinfo:
+            verify_pins(tmp_path)
+        assert excinfo.value.line == 1
+
+    def test_undecodable_pin_file_raises(self, tmp_path: Path) -> None:
+        from agent_audit_kit.pinning import PinFileError
+
+        pin_dir = tmp_path / ".agent-audit-kit"
+        pin_dir.mkdir()
+        (pin_dir / "tool-pins.json").write_bytes(b'{"a/b": {"hash": "\xff"}}')
+
+        with pytest.raises(PinFileError, match="not UTF-8"):
+            verify_pins(tmp_path)
+
+    def test_pin_file_that_is_not_a_pin_map_raises(self, tmp_path: Path) -> None:
+        from agent_audit_kit.pinning import PinFileError
+
+        pin_dir = tmp_path / ".agent-audit-kit"
+        pin_dir.mkdir()
+        for text in ("[]", "null", '{"srv/tool": {"name": "tool"}}', '{"srv/tool": {"hash": 7}}'):
+            (pin_dir / "tool-pins.json").write_text(text)
+            with pytest.raises(PinFileError):
+                verify_pins(tmp_path)
+
+    def test_pin_file_written_by_pin_round_trips(self, tmp_path: Path) -> None:
+        _write_mcp_config(tmp_path, {
+            "srv": _make_server_with_tools([{"name": "tool1", "description": "stable"}]),
+        })
+        create_pins(tmp_path)
+        assert verify_pins(tmp_path) == []
 
     def test_combined_changes_detected(self, tmp_path: Path) -> None:
         # Create pins with tools A and B
