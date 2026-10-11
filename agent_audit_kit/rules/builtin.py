@@ -6486,7 +6486,7 @@ _r(
 
 _r(
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
-    "splunk-mcp-server configured to write tokens to _internal / audit",
+    "splunk-mcp-server configured to write tokens to _internal / _audit",
     "A splunk-mcp-server configuration (`inputs.conf`, "
     "`splunk-mcp.yaml`, or any file under `splunk-mcp/`) routes a "
     "token-bearing source into the `_internal` or `_audit` index, "

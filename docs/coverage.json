@@ -8651,7 +8651,7 @@
       ],
       "rule_id": "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
       "severity": "high",
-      "title": "splunk-mcp-server configured to write tokens to _internal / audit"
+      "title": "splunk-mcp-server configured to write tokens to _internal / _audit"
     },
     {
       "category": "secret-exposure",
