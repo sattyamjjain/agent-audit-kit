@@ -49,6 +49,8 @@ def wilson(k: int, n: int, z: float = 1.959963984540054) -> tuple[float, float]:
 
 
 def _state(row: dict[str, Any]) -> tuple[str, str | None]:
+    if "state" in row:  # a redacted receipt (run_eval.py redact) carries its parsed state
+        return (row["state"], row.get("refusal_category"))
     if row["type"] != "succeeded":
         return ("errored", None)
     verdict = llm_scan.parse_anthropic_message(row["message"])
@@ -80,6 +82,8 @@ def load_run(run_dir: Path) -> dict[str, Any]:
                 refusal_categories[category or "none given"] += 1
             if row.get("message"):
                 served[row["message"].get("model") or "unknown"] += 1
+            elif row.get("model"):
+                served[row["model"]] += 1
         cost_file = run_dir / f"cost-{batch_id}.json"
         if cost_file.is_file():
             for k, v in json.loads(cost_file.read_text()).items():

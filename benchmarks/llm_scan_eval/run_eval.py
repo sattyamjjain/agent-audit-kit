@@ -18,6 +18,11 @@ Needs the official SDK, which AAK does not depend on: ``pip install anthropic``.
     python run_eval.py submit  --cases cases.jsonl --model claude-haiku-5-5 --runs 3 --out runs/haiku
     python run_eval.py collect --out runs/haiku
     python run_eval.py submit  --cases cases.jsonl --model claude-opus-5-5 --limit 50 --out runs/opus-pilot
+    python run_eval.py redact  --out runs/haiku --to receipts/haiku
+
+When the labelled set may not be redistributed (MCPTox carries no license),
+keep the raw receipts outside the repository and commit only ``redact``'s
+output: requests and replies quote the dataset, the redacted rows do not.
 """
 
 from __future__ import annotations
@@ -116,6 +121,56 @@ def cmd_collect(args: argparse.Namespace) -> int:
     return 0
 
 
+def redact_row(row: dict[str, Any]) -> dict[str, Any]:
+    """A result row with every byte of text removed, for committing.
+
+    Keeps what the scorer and an auditor need: the state the CLI's parser
+    assigns, the refusal category, the served model, the message id, token
+    usage, and the SHA-256 of the raw row, so anyone holding the raw receipts
+    can prove this row came from them. Drops the reply text, which quotes the
+    tool description it judged.
+    """
+    out: dict[str, Any] = {
+        "custom_id": row["custom_id"],
+        "type": row["type"],
+        "row_sha256": ab.sha256_text(json.dumps(row, sort_keys=True)),
+    }
+    message = row.get("message")
+    if message:
+        verdict = llm_scan.parse_anthropic_message(message)
+        out.update({
+            "state": verdict.status,
+            "category": verdict.category or None,
+            "refusal_category": verdict.refusal_category,
+            "message_id": message.get("id"),
+            "model": message.get("model"),
+            "stop_reason": message.get("stop_reason"),
+            "usage": message.get("usage"),
+        })
+    else:
+        out["state"] = "errored"
+    return out
+
+
+def cmd_redact(args: argparse.Namespace) -> int:
+    """Write text-free receipts for every batch under --out into --to."""
+    args.to.mkdir(parents=True, exist_ok=True)
+    for b in sorted(args.out.glob("batch-*.json")):
+        submitted = json.loads(b.read_text())
+        batch_id = submitted["batch_id"]
+        meta = {k: v for k, v in submitted.items() if k != "requests"}
+        (args.to / b.name).write_text(json.dumps(meta, indent=1) + "\n")
+        rows = [json.loads(line) for line in (args.out / f"results-{batch_id}.jsonl").read_text().splitlines()]
+        with (args.to / f"results-{batch_id}.jsonl").open("w") as fh:
+            for row in rows:
+                fh.write(json.dumps(redact_row(row), sort_keys=True) + "\n")
+        cost = args.out / f"cost-{batch_id}.json"
+        if cost.is_file():
+            (args.to / cost.name).write_text(cost.read_text())
+        print(f"{batch_id}: {len(rows)} redacted rows -> {args.to}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -131,8 +186,11 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--out", type=Path, required=True)
     c.add_argument("--batch", default=None)
     c.add_argument("--poll", type=int, default=30)
+    r = sub.add_parser("redact", help="Text-free receipts for committing.")
+    r.add_argument("--out", type=Path, required=True, help="Directory with the raw receipts.")
+    r.add_argument("--to", type=Path, required=True, help="Directory to write the redacted ones.")
     args = ap.parse_args(argv)
-    return cmd_submit(args) if args.cmd == "submit" else cmd_collect(args)
+    return {"submit": cmd_submit, "collect": cmd_collect, "redact": cmd_redact}[args.cmd](args)
 
 
 if __name__ == "__main__":

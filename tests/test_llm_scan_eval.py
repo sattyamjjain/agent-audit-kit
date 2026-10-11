@@ -111,3 +111,30 @@ def test_wilson_matches_known_values() -> None:
     lo, hi = score.wilson(0, 10)
     assert lo == 0.0 and abs(hi - 0.2775) < 1e-3
     assert score.wilson(0, 0) == (0.0, 0.0)
+
+
+def test_redacted_receipts_hold_no_text_and_score_the_same(tmp_path: Path) -> None:
+    """MCPTox has no license: committed receipts must carry no dataset or reply text."""
+    raw, red = tmp_path / "raw", tmp_path / "redacted"
+    raw.mkdir()
+    meta = {"model": "claude-haiku-5-5", "effort": "low", "prompt_sha256": "x"}
+    (raw / "batch-b1.json").write_text(json.dumps({"batch_id": "b1", "meta": meta,
+                                                   "requests": [{"custom_id": "c00000-r1"}]}))
+    secret_text = "QUOTED POISONED DESCRIPTION TEXT"
+    rows = [
+        {"custom_id": "c00000-r1", "type": "succeeded", "message": {
+            **_msg("end_turn", True), "id": "msg_1",
+            "content": [{"type": "text", "text": json.dumps(
+                {"reason": secret_text, "category": "data_exfiltration", "suspicious": True})}]}},
+        {"custom_id": "c00001-r1", "type": "succeeded", "message": {**_msg("refusal"), "id": "msg_2"}},
+        {"custom_id": "c00002-r1", "type": "errored"},
+    ]
+    (raw / "results-b1.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    assert run_eval.main(["redact", "--out", str(raw), "--to", str(red)]) == 0
+    committed = (red / "results-b1.jsonl").read_text() + (red / "batch-b1.json").read_text()
+    assert secret_text not in committed
+    assert '"requests"' not in (red / "batch-b1.json").read_text()
+    first = json.loads((red / "results-b1.jsonl").read_text().splitlines()[0])
+    assert first["state"] == "flagged" and first["message_id"] == "msg_1" and len(first["row_sha256"]) == 64
+    assert score.score(CASES, score.load_run(raw), None)["per_run"] == \
+        score.score(CASES, score.load_run(red), None)["per_run"]
