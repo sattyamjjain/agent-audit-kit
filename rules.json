@@ -7251,7 +7251,7 @@
       "cve_references": [],
       "description": "An MCP server's deployment manifest requires sticky routing (nginx `ip_hash`, Kubernetes `sessionAffinity: ClientIP`, Traefik / ALB sticky cookies) or its handler code reads a shared session store keyed by a per-connection id used across requests. The 2026-07-28 stateless transport guarantees that any MCP request can land on any server instance \u2014 sticky routing and gateway deep-packet-inspection to keep a client pinned to one pod stop being safe assumptions.",
       "incident_references": [],
-      "limitations": "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes `sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik `sticky:` cookie block, in YAML, conf and TOML files that mention MCP. Pinning clients some other way, such as nginx `hash $http_mcp_session_id consistent;`, is not matched.",
+      "limitations": "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes `sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik `sticky:` cookie block, in YAML, conf and TOML files that mention MCP or sit in a project that declares an MCP SDK. Pinning clients some other way, such as nginx `hash $http_mcp_session_id consistent;`, is not matched.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -8174,7 +8174,7 @@
       "incident_references": [
         "MCPWN-2026-04-16"
       ],
-      "limitations": "Compares MCP routes inside one file: it fires on an unauthenticated route (`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only when another MCP route in the same file has an auth marker. Twin routes placed in two modules are not paired, and a path such as `/mcp/sse` is not recognised as an MCP route.",
+      "limitations": "Compares MCP routes inside one file: it fires on an unauthenticated route (`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only when another MCP route in the same file has an auth marker. Twin routes placed in two modules are not paired, a path such as `/mcp/sse` is not recognised as an MCP route, and a FastAPI route written with single quotes (`@router.post('/mcp')`) is not read.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -9727,7 +9727,7 @@
       "cve_references": [],
       "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
       "incident_references": [],
-      "limitations": "Looks for the text 127.0.0.1, localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a string that reaches a recognised fetch call. Other spellings of loopback and private space (`127.0.0.2`, the decimal form `http://2130706433/`, an IPv6 unique-local address) are not matched.",
+      "limitations": "Looks for the text 127.0.0.1, localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a string that reaches a recognised fetch call. Other spellings of loopback and private space (`127.0.0.2`, the decimal form `http://2130706433/`, an IPv6 unique-local address such as `[fd12:3456::7]`) are not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],

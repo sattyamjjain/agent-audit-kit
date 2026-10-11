@@ -861,9 +861,9 @@ _r(
     limitations=(
         "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes "
         "`sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik "
-        "`sticky:` cookie block, in YAML, conf and TOML files that mention MCP. "
-        "Pinning clients some other way, such as nginx `hash $http_mcp_session_id "
-        "consistent;`, is not matched."
+        "`sticky:` cookie block, in YAML, conf and TOML files that mention MCP or sit "
+        "in a project that declares an MCP SDK. Pinning clients some other way, such "
+        "as nginx `hash $http_mcp_session_id consistent;`, is not matched."
     ),
 )
 
@@ -2935,7 +2935,8 @@ _r(
         "Looks for the text 127.0.0.1, localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x "
         "or 192.168.x address in a string that reaches a recognised fetch call. Other "
         "spellings of loopback and private space (`127.0.0.2`, the decimal form "
-        "`http://2130706433/`, an IPv6 unique-local address) are not matched."
+        "`http://2130706433/`, an IPv6 unique-local address such as `[fd12:3456::7]`) "
+        "are not matched."
     ),
 )
 
@@ -5263,8 +5264,9 @@ _r(
         "Compares MCP routes inside one file: it fires on an unauthenticated route "
         "(`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only "
         "when another MCP route in the same file has an auth marker. Twin routes "
-        "placed in two modules are not paired, and a path such as `/mcp/sse` is not "
-        "recognised as an MCP route."
+        "placed in two modules are not paired, a path such as `/mcp/sse` is not "
+        "recognised as an MCP route, and a FastAPI route written with single quotes "
+        "(`@router.post('/mcp')`) is not read."
     ),
 )
 
