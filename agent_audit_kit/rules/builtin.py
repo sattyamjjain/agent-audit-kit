@@ -7048,8 +7048,7 @@ _r(
         "`git+https` URL or `github:` shorthand) in the root requirements*.txt, "
         "pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and lockfiles, and reports one with no tag or a "
-        "tag below 1.0. The `agent-zero` name on PyPI is a different project and is "
-        "not matched. An `agent0ai/agent-zero` image tag in a compose file or "
+        "tag below 1.0. An `agent0ai/agent-zero` image tag in a compose file or "
         "Dockerfile, a `git clone` in a script and a reference in a sub-directory "
         "manifest are not read."
     ),
@@ -7095,7 +7094,8 @@ _r(
         "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
         "poetry.lock and uv.lock are opened but never match, because the name and "
         "the version sit on separate lines, so a version that reaches the project "
-        "only through a lockfile is not reported."
+        "only through a lockfile is not reported. A compose file's "
+        "`ghcr.io/berriai/litellm` image tag is not read."
     ),
 )
 
@@ -7904,7 +7904,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A compose file's "
+        "`ghcr.io/berriai/litellm` image tag is not read."
     ),
 )
 
@@ -8097,7 +8098,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`packages/app/package.json`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "reader does not parse (a Yarn 2+ `yarn.lock`). A compose file's "
+        "`flux159/mcp-server-kubernetes` image tag is not read."
     ),
 )
 
@@ -8128,7 +8130,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A compose file's `soulter/astrbot` "
+        "image tag is not read."
     ),
 )
 
@@ -9221,7 +9224,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A compose file's `grafana/mcp-grafana` image tag is not "
+        "read."
     ),
 )
 
@@ -9725,7 +9729,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A compose file's `doobidoo/mcp-memory-service` image tag is "
+        "not read."
     ),
 )
 
@@ -10441,7 +10446,8 @@ _r(
         "every version, a future fixed one included, until the pin gets a floor. "
         "The dependency is not read when it is declared in a sub-directory manifest "
         "(`services/api/pyproject.toml`) or in a lockfile format the reader does "
-        "not parse (`pdm.lock`)."
+        "not parse (`pdm.lock`). A compose file's `rockchin/langbot` image tag is "
+        "not read."
     ),
 )
 
@@ -11321,7 +11327,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A compose file's `crystaldba/postgres-mcp` image tag is not "
+        "read."
     ),
 )
 
