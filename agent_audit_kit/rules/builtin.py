@@ -7962,10 +7962,11 @@ _r(
         "inside multi-agent, cross-agent and org-wide), and no property name contains "
         "owner, actor, principal, author, user_id, caller, authoriz*, permission, "
         "tenant, requested_by, on_behalf, requester or subject_id (with `_`, `-` or "
-        "nothing between the words) or the whole word acl. A description in the third "
-        "person (`Deletes a file shared with the team`) has no whole-word verb, and a "
-        "tool described without the shared words, or declared in Python source, is not "
-        "reported."
+        "nothing between the words) or the whole word acl. Not reported: a description "
+        "in the third person (`Deletes a file shared with the team`), which has no "
+        "whole-word verb; a tool with any of those property names, whether or not its "
+        "handler enforces it; a tool described without the shared words; and a tool "
+        "declared in Python source."
     ),
 )
 
@@ -8398,8 +8399,8 @@ _r(
         "is empty, and a missing-secret check whose body calls a function whose name "
         "contains warn, logger, getLogger or print (any case; `logging.warning(...)` "
         "and `logger.info(...)` count, `logging.error(...)` does not) and has no "
-        "raise, return or call whose name contains exit or abort, in a file that "
-        "contains `0.0.0.0`, `[::]` or a quoted `::`. In files whose extension is "
+        "raise, return or call whose name contains lowercase exit or abort, in a file "
+        "that contains `0.0.0.0`, `[::]` or a quoted `::`. In files whose extension is "
         ".json, .yaml, .yml, .toml or .env that mention MCP in the same way and "
         "contain one of those addresses it flags a key containing secret, token, "
         "api_key (also api-key, apikey), password or auth_key (also auth-key, authkey) "
