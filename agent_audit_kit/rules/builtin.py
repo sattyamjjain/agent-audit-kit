@@ -223,6 +223,9 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-PAYLOAD-CVE-2026-105806-001": ["IAM-01", "STA-08"],
     "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001": ["STA-08", "AIS-07", "DSP-04"],
     "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001": ["STA-08", "AIS-07", "DSP-04"],
+    "AAK-MCP-ARGOCD-CVE-2026-108585-001": ["AIS-07", "STA-08"],
+    "AAK-MCP-1MCP-CVE-2026-108586-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-KORTIX-CVE-2026-108115-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -11034,6 +11037,119 @@ _r(
         "patch on that line and is not reported, because 0.26 has fixed releases. "
         "The enterprise image `ghcr.io/obot-platform/obot-enterprise` is a different "
         "image and is not matched."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-11 batch (#953-#959). Two npm pins and one image pin below, and four
+# out of scope. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-ARGOCD-CVE-2026-108585-001",
+    "argocd-mcp builds Argo CD API paths from tool arguments, so delete_application can reach repositories and clusters (no fixed release)",
+    "`argocd-mcp` (npm; argoproj-labs/mcp-for-argocd), the Argo CD MCP server, puts "
+    "the `applicationName` tool argument into Argo CD API paths unencoded, and its "
+    "HTTP client resolves each path against the base URL with `new URL`, which "
+    "collapses dot segments. So a `delete_application` call whose name is "
+    "`../repositories/<repo>` sends an authenticated `DELETE` to "
+    "`/api/v1/repositories/<repo>`, and the same reaches clusters and projects, "
+    "within the API token's RBAC. An agent that reads untrusted text can be steered "
+    "into that call (CVE-2026-108585, CVSS 3.1 5.4, CWE-22). Every published version "
+    "builds the path this way (0.0.1, the first, through 0.9.0, the newest), there "
+    "is no commit after 0.9.0, and there is no fixed release, so this is a "
+    "presence-only pin.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Set `MCP_READ_ONLY=true`, which turns off the tools "
+    "that change or delete resources, or give the server an Argo CD token whose RBAC "
+    "has no delete permission on repositories, clusters or projects. Pin the first "
+    "fixed release once it ships.",
+    sarif_name="ArgoCdMcpDeleteApplicationPathTraversal",
+    cve_references=["CVE-2026-108585"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI02"],
+    adversa_references=["ADV-INJECT-06"],
+    limitations=(
+        "Reports a reference that names `argocd-mcp`: a package.json or lockfile "
+        "entry, or the package in an MCP config, such as the README's "
+        "`npx argocd-mcp@latest stdio`. Presence-only: every version is reported, a "
+        "future fixed one included, until the pin gets a floor, and `MCP_READ_ONLY` "
+        "is not read. `argocd-mcp-server` and `mcp-argocd` are other projects and are "
+        "not matched. The project's images (`ghcr.io/argoproj-labs/mcp-for-argocd`, "
+        "`quay.io/argoprojlabs/mcp-for-argocd`) are not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-1MCP-CVE-2026-108586-001",
+    "1MCP Agent from 0.20.0: a negated tag filter reaches servers outside an OAuth token's tag scopes (no fixed release)",
+    "`@1mcp/agent` (npm; 1mcp-app/agent) serves several MCP servers behind one "
+    "endpoint and, with OAuth on, limits a token to the servers whose tags its "
+    "`tag:<name>` scopes grant. 0.20.0 added the advanced `tag-filter` parameter, a "
+    "boolean expression over tags, and the scope check validates only the tags the "
+    "expression names. So a token granted one tag can send `not <granted-tag>`, "
+    "which names only that tag, passes the check, and selects every other backend "
+    "server, whose tools it can then list and call (CVE-2026-108586, CVSS 3.1 5.4, "
+    "CWE-863). 0.19.0 has no `tag-filter`, and 0.39.0, the newest, still validates "
+    "the tags extracted from the expression. There is no fixed release, so this pin "
+    "reports every version from 0.20.0.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Until one ships, do not rely on tag scopes to keep "
+    "backends apart: run one 1MCP instance per trust boundary. Pin the first fixed "
+    "release once it ships.",
+    sarif_name="OneMcpNegatedTagFilterScopeBypass",
+    cve_references=["CVE-2026-108586"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reports `@1mcp/agent` from 0.20.0 where a package.json, lockfile or MCP "
+        "config states the version, and an unpinned reference such as "
+        "`npx -y @1mcp/agent`, which resolves to an affected release. The bypass "
+        "needs the HTTP transport with OAuth on; the pin reads versions, not how the "
+        "agent is started, so a stdio-only setup is reported too. The unscoped npm "
+        "`1mcp` is another project and is not matched, and the release binaries "
+        "state no version AAK reads."
+    ),
+)
+
+_r(
+    "AAK-MCP-KORTIX-CVE-2026-108115-001",
+    "Kortix API image 0.10.7 to 0.13.51: IPv6 6to4 and Teredo addresses get past the SSRF guard",
+    "Kortix (kortix-ai/suna, the platform NVD calls Kortix Suna) is a self-hosted "
+    "AI agent platform whose API server ships as the Docker Hub image "
+    "`kortix/kortix-api`. A connector takes a base URL, an OpenAPI or Postman "
+    "source, or an MCP server URL, and from 0.10.7, when "
+    "`apps/api/src/shared/ssrf-guard.ts` arrived, an `isPrivateIp` check refused "
+    "private destinations. It did not decode IPv6 6to4 (`2002::/16`) or Teredo "
+    "(`2001::/32`) addresses, which carry an IPv4 address, so a user holding "
+    "`project.connector.write` could point a connector at an internal service or a "
+    "cloud metadata endpoint and read the response (CVE-2026-108115, CVSS 3.1 4.9, "
+    "CWE-918). 0.13.52 reads the IPv4 address out of a 6to4 address and refuses "
+    "Teredo (fix commit `9c949e4`, in v0.13.52 and not v0.13.51).",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the `kortix/kortix-api` image to 0.13.52 or later and pin its tag. "
+    "Then check connector base URLs and MCP URLs for 6to4 (`2002:`) or Teredo "
+    "(`2001:0:`) addresses set before the upgrade.",
+    sarif_name="KortixConnectorSsrfGuardBypass",
+    cve_references=["CVE-2026-108115"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reads `kortix/kortix-api` image references from 0.10.7 up to 0.13.52 in "
+        "compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs. The bare Docker Hub name is matched, so "
+        "`docker.io/kortix/kortix-api` is not read. A `kortix self-host` stack names "
+        "the image `${API_IMAGE}` in its compose file and keeps the tag in its `.env`, "
+        "which this reader does not read, so such an instance is reported only where "
+        "a manifest states the tag. `latest` was 0.13.53 and `stable` 0.13.52 on "
+        "2026-10-11, both fixed, so an untagged or channel reference is not reported. "
+        "Commit-hash tags, such as every tag of `ghcr.io/kortix-ai/kortix-api`, state "
+        "no version."
     ),
 )
 

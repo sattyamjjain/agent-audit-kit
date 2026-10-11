@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - An instruction-file benign slice for the false-positive benchmark (#945), so the rules that read `CLAUDE.md`, `AGENTS.md` and the like get a measured number like the MCP rules have. It covers 892 public repositories from the 930-repo corpus behind #771, every file pinned by commit and SHA-256, with the predicate committed before any pin or scan. The shipped engine finds 29 HIGH/CRITICAL findings on 15 of those repos. They are listed for adjudication and not yet adjudicated, so the page states no false-positive rate. `make fp-instruction-fetch` fills a local cache once (third-party files are never committed), `make fp-instruction` re-runs the measurement, and `make fp-check` now checks it too.
+- `AAK-MCP-ARGOCD-CVE-2026-108585-001`: `argocd-mcp`, every version (CVE-2026-108585, #955). Its `delete_application` tool puts the application name into the Argo CD API path unencoded, so `../repositories/<repo>` deletes a repository instead. There is no fixed release; `MCP_READ_ONLY=true` turns the tool off.
+- `AAK-MCP-1MCP-CVE-2026-108586-001`: `@1mcp/agent` from 0.20.0 (CVE-2026-108586, #956). A token scoped to one tag could reach every other backend with a negated tag filter. There is no fixed release.
+- `AAK-MCP-KORTIX-CVE-2026-108115-001`: the `kortix/kortix-api` image from 0.10.7 up to 0.13.52 (CVE-2026-108115, #957). Its connector SSRF guard let IPv6 6to4 and Teredo addresses reach private destinations.
 
 ### Security
 
@@ -19,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Retired the stale claims #947 lists. The frozen security baseline still said its re-measure was scheduled for 2026-08-11; it ran on 2026-08-24, and the page now says so and links the State of MCP report instead of quoting figures nothing re-checks. Two launch notes' dated labels described a build long gone. The Makefile, the `docs/cve-latency.md` banner, two test docstrings and `aak corpus update` described checks, a signature and a default that don't exist.
 - Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
+- Disposed #953 to #959. Three get a measured pin. Tabularis and GenOffice are desktop apps, InnoShop is a Composer project and JeecgBoot a Maven application, none with an artifact AAK reads, so those four are out of scope. The reasoning is in CHANGELOG.cves.md.
 
 ### Fixed
 

@@ -114,6 +114,9 @@ PINS = {
     "AAK-MCP-PAYLOAD-CVE-2026-105806-001": "high",
     "AAK-MCP-LANGCHAIN-REDIS-CVE-2026-105799-001": "low",
     "AAK-MCP-LANGCHAIN-MONGO-CVE-2026-106119-001": "medium",
+    # 2026-10-11 batch (#953-#959)
+    "AAK-MCP-ARGOCD-CVE-2026-108585-001": "medium",
+    "AAK-MCP-1MCP-CVE-2026-108586-001": "medium",
 }
 
 
@@ -2135,3 +2138,73 @@ def test_langchain_js_pins_skip_the_python_packages(tmp_path: Path) -> None:
     their own version lines, and neither advisory names them."""
     found = _ids(tmp_path, "requirements.txt", "langchain-redis==0.2.0\nlangchain-mongodb==0.6.0\n")
     assert not {_LC_REDIS, _LC_MONGO} & found
+
+
+# --- 2026-10-11 batch (#953-#959): two npm pins, neither with a fixed release ---
+_ARGOCD = "AAK-MCP-ARGOCD-CVE-2026-108585-001"
+_ONEMCP = "AAK-MCP-1MCP-CVE-2026-108586-001"
+
+
+@pytest.mark.parametrize(("fixture", "rule_id"), [
+    ("cve-2026-108585-argocd-mcp", _ARGOCD),
+    ("cve-2026-108586-1mcp-agent", _ONEMCP),
+])
+def test_october_11_fixtures_positive_and_negative(fixture: str, rule_id: str) -> None:
+    root = _CVE_FIXTURES / fixture
+    assert rule_id in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert rule_id not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize("version", ["0.0.1", "0.4.0", "0.9.0", "0.9.1"])
+def test_argocd_mcp_every_version_fires_until_a_fix_ships(tmp_path: Path, version: str) -> None:
+    """CVE-2026-108585 (#955): presence-only. Checked in the npm tarballs: 0.0.1 and
+    0.9.0 (the newest) both build the delete path from the raw application name.
+    0.9.1 does not exist; it stands for whatever ships next."""
+    content = '{"dependencies": {"argocd-mcp": "%s"}}' % version
+    assert _ARGOCD in _ids(tmp_path, "package.json", content)
+
+
+@pytest.mark.parametrize("dep", [
+    '"argocd-mcp-server": "0.1.0"',  # another project on npm
+    '"mcp-argocd": "1.0.0"',         # another project on npm
+    '"@acme/argocd-mcp": "1.0.0"',   # a scoped name is not the package
+])
+def test_argocd_mcp_lookalikes_are_quiet(tmp_path: Path, dep: str) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert _ARGOCD not in _ids(tmp_path, "package.json", content)
+
+
+def test_argocd_mcp_readme_npx_config_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"argocd": {"command": "npx", "args": ["argocd-mcp@latest", "stdio"]}}}'
+    assert _ARGOCD in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_onemcp_agent_fixture_below_the_range_is_quiet() -> None:
+    """0.19.0 has no `tag-filter` parameter, so there is no expression to bypass with."""
+    root = _CVE_FIXTURES / "cve-2026-108586-1mcp-agent" / "negative-before-range"
+    assert _ONEMCP not in {f.rule_id for f in scan(root)[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.19.0", False),        # no `tag-filter` yet
+    ("0.20.0", True),         # the advanced filter and its scope check arrive
+    ("^0.38.3", True),
+    ("0.39.0-beta.5", True),
+    ("0.39.0", True),         # the newest release
+    ("0.40.0", True),         # does not exist; presence-only until a fix ships
+])
+def test_onemcp_agent_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    """CVE-2026-108586 (#956): the scope check validates only the tags an advanced
+    `tag-filter` expression names, from 0.20.0 to 0.39.0, the newest."""
+    content = '{"dependencies": {"@1mcp/agent": "%s"}}' % version
+    assert (_ONEMCP in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_onemcp_agent_unpinned_npx_config_fires(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"1mcp": {"command": "npx", "args": ["-y", "@1mcp/agent", "--transport", "stdio"]}}}'
+    assert _ONEMCP in _ids(tmp_path, ".mcp.json", content)
+
+
+def test_onemcp_agent_pin_skips_the_unscoped_package(tmp_path: Path) -> None:
+    """npm `1mcp` is buremba/1mcp, a different aggregator on its own 0.1.x line."""
+    assert _ONEMCP not in _ids(tmp_path, "package.json", '{"dependencies": {"1mcp": "0.1.3"}}')

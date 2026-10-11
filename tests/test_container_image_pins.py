@@ -32,6 +32,8 @@ OBOT_STATIC = "AAK-MCP-OBOT-CVE-2026-105138-001"
 METAMCP = "AAK-MCP-METAMCP-CVE-2026-79538-001"
 HEYM = "AAK-MCP-HEYM-CVE-2026-100858-001"
 MARK3LABS_FS = "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
+# CVE-2026-108115 (#957): Kortix's API image from 0.10.7 up to 0.13.52.
+KORTIX = "AAK-MCP-KORTIX-CVE-2026-108115-001"
 
 
 def _ids(root: Path) -> list[str]:
@@ -344,3 +346,48 @@ def test_obot_static_secret_fixtures_positive_and_negative() -> None:
 def test_obot_pins_split_the_range(tmp_path: Path, tag: str, static: bool, critical: bool) -> None:
     ids = _write(tmp_path, "compose.yaml", f"services:\n  o:\n    image: ghcr.io/obot-platform/obot:{tag}\n")
     assert (OBOT_STATIC in ids, OBOT in ids) == (static, critical)
+
+
+# --- 2026-10-11 (#957): Kortix's API image, for CVE-2026-108115 -----------------
+
+
+def test_kortix_pin_carries_its_cve_and_severity() -> None:
+    assert RULES[KORTIX].cve_references == ["CVE-2026-108115"]
+    assert RULES[KORTIX].severity.value == "medium"
+
+
+def test_kortix_fixtures_positive_and_negative() -> None:
+    """0.13.51 fires once, on the first API service's line; 0.13.52 (9c949e4) does
+    not, and the frontend image is never read."""
+    root = FIXTURES / "cve-2026-108115-kortix"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(KORTIX, 7)]
+    assert KORTIX in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("kortix/kortix-api:0.10.6", False),             # ssrf-guard.ts is absent
+    ("kortix/kortix-api:0.10.7", True),              # the guard arrives
+    ("kortix/kortix-api:0.12.0", True),
+    ("kortix/kortix-api:0.13.51", True),
+    ("kortix/kortix-api:0.13.52", False),            # 9c949e4
+    ("kortix/kortix-api:0.13.53", False),
+    ("kortix/kortix-api:stable", False),             # the 0.13.52 digest on 2026-10-11
+    ("kortix/kortix-api:latest", False),             # the 0.13.53 digest on 2026-10-11
+    ("kortix/kortix-api", False),                    # untagged is latest
+    ("kortix/kortix-api:dev-452e3593", False),       # a commit tag states no version
+    ("kortix/kortix-frontend:0.13.51", False),       # the guard is in the API server
+    ("kortix/suna:0.1.3.31", False),                 # the image line before 0.10
+    ("docker.io/kortix/kortix-api:0.13.51", False),  # the bare Docker Hub name only
+])
+def test_kortix_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  kortix-api:\n    image: {ref}\n")
+    assert (KORTIX in ids) is fires
+
+
+def test_kortix_self_host_compose_states_no_tag(tmp_path: Path) -> None:
+    """The `kortix self-host` compose file names the image `${API_IMAGE}` and keeps
+    the tag in its .env, which this reader does not read."""
+    ids = _write(tmp_path, "docker-compose.yml", "services:\n  kortix-api:\n    image: ${API_IMAGE}\n")
+    assert KORTIX not in ids

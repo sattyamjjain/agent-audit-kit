@@ -12,10 +12,12 @@ binary whose one versioned distribution is
 Hub image `langgenius/dify-api`, which its compose file pins by version; PyPI has
 only the `dify-client` SDK, and npm's `dify` is an unrelated placeholder. Grafana's
 `mcp-k6` is a Go binary whose recommended install is the image `grafana/mcp-k6`.
-Docker Hub images are matched by the bare name their docs use, so
-`docker.io/grafana/mcp-k6` is not read. Nothing `mcp_cve_pins_2026_07` reads carries
-their version, and a pin on a look-alike package name would report somebody
-else's project. The image tag is the only place a deployment states which
+Kortix's API server ships as the Docker Hub image `kortix/kortix-api`, tagged by
+release; npm's `suna` is an unrelated 2025 placeholder, and the desktop app and
+the `kortix` CLI are binaries. Docker Hub images are matched by the bare name
+their docs use, so `docker.io/grafana/mcp-k6` is not read. Nothing
+`mcp_cve_pins_2026_07` reads carries their version, and a pin on a look-alike
+package name would report somebody else's project. The image tag is the only place a deployment states which
 release it runs, so this module reads image references and nothing else.
 
 Where a reference is read
@@ -156,6 +158,18 @@ _PINS: tuple[_ImagePin, ...] = (
         (0, 7, 0), "from 0.3.0 up to 0.7.0",
         "Fixed in 0.7.0; Docker Hub had no 0.7.0 image yet.", ("CVE-2026-89039",),
         floating_affected=True, introduced=(0, 3, 0),
+    ),
+    # CVE-2026-108115: the connector SSRF guard did not decode IPv6 6to4 or Teredo
+    # addresses. `apps/api/src/shared/ssrf-guard.ts` is absent at v0.10.6 and present
+    # at v0.10.7; the fix, 9c949e4, is in v0.13.52 and not v0.13.51. Docker Hub tags
+    # `kortix/kortix-api` by release (0.10.6, 0.10.7, 0.12.0, 0.13.0 and 0.13.51 to
+    # 0.13.53 exist), and on 2026-10-11 `stable` was the 0.13.52 digest and `latest`
+    # the 0.13.53 one, both fixed. The guard is in the API server, so
+    # `kortix/kortix-frontend` is not pinned.
+    _ImagePin(
+        "AAK-MCP-KORTIX-CVE-2026-108115-001", "Kortix", "kortix/kortix-api",
+        (0, 13, 52), "from 0.10.7 up to 0.13.52", "Fixed in 0.13.52.",
+        ("CVE-2026-108115",), introduced=(0, 10, 7),
     ),
 )
 

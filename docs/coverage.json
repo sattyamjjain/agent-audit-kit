@@ -2875,6 +2875,31 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-108586"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-1MCP-CVE-2026-108586-001",
+      "severity": "medium",
+      "title": "1MCP Agent from 0.20.0: a negated tag filter reaches servers outside an OAuth token's tag scopes (no fixed release)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-46339",
         "CVE-2026-49353",
         "CVE-2026-62312",
@@ -3063,6 +3088,29 @@
       "rule_id": "AAK-MCP-APPS-002",
       "severity": "high",
       "title": "MCP Apps UI content rendered without sanitization (DOM XSS)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108585"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)"
+      ],
+      "owasp_agentic": [
+        "ASI02 Tool Misuse"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-ARGOCD-CVE-2026-108585-001",
+      "severity": "medium",
+      "title": "argocd-mcp builds Argo CD API paths from tool arguments, so delete_application can reach repositories and clusters (no fixed release)"
     },
     {
       "category": "mcp-config",
@@ -4462,6 +4510,25 @@
       "rule_id": "AAK-MCP-KONG-CVE-2026-13341-001",
       "severity": "high",
       "title": "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108115"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-KORTIX-CVE-2026-108115-001",
+      "severity": "medium",
+      "title": "Kortix API image 0.10.7 to 0.13.51: IPv6 6to4 and Teredo addresses get past the SSRF guard"
     },
     {
       "category": "supply-chain",
@@ -8818,37 +8885,37 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 147,
+      "supply-chain": 150,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 138,
+      "Art. 10 - Data Governance": 140,
       "Art. 13 - Transparency": 34,
       "Art. 14 - Human Oversight": 41,
-      "Art. 15 - Robustness & Security": 234,
-      "Art. 9 - Risk Management": 131
+      "Art. 15 - Robustness & Security": 235,
+      "Art. 9 - Risk Management": 132
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 96,
-      "Constrain and sandbox tool execution (p.11)": 116,
-      "Design for boundaries (p.10)": 201,
+      "Choose supported MCP projects when possible (p.10)": 97,
+      "Constrain and sandbox tool execution (p.11)": 117,
+      "Design for boundaries (p.10)": 202,
       "Filter and monitor output pipelines and chained execution (p.12)": 81,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 177,
-      "Sign and verify MCP messages (p.12)": 176,
-      "Track and patch MCP related vulnerabilities (p.13)": 107,
-      "Validate parameters (p.11)": 120
+      "Scan local network for open or vulnerable MCP servers (p.14)": 178,
+      "Sign and verify MCP messages (p.12)": 177,
+      "Track and patch MCP related vulnerabilities (p.13)": 108,
+      "Validate parameters (p.11)": 121
     },
     "by_owasp_agentic": {
       "ASI01": 16,
-      "ASI02": 56,
+      "ASI02": 57,
       "ASI03": 83,
-      "ASI04": 90,
+      "ASI04": 91,
       "ASI05": 60,
-      "ASI06": 52,
+      "ASI06": 53,
       "ASI07": 11,
       "ASI08": 5,
       "ASI09": 19,
@@ -8860,10 +8927,10 @@
       "MCP03:2025": 40,
       "MCP04:2025": 49,
       "MCP05:2025": 58,
-      "MCP06:2025": 24,
+      "MCP06:2025": 26,
       "MCP07:2025": 43,
       "MCP08:2025": 10,
-      "MCP09:2025": 33,
+      "MCP09:2025": 34,
       "MCP10:2025": 12
     },
     "by_severity": {
@@ -8871,10 +8938,10 @@
       "high": 173,
       "info": 5,
       "low": 14,
-      "medium": 107
+      "medium": 110
     },
-    "total_cves_covered": 308,
-    "total_rules": 388
+    "total_cves_covered": 311,
+    "total_rules": 391
   },
   "tool": "agent-audit-kit"
 }

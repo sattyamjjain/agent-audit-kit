@@ -16,6 +16,118 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-11 (v0.6.21): seven disclosures, two new npm pins, one new image pin, four out of scope
+
+The watcher opened five `cve-response` issues at 21:44Z on 2026-10-10 (#953-#957)
+and two at 05:46Z on 2026-10-11 (#958, #959). Two get an npm pin and one a
+container image pin, each measured with the scanner on a firing fixture and a
+negative one. Four are out of scope: two desktop apps, a Composer project and a
+Maven application, none with an artifact the pin scanners read. NVD scores all
+seven, and the titles and `sev/medium` labels the watcher filed already match, so
+nothing was corrected first. NVD text below is quoted from the API record, read on
+2026-10-11.
+
+**argocd-mcp (CVE-2026-108585) gets `AAK-MCP-ARGOCD-CVE-2026-108585-001`, every
+version.** NVD: "argocd-mcp (Argo CD MCP Server) through 0.9.0 contains a path
+traversal vulnerability in the delete_application tool that allows MCP clients to
+reach unintended API endpoints via unvalidated applicationName values." The npm
+package `argocd-mcp` is argoproj-labs/mcp-for-argocd, the repository NVD cites.
+Checked in the tarballs: 0.0.1, the first release, and 0.9.0, the newest
+(2026-08-11), both build `/api/v1/applications/${applicationName}` from the raw
+argument, and the HTTP client resolves it with `new URL`, which collapses `../`.
+0.4.0 was published without its `dist/`. There is no commit after 0.9.0 and no
+fixed release, so the pin is presence-only, like the `@0xshariq/github-mcp-server`
+one. `argocd-mcp-server` and `mcp-argocd` on npm are other projects, and the pin
+stays off them. The project also publishes `ghcr.io/argoproj-labs/mcp-for-argocd`
+and `quay.io/argoprojlabs/mcp-for-argocd`, which the image reader does not pin.
+Until a fix ships, `MCP_READ_ONLY=true` turns off `delete_application` and the
+other write tools.
+
+**1MCP Agent (CVE-2026-108586) gets `AAK-MCP-1MCP-CVE-2026-108586-001`,
+`@1mcp/agent` from 0.20.0.** NVD: "1MCP Agent (@1mcp/agent) 0.20.0 through 0.39.0
+contains an incorrect authorization vulnerability that allows authenticated clients
+to bypass OAuth tag-scope enforcement using negated advanced tag-filter
+expressions." Checked in the tarballs: 0.19.0 has no `tag-filter` parameter. 0.20.0
+adds it, and its scope check validates only the tags `extractTagsFromExpression`
+finds, so `not <granted-tag>` names the granted tag alone and passes. 0.39.0, the
+newest (2026-10-09), still checks it that way, and no commit since touches the two
+files NVD cites. With no fixed release, the pin reports every version from 0.20.0,
+the `knowns` shape. The unscoped npm `1mcp` is buremba/1mcp, another aggregator on
+its own 0.1.x line, and the pin stays off it.
+
+**Kortix (CVE-2026-108115) gets `AAK-MCP-KORTIX-CVE-2026-108115-001` on the
+`kortix/kortix-api` image, 0.10.7 up to 0.13.52.** NVD: "Kortix Suna 0.10.7 before
+0.13.52 contains a server-side request forgery vulnerability that allows project
+managers to bypass the isPrivateIp guard by supplying IPv6 6to4 or Teredo addresses
+that embed private IPv4 destinations." Kortix is on neither PyPI nor npm (npm's
+`suna` 0.0.1 is a 2025 placeholder with no repository), and its desktop app and
+`kortix` CLI are binaries. Its API server ships as the Docker Hub image
+`kortix/kortix-api`, tagged by release: 0.10.6, 0.10.7, 0.12.0, 0.13.0 and 0.13.51
+to 0.13.53 all exist. Checked in the source: `apps/api/src/shared/ssrf-guard.ts` is
+absent at v0.10.6 and present at v0.10.7, and the fix, `9c949e4`, is in v0.13.52
+and not v0.13.51. v0.13.52's guard reads the IPv4 address out of a 6to4 address and
+refuses Teredo. On 2026-10-11 `stable` was the 0.13.52 digest and `latest` the
+0.13.53 one, so neither is reported. The GHCR image `ghcr.io/kortix-ai/kortix-api`
+is tagged by commit hash and states no version. A `kortix self-host` stack writes
+`image: ${API_IMAGE}` and keeps the tag in its `.env`, which the image reader does
+not read, so the pin reports a deployment that states the tag in a manifest.
+Upgrade to 0.13.52 or later.
+
+**Tabularis (CVE-2026-108604) is out of scope.** NVD: "Tabularis through 0.27.0
+contains an incorrect authorization vulnerability in the MCP run_query safety gate
+that allows prompt-injected agents or untrusted MCP clients to bypass read-only mode
+by submitting side-effecting SELECT statements." Tabularis is a Tauri desktop SQL
+client whose MCP server runs inside the app binary (`tabularis --mcp`), installed
+from its GitHub releases. It has no PyPI, npm or image artifact and no file AAK
+reads that states its version, and npm's `tabularis` 1.0.0 (2024-09-01, no
+repository) is an unrelated placeholder. v0.27.0 (2026-10-08) is the newest
+release, and the nightly builds since have not touched the two files NVD cites, so
+there is no fixed release yet.
+
+**GenOffice (CVE-2026-108582) is out of scope.** NVD: "GenOffice through 0.11.505
+contains an incorrect permissions vulnerability in its HTTP MCP server file store
+that allows local unprivileged users to read uploaded and generated documents."
+GenOffice (genspark-ai/genoffice) is a desktop app, and the HTTP MCP server runs
+inside it. The `genoffice` command MCP clients start comes with the app: its
+`@genoffice/cli` workspace package is `private: true` and not on npm, so no PyPI,
+npm or image artifact states its version. v0.11.505 (2026-10-09) is the newest
+release, and nothing has changed `packages/cli/src/mcp/files.ts` since, so there is
+no fixed release yet. Measured on placeholder files, a client config that starts
+`tabularis --mcp` or `genoffice mcp` gets `AAK-MCP-006` (a relative command path)
+and `AAK-MCP-ATTEST-001`, and no rule reads the read-only gate or the file store's
+permissions.
+
+**InnoShop (CVE-2026-108591) is out of scope.** NVD: "InnoShop 0.9.2 contains a
+local file disclosure vulnerability that allows authenticated administrators with
+files_create permission to read server files by abusing the AI Core MCP file_upload
+tool's source argument." InnoShop is a Laravel e-commerce application, distributed
+as release zips and as the Packagist project `innoshop/innoshop`. AAK reads no
+`composer.json` or `composer.lock`, so its version is invisible to the pin
+scanners, the basis the Hex `beam_mcp` records took (#928, #929). v0.9.2
+(2026-08-09) is the newest release, and `FileUploadTool.php` on `main` still passes
+`source` to `file_get_contents()`, so there is no fixed release yet.
+
+**JeecgBoot (CVE-2026-108671) is out of scope.** NVD: "JeecgBoot through 3.9.5
+contains a missing authorization vulnerability that allows any authenticated user to
+read MCP server configurations because the queryById permission check is commented
+out." JeecgBoot is a Java low-code platform built from source with Maven, and its
+compose file builds the application image instead of pulling a tagged one.
+`jvm_mcp_sdk_pins` reads only MCP SDK coordinates, so nothing AAK reads states a
+JeecgBoot version. `main` restored the check in `21facc0` (2026-09-11), but 3.9.5
+(2026-08-27) is still the newest release, so no release carries the fix yet.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-108585 | 5.4 | `argocd-mcp` (npm) | **New pin** `AAK-MCP-ARGOCD-CVE-2026-108585-001`: every version. No fixed release. | #955 |
+| CVE-2026-108586 | 5.4 | `@1mcp/agent` (npm) | **New pin** `AAK-MCP-1MCP-CVE-2026-108586-001`: 0.20.0 and later. No fixed release. | #956 |
+| CVE-2026-108115 | 4.9 | `kortix/kortix-api` (image) | **New pin** `AAK-MCP-KORTIX-CVE-2026-108115-001`: 0.10.7 up to 0.13.52. | #957 |
+| CVE-2026-108604 | 6.3 | Tabularis (desktop app) | **Out of scope**, non-pinnable, and no fixed release yet. | #953 |
+| CVE-2026-108582 | 5.5 | GenOffice (desktop app) | **Out of scope**, non-pinnable, and no fixed release yet. | #954 |
+| CVE-2026-108591 | 4.4 | InnoShop (Composer project) | **Out of scope**, non-pinnable, and no fixed release yet. | #958 |
+| CVE-2026-108671 | 6.5 | JeecgBoot (Maven application) | **Out of scope**, non-pinnable. Fixed on `main` in `21facc0`, not in a release yet. | #959 |
+
+CVSS is NVD's CVSS 3.1 score.
+
 ## 2026-10-10 (v0.6.21): two x64dbg-MCP Server disclosures, both out of scope
 
 Two disclosures against x64dbg-MCP Server. Both checked against the NVD references for
