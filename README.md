@@ -145,9 +145,9 @@ rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyam
 | ASI | Title | # rules |
 | --- | --- | --- |
 | **ASI01** | Goal Hijack | 16 |
-| **ASI02** | Tool Misuse | 56 |
+| **ASI02** | Tool Misuse | 57 |
 | **ASI03** | Memory Poisoning | 83 |
-| **ASI04** | Identity & Privilege Abuse | 90 |
+| **ASI04** | Identity & Privilege Abuse | 91 |
 | **ASI05** | Cascading Failures | 60 |
 | **ASI06** | Unauthorized Capability Acquisition | 52 |
 | **ASI07** | Plan Injection | 11 |
