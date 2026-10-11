@@ -1,1 +1,3 @@
-export const options = { capabilities: { logging: {} } };
+import mcp_utils from "./mcp_utils";
+
+export const options = mcp_utils.wrap({ capabilities: { logging: {} } });

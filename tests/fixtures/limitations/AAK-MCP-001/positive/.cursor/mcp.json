@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "literal": {
+      "url": "https://mcp.example.com/mcp",
+      "headers": {
+        "X-Foo-Key": "k9f2-77a1-real"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
+import mcp_utils
 import requests
 
 
 def summarize(url: str) -> str:
-    return requests.get(url).text
+    return mcp_utils.clean(requests.get(url).text)
