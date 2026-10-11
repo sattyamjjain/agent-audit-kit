@@ -21,7 +21,7 @@ from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     find_line_number,
     make_finding,
-    SKIP_DIRS,
+    in_skip_dir,
 )
 
 
@@ -62,7 +62,7 @@ def _iter_hook_files(project_root: Path) -> Iterable[Path]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         parts_lower = {p.lower() for p in path.parts}
         # Claude Code hooks live under a `.claude/` tree. Requiring `.claude`

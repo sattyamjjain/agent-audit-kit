@@ -64,7 +64,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
 from agent_audit_kit.scanners.skill_composition import _parse_frontmatter
 
 _RULE_PROVENANCE = "AAK-AST02-001"
@@ -180,7 +180,7 @@ def _bundles(project_root: Path) -> list[_Bundle]:
     """
     out: list[_Bundle] = []
     for skill_md in sorted(project_root.rglob("SKILL.md")):
-        if any(part in SKIP_DIRS for part in skill_md.parts):
+        if in_skip_dir(skill_md, project_root):
             continue
         directory = skill_md.parent
         try:

@@ -16,7 +16,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 
 _TOKEN_SOURCETYPE_RE = re.compile(
@@ -72,7 +72,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if not _is_splunk_mcp_path(path, project_root):
             continue

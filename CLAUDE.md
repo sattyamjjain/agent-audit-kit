@@ -98,7 +98,7 @@ agent_audit_kit/
   rules/
     builtin.py         # 395 RuleDefinition entries (rule registry); `get_rule(rule_id)` is the lookup
   scanners/            # 104 registered scanners (106 .py files on disk besides `__init__` and the `_`-prefixed helpers — the registry is authoritative; the surplus is the two back-compat shims rust_scan/typescript_scan). Has its own CLAUDE.md, which covers the layout.
-    _helpers.py        # make_finding(rule_id, file_path, evidence, line_number) builds a Finding from the registry; SKIP_DIRS; INTERPOLATION_RE
+    _helpers.py        # make_finding(rule_id, file_path, evidence, line_number) builds a Finding from the registry; SKIP_DIRS + in_skip_dir(path, project_root), which tests only the parts below the root; INTERPOLATION_RE
     agent_config.py    # AAK-AGENT-* on root instruction files (AGENTS.md, CLAUDE.md, .cursorrules, ...); 005 exempts only the auto-memory plugin's known section names (plus markdownlint/prettier directives), so renaming a section in this file makes it fire
     taint_analysis.py  # Python taint flow (AST source→sink); typescript_pattern_scan.py and rust_pattern_scan.py are regex sink patterns, not taint flow
     tool_poisoning.py  # Tool-description poisoning (AAK-POISON-*); rug-pull drift against pins is pin_drift.py (AAK-RUGPULL-*)

@@ -52,7 +52,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import in_skip_dir, make_finding
 
 # --------------------------------------------------------------------------
 # SDK declaration gate (mirrors mcp_sampling_capability._declares_sdk)
@@ -266,7 +266,7 @@ def _scan_003_sticky(
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -369,7 +369,7 @@ def _collect_source_files(project_root: Path) -> list[Path]:
             continue
         if path.suffix not in _LANG_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         out.append(path)
     return out

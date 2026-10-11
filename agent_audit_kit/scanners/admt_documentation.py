@@ -67,7 +67,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 _DECL_EXTS = {".py"}
 _DOC_EXTS = {".md", ".txt", ".rst", ".html"}
@@ -195,7 +195,7 @@ def _iter_files(project_root: Path, exts: set[str]) -> Iterable[Path]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if path.suffix.lower() not in exts:
             continue
@@ -254,7 +254,7 @@ def _mcp_config_paths(project_root: Path) -> list[Path]:
     for path in sorted(project_root.rglob("*")):
         if path in seen or not path.is_file() or path.name not in basenames:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:

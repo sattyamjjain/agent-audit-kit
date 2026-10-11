@@ -25,7 +25,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import in_skip_dir, make_finding
 
 _PY_SDK_NAMES = (
     "mcp",
@@ -147,7 +147,7 @@ def _uses_stdio(project_root: Path) -> list[Path]:
             continue
         if path.suffix not in _LANG_EXTS_FOR_STDIO_MARKERS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

@@ -32,7 +32,7 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 
 # Heuristic: a function is treated as a Skill execute() if it is
@@ -134,7 +134,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in project_root.rglob("*.py"):
         if not path.is_file():
             continue
-        if any(part in skip_dirs for part in path.parts):
+        if in_skip_dir(path, project_root, skip_dirs):
             continue
         try:
             src = path.read_text(encoding="utf-8", errors="replace")

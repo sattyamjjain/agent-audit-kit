@@ -54,7 +54,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
     _is_tool_function,
@@ -728,11 +728,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         suffix = path.suffix
         if suffix not in (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs"):
             continue
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:  # pragma: no cover - defensive
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > _MAX_BYTES:

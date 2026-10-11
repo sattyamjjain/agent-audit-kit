@@ -194,7 +194,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 from agent_audit_kit.scanners.supply_chain import (
     _LOCKFILES,
     _resolve_lockfile_version,
@@ -1485,7 +1485,7 @@ def _candidate_files(project_root: Path) -> list[Path]:
             seen.add(p)
     for pattern in _CANDIDATE_GLOBS:
         for p in project_root.rglob(pattern):
-            if p.is_file() and p not in seen and not any(part in SKIP_DIRS for part in p.parts):
+            if p.is_file() and p not in seen and not in_skip_dir(p, project_root):
                 out.append(p)
                 seen.add(p)
     return out

@@ -66,7 +66,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    SKIP_DIRS,
+    in_skip_dir,
     find_line_number,
     make_finding,
 )
@@ -168,7 +168,7 @@ def _find_tunnel_proxy_configs(project_root: Path) -> list[Path]:
     """Return YAML files that are MCP-Tunnels proxy configs."""
     found: list[Path] = []
     for p in project_root.rglob("*.y*ml"):
-        if any(part in SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         if p.name.lower() not in _TUNNEL_PROXY_FILENAMES and not _path_hints_tunnel(p, project_root):
             continue
@@ -384,7 +384,7 @@ def _check_committed_tunnel_pem_keys(project_root: Path) -> list[Finding]:
     for p in project_root.rglob("*"):
         if not p.is_file():
             continue
-        if any(part in SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         if not _path_hints_tunnel(p, project_root):
             continue
@@ -420,7 +420,7 @@ def _check_committed_k8s_tunnel_secrets(project_root: Path) -> list[Finding]:
     for p in project_root.rglob("*.y*ml"):
         if not p.is_file():
             continue
-        if any(part in SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         try:
             raw = p.read_text(encoding="utf-8")

@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
 _REQ_PIN_RE = re.compile(
@@ -90,7 +90,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     # Python source: read_only=True + apoc. patterns
     for py in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in py.parts):
+        if in_skip_dir(py, project_root):
             continue
         try:
             if py.stat().st_size > 512_000:

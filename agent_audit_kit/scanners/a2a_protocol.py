@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # ---- Known file names and patterns for A2A Agent Cards ----
 _AGENT_CARD_FILES: list[str] = [
@@ -36,7 +36,7 @@ def _find_agent_cards(project_root: Path) -> list[Path]:
 
     # Glob for *agent-card*.json anywhere in the tree
     for p in project_root.rglob("*agent-card*.json"):
-        if any(part in SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         if p.is_file() and p not in found:
             found.append(p)

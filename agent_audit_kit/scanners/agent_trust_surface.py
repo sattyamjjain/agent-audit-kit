@@ -44,7 +44,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    SKIP_DIRS,
+    in_skip_dir,
     find_line_number,
     make_finding,
 )
@@ -256,7 +256,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         gdir = project_root / d
         if gdir.is_dir():
             for p in gdir.rglob("*.md"):
-                if p.is_file() and not any(part in SKIP_DIRS for part in p.parts):
+                if p.is_file() and not in_skip_dir(p, project_root):
                     gemini_files.append(p)
     for p in gemini_files:
         text = _read(p)

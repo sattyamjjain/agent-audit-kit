@@ -37,7 +37,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _RULE_ID = "AAK-POLICY-TRUNCATION-001"
 _MAX_FILE_BYTES = 1_000_000
@@ -156,11 +156,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         is_python = suffix in _PY_SUFFIXES
         if not (is_python or suffix in _JS_SUFFIXES):
             continue
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:

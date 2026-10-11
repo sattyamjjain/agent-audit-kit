@@ -34,7 +34,7 @@ from typing import Iterable
 from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
-    SKIP_DIRS,
+    in_skip_dir,
     find_line_number,
     make_finding,
 )
@@ -159,7 +159,7 @@ def _iter_config_files(project_root: Path, name: str) -> Iterable[Path]:
     for path in project_root.rglob(name):
         if path.parent.name != _VSCODE_DIR:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if path.is_file():
             yield path

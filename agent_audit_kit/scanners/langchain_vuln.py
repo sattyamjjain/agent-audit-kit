@@ -28,7 +28,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
 _REQUIREMENTS_NAMES = (
@@ -75,7 +75,7 @@ def _iter_manifest_files(project_root: Path) -> list[Path]:
         if p.is_file():
             out.append(p)
     for toml in project_root.rglob("pyproject.toml"):
-        if any(part in SKIP_DIRS for part in toml.parts):
+        if in_skip_dir(toml, project_root):
             continue
         out.append(toml)
     return out
@@ -84,7 +84,7 @@ def _iter_manifest_files(project_root: Path) -> list[Path]:
 def _iter_python_sources(project_root: Path) -> list[Path]:
     out: list[Path] = []
     for py in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in py.parts):
+        if in_skip_dir(py, project_root):
             continue
         try:
             if py.stat().st_size > 512_000:

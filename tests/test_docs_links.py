@@ -27,7 +27,9 @@ _SKIP_DIRS = {"node_modules", "site", ".venv", "__pycache__"}
 def _markdown_files() -> list[Path]:
     return [
         p for p in DOCS.rglob("*.md")
-        if not any(part in _SKIP_DIRS for part in p.parts)
+        # Below DOCS only, so a checkout under a directory named `site` still
+        # checks every page instead of none.
+        if not any(part in _SKIP_DIRS for part in p.relative_to(DOCS).parts)
     ]
 
 

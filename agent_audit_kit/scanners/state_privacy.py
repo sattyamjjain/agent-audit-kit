@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 
 _POLICY_EXTS = {".md", ".html", ".txt"}
@@ -55,7 +55,7 @@ def _iter_policy_files(project_root: Path) -> Iterable[Path]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if path.suffix.lower() not in _POLICY_EXTS:
             continue

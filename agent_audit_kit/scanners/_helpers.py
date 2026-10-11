@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
+from typing import AbstractSet
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
@@ -20,6 +22,63 @@ SKIP_DIRS = frozenset({
     ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
     "target", "out", ".terraform",
 })
+
+
+def in_skip_dir(
+    path: Path,
+    root: Path,
+    skip_dirs: AbstractSet[str] = SKIP_DIRS,
+) -> bool:
+    """True when a component of `path` *below* `root` is in `skip_dirs`.
+
+    A skip list exists to keep vendored and generated trees inside the project
+    (`node_modules/`, `build/`, `.venv/`) out of the scan. Every scanner used to
+    test all of `path.parts`, and on an absolute path that includes the
+    directories the project itself lives in. A checkout under a directory with
+    one of those names therefore lost every finding from every scanner that
+    walked the tree that way. That is not a corner case: Bitbucket Pipelines
+    clones into `/opt/atlassian/pipelines/agent/build`, Travis into
+    `/home/travis/build/<owner>/<repo>`, and `aak scan .` resolves the path
+    before any scanner sees it. The scan then reported a clean project and
+    said nothing about what it had skipped: a false all-clear, the worst
+    answer a security scanner can give.
+
+    The root is the directory the user chose to scan, so it can never itself
+    be "vendored"; only the parts below it are tested. A `node_modules/` or
+    `build/` inside the project is skipped exactly as before.
+
+    A path that is not under `root` (a resolved symlink target, an explicit
+    user-config path such as `~/.cursor/mcp.json`) has no parts below the root
+    and is never skipped: it was named on purpose, and skipping it on the
+    strength of its own ancestors would be this bug again. Neither case raises.
+    A relative `path` that is not under `root` is taken as already relative to
+    it, which is what a caller holding a `relative_to(project_root)` result
+    has. When the lexical comparison fails for an absolute path, both sides
+    are resolved before giving up, so a `/var` vs `/private/var` spelling of
+    one directory still counts as under the root.
+
+    This is for skip lists only. A check that classifies a file by an enclosing
+    directory (`hook_rce`'s `.claude/hooks`, `mcp_config`'s `.windsurf`) may
+    look above the root on purpose: `aak scan ~/.claude` depends on the root's
+    own name. `tests/test_skip_dirs.py` fails on a scanner that tests a skip set
+    against `.parts` by hand instead of calling this.
+    """
+    return any(part in skip_dirs for part in _parts_below(path, root))
+
+
+def _parts_below(path: Path, root: Path) -> tuple[str, ...]:
+    """The components of `path` below `root`; `()` when it is not under it."""
+    try:
+        return path.relative_to(root).parts
+    except ValueError:
+        pass
+    if not path.is_absolute():
+        return path.parts
+    try:
+        return path.resolve().relative_to(root.resolve()).parts
+    except (OSError, RuntimeError, ValueError):
+        # RuntimeError: a symlink loop on Python < 3.13 (3.13 raises OSError).
+        return ()
 
 
 def find_line_number(raw: str, key: object) -> int | None:

@@ -34,7 +34,7 @@ from pathlib import Path
 import yaml
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
 from agent_audit_kit.scanners.skill_composition import (
     _DEFAULT_BOUNDARIES,
     _PROJECT_OVERRIDE,
@@ -99,7 +99,7 @@ def _transcripts(project_root: Path) -> list[tuple[str, list[dict]]]:
         for path in sessions_dir.rglob("*.json"):
             seen.add(path)
     for path in sorted(seen):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:

@@ -31,7 +31,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 _RULE_ID = "AAK-MCP-STDIO-LAUNCHER-INJECT-001"
 
@@ -65,11 +65,7 @@ def _find_mcp_configs(project_root: Path) -> list[Path]:
         if p.is_file() and p not in found:
             found.append(p)
     for p in project_root.rglob("*mcp*.json"):
-        try:
-            rel_parts = p.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(p, project_root):
             continue
         if p.is_file() and p not in found:
             found.append(p)

@@ -44,7 +44,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import in_skip_dir, make_finding
 
 RULE_ID = "AAK-SANDBOX-DENYLIST-001"
 
@@ -204,7 +204,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
     for path in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > 1_000_000:

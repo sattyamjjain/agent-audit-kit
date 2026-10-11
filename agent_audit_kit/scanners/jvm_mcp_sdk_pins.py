@@ -56,7 +56,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import in_skip_dir, make_finding
 
 _Ver = tuple[int, int, int]
 
@@ -240,19 +240,19 @@ def _candidates(project_root: Path) -> list[tuple[Path, str]]:
     seen: set[Path] = set()
     for name in _GRADLE_FILES:
         for p in project_root.rglob(name):
-            if any(part in SKIP_DIRS for part in p.parts) or p in seen:
+            if in_skip_dir(p, project_root) or p in seen:
                 continue
             seen.add(p)
             out.append((p, "gradle"))
     for rel in _CATALOG_REL:
         for p in project_root.rglob(Path(rel).name):
-            if any(part in SKIP_DIRS for part in p.parts) or p in seen:
+            if in_skip_dir(p, project_root) or p in seen:
                 continue
             seen.add(p)
             out.append((p, "catalog"))
     for name in _MAVEN_FILES:
         for p in project_root.rglob(name):
-            if any(part in SKIP_DIRS for part in p.parts) or p in seen:
+            if in_skip_dir(p, project_root) or p in seen:
                 continue
             seen.add(p)
             out.append((p, "maven"))

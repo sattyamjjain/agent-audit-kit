@@ -57,7 +57,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
 
 NOAUTH_RULE = "AAK-MCP-SIDECAR-NOAUTH-001"
 REBIND_RULE = "AAK-MCP-SIDECAR-REBIND-001"
@@ -218,11 +218,7 @@ def _iter_source_files(project_root: Path):
     for path in sorted(project_root.rglob("*")):
         if not path.is_file() or path.suffix not in _SUFFIXES:
             continue
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:  # pragma: no cover - defensive
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             if path.stat().st_size > _MAX_BYTES:

@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # ---- AAK-LEGAL-001: Copyleft / restrictive license patterns ----
 _COPYLEFT_RE = re.compile(
@@ -30,7 +30,7 @@ def _find_package_jsons(project_root: Path) -> list[Path]:
         found.append(root_pkg)
     # Also check workspace packages (monorepo)
     for p in project_root.rglob("package.json"):
-        if any(part in SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         if p.is_file() and p not in found:
             found.append(p)

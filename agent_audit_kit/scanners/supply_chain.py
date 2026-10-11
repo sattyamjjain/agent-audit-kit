@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
 # Covers npm, Python (PyPI), and Rust (crates.io)
@@ -1101,7 +1101,7 @@ def _scan_astro_mcp_query_concat(
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in skip_dirs for part in path.parts):
+        if in_skip_dir(path, project_root, skip_dirs):
             continue
         if path.suffix not in suffixes:
             continue

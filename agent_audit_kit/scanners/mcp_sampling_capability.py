@@ -34,7 +34,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _PY_SDK_NAMES = (
     "mcp",
@@ -177,7 +177,7 @@ def _sampling_hits(project_root: Path) -> list[tuple[Path, int]]:
             continue
         if path.suffix not in _LANG_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -199,7 +199,7 @@ def _has_consent_marker(project_root: Path) -> bool:
             continue
         if path.suffix not in _LANG_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

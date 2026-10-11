@@ -28,7 +28,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 from .supply_chain import _semver3
 
 
@@ -139,7 +139,7 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
 def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     for path in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -223,11 +223,7 @@ def _strip_py_prose(text: str) -> str:
 def _check_attachment_traversal(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     for path in project_root.rglob("*.py"):
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

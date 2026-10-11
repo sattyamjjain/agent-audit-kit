@@ -56,7 +56,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 from agent_audit_kit.scanners.admt_documentation import (
     _mcp_descriptions,
     _tool_declarations,
@@ -141,7 +141,7 @@ def _iter_files(project_root: Path) -> Iterable[Path]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if path.suffix.lower() not in _TEXT_EXTS:
             continue

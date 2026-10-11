@@ -64,7 +64,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
 from agent_audit_kit.scanners.secret_exposure import MCP_ENV_SECRET_KEYS
 from agent_audit_kit.scanners.skill_composition import (
@@ -236,7 +236,7 @@ def _container_of(path: Path, project_root: Path) -> str:
 def _skill_nodes(project_root: Path) -> list[_Node]:
     nodes: list[_Node] = []
     for path in sorted(project_root.rglob("SKILL.md")):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         skill = _extract_skill(path, project_root)
         if skill is None:

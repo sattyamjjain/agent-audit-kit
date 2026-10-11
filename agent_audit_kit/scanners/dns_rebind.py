@@ -50,7 +50,7 @@ from xml.etree import ElementTree
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _PY_PATCHED = (1, 23, 0)
 _TS_PATCHED = (1, 21, 1)
@@ -338,7 +338,7 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
             continue
         if path.suffix not in _PY_EXTS + _JS_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

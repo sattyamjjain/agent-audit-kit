@@ -40,7 +40,7 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 
 # Heuristic name patterns — function name, parameter name, or string
@@ -223,7 +223,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in project_root.rglob("*.py"):
         if not path.is_file():
             continue
-        if any(part in skip_dirs for part in path.parts):
+        if in_skip_dir(path, project_root, skip_dirs):
             continue
         rel = str(path.relative_to(project_root))
         fires = _scan_python_file(path, rel)

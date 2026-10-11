@@ -42,7 +42,7 @@ from urllib.parse import urlparse
 import yaml
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
 
 _RULE_ID = "AAK-AGENT-COMPOSE-001"
 
@@ -168,7 +168,7 @@ def _skill_sets(project_root: Path) -> dict[Path, list[_Skill]]:
     skill subdirs). Skills in the same container load into one context."""
     sets: dict[Path, list[_Skill]] = {}
     for path in project_root.rglob("SKILL.md"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         skill = _extract_skill(path, project_root)
         if skill is None:

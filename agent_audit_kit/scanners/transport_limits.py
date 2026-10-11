@@ -20,7 +20,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
@@ -127,7 +127,7 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
             continue
         if path.suffix not in _JS_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

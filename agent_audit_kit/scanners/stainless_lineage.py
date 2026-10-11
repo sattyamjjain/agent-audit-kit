@@ -42,7 +42,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 
 # Verified verbatim against anthropic-sdk-python `__init__.py`:
@@ -129,7 +129,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             break
         if not path.is_file():
             continue
-        if any(part in skip_dirs for part in path.parts):
+        if in_skip_dir(path, project_root, skip_dirs):
             continue
         if path.suffix not in _SOURCE_SUFFIXES:
             continue

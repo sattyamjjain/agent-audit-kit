@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # API key patterns
 ANTHROPIC_KEY = re.compile(r"sk-ant-[a-zA-Z0-9_-]{20,}")
@@ -32,13 +32,9 @@ MCP_ENV_SECRET_KEYS = re.compile(
     r"(KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|API_KEY|ANTHROPIC|OPENAI|AWS_)", re.IGNORECASE
 )
 
-# Directories to skip
-SKIP_DIRS = frozenset({
-    "node_modules", ".git", "dist", "build", "__pycache__",
-    ".next", ".nuxt", "vendor", ".venv", "venv", "env",
-    ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-    "target", "out", ".terraform",
-})
+# Directories to skip: the shared `_helpers.SKIP_DIRS`, tested below the
+# project root by `in_skip_dir`. This module used to keep a private copy of
+# the same set, which only invited the two to drift.
 
 # File extensions to scan for secrets
 SCANNABLE_EXTENSIONS = frozenset({
@@ -198,7 +194,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
 def _check_private_key_files(project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     for path in project_root.rglob("*"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if not path.is_file():
             continue
@@ -270,7 +266,7 @@ def scan(project_root: Path, ignore_paths: list[str] | None = None) -> tuple[lis
 
     # Scan files for secret patterns
     for path in project_root.rglob("*"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if not path.is_file():
             continue

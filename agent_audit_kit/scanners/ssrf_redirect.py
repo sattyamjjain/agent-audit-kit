@@ -37,7 +37,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 
 _PY_PATCHED = (1, 1, 2)
@@ -231,7 +231,7 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         suffix = path.suffix
         try:
@@ -345,7 +345,7 @@ _LMDEPLOY_HINT_RE = re.compile(r"\blmdeploy\b")
 def _check_lmdeploy_vl(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     for path in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

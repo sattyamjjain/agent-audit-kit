@@ -29,7 +29,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 _CAP_TO_RULE = {
     "roots": "AAK-MCP-DEPRECATED-001",
@@ -158,12 +158,12 @@ def _candidate_files(project_root: Path) -> list[Path]:
             seen.add(p)
     for pattern in _CONFIG_GLOBS:
         for p in project_root.rglob(pattern):
-            if p.is_file() and p not in seen and not any(part in SKIP_DIRS for part in p.parts):
+            if p.is_file() and p not in seen and not in_skip_dir(p, project_root):
                 out.append(p)
                 seen.add(p)
     for p in project_root.rglob("*"):
         if p.suffix in _LANG_EXTS and p.is_file() and p not in seen:
-            if any(part in SKIP_DIRS for part in p.parts):
+            if in_skip_dir(p, project_root):
                 continue
             out.append(p)
             seen.add(p)

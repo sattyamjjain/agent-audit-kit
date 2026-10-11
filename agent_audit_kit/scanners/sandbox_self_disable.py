@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 _RULE_ID = "AAK-MCP-SANDBOX-SELFDISABLE-001"
 
@@ -178,11 +178,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned_files: set[str] = set()
 
     for json_path in project_root.rglob("*.json"):
-        try:
-            rel_parts = json_path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(json_path, project_root):
             continue
         if not json_path.is_file():
             continue

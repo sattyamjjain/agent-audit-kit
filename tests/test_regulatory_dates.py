@@ -40,7 +40,10 @@ def _prose_files() -> list[Path]:
     for path in REPO.rglob("*"):
         if path.suffix.lower() not in {".md", ".py", ".yaml", ".yml"}:
             continue
-        if any(part in _SKIP_DIRS for part in path.parts):
+        # Below REPO only: on a checkout under `/home/travis/build/...` the
+        # absolute parts held "build" and this list came back empty, so the
+        # test passed having read nothing.
+        if any(part in _SKIP_DIRS for part in path.relative_to(REPO).parts):
             continue
         rel = str(path.relative_to(REPO))
         if any(rel.startswith(h) or h in rel for h in _HISTORICAL):

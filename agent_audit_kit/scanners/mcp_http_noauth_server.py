@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # Reuse the Azure scanner's route + auth-marker + identity patterns so the two
 # rules stay consistent.
@@ -215,11 +215,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         is_config = _is_config_file(path)
         if not (is_source or is_config):
             continue
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
         if not path.is_file():
             continue

@@ -35,7 +35,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _RULE_ID = "AAK-MCP-UFO-CVE-2026-73296-001"
 _FIX = (3, 0, 8)
@@ -185,11 +185,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for path in sorted(project_root.rglob("*")):
         if not path.is_file():
             continue
-        try:
-            rel_parts = path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(path, project_root):
             continue
 
         is_source = path.suffix in _SOURCE_SUFFIXES

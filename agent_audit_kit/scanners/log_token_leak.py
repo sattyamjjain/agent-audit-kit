@@ -22,7 +22,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding
 
 _SPLUNK_PATCHED = (1, 0, 3)
 _SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
@@ -134,7 +134,7 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
             continue
         if path.suffix not in _PY_EXTS + _JS_EXTS + _JAVA_EXTS:
             continue
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

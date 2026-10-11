@@ -28,7 +28,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import in_skip_dir, make_finding
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -114,7 +114,7 @@ def _discover_repo_tools(project_root: Path) -> set[str]:
     """Names of @tool / @mcp.tool decorated functions in the repo."""
     tools: set[str] = set()
     for path in project_root.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")

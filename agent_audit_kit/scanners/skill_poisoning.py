@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
 _TRUSTED_NAMES = frozenset(
@@ -121,7 +121,7 @@ def _hidden_instruction_hits(body: str) -> list[tuple[str, str]]:
 def _iter_skill_files(project_root: Path) -> list[Path]:
     results: list[Path] = []
     for path in project_root.rglob("SKILL.md"):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if in_skip_dir(path, project_root):
             continue
         if path.is_file():
             results.append(path)

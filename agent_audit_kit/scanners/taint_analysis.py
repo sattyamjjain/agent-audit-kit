@@ -4,7 +4,7 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, SKIP_DIRS
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 # ---- Tool decorator names to recognise ----
 _TOOL_DECORATORS: frozenset[str] = frozenset({
@@ -264,11 +264,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for py_path in project_root.rglob("*.py"):
         # Skip excluded directories
-        try:
-            rel_parts = py_path.relative_to(project_root).parts
-        except ValueError:
-            continue
-        if any(part in SKIP_DIRS for part in rel_parts):
+        if in_skip_dir(py_path, project_root):
             continue
         if not py_path.is_file():
             continue

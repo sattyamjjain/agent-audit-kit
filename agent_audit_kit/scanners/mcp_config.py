@@ -7,7 +7,7 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS as _SKIP_DIRS
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 # Patterns for secret-like keys in MCP server env blocks
 SECRET_KEY_PATTERNS = re.compile(
@@ -161,7 +161,7 @@ def _find_mcp_configs(project_root: Path, include_user_config: bool = False) -> 
             found.append(p)
     # Recursively search for any *mcp*.json from project root
     for p in project_root.rglob("*mcp*.json"):
-        if any(part in _SKIP_DIRS for part in p.relative_to(project_root).parts):
+        if in_skip_dir(p, project_root):
             continue
         if p.is_file() and p not in found:
             found.append(p)
