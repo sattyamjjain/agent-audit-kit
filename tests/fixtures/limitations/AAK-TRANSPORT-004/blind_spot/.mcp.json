@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "a": {
+      "url": "https://mcp.example.com/mcp?api-key=abc123"
+    },
+    "b": {
+      "url": "https://mcp.example.com/mcp?jwt=abc123"
+    },
+    "c": {
+      "url": "https://mcp.example.com/s/abc123/mcp"
+    }
+  }
+}

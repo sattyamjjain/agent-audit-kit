@@ -1,0 +1,6 @@
+{
+  "name": "demo",
+  "dependencies": {
+    "next-ai-draw-io": "^0.4.0"
+  }
+}

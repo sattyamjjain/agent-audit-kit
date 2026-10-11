@@ -632,7 +632,7 @@
       ],
       "description": "A tool/function/MCP descriptor exposes a mutating operation (delete / remove / edit / update / overwrite / move) on a file, record, or resource that is reachable in a shared or multi-agent context, yet its input schema carries no owner / actor / authorization / permission field. Any agent that can call the tool can therefore mutate another principal's resource \u2014 there is nothing in the call surface that scopes the action to the caller. This is the CVE-2026-44654 broken-access-control class (LibreChat <= 0.8.3: a shared-agent editor could delete file records via `DELETE /api/files` that the owner had reused across multiple agents; CWE-863 Incorrect Authorization, CVSS 8.1). The shared context is inferred from a multi-agent config (an `agents` collection with >1 member, or a `shared` / `scope: shared|workspace|team` marker) or from shared-resource language in the tool's own name/description.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads JSON files only. It fires on a tool descriptor with a mutating verb (delete, remove, edit, update, overwrite, move) and a resource noun when the file or the tool's own text says the resource is shared (a shared flag, several agents, or words such as shared, team, workspace, tenant) and no property name looks like an owner or actor field. A tool described without those words, or declared in Python source, is not reported.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI02"
@@ -1026,7 +1026,7 @@
       "incident_references": [
         "MSRC-2026-04-03-AZUREMCP"
       ],
-      "limitations": "",
+      "limitations": "Decides per file, not per server: it fires on a config file that names an Azure host (`*.azurewebsites.net`, `*.azure.com` and similar) and contains none of Authorization, a client certificate, api_key, mtls, `DefaultAzureCredential` or a similar word anywhere in the file. An unauthenticated Azure server beside any server that carries an `Authorization` header passes.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1057,7 +1057,7 @@
       "incident_references": [
         "MSRC-2026-04-03-AZUREMCP"
       ],
-      "limitations": "",
+      "limitations": "Fires only for a repository whose pyproject.toml, package.json, Cargo.toml or pom.xml names an Azure MCP server, on a file with a `/mcp` route and no auth marker anywhere in it. `DefaultAzureCredential` and `ManagedIdentityCredential` count as markers, so a server that only uses its own credential to call Azure, and authenticates nobody who calls it, passes.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1340,7 +1340,7 @@
       "incident_references": [
         "CERT-CC-VU-221883"
       ],
-      "limitations": "",
+      "limitations": "Fires on `RagTool` or `WebsiteSearchTool` built with a non-constant URL inside a function whose text contains an untrusted-input marker (`request.json`, `request.args`, `event`, `user_input`, `llm_input`, `agent.kickoff(`, `inputs=`). A URL that arrives as an ordinary function parameter (`def search(website_url)`) carries no marker and is not reported.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1424,7 +1424,7 @@
       "incident_references": [
         "MCP-DNS-REBIND-2026-04"
       ],
-      "limitations": "",
+      "limitations": "A candidate is a Python or TypeScript file that builds a StreamableHTTP transport, or a FastMCP server run over a network transport. One Host allow-list anywhere in the project clears every candidate, whatever it protects: a Django `ALLOWED_HOSTS` in an unrelated app counts.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -1798,7 +1798,7 @@
       ],
       "description": "A hook command contains network-capable tools (curl, wget, nc, etc.). Hooks run automatically and can exfiltrate code, API keys, or session data.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name in the `command` string of each hook entry in `.claude/settings.json` and `.claude/settings.local.json`. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read. What a script file does is not followed, so `bash .claude/hooks/report.sh` passes even when the script runs curl.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1824,7 +1824,7 @@
       "cve_references": [],
       "description": "A hook command accesses credential environment variables. This enables direct credential theft via hook execution.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches six names written as a bare `$NAME` (ANTHROPIC_API_KEY, OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, HOME, PATH) and three exfiltration pipelines. The braced form `${ANTHROPIC_API_KEY}` and any other credential variable (`$GITHUB_TOKEN`) are not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1850,7 +1850,7 @@
       "cve_references": [],
       "description": "A hook command writes to paths outside the project boundary, which can modify system configs, plant persistence, or stage exfiltration.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the literal prefixes /tmp/, ~/, /etc/, /var/, /usr/ and /home/ in a hook command. A path reached through `$HOME` or a relative climb (`../../shared/out.json`) is not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1876,7 +1876,7 @@
       "cve_references": [],
       "description": "A non-formatting hook is attached to a sensitive lifecycle event (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). These events fire on every tool call or session start.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires only for a hook on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit whose command names none of a list of formatters. The same command on any other event, such as Stop, is not reported, and a command that merely contains a formatter name anywhere, even in a trailing comment (`# prettier`), counts as a formatter. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1902,7 +1902,7 @@
       "cve_references": [],
       "description": "A hook command contains base64 operations, commonly used to obfuscate exfiltration payloads or encode stolen credentials.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches the words base64, btoa, atob, b64encode and b64decode in a hook command. Other encodings that hide a payload the same way, hex through `xxd -r -p` or `base32 -d`, are not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1928,7 +1928,7 @@
       "cve_references": [],
       "description": "A hook command uses sudo, doas, pkexec, or chmod +x. Hooks should never require elevated privileges.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches sudo, doas, pkexec and the exact text `chmod +x`. `chmod 755` and `su root -c`, which grant the same execute or root rights, are not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1954,7 +1954,7 @@
       "cve_references": [],
       "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Counts the entries listed under each event in a single settings file and fires above 15. Hooks split between `.claude/settings.json` and `.claude/settings.local.json` are not added up, and a `matcher` entry counts once however many hooks its own `hooks` array holds.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -1979,7 +1979,7 @@
       "cve_references": [],
       "description": "A hook command contains hex-encoded strings, unicode escapes, very long commands, or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `\\x41` and `\\u0041` escapes, a nested `sh -c ... sh -c`, and a command longer than 500 characters. The same text written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from shell variables (`$a$b`) is not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2003,7 +2003,7 @@
       "cve_references": [],
       "description": "A hook command reads or references project source code files, which could enable code exfiltration.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a reader command (cat, head, tail, less, more, grep, sed, awk) followed by a path ending in a source extension, or a `<` redirect from one. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py out/`) is not matched. A hook nested under an entry's own `hooks` array, the shape Claude Code documents, is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2029,7 +2029,7 @@
       ],
       "description": "A Claude Code hook script command-string interpolates a variable or captured group directly into a shell command. This is the CVE-2025-59536 shape: a poisoned config file triggers arbitrary code execution.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads command strings in the Claude Code settings files and scripts under a `hooks` directory inside `.claude/`, looking for `${`, `$(`, a backtick or a string `+` directly before input, args, event, payload, user, argv or request. The same script kept outside `.claude/hooks/` (`scripts/guard.sh`) is not read, and a plain `$cmd` filled from `jq` is not matched.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -2055,7 +2055,7 @@
       ],
       "description": "A hook script invokes subprocess.run / spawn with shell=True (or the equivalent in Node/Bash) while passing a composed string that includes caller-provided fields.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `shell=True` (or `{ shell: true }`) before the first closing parenthesis of a subprocess.run, call, Popen or check_output, os.system, exec or Node spawn call in a script under `.claude/.../hooks/`. A call with another call ahead of it (`subprocess.run(build(cmd), shell=True)`) and `subprocess.check_call` are not matched.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -2081,7 +2081,7 @@
       ],
       "description": "A settings.local.json or project-relative hook file executes before the Claude Code trust prompt. This is the core CVE-2025-59536 regression pattern; any project-contained hook must not run until trust is confirmed.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reports a hook command only in a file named `settings.local.json`. The same hook committed in `.claude/settings.json`, which a repository ships to everyone who opens it, and hook script files are not reported.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -2108,7 +2108,7 @@
       "cve_references": [],
       "description": "A task in `.vscode/tasks.json` sets `runOptions.runOn: folderOpen`, so it runs as soon as the folder is opened \u2014 before any human interaction and before the workspace-trust prompt. This is the vector the keyv npm worm used to spread: a poisoned repository executes code the instant a victim opens it. Severity is high on its own and critical when the auto-run command is a shell, an interpreter, or a network fetch.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `tasks` array of `.vscode/tasks.json` for `runOptions.runOn: folderOpen`. A task declared in the `tasks` block of a workspace file (`*.code-workspace`) is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2135,7 +2135,7 @@
       "cve_references": [],
       "description": "A task in `.vscode/tasks.json` builds its `command`/`args` in a way that reaches a shell: a pipe-to-shell (`... | sh`), an interpreter invoked on a script path inside the repo, or a `${...}`/interpolated variable spliced into a shell string. A poisoned repository controls that string, so opening or running the task executes attacker-chosen code.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Judges a task by its own `command` and `args` text: a pipe into a shell, an interpreter (bash, python, node) run on a repository script path, or an interpolated variable. A script run directly (`./scripts/setup.sh`) or through a runner (`npm run setup`) is not followed.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2162,7 +2162,7 @@
       "cve_references": [],
       "description": "A configuration in `.vscode/launch.json` sets `preLaunchTask` to a task that AAK flagged (a folderOpen auto-run or a shell-reaching command). Starting a debug session then runs that task, so the launch config is a second trigger for the same code-execution path. Reported as one finding naming both files.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a launch configuration's `preLaunchTask` by label against tasks that AAK-IDE-TASK-001 or AAK-IDE-TASK-002 flagged in the `tasks.json` next to it. A `preLaunchTask` that names a compound task (`dependsOn: [\"setup\"]`) reaches the same script but is not matched, and `postDebugTask` is not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2496,7 +2496,7 @@
       "incident_references": [
         "GHSA-fv5p-p927-qmxr"
       ],
-      "limitations": "",
+      "limitations": "Looks inside one function for a call to one of seven guard names (`validate_safe_url`, `validate_url`, `is_safe_url`, `ensure_safe_url`, `check_safe_url`, `ssrf_guard`, `is_url_safe`) followed by a fetch (`get`, `post`, `request`, `urlopen`, `fetch` and similar) that does not disable redirects. A guard under another name (`assert_public_url`), or a guard and a fetch in two different functions, is not matched.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -2677,7 +2677,7 @@
       "incident_references": [
         "GHSA-LMDEPLOY-VL-2026-04-25"
       ],
-      "limitations": "",
+      "limitations": "Looks in a Python file that mentions lmdeploy for `load_image(url`, `encode_image(url`, `preprocess_image_url(`, `VLEngine()` or the `lmdeploy.serve.vl_engine.VLEngine` path, and skips the file if it contains an SSRF guard name. The argument has to be literally named `url`: `load_image(image_url)` is not matched.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -2834,7 +2834,7 @@
       "cve_references": [],
       "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom X-*-Key / *-API-Key credential-header family, and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. Unauthenticated remote servers can be MITM'd or spoofed.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `url` field of each server in `mcpServers` and looks for an Authorization, API-key or custom `X-*-Key` header. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2858,7 +2858,7 @@
       "cve_references": [],
       "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks at the `command` string only, for shell metacharacters or a leading `sh -c`, `bash -c` or `cmd /c`. The same wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by this rule.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2882,7 +2882,7 @@
       "cve_references": [],
       "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `env` block of each server and flags a value that is not a bare `${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: Bearer ...`) or inside a connection string under another name (`DATABASE_URL=postgres://user:pass@host/db`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2908,7 +2908,7 @@
       ],
       "description": "More than 10 MCP servers in a single config. Large tool surface increases attack surface.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Counts the entries of `mcpServers` in one config file and fires above 10. A VS Code `.vscode/mcp.json` keeps its servers under `servers`, which is not read, so any number of them passes.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2932,7 +2932,7 @@
       "cve_references": [],
       "description": "The command uses npx, uvx, bunx, or pnpx which fetches the latest version from a registry at runtime, vulnerable to typosquatting and dependency confusion.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires when the first word of `command` is npx, uvx, bunx or pnpx. Other launchers that fetch and run a package from a registry the same way, `pnpm dlx` and `pipx run`, are not matched.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2957,7 +2957,7 @@
       "cve_references": [],
       "description": "The command uses a relative path that can be hijacked via PATH manipulation.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a `command` that is not an absolute path, except for a fixed list of common launchers (node, python, python3, npx, uvx, bunx, pnpx, docker, deno, bun, cargo, go, java, ruby). Those are resolved through PATH in the same way and are never reported.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2981,7 +2981,7 @@
       "cve_references": [],
       "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for a package argument after npx, uvx, bunx or pnpx that has no `@version` suffix. Any suffix counts as a pin, including the floating tag `@latest`.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -3005,7 +3005,7 @@
       "cve_references": [],
       "description": "The headersHelper field executes arbitrary shell commands to generate headers. A malicious repo can exfiltrate data via header generation.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `headersHelper` field of servers in the MCP config files it finds (`.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json` and any file with `mcp` in its name). Servers declared inline in a Claude Code plugin manifest (`.claude-plugin/plugin.json`) are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -3029,7 +3029,7 @@
       "cve_references": [],
       "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, 172.16-31.x and 192.168.x ranges and a `.local` name. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3053,7 +3053,7 @@
       "cve_references": [],
       "description": "An MCP server is configured with filesystem root (/) or home directory access, allowing unrestricted file operations.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires when an argument is exactly `/`, `~`, `/home`, `/Users`, `/etc` or `/var`. A home directory given as a specific path (`/Users/alice`) or through a variable (`$HOME`) grants the same access and is not matched.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3079,7 +3079,7 @@
       ],
       "description": "A remote MCP server exposes an HTTP handler with no authentication check. Per MCP spec 2025-11-25 all remote servers must require OAuth 2.1 or an equivalent bearer credential. Matches the CVE-2026-33032 pattern where /mcp_message was exposed without the auth middleware that /mcp used.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for a FastAPI handler declared with `@app.post(\"/mcp...\")` (or get, put, patch, delete) in a file that names an MCP server class, with no `Depends(` or `@require_auth` in the 200 characters before it. The same handler declared on an `APIRouter` (`@router.post(\"/mcp\")`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3106,7 +3106,7 @@
       ],
       "description": "An MCP server's IP allowlist configuration defaults to an empty list, which its middleware interprets as 'allow all'. This is the exact CVE-2026-33032 root cause. Tight-by-default is required.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for one of three names (`ip_allowlist`, `allowed_ips`, `cidr_allowlist`) assigned a literal empty list, `None`, `null` or `\"\"` directly. A type-annotated default (`allowed_ips: list[str] = []`) or another name for the same list (`ip_whitelist = []`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3130,7 +3130,7 @@
       "cve_references": [],
       "description": "An MCP HTTP endpoint sets Access-Control-Allow-Origin to '*' while also returning credentials/tokens. This allows hostile origins to read MCP responses from a victim browser session.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the literal header names `Access-Control-Allow-Origin: *` and `Access-Control-Allow-Credentials: true` in one file. The usual framework options (`CORSMiddleware(..., allow_origins=[\"*\"], allow_credentials=True)`, `cors({ origin: \"*\", credentials: true })`) do not contain those names and are not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3154,7 +3154,7 @@
       "cve_references": [],
       "description": "An MCP client or server expects authentication tokens in URL query parameters. Query parameters land in server access logs, browser history, and referer headers, making this a token-leak vector.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `?token=`-style text, `query_params.get(\"token\")` and `req.query.token` with the names access_token, api_key, token, auth or bearer. Other ways to read a credential from the query string, `new URL(req.url).searchParams.get(\"token\")` or Flask's `request.args.get(\"token\")`, are not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3232,7 +3232,7 @@
       "cve_references": [],
       "description": "An MCP server configuration binds to plain HTTP without TLS. MCP spec 2025-11-25 requires Streamable HTTP over TLS for remote servers.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for a call to listen, bind or serve whose first argument is an `http://` URL. A server started the usual way, without a URL string (`uvicorn.run(app, host=\"0.0.0.0\", port=8080)`, `app.listen(8080)`), is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3256,7 +3256,7 @@
       "cve_references": [],
       "description": "An MCP server endpoint does not declare rate limiting. Unrestricted access allows credential stuffing and enumeration attacks.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a file that names an MCP server class and contains the text `/mcp` but none of the words ratelimit, rate_limit, throttle or limiter. A server that never writes `/mcp` is not examined, and the word in a comment (`# TODO: add rate_limit middleware`) counts as rate limiting.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -3625,7 +3625,7 @@
       ],
       "description": "A command / argv buffer is approved against an allow/deny list and then reassigned, re-split (`shlex.split` / `.split()`), re-joined, concatenated, `.extend()`/`.push()`-ed, or otherwise rebuilt before it is passed to a process-spawn sink (`subprocess.run`/`Popen`/`call`, `os.exec*` / `os.system`; Node `child_process.spawn`/`exec`/`execFile`, `execa`) \u2014 with no re-validation between the mutation and the spawn. The executed command shape therefore differs from the one that was approved, so an attacker-controlled argv can pass the allowlist check and still reach the shell. Anchor: CVE-2026-53822 (CVSS 8.8) \u2014 OpenClaw before 2026.5.18 contained a command injection where the shell wrapper argv could change between approval and execution. CWE-77 (Command Injection) chained to CWE-367 (Time-of-check Time-of-use Race Condition). Detected as an ordered approve -> mutate -> exec data flow on the same command variable; distinct from `AAK-SSRF-TOCTOU-001` (a URL allow-list DNS-rebind TOCTOU, not command spawn).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "In Python a spawn is recognised only as `subprocess.run`, `call`, `Popen`, `check_call` or `check_output`, or an `os.system`/`os.exec*` call, so a function imported by name (`from subprocess import run`) is missed. In TypeScript only the first argument of `spawn`, `exec` or `execFile` is followed, so an argv array passed second (`spawn(bin, args)`) and changed after the check is not.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -3818,7 +3818,7 @@
       "incident_references": [
         "arXiv:2605.24248"
       ],
-      "limitations": "",
+      "limitations": "Fires on a server entry with a `command` or `url` that has none of the attestation keys (`attestation`, `clearance`, `trust_root` and variants), no `MCP-Clearance` header and no `.well-known/mcp-clearance` text. The key only has to exist: `\"attestation\": \"\"` satisfies it, and no clearance document or trust root is ever checked.",
       "owasp_agentic_references": [
         "ASI03",
         "ASI04"
@@ -3848,7 +3848,7 @@
       ],
       "description": "MCP server authentication code concatenates or `os.path.join`-es an untrusted token / bearer credential into a filesystem path that is then used for a session existence / read check, without rejecting path separators / `..` or resolving-and-containing the result. Because the caller controls the token, they control the path: a value like `../../etc/passwd` or `../<another-user-session>` escapes the intended session directory, turning an auth check into arbitrary-file access and cross-session takeover. Anchor: CVE-2026-52830 (CVSS 9.4, CWE-22 Path Traversal) \u2014 `fast-mcp-telegram` before 0.19.1 joined the caller-supplied bearer token straight into the session file path used to test whether a session existed, so a crafted token traversed out of the session directory; fixed in 0.19.1. The Python detector is a stdlib-`ast` taint flow (token source -> path construction -> `exists`/`open` sink, suppressed by a separator/`..` reject or a resolve-and-contain guard); TS/JS/Rust use the analogous concat-into-path regex. Distinct from `AAK-MCP-015` (a resource-handler path traversal on a request *path* parameter) \u2014 here the tainted source is the auth *token* itself.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Treats any `startswith`, `..`, `resolve(`, `abspath`, `normpath`, `realpath` or `sep` in the same function as a guard against traversal. The `authorization.startswith(\"Bearer \")` that extracts the token is enough to silence it, though it checks nothing about the path.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -4289,7 +4289,7 @@
       "cve_references": [],
       "description": "An `mcpServers` entry declares a field whose type does not match the MCP client schema -- most often `args` as a scalar instead of a list of strings. Clients disagree about what to do with it: some coerce, some ignore the field, some refuse to start the server. A config that one client launches and another silently drops is a security fact, not a cosmetic one, because the reviewed configuration and the running configuration stop being the same thing. AAK's own composition pass crashed on `\"args\": 42` (issue #743), which is how this was found: the scan reported a clean project because the scanner that would have objected died before it could.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Checks the JSON type of `args`, `command`, `env` and `url` on each entry of an `mcpServers` object. A config whose `mcpServers` is an array is skipped without a finding, and a wrong-typed `headersHelper` is not checked.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -4463,7 +4463,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `roots` capability \u2014 the `roots/list` request, the `notifications/roots/list_changed` notification, or the SDK aliases (`list_roots`, `ListRootsRequest`, `send_roots_list_changed`). The ratified MCP 2026-07-28 spec deprecates `roots` (SEP-2577) under the new 12-month deprecation policy (SEP-2596): it stays functional for at least a year but is on the removal path. Roots leaked the client's workspace layout to every connected server, which the RC judged an unnecessary standing surface.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `roots/list`, `notifications/roots/list_changed` and the SDK type names in source files with the extensions .py, .ts, .tsx, .js, .jsx, .mjs, .cjs, .rs, .java and .kt, and in a few named config files. The same `roots/list` request in a Go file is not read.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -4486,7 +4486,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `sampling` capability \u2014 the `sampling/createMessage` request, a `CreateMessageRequest` handler, or the SDK aliases (`create_message`, `.sampling.create`). The MCP ratified 2026-07-28 spec deprecates `sampling` (SEP-2577) under the 12-month deprecation policy (SEP-2596). Server-initiated sampling made the server a privileged caller of the host LLM and had no clean stateless story; it is on the removal path. (Distinct from AAK-MCP-SAMPLING-001, which flags sampling wired up without a consent gate \u2014 this rule flags the deprecated capability itself.)",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the method name `sampling/createMessage`, the `CreateMessageRequest` type, `create_message(` and a `capabilities` object that lists sampling. The TypeScript SDK call `server.createMessage({...})` uses none of them and is not matched.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -4509,7 +4509,7 @@
       "cve_references": [],
       "description": "Server or client code declares or exercises the `logging` capability \u2014 the `logging/setLevel` request, the `notifications/message` log notification, or the SDK aliases (`set_level`, `SetLevelRequest`, `LoggingMessageNotification`, `LoggingLevel`). The ratified MCP 2026-07-28 spec deprecates `logging` (SEP-2577) under the 12-month deprecation policy (SEP-2596). Protocol-level log-level control was redundant with host-side observability and is on the removal path.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the method name `logging/setLevel`, the `SetLevelRequest`, `LoggingMessageNotification` and `LoggingLevel` types, and a `capabilities` object that lists logging. Sending log notifications through the SDK (`server.sendLoggingMessage({...})`, `await ctx.info(...)`) uses none of them and is not matched.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -5160,7 +5160,7 @@
       ],
       "description": "A repository publishes an MCP server over HTTP / SSE / Streamable-HTTP (an `/mcp` route handler, or an `SSEServerTransport` / `StreamableHTTPServerTransport` / `--http` setup) with no inbound authentication marker on the handler, while also binding to all interfaces (`0.0.0.0` / `::`) or serving a wildcard `Access-Control-Allow-Origin: *`. The result is a mutation-capable RPC endpoint, backed by the operator's own tokens, reachable without credentials by any network (or, with wildcard CORS, any cross-origin browser) peer. This is a recurring 2026 class: GitLab MCP Server (CVE-2026-44895), Nocturne Memory (CVE-2026-44830), and AgenticMail (CVE-2026-50287) all shipped auth-less HTTP/SSE MCP transports on `0.0.0.0` with wildcard CORS. Generalises the Azure-only `AAK-AZURE-MCP-NOAUTH-001` to any published MCP HTTP server (the Azure rule still owns Azure-MCP repos; this rule defers to it there). Beyond server source, this also flags the launch surface: MCP config files (`mcp.json`, `claude_desktop_config.json`, `*.mcp.yaml` `command`/`args`), Docker `--host 0.0.0.0` / `-p 0.0.0.0:` publishes, and MCP Inspector / FastMCP startup args that bind a non-loopback interface (`0.0.0.0` / `::` / a routable IP) with no token / `requireAuth`, or with the Inspector kill-switch `DANGEROUSLY_OMIT_AUTH` set. CVE-2026-23744 (MCP Inspector, CVSS 9.8) is the motivating exemplar of the launch-bind variant; Censys counted ~12,520 MCP services exposed on the public internet in this shape. Two further 2026 instances of this exact class: CVE-2026-49257 (mcp-pinot <= 3.0.1, CVSS 10.0) defaults to an HTTP MCP server bound to `0.0.0.0:8080` with no authentication, exposing SQL execution as a confused deputy; CVE-2026-48989 (Windows-MCP < 0.7.5, CVSS 8.9) exposed the MCP control plane over HTTP without auth while enabling wildcard CORS. CWE-306 (Missing Authentication for Critical Function).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Source files are checked for a literal `0.0.0.0` or `::` bind or a wildcard CORS setting, so a Node server that calls `listen(3000)` with no host, which binds every interface, is not treated as exposed. In compose, Dockerfile and JSON or YAML launch files, any `api_key`, `bearer`, `Authorization` or `--token` text counts as inbound authentication, including the server's own outbound `OPENAI_API_KEY`.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6242,7 +6242,7 @@
       ],
       "description": "An MCP server ships an authentication check that does not actually enforce \u2014 distinct from a transport with no auth at all (`AAK-MCP-HTTP-NOAUTH-SERVER-001`). Three shapes are flagged: (a) an auth / `is_authorized` / `verify_token`-style function that returns a truthy/allow value when the secret or token is empty or unset (`if not SECRET: return True`); (b) a default / placeholder secret literal \u2014 a secret-named variable set to `\"\"` / `\"changeme\"` / `\"secret\"` / `\"admin\"` etc., or `os.environ.get(\"X_SECRET\", \"\")` with an empty default, so the server runs unauthenticated until an operator intervenes; (c) a missing-secret check that only logs a warning and continues while the server binds a non-loopback interface (`0.0.0.0` / `::`). Anchor: CVE-2026-48814 (Network-AI, CVSS 9.1) \u2014 an incomplete fix of CVE-2026-46701 whose added auth gate still admitted requests when the secret was unset. CWE-306 (Missing Authentication for Critical Function) + CWE-862 (Missing Authorization).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Flags a secret-named variable set to a known placeholder (`\"changeme\"`, `\"secret\"`, `\"admin\"` and similar) or read from the environment with an empty default (`os.environ.get(\"X\", \"\")`), and auth functions with specific names that return True when the secret is empty. A weak non-empty environment default (`os.environ.get(\"X\", \"changeme\")`) is not flagged.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6825,7 +6825,7 @@
       "cve_references": [],
       "description": "The 2026-07-28 spec (SEP-2243) adds routable request-metadata headers \u2014 `Mcp-Method` and `Mcp-Name` \u2014 so proxies can route and pre-authorize a JSON-RPC call from the HTTP header. This server/proxy makes a routing or authorization decision from that header but never cross-checks it against the authoritative JSON-RPC body `method`/`name`. A caller can set `Mcp-Method: tools/list` (allowed at the gateway) while the body invokes `tools/call` on a privileged tool \u2014 a header/body desync that smuggles the real call past the gate (confused-deputy). A flow that asserts the header equals the body method does not fire.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a file that reads the `Mcp-Method` or `Mcp-Name` header and uses routing or allow-list words, unless the file also reads the JSON-RPC body's `method` (`body.get(\"method\")`, `payload[\"method\"]`). Any such read counts as the cross-check, including one that only logs the value and never compares it to the header.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6881,7 +6881,7 @@
       "cve_references": [],
       "description": "An MCP server or client participates in the `sampling` capability (the server can request LLM completions through the client) without an accompanying elicitation/consent gate, human-approval flag, or documented risk acceptance. Sampling output must be treated as untrusted tool input \u2014 without a guard, a compromised or adversarial server can silently steer the client's LLM (and any tool calls it triggers).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a repository that declares an MCP SDK, uses sampling (`create_message(`, `sampling/createMessage`, `CreateMessageRequestSchema` or a `sampling` capability) and has no consent marker anywhere. One `elicit(` call, `requires_consent` or `human_in_the_loop` in any source file clears every sampling finding, whatever it guards.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -6906,7 +6906,7 @@
       ],
       "description": "A tool/function JSON schema or MCP tool descriptor declares a parameter whose name disables or weakens sandboxing/isolation (e.g. `dangerouslyDisableSandbox`, `disable_sandbox`, `no_sandbox`, `allow_unsafe`, `skip_isolation`) inside the schema's `properties` \u2014 meaning the LLM, an untrusted principal, can set it in any tool_use response and turn off the very sandbox that contains tool execution. This is the CVE-2026-42074 class (OpenClaude < 0.5.1 exposed `dangerouslyDisableSandbox` in the BashTool input schema; CWE-284 / CWE-306, CVSS 9.8). A parameter that is genuinely operator-only must not live in the model-facing input schema; mark it `readOnly: true` or annotate it `\"x-aak-sandbox-control\": \"ops-only\"` (or `\"x-llm-settable\": false`) to assert it is set server-side, which suppresses this finding.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads JSON tool schemas (`inputSchema`, `input_schema`, `parameters`) for a property named like dangerouslyDisableSandbox, disable_sandbox, no_sandbox, allow_unsafe or skip_isolation. Other names for the same switch (`bypassSandbox`) are not matched, and a schema written in TypeScript with zod is not read.",
       "owasp_agentic_references": [
         "ASI06",
         "ASI04"
@@ -7025,7 +7025,7 @@
       ],
       "description": "The Serena MCP coding toolkit (`serena-agent`) before 1.5.2 ships a built-in web dashboard that \"exposes an unauthenticated Flask API on a fixed, predictable port, with no authentication, no CSRF protection, and no Host header validation. A DNS rebinding attack allows a malicious webpage to reach this API from any browser and write arbitrary content to the agent's persistent memory store, which the agent reads and acts on autonomously. Combined with execute_shell_command using shell=True, this creates a remote code execution chain requiring only that the victim visit a malicious webpage while Serena is running.\" (NVD, CVE-2026-49471, HIGH CVSS 8.3, CWE-306 + CWE-352, published 2026-07-07). A project depending on `serena-agent` below 1.5.2 (or unpinned, or launched from an unpinned `oraios/serena` / `serena-mcp-server` reference) is exposed. Fixed in 1.5.2.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or below 1.5.2, in the root dependency manifests and lockfiles and in the root `.mcp.json`, `mcp.json` and `claude_desktop_config.json`. The same server launched from `.cursor/mcp.json` or any other config file is not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -7144,7 +7144,7 @@
       ],
       "description": "An MCP tool handler passes an attacker-controllable URL argument (`url` / `endpoint` / `target` / `uri` and similar) straight into an outbound fetch (`requests` / `httpx` / `urllib` / `aiohttp`) without validating the host or scheme first, so a caller-supplied URL is fetched server-side and can reach loopback, private-range, or cloud-metadata endpoints (CWE-918, server-side request forgery). NVD, CVE-2026-14748: \"A flaw has been found in AIAnytime Awesome-MCP-Server ... the file mcp-wiki/src/mcp_wiki/server.py of the component mcp-wiki/wiki-summary. This manipulation of the argument url causes server-side request forgery. The attack may be initiated remotely. The exploit has been published.\" (CVSS 6.3 MEDIUM, https://nvd.nist.gov/vuln/detail/CVE-2026-14748).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "A parameter counts as a URL only when it is named url, uri, endpoint, target, link, href, webhook or callback (with one optional prefix word and an optional plural), so `website` is not followed. Any `urlparse`, `deny`, `ssrf`, `ip_address` or similar token in the handler counts as validation, even when its result is only logged.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -7203,7 +7203,7 @@
       "cve_references": [],
       "description": "Server or client code reads, writes, asserts, or constants the `Mcp-Session-Id` header. The ratified MCP 2026-07-28 spec removes the `Mcp-Session-Id` header and the protocol-level session, replacing them with explicit server-minted state handles (SEP-2567); SEP-1442 / SEP-2575 make the initialization handshake optional so stateless is the default. After the final spec lands on 2026-07-28, code that depends on this header (or on the session it represented) will silently break: any MCP request can land on any server instance, and sticky routing / shared session stores at the protocol layer are no longer guaranteed.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Runs only when a manifest declares an MCP SDK, and looks in source files for the header text `Mcp-Session-Id` (any case) or the constant `MCP_SESSION_ID`. Sessions switched on through an SDK option (`sessionIdGenerator: () => randomUUID()`), or a lowercase `mcp_session_id` variable or key, contain neither and are not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -7228,7 +7228,7 @@
       "cve_references": [],
       "description": "Server or client code dispatches, handles, or names the `tasks/list` JSON-RPC method. The ratified MCP 2026-07-28 spec removes `tasks/list` from the core because it cannot be scoped safely without the protocol-level session: the experimental Tasks primitive (SEP-1686) moves out of the core specification into the Extensions framework (redesigned as SEP-2663), and the stateful list surface has no stateless successor in core.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Runs only when a manifest declares an MCP SDK. Matches the quoted method name `tasks/list` and calls spelled `tasks.list(` or `tasks_list(`. An SDK call named `listTasks()` is not matched.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -7251,7 +7251,7 @@
       "cve_references": [],
       "description": "An MCP server's deployment manifest requires sticky routing (nginx `ip_hash`, Kubernetes `sessionAffinity: ClientIP`, Traefik / ALB sticky cookies) or its handler code reads a shared session store keyed by a per-connection id used across requests. The 2026-07-28 stateless transport guarantees that any MCP request can land on any server instance \u2014 sticky routing and gateway deep-packet-inspection to keep a client pinned to one pod stop being safe assumptions.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes `sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik `sticky:` cookie block, in YAML, conf and TOML files that mention MCP. Pinning clients some other way, such as nginx `hash $http_mcp_session_id consistent;`, is not matched.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -7273,7 +7273,7 @@
       "cve_references": [],
       "description": "Client code calls `tools/list` (or the SDK alias `list_tools`) inside a hot path / per-request loop with no caching marker (no `lru_cache`, TTL cache, dict memoization, or `cached_*` helper) nearby. Combined with reliance on per-session server state, this pattern multiplies round-trips and breaks when the 2026-07-28 stateless transport lets successive requests hit different server instances with different tool catalogs.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Runs only when a manifest declares an MCP SDK. Fires on a file that calls `tools/list` (or `list_tools(`) at least twice, has no cache marker (`lru_cache`, `TTLCache`, `ttlMs`, `memoize` and similar) and mentions `session_id` or `Mcp-Session-Id`. A single `tools/list` call inside a per-request handler is not counted.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -7484,7 +7484,7 @@
       ],
       "description": "An MCP stdio server definition (`command` + `args` in a `.mcp.json` / `mcpServers` block) launches a shell-style interpreter (`npx`, `node`, `bash`, `sh`, `python`) with a code-execution flag (`-c`, `-e`, `--eval`), or passes an arg carrying a template / interpolation token (`${...}` embedded in a larger string, `{{...}}`, `%s`) that is not a pinned static literal. Either shape turns the launched process into an arbitrary-code sink the moment the value is attacker- or model-influenced. This is the CVE-2026-40933 class (Flowise < 3.1.0 unsafely serialised stdio commands in its MCP adapter \u2014 an authenticated actor could register an stdio server whose allowlisted launcher, e.g. `npx`, was combined with `-c` to run arbitrary OS commands; CWE-78, CVSS 9.9). Distinct from AAK-MCP-002 (which inspects only the `command` string for `sh -c`/`bash -c` wrappers and shell metacharacters, never `args`) and from the source-code taint rules AAK-MCP-STDIO-CMD-INJ-001..004 (which model `StdioServerParameters(command=tainted)` in Python/TS/Java/Rust). A standalone env reference (`${VAR}`) is treated as pinned and does not fire.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires when the launcher is npx, node, bash, sh, python or python3 and an argument is exactly `-c`, `-e`, `-eval` or `--eval`, or when an argument carries a `${...}`, `{{...}}` or `%s` that is not a standalone variable. Combined short flags (`bash -lc \"...\"`) and other shells (`zsh -c`) are not matched.",
       "owasp_agentic_references": [
         "ASI05",
         "ASI02"
@@ -7690,7 +7690,7 @@
       ],
       "description": "An MCP server gates tools by an allowlist / read-only / non-destructive control (e.g. `ALLOWED_TOOLS`, `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS`, a `*READONLY*` / `*NON_DESTRUCTIVE*` env var or config) and applies that check in the tool-discovery handler (`tools/list` / `list_tools` / `ListToolsRequestSchema`) but NOT in the execution handler (`tools/call` / `call_tool` / `CallToolRequestSchema`). A client that skips discovery and calls a hidden tool name directly bypasses the control entirely \u2014 the gate is cosmetic. This is the CVE-2026-46519 class (mcp-server-kubernetes < 3.6.0 documented three env vars as access controls but enforced them only at the discovery layer; CWE-863 Incorrect Authorization, CVSS 8.8). This is an enforcement-layer asymmetry \u2014 distinct from AAK-MCPWN-001, which is a transport-middleware route asymmetry (`/mcp_message` vs `/mcp`). Do not conflate the two.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Compares the bodies of the functions named or decorated `list_tools` and `call_tool` (or dispatch, execute, run or invoke tool). The gate has to be named in the list handler itself, so filtering done in a helper it calls is not seen, and any mention of the gate in the call handler, a log line included, counts as enforcing it.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI02"
@@ -7855,7 +7855,7 @@
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
       ],
-      "limitations": "",
+      "limitations": "Reads a YAML file named config, proxy or values (.yaml or .yml), or one under a directory called mcp-gateway, mcp-tunnel, tunnel or gateway, and only when it parses as a single document with `tunnel_domain` and `routes` at the top (or under `gateway.config`). The same settings embedded as a string in a Kubernetes ConfigMap's `data:` are not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI05"
@@ -7882,7 +7882,7 @@
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference"
       ],
-      "limitations": "",
+      "limitations": "Reads a YAML file only when its name is config, proxy or values (.yaml or .yml) or it sits under a directory called mcp-gateway, mcp-tunnel, tunnel or gateway. The same proxy configuration saved under another name in another directory (`deploy/proxy-prod.yaml`) is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -7908,7 +7908,7 @@
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security"
       ],
-      "limitations": "",
+      "limitations": "Looks for a literal tunnel token (`MCP_TUNNEL_TOKEN` and similar names) on a `KEY: value` line of a GitHub Actions, GitLab CI, Azure Pipelines or CircleCI file, a PEM private key under a tunnel or gateway directory, and a Kubernetes Secret named `mcp-tunnel*`. The same literal in a `docker-compose.yml` is not examined.",
       "owasp_agentic_references": [
         "ASI03",
         "ASI06"
@@ -7936,7 +7936,7 @@
       ],
       "description": "Microsoft UFO, the open-source framework for intelligent automation across devices and platforms, before 3.0.8 exposes two Streamable-HTTP MCP services from `ufo/client/mcp/http_servers/mobile_mcp_server.py`: `create_mobile_data_collection_server` on TCP 8020 and `create_mobile_action_server` on TCP 8021. Neither applies inbound authentication, so an unauthenticated remote attacker who can reach either port invokes `capture_screenshot`, `get_ui_tree`, `tap`, `swipe`, `type_text`, `launch_app`, `press_key` and `click_control` against the ADB-connected Android device \u2014 disclosing screen contents and device data, and modifying device state (CVE-2026-73296, CVSS 9.4). Fixed in 3.0.8. UFO is distributed as a git checkout rather than a PyPI or npm artifact (`ufo` on npm is unjs's unrelated URL library), so this ships as a detection rule rather than a version pin.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "The dependency check recognises a UFO checkout only as an `https://github.com/microsoft/UFO` URL, unpinned or below 3.0.8. The same checkout referenced over SSH (`git+ssh://git@github.com/microsoft/UFO.git@v3.0.2`) is not matched.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -8143,7 +8143,7 @@
       ],
       "description": "Project depends on `mcp-framework` at a version < 0.2.22, or a TS/JS file implements an MCP HTTP transport that concatenates request body chunks into a string without consulting Content-Length or a `maxMessageSize` guard. CVE-2026-39313 lets an unauthenticated attacker crash the server with a single large POST to /mcp by exhausting process memory. Fixed in 0.2.22.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a TypeScript or JavaScript file that reads a request body with `req.on('data', ...)`, `for await (... of req)` or a function called `readRequestBody` and appends chunks to a variable named body, data, buf or chunks with no size check. Any comparison such as `parts.length > 0` elsewhere in the file counts as a size check, and an accumulator under another name (`raw += chunk`) is not matched.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -8174,7 +8174,7 @@
       "incident_references": [
         "MCPWN-2026-04-16"
       ],
-      "limitations": "",
+      "limitations": "Compares MCP routes inside one file: it fires on an unauthenticated route (`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only when another MCP route in the same file has an auth marker. Twin routes placed in two modules are not paired, and a path such as `/mcp/sse` is not recognised as an MCP route.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI02"
@@ -8315,7 +8315,7 @@
       ],
       "description": "Project depends on `next-ai-draw-io` at a version below 0.4.15. CVE-2026-40608 is a body-accumulation OOM in the embedded HTTP sidecar's /api/state, /api/restore and /api/history-svg handlers \u2014 the entire request body is concatenated into a JavaScript string without a size cap, so a single ~500 MiB POST exhausts V8 heap and crashes the MCP server. Same DoS class as AAK-MCPFRAME-001. Fixed in 0.4.15.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the dependencies, devDependencies and peerDependencies of the `package.json` at the root of the scanned directory. The same dependency declared in a workspace package's own `package.json` (`apps/web/package.json`) is not read.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -8342,7 +8342,7 @@
       "cve_references": [],
       "description": "An OAuth 2.1 client flow does not use PKCE. PKCE is mandatory for all MCP remote server clients per spec 2025-11-25, including confidential clients.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a call to `authorize(` or the name `authorization_endpoint` when none of `code_verifier`, `pkce` or `code_challenge` appears in the file. An authorization URL written out as a literal (`https://auth.example.com/authorize?response_type=code`) is not recognised as an authorization request.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8368,7 +8368,7 @@
       "cve_references": [],
       "description": "An OAuth client sets code_challenge_method=plain (or omits it). S256 is mandatory; 'plain' leaks the verifier to anyone with access to the authorization request.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires only when the text `code_challenge_method` is followed directly by `plain`. A request that sends a `code_challenge` with no method at all, which RFC 7636 treats as plain, or one that takes the method from a constant (`METHOD = \"plain\"`), is not reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8394,7 +8394,7 @@
       "cve_references": [],
       "description": "An MCP server receives a bearer token from one identity and forwards it to a downstream service without re-minting. This is the 'confused deputy' shape banned by OAuth 2.1 BCPs.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `\"Authorization\": request.headers[...]` and `headers[\"Authorization\"] = request....` (also req, event, input). The same forwarding written with `.get`, `{\"Authorization\": request.headers.get(\"Authorization\")}`, is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8420,7 +8420,7 @@
       "cve_references": [],
       "description": "An OAuth client registers a wildcard, localhost-with-any-port, or overly-broad redirect_uri. Attackers can hijack authorization codes via dangling subdomains or open redirectors.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a `redirect_uri` or `redirect_uris` value of `*` or `[\"*\"]`, one that begins with `https://*`, or one that points at `http://localhost`. A wildcard inside a longer URL (`\"https://*.example.com/callback\"`, `\"https://app.example.com/*\"`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8446,7 +8446,7 @@
       "cve_references": [],
       "description": "An MCP remote server accepts plain Bearer tokens on a flow that MCP spec 2025-11-25 flags for DPoP (Demonstrating Proof of Possession) or mTLS-bound tokens. A stolen Bearer token is fully replayable.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches a literal `Bearer <token>` string in a file that also contains `Authorization` and neither `DPoP` nor `cnf`. A token attached the usual way, from a variable (`f\"Bearer {token}\"`), is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8473,7 +8473,7 @@
       "cve_references": [],
       "description": "An OAuth authorization-code client processes the authorization response / redirect callback (reads `code` and `state`, or exchanges the code at the token endpoint) but never references the `iss` parameter. The MCP ratified 2026-07-28 spec (SEP-2468) requires clients to validate `iss` on authorization responses per RFC 9207 \u2014 without it, an attacker who controls one authorization server in MCP's single-client / many-server deployment can mount an OAuth mix-up attack and have the client redeem a code at the wrong server. This is the token-issuer-validation arm of the 2026-07-28 final MCP auth profile (scanned together with RFC 8707 resource indicators, `AAK-OAUTH-007`, and RFC 9728 Protected-Resource-Metadata discovery, `AAK-OAUTH-008`, via `--profile mcp-2026-07-28`). A later spec version will require rejecting responses that omit `iss` entirely.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a code exchange (`grant_type=authorization_code`, `exchange_code_for_token`, or a read of `code` from the query arguments) when the word `iss` appears nowhere in the file. Any `iss` counts as validating the authorization response, including a JWT claim check on the ID token (`claims[\"iss\"]`).",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8500,7 +8500,7 @@
       "cve_references": [],
       "description": "An OAuth 2.1 authorization/token flow \u2014 or an MCP client/server config that advertises OAuth 2.1 \u2014 builds authorization and/or token requests without the RFC 8707 `resource` parameter. The ratified MCP 2025-11-25 authorization spec requires MCP clients to send `resource` on both the authorization request and the token request, identifying the MCP server by its canonical URI, so the authorization server audience-binds the issued token. Without Resource Indicators the token is not bound to a specific MCP server, so a token minted for one server can be replayed at another (token replay / audience confusion) \u2014 the confused-deputy class OAuth 2.1 \u00a75.2 and the MCP spec's Access Token Privilege Restriction section forbid.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a token request (`grant_type=...`, `response_type=code`, `authorize(`, a `token_endpoint`) in a file with no `resource` parameter. Any `resource = ...` assignment or `\"resource\":` key counts as the RFC 8707 parameter, including an unrelated local variable named `resource`.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8529,7 +8529,7 @@
       ],
       "description": "A remote MCP OAuth surface presents no RFC 9728 Protected Resource Metadata discovery: a client config points at a remote (HTTP/SSE) MCP server and carries an inline / static credential (an `Authorization` / `Bearer` header, an `auth` block, or an embedded token) with no reference to `/.well-known/oauth-protected-resource`, `authorization_servers`, or `resource_metadata`; or MCP server source enforces bearer auth (e.g. `WWW-Authenticate`, a FastMCP `BearerAuthProvider`) without serving Protected Resource Metadata. The ratified MCP 2025-11-25 auth spec requires servers to implement RFC 9728 so clients can discover the authorization server and obtain an audience-bound token instead of relying on a pre-shared secret; the 2026-07-28 final auth profile builds on it. Without PRM the deployment cannot participate in discovery-based auth and typically hardcodes credentials.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a remote-server config file that carries an inline credential (an `Authorization` header, a `Bearer` value, an `auth` block, or an `access_token`, `api_key` or `token` field) and mentions none of `oauth-protected-resource`, `authorization_servers` or `resource_metadata`. A static key in another header (`X-API-Key`) is not recognised as an inline credential.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8581,7 +8581,7 @@
       "incident_references": [
         "VERCEL-2026-04-19"
       ],
-      "limitations": "",
+      "limitations": "Reads a fixed list of config files at the project root (`app.yaml`, `vercel.json`, `netlify.toml`, `oauth.json`, `oauth_client.json`, `client_secret*.json` and a few more) for Google scopes under admin.*, cloud-platform, drive, gmail.modify, gmail.send and directory.*. Scopes written in source code (`SCOPES = [...]` in a `.py` file) and `https://mail.google.com/` are not matched.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -8607,7 +8607,7 @@
       "incident_references": [
         "IRONPLATE-2026-04-07"
       ],
-      "limitations": "",
+      "limitations": "Fires on `OpenClawAgent(...)` with no `role=`, with `role=None`, or with a non-constant role in a function that also reads `request.json` or a similar marker (`os.environ`, `sys.argv`, `user_input`) and never calls `assert_role_allowlisted(`. A role passed in as an ordinary parameter (`def build(role)`) carries no marker, and the class imported under another name (`from openclaw import OpenClawAgent as Agent`) is not recognised.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -8807,7 +8807,7 @@
       ],
       "description": "A hook bridge, gateway or guard cuts a candidate command, URL or path to a fixed length \"for matching\", evaluates its deny / block patterns against the cut copy, and hands the full untruncated value to whatever executes it. Everything past the cut point is invisible to the policy and visible to the executor, so a caller simply positions the dangerous part after the bound and the hard-deny list never sees it. The disclosed instance is CVE-2026-73614 (Network-AI ClaudeHookBridge < 5.15.1, CVSS 8.8): the target string is truncated to 500 characters before `denyPatterns` are evaluated while Claude Code executes the full Bash command field. That package is not pinnable \u2014 it resolves on neither npm nor PyPI and its GitHub repository 404s \u2014 so this rule is written against the shape rather than the vendor, and applies to any policy code with the same asymmetry. It fires only when the untruncated source is still referenced elsewhere in the file, which is what separates a policy/executor split from ordinary display truncation.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `x = y.slice(0, 500)` or `x = y[:500]` with a numeric literal of two or more digits, tested near a name containing deny, block, forbidden or disallow, while `y` is still used untruncated. A bound held in a constant (`slice(0, MAX_MATCH_LEN)`) or a slice written `y[0:500]` is not matched.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -9701,7 +9701,7 @@
       "cve_references": [],
       "description": "An MCP tool handler fetches a URL provided by the caller with no host/scheme validation. This is the classic SSRF shape (CWE-918).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Follows a URL into a recognised fetch call only when it derives from a name such as `args`, `arguments`, `params`, `payload`, `request` or `input`, so a tool's own `url` parameter is not treated as caller input. A fetch is recognised by its callee (`requests.get` and the like, or `.get` on a variable called `client` or `session`), so `http.get(...)` is missed, and a `urlparse(` call or `https` check anywhere in the file counts as validation.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9727,7 +9727,7 @@
       "cve_references": [],
       "description": "An MCP tool handler forwards user-supplied URLs that could target 127.0.0.1/localhost/::1, reaching internal services bound to loopback.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for the text 127.0.0.1, localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a string that reaches a recognised fetch call. Other spellings of loopback and private space (`127.0.0.2`, the decimal form `http://2130706433/`, an IPv6 unique-local address) are not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9753,7 +9753,7 @@
       "cve_references": [],
       "description": "An MCP tool accepts URLs that can reach 169.254.169.254 (AWS/Azure/GCP metadata) or metadata.google.internal, allowing exfiltration of instance credentials.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Recognises `169.254.169.254` and `metadata.google.internal` only. Other cloud credential endpoints (`169.254.170.2`, `100.100.100.200`) are not matched.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9779,7 +9779,7 @@
       "cve_references": [],
       "description": "An MCP tool follows HTTP redirects using the default client settings. An attacker can bypass initial host checks by returning a 3xx to an internal address. DNS rebinding works the same way.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on an explicit `follow_redirects=True`, `allow_redirects=True` or `redirect: \"follow\"` in a file with a recognised fetch call. A client left at its default, which follows redirects (`requests.get(url)`), is not reported.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9805,7 +9805,7 @@
       "cve_references": [],
       "description": "An MCP tool performs outbound HTTP but has no allowlist of permitted destinations. Deny-by-default with an explicit allowlist is the only reliable defense against SSRF chains.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a recognised fetch call whose URL derives from caller input, in a file that never writes `ALLOWED_HOSTS`, `ALLOW_HOST`, `URL_ALLOW_LIST`, `allowed_hosts =` or `allowlist =`. Declaring one of those names is enough: nothing checks that the list is applied to the URL.",
       "owasp_agentic_references": [
         "ASI06"
       ],
@@ -9959,7 +9959,7 @@
       "incident_references": [
         "OX-MCP-2026-04-15"
       ],
-      "limitations": "",
+      "limitations": "A Python value counts as caller input when it is named stdin, request, req, event, params, tool_input, input_data, args or payload; a tool's own parameters are added only when the decorator is written without parentheses (`@mcp.tool`), so `run(command)` under `@mcp.tool()` is missed. The sinks are `subprocess.*`, `os.system`, `os.popen`, `os.exec*`, `eval` and `exec`, so `asyncio.create_subprocess_shell` is not one. In TypeScript a command counts as request-derived only when it contains a name such as req, request, body, params, event, stdin or tool_input, so a destructured tool argument (`exec(`git log ${branch}`)`) is not.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -10350,7 +10350,7 @@
       "cve_references": [],
       "description": "A task read endpoint returns task state based on the task ID alone. Any caller that guesses or enumerates a task ID gets another user's data (CWE-639).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for a Python `def` named get_task, read_task, task_read, get_by_id or findTask and clears it when owner, current_user, principal, tenant_id or a similar word appears in the next 1200 characters. A TypeScript or JavaScript handler (`async function getTask`) is not matched, and the word `owner` counts even when the function only returns it.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10374,7 +10374,7 @@
       "cve_references": [],
       "description": "A task record retains API keys / OAuth tokens after the task reaches a terminal state (completed/failed/cancelled). Long-lived credentials in persistent state are an obvious exfil target.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `self.credentials`, `self.api_key`, `self.token`, `self.secret` or `self.password` assigned in a file with a task class and a terminal-state word (completed, failed, cancelled, done), and clears the finding when any `self.<name> = None`, `del self.<name>` or `zeroize(` appears in the file. A different attribute name (`self.access_token`) is not matched, and a clearing statement that never runs on the terminal transition, such as a `reset()` nothing calls, still counts.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10398,7 +10398,7 @@
       "cve_references": [],
       "description": "A task record has no expiration and no cancellation endpoint. Orphaned tasks accumulate forever, including their inputs.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a task class or store with no `ttl`, `expires_at`, `expiry` or `deadline` assignment and no `def cancel_*`, `abort_*` or `terminate_*` in the file. Any such assignment counts, whatever it applies to: a `ttl=60` on an unrelated cache call clears it.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10425,7 +10425,7 @@
       "cve_references": [],
       "description": "The MCP Tasks primitive (SEP-2663) exposes a task-creation path (`tasks/create`, `create_task`, `enqueue`, `submit`) with no per-caller quota, max-in-flight, or concurrency bound. Unbounded task creation lets a caller flood the server with long-running tasks and exhaust memory / worker capacity \u2014 a task-flood denial of service. This is distinct from a missing TTL / cancellation path (AAK-TASKS-003): a server may expire and cancel tasks yet still accept unlimited concurrent creation.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires when a file with a task class has a creation path (`tasks/create`, `def create_task`, `enqueue_*`, `submit_*`, or a call to `create_task(`, `enqueueTask(`, `submitTask(` or `addTask(`) and none of the words quota, max_tasks, max_concurrency, Semaphore, rate_limit or backpressure. `createTask(` is not recognised as a creation path, and the word `quota` in a comment counts as a bound.",
       "owasp_agentic_references": [
         "ASI08"
       ],
@@ -10452,7 +10452,7 @@
       "incident_references": [
         "BHASIA-2026-TIKTOK-HIJACK"
       ],
-      "limitations": "",
+      "limitations": "Matches a handful of literal call names (`tiktok_api.reply(`, `instagrapi.direct.send(`, `tweepy.API().update_status(`, `discord.Message.reply(` and similar) in a file that also reads `event[\"comment\"]`, `comments.fetch(` or `webhook.payload[\"text\"]`, with no `human_in_the_loop(` or `require_approval(`. A reply sent through an instance (`await message.reply(text)`) is not matched.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -10506,7 +10506,7 @@
       ],
       "description": "An MCP server URL uses a cleartext scheme, exposing all traffic including credentials to interception. **Applies to: `http://` and `ws://`.** A `ws://` handshake is an unencrypted HTTP upgrade, so it is the same defect and not a milder one -- the handshake headers and every frame after them are on the wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), or `stdio` (no URL, no network hop).** Loopback URLs (`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) are excluded on either scheme, since the traffic does not leave the host.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads the `url` field of each server under `mcpServers` and flags `http://` and `ws://` unless the host is localhost, 127.0.0.1, 0.0.0.0 or ::1. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10532,7 +10532,7 @@
       "cve_references": [],
       "description": "TLS certificate validation is disabled via NODE_TLS_REJECT_UNAUTHORIZED=0 or similar, enabling MITM attacks. **Applies to: every TLS-bearing transport -- `https://`, `wss://`, and TLS-wrapped SSE/Streamable HTTP.** The setting is read from the server's `env` block rather than its URL, so it is transport-independent: it disables peer verification for whatever the process connects to. **Does not apply to: `stdio`** (no TLS peer to verify).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `NODE_TLS_REJECT_UNAUTHORIZED=0` and any `SSL_CERT_FILE` in a server's `env` block. Other switches that turn certificate checking off, such as `PYTHONHTTPSVERIFY=0`, are not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10558,7 +10558,7 @@
       "cve_references": [],
       "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP. **Applies to: `sse` only** -- matched from an explicit `\"transport\": \"sse\"` or a `/sse` path in the URL. **Does not apply to: `stdio`, `http`/`streamable-http`, or `ws`/`wss`.** WebSocket is a different transport, not a deprecated one: it is outside this rule rather than silently passing it.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires on a server whose `url` contains `/sse` or whose `transport` key is `sse`. A server declared with `\"type\": \"sse\"`, the key Claude Code configs use, at a URL without `/sse` is not matched.",
       "owasp_agentic_references": [
         "ASI08"
       ],
@@ -10584,7 +10584,7 @@
       "cve_references": [],
       "description": "A session token or API key is passed as a URL query parameter, risking exposure in logs and referrer headers. **Applies to: every URL-bearing transport -- `http`/`https`, `ws`/`wss`, and SSE/Streamable HTTP**, including loopback URLs, since the exposure is the URL being written down (proxy logs, shell history, referrer headers) rather than the hop being observed. A WebSocket handshake URL is logged by the same intermediaries as any other request line. **Does not apply to: `stdio`** (no URL).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Looks for `?` or `&` followed by token, key, api_key, apikey, secret, auth, access_token or session_token and `=` in the server `url`. Other parameter names (`?api-key=`, `?jwt=`) and a credential carried in the URL path (`/s/abc123/mcp`) are not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10612,7 +10612,7 @@
       ],
       "description": "Auto-approves ALL MCP servers in .mcp.json without user consent. A compromised repo can ship arbitrary MCP servers that execute immediately.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads `.claude/settings.json` and `.claude/settings.local.json` at the root of the scanned directory. The same flag in the settings file of a subdirectory (`packages/web/.claude/settings.json`) is not read.",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -10640,7 +10640,7 @@
       ],
       "description": "Redirects all API traffic (including API keys) to attacker-controlled endpoint BEFORE trust prompt displays. This is the exact attack vector of CVE-2026-21852.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Tests the `env.ANTHROPIC_BASE_URL` value with a plain substring check for `anthropic.com`. A proxy whose URL merely contains that text, such as `https://anthropic.com.attacker.example/v1`, is treated as Anthropic's own endpoint.",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -10666,7 +10666,7 @@
       "cve_references": [],
       "description": "Permission allow patterns use wildcards (*, **) or broad tool names. This bypasses the permission system, allowing unchecked tool execution.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches only the exact strings `*`, `mcp__*`, `Bash(*)`, `Edit(**)`, `Read(**)` and `Write(**)` in `permissions.allow`. A bare tool name (`Bash`) or a prefix grant (`Bash(sudo:*)`) is not matched.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10692,7 +10692,7 @@
       "cve_references": [],
       "description": "Settings file has permission allows but empty or missing deny rules. Defense-in-depth requires explicit deny rules for sensitive operations.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires when `permissions.allow` has entries and `permissions.deny` is empty or missing. Any non-empty deny list clears it, whatever it denies: `Read(./docs/notes.md)` beside `Bash(curl:*)` passes.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10721,7 +10721,7 @@
       ],
       "description": "An environment variable matching *_BASE_URL, *_API_URL, or *_ENDPOINT is set in project settings. This can redirect authenticated traffic to attacker-controlled servers.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Matches `env` names that end in `_BASE_URL`, `_API_URL` or `_ENDPOINT`. Other spellings that point a client at another server (`OPENAI_API_BASE`, `LLM_GATEWAY_URL`) are not matched.",
       "owasp_agentic_references": [
         "ASI10"
       ],
@@ -10747,7 +10747,7 @@
       "cve_references": [],
       "description": "Project settings have permission allows that could shadow user-level deny rules. Misconfigurations can create a false sense of security.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Counts an allow entry only when its text contains Bash, Edit, Write, Read or `mcp__`. Allowing `WebFetch` or `Task` with no deny list is not reported.",
       "owasp_agentic_references": [
         "ASI09"
       ],
@@ -10773,7 +10773,7 @@
       "cve_references": [],
       "description": "No enabledMcpjsonServers allowlist is configured, meaning server approval relies entirely on user prompts.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Fires only when a settings file at the root of the scanned directory sits beside a root `.mcp.json`. A package directory that carries its own `.claude/settings.json` and `.mcp.json` (`packages/web/`) is not looked at.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10801,7 +10801,7 @@
       ],
       "description": "A `.windsurf/mcp.json` file declares auto_approve:true or auto_execute:true, or contains server `command:` entries with no SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows attackers can inject malicious MCP registrations via HTML prompt injection when auto-approval is enabled.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Examines only a file named `mcp.json` inside a `.windsurf` directory. A file of another name, such as `.windsurf/mcp_config.json`, is not examined.",
       "owasp_agentic_references": [
         "ASI06"
       ],

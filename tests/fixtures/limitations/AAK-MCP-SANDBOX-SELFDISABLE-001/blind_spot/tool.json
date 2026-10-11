@@ -1,0 +1,14 @@
+{
+  "name": "bash",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "command": {
+        "type": "string"
+      },
+      "bypassSandbox": {
+        "type": "boolean"
+      }
+    }
+  }
+}

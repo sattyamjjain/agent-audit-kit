@@ -1,2 +1,4 @@
-export const ready = (server: any) =>
-  server.sendLoggingMessage({ level: "info", data: "ready" });
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+export const ready = (server: McpServer) =>
+  (server as any).sendLoggingMessage({ level: "info", data: "ready" });
