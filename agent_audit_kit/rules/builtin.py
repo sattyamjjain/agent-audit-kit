@@ -3237,6 +3237,13 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-SUPPLY-02"],
+    limitations=(
+        "Pattern-matches the first `load_prompt(` or `load_prompt_from_config(` "
+        "call in a file that mentions langchain, and only when the argument is a "
+        "bare (dotted) name or an f-string with a `{}` placeholder. An argument "
+        "that is a call (`os.path.join(PROMPTS, name)`), a concatenation "
+        "(`\"prompts/\" + name`) or a keyword (`path=name`) is not matched."
+    ),
 )
 
 _r(
@@ -4616,6 +4623,13 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-LOG-01"],
+    limitations=(
+        "Reads the arguments of calls spelled `logger.<level>`, `log.<level>`, "
+        "`console.<level>` and `sys.stdout.write` in functions whose decorator name "
+        "ends in `tool`. `logging.info(...)`, `self.logger.info(...)` and "
+        "`print(...)` are not matched, and a `.replace(\"\\n\", ...)` or a `sanitize` "
+        "call anywhere in the function clears it, whichever value that touches."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -5557,6 +5571,17 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PROMPT-01"],
     incident_references=["COMMENT-AND-CONTROL-2026-04-25"],
+    limitations=(
+        "Needs, in one Python function (or one TS/JS file), a title source, an LLM "
+        "client call and no sanitiser. The source must be spelled as an attribute "
+        "path (`pull_request.title`, `issue.title`): "
+        "`event[\"pull_request\"][\"title\"]` and `pull_request.body` are not sources. "
+        "The sink must be a listed spelling (`client.messages.create`, "
+        "`openai.chat.completions.create`, ...): `client.chat.completions.create` "
+        "is not. Any `json.dumps(`, `re.escape(`, `hashlib.*(` or `html.escape(` in "
+        "the function counts as a sanitiser, a `json.dumps` that only builds the "
+        "prompt included."
+    ),
 )
 
 
@@ -5703,6 +5728,13 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PROMPT-02"],
     incident_references=["IPI-WILD-2026-04-24"],
+    limitations=(
+        "Reads `.md`, `.txt`, `.yml`, `.yaml`, `.json` and `.py` files, by their "
+        "lower-case extension, and applies ten regular expressions to the text, "
+        "where `.*` does not cross a line. The same payload in `.jsonl`, `.html` or "
+        "`.j2` (RAG seed corpora and prompt templates), in a `.MD` file, or split "
+        "over two lines, is not matched."
+    ),
 )
 
 
@@ -5823,6 +5855,15 @@ _r(
     "max length. Calling it in the same function suppresses this rule.",
     sarif_name="DeepSeekV4MoeToolInjection",
     owasp_agentic_references=["ASI01"],
+    limitations=(
+        "Python only, per function. A DeepSeek target is recognised only from a "
+        "string literal containing `deepseek` in `base_url=`, or a `deepseek` "
+        "import: a URL held in a constant is not seen. An untrusted source is "
+        "recognised only from a short list (`request.json`, `request.args`, "
+        "`pdfplumber.open`, `unstructured.partition`, `open(...).read()`), so a "
+        "page fetched with `requests.get(url).text` is not one, and any `re.sub(` "
+        "call in the function counts as sanitising."
+    ),
 )
 
 _r(
@@ -6036,6 +6077,15 @@ _r(
     cve_references=["CVE-2026-34070"],
     owasp_agentic_references=["ASI02"],
     incident_references=["LANGCHAIN-PROMPT-LOADER-2026-03"],
+    limitations=(
+        "Needs a non-constant path passed to `load_prompt` or `from_file` and, in "
+        "the same function, a source spelled `request.json`, `request.args`, "
+        "`sys.argv`, `os.environ` or the like; a path that arrives as a function "
+        "parameter is not a source. Any `os.path.realpath(` in the function counts "
+        "as a guard although it normalises the path and does not confine it to a "
+        "directory. `from langchain_core.prompts.loading import load_prompt` is not "
+        "one of the import forms that put a file in scope."
+    ),
 )
 
 _r(
@@ -6113,6 +6163,16 @@ _r(
     sarif_name="SkillLifecycleAttributionMissing",
     owasp_agentic_references=["ASI04", "ASI09"],
     incident_references=["ARXIV-2605.18401"],
+    limitations=(
+        "Recognises a skill by a decorator (`@skill`, `@skill_fn`, "
+        "`@register_skill`, `@skills_vote_skill`) or by a function named `execute`, "
+        "`run_skill`, `invoke_skill` or `skill_main` in a folder named exactly "
+        "`skill`, `skills`, `agent-skills`, `.skills` or `skill-pack`; "
+        "`agent_skills/` is not one. A state change is a call named `write_text`, "
+        "`write_bytes`, `save`, `dump`, `persist`, `commit`, `post`, `put`, "
+        "`patch`, `delete` and a few others, so `open(path, \"w\")` followed by "
+        "`handle.write(text)` is not one."
+    ),
 )
 
 _r(
@@ -6207,6 +6267,15 @@ _r(
     sarif_name="MetisRefusalRefeed",
     owasp_agentic_references=["ASI01", "ASI02"],
     incident_references=["ARXIV-2605.10067"],
+    limitations=(
+        "Follows a refusal only through a parameter or variable whose name contains "
+        "`refusal`, `rejected`, `denied`, `denial` or `decline` (and plain copies "
+        "of it), and reports it only when it is returned or passed as a bare "
+        "argument to `append`, `extend`, `format`, `add_message` and the other "
+        "listed sink calls. Wrapped in a dict or an f-string "
+        "(`messages.append({\"role\": \"user\", \"content\": refusal})`) it is not "
+        "reported, and a variable called `refused` is never tracked."
+    ),
 )
 
 _r(
@@ -6231,6 +6300,14 @@ _r(
     sarif_name="MetisScoringSink",
     owasp_agentic_references=["ASI01", "ASI02"],
     incident_references=["ARXIV-2605.10067"],
+    limitations=(
+        "Follows a score only through a parameter or variable whose name contains "
+        "`score`, `judge`, `reward`, `rating` or `critique` (and plain copies of "
+        "it), and reports it only when it is passed as a bare argument to a call "
+        "named `format`, `append`, `extend`, `add_message`, `build_prompt` and the "
+        "like. Putting it into an f-string (`f\"Your last draft scored {score}\"`), "
+        "or into a dict passed to `append`, is not reported."
+    ),
 )
 
 _r(
@@ -6262,6 +6339,13 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI05"],
     incident_references=["NVD-CVE-2026-44717"],
+    limitations=(
+        "Looks inside the body of the decorated function only, at calls to `eval`, "
+        "`exec`, `compile`, `__import__` or `parse_expr` whose argument is a "
+        "parameter's bare name. A helper that does the `eval` (`return "
+        "_evaluate(expression)`) and a transformed argument "
+        "(`eval(expression.strip())`) are not reported."
+    ),
 )
 
 _r(
@@ -6303,6 +6387,15 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
+    limitations=(
+        "Reads `.ts` and `.tsx` files that carry a tool-call marker "
+        "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
+        "`server.tool`, `tools/call`) and reports `exec` or `execSync` whose first "
+        "argument is a template literal with `${}` or a concatenation written "
+        "inside the call. A command built into a variable first and then passed as "
+        "`exec(command)` is not reported, and neither is the same code in a `.js` "
+        "file."
+    ),
 )
 
 _r(
@@ -6996,6 +7089,16 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02", "ASI05"],
     adversa_references=["ADV-INJECT-07"],
+    limitations=(
+        "The flow arm follows model output through plain assignments to a call "
+        "named `execute`, `executemany`, `executescript` or `exec_driver_sql`; "
+        "LangChain's `db.run(sql)` is not a sink. Any identifier, import or string "
+        "in the file containing `sqlglot`, `sqlparse`, `allowlist` or `whitelist` "
+        "switches that arm off, so `sqlparse.format(sql, reindent=True)`, which "
+        "only pretty-prints, counts as validation. The privilege arm judges the "
+        "database role from a literal connection URI or literal SQL text in the "
+        "source: a DSN read from `os.environ` is not seen."
+    ),
 )
 
 _r(
