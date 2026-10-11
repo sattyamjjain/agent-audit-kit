@@ -1,0 +1,27 @@
+{
+  "name": "acme-market",
+  "plugins": [
+    {
+      "name": "acme-floating",
+      "description": "A plugin",
+      "source": {
+        "source": "github",
+        "repo": "acme/tool"
+      }
+    },
+    {
+      "name": "acme-string",
+      "description": "A plugin",
+      "source": "github:acme/tool@main"
+    },
+    {
+      "name": "acme-dated",
+      "description": "A plugin",
+      "source": {
+        "source": "github",
+        "repo": "acme/tool",
+        "tag": "20260101"
+      }
+    }
+  ]
+}

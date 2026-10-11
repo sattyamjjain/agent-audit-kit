@@ -1,0 +1,28 @@
+{
+  "name": "acme-market",
+  "plugins": [
+    {
+      "name": "acme-wild",
+      "description": "A plugin",
+      "permissions": [
+        "shell:*",
+        "*"
+      ]
+    },
+    {
+      "name": "acme-case",
+      "description": "A plugin",
+      "permissions": [
+        "SHELL:EXEC"
+      ]
+    },
+    {
+      "name": "acme-object",
+      "description": "A plugin",
+      "permissions": {
+        "fs": "*",
+        "shell": "exec"
+      }
+    }
+  ]
+}

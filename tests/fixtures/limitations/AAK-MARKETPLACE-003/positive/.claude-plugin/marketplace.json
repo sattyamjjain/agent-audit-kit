@@ -1,0 +1,9 @@
+{
+  "name": "acme-market",
+  "plugins": [
+    {
+      "name": "claud",
+      "description": "A plugin"
+    }
+  ]
+}

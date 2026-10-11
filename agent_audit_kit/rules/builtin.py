@@ -1312,6 +1312,16 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-03"],
+    limitations=(
+        "Reads the `mcpServers` entries of .mcp.json, .cursor/mcp.json, "
+        ".vscode/mcp.json, .amazonq/mcp.json and mcp.json at the project root, for "
+        "the launchers npx, uvx, bunx and pnpx, and counts any text after the "
+        "package's `@` as a version. A floating tag or range "
+        "(`some-mcp-server@latest`, `other-mcp-server@^1.0.0`) is therefore not "
+        "reported, nor is a `docker run` image tagged `latest`, a launcher outside "
+        "those four, or an entry under the `servers` key that VS Code uses in "
+        ".vscode/mcp.json."
+    ),
 )
 
 _r(
@@ -1325,6 +1335,14 @@ _r(
     owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Reads package-lock.json, requirements*.txt and Pipfile.lock at the project "
+        "root against a fixed table of two packages, `axios` 1.7.0 to 1.7.3 and "
+        "`openclaw` below 2.1.0, plus three typosquat name patterns, so a "
+        "vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) "
+        "is not reported. The npm check does not read yarn.lock or pnpm-lock.yaml, "
+        "and a package-lock.json in a sub-directory is not read."
+    ),
 )
 
 _r(
@@ -1339,6 +1357,16 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-05"],
+    limitations=(
+        "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of "
+        "the root package.json only, and reports one that names curl, wget, fetch, "
+        "nc, ncat, ssh, http, axios or request, or that does not start with a known "
+        "build tool. A script that starts with `node`, `npx`, `tsc`, `webpack`, "
+        "`rollup`, `esbuild` or `vite` is treated as safe, so `npx --yes "
+        "some-unreviewed-package` passes. The install scripts of dependencies (a "
+        "lockfile entry marked `hasInstallScript`) and of a workspace package.json "
+        "in a sub-directory are not read."
+    ),
 )
 
 _r(
@@ -1353,6 +1381,15 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-06"],
+    limitations=(
+        "Checks the project root only: a package.json needs a package-lock.json, "
+        "yarn.lock, pnpm-lock.yaml or bun.lockb, a pyproject.toml needs a "
+        "poetry.lock, uv.lock, Pipfile.lock or pdm.lock, a Pipfile needs a "
+        "Pipfile.lock and a Cargo.toml needs a Cargo.lock. A lockfile only has to "
+        "exist, so an empty one passes, a Python project that declares its "
+        "dependencies in requirements.txt alone is not checked, and neither is a "
+        "manifest in a sub-directory."
+    ),
 )
 
 _r(
@@ -1367,6 +1404,12 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-07"],
+    limitations=(
+        "Counts the entries of the root package-lock.json, the root package itself "
+        "included, and the packages of the root Cargo.lock, and reports more than "
+        "200. A uv.lock or yarn.lock of any size and a package-lock.json in a "
+        "sub-directory are not counted."
+    ),
 )
 
 _r(
@@ -1380,6 +1423,15 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
+    limitations=(
+        "Reads the `args` of the `mcpServers` entries in the root .mcp.json only, "
+        "and looks each `package@version` up in the npm section of the "
+        "vulnerability database, which bundles two packages: `axios` 1.7.0 to 1.7.3 "
+        "and `openclaw` below 2.1.0. The same package in package.json, in an MCP "
+        "config under `.cursor/` or `.vscode/`, or launched with `uvx "
+        "openclaw==2.0.0` is not read, and neither is a package that states no "
+        "version."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -3299,6 +3351,14 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
+    limitations=(
+        "Checks only that each entry in the `plugins` list of a marketplace.json "
+        "has a key named `signature`, `integrity`, `sha256`, `sigstore` or "
+        "`publicKey`, not that the value is a signature or that it verifies, so "
+        "`\"signature\": \"TODO\"` passes. Plugins listed as an object instead of a "
+        "list are not read, and a manifest that is not valid JSON is skipped "
+        "without a finding."
+    ),
 )
 
 _r(
@@ -3315,6 +3375,12 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-05"],
+    limitations=(
+        "Compares a plugin's `permissions` list with six exact strings: `fs:*`, "
+        "`shell:exec`, `network:*`, `credentials:*`, `env:*` and `*:*`. The same "
+        "grant spelled another way (`shell:*`, a bare `*`), in another case "
+        "(`SHELL:EXEC`), or given as an object instead of a list is not reported."
+    ),
 )
 
 _r(
@@ -3331,6 +3397,15 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-06"],
+    limitations=(
+        "Compares a plugin name with 13 upstream names (anthropic, claude, "
+        "claude-code, claude-agent-sdk, mcp, model-context-protocol, langchain, "
+        "langchain-core, langgraph, openai, openai-agents-sdk, gemini, google-adk) "
+        "and reports one that is a single insertion, deletion, substitution or "
+        "adjacent swap away. A name that extends an upstream (`claude-code-pro`, "
+        "`anthropic-official`) or sits two edits away (`antrhopik`) is not "
+        "reported."
+    ),
 )
 
 _r(
@@ -3348,6 +3423,13 @@ _r(
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-07"],
+    limitations=(
+        "Judges a plugin's `source` only when it is an object with a `ref`, "
+        "`branch` or `tag` that is not 7 to 40 hex characters. A source with no ref "
+        "at all, which follows the default branch, a source written as a string "
+        "(`github:acme/tool@main`) and an all-digit tag such as `20260101`, which "
+        "reads as a short commit hash, are not reported."
+    ),
 )
 
 # ---------------------------------------------------------------------------
@@ -4654,6 +4736,14 @@ _r(
     sarif_name="McpServerNoSecurityMd",
     owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
+    limitations=(
+        "Treats a repository as an MCP server only when `mcp` appears in the name "
+        "or keywords of the root pyproject.toml, package.json or "
+        ".claude-plugin/marketplace.json. A server named without it (an "
+        "`acme-tools` package whose keyword is `model-context-protocol` and which "
+        "depends on the SDK), one declared in Cargo.toml or go.mod, and a "
+        "package.json in a sub-directory are not recognised."
+    ),
 )
 
 

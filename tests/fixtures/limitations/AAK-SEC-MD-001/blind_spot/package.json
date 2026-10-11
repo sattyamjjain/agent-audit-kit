@@ -1,0 +1,10 @@
+{
+  "name": "acme-tools",
+  "version": "1.0.0",
+  "keywords": [
+    "model-context-protocol"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.0.0"
+  }
+}

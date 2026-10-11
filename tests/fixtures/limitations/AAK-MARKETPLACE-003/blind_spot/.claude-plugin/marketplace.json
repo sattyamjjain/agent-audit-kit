@@ -1,0 +1,17 @@
+{
+  "name": "acme-market",
+  "plugins": [
+    {
+      "name": "claude-code-pro",
+      "description": "A plugin"
+    },
+    {
+      "name": "anthropic-official",
+      "description": "A plugin"
+    },
+    {
+      "name": "antrhopik",
+      "description": "A plugin"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "a": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "some-mcp-server@latest"
+      ]
+    },
+    "b": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "other-mcp-server@^1.0.0"
+      ]
+    }
+  }
+}
