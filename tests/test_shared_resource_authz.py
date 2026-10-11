@@ -53,7 +53,10 @@ def test_rule_is_registered_with_cve_anchor() -> None:
     rule = RULES[RULE_ID]
     assert rule.severity.value == "high"
     assert "CVE-2026-44654" in rule.cve_references
-    assert "ASI04" in rule.owasp_agentic_references
+    # No per-actor authorization on a shared mutating tool is OWASP MCP07 and
+    # ASI03 (cross-agent confused deputy), not supply chain (ASI04).
+    assert rule.owasp_mcp_references == ["MCP07:2025"]
+    assert rule.owasp_agentic_references == ["ASI03"]
 
 
 # ---------------------------------------------------------------------------

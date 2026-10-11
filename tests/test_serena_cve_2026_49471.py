@@ -33,8 +33,10 @@ def test_rule_registered_and_accurate() -> None:
     assert "CVE-2026-49471" in rule.cve_references
     assert "1.5.2" in rule.description
     assert "CWE-306" in rule.description
-    assert "MCP02:2025" in rule.owasp_mcp_references
-    assert "ASI04" in rule.owasp_agentic_references
+    # An unauthenticated dashboard reachable by DNS rebinding: a vulnerable MCP
+    # package (MCP04) whose flaw is missing authentication (MCP07), ending in RCE.
+    assert rule.owasp_mcp_references == ["MCP04:2025", "MCP07:2025"]
+    assert rule.owasp_agentic_references == ["ASI04", "ASI05"]
 
 
 def test_vulnerable_version_flags(tmp_path: Path) -> None:

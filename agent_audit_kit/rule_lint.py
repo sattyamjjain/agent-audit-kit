@@ -11,7 +11,8 @@ Invariants (v0.3.10 baseline; tighten over future releases):
     5. Every rule has at least one of `owasp_mcp_references`,
        `owasp_agentic_references`, `incident_references`, or
        `aicm_references` (so the rule maps to at least one external
-       framework). INFO and INTERNAL rules exempt.
+       framework). INFO and INTERNAL rules exempt, as is any rule named in
+       `_FRAMEWORK_WAIVERS` together with the reason no framework applies.
 
 Lint is intentionally additive — running `aak rule lint --ci` on the
 existing 188-rule registry must pass cleanly today. New invariants
@@ -39,6 +40,19 @@ _EXEMPT_PREFIXES_FOR_CVE: tuple[str, ...] = (
 _EXEMPT_PREFIXES_FOR_FRAMEWORK: tuple[str, ...] = (
     "AAK-INTERNAL-",
 )
+
+# Rules that detect a real defect no external framework names, each with the reason.
+#
+# Invariant 5 exists so a rule is never an island, but a rule that genuinely maps to
+# nothing used to get an OWASP id anyway, and a borrowed id is worse than none: the
+# 2026-10 OWASP remap found references that pointed at the wrong risk because some
+# framework field had to be filled. A waiver here is reviewable; a guessed id is not.
+_FRAMEWORK_WAIVERS: dict[str, str] = {
+    "AAK-MCP-CONFIG-MALFORMED-001": (
+        "a field one MCP client coerces and another drops is a parser differential; "
+        "no OWASP MCP or Agentic entry names it, and AICM tags are not assigned here"
+    ),
+}
 
 
 def _violations_for(rule_id: str, rule: Any) -> list[dict[str, str]]:
@@ -70,7 +84,7 @@ def _violations_for(rule_id: str, rule: Any) -> list[dict[str, str]]:
 
     # External-framework invariant. LEGAL_COMPLIANCE rules cite
     # statutes in description text, not in our framework fields.
-    if not rule_id.startswith(_EXEMPT_PREFIXES_FOR_FRAMEWORK):
+    if not rule_id.startswith(_EXEMPT_PREFIXES_FOR_FRAMEWORK) and rule_id not in _FRAMEWORK_WAIVERS:
         category = getattr(rule, "category", None)
         if (
             getattr(rule, "severity", Severity.INFO) != Severity.INFO

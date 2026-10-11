@@ -21,8 +21,8 @@ tolerated by older readers.
 | `remediation` | `str` | Actionable fix text shown in SARIF help. |
 | `sarif_name` | `str` | PascalCase name used by GH Code Scanning. |
 | `cve_references` | `list[str]` | `CVE-YYYY-NNNNN` entries. |
-| `owasp_mcp_references` | `list[str]` | e.g. `MCP01:2025`. |
-| `owasp_agentic_references` | `list[str]` | e.g. `ASI02` (OWASP Agentic Top 10 2026). |
+| `owasp_mcp_references` | `list[str]` | OWASP MCP Top 10 v0.1 id, e.g. `MCP05:2025` (Command Injection & Execution). The `:2025` is OWASP's edition label. |
+| `owasp_agentic_references` | `list[str]` | OWASP Top 10 for Agentic Applications (Version 2026) id, e.g. `ASI02` (Tool Misuse and Exploitation). The official ids carry no year suffix. |
 | `adversa_references` | `list[str]` | Adversa AI MCP Top 25. |
 | `auto_fixable` | `bool` | Whether `agent-audit-kit fix --cve` can auto-remediate. |
 
@@ -32,6 +32,16 @@ tolerated by older readers.
 |---|---|---|
 | `incident_references` | `list[str]` | Incident IDs of the form `<VENDOR>-<DATE>`. Covers disclosed incidents that never got a CVE. Today: `VERCEL-2026-04-19`, `OX-MCP-2026-04-15`. |
 | `aicm_references` | `list[str]` | CSA AI Controls Matrix control IDs. Consumed by `agent-audit-kit report --compliance aicm`. |
+
+## v3 additions (v0.3.85)
+
+| Field | Type | Notes |
+|---|---|---|
+| `owasp_ast_references` | `list[str]` | OWASP Agentic Skills Top 10 (1.0, 2026) id, e.g. `AST01` (Malicious Skills). Separate from `owasp_agentic_references` because the skill layer is a different taxonomy. |
+
+The OWASP ids and titles for all three fields are pinned in
+`agent_audit_kit/output/owasp_report.py`. An id names the OWASP risk the rule
+detects; it is not a number in an AAK-local ordering.
 
 ## SARIF tag encoding
 

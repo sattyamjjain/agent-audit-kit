@@ -102,7 +102,9 @@ def test_rule_metadata_cve_and_incident() -> None:
     rule = RULES["AAK-MCPWN-001"]
     assert rule.severity.value == "critical"
     assert "CVE-2026-33032" in rule.cve_references
-    assert "ASI01" in rule.owasp_agentic_references
-    assert "ASI02" in rule.owasp_agentic_references
-    assert "MCP02:2025" in rule.owasp_mcp_references
+    # A route that skips the auth middleware its twin has is OWASP MCP07
+    # (Insufficient Authentication & Authorization) and ASI03. The ASI01/ASI02 and
+    # MCP02 pins here did not describe an authentication bypass.
+    assert rule.owasp_agentic_references == ["ASI03"]
+    assert rule.owasp_mcp_references == ["MCP07:2025"]
     assert "MCPWN-2026-04-16" in rule.incident_references

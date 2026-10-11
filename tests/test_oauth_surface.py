@@ -123,4 +123,7 @@ def test_rules_tag_vercel_incident() -> None:
         rule = RULES[rid]
         assert "VERCEL-2026-04-19" in rule.incident_references
         assert "ASI04" in rule.owasp_agentic_references
-        assert "MCP05:2025" in rule.owasp_mcp_references
+        # A third-party Google Workspace grant or a vendor SDK is not an MCP
+        # surface, so neither rule names an MCP Top 10 entry. MCP05:2025, pinned
+        # here before, is Command Injection & Execution.
+        assert rule.owasp_mcp_references == []

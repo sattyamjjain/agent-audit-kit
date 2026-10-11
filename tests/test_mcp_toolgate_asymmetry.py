@@ -38,7 +38,10 @@ def test_rule_is_registered_with_cve_anchor() -> None:
     rule = RULES[RULE_ID]
     assert rule.severity.value == "high"
     assert "CVE-2026-46519" in rule.cve_references
-    assert "MCP06:2025" in rule.owasp_mcp_references
+    # An allowlist enforced on tools/list but not tools/call is an authorization
+    # gap (OWASP MCP07). MCP06 is Intent Flow Subversion; it read "Privilege
+    # Escalation" only in AAK's retired numbering.
+    assert "MCP07:2025" in rule.owasp_mcp_references
 
 
 # ---------------------------------------------------------------------------

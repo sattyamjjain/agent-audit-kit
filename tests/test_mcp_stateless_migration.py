@@ -176,11 +176,19 @@ def test_clean_python_no_findings(tmp_path: Path) -> None:
 
 
 def test_findings_carry_owasp_mapping(tmp_path: Path) -> None:
+    """A spec-migration finding names no OWASP risk, and says so by carrying none.
+
+    STATELESS-001 flags code that will break when the protocol-level session goes
+    away. It used to carry MCP07 (authentication), which is not what it detects;
+    its framework link is the AICM controls instead.
+    """
     _copy(FIXTURES / "vulnerable_001_py", tmp_path)
     findings, _ = mcp_stateless_migration.scan(tmp_path)
     match = next((f for f in findings if f.rule_id == RULE_001), None)
     assert match is not None
-    assert "MCP07:2025" in match.owasp_mcp_references
+    assert match.owasp_mcp_references == []
+    assert match.owasp_agentic_references == []
+    assert match.aicm_references
 
 
 def test_scanner_registered_in_engine() -> None:

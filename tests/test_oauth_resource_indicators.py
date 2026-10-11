@@ -124,7 +124,9 @@ def test_rule_registered_and_shaped() -> None:
     rule = RULES[RULE]
     assert rule.severity.value == "medium"
     assert rule.category.value == "mcp-config"
-    assert "MCP01:2025" in rule.owasp_mcp_references
+    # A token not bound to its audience can be replayed at another server: OWASP
+    # MCP07 ("agents can reuse tokens or credentials issued to others").
+    assert "MCP07:2025" in rule.owasp_mcp_references
     # The remediation must carry the concrete fix: set `resource` + audience-bind.
     assert "resource" in rule.remediation
     assert "8707" in rule.remediation
@@ -187,6 +189,8 @@ def test_prm_rule_registered_and_shaped() -> None:
     rule = RULES[PRM]
     assert rule.severity.value == "low"
     assert rule.category.value == "mcp-config"
-    assert "MCP01:2025" in rule.owasp_mcp_references
+    # A pre-shared static credential is MCP01 (static, long-lived secrets); the
+    # missing discovery-based auth is MCP07.
+    assert {"MCP01:2025", "MCP07:2025"} == set(rule.owasp_mcp_references)
     assert "9728" in rule.remediation
     assert rule.aicm_references == ["IAM-01", "IAM-16"]

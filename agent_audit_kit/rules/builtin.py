@@ -438,7 +438,7 @@ _r(
     Category.MCP_CONFIG,
     "Use direct executable paths without shell wrappers.",
     sarif_name="McpCommandShellInjection",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
@@ -501,7 +501,7 @@ _r(
     Category.MCP_CONFIG,
     "Pin exact package versions or use locally installed packages.",
     sarif_name="McpRuntimePackageFetch",
-    owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
@@ -520,7 +520,7 @@ _r(
     Category.MCP_CONFIG,
     "Use absolute paths for MCP server executables.",
     sarif_name="McpCommandRelativePath",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-02"],
     limitations=(
@@ -541,7 +541,7 @@ _r(
     Category.MCP_CONFIG,
     "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
     sarif_name="McpUnpinnedPackageVersion",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-02"],
     limitations=(
@@ -561,7 +561,7 @@ _r(
     Category.MCP_CONFIG,
     "Avoid headersHelper in project-scoped configs. Use static headers or OAuth flows instead.",
     sarif_name="McpHeadersHelperShellExec",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-03"],
     limitations=(
@@ -582,7 +582,6 @@ _r(
     "Ensure local MCP servers are intentional and document the trust assumption.",
     sarif_name="McpLocalhostInternalUrl",
     owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, "
@@ -602,7 +601,7 @@ _r(
     Category.MCP_CONFIG,
     "Restrict filesystem access to specific project directories only.",
     sarif_name="McpFilesystemRootAccess",
-    owasp_mcp_references=["MCP06:2025"],
+    owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-02"],
     limitations=(
@@ -627,8 +626,8 @@ _r(
     "in the host config that the host verifies before any tool dispatch. See Metere 2026, "
     "arXiv:2605.24248 — wire format, verification algorithm, and RFC-2119 conformance vectors.",
     sarif_name="McpServerUnattested",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03", "ASI04"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
     incident_references=["arXiv:2605.24248"],
     limitations=(
         "Fires on a `mcpServers` entry with a `command` or `url` that has none of 13 "
@@ -668,8 +667,8 @@ _r(
     "https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security "
     "(`Restrict upstream.allowed_ips`).",
     sarif_name="McpTunnelSsrfDefenseDisabled",
-    owasp_mcp_references=["MCP04:2025", "MCP06:2025"],
-    owasp_agentic_references=["ASI02", "ASI05"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     incident_references=[
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
@@ -704,7 +703,7 @@ _r(
     "See https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference#proxy-configuration.",
     sarif_name="McpTunnelUpstreamNoTrustAnchor",
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI07"],
     incident_references=[
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference",
@@ -741,8 +740,8 @@ _r(
     "https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/security "
     "(`Protect credentials at rest`, `Rotate credentials`).",
     sarif_name="McpTunnelCredentialHardcoded",
-    owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
-    owasp_agentic_references=["ASI03", "ASI06"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
     incident_references=[
         "Anthropic MCP Tunnels 2026-05-19",
         "platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/overview",
@@ -776,8 +775,8 @@ _r(
     "intentional, accept the risk in `.agent-audit-kit.yml` with "
     "`accepts_sampling_risk: true` and a non-empty `justification:`.",
     sarif_name="McpSamplingNoConsent",
-    owasp_mcp_references=["MCP07:2025", "MCP02:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI01", "ASI09"],
     adversa_references=["ADV-AUTH-02"],
     limitations=(
         "Reads .py, .ts, .tsx, .js, .mjs, .cjs, .java, .kt and .rs files of a project "
@@ -843,8 +842,6 @@ _r(
     "behind an out-of-band identity (auth subject, OAuth `sub`, tool "
     "argument) rather than the removed session header.",
     sarif_name="McpSessionIdReliance",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
     limitations=(
         "Runs only when a manifest at the project root names an MCP SDK in a form it "
         "recognises. In `pyproject.toml` that is one of the quoted strings `\"mcp\"`, "
@@ -872,7 +869,7 @@ _r(
     "scoped to an authenticated identity, or store task identifiers "
     "client-side and re-query them with `tasks/get` style point lookups.",
     sarif_name="McpTasksListRemoved",
-    owasp_mcp_references=["MCP07:2025"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads source files only in a project whose root manifest names an MCP SDK in "
         "a form AAK-MCP-STATELESS-001 recognises, and matches the quoted method name "
@@ -899,7 +896,6 @@ _r(
     "session id. Re-test horizontal scaling without affinity before the "
     "2026-07-28 cutover.",
     sarif_name="McpStickySessionDependency",
-    owasp_mcp_references=["MCP07:2025"],
     limitations=(
         "Looks for nginx `ip_hash;` or `sticky cookie|route|learn`, Kubernetes "
         "`sessionAffinity: ClientIP`, `stickiness.enabled = true` and a Traefik "
@@ -929,7 +925,6 @@ _r(
     "`notifications/tools/list_changed`. Treat tool discovery as a hint "
     "that may differ between instances under the stateless transport.",
     sarif_name="McpClientNoToolsListCache",
-    owasp_mcp_references=["MCP07:2025"],
     limitations=(
         "Reads source files only in a project whose root manifest names an MCP SDK in "
         "a form AAK-MCP-STATELESS-001 recognises. It fires on a file that calls "
@@ -984,7 +979,7 @@ _r(
     "explicit tool parameters or server configuration instead. Deprecated "
     "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedRoots",
-    owasp_mcp_references=["MCP07:2025"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "In .py, .ts, .tsx, .js, .jsx, .mjs, .cjs, .rs, .java and .kt sources it looks "
         "for `roots/list`, `notifications/roots/list_changed`, `ListRootsRequest`, "
@@ -1023,7 +1018,8 @@ _r(
     "server with its own credentials. Deprecated 2026-07-28; plan to remove "
     "ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedSampling",
-    owasp_mcp_references=["MCP07:2025"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI01"],
     limitations=(
         "In .py, .ts, .tsx, .js, .jsx, .mjs, .cjs, .rs, .java and .kt sources it looks "
         "for `sampling/createMessage`, `CreateMessageRequest` (or "
@@ -1062,7 +1058,6 @@ _r(
     "`logging` capability / handling `logging/setLevel`. Deprecated "
     "2026-07-28; plan to remove ahead of the ~mid-2027 window.",
     sarif_name="McpDeprecatedLogging",
-    owasp_mcp_references=["MCP07:2025"],
     limitations=(
         "In .py, .ts, .tsx, .js, .jsx, .mjs, .cjs, .rs, .java and .kt sources it looks "
         "for `logging/setLevel`, `SetLevelRequest` (or `SetLevelRequestSchema`), "
@@ -1098,7 +1093,6 @@ _r(
     "Remove network calls from hooks. Use file-based logging if audit trail is needed.",
     sarif_name="HookNetworkCapableCommand",
     cve_references=["CVE-2025-59536"],
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-01"],
     limitations=(
@@ -1121,7 +1115,6 @@ _r(
     Category.HOOK_INJECTION,
     "Hooks should never reference credential environment variables.",
     sarif_name="HookCredentialExfiltration",
-    owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-02"],
     limitations=(
@@ -1143,7 +1136,6 @@ _r(
     Category.HOOK_INJECTION,
     "Constrain all hook file operations to project directory.",
     sarif_name="HookWriteOutsideProject",
-    owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-ESCAPE-01"],
     limitations=(
@@ -1164,7 +1156,6 @@ _r(
     Category.HOOK_INJECTION,
     "Audit all hooks on critical lifecycle events. Use deny-lists for non-formatting commands.",
     sarif_name="HookSensitiveLifecycleEvent",
-    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-HOOK-01"],
     limitations=(
@@ -1186,7 +1177,6 @@ _r(
     Category.HOOK_INJECTION,
     "Remove base64 operations from hooks unless there's a documented, legitimate use case.",
     sarif_name="HookBase64Obfuscation",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-01"],
     limitations=(
@@ -1206,7 +1196,6 @@ _r(
     Category.HOOK_INJECTION,
     "Hooks should never require elevated privileges.",
     sarif_name="HookPrivilegeEscalation",
-    owasp_mcp_references=["MCP06:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-PRIV-01"],
     limitations=(
@@ -1226,8 +1215,6 @@ _r(
     Category.HOOK_INJECTION,
     "Minimize hooks to essential operations only.",
     sarif_name="ExcessiveHookCount",
-    owasp_mcp_references=["MCP02:2025", "MCP08:2025"],
-    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-03"],
     limitations=(
         "Adds up the entries of all events in one settings file and fires above 15. "
@@ -1246,7 +1233,6 @@ _r(
     Category.HOOK_INJECTION,
     "All hook commands should be human-readable. Reject obfuscated commands.",
     sarif_name="HookObfuscatedPayload",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-02"],
     limitations=(
@@ -1267,7 +1253,6 @@ _r(
     Category.HOOK_INJECTION,
     "Hooks should not access source files. Use dedicated build tools instead.",
     sarif_name="HookReferencesSourceFiles",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-02"],
     limitations=(
@@ -1295,8 +1280,8 @@ _r(
     "Set to false. Use enabledMcpjsonServers to whitelist specific servers by name.",
     sarif_name="EnableAllProjectMcpServers",
     cve_references=["CVE-2026-21852"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     adversa_references=["ADV-TRUST-01"],
     auto_fixable=True,
     limitations=(
@@ -1316,8 +1301,7 @@ _r(
     "NEVER override ANTHROPIC_BASE_URL in project settings. Only set in user-level or system environment.",
     sarif_name="AnthropicBaseUrlOverride",
     cve_references=["CVE-2026-21852"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-REDIRECT-01"],
     limitations=(
         "Tests the `env.ANTHROPIC_BASE_URL` value with a plain substring check for "
@@ -1336,8 +1320,8 @@ _r(
     Category.TRUST_BOUNDARY,
     "Use narrowest possible permission patterns. Specify exact tool names and path constraints.",
     sarif_name="WildcardPermissionAllow",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-04"],
     limitations=(
         "Matches only the exact strings `*` (or any run of asterisks), `mcp__*`, "
@@ -1355,8 +1339,8 @@ _r(
     Category.TRUST_BOUNDARY,
     "Add deny rules for: file system operations outside project, network tools, credential-accessing tools.",
     sarif_name="MissingDenyRules",
-    owasp_mcp_references=["MCP05:2025", "MCP08:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-TRUST-02"],
     auto_fixable=True,
     limitations=(
@@ -1376,8 +1360,7 @@ _r(
     "Set API URLs only in user-level configuration or system environment variables.",
     sarif_name="CustomApiBaseUrlOverride",
     cve_references=["CVE-2026-21852"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-REDIRECT-02"],
     limitations=(
         "Matches `env` names that end in `_BASE_URL`, `_API_URL` or `_ENDPOINT`. Other "
@@ -1395,8 +1378,8 @@ _r(
     Category.TRUST_BOUNDARY,
     "Audit that project allows don't re-enable operations the user intended to block.",
     sarif_name="ProjectOverridesUserDeny",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-TRUST-03"],
     limitations=(
         "Counts an allow entry only when its text contains Bash, Edit, Write, Read or "
@@ -1413,8 +1396,8 @@ _r(
     Category.TRUST_BOUNDARY,
     "Configure enabledMcpjsonServers with explicit server names.",
     sarif_name="NoMcpServerAllowlist",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-TRUST-04"],
     auto_fixable=True,
     limitations=(
@@ -1629,7 +1612,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
     sarif_name="McpPackageNotPinned",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-03"],
     limitations=(
@@ -1652,7 +1635,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Update to patched version or remove dependency.",
     sarif_name="KnownVulnerablePackage",
-    owasp_mcp_references=["MCP03:2025", "MCP10:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
@@ -1674,8 +1657,8 @@ _r(
     Category.SUPPLY_CHAIN,
     "Audit install scripts. Use --ignore-scripts flag and run scripts manually after review.",
     sarif_name="DangerousInstallScripts",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SUPPLY-05"],
     limitations=(
         "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of "
@@ -1700,7 +1683,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Generate and commit lockfile.",
     sarif_name="NoLockfilePresent",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-06"],
     limitations=(
@@ -1723,7 +1706,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Audit and remove unused dependencies. Consider lighter alternatives.",
     sarif_name="ExcessiveDependencyCount",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-07"],
     limitations=(
@@ -1742,7 +1725,7 @@ _r(
     Category.SUPPLY_CHAIN,
     "Update to patched version as listed in the vulnerability database.",
     sarif_name="McpSpecificVulnDep",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
@@ -1783,8 +1766,7 @@ _r(
     "signature, and run the local copy. Remove destructive commands from "
     "instruction files.",
     sarif_name="AgentShellDirectives",
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI01", "ASI05"],
     adversa_references=["ADV-HIJACK-01"],
     limitations=(
         "Reads one line at a time. A download counts when it is piped into an "
@@ -1829,8 +1811,6 @@ _r(
     "below your `--fail-on` threshold; suppressing it wholesale is reasonable, "
     "suppressing `AAK-AGENT-006` is not.",
     sarif_name="AgentExternalUrls",
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-02"],
     limitations=(
         "Reports the presence of a link, never its content or its reputation. "
@@ -1858,7 +1838,6 @@ _r(
     Category.AGENT_CONFIG,
     "Remove security override instructions. Agents should respect default security controls.",
     sarif_name="AgentSecurityOverride",
-    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-03"],
     limitations=(
@@ -1883,8 +1862,7 @@ _r(
     Category.AGENT_CONFIG,
     "Remove credential references from instruction files.",
     sarif_name="AgentCredentialReference",
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-HIJACK-04"],
     limitations=(
         "Reads `$NAME`, `${NAME}`, `env[...]`, `os.environ[...]` and "
@@ -1906,7 +1884,6 @@ _r(
     Category.AGENT_CONFIG,
     "Remove hidden content. All agent instructions should be human-readable.",
     sarif_name="AgentHiddenContent",
-    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-HIJACK-05"],
     limitations=(
@@ -1975,8 +1952,7 @@ _r(
     "a URL from an instruction file: that is an exfiltration channel a reviewer "
     "reads as documentation.",
     sarif_name="AgentFetchAndFollowUrl",
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI01", "ASI04"],
     adversa_references=["ADV-HIJACK-02"],
     limitations=(
         "Regex over one line, not data flow: it reads the instruction, never "
@@ -2001,8 +1977,8 @@ _r(
     Category.TOOL_POISONING,
     "Remove invisible characters from tool descriptions.",
     sarif_name="ToolDescInvisibleUnicode",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-01"],
     limitations=(
         "Reads description strings only: a tool's own, its input schema's, each "
@@ -2024,8 +2000,8 @@ _r(
     Category.TOOL_POISONING,
     "Remove injection patterns from tool descriptions.",
     sarif_name="ToolDescPromptInjection",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-02"],
     limitations=(
         "Matches a fixed list of phrases: `ignore previous`, `system:`, `you are`, "
@@ -2046,8 +2022,8 @@ _r(
     Category.TOOL_POISONING,
     "Tool descriptions should be self-contained and not reference other tools.",
     sarif_name="ToolDescCrossToolRef",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-03"],
     limitations=(
         "Matches five phrases: `before calling`, `first call`, `after using`, `then "
@@ -2067,8 +2043,8 @@ _r(
     Category.TOOL_POISONING,
     "All tool description content should be plain text.",
     sarif_name="ToolDescEncodedContent",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-04"],
     limitations=(
         "Matches a single run of 40 or more base64 characters, three or more `\\xNN` "
@@ -2087,8 +2063,8 @@ _r(
     Category.TOOL_POISONING,
     "Keep tool descriptions concise and under 500 characters.",
     sarif_name="ToolDescExcessiveLength",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-05"],
     limitations=(
         "The 500-character limit is applied to each description string on its own. "
@@ -2106,8 +2082,8 @@ _r(
     Category.TOOL_POISONING,
     "Remove URLs and file paths from tool descriptions.",
     sarif_name="ToolDescUrlOrPath",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-POISON-06"],
     limitations=(
         "Matches `http://` and `https://` URLs, a `/` followed by three or more "
@@ -2138,7 +2114,7 @@ _r(
     "Sanitize all inputs. Use subprocess with shell=False and explicit argument lists.",
     sarif_name="TaintShellInjection",
     cve_references=["CVE-2026-90617"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
@@ -2165,7 +2141,7 @@ _r(
     Category.TAINT_ANALYSIS,
     "Never pass user-controlled input to eval/exec. Use safe parsing alternatives.",
     sarif_name="TaintCodeInjection",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-05"],
     limitations=(
@@ -2188,8 +2164,8 @@ _r(
     Category.TAINT_ANALYSIS,
     "Validate and sanitize file paths. Use os.path.realpath() and verify against allowed directories.",
     sarif_name="TaintPathTraversal",
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-06"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
@@ -2212,8 +2188,8 @@ _r(
     Category.TAINT_ANALYSIS,
     "Validate URLs against an allowlist. Block internal/private IP ranges.",
     sarif_name="TaintSsrf",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
@@ -2236,7 +2212,7 @@ _r(
     Category.TAINT_ANALYSIS,
     "Use parameterized queries. Never use f-strings or .format() for SQL.",
     sarif_name="TaintSqlInjection",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-07"],
     limitations=(
@@ -2261,7 +2237,7 @@ _r(
     Category.TAINT_ANALYSIS,
     "Use safe deserialization (yaml.safe_load, json.loads) instead of unsafe alternatives.",
     sarif_name="TaintDeserialization",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-08"],
     limitations=(
@@ -2283,7 +2259,7 @@ _r(
     Category.TAINT_ANALYSIS,
     "Add type hints and input validation to all tool function parameters.",
     sarif_name="TaintMissingValidation",
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-VALID-01"],
     limitations=(
@@ -2305,7 +2281,7 @@ _r(
     Category.TAINT_ANALYSIS,
     "Split into smaller, focused tool functions with minimal privileges.",
     sarif_name="TaintExcessiveSinks",
-    owasp_mcp_references=["MCP06:2025"],
+    owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SCOPE-05"],
     limitations=(
@@ -2349,7 +2325,7 @@ _r(
         "CVE-2026-91988",
     ],
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-01"],
     limitations=(
         "Reads the `url` field of each server under `mcpServers` and flags `http://` "
@@ -2375,7 +2351,7 @@ _r(
     "Remove TLS validation overrides. Use proper certificate management.",
     sarif_name="McpTlsValidationDisabled",
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-02"],
     limitations=(
         "Matches `NODE_TLS_REJECT_UNAUTHORIZED=0` and any `SSL_CERT_FILE` in the `env` "
@@ -2399,8 +2375,7 @@ _r(
     Category.TRANSPORT_SECURITY,
     "Migrate to Streamable HTTP transport (MCP spec 2025-03-26+).",
     sarif_name="McpDeprecatedSse",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI08"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-03"],
     limitations=(
         "Fires on a server whose `url` contains `/sse` as a whole word (`/sse_events` "
@@ -2451,7 +2426,6 @@ _r(
     Category.A2A_PROTOCOL,
     "Limit Agent Card capabilities to public-facing skills only.",
     sarif_name="A2aInternalCapabilities",
-    owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-01"],
     limitations=(
@@ -2474,8 +2448,7 @@ _r(
     Category.A2A_PROTOCOL,
     "Add authentication requirements (OAuth 2.0 or API key) to Agent Card.",
     sarif_name="A2aNoAuth",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-A2A-02"],
     limitations=(
         "Reads the `authentication` (or `auth`) key and reports it when it is "
@@ -2492,14 +2465,13 @@ _r(
     "AAK-A2A-003",
     "No input schema validation in A2A skill definitions",
     "A2A skill definitions lack input schemas, allowing unvalidated data to be passed "
-    "between agents. Unvalidated cross-agent payloads are the canonical "
-    "ASI08 Agent Communication Poisoning primitive.",
+    "between agents. Unvalidated cross-agent payloads are the semantic-validation "
+    "gap OWASP ASI07 (Insecure Inter-Agent Communication) names.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Define explicit JSON schemas for all skill inputs.",
     sarif_name="A2aNoInputSchema",
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI07", "ASI08"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-03"],
     limitations=(
         "Reports a skill whose `inputSchema` is absent or an empty object. Any "
@@ -2516,7 +2488,6 @@ _r(
     Category.A2A_PROTOCOL,
     "Use HTTPS for all A2A endpoints.",
     sarif_name="A2aHttpEndpoint",
-    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-04"],
     limitations=(
@@ -2536,7 +2507,6 @@ _r(
     Category.A2A_PROTOCOL,
     "Set JWT token lifetime to 1 hour (3600 seconds) or less. Use refresh tokens for longer sessions.",
     sarif_name="JwtTokenLifetimeTooLong",
-    owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
@@ -2557,8 +2527,7 @@ _r(
     Category.A2A_PROTOCOL,
     "Enable signature verification and restrict algorithms to RS256 or ES256. Never allow 'none'.",
     sarif_name="WeakJwtValidation",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `verifySignature` or `verify_signature` set to false, and an "
@@ -2578,8 +2547,7 @@ _r(
     Category.A2A_PROTOCOL,
     "Add a unique 'id' or 'identity' field to the Agent Card and use HTTPS endpoints.",
     sarif_name="AgentImpersonationRisk",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_agentic_references=["ASI03", "ASI10"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Checks only that an `id` or `identity` key exists, not what it holds: "
@@ -2603,8 +2571,6 @@ _r(
     Category.LEGAL_COMPLIANCE,
     "Review license obligations. Consider replacing with permissively-licensed alternatives.",
     sarif_name="CopyleftLicenseDep",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
     limitations=(
         "Reads the `license` field of each `package.json` in the scanned tree and "
         "matches a value that starts with `AGPL`, `SSPL`, `GPL-3` or `EUPL`. "
@@ -2621,8 +2587,6 @@ _r(
     Category.LEGAL_COMPLIANCE,
     "Contact the maintainer to clarify licensing or replace with a properly licensed alternative.",
     sarif_name="NoLicenseDep",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
     limitations=(
         "Reads the `license` key of each `package.json` in the scanned tree and "
         "skips `node_modules`, so an installed dependency with no license is not "
@@ -2639,8 +2603,6 @@ _r(
     Category.LEGAL_COMPLIANCE,
     "Remove the flagged dependency immediately.",
     sarif_name="DmcaFlaggedPackage",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
     limitations=(
         "Matches three package names (`claude-code-leaked`, `anthropic-internal` "
         "and `copilot-source`, with or without a scope) in the direct dependency "
@@ -2673,8 +2635,8 @@ _r(
     "schedule rather than only at install time: a campaign that waits N calls "
     "before mutating is invisible to a one-off check at approval.",
     sarif_name="ToolDefinitionChanged",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-RUGPULL-01"],
     incident_references=["DEADBUGZ-2026-09"],
     limitations=(
@@ -2698,8 +2660,8 @@ _r(
     Category.TOOL_POISONING,
     "Review the new tool's definition and permissions. Pin if approved.",
     sarif_name="NewToolSincePin",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-RUGPULL-02"],
     incident_references=["DEADBUGZ-2026-09"],
     limitations=(
@@ -2720,8 +2682,8 @@ _r(
     Category.TOOL_POISONING,
     "Investigate why the tool was removed. Update pins if removal was intentional.",
     sarif_name="ToolRemovedSincePin",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-RUGPULL-03"],
     limitations=(
         "Needs a pin file that parses. If `.agent-audit-kit/tool-pins.json` is not "
@@ -2740,8 +2702,9 @@ _r(
 #     https://nvd.nist.gov/vuln/detail/CVE-2026-33032
 #   - GHSA: https://github.com/0xJacky/nginx-ui/security/advisories/GHSA-h6c2-x2m2-mwhf
 #   - MCP spec 2025-11-25: OAuth 2.1 mandatory for remote servers.
-#   - OWASP MCP Top 10 MCP01:2025 (Broken Authentication), MCP07:2025
-#     (Insecure Transport), MCP08:2025 (Insecure CORS).
+#   - OWASP MCP Top 10 MCP07:2025 (Insufficient Authentication &
+#     Authorization); MCP01:2025 (Token Mismanagement & Secret Exposure) for
+#     the token-in-URL rule.
 #   - CWE-287 (Improper Authentication), CWE-306 (Missing Authentication),
 #     CWE-346 (Origin Validation Error), CWE-307 (Improper Restriction
 #     of Excessive Authentication Attempts).
@@ -2760,7 +2723,7 @@ _r(
     "method or path before enforcing auth.",
     sarif_name="McpHandlerNoAuth",
     cve_references=["CVE-2026-33032"],
-    owasp_mcp_references=["MCP01:2025", "MCP07:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
@@ -2786,7 +2749,7 @@ _r(
     "allowlists at startup.",
     sarif_name="McpAllowlistEmpty",
     cve_references=["CVE-2026-33032"],
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-02"],
     limitations=(
@@ -2808,7 +2771,7 @@ _r(
     "Restrict CORS to an explicit origin allowlist. Never combine '*' with "
     "Access-Control-Allow-Credentials: true.",
     sarif_name="McpCorsWildcard",
-    owasp_mcp_references=["MCP08:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-03"],
     limitations=(
@@ -2878,8 +2841,8 @@ _r(
         # is private and unversioned.
         "CVE-2026-94044",
     ],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-RES-01"],
     limitations=(
         "Regex and proximity, not data flow. The TypeScript arm follows one "
@@ -2903,8 +2866,7 @@ _r(
     "Set a per-endpoint max body size (e.g. 1 MiB by default) and reject "
     "requests that exceed it.",
     sarif_name="McpUnboundedPayload",
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-DOS-01"],
 )
 
@@ -2919,7 +2881,7 @@ _r(
     "native TLS support. Reject plain-HTTP binds in production mode.",
     sarif_name="McpPlainHttp",
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-01"],
     limitations=(
         "Examines only files that contain createServer, McpServer, createMcpHandler, "
@@ -2940,8 +2902,8 @@ _r(
     Category.MCP_CONFIG,
     "Add per-IP and per-token rate limits. Reject bursts above the limit with 429.",
     sarif_name="McpNoRateLimit",
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-DOS-02"],
     limitations=(
         "Fires on a file that names an MCP server class and contains the text `/mcp` "
@@ -2962,7 +2924,7 @@ _r(
     "Enforce authentication as the first step of every handler. Do not branch "
     "on caller input before the auth check.",
     sarif_name="McpAuthAfterSideEffect",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-05"],
 )
@@ -2979,7 +2941,7 @@ _r(
     "shared handler in the auth check.",
     sarif_name="McpSharedHandlerAuthGap",
     cve_references=["CVE-2026-33032"],
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
 )
@@ -2989,7 +2951,10 @@ _r(
 #
 # References:
 #   - 36.7% of 7,000 surveyed MCP servers had SSRF-exposed tool handlers.
-#   - OWASP MCP Top 10 MCP09:2025 (Server-Side Request Forgery).
+#   - OWASP MCP Top 10 MCP05:2025 (Command Injection & Execution), whose
+#     text covers API requests built from untrusted input. The MCP Top 10 has
+#     no SSRF entry (OWASP/www-project-mcp-top-10 issue #20 is open), so this
+#     placement is AAK's reading, not OWASP's.
 #   - OWASP Top 10 A10:2021 (SSRF).
 #   - CWE-918 (Server-Side Request Forgery).
 # ---------------------------------------------------------------------------
@@ -3004,8 +2969,8 @@ _r(
     "Validate the scheme (https only), resolve the host, and reject "
     "private-range IPs (RFC 1918, 169.254.*, 127.*, ::1/128, fc00::/7).",
     sarif_name="SsrfUnvalidatedUrl",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
@@ -3038,8 +3003,8 @@ _r(
     Category.MCP_CONFIG,
     "Block loopback and link-local addresses after DNS resolution.",
     sarif_name="SsrfLoopbackReachable",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
@@ -3065,8 +3030,8 @@ _r(
     "Block 169.254.0.0/16 and metadata.google.internal at the HTTP client "
     "layer. Use a deny-by-default IP allowlist.",
     sarif_name="SsrfCloudMetadata",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-03"],
     limitations=(
         "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
@@ -3090,8 +3055,8 @@ _r(
     "Disable automatic redirects, or re-run host validation on every hop. "
     "Cap total redirects at 3.",
     sarif_name="SsrfRedirectRevalidation",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-04"],
     limitations=(
         "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
@@ -3112,8 +3077,8 @@ _r(
     Category.MCP_CONFIG,
     "Maintain an explicit allowlist of hostnames; reject anything else.",
     sarif_name="SsrfNoAllowlist",
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-05"],
     limitations=(
         "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
@@ -3133,7 +3098,9 @@ _r(
 #     DPoP under SEP review.
 #   - RFC 9700 (OAuth 2.1 Security BCPs).
 #   - RFC 9449 (DPoP).
-#   - OWASP MCP01:2025 (Broken Authentication).
+#   - OWASP MCP07:2025 (Insufficient Authentication & Authorization);
+#     MCP01:2025 (Token Mismanagement & Secret Exposure) where the defect is
+#     an unbound or static token.
 #   - CWE-287 (Improper Authentication), CWE-522 (Credentials Transmitted
 #     in Cleartext), CWE-348 (Use of Less Trusted Source).
 # ---------------------------------------------------------------------------
@@ -3149,7 +3116,7 @@ _r(
     "Add a code_verifier/code_challenge pair to every authorization request. "
     "Use code_challenge_method=S256.",
     sarif_name="OAuthMissingPkce",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-06"],
     limitations=(
@@ -3172,7 +3139,7 @@ _r(
     "Set code_challenge_method=S256 and derive code_challenge as "
     "BASE64URL(SHA256(code_verifier)).",
     sarif_name="OAuthPkcePlain",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-07"],
     limitations=(
@@ -3199,7 +3166,7 @@ _r(
     "Use token-exchange (RFC 8693) or a service account to call downstream "
     "services. Never forward a user token across trust boundaries.",
     sarif_name="OAuthTokenPassthrough",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-08"],
     limitations=(
@@ -3225,7 +3192,7 @@ _r(
     Category.MCP_CONFIG,
     "Register exact-match redirect URIs only. No wildcards.",
     sarif_name="OAuthWildcardRedirect",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-09"],
     limitations=(
@@ -3294,7 +3261,7 @@ _r(
     "and reject the response on mismatch. Have your authorization server emit "
     "`iss` now so the check can be enforced before the 2026-07-28 cutover.",
     sarif_name="OAuthMissingIssValidation",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
     limitations=(
@@ -3341,7 +3308,7 @@ _r(
     "requests); reject tokens whose audience is not this server (validate the "
     "audience per RFC 8707 §2 / RFC 9728 §7.4).",
     sarif_name="OAuthMissingResourceIndicator",
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
     limitations=(
@@ -3403,7 +3370,7 @@ _r(
         # on that name would fire on the wrong software. Fixed in 2.0.0.
         "CVE-2026-63127",
     ],
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP01:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-11"],
     limitations=(
@@ -3444,8 +3411,7 @@ _r(
     "no-shell exec. Quote with shlex.quote if a shell is absolutely required.",
     sarif_name="HookRceInterpolation",
     cve_references=["CVE-2025-59536"],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-01"],
     limitations=(
         "Reads command strings in the Claude Code settings files, and .sh, .bash, .py, "
@@ -3474,8 +3440,7 @@ _r(
     "commands from quoted constants only.",
     sarif_name="HookShellTrue",
     cve_references=["CVE-2025-59536"],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-02"],
     limitations=(
         "Matches `shell=True` before the first closing parenthesis of a "
@@ -3502,8 +3467,7 @@ _r(
     "configuration. Upgrade to Claude Code 1.0.111 or later.",
     sarif_name="HookTrustBypass",
     cve_references=["CVE-2025-59536"],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_agentic_references=["ASI05", "ASI09"],
     adversa_references=["ADV-RCE-03"],
     limitations=(
         "Reports a `command`, `cmd`, `run` or `script` value only in "
@@ -3538,7 +3502,6 @@ _r(
     "task behind an explicit manual trigger. Never auto-run a shell, interpreter, "
     "or network-fetch command on folder open; require workspace trust first.",
     sarif_name="IdeTaskFolderOpenAutorun",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-04"],
     limitations=(
@@ -3562,7 +3525,6 @@ _r(
     "into shell command strings. Invoke a vetted, in-tree binary with a fixed "
     "argv, and pin or verify any script the task runs.",
     sarif_name="IdeTaskShellInjection",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-05"],
     limitations=(
@@ -3592,7 +3554,6 @@ _r(
     "Remove the auto-run or shell injection from the referenced task (see the "
     "paired AAK-IDE-TASK-001 / AAK-IDE-TASK-002 finding).",
     sarif_name="IdeLaunchPreLaunchTaskChain",
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-06"],
     limitations=(
@@ -3663,8 +3624,7 @@ _r(
     "will execute them.",
     sarif_name="HeadlessAgentInCiTrustsRepoConfig",
     limitations=_AGENT_TRUST_LIMITATION,
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI05", "ASI09"],
     adversa_references=["ADV-INJECT-04"],
 )
 
@@ -3689,8 +3649,7 @@ _r(
     "ref, gate on a maintainer approval, and drop `GITHUB_TOKEN` to read-only.",
     sarif_name="HeadlessAgentCiUntrustedRef",
     limitations=_AGENT_TRUST_LIMITATION,
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05", "ASI03"],
+    owasp_agentic_references=["ASI03", "ASI05"],
     adversa_references=["ADV-INJECT-04"],
 )
 
@@ -3713,8 +3672,8 @@ _r(
     "allow-list of tools rather than a blanket bypass.",
     sarif_name="AgentSettingsPersistTrust",
     limitations=_AGENT_TRUST_LIMITATION,
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI02", "ASI09"],
     adversa_references=["ADV-PRIV-01"],
 )
 
@@ -3736,8 +3695,7 @@ _r(
     "and treat instruction files from an untrusted ref as untrusted input.",
     sarif_name="GeminiInstructionShellPayload",
     limitations=_AGENT_TRUST_LIMITATION,
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI01", "ASI05"],
     adversa_references=["ADV-INJECT-04"],
 )
 
@@ -3769,8 +3727,7 @@ _r(
     "the network capability from the read-capable set. Review a new skill for the "
     "capability it adds to the union, not only in isolation.",
     sarif_name="SkillSetCapabilityUnionExfil",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
         "Heuristic on DECLARED capability (`allowed-tools` / `capabilities` / "
@@ -3807,8 +3764,8 @@ _r(
     "an allowlist. Review the flagged session for whether the fragmentation was legitimate "
     "chunked work or an actual splice.",
     sarif_name="SessionSpliceReassembledDeniedTarget",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06", "ASI03"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["GHOSTSPLICE-2026-08"],
     limitations=(
@@ -3845,8 +3802,7 @@ _r(
     "behavior, pass allow_dangerous_paths=True explicitly.",
     sarif_name="LangchainPathTraversalVuln",
     cve_references=["CVE-2026-34070"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     auto_fixable=True,
     limitations=(
@@ -3873,8 +3829,7 @@ _r(
     "normalize, and verify the path is inside the intended directory.",
     sarif_name="LangchainLoadPromptUserPath",
     cve_references=["CVE-2026-34070"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-02"],
     limitations=(
         "Pattern-matches the first `load_prompt(` or `load_prompt_from_config(` "
@@ -3898,8 +3853,7 @@ _r(
     "do not fully control.",
     sarif_name="LangchainDeserializeUntrusted",
     cve_references=["CVE-2025-68664"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SUPPLY-03"],
     auto_fixable=True,
     limitations=(
@@ -3917,7 +3871,8 @@ _r(
 #
 # References:
 #   - Anthropic Claude Code plugins/marketplaces (GA Apr 2026).
-#   - OWASP MCP03:2025 (Supply Chain).
+#   - OWASP ASI04 (Agentic Supply Chain Vulnerabilities). Plugins are not an
+#     MCP surface, so these rules carry no MCP Top 10 reference.
 #   - CWE-494 (Download of Code Without Integrity Check), CWE-918 (SSRF
 #     in postinstall), CWE-1357 (Reliance on Insufficiently Trustworthy
 #     Component).
@@ -3934,7 +3889,6 @@ _r(
     "Add a Sigstore signature or subresource-integrity hash to each plugin "
     "entry. Verify on install.",
     sarif_name="MarketplaceUnsigned",
-    owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
@@ -3958,8 +3912,7 @@ _r(
     "Trim permissions to the minimum the plugin needs. Review any 'fs:*' "
     "or 'shell:exec' entries.",
     sarif_name="MarketplaceBroadPermissions",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SUPPLY-05"],
     limitations=(
         "Compares a plugin's `permissions` list with six exact strings: `fs:*`, "
@@ -3980,7 +3933,6 @@ _r(
     "Rename the plugin or flag it for manual review. Cross-reference against "
     "a known-upstream list.",
     sarif_name="MarketplaceTyposquat",
-    owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-06"],
     limitations=(
@@ -4006,7 +3958,6 @@ _r(
     "Pin to an immutable commit SHA. Re-pin during a reviewed dependency "
     "bump.",
     sarif_name="MarketplaceMutableRef",
-    owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-07"],
     limitations=(
@@ -4026,7 +3977,9 @@ _r(
 #
 # References:
 #   - Claude Code routines research preview.
-#   - OWASP ASI05 (Excessive Agency), ASI09 (Improper Isolation).
+#   - OWASP ASI02 (Tool Misuse and Exploitation) for over-privileged tool
+#     access, and ASI10 (Rogue Agents), whose mitigations (least-privilege
+#     scopes, signed audit logs) are what an unattended routine lacks.
 #   - CWE-269 (Improper Privilege Management).
 # ---------------------------------------------------------------------------
 
@@ -4036,14 +3989,13 @@ _r(
     "A routine configuration declares tool permissions wider than what the "
     "same user has in interactive Claude Code. A routine running "
     "non-interactively at 3am with admin-level tools is an excessive-agency "
-    "risk (OWASP ASI05).",
+    "risk (OWASP ASI02 over-privileged tool access, with no human to notice).",
     Severity.HIGH,
     Category.AGENT_CONFIG,
     "Mirror routine permissions from the interactive grant. Require re-prompt "
     "for elevation.",
     sarif_name="RoutineWiderPerms",
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-AGENCY-01"],
     limitations=(
         "Reads the `permissions` (or `tools`) list of a file in `.claude/routines/` "
@@ -4065,8 +4017,7 @@ _r(
     "Treat schedule expressions as static constants; never build them from "
     "runtime state.",
     sarif_name="RoutineScheduleInjection",
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-AGENCY-02"],
     limitations=(
         "Reads the first of `schedule`, `cron` or `trigger` that is set, and only "
@@ -4088,8 +4039,7 @@ _r(
     "Route every routine's output (and tool-call trace) to an append-only "
     "log the routine cannot modify.",
     sarif_name="RoutineNoAudit",
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI10"],
     adversa_references=["ADV-AGENCY-03"],
     limitations=(
         "Looks for the key `audit_log`, `audit`, `log` or `output_log` and not at "
@@ -4106,7 +4056,9 @@ _r(
 #
 # References:
 #   - A2A protocol (150+ orgs at one-year mark, Apr 9 2026).
-#   - OWASP MCP Top 10 MCP01, MCP02, MCP07.
+#   - OWASP ASI03 (Identity and Privilege Abuse), ASI07 (Insecure
+#     Inter-Agent Communication), ASI08 (Cascading Failures). A2A is not MCP,
+#     so these rules carry no MCP Top 10 reference.
 #   - CWE-287 (Improper Authentication), CWE-829 (Inclusion of Functionality
 #     from Untrusted Control Sphere), CWE-294 (Auth Bypass by Capture-Replay),
 #     CWE-502 (Deserialization).
@@ -4121,8 +4073,7 @@ _r(
     Category.A2A_PROTOCOL,
     "Require mutual TLS or dual-bearer auth for all A2A flows.",
     sarif_name="A2aNoMutualAuth",
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-A2A-05"],
     limitations=(
         "Reads `authentication.scheme`, a single string, and reports it when it "
@@ -4142,8 +4093,7 @@ _r(
     "Reduce delegation scope at each hop; refuse to forward tokens that are "
     "already delegated beyond a small bound.",
     sarif_name="A2aUnboundedDelegation",
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI03", "ASI08"],
     adversa_references=["ADV-A2A-06"],
     limitations=(
         "Reports a `delegation` block that sets neither `max_depth` nor `max_hops`. "
@@ -4162,8 +4112,7 @@ _r(
     "Require signed attestations from the original issuer; do not trust "
     "relayed claims.",
     sarif_name="A2aTransitiveTrust",
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_agentic_references=["ASI03", "ASI08"],
     adversa_references=["ADV-A2A-07"],
     limitations=(
         "Reads one key, `trust.accepts_relayed_claims`, and only when it is the "
@@ -4177,15 +4126,14 @@ _r(
     "AAK-A2A-011",
     "A2A tokens not anti-replay protected",
     "An A2A flow accepts tokens without nonce, timestamp, or jti checks, "
-    "allowing captured messages to be replayed. Replayed agent messages "
-    "are a core ASI08 Agent Communication Poisoning primitive.",
+    "allowing captured messages to be replayed. Replay on trust chains is one "
+    "of the OWASP ASI07 (Insecure Inter-Agent Communication) examples.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Include jti/nonce and iat/exp claims; reject duplicates inside a "
     "replay window.",
     sarif_name="A2aReplayable",
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI07", "ASI08"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-08"],
     limitations=(
         "Checks that the `tokens` block contains a `jti`, `nonce`, `require_jti` or "
@@ -4200,14 +4148,14 @@ _r(
     "A2A schema confusion between major versions",
     "An A2A endpoint accepts messages without version discriminator, "
     "allowing a v1 payload to be interpreted by a v2 handler (or vice "
-    "versa) with changed field semantics. Schema-confusion injection "
-    "is an ASI08 Agent Communication Poisoning pattern.",
+    "versa) with changed field semantics. Schema confusion is a "
+    "message-semantics gap of the kind OWASP ASI07 (Insecure Inter-Agent "
+    "Communication) names.",
     Severity.MEDIUM,
     Category.A2A_PROTOCOL,
     "Require an explicit schema version in every message; reject mismatches.",
     sarif_name="A2aSchemaConfusion",
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI07", "ASI08"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-A2A-09"],
     limitations=(
         "Asks for a `schema_version`, `a2a_version` or `apiVersion` only from a "
@@ -4226,7 +4174,9 @@ _r(
 #
 # References:
 #   - MCP spec 2025-11-25 SEP-1686 (Tasks primitive).
-#   - OWASP MCP05:2025 (Insecure Resource Handling).
+#   - OWASP MCP07:2025 (Insufficient Authentication & Authorization),
+#     MCP01:2025 (Token Mismanagement & Secret Exposure) and MCP10:2025
+#     (Context Injection & Over-Sharing, whose checklist names a missing TTL).
 #   - CWE-200 (Information Exposure), CWE-639 (Authorization Bypass Through
 #     User-Controlled Key), CWE-613 (Insufficient Session Expiration).
 # ---------------------------------------------------------------------------
@@ -4242,7 +4192,7 @@ _r(
     "Verify the caller is the task owner (or has an explicit grant) before "
     "returning task state.",
     sarif_name="TasksNoOwnerCheck",
-    owasp_mcp_references=["MCP05:2025"],
+    owasp_mcp_references=["MCP07:2025", "MCP10:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TASKS-01"],
     limitations=(
@@ -4270,7 +4220,7 @@ _r(
     "Zeroize credential fields when the task transitions to a terminal "
     "state. Keep only what a post-mortem actually needs.",
     sarif_name="TasksCredentialPersistence",
-    owasp_mcp_references=["MCP05:2025"],
+    owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TASKS-02"],
     limitations=(
@@ -4296,8 +4246,7 @@ _r(
     "Set a TTL on every task; expose a cancellation endpoint that zeroizes "
     "inputs and credentials.",
     sarif_name="TasksNoTtl",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     adversa_references=["ADV-TASKS-03"],
     limitations=(
         "Fires on a task class or store with no `ttl`, `expires_at`, `expiry` or "
@@ -4323,7 +4272,6 @@ _r(
     "cap (e.g. a bounded semaphore or a queue depth limit), and reject or "
     "back-pressure creation once the bound is reached.",
     sarif_name="TasksNoQuota",
-    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI08"],
     adversa_references=["ADV-TASKS-04"],
     limitations=(
@@ -4365,7 +4313,7 @@ _r(
     "body `method`/tool `name`; apply the security decision to the body.",
     sarif_name="McpRoutableHeaderBodyDesync",
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI03", "ASI07"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Fires on a file that reads the `Mcp-Method` or `Mcp-Name` header and uses "
@@ -4439,7 +4387,9 @@ _r(
 # References:
 #   - Anthropic Skills 2.0 (renderer/discovery overhaul April 2026).
 #   - ToxicSkills dataset (Snyk, 2026): 1,467 malicious payloads.
-#   - OWASP MCP05:2025 (Tool Poisoning), MCP10:2025 (Prompt Injection).
+#   - OWASP Agentic Skills Top 10 AST01 (Malicious Skills) and AST04
+#     (Insecure Metadata); OWASP ASI04 (Agentic Supply Chain Vulnerabilities).
+#     Skills are not MCP, so these rules carry no MCP Top 10 reference.
 #   - CWE-77 (Command Injection), CWE-94 (Code Injection), CWE-829
 #     (Inclusion of Functionality from Untrusted Control Sphere).
 # ---------------------------------------------------------------------------
@@ -4455,8 +4405,8 @@ _r(
     "Remove the post-install command. If setup is genuinely required, "
     "document it for the user rather than auto-running it.",
     sarif_name="SkillPostInstallCommand",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    owasp_ast_references=["AST01"],
     adversa_references=["ADV-SKILL-01"],
     limitations=(
         "Reads `SKILL.md` only and matches `curl ... | sh`, `wget ... | sh`, `npm "
@@ -4478,8 +4428,8 @@ _r(
     "Remove U+200B-U+200F, U+202A-U+202E, U+E0000-U+E007F and similar "
     "invisible / bidi characters from skill text.",
     sarif_name="SkillUnicodeSteg",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI01", "ASI04"],
+    owasp_ast_references=["AST01"],
     adversa_references=["ADV-SKILL-02"],
     limitations=(
         "Reads `SKILL.md` only and matches U+200B to U+200F, U+202A to U+202E, "
@@ -4500,8 +4450,8 @@ _r(
     "Remove the exfil instruction. Skills that genuinely need outbound HTTP "
     "should declare it explicitly with a documented purpose.",
     sarif_name="SkillExfilPrimitive",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    owasp_ast_references=["AST01"],
     adversa_references=["ADV-SKILL-03"],
     limitations=(
         "Reads `SKILL.md` only and needs one of `fetch`, `axios.get/post/put`, "
@@ -4527,8 +4477,8 @@ _r(
     "Rename the skill to match its actual behavior. Cross-reference the name "
     "against the first-party skill directory.",
     sarif_name="SkillNameHijack",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI04"],
+    owasp_ast_references=["AST01", "AST04"],
     adversa_references=["ADV-SKILL-04"],
     limitations=(
         "Compares only the frontmatter `name` of a `SKILL.md` with sixteen "
@@ -4551,8 +4501,8 @@ _r(
     "Remove the injection trigger. Skill frontmatter should only contain "
     "name, description, tags, and similar metadata.",
     sarif_name="SkillFrontmatterInjection",
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI01", "ASI04"],
+    owasp_ast_references=["AST04"],
     adversa_references=["ADV-SKILL-05"],
     limitations=(
         "Reads the frontmatter of `SKILL.md` (up to the closing `---`, or the first "
@@ -4589,8 +4539,7 @@ _r(
     "through an encrypted vault (e.g. AWS KMS / Azure Key Vault) and never "
     "log or commit it.",
     sarif_name="IndiaAadhaarInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads source, config and text files by extension (`.py`, `.ts`, `.json`, "
         "`.yaml`, `.toml`, `.txt`, `.md` and a few more) for a Verhoeff-valid Aadhaar "
@@ -4609,8 +4558,7 @@ _r(
     "Remove the PAN. If needed for processing, tokenize it and store "
     "tokens, not raw PANs.",
     sarif_name="IndiaPanInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads a PAN written in capitals: five letters, four digits and a letter. The "
         "same PAN in lower case (`abcde1234f`) is not reported."
@@ -4626,8 +4574,7 @@ _r(
     Category.SECRET_EXPOSURE,
     "Remove the UPI ID. Accept UPI addresses as runtime input only.",
     sarif_name="IndiaUpiInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads a UPI ID only when the handle after the `@` is one of fifteen "
         "payment-app handles (`@oksbi`, `@ybl`, `@paytm`, `@upi` and eleven more). An "
@@ -4646,8 +4593,7 @@ _r(
     "Move IFSC codes out of source; look them up at runtime from RBI's "
     "public IFSC directory.",
     sarif_name="IndiaIfscInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads an IFSC code written in capitals: four letters, a `0` and six letters "
         "or digits. The same code in lower case (`sbin0001234`) is not reported."
@@ -4663,8 +4609,7 @@ _r(
     Category.SECRET_EXPOSURE,
     "Remove the phone number. Never log raw phone numbers — hash them.",
     sarif_name="IndiaPhoneInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads a `+91` mobile number whose ten digits follow the country code without "
         "a break (`+91 9876543210`). The same number grouped in fives, `+91 98765 "
@@ -4683,8 +4628,7 @@ _r(
     "Remove the registration from source. If dealing with vehicle data, "
     "anonymize before checking in.",
     sarif_name="IndiaVehicleInCode",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads a registration only when it starts with one of 37 state and territory "
         "codes (`MH`, `DL`, `KA`, `TS` and so on). A code that is not on the list is "
@@ -4702,7 +4646,9 @@ _r(
 #     https://www.troutmanprivacy.com/2026/04/tennessee-enacts-health-care-ai-bill-with-private-right-of-action/
 #   - Kansas / Washington / Utah prior-auth physician-review mandates.
 #   - Georgia / Iowa AI-only insurance coverage decision restrictions.
-#   - OWASP Agentic Top 10 ASI05 (Excessive Agency), ASI09 (Improper Isolation).
+#   - Only AAK-HEALTHCARE-AI-001 carries an OWASP reference: ASI09
+#     (Human-Agent Trust Exploitation), for an AI presented as a licensed
+#     professional. The others are statutory duties no OWASP entry names.
 # ---------------------------------------------------------------------------
 
 _r(
@@ -4721,8 +4667,7 @@ _r(
     "mental-health professional. Add an explicit 'not a substitute for "
     "licensed care' disclaimer.",
     sarif_name="HealthcareAiMentalHealthClaim",
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI09"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches a short "
         "phrase list: `I am a/your therapist`, `act as a/your counselor`, `provide "
@@ -4746,7 +4691,6 @@ _r(
     "Route every prior-auth / medical-necessity output through a "
     "licensed-physician review step; expose that review in the audit log.",
     sarif_name="HealthcareAiPriorAuthSolo",
-    owasp_agentic_references=["ASI05"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches an "
         "adverb or a `no human` phrase, a verb in its base form and a decision "
@@ -4769,7 +4713,6 @@ _r(
     "Require human sign-off on coverage decisions; disclose AI "
     "involvement to the consumer.",
     sarif_name="HealthcareAiInsuranceSolo",
-    owasp_agentic_references=["ASI05"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `AI`, "
         "`algorithm` or `model`, then `only`, `solely` or `alone`, a decision verb "
@@ -4792,7 +4735,6 @@ _r(
     "Add a visible 'You are talking to an AI; this is not medical "
     "advice and is not a substitute for licensed care' disclosure.",
     sarif_name="HealthcareAiNoDisclosure",
-    owasp_agentic_references=["ASI05"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context "
         "is one of nine whole words (`patient`, `clinical`, `medical`, `mental "
@@ -4815,7 +4757,6 @@ _r(
     "system message; test for the most common suicide / self-harm "
     "phrases and escalate before generating any other reply.",
     sarif_name="HealthcareAiNoCrisisEscalation",
-    owasp_agentic_references=["ASI05"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches "
         "`suicid*`, `self-harm`, `overdose`, `harm myself`, `kill yourself`, `end "
@@ -4835,7 +4776,8 @@ _r(
 #     effective 2027-05-01 — the 21st state comprehensive privacy law:
 #     https://iapp.org/news/a/alabama-set-to-add-variation-to-us-state-privacy-patchwork
 #   - IAPP US State Privacy Legislation Tracker (21 states as of Apr 2026).
-#   - OWASP ASI04 (Supply Chain of Trust), CWE-200, CWE-359.
+#   - CWE-200, CWE-359. No OWASP MCP or Agentic entry names a privacy-notice
+#     duty, so these rules carry no OWASP reference.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -5231,8 +5173,8 @@ _r(
         "CVE-2026-33224",
         "CVE-2026-26015",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-RCE-04"],
     incident_references=["OX-MCP-2026-04-15"],
     limitations=(
@@ -5268,8 +5210,8 @@ _r(
     "the registration confirmation flow enabled.",
     sarif_name="WindsurfAutoApprove",
     cve_references=["CVE-2026-30615"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP09:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     adversa_references=["ADV-RCE-05"],
 )
 
@@ -5292,8 +5234,8 @@ _r(
     "procedures are in scope; deny-list apoc.* at the query layer.",
     sarif_name="Neo4jApocBypass",
     cve_references=["CVE-2026-35402"],
-    owasp_mcp_references=["MCP03:2025", "MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     auto_fixable=True,
     limitations=(
@@ -5328,8 +5270,7 @@ _r(
     "before any Claude Code launch.",
     sarif_name="ClaudeCodeWindowsProgramData",
     cve_references=["CVE-2026-35603"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-PATH-01"],
     limitations=(
         "Needs a `managed-settings.json` whose own path contains `ProgramData`, so "
@@ -5360,8 +5301,8 @@ _r(
     "lines.",
     sarif_name="McpLogInjection",
     cve_references=["CVE-2026-6494"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP08:2025"],
+    owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-LOG-01"],
     limitations=(
         "Reads the arguments of calls spelled `logger.<level>`, `log.<level>`, "
@@ -5389,7 +5330,7 @@ _r(
     "Add SECURITY.md at the repo root with a disclosure email and "
     "response SLA; OR add `security_contact` to the project manifest.",
     sarif_name="McpServerNoSecurityMd",
-    owasp_mcp_references=["MCP03:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     limitations=(
         "Treats a repository as an MCP server only when `mcp` appears in the name "
@@ -5437,8 +5378,8 @@ _r(
     "create an `mcpRouter.use(authMw)` and mount it once.",
     sarif_name="McpwnTwinAsymmetry",
     cve_references=["CVE-2026-33032", "CVE-2026-27944"],
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI01", "ASI02"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
     incident_references=["MCPWN-2026-04-16"],
     limitations=(
@@ -5506,8 +5447,8 @@ _r(
         # floor this rule already enforces, so it needs no separate detector.
         "CVE-2026-73601",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     auto_fixable=True,
     limitations=(
@@ -5546,8 +5487,7 @@ _r(
     "`.aak-oauth-trust.yml` under `trusted_client_ids:`. Rotate the "
     "consent if the client isn't recognised.",
     sarif_name="ThirdPartyOAuthBroadScope",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     incident_references=["VERCEL-2026-04-19"],
     limitations=(
         "Reads a fixed set of paths under the project root (`app.yaml`, `vercel.json`, "
@@ -5577,7 +5517,6 @@ _r(
     "See Vercel's bulletin for sensitive-env-var guidance: "
     "https://vercel.com/kb/bulletin/vercel-april-2026-security-incident",
     sarif_name="ThirdPartyAgentPlatformSdk",
-    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI04"],
     incident_references=["VERCEL-2026-04-19"],
     limitations=(
@@ -5617,8 +5556,8 @@ _r(
     "early when `Content-Length` exceeds your `maxMessageSize`.",
     sarif_name="McpFrameworkHttpBodyDos",
     cve_references=["CVE-2026-39313"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-DOS-01"],
     aicm_references=["LOG-13"],
     limitations=(
@@ -5659,8 +5598,8 @@ _r(
     "parameterized query builder, never string concatenation.",
     sarif_name="DorisMcpSqlInjection",
     cve_references=["CVE-2025-66335", "CVE-2025-66336"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-02"],
     aicm_references=["AIS-07", "DSP-07"],
     limitations=(
@@ -5708,8 +5647,8 @@ _r(
     "`accepts_stdio_risk: true` plus a `justification:` field in "
     "`.agent-audit-kit.yml`.",
     sarif_name="AnthropicSdkStdioSanitizer",
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-01"],
     incident_references=["OX-MCP-2026-04-15"],
     aicm_references=["AIS-07", "STA-08"],
@@ -5773,8 +5712,8 @@ _r(
         "CVE-2026-35577",
         "CVE-2026-81102",
     ],
-    owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-NETWORK-01"],
     incident_references=["MCP-DNS-REBIND-2026-04"],
     limitations=(
@@ -5808,8 +5747,8 @@ _r(
         "CVE-2026-35568",
         "CVE-2026-35577",
     ],
-    owasp_mcp_references=["MCP05:2025", "MCP07:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     adversa_references=["ADV-SUPPLY-01"],
     incident_references=["MCP-DNS-REBIND-2026-04"],
     limitations=(
@@ -5847,8 +5786,8 @@ _r(
     "into a log message. Pin `splunk-mcp-server >= 1.0.3`.",
     sarif_name="SplunkMcpTokenLog",
     cve_references=["CVE-2026-20205"],
-    owasp_mcp_references=["MCP08:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-LEAK-01"],
     incident_references=["SVD-2026-0405"],
     limitations=(
@@ -5887,8 +5826,7 @@ _r(
     "Actions). Dependabot will auto-bump SHA pins when `update-type: "
     "all` is set.",
     sarif_name="GhaNonShaPin",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-02"],
     incident_references=["GHA-IMMUTABLE-2026-04"],
     limitations=(
@@ -5925,7 +5863,7 @@ _r(
     "bind the server to 127.0.0.1 and front it with an auth proxy.",
     sarif_name="ExcelMcpPathTraversal",
     cve_references=["CVE-2026-40576"],
-    owasp_mcp_references=["MCP02:2025", "MCP09:2025"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-03"],
     limitations=(
@@ -5966,8 +5904,8 @@ _r(
     "the cap.",
     sarif_name="NextAiDrawBodyDos",
     cve_references=["CVE-2026-40608"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-DOS-02"],
     limitations=(
         "Reads the dependencies, devDependencies and peerDependencies of the "
@@ -6013,7 +5951,7 @@ _r(
     sarif_name="LangchainSsrfRedirect",
     cve_references=["CVE-2026-41481"],
     owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI04", "ASI09"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-NETWORK-02"],
     incident_references=["GHSA-fv5p-p927-qmxr"],
     limitations=(
@@ -6063,7 +6001,7 @@ _r(
     sarif_name="UrlAllowListToctou",
     cve_references=["CVE-2026-41488", "CVE-2026-53708", "CVE-2026-55096"],
     owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-NETWORK-03"],
     incident_references=["GHSA-r7w7-9xr2-qq2r"],
     limitations=(
@@ -6105,8 +6043,8 @@ _r(
     "federation are the documented production paths.",
     sarif_name="AzureMcpMissingAuth",
     cve_references=["CVE-2026-32211"],
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
     incident_references=["MSRC-2026-04-03-AZUREMCP"],
     limitations=(
@@ -6145,8 +6083,7 @@ _r(
     "sink cannot reach, or remove one side of the pair. Run "
     "`agent-audit-kit toxic-flow --explain` to see the full graph.",
     sarif_name="ToxicFlowSourceSink",
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI02", "ASI09"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-CHAIN-01"],
 )
 
@@ -6202,8 +6139,8 @@ _r(
     "`PATH` / `LD_PRELOAD`-style keys from the server's environment.",
     sarif_name="McpStdioServerParamsTainted",
     cve_references=[*_OX_MCP_STDIO_CVES, "CVE-2026-93965"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
     limitations=(
@@ -6234,8 +6171,8 @@ _r(
     "fetched JSON or `req.body` directly into the transport options.",
     sarif_name="McpStdioClientTransportTainted",
     cve_references=list(_OX_MCP_STDIO_CVES),
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
     limitations=(
@@ -6267,8 +6204,8 @@ _r(
     "over per-request resolution.",
     sarif_name="McpStdioServerParamsTaintedJava",
     cve_references=list(_OX_MCP_STDIO_CVES),
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
     limitations=(
@@ -6300,8 +6237,8 @@ _r(
     "process-spawn out of the request path entirely.",
     sarif_name="McpStdioCommandTaintedRust",
     cve_references=list(_OX_MCP_STDIO_CVES),
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     incident_references=["OX-MCP-2026-04-25"],
     limitations=(
@@ -6345,8 +6282,8 @@ _r(
     "trusted (e.g. an internal artifact registry), add it to "
     "`.aak-mcp-marketplace-trust.yml` with a `justification:` field.",
     sarif_name="McpMarketplaceConfigFetch",
-    owasp_mcp_references=["MCP05:2025", "MCP09:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SUPPLY-03"],
     incident_references=["OX-MCP-2026-04-25", "CLOUDFLARE-MCP-DEFENDER-2026-04-25"],
     limitations=(
@@ -6388,8 +6325,8 @@ _r(
     "with HTTP 401 *before* dispatching to the MCP handler.",
     sarif_name="AzureMcpServerNoAuth",
     cve_references=["CVE-2026-32211"],
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-02"],
     incident_references=["MSRC-2026-04-03-AZUREMCP"],
     limitations=(
@@ -6435,8 +6372,7 @@ _r(
     "install as urgent rather than routine.",
     sarif_name="LmdeployVlSsrf",
     cve_references=["CVE-2026-33626"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI04", "ASI09"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-NETWORK-04"],
     incident_references=["GHSA-LMDEPLOY-VL-2026-04-25"],
     limitations=(
@@ -6473,8 +6409,8 @@ _r(
     "server. Bump `splunk-mcp-server` to >= 1.0.3.",
     sarif_name="SplunkMcpTokenIndexLeak",
     cve_references=["CVE-2026-20205"],
-    owasp_mcp_references=["MCP08:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-LEAK-02"],
     incident_references=["SVD-2026-0405"],
     limitations=(
@@ -6516,8 +6452,7 @@ _r(
     "into an LLM prompt.",
     sarif_name="PrTitleIndirectPromptInjection",
     cve_references=[],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-PROMPT-01"],
     incident_references=["COMMENT-AND-CONTROL-2026-04-25"],
     limitations=(
@@ -6559,8 +6494,8 @@ _r(
     "`aak corpus update --fhi`.",
     sarif_name="McpFunctionHijacking",
     cve_references=[],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-CHAIN-02"],
     incident_references=["ARXIV-2604.20994"],
     limitations=(
@@ -6602,8 +6537,8 @@ _r(
     "and pass argv lists rather than a shell string.",
     sarif_name="McpAtlassianRce27825",
     cve_references=["CVE-2026-27825"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-05"],
     incident_references=["ANTHROPIC-MCP-2026-04-22"],
     limitations=(
@@ -6634,8 +6569,8 @@ _r(
     "content only under a path allow-list rooted at the agent's own directory.",
     sarif_name="McpAtlassianRce27826",
     cve_references=["CVE-2026-27826"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-05"],
     incident_references=["ANTHROPIC-MCP-2026-04-22"],
     limitations=(
@@ -6672,8 +6607,7 @@ _r(
     "ingestion time, not at scan time.",
     sarif_name="IpiWildPayload",
     cve_references=[],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI01"],
     adversa_references=["ADV-PROMPT-02"],
     incident_references=["IPI-WILD-2026-04-24"],
     limitations=(
@@ -6707,8 +6641,8 @@ _r(
     "published patched release.",
     sarif_name="McpInspectorCve23744",
     cve_references=["CVE-2026-23744"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SUPPLY-04"],
     incident_references=["MCPJAM-INSPECTOR-2026-04"],
     limitations=(
@@ -6748,7 +6682,6 @@ _r(
     "and raises `ParityDriftError` if any per-tier mean drifts more than "
     "the configured threshold from the overall mean.",
     sarif_name="ProjectDealEconomicDrift",
-    owasp_agentic_references=["ASI06"],
     incident_references=["ANTHROPIC-PROJECT-DEAL-2026-04-26"],
     limitations=(
         "Python only, and only for a function whose whole name is `set_price`, "
@@ -6780,7 +6713,6 @@ _r(
     "v0.4.0).",
     sarif_name="LangGraphToolNodePositionalList",
     auto_fixable=True,
-    owasp_agentic_references=["ASI09"],
     limitations=(
         "Fires on `ToolNode(...)` with a list literal or a bare name as its first "
         "positional argument, in a file that imports langgraph.prebuilt as `from "
@@ -6813,7 +6745,7 @@ _r(
     "([ROUTE: ...], <|route_id|>, __route__=, etc.) and truncates to a "
     "max length. Calling it in the same function suppresses this rule.",
     sarif_name="DeepSeekV4MoeToolInjection",
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI01", "ASI02"],
     limitations=(
         "Python only, per function. A DeepSeek target is recognised only from a "
         "string literal containing `deepseek` in `base_url=`, or a `deepseek` "
@@ -6846,7 +6778,7 @@ _r(
     "or workflow). For high-volume agents, route generated replies to a "
     "moderation queue instead of the platform sink directly.",
     sarif_name="TikTokAgentHijack",
-    owasp_agentic_references=["ASI09"],
+    owasp_agentic_references=["ASI01", "ASI09"],
     incident_references=["BHASIA-2026-TIKTOK-HIJACK"],
     limitations=(
         "Reads .py files only. It fires on one that calls `tiktok_api.reply(`, "
@@ -6908,7 +6840,7 @@ _r(
         "CVE-2026-2286",
         "CVE-2026-2287",
     ],
-    owasp_agentic_references=["ASI01", "ASI05", "ASI09"],
+    owasp_agentic_references=["ASI02", "ASI05"],
     incident_references=["CERT-CC-VU-221883"],
     aicm_references=["AIS-07", "STA-08"],
     limitations=(
@@ -6994,8 +6926,7 @@ _r(
     "resolution and enforces an explicit hostname allow-list.",
     sarif_name="CrewAiRagSsrf",
     cve_references=["CVE-2026-2286"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI02"],
     incident_references=["CERT-CC-VU-221883"],
     limitations=(
         "Fires on `RagTool` or `WebsiteSearchTool` built with a non-constant `url`, "
@@ -7025,7 +6956,7 @@ _r(
     "tool ever sees the host fallback.",
     sarif_name="CrewAiDockerLivenessMissing",
     cve_references=["CVE-2026-2287"],
-    owasp_agentic_references=["ASI09"],
+    owasp_agentic_references=["ASI05"],
     incident_references=["CERT-CC-VU-221883"],
     limitations=(
         "Fires on every `CodeInterpreterTool(...)` call that has no literal "
@@ -7055,7 +6986,7 @@ _r(
     "`langchain-core` to >= 0.3.74.",
     sarif_name="LangChainPromptLoaderTraversal",
     cve_references=["CVE-2026-34070"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     incident_references=["LANGCHAIN-PROMPT-LOADER-2026-03"],
     limitations=(
         "Needs a non-constant path passed to `load_prompt` or `from_file` and, in "
@@ -7114,8 +7045,8 @@ _r(
     "escape values safely and AAK ignores them.",
     sarif_name="AstroMcpSqlInjection",
     cve_references=["CVE-2026-7591"],
-    owasp_agentic_references=["ASI02", "ASI10"],
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
     limitations=(
         "Two arms. The pin reads `astro-mcp-server` in the root package.json, "
@@ -7153,7 +7084,6 @@ _r(
     "must be present in the same function body so the evidence-gated "
     "update loop can consume it.",
     sarif_name="SkillLifecycleAttributionMissing",
-    owasp_agentic_references=["ASI04", "ASI09"],
     incident_references=["ARXIV-2605.18401"],
     limitations=(
         "Recognises a skill by a decorator (`@skill`, `@skill_fn`, "
@@ -7190,7 +7120,7 @@ _r(
     "a `# noqa: AAK-AGENT-HARNESS-SHARED-STATE-001` comment with the "
     "coordinator name to suppress.",
     sarif_name="MultiAgentSharedStateNoLock",
-    owasp_agentic_references=["ASI04", "ASI06"],
+    owasp_agentic_references=["ASI06", "ASI08"],
     incident_references=["ARXIV-2605.18747"],
     limitations=(
         "Tracks only module-level `dict`, `list` and `set` objects that methods of "
@@ -7267,7 +7197,7 @@ _r(
     "Never echo a verbatim refusal sentence into the next prompt — that "
     "is the closed-loop reasoning gradient Metis exploits.",
     sarif_name="MetisRefusalRefeed",
-    owasp_agentic_references=["ASI01", "ASI02"],
+    owasp_agentic_references=["ASI01"],
     incident_references=["ARXIV-2605.10067"],
     limitations=(
         "Follows a refusal only through a parameter or variable whose name contains "
@@ -7300,7 +7230,7 @@ _r(
     "Per Metis: any verbose feedback string is fuel for the metacognitive "
     "policy refinement the paper demonstrates.",
     sarif_name="MetisScoringSink",
-    owasp_agentic_references=["ASI01", "ASI02"],
+    owasp_agentic_references=["ASI01"],
     incident_references=["ARXIV-2605.10067"],
     limitations=(
         "Follows a score only through a parameter or variable whose name contains "
@@ -7338,8 +7268,8 @@ _r(
     "0.1.1 fix is one canonical example of the safer shape.",
     sarif_name="McpToolUnsafeEvalSourceShape",
     cve_references=["CVE-2026-44717"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI05"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     incident_references=["NVD-CVE-2026-44717"],
     limitations=(
         "Looks inside the body of the decorated function only, at calls to `eval`, "
@@ -7386,7 +7316,7 @@ _r(
     "metacharacter.",
     sarif_name="McpToolArgOsCommand",
     cve_references=["CVE-2026-78430"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
@@ -7509,8 +7439,8 @@ _r(
     "with explicit allow-listed symbol tables.",
     sarif_name="McpCalculateServerEvalRce",
     cve_references=["CVE-2026-44717"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     incident_references=["NVD-CVE-2026-44717"],
     limitations=(
         "Matches `mcp-calculate-server` followed directly by a version "
@@ -7550,7 +7480,7 @@ _r(
     "not covered here.",
     sarif_name="SemanticKernelInMemoryVectorStoreFilterRce",
     cve_references=["CVE-2026-26030"],
-    owasp_agentic_references=["ASI02", "ASI05", "ASI10"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     incident_references=["MSRC-2026-05-07"],
     limitations=(
         "Matches `semantic-kernel` followed directly by a version "
@@ -7594,7 +7524,7 @@ _r(
     "auto-update has delivered both fixes to installs that keep it on.",
     sarif_name="ClaudeCodeFolderTrustBypass",
     cve_references=["CVE-2026-40068", "CVE-2026-103435"],
-    owasp_agentic_references=["ASI03", "ASI10"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
     limitations=(
         "Reads `@anthropic-ai/claude-code` in the root package.json, "
@@ -7645,8 +7575,8 @@ _r(
     "do not treat their presence as protection.",
     sarif_name="GptResearcherMcpTransportFlip",
     cve_references=["CVE-2025-65720"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     incident_references=["OX-MCP-2026-05-01"],
     limitations=(
         "Two arms. The pin reads `gpt-researcher` and `gpt-researcher-mcp` followed "
@@ -7701,8 +7631,8 @@ _r(
     "do not treat their presence as protection.",
     sarif_name="DocsGptMcpTransportFlip",
     cve_references=["CVE-2026-26015"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     incident_references=["OX-MCP-2026-05-01"],
     limitations=(
         "Two arms. The pin reads npm `docsgpt` and `docsgpt-mcp` in the root "
@@ -7746,8 +7676,8 @@ _r(
     "any TS file that constructs a stdio command from network input.",
     sarif_name="ChatGptMcpCmdInjection",
     cve_references=["CVE-2026-7061"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     incident_references=["NVD-CVE-2026-7061"],
     limitations=(
         "Reads the root package.json, package-lock.json, yarn.lock and "
@@ -7786,8 +7716,8 @@ _r(
     "as given.",
     sarif_name="AgentZeroMcpConfigRce",
     cve_references=["CVE-2026-30624"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     incident_references=["NVD-CVE-2026-30624", "OX-MCP-2026-05-01"],
     limitations=(
@@ -7828,8 +7758,8 @@ _r(
     cve_references=[
         "CVE-2026-30623", "CVE-2026-12773", "CVE-2026-12774", "CVE-2026-12798",
     ],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     incident_references=["BERRIAI-LITELLM-2026-04-30"],
     auto_fixable=True,
     limitations=(
@@ -7906,8 +7836,8 @@ _r(
     "that it is not LLM-settable.",
     sarif_name="ToolSchemaSandboxSelfDisable",
     cve_references=["CVE-2026-42074"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI06", "ASI04"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI05", "ASI10"],
     limitations=(
         "Reads JSON tool schemas (`inputSchema`, `input_schema`, `parameters`) for a "
         "property named like dangerouslyDisableSandbox, disable_sandbox, no_sandbox, "
@@ -7945,8 +7875,8 @@ _r(
     "suppress this finding.",
     sarif_name="SharedResourceMissingActorAuthz",
     cve_references=["CVE-2026-44654"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI04", "ASI02"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI03"],
     limitations=(
         "Reads JSON files only, taking a tool's `name` and `description` from keys "
         "written in exactly that case (a `\"Description\"` key hides the text), and "
@@ -8003,8 +7933,8 @@ _r(
     "AAK-FLOWISE-001 for related angles on the same RCE class.",
     sarif_name="McpStdioLauncherInjection",
     cve_references=["CVE-2026-40933"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05", "ASI02"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Fires when the launcher is npx, node, bash, sh, python or python3 and an "
@@ -8055,8 +7985,8 @@ _r(
         # package's version pin.
         "CVE-2026-77243",
     ],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI04", "ASI02"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI02"],
     limitations=(
         "In Python it compares the bodies of the functions named or decorated "
         "`list_tools` and `call_tool` (or dispatch, execute, run or invoke tool) for a "
@@ -8249,7 +8179,6 @@ _r(
     "sit in front of a superuser connection.",
     sarif_name="LlmSqlRce",
     cve_references=["CVE-2026-25879"],
-    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02", "ASI05"],
     adversa_references=["ADV-INJECT-07"],
     limitations=(
@@ -8293,8 +8222,7 @@ _r(
     "build tool used during skill setup.",
     sarif_name="SkillUntrustedExecPath",
     cve_references=["CVE-2026-53819"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-PATH-01"],
     limitations=(
         "Reads .py, .sh and .bash files whose name or content looks like install or "
@@ -8338,7 +8266,7 @@ _r(
     sarif_name="ArgvAllowlistToctou",
     cve_references=["CVE-2026-53822"],
     owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-07"],
     limitations=(
         "In Python a spawn is recognised by its spelling: `subprocess.run`, `call`, "
@@ -8488,8 +8416,8 @@ _r(
     "payloads, and render descriptions as data (never as instructions). Pin the "
     "card to a signed, provenance-verified publisher.",
     sarif_name="McpCardPoisonedTool",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SKILL-01"],
     limitations=(
         "Reads `tools[].description` in a committed card with the phrase lists of "
@@ -8544,8 +8472,8 @@ _r(
     "Populate `publisher` / `provenance` with a verifiable identity — never a "
     "placeholder.",
     sarif_name="McpCardUnsignedProvenance",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP03:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Checks that a `signature`, `signatures`, `provenance`, `attestation`, "
@@ -8572,8 +8500,8 @@ _r(
     "`authentication.required: true` with at least one concrete scheme. "
     "Least-privilege the card.",
     sarif_name="McpCardOverBroadClaims",
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP02:2025"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Treats a scope as a wildcard only when it is exactly `*`, `all`, `any`, "
@@ -8605,8 +8533,8 @@ _r(
     "cannot reach sensitive endpoints.",
     sarif_name="KongKonnectMcpPromptInjection",
     cve_references=["CVE-2026-13341"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_mcp_references=["MCP04:2025", "MCP06:2025"],
+    owasp_agentic_references=["ASI01", "ASI04"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads the `konnect-mcp` spelling (with an optional `kong-` or `@kong/` "
@@ -8636,8 +8564,8 @@ _r(
     "formatting.",
     sarif_name="McpGatewayRegistrySqlInjection",
     cve_references=["CVE-2026-14471"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `mcp-gateway-registry` as text in the project root's "
@@ -8685,8 +8613,8 @@ _r(
     "IP for the actual request to defeat DNS rebinding.",
     sarif_name="McpToolArgUrlSsrf",
     cve_references=["CVE-2026-14748", "CVE-2026-104120"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads only files that contain FastMCP, McpServer, modelcontextprotocol, "
@@ -8739,8 +8667,8 @@ _r(
     "`execute_shell_command` behind an explicit approval gate.",
     sarif_name="SerenaMcpUnauthDashboardRce",
     cve_references=["CVE-2026-49471"],
-    owasp_mcp_references=["MCP02:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or "
@@ -8781,8 +8709,8 @@ _r(
     "validates entry paths against the destination directory.",
     sarif_name="LiteLLMMcpAuthBypass",
     cve_references=["CVE-2026-59822", "CVE-2026-59820"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `litellm` in requirements*.txt at any depth and, at the project root "
@@ -8814,8 +8742,8 @@ _r(
     "dashboard WebSocket.",
     sarif_name="ClineHubDashboardOriginBypass",
     cve_references=["CVE-2026-59723"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `cline` in requirements*.txt at any depth and, at the project root "
@@ -8844,8 +8772,8 @@ _r(
     "reject `..` / absolute paths in `file_path`.",
     sarif_name="McpTextEditorPathTraversal",
     cve_references=["CVE-2026-15138"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `mcp-text-editor` in requirements*.txt at any depth and, at the "
@@ -8876,8 +8804,8 @@ _r(
     "member-level user cannot redirect a shared credential to an external host.",
     sarif_name="N8nMcpCredentialDomainBypass",
     cve_references=["CVE-2026-59207"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
@@ -8907,8 +8835,8 @@ _r(
     "authentication; bind it to loopback and require a token on `/mcp` routes.",
     sarif_name="RufloUnauthMcpBridgeRce",
     cve_references=["CVE-2026-59726"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `ruflo` in requirements*.txt at any depth and, at the project root "
@@ -8941,8 +8869,8 @@ _r(
     "`authProvider` so `POST /mcp` is not reachable unauthenticated.",
     sarif_name="DeepseekMcpUnboundSession",
     cve_references=["CVE-2026-55604", "CVE-2026-55605"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `@arikusi/deepseek-mcp-server` in requirements*.txt at any depth "
@@ -8974,8 +8902,8 @@ _r(
     "caller-supplied values to any spawned `kubectl` command.",
     sarif_name="McpServerKubernetesArgInjection",
     cve_references=["CVE-2026-61459"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `mcp-server-kubernetes` in requirements*.txt at any depth and, at "
@@ -9007,8 +8935,8 @@ _r(
     "loopback / metadata ranges before fetching.",
     sarif_name="AstrBotMcpTestSsrf",
     cve_references=["CVE-2026-15501"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `astrbot` in requirements*.txt at any depth and, at the project root "
@@ -9045,8 +8973,8 @@ _r(
     "before following them.",
     sarif_name="HealthLakeMcpPaginationSsrf",
     cve_references=["CVE-2026-15643"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `awslabs.healthlake-mcp-server` in requirements*.txt at any depth "
@@ -9102,8 +9030,8 @@ _r(
         # Fixed 4.6.59, below the 4.6.78 floor, so again no pin of its own.
         "CVE-2026-57124",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `praisonai` in requirements*.txt at any depth and, at the project "
@@ -9133,8 +9061,8 @@ _r(
     "attributes before interpolating them into UI-resource HTML.",
     sarif_name="AppiumMcpLocatorUiInjection",
     cve_references=["CVE-2026-58500"],
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `appium-mcp` in requirements*.txt at any depth and, at the project "
@@ -9163,8 +9091,8 @@ _r(
     "endpoint unauthenticated; bind debugging servers to loopback only.",
     sarif_name="PenpotMcpReplRce",
     cve_references=["CVE-2026-45805"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `@penpot/mcp` in requirements*.txt at any depth and, at the project "
@@ -9211,8 +9139,8 @@ _r(
         "CVE-2026-62195", "CVE-2026-62208", "CVE-2026-100585",
         "CVE-2026-100587", "CVE-2026-100596",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `openclaw` in requirements*.txt at any depth and, at the project "
@@ -9241,8 +9169,8 @@ _r(
     "runs the same secret-lint / output-validation checks as the direct read tool.",
     sarif_name="RepomixMcpSecretLintBypass",
     cve_references=["CVE-2026-49988"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Reads `repomix` in requirements*.txt at any depth and, at the project root "
@@ -9282,8 +9210,8 @@ _r(
     "PKCE in the OIDC/MCP provider config.",
     sarif_name="BetterAuthOauthTokenEndpointBypass",
     cve_references=["CVE-2026-53512", "CVE-2026-53518", "CVE-2026-67333", "CVE-2026-67336"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `better-auth` and `@better-auth/oauth-provider` in requirements*.txt "
@@ -9322,8 +9250,8 @@ _r(
     "that created it and validate Host/Origin on WebSocket handshakes.",
     sarif_name="McpPythonSdkSessionIsolation",
     cve_references=["CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-11"],
     limitations=(
         "Reads `mcp` in requirements*.txt at any depth and, at the project root "
@@ -9358,8 +9286,8 @@ _r(
     "args before spawning subprocesses.",
     sarif_name="NineRouterMcpUnauthRce",
     cve_references=["CVE-2026-46339", "CVE-2026-49353", "CVE-2026-62312", "CVE-2026-63732"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `9router` in requirements*.txt at any depth and, at the project root "
@@ -9390,8 +9318,8 @@ _r(
     "the authenticated tenant.",
     sarif_name="N8nMcpTenantIsolation",
     cve_references=["CVE-2026-54052", "CVE-2026-55608"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `n8n-mcp` in requirements*.txt at any depth and, at the project root "
@@ -9433,8 +9361,8 @@ _r(
         # CVE merely recorded: 1.17.1 through 1.19.x were vulnerable and silent.
         "CVE-2026-55837",
     ],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `dbt-mcp` in requirements*.txt at any depth and, at the project root "
@@ -9479,8 +9407,8 @@ _r(
     "catches a userinfo authority that string concatenation does not.",
     sarif_name="ApifyMcpDocsAllowlistSsrf",
     cve_references=["CVE-2026-46341", "CVE-2026-50143"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `@apify/actors-mcp-server` in requirements*.txt at any depth and, at "
@@ -9510,8 +9438,8 @@ _r(
     "into a shell; use argv-array subprocess calls with validated inputs.",
     sarif_name="AgenticFlowMcpExecSyncInjection",
     cve_references=["CVE-2026-58195"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `agentic-flow` in requirements*.txt at any depth and, at the project "
@@ -9541,8 +9469,8 @@ _r(
     "and contain every `workflow_files` path under the bundle root before writing.",
     sarif_name="HealthOmicsMcpPathTraversal",
     cve_references=["CVE-2026-15415"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-PATH-01"],
     limitations=(
         "Reads `awslabs.aws-healthomics-mcp-server` in requirements*.txt at any "
@@ -9592,8 +9520,8 @@ _r(
     "untrusted local MCP servers, browser extensions, or other untrusted processes.",
     sarif_name="WhatsAppMcpUnauthBridgeTraversal",
     cve_references=["CVE-2026-46555"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `whatsapp-mcp` in requirements*.txt at any depth and, at the project "
@@ -9633,8 +9561,8 @@ _r(
     "and never resume a `bypassPermissions` agent from untrusted `From` mail.",
     sarif_name="AgenticMailBridgeWakeInjection",
     cve_references=["CVE-2026-57495"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP06:2025"],
+    owasp_agentic_references=["ASI01", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `@agenticmail/claudecode`, `@agenticmail/codex`, `@agenticmail/core` "
@@ -9684,8 +9612,8 @@ _r(
     sarif_name="McpForStataCommandInjection",
     cve_references=["CVE-2026-47708", "CVE-2026-55071"],
     incident_references=["GHSA-4p62-hqp5-g644", "GHSA-49m4-vp58-wgc9"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `stata-mcp` in requirements*.txt at any depth and, at the project "
@@ -9727,8 +9655,8 @@ _r(
     "authenticated user's access to the referenced workflow before issuing a token.",
     sarif_name="N8nMcpOAuthWorkflowAuthzBypass",
     cve_references=["CVE-2026-65594"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
@@ -9766,8 +9694,8 @@ _r(
     "minimum operations required.",
     sarif_name="AwsApiMcpServerPolicyBypass",
     cve_references=["CVE-2026-16584"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `awslabs.aws-api-mcp-server` in requirements*.txt at any depth and, "
@@ -9802,8 +9730,8 @@ _r(
     "forward broker credentials / OAuth tokens to a caller-influenced endpoint.",
     sarif_name="AmazonMqMcpServerBrokerHostnameSsrf",
     cve_references=["CVE-2026-18655"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `awslabs.amazon-mq-mcp-server` in requirements*.txt at any depth "
@@ -9850,8 +9778,7 @@ _r(
         # both now pinned, because the npm pin could not see either package.
         "CVE-2026-55253",
     ],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `@langchain/langgraph-checkpoint-mongodb`, "
@@ -9885,8 +9812,8 @@ _r(
     "stages when a client is scoped read-only.",
     sarif_name="DocumentDbMcpAggregationAuthzBypass",
     cve_references=["CVE-2026-18954"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `awslabs.documentdb-mcp-server` in requirements*.txt at any depth "
@@ -9934,8 +9861,8 @@ _r(
         # half runs a 2.x line and has its own rule.
         "CVE-2026-59973",
     ],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI05", "ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-01"],
     limitations=(
         "Reads `frontmcp` and `@frontmcp/adapters` in package.json, .mcp.json, "
@@ -9970,8 +9897,7 @@ _r(
     "cannot spill into a sibling namespace.",
     sarif_name="LangGraphCheckpointNamespaceLeak",
     cve_references=["CVE-2026-71433"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `langgraph-checkpoint-postgres` and `langgraph-checkpoint-sqlite` in "
@@ -10018,8 +9944,8 @@ _r(
         # moved rather than the CVE simply being recorded.
         "CVE-2026-54549",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `meta-ads-mcp` in requirements*.txt at any depth and, at the project "
@@ -10057,8 +9983,8 @@ _r(
     "publishes a patched release.",
     sarif_name="AdenotMcpGoogleSearchReadWebpageSsrf",
     cve_references=["CVE-2026-19337"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `@adenot/mcp-google-search` in requirements*.txt at any depth and, "
@@ -10100,8 +10026,8 @@ _r(
     "callers.",
     sarif_name="McpGrafanaXGrafanaUrlSsrf",
     cve_references=["CVE-2026-19516", "CVE-2026-15583"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `mcp-grafana` in requirements*.txt at any depth and, at the project "
@@ -10163,8 +10089,8 @@ _r(
     "which is where CVE-2026-85166 hides one.",
     sarif_name="N8nMcpClientNodeSsrfBypass",
     cve_references=["CVE-2026-72768", "CVE-2026-77068", "CVE-2026-77073", "CVE-2026-85166"],
-    owasp_mcp_references=["MCP09:2025", "MCP04:2025"],
-    owasp_agentic_references=["ASI06", "ASI05"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
@@ -10225,8 +10151,8 @@ _r(
         "CVE-2026-79743", "CVE-2026-79744", "CVE-2026-79745", "CVE-2026-79746",
         "CVE-2026-79747", "CVE-2026-79748", "CVE-2026-79749", "CVE-2026-79750",
     ],
-    owasp_mcp_references=["MCP01:2025", "MCP09:2025"],
-    owasp_agentic_references=["ASI04", "ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01", "ADV-SSRF-01"],
     limitations=(
         "Reads `@samanhappy/mcphub` in requirements*.txt at any depth and, at the "
@@ -10262,8 +10188,8 @@ _r(
     "as a user with no read access to anything outside its session directory.",
     sarif_name="McpSequentialThinkingSessionPathTraversal",
     cve_references=["CVE-2026-81845"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `mcp-sequential-thinking` in requirements*.txt at any depth and, at "
@@ -10304,8 +10230,7 @@ _r(
     "`agentName`) into a shell.",
     sarif_name="ClaudeCodeTemplatesStudioCommandInjection",
     cve_references=["CVE-2026-73222"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `claude-code-templates` in requirements*.txt at any depth and, at "
@@ -10345,8 +10270,8 @@ _r(
     "surface to any untrusted network.",
     sarif_name="UfoMobileMcpUnauthenticated",
     cve_references=["CVE-2026-73296"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "The dependency check reads requirements* files, pyproject.toml, Pipfile, "
@@ -10386,8 +10311,7 @@ _r(
     "letting each derive its own.",
     sarif_name="DenyPolicyTruncationBypass",
     cve_references=["CVE-2026-73614"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Looks for `x = y.slice(0, 500)` (or `substring`, `substr`) or `x = y[:500]` "
@@ -10497,8 +10421,8 @@ _r(
         #   interpolates the `error` parameter unescaped.
         "CVE-2026-77250", "CVE-2026-77268", "CVE-2026-77265", "CVE-2026-77272",
     ],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Two arms. The pin reads `mcp-atlassian` in requirements*.txt at any depth "
@@ -10540,8 +10464,8 @@ _r(
     "rather than gating only the raw HTTP/TCP/TLS paths.",
     sarif_name="JshookIcmpSsrfPolicyBypass",
     cve_references=["CVE-2026-49856"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `@jshookmcp/jshook` in requirements*.txt at any depth and, at the "
@@ -10582,8 +10506,8 @@ _r(
     "check, and re-check after any redirect.",
     sarif_name="AuthFetchMcpMappedIpv6LoopbackBypass",
     cve_references=["CVE-2026-49857"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `auth-fetch-mcp` in requirements*.txt at any depth and, at the "
@@ -10623,8 +10547,8 @@ _r(
     "per-route, so a new route cannot ship unprotected by omission.",
     sarif_name="McpMemoryServiceUnauthDocuments",
     cve_references=["CVE-2026-50027"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI06"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `mcp-memory-service` in requirements*.txt at any depth and, at the "
@@ -10668,8 +10592,8 @@ _r(
     "at untrusted content; marker-file presence is not authentication.",
     sarif_name="CortexClaudeProjectDirExec",
     cve_references=["CVE-2026-49986"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     limitations=(
         "Reads `neuro-cortex-memory` in requirements*.txt at any depth and, at the "
@@ -10720,8 +10644,8 @@ _r(
         # never resolves it. Fixed in 0.4.108, below this pin's 0.4.112 floor.
         "CVE-2026-61612",
     ],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `@aborruso/ckan-mcp-server` in requirements*.txt at any depth and, "
@@ -10779,8 +10703,7 @@ _r(
     cve_references=[
         "CVE-2025-51482", "CVE-2026-4964", "CVE-2026-4965", "CVE-2025-6101",
     ],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     incident_references=["OX-MCP-2026-05-01"],
     limitations=(
@@ -10816,8 +10739,8 @@ _r(
     "provider keys to a caller-supplied endpoint.",
     sarif_name="Flyto2CoreProviderKeyExfil",
     cve_references=["CVE-2026-67425"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `flyto-core` in requirements*.txt at any depth and, at the project "
@@ -10897,8 +10820,8 @@ _r(
         "CVE-2026-85025", "CVE-2026-78575", "CVE-2026-81941", "CVE-2026-101861",
         "CVE-2026-105697", "CVE-2026-105740", "CVE-2026-105741", "CVE-2026-105699",
     ],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `langflow`, `langflow-base` and `lfx` in requirements*.txt at any "
@@ -10931,8 +10854,8 @@ _r(
     "before reading) rather than reading whatever the caller names.",
     sarif_name="GeminiBridgePathTraversal",
     cve_references=["CVE-2026-54785"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
         "Reads `gemini-bridge` in requirements*.txt at any depth and, at the "
@@ -10982,7 +10905,7 @@ _r(
     sarif_name="McpSidecarNoAuth",
     cve_references=["CVE-2026-55156", "CVE-2026-49471", "CVE-2026-73222"],
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-MCP-03"],
     incident_references=["GHSA-76pc-mqxp-3rq5", "GHSA-rm43-82j9-r4mj"],
     limitations="Detects the listener and the absence of an auth marker in the "
@@ -11015,7 +10938,7 @@ _r(
     sarif_name="McpSidecarRebind",
     cve_references=["CVE-2026-55156", "CVE-2026-49471"],
     owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-MCP-03"],
     incident_references=["GHSA-76pc-mqxp-3rq5"],
     limitations="Detects a literal loopback bind. A bind address read from "
@@ -11063,8 +10986,8 @@ _r(
     "allow-list — quoting the outer shell does nothing for the inner one.",
     sarif_name="ShellQuotedInterpolation",
     cve_references=["CVE-2026-55157", "CVE-2026-55071", "CVE-2026-94031"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-TOOL-02"],
     incident_references=["GHSA-49mq-fc6q-3h46", "GHSA-49m4-vp58-wgc9"],
     limitations="Propagation is one hop: a parameter interpolated into a local "
@@ -11094,7 +11017,7 @@ _r(
     "decision rather than the default install.",
     sarif_name="ShellToolDefaultProfile",
     cve_references=["CVE-2026-55157", "CVE-2026-55071"],
-    owasp_mcp_references=["MCP01:2025"],
+    owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-TOOL-02"],
     incident_references=["GHSA-49mq-fc6q-3h46", "GHSA-49m4-vp58-wgc9"],
@@ -11136,8 +11059,8 @@ _r(
     "control rather than a pending upgrade.",
     sarif_name="McpFlorence2GetImagesSsrf",
     cve_references=["CVE-2026-19984"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `mcp-florence2` in requirements*.txt at any depth and, at the "
@@ -11182,8 +11105,8 @@ _r(
     "policy the engine never consults offers no protection.",
     sarif_name="CodeWhaleAutoApprovedExecution",
     cve_references=["CVE-2026-75858", "CVE-2026-75857"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `codewhale` and `deepseek-tui`, each against its own fix floor, in "
@@ -11224,8 +11147,8 @@ _r(
     "untrusted repository as executable content, not as a document.",
     sarif_name="MarimoNotebookMcpCommandInjection",
     cve_references=["CVE-2026-75149"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `marimo` in requirements*.txt at any depth and, at the project root "
@@ -11261,8 +11184,8 @@ _r(
     "equivalent to shared-agent edit rights until you are past 0.3.0.",
     sarif_name="OmnigentSharedAgentMcpInjection",
     cve_references=["CVE-2026-62674"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `omnigent` in requirements*.txt at any depth and, at the project "
@@ -11301,8 +11224,8 @@ _r(
     "release containing the fix.",
     sarif_name="NeoMjsFileSystemMcpShellInjection",
     cve_references=["CVE-2026-18482"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `neo.mjs` in requirements*.txt at any depth and, at the project root "
@@ -11341,8 +11264,8 @@ _r(
     "version floor once upstream ships a release that states it fixes this.",
     sarif_name="LangBotStdioMcpAuthzBypass",
     cve_references=["CVE-2026-54449"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reads `langbot` in requirements*.txt at any depth and, at the project root "
@@ -11388,8 +11311,8 @@ _r(
     "and character set before parsing.",
     sarif_name="QwedMcpParseExprRce",
     cve_references=["CVE-2026-55546"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     limitations=(
         "Reads `qwed-mcp` in requirements*.txt at any depth and, at the project "
@@ -11423,8 +11346,8 @@ _r(
     "secret is an optional control.",
     sarif_name="NextcloudMcpWebhookNoAuth",
     cve_references=["CVE-2026-55640"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `nextcloud-mcp-server` in requirements*.txt at any depth and, at the "
@@ -11459,8 +11382,8 @@ _r(
     "filtering the path string -- and treat the filename as untrusted too.",
     sarif_name="BrowseMcpPathTraversal",
     cve_references=["CVE-2026-55557"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
         "Reads `browse-mcp` in requirements*.txt at any depth and, at the project "
@@ -11493,8 +11416,8 @@ _r(
     "`Origin` and `Host` against an allow-list on any local HTTP MCP listener.",
     sarif_name="GenieacsMcpDnsRebind",
     cve_references=["CVE-2026-55637"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `genieacs-mcp` in requirements*.txt at any depth and, at the project "
@@ -11529,8 +11452,8 @@ _r(
     "identifier, and resolve-and-contain before opening.",
     sarif_name="ConsciousnessExplorerStatePathTraversal",
     cve_references=["CVE-2026-55609"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
         "Reads `sublinear-time-solver` and `consciousness-explorer`, each against "
@@ -11581,7 +11504,6 @@ _r(
     "reviewable; without it an upstream takeover reaches you on next use rather "
     "than on next upgrade.",
     sarif_name="AgenticSkillUnpinnedExternalResource",
-    owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     owasp_ast_references=["AST02", "AST07"],
@@ -11617,8 +11539,7 @@ _r(
     "tag like this raises rather than executes; if you maintain a loader, that "
     "change protects every skill it will ever read.",
     sarif_name="AgenticSkillFrontmatterDeserializationTag",
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     owasp_ast_references=["AST04"],
     limitations=(
@@ -11657,7 +11578,6 @@ _r(
     "whenever a skill is ported; equivalence between formats is the assumption "
     "this risk is named after.",
     sarif_name="AgenticSkillCrossPlatformMetadataLoss",
-    owasp_mcp_references=["MCP02:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     owasp_ast_references=["AST10"],
@@ -11712,7 +11632,6 @@ _r(
     "loaded together. Hardening the middle component alone does not help, because "
     "the chain re-forms around any replacement with the same capability.",
     sarif_name="CompositionChainToEgress",
-    owasp_mcp_references=["MCP08:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-01"],
     incident_references=["ARXIV-2608.16246", "ARXIV-2608.09732"],
@@ -11754,8 +11673,7 @@ _r(
     "not resolve it by adding a write capability to one manifest and leaving the "
     "path shared - that documents the write without documenting the channel.",
     sarif_name="CompositionSharedUndeclaredState",
-    owasp_mcp_references=["MCP08:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI06"],
     adversa_references=["ADV-INJECT-01"],
     incident_references=["ARXIV-2608.09732"],
     limitations=(
@@ -11788,8 +11706,8 @@ _r(
     "narrowing the code: a manifest widened to match an incidental `curl` grants "
     "that capability permanently.",
     sarif_name="CompositionUnderdeclaredCapability",
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI04"],
+    owasp_ast_references=["AST03"],
     adversa_references=["ADV-SUPPLY-01"],
     incident_references=["ARXIV-2608.16246"],
     limitations=(
@@ -11825,8 +11743,7 @@ _r(
     "an authorization decision.",
     sarif_name="McpLangGraphApiWebhookAuthBypass",
     cve_references=["CVE-2026-55235"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     limitations=(
         "Reads `langgraph-api` in requirements*.txt at any depth and, at the "
         "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
@@ -11866,8 +11783,8 @@ _r(
     "endpoint that spawns is remote code execution by design, not by bug.",
     sarif_name="McpStdioCommandTaintedGo",
     cve_references=["CVE-2026-90898"],
-    owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI10"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     limitations=(
         "Matches an `exec.Command` or `exec.CommandContext` call in an MCP-shaped "
         "Go file with a request-decoding marker (`json.NewDecoder(r.Body)`, an "
@@ -11904,8 +11821,7 @@ _r(
     # AST01 Malicious Skills: the hidden-instruction arm. No CVE -- this is a
     # pattern class, not a disclosure -- and no AICM row, which this rule
     # cannot evidence on its own.
-    owasp_mcp_references=["MCP05:2025"],
-    owasp_agentic_references=["ASI01"],
+    owasp_agentic_references=["ASI01", "ASI04"],
     owasp_ast_references=["AST01"],
     limitations=(
         "Reads HTML comments in the body of `SKILL.md` and reports one that holds "
@@ -11942,8 +11858,6 @@ _r(
     # the server that runs is not necessarily the server that was reviewed.
     # Deliberately no AICM or CVE row -- this rule evidences neither, and a tick
     # a scanner cannot substantiate is worse than a blank.
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
     limitations=(
         "Checks the JSON type of `args`, `command`, `env` and `url` on each entry of "
         "an `mcpServers` object. A config whose `mcpServers` is an array, a server "
@@ -12038,8 +11952,8 @@ _r(
     "guard default to deny rather than allow when classification fails.",
     sarif_name="SsrfBracketedHostBypass",
     cve_references=["CVE-2026-80347"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     aicm_references=["IVS-04", "AIS-08"],
     limitations=(
@@ -12065,8 +11979,7 @@ _r(
     "oversized descriptions and schemas before building the catalogue.",
     sarif_name="McpToolsListUnbounded",
     cve_references=["CVE-2026-84289"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_agentic_references=["ASI08"],
     adversa_references=["ADV-DOS-01"],
     limitations=(
         "Detects the absence of any bound in the same file as the catalogue "
@@ -12093,8 +12006,7 @@ _r(
     "instead of a shell-parsed command string.",
     sarif_name="ApprovalParserDesync",
     cve_references=["CVE-2026-19591"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_agentic_references=["ASI05", "ASI09"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Covers the PowerShell stop-parsing token specifically, not every shell's "
@@ -12134,8 +12046,8 @@ _r(
     "deny-list over attribute names is not a sandbox boundary.",
     sarif_name="ToolUniversePythonExecutorSandboxEscape",
     cve_references=["CVE-2026-81096"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-EXEC-01"],
     limitations=(
         "Dependency-level detection only: this fires on the pinned or unpinned "
@@ -12186,8 +12098,8 @@ _r(
         "CVE-2026-53710",
         "CVE-2026-78573",
     ],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-NET-01"],
     limitations=(
         "Reads `mcp-contextforge-gateway` in requirements*.txt at any depth and, at "
@@ -12227,8 +12139,8 @@ _r(
     "the MCP server's SQL validator.",
     sarif_name="PostgresMcpRestrictedModeFromClauseBypass",
     cve_references=["CVE-2026-85620"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Reads `postgres-mcp` in requirements*.txt at any depth and, at the project "
@@ -12268,8 +12180,8 @@ _r(
     "`COPY ... TO PROGRAM` even if the statement filter is bypassed.",
     sarif_name="AwslabsPostgresMcpSqlValidationGap",
     cve_references=["CVE-2026-87911", "CVE-2026-85787"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Reads `awslabs.postgres-mcp-server` in requirements*.txt at any depth and, "
@@ -12305,8 +12217,8 @@ _r(
     "owned by your account, and treat anything already written to it as disclosed.",
     sarif_name="AwsSecurityAgentMcpBucketOwnership",
     cve_references=["CVE-2026-87913"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Reads `awslabs.security-agent-mcp-server` in requirements*.txt at any "
@@ -12351,8 +12263,8 @@ _r(
     "`execute_sql` cannot become file read/write.",
     sarif_name="MysqlMcpServerUnauthSse",
     cve_references=["CVE-2026-59971"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-02"],
     limitations=(
         "Reads `mysql-mcp-server` and `mysql_mcp_server` in requirements*.txt at "
@@ -12400,8 +12312,8 @@ _r(
         # on every affected version. Recorded rather than pinned again.
         "CVE-2026-57134",
     ],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-02"],
     limitations=(
         "Reads `praisonai` in package.json, .mcp.json, mcp.json, "
@@ -12451,8 +12363,8 @@ _r(
     "compromised: rotate it rather than relying on the upgrade alone.",
     sarif_name="ZereightMcpGitlabUnauthAndSsrf",
     cve_references=["CVE-2026-61560", "CVE-2026-61559", "CVE-2026-61568"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-02"],
     limitations=(
         "Reads `@zereight/mcp-gitlab` in package.json, .mcp.json, mcp.json, "
@@ -12490,8 +12402,8 @@ _r(
     "paths require only an authenticated session.",
     sarif_name="FlowiseCustomMcpNodeRce",
     cve_references=["CVE-2026-91931", "CVE-2026-91932"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AGENT-01"],
     limitations=(
         "Reads `flowise` in package.json, .mcp.json, mcp.json, "
@@ -12538,8 +12450,8 @@ _r(
     "and revalidate every redirect target rather than trusting the first hop.",
     sarif_name="McpFromOpenapiRefSsrf",
     cve_references=["CVE-2026-59973"],
-    owasp_mcp_references=["MCP08:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AGENT-04"],
     limitations=(
         "Reads `mcp-from-openapi` in package.json, .mcp.json, mcp.json, "
@@ -12583,8 +12495,8 @@ _r(
     "choose is a destination an attacker can choose.",
     sarif_name="ContentfulMcpMigrationHostRedirect",
     cve_references=["CVE-2026-53957"],
-    owasp_mcp_references=["MCP08:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-04"],
     limitations=(
         "Reads `@contentful/mcp-server` and `@contentful/mcp-tools`, each against "
@@ -12621,7 +12533,7 @@ _r(
     "only place the limit is applied.",
     sarif_name="McpSearxngUnboundedRead",
     cve_references=["CVE-2026-58483"],
-    owasp_mcp_references=["MCP08:2025"],
+    owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-AGENT-04"],
     limitations=(
@@ -12657,8 +12569,8 @@ _r(
     "rather than executing whatever the catalog names.",
     sarif_name="AtomicAgentsCleartextRegistryExec",
     cve_references=["CVE-2026-91988"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     adversa_references=["ADV-AGENT-01"],
     limitations=(
         "Reads `atomic-agents-stack` in requirements*.txt at any depth and, at the "
@@ -12697,8 +12609,8 @@ _r(
     "tools were reachable too.",
     sarif_name="NetlicensingMcpAuthFallback",
     cve_references=["CVE-2026-54446"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-02"],
     limitations=(
         "Reads `netlicensing-mcp` in requirements*.txt at any depth and, at the "
@@ -12742,8 +12654,8 @@ _r(
     "and reject any result that escapes the project root before opening it.",
     sarif_name="KnownsMcpPathTraversal",
     cve_references=["CVE-2026-86439", "CVE-2026-88938"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
         "Reads `knowns` in requirements*.txt at any depth and, at the project root "
@@ -12792,8 +12704,8 @@ _r(
     "caller also chose.",
     sarif_name="McpConfiguredDestinationUnvalidated",
     cve_references=["CVE-2026-85666", "CVE-2026-86122"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-NET-01"],
     limitations=(
         "Python only, and scoped to configuration-shaped destination names. A "
@@ -12831,8 +12743,8 @@ _r(
     "CVE-2026-81096.",
     sarif_name="DenylistSandboxLookupReachable",
     cve_references=["CVE-2026-81096", "CVE-2026-53710"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP05:2025"],
+    owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXEC-01"],
     limitations=(
         "Python only, and requires all four signals together — a deny-list of "
@@ -12877,8 +12789,8 @@ _r(
     "reader and the parser rather than using `Channel.UNLIMITED`.",
     sarif_name="McpKotlinSdkStdioUnboundedReadBuffer",
     cve_references=["CVE-2026-53937"],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-RES-01"],
     incident_references=["NVD-CVE-2026-53937"],
     limitations=(
@@ -12954,8 +12866,8 @@ _r(
         "CVE-2026-51994", "CVE-2026-51995", "CVE-2026-51996", "CVE-2026-51997",
         "CVE-2026-52001",
     ],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reports only a reference that states a version in the range: an "
@@ -12986,8 +12898,8 @@ _r(
     "before opening it.",
     sarif_name="KimiCodeUntrustedWorkspaceMcpAutostart",
     cve_references=["CVE-2026-95660"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP09:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports the package where a manifest pins it. Most installs are global "
@@ -13025,8 +12937,8 @@ _r(
     "`wiki_capture_source` captures.",
     sarif_name="PiLlmWikiCaptureSourceShellInjection",
     cve_references=["CVE-2026-102911"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reports only a reference that states a version: a `package.json` "
@@ -13072,8 +12984,8 @@ _r(
     "unreachable.",
     sarif_name="FastMcpTelegramAttachmentSsrf",
     cve_references=["CVE-2026-55096"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reports a reference that names the package: a requirements, pyproject or "
@@ -13151,8 +13063,8 @@ _r(
         "CVE-2026-101084", "CVE-2026-101062", "CVE-2026-103758", "CVE-2026-101064",
         "CVE-2026-101063",
     ],
-    owasp_mcp_references=["MCP07:2025", "MCP09:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01", "ADV-SSRF-01"],
     limitations=(
         _IMAGE_PIN_LIMITATIONS + " `latest` (or no tag) is not reported: it was "
@@ -13192,8 +13104,8 @@ _r(
     "deployment that was exposed.",
     sarif_name="MetaMcpImageInspectorProxyRce",
     cve_references=["CVE-2026-79538", "CVE-2026-79537"],
-    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
-    owasp_agentic_references=["ASI05", "ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP10:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01", "ADV-AUTH-01"],
     limitations=(
         _IMAGE_PIN_LIMITATIONS + " `latest` and an untagged reference are reported "
@@ -13225,8 +13137,8 @@ _r(
     "addresses are unreachable.",
     sarif_name="HeymImageWorkflowNodeSsrf",
     cve_references=["CVE-2026-100858"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         _IMAGE_PIN_LIMITATIONS + " `latest` (or no tag) is not reported: it was "
@@ -13263,7 +13175,7 @@ _r(
     "once it ships.",
     sarif_name="OfficePowerPointMcpPathTraversal",
     cve_references=["CVE-2025-71427"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-02"],
     limitations=(
@@ -13303,8 +13215,8 @@ _r(
     "shared network.",
     sarif_name="PenpotMcpPluginBridgeAllInterfaces",
     cve_references=["CVE-2026-100868"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
@@ -13344,8 +13256,8 @@ _r(
     "written before the upgrade.",
     sarif_name="VoiceModeConfigEnvCommandInjection",
     cve_references=["CVE-2026-79535"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reports a reference that names the PyPI package: a requirements, pyproject "
@@ -13377,8 +13289,8 @@ _r(
     "`execFile`/`spawn` as an array. Pin the first fixed release once it ships.",
     sarif_name="ShariqGithubMcpGitCommandInjection",
     cve_references=["CVE-2026-102906"],
-    owasp_mcp_references=["MCP04:2025"],
-    owasp_agentic_references=["ASI05"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reports a reference that names `@0xshariq/github-mcp-server`: a package.json "
@@ -13410,7 +13322,7 @@ _r(
     "directories. Pin the first fixed tag once it ships.",
     sarif_name="Mark3labsFilesystemMcpDanglingSymlinkWrite",
     cve_references=["CVE-2026-79534"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-02"],
     limitations=(
@@ -13441,8 +13353,8 @@ _r(
     "`operator.write`.",
     sarif_name="OpenClawMcpAppStandaloneTicketAuthz",
     cve_references=["CVE-2026-102807"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports an npm reference to `openclaw` from 2026.7.2 up to 2026.9.4: a "
@@ -13479,8 +13391,8 @@ _r(
     "Upgrade `zscaler-mcp` to 0.7.2 or later and pin it.",
     sarif_name="ZscalerMcpConfirmationTokenReplay",
     cve_references=["CVE-2026-59563"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI02", "ASI09"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI09"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports a reference that names the PyPI package `zscaler-mcp` at 0.7.0 or "
@@ -13510,8 +13422,8 @@ _r(
     "`wss://` for any MCP server that is not on loopback.",
     sarif_name="UtcpMcpCleartextServerUrl",
     cve_references=["CVE-2026-101057"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI07"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     adversa_references=["ADV-TRANSPORT-01"],
     limitations=(
         "Reports a reference that names the PyPI package `utcp-mcp` below 1.1.3: a "
@@ -13543,7 +13455,7 @@ _r(
     "Storage tools may use.",
     sarif_name="McpToolboxSymlinkPathTraversal",
     cve_references=["CVE-2026-102242"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-02"],
     limitations=(
@@ -13575,8 +13487,8 @@ _r(
     "it is not in use. Production builds need no change.",
     sarif_name="NextjsDevServerMcpCrossSite",
     cve_references=["CVE-2026-94486"],
-    owasp_mcp_references=["MCP02:2025", "MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI04", "ASI07"],
     adversa_references=["ADV-NETWORK-01"],
     limitations=(
         "Dev server only, so a project that never runs `next dev` is reported "
@@ -13610,8 +13522,7 @@ _r(
     "Enterprise or Team account.",
     sarif_name="ClaudeCodeManagedSettingsStoredKey",
     cve_references=["CVE-2026-103012"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports `@anthropic-ai/claude-code` from 2.0.68 up to 2.1.260 where a "
@@ -13651,8 +13562,7 @@ _r(
     "per-action decorator such as `@auth.on.threads.create`, which honor the action.",
     sarif_name="LangGraphSdkAuthActionsIgnored",
     cve_references=["CVE-2026-104873"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports a reference that names the PyPI package `langgraph-sdk` from 0.1.45 "
@@ -13688,8 +13598,8 @@ _r(
     "Upgrade the `langgenius/dify-api` image to 1.16.0 or later and pin its tag.",
     sarif_name="DifyMcpServerCrossAppUpdate",
     cve_references=["CVE-2026-105761"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `langgenius/dify-api` image references below 1.16.0 in compose files, "
@@ -13723,7 +13633,7 @@ _r(
     "callers.",
     sarif_name="McpK6PlaywrightScriptFileRead",
     cve_references=["CVE-2026-89039"],
-    owasp_mcp_references=["MCP04:2025"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-02"],
     limitations=(
@@ -13772,8 +13682,8 @@ _r(
     "an MCP server you do not trust.",
     sarif_name="McpTypeScriptSdkOAuthIssuerConfusion",
     cve_references=["CVE-2026-104850"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Reports `@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0 and "
@@ -13811,8 +13721,8 @@ _r(
     "who created them, and revoke any you cannot account for.",
     sarif_name="PayloadMcpApiKeyAccessControl",
     cve_references=["CVE-2026-105806"],
-    owasp_mcp_references=["MCP01:2025", "MCP06:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports `@payloadcms/plugin-mcp` from 3.61.0 up to 3.88.0 where a "
@@ -13842,8 +13752,7 @@ _r(
     "enforce the boundary outside the vector search.",
     sarif_name="LangChainRedisFilterInjection",
     cve_references=["CVE-2026-105799"],
-    owasp_mcp_references=["MCP03:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_agentic_references=["ASI04", "ASI06"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
         "Reports `@langchain/redis` below 1.1.1 where a package.json, lockfile or MCP "
@@ -13874,7 +13783,6 @@ _r(
     "string, never one taken from a request.",
     sarif_name="LangChainMongoChatHistoryQueryInjection",
     cve_references=["CVE-2026-106119"],
-    owasp_mcp_references=["MCP03:2025"],
     owasp_agentic_references=["ASI04", "ASI06"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
@@ -13911,8 +13819,8 @@ _r(
     "basic users could reach.",
     sarif_name="ObotCatalogEntryStaticSecretRead",
     cve_references=["CVE-2026-105138"],
-    owasp_mcp_references=["MCP01:2025"],
-    owasp_agentic_references=["ASI03"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-TOKEN-09"],
     limitations=(
         "Reads the same image references as the other Obot pin and reports tags from "
@@ -13952,8 +13860,8 @@ _r(
     "fixed release once it ships.",
     sarif_name="ArgoCdMcpDeleteApplicationPathTraversal",
     cve_references=["CVE-2026-108585"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI02"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-06"],
     limitations=(
         "Reports a reference that names `argocd-mcp`: a package.json or lockfile "
@@ -13986,8 +13894,8 @@ _r(
     "release once it ships.",
     sarif_name="OneMcpNegatedTagFilterScopeBypass",
     cve_references=["CVE-2026-108586"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports `@1mcp/agent` from 0.20.0 where a package.json, lockfile or MCP "
@@ -14021,8 +13929,8 @@ _r(
     "(`2001:0:`) addresses set before the upgrade.",
     sarif_name="KortixConnectorSsrfGuardBypass",
     cve_references=["CVE-2026-108115"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `kortix/kortix-api` image references from 0.10.7 up to 0.13.52 in "
@@ -14068,8 +13976,8 @@ _r(
     "upstream credentials it injects. Pin the first fixed release once it ships.",
     sarif_name="UnlaOAuthServerIssuesUnauthenticatedTokens",
     cve_references=["CVE-2026-108865"],
-    owasp_mcp_references=["MCP07:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads the three Unla image names in compose files, Kubernetes manifests, Helm "
@@ -14104,8 +14012,8 @@ _r(
     "Pin the first fixed release once it ships.",
     sarif_name="McpKotlinSdkWebSocketUnboundedFrame",
     cve_references=["CVE-2026-108714"],
-    owasp_mcp_references=["MCP10:2025"],
-    owasp_agentic_references=["ASI09"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
     adversa_references=["ADV-DOS-01"],
     limitations=(
         "Dependency-level detection on JVM manifests only: `build.gradle`, "
@@ -14142,8 +14050,8 @@ _r(
     "asks.",
     sarif_name="ElvixSdkMcpPathSsrfLeaksApiKey",
     cve_references=["CVE-2026-108542"],
-    owasp_mcp_references=["MCP09:2025"],
-    owasp_agentic_references=["ASI06"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reports `@elvix.is/sdk` from 0.1.0 below 0.10.2 in a package.json, lockfile "
@@ -14178,8 +14086,8 @@ _r(
     "read untrusted content. Pin the first fixed release once it ships.",
     sarif_name="TrinityTelegramBindingAgentKeyBypass",
     cve_references=["CVE-2026-108756"],
-    owasp_mcp_references=["MCP06:2025"],
-    owasp_agentic_references=["ASI04"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `ghcr.io/abilityai/trinity-backend` references up to and including "

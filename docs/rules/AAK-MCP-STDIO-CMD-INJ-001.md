@@ -9,8 +9,8 @@
 | Shipped | v0.3.6 (2026-04-26) |
 | Scanner | `agent_audit_kit/scanners/mcp_stdio_params.py` |
 | CWE | CWE-78 + CWE-77 |
-| OWASP MCP | MCP01:2025, MCP05:2025 |
-| OWASP Agentic | ASI02, ASI10 |
+| OWASP MCP | MCP05:2025 (Command Injection & Execution) |
+| OWASP Agentic | ASI05 (Unexpected Code Execution (RCE)) |
 | AICM | AIS-08, IAM-05 |
 | CVEs | CVE-2026-30615, 30617, 30623, 22252, 22688, 33224, 40933, 6980 |
 | Incident | OX-MCP-2026-04-25 |

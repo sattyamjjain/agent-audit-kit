@@ -67,10 +67,15 @@ def test_rule_explains_why_it_outranks_its_cvss() -> None:
 
 
 def test_rule_maps_to_the_tool_param_shell_injection_slot() -> None:
-    """ADV-INJECT-04 is literally "Tool Param Shell Injection"."""
+    """ADV-INJECT-04 is literally "Tool Param Shell Injection".
+
+    OWASP's slot for it is MCP05:2025, Command Injection & Execution. This test
+    used to pin MCP04, which was the command-injection slot only in AAK's retired
+    numbering; OWASP's MCP04 is Software Supply Chain Attacks.
+    """
     rule = RULES[RULE]
     assert rule.adversa_references == ["ADV-INJECT-04"]
-    assert rule.owasp_mcp_references == ["MCP04:2025"]
+    assert rule.owasp_mcp_references == ["MCP05:2025"]
     assert rule.owasp_agentic_references == ["ASI05"]
 
 

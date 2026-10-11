@@ -9,8 +9,8 @@
 | Shipped | v0.3.43 (2026-07-04) |
 | Scanner | `agent_audit_kit/scanners/mcp_auth_pathtraversal.py` |
 | CWE | CWE-22 (Path Traversal) |
-| OWASP MCP | MCP07:2025 (Authentication / Authorization) |
-| OWASP Agentic | ASI03 |
+| OWASP MCP | MCP07:2025 (Insufficient Authentication & Authorization) |
+| OWASP Agentic | ASI03 (Identity and Privilege Abuse) |
 | AICM | IAM-01, IVS-04 |
 | CVE | [CVE-2026-52830](https://nvd.nist.gov/vuln/detail/CVE-2026-52830) (CVSS 9.4) |
 

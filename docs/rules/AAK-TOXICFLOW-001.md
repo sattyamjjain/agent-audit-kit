@@ -9,8 +9,8 @@
 | Shipped | v0.3.5 (2026-04-25) — **feature-flagged** |
 | Scanner | `agent_audit_kit/scanners/toxic_flow.py` |
 | Data | `agent_audit_kit/data/toxic_flow_pairs.yml` |
-| OWASP MCP | MCP06:2025 |
-| OWASP Agentic | ASI02, ASI09 |
+| OWASP MCP | none |
+| OWASP Agentic | ASI02 (Tool Misuse and Exploitation) |
 | AICM | AIS-12, CCC-08 |
 | Origin | [Snyk Agent Scan](https://github.com/snyk/agent-scan) parity |
 

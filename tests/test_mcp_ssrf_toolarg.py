@@ -50,9 +50,12 @@ def test_rule_is_registered_and_accurate() -> None:
     assert "CWE-918" in rule.description
     # NVD text is anchored verbatim.
     assert "manipulation of the argument url causes server-side request forgery" in rule.description
-    # Cross-references the OWASP MCP Top-10 + Agentic Top-10 like the SSRF family.
-    assert "MCP09:2025" in rule.owasp_mcp_references
-    assert "ASI06" in rule.owasp_agentic_references
+    # Cross-references the OWASP MCP Top-10 + Agentic Top-10 like the SSRF family:
+    # MCP05 (its text covers API requests built from untrusted input; OWASP has no
+    # SSRF entry) and ASI02 (Tool Misuse and Exploitation). MCP09 is Shadow MCP
+    # Servers, which this rule pinned under AAK's retired numbering.
+    assert "MCP05:2025" in rule.owasp_mcp_references
+    assert "ASI02" in rule.owasp_agentic_references
 
 
 # ---------------------------------------------------------------------------

@@ -9,8 +9,8 @@
 | Shipped | v0.3.6 |
 | Scanner | `agent_audit_kit/scanners/splunk_mcp_config.py` |
 | CWE | CWE-532 + CWE-200 |
-| OWASP MCP | MCP08:2025 |
-| OWASP Agentic | ASI04 |
+| OWASP MCP | MCP01:2025 (Token Mismanagement & Secret Exposure) |
+| OWASP Agentic | ASI03 (Identity and Privilege Abuse) |
 | CVE | CVE-2026-20205 (config variant) |
 
 ## What it catches

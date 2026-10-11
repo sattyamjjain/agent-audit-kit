@@ -40,7 +40,9 @@ def test_rule_is_registered_with_cve_anchor() -> None:
     rule = RULES[RULE_ID]
     assert rule.severity.value == "high"
     assert "CVE-2026-40933" in rule.cve_references
-    assert "MCP04:2025" in rule.owasp_mcp_references
+    # OWASP MCP05 (Command Injection & Execution); MCP04 meant command injection
+    # only in AAK's retired numbering.
+    assert "MCP05:2025" in rule.owasp_mcp_references
 
 
 # ---------------------------------------------------------------------------

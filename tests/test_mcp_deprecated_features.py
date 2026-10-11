@@ -40,7 +40,21 @@ def test_deprecated_rules_registered_and_accurate() -> None:
         assert "SEP-2577" in rule.description
         assert "SEP-2596" in rule.description
         assert feature in rule.description
-        assert "MCP07:2025" in rule.owasp_mcp_references
+
+
+def test_deprecated_rules_name_the_owasp_risk_their_description_gives() -> None:
+    """Each rule's OWASP id follows the security reason the description states.
+
+    All three carried MCP07 (authentication) before the October 2026 remap, which
+    none of them is about. Roots leaked the workspace layout to every server
+    (MCP10, over-sharing); sampling let a server drive the host LLM (MCP06,
+    intent flow subversion); logging was redundant and names no OWASP risk.
+    """
+    assert RULES[ROOTS].owasp_mcp_references == ["MCP10:2025"]
+    assert RULES[SAMPLING].owasp_mcp_references == ["MCP06:2025"]
+    assert RULES[SAMPLING].owasp_agentic_references == ["ASI01"]
+    assert RULES[LOGGING].owasp_mcp_references == []
+    assert RULES[LOGGING].owasp_agentic_references == []
 
 
 def test_oauth006_registered_and_accurate() -> None:
@@ -49,7 +63,9 @@ def test_oauth006_registered_and_accurate() -> None:
     assert rule.severity.value == "medium"
     assert "RFC 9207" in rule.description
     assert "iss" in rule.description
-    assert "MCP01:2025" in rule.owasp_mcp_references
+    # A mix-up-attack defence in the OAuth flow is OWASP MCP07 (Insufficient
+    # Authentication & Authorization); MCP01 is about how tokens are stored.
+    assert "MCP07:2025" in rule.owasp_mcp_references
 
 
 # ---------------------------------------------------------------------------

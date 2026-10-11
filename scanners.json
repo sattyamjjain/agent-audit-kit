@@ -204,7 +204,7 @@
     },
     {
       "module": "mcp_sampling_capability",
-      "name": "MCP `sampling` capability consent guard (MCP07:2025)"
+      "name": "MCP `sampling` capability consent guard"
     },
     {
       "module": "mcp_sdk_hardening",

@@ -20,19 +20,25 @@ bash examples/run-all-examples.sh
 
 | # | Example | Rules Triggered | OWASP MCP | OWASP Agentic | CVE Reference |
 |---|---------|----------------|-----------|---------------|---------------|
-| 01 | [No Auth Remote](vulnerable-configs/01-no-auth-remote/) | AAK-MCP-001, AAK-MCP-009, AAK-TRANSPORT-001/003 | MCP01, MCP04 | AG07 | CVE-2026-32211 |
-| 02 | [Shell Injection](vulnerable-configs/02-shell-injection/) | AAK-MCP-005/006/007/008/010, AAK-SUPPLY-001 | MCP04, MCP06 | AG01, AG06 | — |
-| 03 | [Hardcoded Secrets](vulnerable-configs/03-hardcoded-secrets/) | AAK-MCP-003, AAK-SECRET-001/002/003/004/006 | MCP08 | AG05 | — |
-| 04 | [Hook Exfiltration](vulnerable-configs/04-hook-exfiltration/) | AAK-HOOK-001 through 009 | MCP09 | AG04, AG08 | CVE-2026-21852 |
-| 05 | [Trust Boundary Violations](vulnerable-configs/05-trust-boundary-violations/) | AAK-TRUST-001 through 006 | MCP03, MCP07 | AG02, AG09 | CVE-2026-21852 |
-| 06 | [Tool Poisoning](vulnerable-configs/06-tool-poisoning/) | AAK-POISON-001 through 006 | MCP02, MCP05 | AG01, AG03 | — |
-| 07 | [Tainted Tool Function](vulnerable-configs/07-tainted-tool-function/) | AAK-TAINT-001 through 008 | MCP05 | AG01 | — |
-| 08 | [Transport Insecurity](vulnerable-configs/08-transport-insecurity/) | AAK-TRANSPORT-001 through 004, AAK-MCP-001 | MCP04 | AG07 | — |
-| 09 | [A2A Insecure Agent](vulnerable-configs/09-a2a-insecure-agent/) | AAK-A2A-001 through 007 | — | AG02, AG10 | — |
-| 10 | [Supply Chain Risks](vulnerable-configs/10-supply-chain-risks/) | AAK-SUPPLY-001/003/004, AAK-MCP-005/007 | MCP06, MCP10 | AG06 | — |
-| 11 | [Legal Compliance](vulnerable-configs/11-legal-compliance/) | AAK-LEGAL-001/002, AAK-SUPPLY-004 | — | — | — |
+| 01 | [No Auth Remote](vulnerable-configs/01-no-auth-remote/) | AAK-MCP-001, AAK-MCP-009, AAK-TRANSPORT-001/003 | MCP07, MCP09 | ASI03, ASI07 | CVE-2026-32211 |
+| 02 | [Shell Injection](vulnerable-configs/02-shell-injection/) | AAK-MCP-005/006/007/008/010, AAK-SUPPLY-001 | MCP02, MCP04, MCP05 | ASI02, ASI04, ASI05 | — |
+| 03 | [Hardcoded Secrets](vulnerable-configs/03-hardcoded-secrets/) | AAK-MCP-003, AAK-SECRET-001/002/003/004/006 | MCP01 | ASI03 | — |
+| 04 | [Hook Exfiltration](vulnerable-configs/04-hook-exfiltration/) | AAK-HOOK-001 through 009 | — | ASI03, ASI05 | CVE-2026-21852 |
+| 05 | [Trust Boundary Violations](vulnerable-configs/05-trust-boundary-violations/) | AAK-TRUST-001 through 006 | MCP02, MCP09 | ASI02, ASI03, ASI04, ASI09 | CVE-2026-21852 |
+| 06 | [Tool Poisoning](vulnerable-configs/06-tool-poisoning/) | AAK-POISON-001 through 006 | MCP03 | ASI02, ASI04 | — |
+| 07 | [Tainted Tool Function](vulnerable-configs/07-tainted-tool-function/) | AAK-TAINT-001 through 008 | MCP02, MCP05 | ASI02, ASI05 | — |
+| 08 | [Transport Insecurity](vulnerable-configs/08-transport-insecurity/) | AAK-TRANSPORT-001 through 004, AAK-MCP-001 | MCP01, MCP07 | ASI03, ASI07 | — |
+| 09 | [A2A Insecure Agent](vulnerable-configs/09-a2a-insecure-agent/) | AAK-A2A-001 through 007 | — | ASI03, ASI07, ASI10 | — |
+| 10 | [Supply Chain Risks](vulnerable-configs/10-supply-chain-risks/) | AAK-SUPPLY-001/003/004, AAK-MCP-005/007 | MCP04 | ASI04, ASI05 | — |
+| 11 | [Legal Compliance](vulnerable-configs/11-legal-compliance/) | AAK-LEGAL-001/002, AAK-SUPPLY-004 | MCP04 | ASI04 | — |
 | 12 | [Colorado ADMT Documentation](vulnerable-configs/12-colorado-admt/) | AAK-ADMT-002/003/004 | — | — | — |
 | 13 | [EU AI Act Art. 50 Transparency](vulnerable-configs/13-eu-ai-act-art50/) | AAK-AIACT50-001/002/003 | — | — | — |
+
+The OWASP columns are the union of the triggered rules' references: OWASP MCP
+Top 10 v0.1 ids (the `:2025` edition suffix dropped for width) and OWASP Top 10
+for Agentic Applications (Version 2026) ids. A dash means none of the rules names
+an entry: hooks and A2A are not MCP surfaces, and the statutory rules name no
+OWASP risk. Row 11's ids come from `AAK-SUPPLY-004`; the licence rules carry none.
 
 ## Case Studies
 

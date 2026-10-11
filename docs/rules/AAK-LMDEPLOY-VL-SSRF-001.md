@@ -9,8 +9,8 @@
 | Shipped | v0.3.6 |
 | Scanner | `agent_audit_kit/scanners/ssrf_redirect.py` (extension) |
 | CWE | CWE-918 |
-| OWASP MCP | MCP05:2025 |
-| OWASP Agentic | ASI04, ASI09 |
+| OWASP MCP | none |
+| OWASP Agentic | ASI02 (Tool Misuse and Exploitation) |
 | CVE | CVE-2026-33626 (GHSA-only at v0.3.6 cut — NVD enrichment pending) |
 
 ## What it catches

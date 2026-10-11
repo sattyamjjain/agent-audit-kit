@@ -35,13 +35,18 @@ AgentAuditKit detects vulnerabilities across **7 of 13 security categories** in 
 
 | Category | Findings | Severity | OWASP MCP | OWASP Agentic |
 |----------|----------|----------|-----------|---------------|
-| MCP Configuration | Shell injection, no auth, headersHelper, unpinned packages, filesystem root | CRITICAL-MEDIUM | MCP01, MCP04, MCP06 | AG01, AG06 |
-| Hook Injection | Network exfiltration, credential theft, privilege escalation | CRITICAL | MCP09 | AG04, AG08 |
-| Trust Boundary | enableAllProjectMcpServers, API proxy, wildcard permissions | CRITICAL-HIGH | MCP03, MCP07 | AG02, AG09 |
-| Secret Exposure | Anthropic, OpenAI, AWS, GitHub keys hardcoded | CRITICAL | MCP08 | AG05 |
-| Tool Poisoning | Invisible Unicode, prompt injection, cross-tool manipulation | CRITICAL-HIGH | MCP02, MCP05 | AG01, AG03 |
-| Supply Chain | Unpinned packages, no version pinning | HIGH-MEDIUM | MCP06, MCP10 | AG06 |
-| Transport Security | HTTP endpoint, SSE transport | CRITICAL-MEDIUM | MCP04 | AG07 |
+| MCP Configuration | Shell injection, no auth, headersHelper, unpinned packages, filesystem root | CRITICAL-MEDIUM | MCP01, MCP02, MCP04, MCP05, MCP07 | ASI02, ASI03, ASI04, ASI05 |
+| Hook Injection | Network exfiltration, credential theft, privilege escalation | CRITICAL | — | ASI03, ASI05 |
+| Trust Boundary | enableAllProjectMcpServers, API proxy, wildcard permissions | CRITICAL-HIGH | MCP02, MCP09 | ASI02, ASI03, ASI04, ASI09 |
+| Secret Exposure | Anthropic, OpenAI, AWS, GitHub keys hardcoded | CRITICAL | MCP01 | ASI03 |
+| Tool Poisoning | Invisible Unicode, prompt injection, cross-tool manipulation | CRITICAL-HIGH | MCP03 | ASI02, ASI04 |
+| Supply Chain | Unpinned packages, no version pinning | HIGH-MEDIUM | MCP04 | ASI04 |
+| Transport Security | HTTP endpoint, SSE transport | CRITICAL-MEDIUM | MCP07 | ASI07 |
+
+OWASP ids are OWASP MCP Top 10 v0.1 (the `:2025` suffix dropped for width) and
+OWASP Top 10 for Agentic Applications (Version 2026), as the current rule
+registry assigns them; hooks are not an MCP surface. The pre-generated results
+below are a v0.2.0 scan and still carry that release's references.
 
 ## Key Insight
 

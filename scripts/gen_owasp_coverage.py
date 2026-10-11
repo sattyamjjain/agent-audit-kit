@@ -15,7 +15,7 @@ Walks `agent_audit_kit.rules.builtin.RULES` and emits:
         "coverage": [
           {
             "asi_id": "ASI01",
-            "title": "Goal Hijack",
+            "title": "Agent Goal Hijack",
             "rule_density": <int>,
             "rules": [
               {"id": "...", "severity": "...",
@@ -49,6 +49,16 @@ except ModuleNotFoundError:  # pragma: no cover
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+# The titles come from the package, so the repo root must win over any installed
+# copy (an editable install elsewhere would otherwise supply stale titles).
+sys.path.insert(0, str(REPO_ROOT))
+
+from agent_audit_kit.output.owasp_report import (  # noqa: E402
+    OWASP_AGENTIC,
+    OWASP_AGENTIC_URL,
+    OWASP_AGENTIC_VERSION,
+)
+
 DOC_PATH = REPO_ROOT / "docs" / "owasp-agentic-coverage.md"
 README_PATH = REPO_ROOT / "README.md"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -57,20 +67,11 @@ DEFAULT_JSON_PATH = REPO_ROOT / "public" / "owasp-agentic-coverage.json"
 _MARKER_START = "<!-- owasp-coverage:start -->"
 _MARKER_END = "<!-- owasp-coverage:end -->"
 
-# Canonical OWASP Agentic Top 10 2026 titles. Source:
-# https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
-ASI_TITLES: dict[str, str] = {
-    "ASI01": "Goal Hijack",
-    "ASI02": "Tool Misuse",
-    "ASI03": "Memory Poisoning",
-    "ASI04": "Identity & Privilege Abuse",
-    "ASI05": "Cascading Failures",
-    "ASI06": "Unauthorized Capability Acquisition",
-    "ASI07": "Plan Injection",
-    "ASI08": "Agent Communication Poisoning",
-    "ASI09": "Resource Abuse",
-    "ASI10": "Supply-Chain",
-}
+# Official OWASP Agentic Top 10 titles, read from the package rather than kept here.
+# This file used to carry its own table and eight of its ten titles were not
+# OWASP's (ASI03 read "Memory Poisoning", ASI10 "Supply-Chain"); the README block
+# and every artefact below were generated from it.
+ASI_TITLES: dict[str, str] = dict(OWASP_AGENTIC)
 
 
 def build_coverage() -> dict[str, list[str]]:
@@ -92,7 +93,14 @@ def render_markdown(coverage: dict[str, list[str]]) -> str:
         "`tests/test_owasp_agentic_coverage.py` is the regression fence — "
         "it fails CI if any row has zero rules.",
         "",
-        "Source: <https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/>",
+        f"Source: OWASP Top 10 for Agentic Applications, {OWASP_AGENTIC_VERSION}, "
+        f"<{OWASP_AGENTIC_URL}>. Titles are the entry headings of the official "
+        "document; the official ids carry no year suffix.",
+        "",
+        "A rule is listed under an entry when it detects that risk, or the absence "
+        "of a control the entry prescribes for it. ASI08 (Cascading Failures) and "
+        "ASI10 (Rogue Agents) are mostly the second kind: a static scan sees the "
+        "missing quota, scope or audit trail, not the cascade or the rogue agent.",
         "",
         "| ASI | Title | # rules | Rule IDs |",
         "| --- | --- | --- | --- |",

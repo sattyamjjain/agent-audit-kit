@@ -39,8 +39,12 @@ def test_rule_is_registered_with_cve_anchor() -> None:
     rule = RULES[RULE_ID]
     assert rule.severity.value == "critical"
     assert "CVE-2026-42074" in rule.cve_references
-    assert "MCP06:2025" in rule.owasp_mcp_references
-    assert "ASI06" in rule.owasp_agentic_references
+    # A tool schema field the model can set to drop its own sandbox: an agent
+    # escalating its own scope (OWASP MCP02), sandbox escape (ASI05) and a
+    # containment gap (ASI10). MCP06/ASI06 pinned here before were AAK's retired
+    # "Privilege Escalation" slot and Memory & Context Poisoning.
+    assert rule.owasp_mcp_references == ["MCP02:2025"]
+    assert rule.owasp_agentic_references == ["ASI05", "ASI10"]
 
 
 # ---------------------------------------------------------------------------

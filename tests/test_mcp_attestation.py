@@ -37,9 +37,12 @@ from agent_audit_kit.scanners.mcp_config import scan
 def test_attest_rule_is_registered_with_expected_shape() -> None:
     rule = RULES["AAK-MCP-ATTEST-001"]
     assert rule.sarif_name == "McpServerUnattested"
-    assert rule.owasp_mcp_references == ["MCP07:2025"]
-    assert "ASI03" in rule.owasp_agentic_references
-    assert "ASI04" in rule.owasp_agentic_references
+    # A server admitted with no signed provenance is OWASP MCP04's checklist item
+    # ("installs MCP connectors ... without signing / provenance checks"). It was
+    # MCP07 here before the October 2026 remap, which is authentication, a
+    # different control.
+    assert rule.owasp_mcp_references == ["MCP04:2025"]
+    assert rule.owasp_agentic_references == ["ASI04"]
     assert "arXiv:2605.24248" in rule.incident_references
     # Severity is MEDIUM per the spec; this matches the rule's role as an
     # admission-control gate rather than an exploitable bug.
@@ -228,7 +231,7 @@ def test_attest_001_sarif_emits_security_severity_and_fingerprint(tmp_path: Path
 
 
 def test_attest_001_owasp_mcp_top10_crossref_preserved(tmp_path: Path) -> None:
-    """Rule must be mapped under MCP07:2025 in the OWASP MCP Top 10 surface."""
+    """Rule must be mapped under MCP04:2025 in the OWASP MCP Top 10 surface."""
     _write_mcp_config(tmp_path, {
         "mcpServers": {
             "gmail": {
@@ -239,8 +242,8 @@ def test_attest_001_owasp_mcp_top10_crossref_preserved(tmp_path: Path) -> None:
     })
     result = run_scan(tmp_path)
     finding = next(f for f in result.findings if f.rule_id == "AAK-MCP-ATTEST-001")
-    assert "MCP07:2025" in finding.owasp_mcp_references
-    # ASI03/ASI04 land the rule under EU AI Act Art. 15 / SOC 2 / ISO 27001
-    # via the compliance.py FRAMEWORKS table.
-    assert {"ASI03", "ASI04"} <= set(finding.owasp_agentic_references)
+    assert "MCP04:2025" in finding.owasp_mcp_references
+    # ASI04 lands the rule under EU AI Act Art. 15 / SOC 2 / ISO 27001 via the
+    # compliance.py FRAMEWORKS table.
+    assert "ASI04" in finding.owasp_agentic_references
     assert "arXiv:2605.24248" in finding.incident_references

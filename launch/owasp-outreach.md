@@ -3,23 +3,23 @@
 ## Email 1: OWASP Agentic Top 10 Working Group
 
 **To:** agentic-top10@owasp.org (or via https://genai.owasp.org/ contact form)
-**Subject:** Open-source scanner implementing all 10 OWASP Agentic Top 10 risks
+**Subject:** Open-source scanner with rules for all 10 OWASP Agentic Top 10 risks
 
 Hi,
 
-I built AgentAuditKit — an open-source security scanner (Apache-2.0 licensed) that maps detection rules to all 10 risks in the OWASP Agentic Top 10.
+I built AgentAuditKit — an open-source security scanner (Apache-2.0 licensed) that maps detection rules to all 10 risks in the OWASP Top 10 for Agentic Applications (Version 2026).
 
 395 rules across 104 scanners cover:
-- ASI01 (Goal Hijack) → AGENTS.md/.cursorrules/.CLAUDE.md scanning for prompt injection
-- ASI02 (Tool Misuse) → Python AST taint analysis tracking @tool params to dangerous sinks
-- ASI03 (Identity & Privilege Abuse) → Trust boundary violations, credential exposure
-- ASI04 (Supply Chain) → Unpinned packages, known vulnerable deps, rug pull detection
-- ASI05 (Unexpected Code Execution) → Shell injection in MCP commands, hook injection
-- ASI06 (Memory & Context Poisoning) → Tool description poisoning via invisible Unicode
-- ASI07 (Inter-Agent Communication) → A2A protocol scanning, JWT validation
-- ASI08 (Cascading Failures) → Excessive server count, dependency chain analysis
-- ASI09 (Human-Agent Trust) → Trust boundary overrides, missing deny rules
-- ASI10 (Rogue Agents) → enableAllProjectMcpServers, ANTHROPIC_BASE_URL redirect
+- ASI01 (Agent Goal Hijack) → injection and download-and-run directives in AGENTS.md / CLAUDE.md / .cursorrules, known indirect-injection payloads, PR titles fed straight to an LLM
+- ASI02 (Tool Misuse and Exploitation) → poisoned tool descriptions, SSRF and path traversal through tool arguments, over-broad tool permissions, source-plus-sink tool chains
+- ASI03 (Identity and Privilege Abuse) → hardcoded keys and tokens, missing or fail-open auth on MCP servers, OAuth flaws, token passthrough
+- ASI04 (Agentic Supply Chain Vulnerabilities) → unpinned and runtime-fetched packages, typosquats, known-vulnerable MCP server versions, tool definitions that change after approval
+- ASI05 (Unexpected Code Execution (RCE)) → @tool parameters reaching shell, eval or deserialization (Python AST taint analysis), shell expansion in MCP server commands, hooks and IDE tasks that run on open
+- ASI06 (Memory & Context Poisoning) → unauthenticated agent-memory APIs, another user's chat history or vector-store rows reachable, shared multi-agent state with no lock
+- ASI07 (Insecure Inter-Agent Communication) → A2A cards with no auth or replay protection, cleartext and TLS-off MCP transports, transport downgrade to stdio
+- ASI08 (Cascading Failures) → unbounded A2A delegation, relayed trust, uncapped task queues and tool catalogues. Mostly the missing guardrail, not the cascade itself
+- ASI09 (Human-Agent Trust Exploitation) → auto-approve and headless modes that drop the confirmation step, approval checks that approve a different command than the one that runs
+- ASI10 (Rogue Agents) → unattended routines with wider permissions or no audit trail, sandbox switches the model can set, agent cards that can be impersonated
 
 It runs as a GitHub Action, CLI, or pre-commit hook. SARIF output integrates with GitHub Code Scanning.
 
@@ -37,22 +37,22 @@ https://github.com/sattyamjjain
 ## Email 2: OWASP MCP Top 10 Working Group
 
 **To:** Via https://owasp.org/www-project-mcp-top-10/ contact or GitHub issues
-**Subject:** Open-source scanner with full MCP01-MCP10 rule coverage
+**Subject:** Open-source scanner with rules for every OWASP MCP Top 10 entry
 
 Hi,
 
-I built AgentAuditKit, an open-source (Apache-2.0) security scanner for MCP-connected AI agent pipelines. It maps 395 detection rules to all 10 risks in the OWASP MCP Top 10:
+I built AgentAuditKit, an open-source (Apache-2.0) security scanner for MCP-connected AI agent pipelines. Its 395 detection rules map to all 10 risks in the OWASP MCP Top 10 (v0.1), some much more thinly than others:
 
-- MCP01 (Token Mismanagement) → 69 rules detecting hardcoded secrets across Anthropic/OpenAI/AWS/GitHub/GCP keys
-- MCP02 (Context Over-Sharing) → Excessive server count, overly broad permissions
-- MCP03 (Supply Chain) → 31 rules for unpinned packages, known vulns, dangerous install scripts
-- MCP04 (Command Injection) → 31 rules for shell expansion, hook injection, headersHelper abuse
-- MCP05 (Tool Poisoning) → 51 rules including invisible Unicode, prompt injection, rug pull detection (SHA-256 pinning)
-- MCP06 (Privilege Escalation) → Sudo in hooks, filesystem root access, trust boundary violations
-- MCP07 (Insufficient Auth) → Remote MCP servers without authentication headers
-- MCP08 (Audit Logging) → Missing deny rules, excessive unaudited hooks
-- MCP09 (Protocol Vulnerabilities) → HTTP endpoints, disabled TLS, deprecated SSE, tokens in URLs
-- MCP10 (Insecure Plugin/Extension) → npx/uvx runtime fetch, known vulnerable MCP packages
+- MCP01 (Token Mismanagement & Secret Exposure) → hardcoded keys in MCP configs and env blocks, tokens in URLs and in logs
+- MCP02 (Privilege Escalation via Scope Creep) → filesystem-root servers, wildcard tool permissions, command tools on by default, read-only-mode bypasses
+- MCP03 (Tool Poisoning) → hidden Unicode, model-directed imperatives and encoded payloads in tool descriptions, plus rug-pull detection against SHA-256 pins
+- MCP04 (Software Supply Chain Attacks & Dependency Tampering) → unpinned npx/uvx packages, missing lockfiles, install scripts, servers admitted with no signed provenance, known-vulnerable MCP server versions
+- MCP05 (Command Injection & Execution) → tool arguments reaching shell, eval, SQL and file paths, shell expansion in server commands. Our SSRF rules sit here too, since MCP05 covers API requests built from untrusted input; I saw https://github.com/OWASP/www-project-mcp-top-10/issues/20 is still open on where SSRF belongs
+- MCP06 (Intent Flow Subversion) → sampling with no consent gate, servers that relay injected content
+- MCP07 (Insufficient Authentication & Authorization) → remote servers with no auth, fail-open auth, OAuth flaws, cleartext transport, DNS rebinding
+- MCP08 (Lack of Audit and Telemetry) → one rule so far: forged log entries in MCP tool logs. Nothing yet detects a missing audit trail
+- MCP09 (Shadow MCP Servers) → auto-approved project servers, no server allowlist, workspace servers that start before the trust prompt
+- MCP10 (Context Injection & Over-Sharing) → cross-session and cross-tenant data access, task state with no expiry
 
 It scans 10 agent platforms (Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Continue, Roo Code, Kiro) and outputs SARIF 2.1.0 for GitHub Code Scanning integration.
 

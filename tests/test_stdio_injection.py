@@ -57,8 +57,11 @@ def test_rule_metadata_has_cve_and_owasp() -> None:
 
     rule = RULES["AAK-STDIO-001"]
     assert "CVE-2026-30615" in rule.cve_references
-    assert "MCP01:2025" in rule.owasp_mcp_references
-    assert "ASI02" in rule.owasp_agentic_references
+    # STDIO command injection is OWASP MCP05 (Command Injection & Execution) and
+    # ASI05 (Unexpected Code Execution). MCP01/ASI02 pinned here before did not
+    # describe it.
+    assert rule.owasp_mcp_references == ["MCP05:2025"]
+    assert rule.owasp_agentic_references == ["ASI05"]
     assert rule.severity.value == "critical"
 
 

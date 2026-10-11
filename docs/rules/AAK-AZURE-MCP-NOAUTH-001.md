@@ -9,8 +9,8 @@
 | Shipped | v0.3.6 |
 | Scanner | `agent_audit_kit/scanners/mcp_server_auth.py` |
 | CWE | CWE-306 |
-| OWASP MCP | MCP02:2025 |
-| OWASP Agentic | ASI04 |
+| OWASP MCP | MCP07:2025 (Insufficient Authentication & Authorization) |
+| OWASP Agentic | ASI03 (Identity and Privilege Abuse) |
 | AICM | IAM-01, IAM-16 |
 | CVE | CVE-2026-32211 (CVSS 9.1) |
 | Sister rule | [AAK-AZURE-MCP-001](./AAK-AZURE-MCP-001.md) (consumer-side) |

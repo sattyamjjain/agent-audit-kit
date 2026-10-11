@@ -141,22 +141,32 @@ rules mapped to 14 frameworks: [compliance reference](https://github.com/sattyam
 
 ### OWASP Agentic Top 10 coverage
 
+Against the [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/)
+(Version 2026, December 2025), with OWASP's own titles. A rule is counted when
+it detects the risk, or the absence of a control the entry prescribes for it.
+
 <!-- owasp-coverage:start -->
 | ASI | Title | # rules |
 | --- | --- | --- |
-| **ASI01** | Goal Hijack | 16 |
-| **ASI02** | Tool Misuse | 57 |
-| **ASI03** | Memory Poisoning | 83 |
-| **ASI04** | Identity & Privilege Abuse | 93 |
-| **ASI05** | Cascading Failures | 60 |
-| **ASI06** | Unauthorized Capability Acquisition | 54 |
-| **ASI07** | Plan Injection | 11 |
-| **ASI08** | Agent Communication Poisoning | 5 |
-| **ASI09** | Resource Abuse | 20 |
-| **ASI10** | Supply-Chain | 22 |
+| **ASI01** | Agent Goal Hijack | 18 |
+| **ASI02** | Tool Misuse and Exploitation | 97 |
+| **ASI03** | Identity and Privilege Abuse | 95 |
+| **ASI04** | Agentic Supply Chain Vulnerabilities | 181 |
+| **ASI05** | Unexpected Code Execution (RCE) | 85 |
+| **ASI06** | Memory & Context Poisoning | 5 |
+| **ASI07** | Insecure Inter-Agent Communication | 23 |
+| **ASI08** | Cascading Failures | 6 |
+| **ASI09** | Human-Agent Trust Exploitation | 14 |
+| **ASI10** | Rogue Agents | 5 |
 <!-- owasp-coverage:end -->
 
-Complete mapping for OWASP Agentic, OWASP MCP, and the NSA MCP CSI is in the
+Per-entry rule lists, generated from the registry:
+[Agentic Top 10](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/coverage/owasp-agentic-top10.md) ·
+[MCP Top 10 (v0.1, 2025 edition)](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/coverage/owasp-mcp-top10.md) ·
+[Agentic Skills Top 10](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/coverage/owasp-agentic-skills-top10.md).
+Every MCP Top 10 entry has at least one rule, but not evenly; the MCP table
+labels the thin entries Partial and names their rules. The rule-by-rule NSA MCP
+CSI and OWASP Agentic view is the
 [standards crosswalk](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/crosswalk/nsa-csi-owasp-agentic.md).
 
 ## MCP Security Index
@@ -179,7 +189,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->104<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->3,016<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->3,030<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->395<!-- /rule-count --> rules

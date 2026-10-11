@@ -9,8 +9,8 @@
 | Shipped | v0.3.5 (2026-04-25) |
 | Scanner | `agent_audit_kit/scanners/ssrf_redirect.py` |
 | CWE | CWE-601 (Open Redirect) + CWE-918 (SSRF) |
-| OWASP MCP | MCP05:2025 |
-| OWASP Agentic | ASI04, ASI09 |
+| OWASP MCP | MCP05:2025 (Command Injection & Execution) |
+| OWASP Agentic | ASI02 (Tool Misuse and Exploitation) |
 | AICM | IVS-04, AIS-08 |
 | CVE | [CVE-2026-41481](https://nvd.nist.gov/vuln/detail/CVE-2026-41481) |
 | Advisory | [GHSA-fv5p-p927-qmxr](https://github.com/advisories/GHSA-fv5p-p927-qmxr) |

@@ -108,5 +108,8 @@ def test_finding_carries_owasp_mapping(tmp_path: Path) -> None:
     findings, _ = mcp_sampling_capability.scan(tmp_path)
     match = next((f for f in findings if f.rule_id == RULE_ID), None)
     assert match is not None
-    assert "MCP07:2025" in match.owasp_mcp_references
-    assert "ASI03" in match.owasp_agentic_references
+    # A server steering the client's LLM through sampling is OWASP MCP06 (Intent
+    # Flow Subversion) and ASI01 (Agent Goal Hijack); the missing consent gate is
+    # ASI09's first mitigation. MCP07/ASI03 (authentication) never fit.
+    assert match.owasp_mcp_references == ["MCP06:2025"]
+    assert match.owasp_agentic_references == ["ASI01", "ASI09"]

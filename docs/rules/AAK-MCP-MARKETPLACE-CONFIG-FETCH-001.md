@@ -9,8 +9,8 @@
 | Shipped | v0.3.6 (2026-04-26) |
 | Scanner | `agent_audit_kit/scanners/mcp_marketplace_fetch.py` |
 | CWE | CWE-829 + CWE-78 |
-| OWASP MCP | MCP05:2025, MCP09:2025 |
-| OWASP Agentic | ASI10 |
+| OWASP MCP | MCP04:2025 (Software Supply Chain Attacks & Dependency Tampering); MCP05:2025 (Command Injection & Execution) |
+| OWASP Agentic | ASI04 (Agentic Supply Chain Vulnerabilities); ASI05 (Unexpected Code Execution (RCE)) |
 | AICM | AIS-08, STA-02 |
 | Incidents | OX-MCP-2026-04-25, CLOUDFLARE-MCP-DEFENDER-2026-04-25 |
 

@@ -33,7 +33,11 @@ def test_rule_registered_and_accurate() -> None:
     # accurate threat class, not a generic "prompt injection" blurb
     assert "indirect prompt injection" in rule.description.lower()
     assert "api request" in rule.description.lower() or "api requests" in rule.description.lower()
-    assert "MCP05:2025" in rule.owasp_mcp_references
+    # Injected content relayed into the agent's context is OWASP MCP06 (Intent Flow
+    # Subversion), not MCP05 (Command Injection & Execution); the vulnerable pin is MCP04.
+    assert "MCP06:2025" in rule.owasp_mcp_references
+    assert "MCP04:2025" in rule.owasp_mcp_references
+    assert "ASI01" in rule.owasp_agentic_references
 
 
 def test_vulnerable_mcp_config_fixture_flags(tmp_path: Path) -> None:
