@@ -1771,15 +1771,14 @@ _r(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
         "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
         "so a FastMCP instance under another name (`@app.tool()`) is skipped. A "
-        "shell call (`os.system`, `os.popen`, "
-        "`subprocess.run/call/Popen/check_output/check_call/getoutput/getstatusoutput`, "
-        "`asyncio.create_subprocess_shell`) is reported only when a parameter's "
-        "bare name is its argument. A command built from the parameter (`f\"ls "
-        "{path}\"`, `\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 "
-        "reports the f-string form, and neither is a sink imported by name (`from "
-        "subprocess import run`). The TypeScript arm reads `.ts` and `.tsx` files "
-        "only and matches `exec`, `execSync`, `spawn` and `spawnSync`: the same "
-        "call in a `.js` file, or `execFile`, is not reported."
+        "call to `os.system`, `os.popen`, a `subprocess` function or "
+        "`asyncio.create_subprocess_shell` is reported only when a parameter's bare "
+        "name is its argument. A command built from the parameter (`f\"ls {path}\"`, "
+        "`\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 reports the "
+        "f-string form, and neither is a sink imported by name (`from subprocess "
+        "import run`). The TypeScript arm reads `.ts` and `.tsx` files only and "
+        "matches `exec`, `execSync`, `spawn` and `spawnSync`: the same call in a "
+        "`.js` file, or `execFile`, is not reported."
     ),
 )
 
