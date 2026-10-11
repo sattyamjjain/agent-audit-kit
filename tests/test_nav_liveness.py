@@ -80,6 +80,14 @@ def test_real_mkdocs_nav_is_parsed_and_non_empty() -> None:
     assert all(u.startswith("https://") for u in urls)
 
 
+def test_no_two_nav_entries_land_on_the_same_url() -> None:
+    """The nav listed `rules.md` and `rules/index.md`, which MkDocs publishes at one address
+    (`.../docs/rules/`), so one of the two entries was a second link to a page it was not."""
+    urls = nav.nav_urls()
+    duplicated = sorted({url for url in urls if urls.count(url) > 1})
+    assert not duplicated, f"nav entries that land on the same URL: {duplicated}"
+
+
 def test_every_nav_entry_resolves_to_a_page_the_build_can_produce() -> None:
     """A nav entry is either a file in docs/ or one the MkDocs hook publishes.
 

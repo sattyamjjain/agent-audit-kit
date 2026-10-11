@@ -21,7 +21,6 @@ nav:
       - CLI reference: cli.md
       - Configuration & rule schema: rule-schema.md
   - Rules & coverage:
-      - Rule reference: rules.md
       - Per-rule pages: rules/index.md
       - OWASP mapping: owasp-mapping.md
       - OWASP Agentic coverage: owasp-agentic-coverage.md
@@ -69,3 +68,15 @@ markdown_extensions:
   - admonition
   - pymdownx.highlight
   - pymdownx.superfences
+
+# docs/rules.md is the rule summary the README links to on GitHub, and
+# scripts/sync_rule_count.py writes into it, so it keeps its name and place. On
+# the site it only did harm: with directory URLs it builds to rules/index.html,
+# the same file as docs/rules/index.md, and whichever was written last won, so
+# the page the nav called "Rule reference" never existed there and every link to
+# it landed on the per-rule index. That index keeps rules/ (SARIF results already
+# uploaded link to it), so the summary is the one left out. The hook in
+# scripts/mkdocs_hooks.py and tests/test_rule_pages.py both fail if two built
+# files ever share a destination again.
+exclude_docs: |
+  /rules.md

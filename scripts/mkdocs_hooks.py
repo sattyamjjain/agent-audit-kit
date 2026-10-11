@@ -40,6 +40,14 @@ keeps them out of MkDocs' "pages not in nav" log, where there would be one line
 per rule.
 `tests/test_rule_pages.py` builds the site and fails unless every registered
 rule's page exists exactly where its ``helpUri`` points.
+
+**The third job: refuse a build in which two files share one page.** With
+directory URLs ``docs/rules.md`` and ``docs/rules/index.md`` are both
+``rules/index.html``, and MkDocs raises nothing for it: the one written last
+wins. The "Rule reference" page in the nav was the loser, unnoticed, until an
+accessibility review found its links landing on the wrong page. ``on_files`` now
+raises on any destination built from more than one source, after the pages above
+are added (a generated page can clash with a hand-written one too).
 """
 
 from __future__ import annotations
@@ -184,6 +192,25 @@ def _publish_rule_pages(files: Any, config: Any) -> None:
         files.append(File.generated(config, src_uri, content=markdown, inclusion=inclusion))
 
 
+def colliding_destinations(files: Any) -> dict[str, list[str]]:
+    """Built file destination -> the source files that would be written to it, when more than one.
+
+    MkDocs does not notice two sources with one destination unless they sit in the
+    same directory: with directory URLs ``docs/rules.md`` and ``docs/rules/index.md``
+    are both ``rules/index.html``, and whichever is written last wins. For months the
+    one called "Rule reference" in the nav was the loser, and nothing said so.
+
+    Files left out of the build (``exclude_docs``) stay in the collection, so only
+    the ones that are built count; that is how the clash is resolved on purpose.
+    """
+    by_destination: dict[str, list[str]] = {}
+    for file in files:
+        if file.inclusion.is_excluded():
+            continue
+        by_destination.setdefault(file.dest_uri, []).append(file.src_uri)
+    return {dest: sources for dest, sources in by_destination.items() if len(sources) > 1}
+
+
 def on_files(files: Any, config: Any) -> Any:
     """Add the research artifacts and the per-rule pages to the build."""
     for name in PUBLISHED_FILES:
@@ -206,4 +233,14 @@ def on_files(files: Any, config: Any) -> Any:
             )
         )
     _publish_rule_pages(files, config)
+    clashes = colliding_destinations(files)
+    if clashes:
+        # Loud, like the missing research file above: the alternative is a page that
+        # is in the nav, builds without a warning, and is not there.
+        listing = "; ".join(f"{dest} <- {', '.join(sources)}" for dest, sources in sorted(clashes.items()))
+        raise ValueError(
+            f"mkdocs_hooks: files that would be built to the same page, so all but one "
+            f"would silently not exist: {listing}. Rename one, or add the one to drop "
+            f"to `exclude_docs` in mkdocs.yml."
+        )
     return files

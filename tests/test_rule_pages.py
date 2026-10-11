@@ -1003,6 +1003,118 @@ def test_the_hook_adds_every_page_outside_the_nav_and_keeps_the_index_in_it(tmp_
     assert len({f.src_uri for f in files}) == len(list(files)), "duplicate src_uri after the hook"
 
 
+def _hooked_files(tmp_path: Path):
+    """The file collection as the build gets it: from the docs directory, then through the hook."""
+    pytest.importorskip("mkdocs.structure.files")
+    from mkdocs.structure.files import get_files
+
+    config = _mkdocs_config(tmp_path / "site")
+    return config, config.plugins.on_files(get_files(config), config=config)
+
+
+def test_no_two_built_files_share_a_destination(tmp_path: Path) -> None:
+    """`docs/rules.md` and `docs/rules/index.md` were both `rules/index.html`, and one
+    silently won: the nav's "Rule reference" never reached the site (WCAG 2.4.4: every
+    link to it landed on the per-rule index)."""
+    _config, files = _hooked_files(tmp_path)
+    by_destination: dict[str, list[str]] = {}
+    for file in files:
+        if file.inclusion.is_included():  # a file left out of the build cannot clash
+            by_destination.setdefault(file.dest_uri, []).append(file.src_uri)
+    clashes = {dest: sources for dest, sources in by_destination.items() if len(sources) > 1}
+    assert not clashes, f"files built to the same page: {clashes}"
+    # The clash that used to exist is settled by leaving the summary out, not the per-rule
+    # index: SARIF results already uploaded point at `rules/`.
+    summary = files.get_file_from_path("rules.md")
+    assert summary is not None and summary.inclusion.is_excluded()
+    index = files.get_file_from_path(rp.INDEX_URI)
+    assert index is not None and index.inclusion.is_included()
+
+
+def test_the_nav_offers_only_pages_that_are_built(tmp_path: Path) -> None:
+    _config, files = _hooked_files(tmp_path)
+    nav = _load("nav_liveness", "nav_liveness.py")
+    sources = nav.nav_sources()
+    assert sources and "rules.md" not in sources
+    unbuilt = []
+    for source in sources:
+        page = files.get_file_from_path(source)
+        if page is None or page.inclusion.is_excluded():
+            unbuilt.append(source)
+    assert not unbuilt, f"nav entries that are not part of the built site: {unbuilt}"
+
+
+def test_no_page_links_to_the_summary_the_site_leaves_out() -> None:
+    """With `docs/rules.md` excluded, a relative link to it is rewritten to the address it
+    would have had, which is the per-rule index, and MkDocs only says so at INFO level."""
+    summary = (DOCS / "rules.md").resolve()
+    link = re.compile(r"\]\(((?:\./|\.\./)[^)\s#]*)")
+    offenders = []
+    for page in sorted(DOCS.rglob("*.md")):
+        for target in link.findall(page.read_text(encoding="utf-8", errors="ignore")):
+            if (page.parent / target).resolve() == summary:
+                offenders.append(f"{page.relative_to(REPO_ROOT)}: {target}")
+    assert not offenders, f"links to the excluded rule summary: {offenders}"
+
+
+def _hooks():
+    pytest.importorskip("mkdocs.structure.files")
+    return _load("mkdocs_hooks_under_test", "mkdocs_hooks.py")
+
+
+def test_a_file_left_out_of_the_build_cannot_clash_but_two_built_files_do() -> None:
+    from mkdocs.structure.files import File, Files, InclusionLevel
+
+    hooks = _hooks()
+
+    def make(src: str, level) -> File:
+        file = File(src, "docs", "site", True)
+        file.inclusion = level
+        return file
+
+    kept = make("rules/index.md", InclusionLevel.INCLUDED)
+    assert hooks.colliding_destinations(Files([kept, make("rules.md", InclusionLevel.EXCLUDED)])) == {}
+    assert hooks.colliding_destinations(Files([kept, make("rules.md", InclusionLevel.DRAFT)])) == {}
+    clash = hooks.colliding_destinations(Files([kept, make("rules.md", InclusionLevel.INCLUDED)]))
+    assert clash == {"rules/index.html": ["rules/index.md", "rules.md"]}
+    assert hooks.colliding_destinations(Files([kept, make("other.md", InclusionLevel.INCLUDED)])) == {}
+
+
+def test_the_hook_refuses_a_build_in_which_two_files_share_a_page(tmp_path: Path) -> None:
+    """Not just a test failure: `mkdocs build` itself stops, so the deploy cannot publish it."""
+    pytest.importorskip("mkdocs.structure.files")
+    from mkdocs.structure.files import File, get_files
+
+    config = _mkdocs_config(tmp_path / "site")
+    files = get_files(config)
+    # `cli.md` and `cli/index.md` would both be `cli/index.html`.
+    files.append(File("cli/index.md", config["docs_dir"], config["site_dir"], config["use_directory_urls"]))
+    with pytest.raises(Exception, match="same page") as caught:
+        config.plugins.on_files(files, config=config)
+    assert "cli/index.html <- cli.md, cli/index.md" in str(caught.value)
+
+
+_MD_LINK = re.compile(r"\[([^\]\[]+)\]\(([^)\s]+)\)")
+
+
+def test_a_link_text_never_leads_to_two_places_on_one_page(pages: dict[str, str]) -> None:
+    """WCAG 2.4.4 / 3.2.4: the same words are expected to go to the same place.
+
+    AAK-AZURE-MCP-001 linked "CVE-2026-32211" to a blog post in its own table and to the
+    NVD record in the registry reference under it, and the rules index listed the three
+    composition rules twice, once to the shared write-up and once to their own pages.
+    """
+    clashes: dict[str, dict[str, list[str]]] = {}
+    for uri, text in pages.items():
+        seen: dict[str, set[str]] = {}
+        for label, target in _MD_LINK.findall(text):
+            seen.setdefault(label, set()).add(target[2:] if target.startswith("./") else target)
+        bad = {label: sorted(targets) for label, targets in seen.items() if len(targets) > 1}
+        if bad:
+            clashes[uri] = bad
+    assert not clashes, f"link text that goes to two places: {dict(list(clashes.items())[:3])}"
+
+
 def test_building_the_site_puts_every_help_page_where_its_helpuri_points(tmp_path: Path) -> None:
     """The check the whole design rests on: build the docs, then follow every helpUri."""
     pytest.importorskip("mkdocs.commands.build")
