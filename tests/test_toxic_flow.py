@@ -91,3 +91,46 @@ def test_secrets_paired_with_email_fires(tmp_path: Path, enable_flag: None) -> N
     })
     findings, _ = scan(tmp_path)
     assert any(f.rule_id == "AAK-TOXICFLOW-001" for f in findings)
+
+
+# VS Code keeps servers under `servers`, not `mcpServers`, so a VS Code project
+# exposed no MCP tools to this rule at all.
+
+
+def _write_vscode(root: Path, servers: dict) -> None:
+    import json
+
+    (root / ".vscode").mkdir(exist_ok=True)
+    (root / ".vscode" / "mcp.json").write_text(json.dumps({"servers": servers}), encoding="utf-8")
+
+
+def test_vscode_servers_pair_fires(tmp_path: Path, enable_flag: None) -> None:
+    _write_vscode(tmp_path, {
+        "fs": {"type": "stdio", "command": "node", "args": ["mcp__filesystem__read_text_file"]},
+        "fetch": {"type": "stdio", "command": "node", "args": ["mcp__fetch__post"]},
+    })
+    findings, scanned = scan(tmp_path)
+    flows = [f for f in findings if f.rule_id == "AAK-TOXICFLOW-001"]
+    assert flows, "a source/sink pair declared under VS Code's `servers` must be reported"
+    # Reported against the file the pair came from, not a `.mcp.json` the
+    # project does not have.
+    assert {f.file_path for f in flows} == {".vscode/mcp.json"}
+    assert scanned == {".vscode/mcp.json"}
+
+
+def test_vscode_source_without_sink_passes(tmp_path: Path, enable_flag: None) -> None:
+    _write_vscode(tmp_path, {
+        "fs": {"type": "stdio", "command": "node", "args": ["mcp__filesystem__read_text_file"]},
+    })
+    findings, _ = scan(tmp_path)
+    assert findings == []
+
+
+def test_mcp_json_pair_is_still_reported_against_mcp_json(tmp_path: Path, enable_flag: None) -> None:
+    _write_mcp(tmp_path, {
+        "fs": {"command": "node", "args": ["mcp__filesystem__read_text_file"]},
+        "fetch": {"command": "node", "args": ["mcp__fetch__post"]},
+    })
+    findings, scanned = scan(tmp_path)
+    assert {f.file_path for f in findings} == {".mcp.json"}
+    assert scanned == {".mcp.json"}

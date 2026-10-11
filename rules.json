@@ -8699,7 +8699,7 @@
       "cve_references": [],
       "description": "Tool description contains invisible Unicode characters (zero-width joiners, RTL overrides, invisible separators) that could hide malicious instructions.",
       "incident_references": [],
-      "limitations": "Reads description strings only: a tool's own, its input schema's, each parameter's, and the `toolDescriptions` map, in the `mcpServers` of an MCP config file; what a server returns from `tools/list` at run time is not read. The same invisible characters in a tool `name` or `title`, or in a parameter's `default`, `enum` or `examples`, are not read. Characters that render blank without being format or combining marks, such as the Braille blank (U+2800) and the Hangul filler (U+3164), are not matched either.",
+      "limitations": "Reads description strings only: a tool's own, its input schema's, each parameter's, and the `toolDescriptions` map, in the `mcpServers` (or VS Code `servers`) object of an MCP config file; what a server returns from `tools/list` at run time is not read. The same invisible characters in a tool `name` or `title`, or in a parameter's `default`, `enum` or `examples`, are not read. Characters that render blank without being format or combining marks, such as the Braille blank (U+2800) and the Hangul filler (U+3164), are not matched either.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"

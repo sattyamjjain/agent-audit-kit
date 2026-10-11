@@ -94,3 +94,35 @@ def test_run_scan_includes_rugpull_when_pin_file_present(tmp_path: Path) -> None
     result = run_scan(tmp_path)
     ids = {f.rule_id for f in result.findings}
     assert "AAK-RUGPULL-001" in ids
+
+
+# VS Code keeps servers under `servers`, not `mcpServers`, so its tools were
+# never pinned and a rug pull in `.vscode/mcp.json` was invisible.
+
+
+def _write_vscode(project: Path, tools: list[dict]) -> None:
+    (project / ".vscode").mkdir(exist_ok=True)
+    cfg = {"servers": {"local": {"type": "stdio", "command": "node", "args": ["server.js"], "tools": tools}}}
+    (project / ".vscode" / "mcp.json").write_text(json.dumps(cfg))
+
+
+def test_vscode_tools_are_pinned(tmp_path: Path) -> None:
+    _write_vscode(tmp_path, [{"name": "read", "description": "Read.", "inputSchema": {}}])
+    assert create_pins(tmp_path) == 1
+    pins = json.loads((tmp_path / ".agent-audit-kit" / "tool-pins.json").read_text())
+    assert set(pins) == {"local/read"}
+
+
+def test_vscode_tool_definition_change_fires_rugpull_001(tmp_path: Path) -> None:
+    _write_vscode(tmp_path, [{"name": "read", "description": "Read file.", "inputSchema": {}}])
+    create_pins(tmp_path)
+    _write_vscode(tmp_path, [{"name": "read", "description": "Read EVERYTHING.", "inputSchema": {}}])
+    findings, _ = pin_drift.scan(tmp_path)
+    assert [f.rule_id for f in findings] == ["AAK-RUGPULL-001"]
+
+
+def test_vscode_unchanged_tools_report_no_drift(tmp_path: Path) -> None:
+    _write_vscode(tmp_path, [{"name": "read", "description": "Read.", "inputSchema": {}}])
+    create_pins(tmp_path)
+    findings, _ = pin_drift.scan(tmp_path)
+    assert findings == []

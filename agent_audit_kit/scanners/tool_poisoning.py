@@ -75,6 +75,40 @@ _FILE_PATH_RE = re.compile(
 # Max length for AAK-POISON-005
 _MAX_DESCRIPTION_LENGTH = 500
 
+# The objects an MCP config keeps its servers in. VS Code's `.vscode/mcp.json`
+# (and its user-profile `mcp.json`) uses `servers`; the portable `.mcp.json` and
+# Claude, Cursor, Windsurf and Amazon Q use `mcpServers`.
+_SERVER_CONTAINER_KEYS: tuple[str, ...] = ("mcpServers", "servers")
+
+
+# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
+def _server_entries(data: Any) -> list[tuple[str, dict[str, Any]]]:
+    """Every ``(name, config)`` server entry under ``mcpServers`` or VS Code's ``servers``.
+
+    `.vscode/mcp.json` has been on `_MCP_CONFIG_FILES` all along, but only
+    `mcpServers` was read, so a VS Code config got no tool-poisoning analysis:
+    a poisoned description there scanned clean.
+
+    The keys are read in that order, and a file carrying both yields each map's
+    entries on their own, never merged. A map counts only when it is a JSON
+    object at the top level of the config, so a registry-style `servers` array
+    is not one; an entry whose value is not an object is skipped; and a top
+    level that is not an object yields nothing. That last case used to raise
+    `AttributeError` here (this scanner globs `*mcp*.json`) and take the scanner
+    down. `pinning` and `toxic_flow` carry copies of this reader.
+    """
+    if not isinstance(data, dict):
+        return []
+    entries: list[tuple[str, dict[str, Any]]] = []
+    for key in _SERVER_CONTAINER_KEYS:
+        block = data.get(key)
+        if not isinstance(block, dict):
+            continue
+        for name, cfg in block.items():
+            if isinstance(cfg, dict):
+                entries.append((str(name), cfg))
+    return entries
+
 
 def _find_mcp_configs(project_root: Path) -> list[Path]:
     """Discover MCP configuration files in the project."""
@@ -168,27 +202,21 @@ def _iter_param_descriptions(
     return out
 
 
-def _extract_tool_descriptions(data: dict[str, Any]) -> list[tuple[str, str, str]]:
+def _extract_tool_descriptions(data: Any) -> list[tuple[str, str, str]]:
     """Extract (server_name, tool_name, description) triples from MCP config.
 
-    Handles several config shapes:
-      - mcpServers.<name>.tools[].{name, description}
-      - mcpServers.<name>.tools[].inputSchema.description (schema-level)
-      - mcpServers.<name>.tools[].inputSchema.properties.<param>.description
+    Handles several config shapes, where ``<servers>`` is ``mcpServers`` or
+    VS Code's ``servers`` (see `_server_entries`):
+      - <servers>.<name>.tools[].{name, description}
+      - <servers>.<name>.tools[].inputSchema.description (schema-level)
+      - <servers>.<name>.tools[].inputSchema.properties.<param>.description
         (per-parameter — recursive; the indirect-prompt-injection-in-tool-
         metadata gap where instruction text hides in one arg's docstring)
-      - mcpServers.<name>.toolDescriptions.<toolName>
-      - mcpServers.<name>.tools[]  (string items treated as name+description)
+      - <servers>.<name>.toolDescriptions.<toolName>
+      - <servers>.<name>.tools[]  (string items treated as name+description)
     """
     results: list[tuple[str, str, str]] = []
-    servers = data.get("mcpServers", {})
-    if not isinstance(servers, dict):
-        return results
-
-    for server_name, server_cfg in servers.items():
-        if not isinstance(server_cfg, dict):
-            continue
-
+    for server_name, server_cfg in _server_entries(data):
         # Shape 1: tools as array of objects with name/description
         tools = server_cfg.get("tools", [])
         if isinstance(tools, list):

@@ -2033,8 +2033,9 @@ _r(
     adversa_references=["ADV-POISON-01"],
     limitations=(
         "Reads description strings only: a tool's own, its input schema's, each "
-        "parameter's, and the `toolDescriptions` map, in the `mcpServers` of an MCP "
-        "config file; what a server returns from `tools/list` at run time is not "
+        "parameter's, and the `toolDescriptions` map, in the `mcpServers` (or VS "
+        "Code `servers`) object of an MCP config file; what a server returns from "
+        "`tools/list` at run time is not "
         "read. The same invisible characters in a tool `name` or `title`, or in a "
         "parameter's `default`, `enum` or `examples`, are not read. Characters that "
         "render blank without being format or combining marks, such as the Braille "

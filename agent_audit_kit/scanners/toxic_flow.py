@@ -1,7 +1,8 @@
 """AAK-TOXICFLOW-001 — toxic-flow source/sink pair scoring.
 
 Snyk Agent Scan parity. Discover every tool the agent project exposes
-(MCP servers in `.mcp.json` + skills in `.claude/skills/` + first-party
+(MCP servers in `.mcp.json` and the other MCP config files, VS Code's
+`servers` object included, + skills in `.claude/skills/` + first-party
 tools the codebase imports) and emit a HIGH finding for every
 (sensitive_source, external_sink) pair listed in
 `agent_audit_kit/data/toxic_flow_pairs.yml` — unless the pair appears
@@ -22,7 +23,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 import yaml
 
@@ -69,16 +70,53 @@ def _load_trust(project_root: Path) -> set[tuple[str, str]]:
     return out
 
 
-def _discover_mcp_tools(project_root: Path) -> set[str]:
-    """Collect tool/server identifiers from MCP config files."""
-    tools: set[str] = set()
-    for cfg in (
-        ".mcp.json",
-        ".cursor/mcp.json",
-        ".vscode/mcp.json",
-        ".amazonq/mcp.json",
-        "mcp.json",
-    ):
+_MCP_CONFIG_FILES: tuple[str, ...] = (
+    ".mcp.json",
+    ".cursor/mcp.json",
+    ".vscode/mcp.json",
+    ".amazonq/mcp.json",
+    "mcp.json",
+)
+
+
+# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
+def _server_entries(data: Any) -> list[tuple[str, dict[str, Any]]]:
+    """Every ``(name, config)`` server entry under ``mcpServers`` or VS Code's ``servers``.
+
+    `.vscode/mcp.json` keeps its servers under `servers`. It was on the file
+    list while only `mcpServers` was read, so a VS Code project exposed no MCP
+    tools to this rule. A copy of `tool_poisoning._server_entries`: keys in
+    that order, each map's entries on their own, only a top-level JSON object
+    counts as a map, and a top level that is not an object yields nothing. An
+    entry that is not an object is skipped, so its name is no longer counted
+    as a tool identifier the way it was when only `mcpServers` was read: such
+    an entry declares no server.
+    """
+    if not isinstance(data, dict):
+        return []
+    entries: list[tuple[str, dict[str, Any]]] = []
+    for key in ("mcpServers", "servers"):
+        block = data.get(key)
+        if not isinstance(block, dict):
+            continue
+        for name, cfg in block.items():
+            if isinstance(cfg, dict):
+                entries.append((str(name), cfg))
+    return entries
+
+
+def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:
+    """Tool/server identifiers from MCP config files, each with the file it came from.
+
+    Returns ``(origins, parsed)``: ``origins`` maps an identifier to the first
+    config that declared it, and ``parsed`` is every config file read. The
+    origin is what a finding is reported against. It used to be `.mcp.json`
+    whatever the pair's source, which once `servers` was read would have named
+    a file a VS Code-only project does not have.
+    """
+    origins: dict[str, str] = {}
+    parsed: set[str] = set()
+    for cfg in _MCP_CONFIG_FILES:
         p = project_root / cfg
         if not p.is_file():
             continue
@@ -86,18 +124,20 @@ def _discover_mcp_tools(project_root: Path) -> set[str]:
             data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
         except (json.JSONDecodeError, OSError):
             continue
-        servers = data.get("mcpServers") if isinstance(data, dict) else None
-        if not isinstance(servers, dict):
-            continue
-        for name, cfg_data in servers.items():
-            tools.add(name)
-            if isinstance(cfg_data, dict):
-                args = cfg_data.get("args")
-                if isinstance(args, list):
-                    for arg in args:
-                        if isinstance(arg, str):
-                            tools.add(arg)
-    return tools
+        parsed.add(cfg)
+        for name, cfg_data in _server_entries(data):
+            origins.setdefault(name, cfg)
+            args = cfg_data.get("args")
+            if isinstance(args, list):
+                for arg in args:
+                    if isinstance(arg, str):
+                        origins.setdefault(arg, cfg)
+    return origins, parsed
+
+
+def _discover_mcp_tools(project_root: Path) -> set[str]:
+    """Collect tool/server identifiers from MCP config files."""
+    return set(_mcp_tool_origins(project_root)[0])
 
 
 _TOOL_DECORATOR_RE = re.compile(
@@ -164,8 +204,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     pair_rules: list[dict] = pairs_cfg.get("pairs") or []
     trust = _load_trust(project_root)
 
-    scanned: set[str] = set()
-    discovered = _discover_mcp_tools(project_root) | _discover_repo_tools(project_root)
+    origins, scanned = _mcp_tool_origins(project_root)
+    discovered = set(origins) | _discover_repo_tools(project_root)
     if not discovered:
         return [], scanned
 
@@ -201,13 +241,18 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             "these tools — add an entry to `.aak-toxic-flow-trust.yml` "
             "with a justification, or remove one side of the pair."
         )
+        # The config that declared the pair's first MCP tool, sources first.
+        # A pair made only of `@tool` functions in the repo keeps the old
+        # `.mcp.json` placeholder: those are not tracked to a file.
+        report_path = next(
+            (origins[t] for t in (*source_tools, *sink_tools) if t in origins),
+            ".mcp.json",
+        )
         findings.append(make_finding(
             "AAK-TOXICFLOW-001",
-            ".mcp.json",
+            report_path,
             evidence,
         ))
-    if findings:
-        scanned.add(".mcp.json")
     return findings, scanned
 
 

@@ -3,9 +3,35 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding
+
+
+# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
+def _server_entries(data: Any) -> list[tuple[str, dict[str, Any]]]:
+    """Every ``(name, config)`` server entry under ``mcpServers`` or VS Code's ``servers``.
+
+    `.vscode/mcp.json` keeps its servers under `servers`. It was on the
+    discovery list while only `mcpServers` was read, so `pin` recorded none of
+    its tools and a rug pull there was never reported. A copy of
+    `tool_poisoning._server_entries`: keys in that order, each map's entries on
+    their own, only a top-level JSON object counts as a map, an entry that is
+    not an object is skipped, and a top level that is not an object yields
+    nothing (a top-level array used to raise `AttributeError` here).
+    """
+    if not isinstance(data, dict):
+        return []
+    entries: list[tuple[str, dict[str, Any]]] = []
+    for key in ("mcpServers", "servers"):
+        block = data.get(key)
+        if not isinstance(block, dict):
+            continue
+        for name, cfg in block.items():
+            if isinstance(cfg, dict):
+                entries.append((str(name), cfg))
+    return entries
 
 
 def _hash_tool(name: str, description: str, input_schema: str) -> str:
@@ -26,9 +52,9 @@ def _hash_tool(name: str, description: str, input_schema: str) -> str:
 def _discover_tools(project_root: Path) -> dict[str, dict]:
     """Find tool definitions from MCP configuration files.
 
-    Scans known MCP config locations for tool definitions and computes
-    a SHA-256 hash for each tool based on its name, description, and
-    input schema.
+    Scans known MCP config locations for tool definitions (under
+    ``mcpServers`` or VS Code's ``servers``) and computes a SHA-256 hash
+    for each tool based on its name, description, and input schema.
 
     Args:
         project_root: The project root directory to search in.
@@ -60,10 +86,7 @@ def _discover_tools(project_root: Path) -> dict[str, dict]:
         except (json.JSONDecodeError, OSError):
             continue
 
-        servers = data.get("mcpServers", {})
-        for server_name, server_cfg in servers.items():
-            if not isinstance(server_cfg, dict):
-                continue
+        for server_name, server_cfg in _server_entries(data):
             server_tools = server_cfg.get("tools", [])
             if isinstance(server_tools, list):
                 for tool in server_tools:
