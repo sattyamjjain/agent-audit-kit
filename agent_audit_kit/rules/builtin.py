@@ -5828,10 +5828,12 @@ _r(
     owasp_agentic_references=["ASI09"],
     limitations=(
         "Fires on `ToolNode(...)` with a list literal or a bare name as its first "
-        "positional argument, in a file with a single-line `from langgraph.prebuilt "
-        "import ... ToolNode`. A parenthesised multi-line import, `from "
-        "langgraph.prebuilt.tool_node import ToolNode`, and an argument that is an "
-        "attribute or a call (`ToolNode(self.tools)`) are not matched."
+        "positional argument, in a file that imports langgraph.prebuilt as `from "
+        "langgraph.prebuilt import ... ToolNode` on one line, `from langgraph "
+        "import prebuilt` or `import langgraph.prebuilt`. A parenthesised "
+        "multi-line import, `from langgraph.prebuilt.tool_node import ToolNode`, "
+        "and an argument that is an attribute or a call (`ToolNode(self.tools)`) "
+        "are not matched."
     ),
 )
 
@@ -7092,14 +7094,14 @@ _r(
     owasp_agentic_references=["ASI02", "ASI05"],
     adversa_references=["ADV-INJECT-07"],
     limitations=(
-        "The flow arm follows model output through plain assignments to a call "
-        "named `execute`, `executemany`, `executescript` or `exec_driver_sql`; "
-        "LangChain's `db.run(sql)` is not a sink. Any identifier, import or string "
-        "in the file containing `sqlglot`, `sqlparse`, `allowlist` or `whitelist` "
-        "switches that arm off, so `sqlparse.format(sql, reindent=True)`, which "
-        "only pretty-prints, counts as validation. The privilege arm judges the "
-        "database role from a literal connection URI or literal SQL text in the "
-        "source: a DSN read from `os.environ` is not seen."
+        "The flow arm follows model output through assignments into the first "
+        "argument of a call named `execute`, `executemany`, `executescript` or "
+        "`exec_driver_sql`; LangChain's `db.run(sql)` is not a sink. Any "
+        "identifier, import or string in the file containing `sqlglot`, `sqlparse`, "
+        "`allowlist` or `whitelist` switches that arm off, so `sqlparse.format(sql, "
+        "reindent=True)`, which only pretty-prints, counts as validation. The "
+        "privilege arm judges the database role from a literal connection URI or "
+        "literal SQL text in the source: a DSN read from `os.environ` is not seen."
     ),
 )
 
