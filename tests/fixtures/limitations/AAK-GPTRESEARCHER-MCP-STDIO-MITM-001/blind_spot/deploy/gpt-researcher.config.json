@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "gpt-researcher": {
+      "url": "https://research.example.test/mcp",
+      "transport": "sse",
+      "stdio_fallback": true
+    }
+  }
+}

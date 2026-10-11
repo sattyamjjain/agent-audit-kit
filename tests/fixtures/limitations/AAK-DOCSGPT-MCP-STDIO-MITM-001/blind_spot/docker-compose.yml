@@ -1,0 +1,3 @@
+services:
+  app:
+    image: arc53/docsgpt:0.5.0

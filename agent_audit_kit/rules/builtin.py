@@ -4866,6 +4866,17 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-INJECT-02"],
     aicm_references=["AIS-07", "DSP-07"],
+    limitations=(
+        "Matches `apache-doris-mcp-server` followed directly by a version "
+        "(`apache-doris-mcp-server==0.5.0`) in requirements*.txt at the project "
+        "root and in a dependency string of the root pyproject.toml. A name with no "
+        "version, a git URL, the table form that Poetry and Pipfile use "
+        "(`apache-doris-mcp-server = \"^0.5.0\"`), a requirements file in a "
+        "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
+        "poetry.lock and uv.lock are opened but never match, because the name and "
+        "the version sit on separate lines, so a version that reaches the project "
+        "only through a lockfile is not reported."
+    ),
 )
 
 
@@ -5087,6 +5098,17 @@ _r(
     owasp_mcp_references=["MCP02:2025", "MCP09:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-03"],
+    limitations=(
+        "Matches `excel-mcp-server` followed directly by a version "
+        "(`excel-mcp-server==0.1.7`) in requirements*.txt at the project root and "
+        "in a dependency string of the root pyproject.toml. A name with no version, "
+        "a git URL, the table form that Poetry and Pipfile use (`excel-mcp-server = "
+        "\"^0.1.7\"`), a requirements file in a sub-directory and an `.mcp.json` "
+        "launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are "
+        "opened but never match, because the name and the version sit on separate "
+        "lines, so a version that reaches the project only through a lockfile is "
+        "not reported."
+    ),
 )
 
 
@@ -6141,6 +6163,18 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     owasp_mcp_references=["MCP01:2025"],
     incident_references=["NVD-CVE-2026-7591", "VULDB-360544"],
+    limitations=(
+        "Two arms. The pin reads `astro-mcp-server` in the root package.json, "
+        "yarn.lock and pnpm-lock.yaml, and in package-lock.json only as a listed "
+        "dependency (`\"astro-mcp-server\": \"1.1.1\"`), and reports every version "
+        "because no fix exists. A `node_modules/astro-mcp-server` entry that only a "
+        "transitive dependency adds to package-lock.json, a Yarn 2+ yarn.lock, a "
+        "sub-directory package.json and an `npx` launcher in .mcp.json are not "
+        "read. The source arm needs the SQL string concatenated or interpolated "
+        "inside the call on `db`, `client`, `conn`, `connection`, `pool`, `cursor`, "
+        "`database`, `sqlite` or `knex`, so a query built in a variable first "
+        "(`const sql = \"SELECT ...\" + id; db.query(sql)`) is not reported."
+    ),
 )
 
 _r(
@@ -6514,6 +6548,17 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI05"],
     incident_references=["NVD-CVE-2026-44717"],
+    limitations=(
+        "Matches `mcp-calculate-server` followed directly by a version "
+        "(`mcp-calculate-server==0.1.0`) in requirements*.txt at the project root "
+        "and in a dependency string of the root pyproject.toml. A name with no "
+        "version, a git URL, the table form that Poetry and Pipfile use "
+        "(`mcp-calculate-server = \"^0.1.0\"`), a requirements file in a "
+        "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
+        "poetry.lock and uv.lock are opened but never match, because the name and "
+        "the version sit on separate lines, so a version that reaches the project "
+        "only through a lockfile is not reported."
+    ),
 )
 
 _r(
@@ -6543,6 +6588,17 @@ _r(
     cve_references=["CVE-2026-26030"],
     owasp_agentic_references=["ASI02", "ASI05", "ASI10"],
     incident_references=["MSRC-2026-05-07"],
+    limitations=(
+        "Matches `semantic-kernel` followed directly by a version "
+        "(`semantic-kernel==1.30.0`) in requirements*.txt at the project root and "
+        "in a dependency string of the root pyproject.toml. A name with no version, "
+        "a name with extras (`semantic-kernel[all]==1.30.0`), a git URL, the table "
+        "form that Poetry and Pipfile use (`semantic-kernel = \"^1.30.0\"`), a "
+        "requirements file in a sub-directory and an `.mcp.json` launcher are not "
+        "reported. Pipfile.lock, poetry.lock and uv.lock are opened but never "
+        "match, because the name and the version sit on separate lines, so a "
+        "version that reaches the project only through a lockfile is not reported."
+    ),
 )
 
 _r(
@@ -6576,6 +6632,16 @@ _r(
     cve_references=["CVE-2026-40068", "CVE-2026-103435"],
     owasp_agentic_references=["ASI03", "ASI10"],
     incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
+    limitations=(
+        "Reads `@anthropic-ai/claude-code` in the root package.json, "
+        "package-lock.json, yarn.lock and pnpm-lock.yaml and reports a version it "
+        "can parse below 2.1.129, so `latest` and other tags state no version and "
+        "are not reported. In package-lock.json it reads only a listed dependency "
+        "(`\"@anthropic-ai/claude-code\": \"<version>\"`): an entry that only a "
+        "transitive dependency adds under `node_modules/@anthropic-ai/claude-code` "
+        "is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory "
+        "package.json or a versioned `npx` reference in .mcp.json."
+    ),
 )
 
 _r(
@@ -6618,6 +6684,22 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI10"],
     incident_references=["OX-MCP-2026-05-01"],
+    limitations=(
+        "Two arms. The pin reads `gpt-researcher` and `gpt-researcher-mcp` followed "
+        "directly by a version in the root requirements*.txt and pyproject.toml, "
+        "and in the root npm manifests, and reports every version because no fix "
+        "exists. A name with no version, a requirements file in a sub-directory, a "
+        "version recorded only in uv.lock (name and version sit on separate lines) "
+        "and a `gptresearcher/gpt-researcher` image tag in a compose file are not "
+        "reported. The config arm reads JSON MCP configs (.mcp.json, mcp.json, "
+        "`.cursor/mcp.json`, `.vscode/mcp.json`), gpt-researcher's own config files "
+        "at the root and in `.gpt-researcher/`, and the .json files of a top-level "
+        "`configs/`, and reports one that names gpt-researcher, declares an sse, "
+        "http, https or streamable-http transport and enables stdio explicitly "
+        "(`stdio_fallback`, `transport_override`, `permit_transport_override` or a "
+        "`transports` list that includes stdio); the same settings in "
+        "`deploy/gpt-researcher.config.json` are not reported."
+    ),
 )
 
 _r(
@@ -6658,6 +6740,24 @@ _r(
     owasp_mcp_references=["MCP01:2025", "MCP05:2025"],
     owasp_agentic_references=["ASI02", "ASI10"],
     incident_references=["OX-MCP-2026-05-01"],
+    limitations=(
+        "Two arms. The pin reads npm `docsgpt` and `docsgpt-mcp` in the root "
+        "package.json, package-lock.json, yarn.lock and pnpm-lock.yaml, and the "
+        "name followed directly by a version in the root requirements*.txt and "
+        "pyproject.toml, and reports a version below 0.6.4 or any `arc53/DocsGPT` "
+        "git reference. A `node_modules/docsgpt` entry that only a transitive "
+        "dependency adds to package-lock.json, a version recorded only in uv.lock "
+        "(name and version sit on separate lines), a sub-directory package.json and "
+        "an `arc53/docsgpt` image tag in a compose file are not read. The config "
+        "arm reads JSON MCP configs (.mcp.json, mcp.json, `.cursor/mcp.json`, "
+        "`.vscode/mcp.json`), DocsGPT's own config files at the root and in "
+        "`.docsgpt/`, and the .json files of a top-level `configs/`, and reports "
+        "one that names DocsGPT, declares an sse, http, https or streamable-http "
+        "transport and enables stdio explicitly (`stdio_fallback`, "
+        "`transport_override`, `permit_transport_override` or a `transports` list "
+        "that includes stdio); the same settings in `deploy/docsgpt.config.json` "
+        "are not reported."
+    ),
 )
 
 _r(
@@ -6685,6 +6785,15 @@ _r(
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI02", "ASI10"],
     incident_references=["NVD-CVE-2026-7061"],
+    limitations=(
+        "Reads the root package.json, package-lock.json, yarn.lock and "
+        "pnpm-lock.yaml for a key `\"chatgpt-mcp-server\"` with any value, or for the "
+        "`Toowiredd/chatgpt-mcp-server` repository path, and reports every version "
+        "because no fix exists. A reference in a sub-directory package.json, a fork "
+        "or mirror under another GitHub organisation (`\"gpt\": "
+        "\"github:acme/chatgpt-mcp-server\"`) and an `npx` launcher that fetches the "
+        "repository from GitHub in .mcp.json are not read."
+    ),
 )
 
 _r(
@@ -6717,6 +6826,16 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     adversa_references=["ADV-RCE-04"],
     incident_references=["NVD-CVE-2026-30624", "OX-MCP-2026-05-01"],
+    limitations=(
+        "Reads a git reference to `frdel/agent-zero` or `agent0ai/agent-zero` (a "
+        "`git+https` URL or `github:` shorthand) in the root requirements*.txt, "
+        "pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and lockfiles, and reports one with no tag or a "
+        "tag below 1.0. The `agent-zero` name on PyPI is a different project and is "
+        "not matched. An `agent0ai/agent-zero` image tag in a compose file or "
+        "Dockerfile, a `git clone` in a script and a reference in a sub-directory "
+        "manifest are not read."
+    ),
 )
 
 _r(
@@ -6750,6 +6869,17 @@ _r(
     owasp_agentic_references=["ASI02", "ASI10"],
     incident_references=["BERRIAI-LITELLM-2026-04-30"],
     auto_fixable=True,
+    limitations=(
+        "Matches `litellm` followed directly by a version (`litellm==1.83.0`) in "
+        "requirements*.txt at the project root and in a dependency string of the "
+        "root pyproject.toml. A name with no version, a name with extras "
+        "(`litellm[all]==1.83.0`), a git URL, the table form that Poetry and "
+        "Pipfile use (`litellm = \"^1.83.0\"`), a requirements file in a "
+        "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
+        "poetry.lock and uv.lock are opened but never match, because the name and "
+        "the version sit on separate lines, so a version that reaches the project "
+        "only through a lockfile is not reported."
+    ),
 )
 
 _r(
@@ -7417,6 +7547,15 @@ _r(
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SUPPLY-01"],
+    limitations=(
+        "Reads `mcp-gateway-registry` as text in the project root's "
+        "requirements*.txt, pyproject.toml, Pipfile, Pipfile.lock, poetry.lock, "
+        "uv.lock, package.json, package-lock.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and *.mcp.yaml/.yml files, and reports a file "
+        "whose first mention has a version below 1.0.13 or none. It does not read a "
+        "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`."
+    ),
 )
 
 

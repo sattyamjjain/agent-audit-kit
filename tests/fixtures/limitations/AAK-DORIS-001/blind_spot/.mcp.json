@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "demo": {
+      "command": "uvx",
+      "args": [
+        "apache-doris-mcp-server==0.5.0"
+      ]
+    }
+  }
+}

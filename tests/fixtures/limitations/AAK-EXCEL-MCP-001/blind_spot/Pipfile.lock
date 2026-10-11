@@ -1,0 +1,7 @@
+{
+  "default": {
+    "excel-mcp-server": {
+      "version": "==0.1.7"
+    }
+  }
+}

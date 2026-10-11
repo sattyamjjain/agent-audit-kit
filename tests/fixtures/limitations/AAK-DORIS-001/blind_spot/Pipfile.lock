@@ -1,0 +1,7 @@
+{
+  "default": {
+    "apache-doris-mcp-server": {
+      "version": "==0.5.0"
+    }
+  }
+}

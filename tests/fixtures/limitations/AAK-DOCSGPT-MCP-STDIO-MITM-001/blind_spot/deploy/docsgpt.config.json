@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "docsgpt": {
+      "url": "https://docs.example.test/mcp",
+      "transport": "sse",
+      "stdio_fallback": true
+    }
+  }
+}
