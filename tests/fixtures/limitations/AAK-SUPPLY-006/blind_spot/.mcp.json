@@ -5,6 +5,13 @@
       "args": [
         "openclaw==2.0.0"
       ]
+    },
+    "y": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "openclaw"
+      ]
     }
   }
 }

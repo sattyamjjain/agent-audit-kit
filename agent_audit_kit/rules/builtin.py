@@ -1359,13 +1359,15 @@ _r(
     adversa_references=["ADV-SUPPLY-05"],
     limitations=(
         "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of "
-        "the root package.json only, and reports one that names curl, wget, fetch, "
-        "nc, ncat, ssh, http, axios or request, or that does not start with a known "
-        "build tool. A script that starts with `node`, `npx`, `tsc`, `webpack`, "
-        "`rollup`, `esbuild` or `vite` is treated as safe, so `npx --yes "
-        "some-unreviewed-package` passes. The install scripts of dependencies (a "
-        "lockfile entry marked `hasInstallScript`) and of a workspace package.json "
-        "in a sub-directory are not read."
+        "the root package.json only, and reports one that names the whole word "
+        "curl, wget, fetch, nc, ncat, ssh, http, axios or request, or that does not "
+        "start with a known build tool. A script that starts with `node`, `npx`, "
+        "`tsc`, `webpack`, `rollup`, `esbuild` or `vite` is treated as safe, so "
+        "`npx --yes some-unreviewed-package` passes, and so does `node -e "
+        "\"require('https').get(...)\"`, because `https` is not the word `http`. The "
+        "install scripts of dependencies (a lockfile entry marked "
+        "`hasInstallScript`) and of a workspace package.json in a sub-directory are "
+        "not read."
     ),
 )
 
@@ -5534,9 +5536,9 @@ _r(
         "Reads one file at a time. A `new StdioClientTransport(...)` or `new "
         "StdioServerTransport(...)` counts as tainted when its command or args "
         "derive, through assignments, destructuring, template strings or one helper "
-        "return, from `req`, `request`, `ctx` or `context` `.body`, `.query`, "
-        "`.params` or `.headers`, `process.env`, `JSON.parse` or an awaited fetch "
-        "or axios call in that file. A config object passed in from another file "
+        "return, from `req.body`, `req.query`, `req.params`, `req.headers` (or the "
+        "`request` forms), `process.env`, `JSON.parse` or an awaited fetch or axios "
+        "call in that file. A config object passed in from another file "
         "(`connect(req.body)` in routes.ts, `connect(cfg)` in client.ts) is not "
         "followed, with or without the optional tree-sitter extra."
     ),
@@ -5599,11 +5601,12 @@ _r(
     limitations=(
         "Treats a Rust file as MCP code only if it mentions `mcp_sdk`, "
         "`modelcontextprotocol` or `mcp::client::stdio`, so a file that uses the "
-        "`rmcp` crate and none of those names is not scanned. It also needs a "
-        "`reqwest`, `serde_json::from_str` or `from_slice`, `std::env::var`, "
-        "`hyper`, `actix_web::web::Json` or `axum::extract::Json` call in the 2 KB "
-        "before `Command::new`, which a command taken from `std::env::args()` is "
-        "not."
+        "`rmcp` crate and none of those names is not scanned. It also needs one of "
+        "`reqwest::get`, `reqwest::Client`, `serde_json::from_str`, "
+        "`serde_json::from_slice`, `std::env::var`, `hyper::body`, "
+        "`actix_web::web::Json` or `axum::extract::Json` in the 2 KB before "
+        "`Command::new`; a command taken from `std::env::args()` is not one of "
+        "them."
     ),
 )
 
@@ -11828,11 +11831,13 @@ _r(
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports "
-        "every version, a future fixed one included, until the pin gets a floor. "
-        "The dependency is not read when it is declared in a sub-directory manifest "
-        "(`packages/app/package.json`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "every version from 0.1.1 on, a future fixed one included, until the pin "
+        "gets a floor. The dependency is not read when it is declared in a "
+        "sub-directory manifest (`packages/app/package.json`), in "
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
+        "reader does not parse (a Yarn 2+ `yarn.lock`). The npm release 0.1.0 is "
+        "affected too but is not reported, because the same number belongs to an "
+        "unrelated PyPI package of that name."
     ),
 )
 

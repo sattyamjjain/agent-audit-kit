@@ -5333,7 +5333,7 @@
       ],
       "description": "knowns (`knowns`, npm \u2014 knowns-dev) before 0.30.0 does not validate filesystem paths supplied in MCP tool arguments, so an attacker-controlled path containing directory-traversal sequences reads, creates, overwrites or deletes files outside the project directory (CVE-2026-86439, CVSS 8.8). NVD scopes the read reach to \"arbitrary Markdown files accessible to the server process\", which follows from where the defect sits: the document and memory stores (`internal/storage/doc_store.go`, `internal/storage/memory_store.go`) are Markdown-backed. Fixed in v0.30.0. CVE-2026-88938 (MEDIUM 6.5) then reopened the same class on a different tool: `knowns` **through 0.33.0** does not confine the `path` argument of the `code.find` MCP tool to the project root, so an agent session supplies an absolute path or traversal sequence and retrieves full file contents from anywhere the server process can read. 0.33.0 is the newest published release (npm, 2026-09-05) and is itself in the affected range, so **there is no fix floor to upgrade to** and this pin is presence-only: it fires on any referenced version. That is the permanent state until upstream ships a fix, not a placeholder \u2014 the same shape as the `postgres-mcp` and `mcp-florence2` pins in this table.",
       "incident_references": [],
-      "limitations": "Reads `knowns` in requirements*.txt at any depth and, at the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports every version, a future fixed one included, until the pin gets a floor. The dependency is not read when it is declared in a sub-directory manifest (`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`).",
+      "limitations": "Reads `knowns` in requirements*.txt at any depth and, at the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports every version from 0.1.1 on, a future fixed one included, until the pin gets a floor. The dependency is not read when it is declared in a sub-directory manifest (`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). The npm release 0.1.0 is affected too but is not reported, because the same number belongs to an unrelated PyPI package of that name.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -7350,7 +7350,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
-      "limitations": "Reads one file at a time. A `new StdioClientTransport(...)` or `new StdioServerTransport(...)` counts as tainted when its command or args derive, through assignments, destructuring, template strings or one helper return, from `req`, `request`, `ctx` or `context` `.body`, `.query`, `.params` or `.headers`, `process.env`, `JSON.parse` or an awaited fetch or axios call in that file. A config object passed in from another file (`connect(req.body)` in routes.ts, `connect(cfg)` in client.ts) is not followed, with or without the optional tree-sitter extra.",
+      "limitations": "Reads one file at a time. A `new StdioClientTransport(...)` or `new StdioServerTransport(...)` counts as tainted when its command or args derive, through assignments, destructuring, template strings or one helper return, from `req.body`, `req.query`, `req.params`, `req.headers` (or the `request` forms), `process.env`, `JSON.parse` or an awaited fetch or axios call in that file. A config object passed in from another file (`connect(req.body)` in routes.ts, `connect(cfg)` in client.ts) is not followed, with or without the optional tree-sitter extra.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -7430,7 +7430,7 @@
       "incident_references": [
         "OX-MCP-2026-04-25"
       ],
-      "limitations": "Treats a Rust file as MCP code only if it mentions `mcp_sdk`, `modelcontextprotocol` or `mcp::client::stdio`, so a file that uses the `rmcp` crate and none of those names is not scanned. It also needs a `reqwest`, `serde_json::from_str` or `from_slice`, `std::env::var`, `hyper`, `actix_web::web::Json` or `axum::extract::Json` call in the 2 KB before `Command::new`, which a command taken from `std::env::args()` is not.",
+      "limitations": "Treats a Rust file as MCP code only if it mentions `mcp_sdk`, `modelcontextprotocol` or `mcp::client::stdio`, so a file that uses the `rmcp` crate and none of those names is not scanned. It also needs one of `reqwest::get`, `reqwest::Client`, `serde_json::from_str`, `serde_json::from_slice`, `std::env::var`, `hyper::body`, `actix_web::web::Json` or `axum::extract::Json` in the 2 KB before `Command::new`; a command taken from `std::env::args()` is not one of them.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI10"
@@ -10038,7 +10038,7 @@
       "cve_references": [],
       "description": "package.json has install scripts (preinstall, postinstall, etc.) that execute arbitrary commands during npm install.",
       "incident_references": [],
-      "limitations": "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of the root package.json only, and reports one that names curl, wget, fetch, nc, ncat, ssh, http, axios or request, or that does not start with a known build tool. A script that starts with `node`, `npx`, `tsc`, `webpack`, `rollup`, `esbuild` or `vite` is treated as safe, so `npx --yes some-unreviewed-package` passes. The install scripts of dependencies (a lockfile entry marked `hasInstallScript`) and of a workspace package.json in a sub-directory are not read.",
+      "limitations": "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of the root package.json only, and reports one that names the whole word curl, wget, fetch, nc, ncat, ssh, http, axios or request, or that does not start with a known build tool. A script that starts with `node`, `npx`, `tsc`, `webpack`, `rollup`, `esbuild` or `vite` is treated as safe, so `npx --yes some-unreviewed-package` passes, and so does `node -e \"require('https').get(...)\"`, because `https` is not the word `http`. The install scripts of dependencies (a lockfile entry marked `hasInstallScript`) and of a workspace package.json in a sub-directory are not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
