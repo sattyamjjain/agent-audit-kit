@@ -17,6 +17,7 @@ RESULTS  := $(RESEARCH)/results.json
         remediation-corpus remediation-corpus-check \
         fp fp-check \
         fp-instruction fp-instruction-check fp-instruction-pin fp-instruction-fetch \
+        mcptox mcptox-check mcptox-fetch \
         registry-parity cve-deferral-check
 
 ## report: regenerate results.json from the corpus + manifest (offline, deterministic)
@@ -111,6 +112,27 @@ fp-instruction-pin:
 ## AAK_FP_INSTRUCTION_CACHE), so no scan of the repo reads it.
 fp-instruction-fetch:
 	python benchmarks/false_positive/instruction_files/fetch.py fetch
+
+## mcptox: re-measure AAK's untuned rules-only recall on MCPTox (benchmarks/mcptox/results.json).
+## Offline once the cache is filled, deterministic, ~20s. MCPTox is a public labelled set, so
+## the measurement is only worth having untuned: `run.py --write` refuses to replace it with a
+## run of a changed package unless `--supersede untuned|tuned` says which that run is.
+mcptox:
+	python benchmarks/mcptox/run.py --write
+
+## mcptox-check: RESULTS.md states only results.json's rates (offline, always runs), and a
+## fresh run of the measured package reproduces results.json. Without the cache it says NOT
+## CHECKED, and once agent_audit_kit/ has changed it says NOT COMPARED, because the published
+## recall belongs to the frozen rule set. Neither is a pass.
+mcptox-check:
+	@python scripts/check_mcptox_results_page.py
+	@python benchmarks/mcptox/run.py --check
+
+## mcptox-fetch: (network, once) download the pinned MCPTox release file and verify its size,
+## SHA-256 and git blob id. MCPTox has no license, so the file lives only in a user cache
+## outside the repo ($XDG_CACHE_HOME/agent-audit-kit/mcptox, or AAK_MCPTOX_CACHE).
+mcptox-fetch:
+	python benchmarks/mcptox/fetch.py
 
 ## count-check: fail if ANY rendered count is stale. Two guards, because they cover
 ## different halves and each one alone gives a false all-clear:

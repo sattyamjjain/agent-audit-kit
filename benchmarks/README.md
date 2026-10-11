@@ -28,6 +28,8 @@ harnesses (no LLM in the loop):
   `false_positive/run.py`, benign predicate: `false_positive/corpus.py`,
   adjudication: `false_positive/triage.md`.
 
+Recall on a public labelled malicious set, untuned and rules-only: **[MCPTox](mcptox/RESULTS.md)**, 1,348 poisoned MCP tools on 45 real servers.
+
 ## Quick Start
 
 ```bash
