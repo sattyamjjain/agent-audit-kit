@@ -1127,17 +1127,17 @@ _r(
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
     "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, "
-    "`$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY`, `$AWS_ACCESS_KEY_ID`, `$HOME` and "
-    "`$PATH`, and the pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. "
-    "Let the program the hook runs read its own credentials from its environment, and "
-    "use a project-relative path or a plain program name instead of `$HOME` or `$PATH`.",
+    "`$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY` and `$AWS_ACCESS_KEY_ID`, and the "
+    "pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. Let the program "
+    "the hook runs read its own credentials from its environment.",
     sarif_name="HookCredentialExfiltration",
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-02"],
     limitations=(
-        "Matches six names written as a bare `$NAME` (ANTHROPIC_API_KEY, "
-        "OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, HOME, PATH) and "
-        "three exfiltration pipelines. The braced form `${ANTHROPIC_API_KEY}` and any "
+        "Matches four names written as a bare `$NAME` (ANTHROPIC_API_KEY, "
+        "OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID) and three "
+        "exfiltration pipelines; `$HOME` and `$PATH` are not credentials and are not "
+        "reported. The braced form `${ANTHROPIC_API_KEY}` and any "
         "other credential variable on its own (`$GITHUB_TOKEN`) are not matched. An "
         "`http` hook that sends `$ANTHROPIC_API_KEY` in a header it lists in "
         "`allowedEnvVars` is not read, and neither are the hooks a plugin ships in "
@@ -1152,18 +1152,26 @@ _r(
     "which can modify system configs, plant persistence, or stage exfiltration.",
     Severity.HIGH,
     Category.HOOK_INJECTION,
-    "Keep every path in the hook command inside the project. The rule matches `/tmp/`, "
-    "`~/`, `/etc/`, `/var/`, `/usr/` and `/home/` anywhere in the command, so use "
-    "project-relative paths for anything the hook writes, and call tools by name "
-    "instead of by an absolute path under those directories.",
+    "Write only inside the project: use project-relative paths for anything the hook "
+    "creates or changes. The rule reports a write to a path under `/tmp`, `~`, `/etc`, "
+    "`/var`, `/usr` or `/home`, such as a `>` redirect, `tee`, `cp`, `mv`, `sed -i`, "
+    "`curl -o` or `tar`; calling a tool by its absolute path, or reading such a path, "
+    "does not fire it.",
     sarif_name="HookWriteOutsideProject",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-ESCAPE-01"],
     limitations=(
-        "Looks for the text /tmp/, ~/, /etc/, /var/, /usr/ or /home/ anywhere in a "
-        "hook command. A path reached through `$HOME` or a relative climb "
-        "(`../../shared/out.json`) is not matched. Hooks a plugin ships in "
-        "`hooks/hooks.json` are not read."
+        "Reads the hook's command line as shell commands and reports one that writes "
+        "a path under /tmp, ~, /etc, /var, /usr or /home: a `>` or `>>` redirect, "
+        "`tee`, `mkdir`, `touch`, `chmod`, `chown` or `truncate` on it, the "
+        "destination of `cp`, `mv`, `install` or `ln`, `sed -i` or `perl -i`, "
+        "`curl -o`, `wget -O` or `-P`, `dd of=`, or `tar` creating or extracting "
+        "there, also inside `sh -c` and after `sudo` or `env`. A command that only "
+        "names such a path (`cd /tmp/build`, reading `~/.config`) is not reported, "
+        "and neither is deleting one. A path reached through `$HOME` or a relative "
+        "climb (`../../shared/out.json`) is not matched, nor is a write made by a "
+        "script the hook runs. Hooks a plugin ships in `hooks/hooks.json` are not "
+        "read."
     ),
 )
 
@@ -1254,21 +1262,27 @@ _r(
 _r(
     "AAK-HOOK-008",
     "Hook command contains obfuscated or encoded payload",
-    "A hook command contains hex-encoded strings, unicode escapes, very long commands, "
-    "or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
+    "A hook command contains hex-encoded strings, unicode escapes, an embedded "
+    "base64 blob or nested shell invocations. Obfuscation is a strong indicator of "
+    "malicious intent.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
-    "Rewrite the hook so its command is plain and short: remove `\\xNN` and `\\uNNNN` "
-    "escapes and nested `sh -c ... sh -c` chains, and move anything over 500 characters "
-    "into a script file in the repository that the hook calls by path, where it can be "
-    "reviewed.",
+    "Rewrite the hook so its command is plain: remove `\\xNN` and `\\uNNNN` escapes "
+    "and nested `sh -c ... sh -c` chains, and replace an embedded base64 blob (64 or "
+    "more letters, digits, `+` or `=` in a row, mixing upper case, lower case and "
+    "digits) with the command it encodes, or with a script file in the repository "
+    "that the hook calls by path, where it can be reviewed. Length alone does not fire "
+    "the rule.",
     sarif_name="HookObfuscatedPayload",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-OBFUSC-02"],
     limitations=(
-        "Matches `\\x41` and `\\u0041` escapes, `sh -c` twice in one command (inside "
-        "`bash -c` too), and a command longer than 500 characters. The same text "
-        "written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from "
+        "Matches `\\x41` and `\\u0041` escapes, `sh -c` twice in one command "
+        "(inside `bash -c` too), and an unbroken run of 64 or more letters, digits, "
+        "`+` or `=` that mixes upper case, lower case and digits, as base64 does. A "
+        "hex digest (an image pinned `@sha256:`) and a long readable command are not "
+        "reported, and a base64 blob whose `/` characters split it into runs shorter "
+        "than 64 is missed. The same text written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from "
         "shell variables (`$a$b`) is not matched. Hooks a plugin ships in "
         "`hooks/hooks.json` are not read."
     ),
@@ -1290,10 +1304,11 @@ _r(
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-EXFIL-02"],
     limitations=(
-        "Matches a reader command (cat, head, tail, less, more, grep, sed, awk) "
-        "followed, anywhere later in the command, by text ending in a lower-case .py, "
-        ".js, .ts, .go, .rs, .java, .rb, .c, .cpp or .h, or a `< file` redirect from "
-        "one. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py "
+        "Matches a file a reader command reads: an operand of cat, head, tail, less or "
+        "more, a file operand of grep, sed or awk (never the pattern or program), or a "
+        "`< file` redirect, ending in a lower-case .py, .js, .ts, .go, .rs, .java, "
+        ".rb, .c, .cpp or .h, also inside `sh -c`. A pattern that names an extension "
+        "(`grep '\\.py$'`) is not a read. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py "
         "out/`) and reading a file of another type (`cat src/App.tsx`) are not "
         "matched. Hooks a plugin ships in `hooks/hooks.json` are not read."
     ),

