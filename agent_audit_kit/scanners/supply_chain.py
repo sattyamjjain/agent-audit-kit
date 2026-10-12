@@ -5,8 +5,8 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._launchers import invocation_packages, pin_problem
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
 # Covers npm, Python (PyPI), and Rust (crates.io)
@@ -124,25 +124,23 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             if not command or command.strip().split()[0] not in PACKAGE_FETCHERS:
                 continue
 
+            # Only the package specs are judged: the first positional argument
+            # (or the `--from` / `-p` value that names the package, plus any
+            # `--with` / extra `-p`), read with the launcher's option values
+            # skipped. Every other argument belongs to the server. The inline
+            # form (`"command": "npx -y pkg"`) carries its spec in `command`.
+            argv = command.split()
             if isinstance(args, list):
-                for index, arg in enumerate(args):
-                    if isinstance(arg, str) and not arg.startswith("-"):
-                        # Skip path-like arguments (filesystem paths, not package names)
-                        if arg.startswith("/") or arg.startswith("./") or arg.startswith("../"):
-                            continue
-                        has_version = False
-                        if arg.startswith("@"):
-                            # Scoped package: @org/pkg@version
-                            parts = arg.split("@")
-                            has_version = len(parts) >= 3 and bool(parts[2])
-                        elif "@" in arg:
-                            has_version = True
-                        if not has_version:
-                            findings.append(_make_finding(
-                                "AAK-SUPPLY-001", rel_path,
-                                f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
-                                _find_line_number(raw, arg),
-                            ))
+                argv += [str(a) for a in args
+                         if isinstance(a, (str, int, float)) and not isinstance(a, bool)]
+            for launched in invocation_packages(argv):
+                problem = pin_problem(launched)
+                if problem is not None:
+                    findings.append(_make_finding(
+                        "AAK-SUPPLY-001", rel_path,
+                        f"Server '{server_name}' arg: {launched.spec} ({problem})",
+                        _find_line_number(raw, launched.spec),
+                    ))
     return findings
 
 

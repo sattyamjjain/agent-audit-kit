@@ -1,10 +1,19 @@
 """Which packages a launch command fetches: npx, uvx and their relatives.
 
 An MCP server entry, or a package.json script, names the package it runs as an
-argument to a launcher. Reading that argument well takes the launcher's grammar.
-The CVE pin table used to match package names anywhere in a config's text, so a
-server *named* `n8n` read as the `n8n` package, a path such as
-`/opt/whatsapp-mcp/main.py` as `whatsapp-mcp`, and an image name as a version.
+argument to a launcher. Reading that argument well takes the launcher's grammar,
+and two scanners used to approximate it:
+
+- The CVE pin table matched package names anywhere in a config's text, so a
+  server *named* `n8n` read as the `n8n` package, a path such as
+  `/opt/whatsapp-mcp/main.py` as `whatsapp-mcp`, and an image name as a version.
+- AAK-SUPPLY-001 treated every argument that did not start with `-` as a
+  package, so `--port 3000` reported the `3000`, the server URL in
+  `npx -y mcp-remote@0.1.30 https://example.test/mcp` reported the URL,
+  `uvx some-mcp-server==1.2.3` reported an exact pin (only `@` counted as a
+  version), and `uvx --from x==1.0 x` reported both `x==1.0` and the command
+  name. It also counted any text after `@` as a version, so `pkg@latest` and
+  `pkg@^1` passed as pinned.
 
 This module reads one invocation the way the launcher does: options first, with
 the values of options that take one skipped, then the package. `npx -p a cmd` and
@@ -13,9 +22,11 @@ then a command, not a package. `uvx --with b` and repeated `-p` add packages. Th
 launcher also says which registry the package comes from (`npx` is npm, `uvx` is
 PyPI), which a same-named package on the other registry needs.
 
-`launched_packages` scans a whole token list for every launcher in it, so a
-launcher behind a shell (`cmd /c npx -y pkg`, `bash -c "npx -y pkg"`) or nested
-in another server's arguments (`supergateway --stdio "npx -y pkg"`) is read too:
+`invocation_packages` reads the launcher at the head of an argv and nothing else,
+which is what AAK-SUPPLY-001 judges with `pin_problem`. `launched_packages` scans
+a whole token list for every launcher in it, so a launcher behind a shell
+(`cmd /c npx -y pkg`, `bash -c "npx -y pkg"`) or nested in another server's
+arguments (`supergateway --stdio "npx -y pkg"`) is read too:
 a token no launcher consumed that holds whitespace is split as a shell line and
 scanned, and a control operator (`&&`, `;`, `|`) ends the invocation it follows.
 That is what the CVE pin table reads, where a missed launch is a missed
@@ -27,6 +38,9 @@ from __future__ import annotations
 import re
 import shlex
 from dataclasses import dataclass
+
+from agent_audit_kit.redaction import is_secret_option
+from agent_audit_kit.scanners._versions import is_exact_version
 
 
 @dataclass(frozen=True)
@@ -54,7 +68,9 @@ _MAX_NESTING = 4
 _CONTROL = frozenset({"&&", "||", ";", "|", "&", "(", ")", ";;", "|&", ">", ">>", "<", "<<"})
 
 # Options that take a value, per launcher family. An option missing from these
-# tables is read as a flag; `--opt=value` carries its value either way.
+# tables is read as a flag; `--opt=value` carries its value either way. A
+# credential option (`--api-key`, `--token`) takes the next argument under any
+# launcher, so a key is never read as the package and quoted into a finding.
 _JS_VALUE_OPTIONS = frozenset({
     "-p", "--package", "-c", "--call", "--registry", "--cache", "--prefix",
     "--userconfig", "--node-options", "-w", "--workspace", "--loglevel",
@@ -85,6 +101,7 @@ _UV_GLOBAL_VALUE_OPTIONS = frozenset({
     "--python", "-p", "--allow-insecure-host",
 })
 
+_COMMIT_SHA_RE = re.compile(r"[0-9a-fA-F]{7,40}")
 _WINDOWS_DRIVE_RE = re.compile(r"[A-Za-z]:[\\/]")
 _VCS_PREFIXES = (
     "git+", "git://", "git@", "ssh://", "http://", "https://", "github:", "gitlab:",
@@ -159,7 +176,7 @@ def _parse(
         if not end_of_options and token.startswith("-") and token != "-":
             name, inline = _option(token)
             value: str | None = inline
-            if inline is None and name in value_options:
+            if inline is None and (name in value_options or is_secret_option(name)):
                 value = tokens[i + 1] if i + 1 < n else None
                 i += 1
             i += 1
@@ -221,6 +238,18 @@ def _launch_at(tokens: list[str], i: int) -> tuple[list[Launched], int] | None:
 def starts_with_launcher(tokens: list[str]) -> bool:
     """True when `tokens[0]` begins a launcher invocation this module reads."""
     return bool(tokens) and _launch_at(tokens, 0) is not None
+
+
+def invocation_packages(tokens: list[str]) -> list[Launched]:
+    """The packages the launcher at `tokens[0]` fetches, read as argv.
+
+    No token is split as a shell line and no nested launcher is followed: this
+    is exactly what the launcher itself receives when the MCP client spawns it.
+    """
+    if not tokens:
+        return []
+    hit = _launch_at(tokens, 0)
+    return hit[0] if hit else []
 
 
 def launched_packages(tokens: list[str], _depth: int = 0) -> list[Launched]:
@@ -304,3 +333,59 @@ def py_spec(spec: str) -> PackageSpec:
     if rest.startswith("(") and rest.endswith(")"):
         rest = rest[1:-1].strip()
     return PackageSpec("registry", name, rest, "pep440")
+
+
+def _vcs_pinned(target: str, dialect: str) -> bool:
+    """A git reference is pinned when its ref is a full or short commit SHA.
+
+    npm puts the ref in the fragment (`github:org/repo#<sha>`, `#commit=<sha>`);
+    pip puts it after the last `@` of the URL path and keeps the fragment for
+    `#egg=` (`git+https://host/repo.git@<sha>#egg=name`).
+    """
+    ref = ""
+    if dialect == "npm":
+        if "#" in target:
+            ref = target.rsplit("#", 1)[1].split("&", 1)[0]
+            if ref.startswith("commit="):
+                ref = ref[len("commit="):]
+    else:
+        path = target.split("#", 1)[0].split("://", 1)[-1]
+        if "@" in path:
+            ref = path.rsplit("@", 1)[1]
+    return bool(_COMMIT_SHA_RE.fullmatch(ref))
+
+
+def _unpinned_label(version: str) -> str:
+    if version in ("*", "x", "X") or version[:1] in "^~<>=!" or version[:1].isdigit():
+        return f"version range `{version}`"
+    return f"floating tag `{version}`"
+
+
+def pin_problem(launched: Launched) -> str | None:
+    """Why `launched` is not pinned to one release, or None when it is.
+
+    Pinned means an exact version (`pkg@1.2.3`, `pkg==1.2.3`, uv's `pkg@1.2.3`)
+    or a commit (`github:org/repo#<sha>`, `git+https://...@<sha>`). A dist-tag
+    (`@latest`), a range (`@^1`, `@~1.2`, `>=1`, `@1.x`), a wildcard and no
+    version at all are not. A local path is not a fetch and is not judged.
+    """
+    parts = npm_spec(launched.spec) if launched.ecosystem == "js" else py_spec(launched.spec)
+    if parts.kind == "local":
+        return None
+    if parts.kind == "vcs":
+        if _vcs_pinned(parts.version, parts.dialect):
+            return None
+        return "a git or URL reference without a commit"
+    version = parts.version.strip()
+    if not version:
+        return "no version pin"
+    if parts.dialect == "npm":
+        exact = version[1:] if version.startswith("=") else version
+        return None if is_exact_version(exact) else _unpinned_label(version)
+    clauses = [c.strip() for c in version.split(",") if c.strip()]
+    if len(clauses) == 1:
+        for op in ("===", "=="):
+            target = clauses[0][len(op):].strip()
+            if clauses[0].startswith(op) and "*" not in target and target[:1].isdigit():
+                return None
+    return _unpinned_label(version)

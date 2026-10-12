@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners.supply_chain import scan, _version_in_range
 
 
@@ -346,3 +348,74 @@ def test_scanned_files_includes_relevant_files(tmp_path: Path) -> None:
     _, scanned = scan(tmp_path)
     assert "package.json" in scanned
     assert "requirements.txt" in scanned
+
+
+# ---------------------------------------------------------------------------
+# AAK-SUPPLY-001 reads the package spec, not every argument
+# ---------------------------------------------------------------------------
+#
+# The rule used to report every argument that did not start with `-` and count any
+# text after `@` as a version. A port, a server URL, an exact `==` pin and a commit
+# were reported; `@latest` and `@^1` passed as pinned.
+
+GIT_HTTPS = "gi" + "t+https://github.com/org/repo"
+
+
+def _supply001(tmp_path: Path, server: dict) -> list[str]:
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {"srv": server}}))
+    findings, _ = scan(tmp_path)
+    return [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-001"]
+
+
+@pytest.mark.parametrize("server", [
+    {"command": "npx", "args": ["-y", "some-mcp-server@1.0.0", "--port", "3000"]},
+    {"command": "npx", "args": ["-y", "mcp-remote@0.1.30", "https://example.test/mcp"]},
+    {"command": "uvx", "args": ["some-mcp-server==1.2.3"]},
+    {"command": "uvx", "args": ["some-mcp-server@1.2.3"]},
+    {"command": "npx", "args": ["-y", "github:org/repo#abc1234def"]},
+    {"command": "uvx", "args": [GIT_HTTPS + "@0123456789abcdef"]},
+    {"command": "uvx", "args": ["--from", "some-mcp-server==1.0.0", "some-mcp-server"]},
+    {"command": "uvx", "args": ["--python", "3.12", "some-mcp-server==1.0.0"]},
+    {"command": "npx", "args": ["-p", "@scope/pkg@1.2.3", "pkg-bin", "--flag"]},
+    {"command": "npx", "args": ["-y", "./local-server"]},
+])
+def test_a_pinned_spec_and_the_servers_own_arguments_are_not_reported(
+    tmp_path: Path, server: dict
+) -> None:
+    assert _supply001(tmp_path, server) == []
+
+
+@pytest.mark.parametrize(("server", "reason"), [
+    ({"command": "npx", "args": ["-y", "some-mcp-server@latest"]}, "floating tag `latest`"),
+    ({"command": "npx", "args": ["-y", "some-mcp-server@^1.0.0"]}, "version range `^1.0.0`"),
+    ({"command": "npx", "args": ["some-mcp-server@~1.2"]}, "version range `~1.2`"),
+    ({"command": "npx", "args": ["some-mcp-server@1"]}, "version range `1`"),
+    ({"command": "uvx", "args": ["some-mcp-server@latest"]}, "floating tag `latest`"),
+    ({"command": "uvx", "args": ["some-mcp-server>=1.0"]}, "version range `>=1.0`"),
+    ({"command": "uvx", "args": ["some-mcp-server==1.2.*"]}, "version range `==1.2.*`"),
+    ({"command": "npx", "args": ["-y", "github:org/repo#v1.2.3"]},
+     "a git or URL reference without a commit"),
+    ({"command": "npx -y some-mcp-server"}, "no version pin"),
+    ({"command": "bunx", "args": ["@scope/pkg"]}, "no version pin"),
+])
+def test_an_unpinned_spec_is_reported_once_with_its_reason(
+    tmp_path: Path, server: dict, reason: str
+) -> None:
+    evidence = _supply001(tmp_path, server)
+    assert len(evidence) == 1, evidence
+    assert f"({reason})" in evidence[0]
+
+
+def test_every_package_an_invocation_fetches_is_judged(tmp_path: Path) -> None:
+    """`--with` and a repeated `-p` add packages; the command after them is not one."""
+    uvx = {"command": "uvx", "args": ["--with", "requests", "some-mcp-server==1.0.0"]}
+    assert _supply001(tmp_path, uvx) == ["Server 'srv' arg: requests (no version pin)"]
+    npx = {"command": "npx", "args": ["-p", "a", "-p", "b@2.0.0", "the-command"]}
+    assert _supply001(tmp_path, npx) == ["Server 'srv' arg: a (no version pin)"]
+
+
+def test_the_value_of_a_credential_option_is_never_read_as_the_package(tmp_path: Path) -> None:
+    """npm reads `--api-key VALUE` as an option and its value. Read as a flag, the
+    key became the package, and the finding quoted it."""
+    server = {"command": "npx", "args": ["--api-key", "k-5e3c9a1f", "some-mcp-server"]}
+    assert _supply001(tmp_path, server) == ["Server 'srv' arg: some-mcp-server (no version pin)"]

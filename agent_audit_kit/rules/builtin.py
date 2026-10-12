@@ -1653,11 +1653,12 @@ _r(
     limitations=(
         "Reads the `mcpServers` entries of .mcp.json, .cursor/mcp.json, "
         ".vscode/mcp.json, .amazonq/mcp.json and mcp.json at the project root, for "
-        "the launchers npx, uvx, bunx and pnpx, and counts any text after the "
-        "package's `@` as a version. A floating tag or range "
-        "(`some-mcp-server@latest`, `other-mcp-server@^1.0.0`) is therefore not "
-        "reported, nor is a `docker run` image tagged `latest`, a launcher outside "
-        "those four, or an entry under the `servers` key that VS Code uses in "
+        "the launchers npx, uvx, bunx and pnpx, and reports each package spec that "
+        "is not an exact version or a commit, a floating tag (`@latest`) or a range "
+        "(`@^1.0.0`, `>=1`) included. A launcher outside those four is not read, "
+        "whether another fetcher (`pnpm dlx some-mcp-server`) or npx behind a shell "
+        "(`cmd /c npx -y some-mcp-server`), nor is a `docker run` image tagged "
+        "`latest` or an entry under the `servers` key that VS Code uses in "
         ".vscode/mcp.json."
     ),
 )

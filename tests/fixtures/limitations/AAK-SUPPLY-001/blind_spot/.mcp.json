@@ -1,17 +1,19 @@
 {
   "mcpServers": {
     "a": {
-      "command": "npx",
+      "command": "pnpm",
       "args": [
-        "-y",
-        "some-mcp-server@latest"
+        "dlx",
+        "some-mcp-server"
       ]
     },
     "b": {
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
-        "other-mcp-server@^1.0.0"
+        "other-mcp-server"
       ]
     }
   }
