@@ -172,3 +172,79 @@ def test_python_backend_finds_private_addresses_in_the_url_arg(addr: str) -> Non
 def test_python_backend_does_not_find_addresses_outside_a_call() -> None:
     sites = analyze_python('import requests\nDOC = "use 127.0.0.1 for local"\nrequests.get("https://a.example")\n')
     assert sites and sites[0].private_addr is None
+
+
+# --- TS/JS: `//` inside a literal is not a comment ----------------------------
+#
+# The stripper was two regexes that did not know what a string is, so the `//` of
+# every `http://` in a literal started a "comment" to the end of the line. The
+# call lost its closing parenthesis and no call site was found: AAK-SSRF-002/003
+# never saw a TS URL with a scheme, and 001/005 lost a caller-controlled host as
+# soon as it followed `http://` in a template literal.
+
+_TS_HEAD = (
+    'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";\n'
+    'export const server = new McpServer({ name: "fetcher", version: "1.0.0" });\n'
+)
+
+
+def _ts_ids(tmp_path: Path, body: str) -> set[str]:
+    (tmp_path / "tool.ts").write_text(_TS_HEAD + body, encoding="utf-8")
+    return {f.rule_id for f in scan(tmp_path)[0]}
+
+
+@pytest.mark.parametrize(("body", "rule_id"), [
+    ('export const role = () => fetch("http://169.254.169.254/latest/meta-data/");\n', "AAK-SSRF-003"),
+    ("export const admin = () => fetch('http://localhost:9000/admin'); // admin port\n", "AAK-SSRF-002"),
+    ("export const f = (req: any) => fetch(`http://${req.query.host}/status`);\n", "AAK-SSRF-001"),
+    ("export const f = (req: any) => fetch(`http://${req.query.host}/status`);\n", "AAK-SSRF-005"),
+    ('export const f = (req: any) => fetch("http://" + req.query.host + "/status");\n', "AAK-SSRF-001"),
+    ('const META = "http://169.254.169.254/latest/meta-data/";\n'
+     "export const role = () => fetch(META);\n", "AAK-SSRF-003"),
+    # a regex literal holding `//` must not eat the rest of its line either
+    ('const norm = (p: string) => p.replace(/\\/\\//g, "/"); '
+     "export const f = (req: any) => fetch(req.query.url);\n", "AAK-SSRF-001"),
+])
+def test_a_ts_url_with_a_scheme_is_read(tmp_path: Path, body: str, rule_id: str) -> None:
+    assert rule_id in _ts_ids(tmp_path, body)
+
+
+@pytest.mark.parametrize("body", [
+    '// return fetch("http://169.254.169.254/latest/meta-data/");\nexport const x = 1;\n',
+    "/* fetch(req.query.url) */ export const y = 2;\n",
+    "export const re = /[\"']/; // fetch(req.query.url)\nexport const z = 3;\n",
+    "export const half = (a: number, b: number) => (a + b) / 2; // fetch(req.query.url)\n",
+    "let n = 4;\nexport const q = n++ / 2; // fetch(req.query.url)\n",
+])
+def test_a_ts_comment_is_not_a_call(tmp_path: Path, body: str) -> None:
+    assert _ts_ids(tmp_path, body) == set()
+
+
+def test_ts_comment_stripping_keeps_literals_and_layout() -> None:
+    from agent_audit_kit.scanners._ssrf_reach import strip_comments
+
+    src = (
+        'const a = "http://x.example/*y"; // one\n'
+        "const b = `http://${ok ? `${h}` : 'z'}/p`; /* two\n"
+        "three */ const c = /^https?:\\/\\//; // four\n"
+    )
+    out = strip_comments(src, is_python=False)
+    assert len(out) == len(src) and out.count("\n") == src.count("\n")
+    assert '"http://x.example/*y"' in out
+    assert "`http://${ok ? `${h}` : 'z'}/p`" in out
+    assert "/^https?:\\/\\//" in out
+    assert not any(word in out for word in ("one", "two", "three", "four"))
+
+
+@pytest.mark.parametrize("unit", ['"//" ', "`${`${a}`}` ", "a / b // c\n", "/[/]/ ", "'\\'' /* x */ "])
+def test_ts_comment_stripping_is_linear(unit: str) -> None:
+    """Every search resumes where the last one stopped. 400 KB of the worst unit
+    took well under a tenth of a second; the bound is loose for slow runners."""
+    import time
+
+    from agent_audit_kit.scanners._ssrf_reach import strip_comments
+
+    src = unit * (400_000 // len(unit))
+    started = time.perf_counter()
+    strip_comments(src, is_python=False)
+    assert time.perf_counter() - started < 5.0

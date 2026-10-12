@@ -28,6 +28,8 @@ import ast
 import re
 from typing import NamedTuple
 
+from agent_audit_kit.scanners._helpers import blank_js_comments
+
 # Callees that perform an outbound request.
 _PY_FETCH_CALLEES = (
     "requests.get", "requests.post", "requests.put", "requests.delete", "requests.head",
@@ -56,9 +58,6 @@ _PRIVATE_ADDR_RE = re.compile(
     re.IGNORECASE,
 )
 
-_TS_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
-_TS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
-
 
 class Reach(NamedTuple):
     """What an outbound call site was found to reach."""
@@ -66,13 +65,6 @@ class Reach(NamedTuple):
     line: int
     tainted: bool          # URL argument derives from caller-controlled input
     private_addr: str | None   # private/metadata address reaching this call
-
-
-def _blank_preserving_layout(text: str, pattern: re.Pattern[str]) -> str:
-    """Replace matches with spaces, keeping newlines so offsets and line numbers hold."""
-    def repl(m: re.Match[str]) -> str:
-        return "".join("\n" if ch == "\n" else " " for ch in m.group(0))
-    return pattern.sub(repl, text)
 
 
 def strip_comments(text: str, is_python: bool) -> str:
@@ -83,9 +75,7 @@ def strip_comments(text: str, is_python: bool) -> str:
         # `#` inside a string would be mangled by a naive strip, so use the
         # tokenizer's view via ast when the file parses, else leave it alone.
         return text
-    return _blank_preserving_layout(
-        _blank_preserving_layout(text, _TS_BLOCK_COMMENT_RE), _TS_LINE_COMMENT_RE
-    )
+    return blank_js_comments(text)
 
 
 # ---------------------------------------------------------------------------

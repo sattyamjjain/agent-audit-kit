@@ -290,3 +290,200 @@ def hook_command(handler: dict[str, Any]) -> str:
         if words:
             return " ".join([command, *words])
     return command
+
+
+# The characters that change state in TS/JS code, in a quoted string, in a
+# template literal's text and in a regex literal. Everything between two of them
+# is copied unread, so the scan jumps from one to the next in C.
+_JS_CODE_SPECIAL_RE = re.compile(r"""[/'"`{}]""")
+_JS_QUOTED_SPECIAL_RE = {"'": re.compile(r"['\\\n]"), '"': re.compile(r'["\\\n]')}
+_JS_TEMPLATE_SPECIAL_RE = re.compile(r"[`\\$]")
+_JS_REGEX_SPECIAL_RE = re.compile(r"[/\\\[\]\n]")
+_JS_IDENT_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$"
+)
+# A `/` after one of these words starts a regex literal, not a division.
+_JS_REGEX_AFTER_WORDS = frozenset({
+    "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+    "throw", "case", "do", "else", "yield", "await",
+})
+# Stands for the end of a literal operand (string, template, regex): a `/`
+# after it is a division.
+_JS_OPERAND = "a"
+
+
+def _js_regex_allowed(prev: str, word: str) -> bool:
+    """Whether a `/` read after `prev` (and the word ending in it) opens a regex.
+
+    The usual tokenizer heuristic: after an operand (an identifier, a number, a
+    literal, `)`, `]`, `}`) a slash divides; after an operator, an opening
+    bracket, a separator, a keyword such as `return`, or at the start of the
+    file it opens a regex literal.
+    """
+    if prev in _JS_IDENT_CHARS:
+        return word in _JS_REGEX_AFTER_WORDS
+    return prev not in (")", "]", "}")
+
+
+def _js_skip_quoted(text: str, start: int) -> int:
+    """Index just past the string literal opened by the quote at `start`.
+
+    A backslash escapes the next character, an escaped newline included. An
+    unescaped newline ends an unterminated string where it stands, since a
+    quoted string cannot cross a line.
+    """
+    special = _JS_QUOTED_SPECIAL_RE[text[start]]
+    i = start + 1
+    while True:
+        m = special.search(text, i)
+        if m is None:
+            return len(text)
+        if m.group() == "\\":
+            i = m.start() + 2
+        elif m.group() == "\n":
+            return m.start()
+        else:
+            return m.start() + 1
+
+
+def _js_skip_regex(text: str, start: int) -> int:
+    """Index just past the regex literal (and its flags) opened at `start`.
+
+    `[...]` is a class, inside which `/` does not close. A newline before the
+    closing `/` means the slash was a division after all: stop there, having
+    blanked nothing, and let the caller carry on.
+    """
+    n = len(text)
+    i = start + 1
+    in_class = False
+    while True:
+        m = _JS_REGEX_SPECIAL_RE.search(text, i)
+        if m is None:
+            return n
+        c, at = m.group(), m.start()
+        if c == "\\":
+            i = at + 2
+        elif c == "\n":
+            return at
+        elif c == "[":
+            in_class, i = True, at + 1
+        elif c == "]":
+            in_class, i = False, at + 1
+        elif in_class:
+            i = at + 1
+        else:
+            end = at + 1
+            while end < n and text[end] in _JS_IDENT_CHARS:
+                end += 1
+            return end
+
+
+def blank_js_comments(text: str) -> str:
+    """Blank TS/JS comments with spaces, leaving every literal intact.
+
+    `_ssrf_reach` stripped comments with two regexes, `/\\*.*?\\*/` and
+    `//[^\\n]*`, which do not know what a string is, and seven other scanners
+    still carry the same pair. `//` inside a literal therefore started a
+    "comment" that ran to the end of the line, and every URL with a scheme
+    carries one: `fetch("http://169.254.169.254/latest/meta-data/")` came out as
+    `fetch("http:` followed by spaces, the call lost its closing parenthesis, and
+    no call site was found. AAK-SSRF-002 and 003 never saw a TS literal URL with
+    a scheme, and AAK-SSRF-001 and 005 lost a caller-controlled host as soon as
+    it followed `http://` in a template literal. The Python backend, which reads
+    `ast`, was unaffected.
+
+    This scan tracks the token a `/` sits in: a quoted string (with escapes; an
+    unescaped newline ends it), a template literal (its text is literal, and the
+    code in each `${...}` is scanned as code, nested templates included), a regex
+    literal (by the usual operand/operator heuristic, so a URL pattern such as
+    `/^https?:\\/\\//` does not eat the rest of its line either), and only then a
+    comment. Comments become spaces and newlines stay, so offsets and line
+    numbers still match the source. It is linear: every search resumes where
+    the last one stopped.
+    """
+    n = len(text)
+    out = list(text)
+    expr_depths: list[int] = []  # brace depth inside each open `${ ... }`
+    in_template = False
+    prev, word = "", ""  # last significant code character, and the word it ends
+    i = 0
+
+    def blank(start: int, end: int) -> None:
+        for k in range(start, end):
+            if out[k] != "\n":
+                out[k] = " "
+
+    while i < n:
+        if in_template:
+            m = _JS_TEMPLATE_SPECIAL_RE.search(text, i)
+            if m is None:
+                break
+            at, c = m.start(), m.group()
+            if c == "\\":
+                i = at + 2
+            elif c == "`":
+                in_template, i = False, at + 1
+                prev, word = _JS_OPERAND, ""
+            elif text.startswith("${", at):
+                expr_depths.append(0)
+                in_template, i = False, at + 2
+                prev, word = "{", ""
+            else:
+                i = at + 1
+            continue
+
+        m = _JS_CODE_SPECIAL_RE.search(text, i)
+        at = n if m is None else m.start()
+        k = at - 1
+        while k >= i and text[k].isspace():
+            k -= 1
+        if k >= i:
+            prev = text[k]
+            word = ""
+            if prev in _JS_IDENT_CHARS:
+                s = k
+                while s > i and text[s - 1] in _JS_IDENT_CHARS:
+                    s -= 1
+                word = text[s:k + 1]
+            elif prev in "+-" and k > i and text[k - 1] == prev:
+                prev = _JS_OPERAND  # postfix `n++` / `n--`: a slash after it divides
+        if m is None:
+            break
+        c = m.group()
+        if c == "/":
+            nxt = text[at + 1] if at + 1 < n else ""
+            if nxt == "/":
+                end = text.find("\n", at)
+                end = n if end == -1 else end
+                blank(at, end)
+                i = end
+            elif nxt == "*":
+                end = text.find("*/", at + 2)
+                end = n if end == -1 else end + 2
+                blank(at, end)
+                i = end
+            elif _js_regex_allowed(prev, word):
+                i = _js_skip_regex(text, at)
+                prev, word = _JS_OPERAND, ""
+            else:
+                i = at + 1
+                prev, word = "/", ""
+        elif c in "'\"":
+            i = _js_skip_quoted(text, at)
+            prev, word = _JS_OPERAND, ""
+        elif c == "`":
+            in_template, i = True, at + 1
+        elif c == "{":
+            if expr_depths:
+                expr_depths[-1] += 1
+            i = at + 1
+            prev, word = "{", ""
+        else:  # "}"
+            if expr_depths and expr_depths[-1] == 0:
+                expr_depths.pop()
+                in_template = True
+            elif expr_depths:
+                expr_depths[-1] -= 1
+            i = at + 1
+            prev, word = "}", ""
+    return "".join(out)
