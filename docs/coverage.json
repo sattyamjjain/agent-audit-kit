@@ -2491,7 +2491,7 @@
       ],
       "rule_id": "AAK-MCP-009",
       "severity": "high",
-      "title": "MCP server URL points to localhost/internal network"
+      "title": "MCP server URL contains an internal network address"
     },
     {
       "category": "mcp-config",

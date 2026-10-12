@@ -398,12 +398,14 @@ _r(
     "Remote MCP server without authentication",
     "An MCP server uses HTTP transport (url field) without a recognized "
     "authentication or access-control header. Recognized schemes are "
-    "Authorization / Bearer, X-API-Key / Api-Key, the custom X-*-Key / *-API-Key "
-    "credential-header family, and the x402 X-PAYMENT gate, declared via an "
-    "env/template reference (e.g. ${API_KEY}). A custom auth header carrying a "
-    "hardcoded literal secret still fires — the credential is exposed in the "
-    "config, so the endpoint is effectively unprotected. Unauthenticated remote "
-    "servers can be MITM'd or spoofed.",
+    "Authorization / Bearer, X-API-Key / Api-Key, the custom credential-header "
+    "family (X-*-Key, *-API-Key, *_API_KEY, *-Subscription-Key and similar), and "
+    "the x402 X-PAYMENT gate, declared via an env/template reference (e.g. "
+    "${API_KEY}). A custom auth header carrying a hardcoded literal secret still "
+    "fires — the credential is exposed in the config, so the endpoint is "
+    "effectively unprotected. A server on a loopback host (localhost, "
+    "127.0.0.0/8, ::1, 0.0.0.0) is not reported. Unauthenticated remote servers "
+    "can be MITM'd or spoofed.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
     "Add OAuth 2.1 bearer token or API key header authentication (reference the "
@@ -600,16 +602,20 @@ _r(
 
 _r(
     "AAK-MCP-009",
-    "MCP server URL points to localhost/internal network",
-    "The MCP server URL points to localhost or internal network addresses, "
-    "which may expose internal services (SSRF pattern).",
+    "MCP server URL contains an internal network address",
+    "The MCP server URL contains a private-range address (10.x, 172.16-31.x, "
+    "192.168.x), a `.local` name, or a loopback address (localhost, 127.0.0.1, "
+    "0.0.0.0, ::1) somewhere other than its own host, such as a proxy target in "
+    "the query, which may expose internal services (SSRF pattern). A server whose "
+    "own host is loopback is not reported.",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Confirm you run and trust the server at that address. If it should not be there, "
     "remove the entry or point `url` at the intended public HTTPS endpoint. If it is "
-    "deliberate (a local dev server or a sidecar), accept it by listing `AAK-MCP-009` "
-    "under `exclude-rules` in `.agent-audit-kit.yml`, with a comment saying why. The "
-    "rule matches `localhost`, loopback, RFC 1918 private addresses and `.local` hosts.",
+    "deliberate (a dev server on your LAN or a sidecar), accept it by listing "
+    "`AAK-MCP-009` under `exclude-rules` in `.agent-audit-kit.yml`, with a comment "
+    "saying why. The rule matches RFC 1918 private addresses, `.local` hosts, and a "
+    "loopback address anywhere in the URL except its own host.",
     sarif_name="McpLocalhostInternalUrl",
     owasp_mcp_references=["MCP09:2025"],
     adversa_references=["ADV-SSRF-01"],
@@ -2439,7 +2445,7 @@ _r(
     "one -- the handshake headers and every frame after them are on the "
     "wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), "
     "or `stdio` (no URL, no network hop).** Loopback URLs "
-    "(`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) are excluded on either "
+    "(`localhost`, `127.0.0.0/8`, `::1`, `0.0.0.0`) are excluded on either "
     "scheme, since the traffic does not leave the host.",
     Severity.CRITICAL,
     Category.TRANSPORT_SECURITY,

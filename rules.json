@@ -2718,7 +2718,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom X-*-Key / *-API-Key credential-header family, and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. Unauthenticated remote servers can be MITM'd or spoofed.",
+      "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom credential-header family (X-*-Key, *-API-Key, *_API_KEY, *-Subscription-Key and similar), and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. A server on a loopback host (localhost, 127.0.0.0/8, ::1, 0.0.0.0) is not reported. Unauthenticated remote servers can be MITM'd or spoofed.",
       "incident_references": [],
       "limitations": "Reads the `url` field of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and looks for an `Authorization`, `Bearer`, `X-API-Key` or `API-Key` header, or for one of a fixed family of custom credential headers (`X-*-Key`, `X-*-Token` but not `X-CSRF-Token` or `X-XSRF-Token`, `X-*-Secret`, a name ending in `-API-Key`, `_API_KEY` or `ApiKey`, `*-API-Token`, `*-Access-Key`, `*-Client-Secret`, `*-Subscription-Key`, `X-Auth-Token`, `X-Access-Token`, `X-Payment`) whose value is empty or blank, or contains a `${VAR}`, `$VAR`, `{{VAR}}`, `<VAR>` or `%VAR%` reference, your, change-me (also change_me and change me), changeme, placeholder, redacted, dummy or four x's anywhere, `_here` at the end of a word, or example or sample as a whole word (an underscore joins words, so `example_key` does not count); `\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared scheme. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`. A server on a loopback host (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported, though one that checks no `Origin` header can still be reached from a web page through DNS rebinding.",
       "owasp_agentic_references": [
@@ -2912,7 +2912,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "The MCP server URL points to localhost or internal network addresses, which may expose internal services (SSRF pattern).",
+      "description": "The MCP server URL contains a private-range address (10.x, 172.16-31.x, 192.168.x), a `.local` name, or a loopback address (localhost, 127.0.0.1, 0.0.0.0, ::1) somewhere other than its own host, such as a proxy target in the query, which may expose internal services (SSRF pattern). A server whose own host is loopback is not reported.",
       "incident_references": [],
       "limitations": "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a `.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1; a URL whose own host is loopback (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10.",
       "owasp_agentic_references": [],
@@ -2920,11 +2920,11 @@
       "owasp_mcp_references": [
         "MCP09:2025"
       ],
-      "remediation": "Confirm you run and trust the server at that address. If it should not be there, remove the entry or point `url` at the intended public HTTPS endpoint. If it is deliberate (a local dev server or a sidecar), accept it by listing `AAK-MCP-009` under `exclude-rules` in `.agent-audit-kit.yml`, with a comment saying why. The rule matches `localhost`, loopback, RFC 1918 private addresses and `.local` hosts.",
+      "remediation": "Confirm you run and trust the server at that address. If it should not be there, remove the entry or point `url` at the intended public HTTPS endpoint. If it is deliberate (a dev server on your LAN or a sidecar), accept it by listing `AAK-MCP-009` under `exclude-rules` in `.agent-audit-kit.yml`, with a comment saying why. The rule matches RFC 1918 private addresses, `.local` hosts, and a loopback address anywhere in the URL except its own host.",
       "rule_id": "AAK-MCP-009",
       "sarif_name": "McpLocalhostInternalUrl",
       "severity": "high",
-      "title": "MCP server URL points to localhost/internal network"
+      "title": "MCP server URL contains an internal network address"
     },
     {
       "adversa_references": [
@@ -10625,7 +10625,7 @@
       "cve_references": [
         "CVE-2026-91988"
       ],
-      "description": "An MCP server URL uses a cleartext scheme, exposing all traffic including credentials to interception. **Applies to: `http://` and `ws://`.** A `ws://` handshake is an unencrypted HTTP upgrade, so it is the same defect and not a milder one -- the handshake headers and every frame after them are on the wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), or `stdio` (no URL, no network hop).** Loopback URLs (`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) are excluded on either scheme, since the traffic does not leave the host.",
+      "description": "An MCP server URL uses a cleartext scheme, exposing all traffic including credentials to interception. **Applies to: `http://` and `ws://`.** A `ws://` handshake is an unencrypted HTTP upgrade, so it is the same defect and not a milder one -- the handshake headers and every frame after them are on the wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), or `stdio` (no URL, no network hop).** Loopback URLs (`localhost`, `127.0.0.0/8`, `::1`, `0.0.0.0`) are excluded on either scheme, since the traffic does not leave the host.",
       "incident_references": [],
       "limitations": "Reads the `url` field of each server under `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read.",
       "owasp_agentic_references": [
