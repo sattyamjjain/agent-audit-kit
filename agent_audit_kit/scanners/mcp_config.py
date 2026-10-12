@@ -108,18 +108,56 @@ _CUSTOM_AUTH_HEADER_RE = re.compile(
 # 100,000-character time. Ending each read at the next opener makes it linear.
 # Leaving the opener's first character out of the class (`[^{}]`, `[^<>]`) is
 # also linear but matches less: `${a{b}` and `<<>` are references here and to
-# `[^}]` and `[^>]`, and were not to it.
-_CREDENTIAL_REF_RE = re.compile(
+# `[^}]` and `[^>]`, and were not to it. AAK-MCP-003's literal check below
+# reuses the same arms.
+_REFERENCE_ARMS = (
     r"\$\{(?:(?!\$\{)[^}])*\}"     # ${VAR}
-    r"|\$[A-Za-z_]\w*"            # $VAR
     r"|\{\{(?:(?!\{\{)[^}])*\}\}"  # {{VAR}}
     r"|<(?:(?!<[^>])[^>])+>"       # <your-key>
-    r"|%[A-Za-z_]\w*%"            # %VAR%
-    r"|your[_\- ]?\w*"            # YOUR_API_KEY, your-key
+)
+_PLACEHOLDER_ARMS = (
+    r"your[_\- ]?\w*"     # YOUR_API_KEY, your-key
     r"|change[_\- ]?me|changeme|placeholder|redacted|dummy|\bexample\b|\bsample\b"
-    r"|_here\b|x{4,}",
+    r"|_here\b|x{4,}"
+)
+_CREDENTIAL_REF_RE = re.compile(
+    _REFERENCE_ARMS
+    + r"|\$[A-Za-z_]\w*"  # $VAR
+    + r"|%[A-Za-z_]\w*%"  # %VAR%
+    + "|" + _PLACEHOLDER_ARMS,
     re.IGNORECASE,
 )
+
+
+# --- AAK-MCP-003: is a literal under a secret-looking name a secret? -----------
+# The key pattern (KEY, SECRET, TOKEN, ...) is wide on purpose, so it also
+# names settings: on 190 real `.vscode/mcp.json` files the rule reported
+# `AWS_DOCUMENTATION_PARTITION=aws`, `PROXMOX_TOKEN_NAME`, `ROBOTMCP_TOKENIZER`,
+# `ROBOTMCP_MAX_INLINE_TOKENS`, and demo literals such as a password containing
+# "password", as hardcoded secrets (HIGH). Its three true positives were 44 to
+# 139 characters with no marker. A key that names a setting, a value too short to
+# be a credential, a reference or placeholder, and a short demo string are not
+# reported. A UUID is deliberately NOT exempt, although the measurement proposed
+# it: no row needed it, and some services issue UUID API keys (Heroku's are).
+_SETTING_KEY_RE = re.compile(r"(?:_NAME|_ID|_TOKENS)$|TOKENIZER", re.IGNORECASE)
+_PLACEHOLDER_VALUE_RE = re.compile(_REFERENCE_ARMS + "|" + _PLACEHOLDER_ARMS, re.IGNORECASE)
+_DEMO_MARKERS = ("test", "demo", "password", "1234", "abcd")
+
+
+def _could_be_credential(key: str, value: str) -> bool:
+    """Whether an env literal under a secret-looking `key` can be a credential.
+
+    The demo markers apply only below 40 characters, so a long real key that
+    happens to contain one (`sk_test_...`, a hash with `abcd` in it) still
+    fires; the placeholder pattern is the header check's without its `$VAR`
+    and `%VAR%` arms, because a literal password may well contain a `$` or `%`.
+    """
+    if _SETTING_KEY_RE.search(key):
+        return False
+    v = value.strip()
+    if len(v) < 6 or _PLACEHOLDER_VALUE_RE.search(v):
+        return False
+    return not (len(v) < 40 and any(m in v.lower() for m in _DEMO_MARKERS))
 
 
 def _is_credential_reference(value: str) -> bool:
@@ -255,8 +293,9 @@ def _check_server(
     if isinstance(env, dict):
         for key, value in env.items():
             if SECRET_KEY_PATTERNS.search(key) and isinstance(value, str):
-                # Allow variable references like ${VAR}
-                if not re.match(r"^\$\{.+\}$", value) and value:
+                # Allow variable references like ${VAR}, and literals that cannot
+                # be a credential (see _could_be_credential).
+                if not re.match(r"^\$\{.+\}$", value) and value and _could_be_credential(key, value):
                     findings.append(_make_finding(
                         "AAK-MCP-003", file_path,
                         f"Server '{server_name}' env.{key} = (hardcoded value)",

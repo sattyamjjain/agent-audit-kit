@@ -2768,7 +2768,7 @@
       "cve_references": [],
       "description": "Hardcoded secrets found in mcpServers env block. Secrets in project-scoped MCP config are committed to git.",
       "incident_references": [],
-      "limitations": "Reads the `env` block of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags a value that is not a bare `${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: Bearer ...`) or inside a connection string under another name (`DATABASE_URL=postgres://user:pass@host/db`) is not matched.",
+      "limitations": "Reads the `env` block of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags a value that is not a bare `${VAR}` when the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: Bearer ...`) or inside a connection string under another name (`DATABASE_URL=postgres://user:pass@host/db`) is not matched. A value is taken for a setting or a dummy, and not reported, when it is under six characters, holds a `${...}`, `{{...}}` or `<...>` reference or a placeholder word (your, change-me, placeholder, redacted, dummy, example, sample, `_here`, four x's), is under 40 characters and contains test, demo, password, 1234 or abcd, or sits under a name ending in `_NAME`, `_ID` or `_TOKENS` or containing `TOKENIZER`; so a short real password (`DB_PASSWORD=Kq7#v`) and a 32-character hex key that happens to contain `abcd` pass.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2776,7 +2776,7 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Replace the literal value with a reference of the form `${NAME}`, which is the only form this rule accepts, set `NAME` in your shell or secrets manager, and rotate the secret if it was ever committed.",
+      "remediation": "Replace the literal value with a reference of the form `${NAME}`, set `NAME` in your shell or secrets manager, and rotate the secret if it was ever committed.",
       "rule_id": "AAK-MCP-003",
       "sarif_name": "McpEnvExposesSecrets",
       "severity": "high",

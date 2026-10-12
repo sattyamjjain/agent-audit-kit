@@ -117,7 +117,7 @@ CASES: list[Case] = [
         {".vscode/mcp.json": json.dumps({"servers": {"s": {"command": "${workspaceFolder}/run.sh"}}})},
         False,
     ),
-    # ---- AAK-MCP-003: `${NAME}` is the one accepted reference -------------
+    # ---- AAK-MCP-003: a `${NAME}` reference clears it, `$NAME` does not ----
     Case("mcp-003 literal secret", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "abc123"}}}), True),
     Case("mcp-003 bare $NAME is not accepted", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "$API_KEY"}}}), True),
     Case("mcp-003 ${NAME}", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "${API_KEY}"}}}), False),

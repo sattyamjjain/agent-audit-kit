@@ -468,9 +468,8 @@ _r(
     "Secrets in project-scoped MCP config are committed to git.",
     Severity.HIGH,
     Category.MCP_CONFIG,
-    "Replace the literal value with a reference of the form `${NAME}`, which is the "
-    "only form this rule accepts, set `NAME` in your shell or secrets manager, and "
-    "rotate the secret if it was ever committed.",
+    "Replace the literal value with a reference of the form `${NAME}`, set `NAME` in "
+    "your shell or secrets manager, and rotate the secret if it was ever committed.",
     sarif_name="McpEnvExposesSecrets",
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
@@ -481,7 +480,15 @@ _r(
         "the variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, "
         "ANTHROPIC, OPENAI or AWS_. A literal secret in `headers` (`Authorization: "
         "Bearer ...`) or inside a connection string under another name "
-        "(`DATABASE_URL=postgres://user:pass@host/db`) is not matched."
+        "(`DATABASE_URL=postgres://user:pass@host/db`) is not matched. A value is "
+        "taken for a setting or a dummy, and not reported, when it is under six "
+        "characters, holds a `${...}`, `{{...}}` or `<...>` reference or a "
+        "placeholder word (your, change-me, placeholder, redacted, dummy, example, "
+        "sample, `_here`, four x's), is under 40 characters and contains test, demo, "
+        "password, 1234 or abcd, or sits under a name ending in `_NAME`, `_ID` or "
+        "`_TOKENS` or containing `TOKENIZER`; so a short real password "
+        "(`DB_PASSWORD=Kq7#v`) and a 32-character hex key that happens to contain "
+        "`abcd` pass."
     ),
 )
 
