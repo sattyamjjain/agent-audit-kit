@@ -116,7 +116,58 @@ def report_headline_numbers() -> dict[str, str]:
         # top_misconfigurations so the row cannot be typed by hand again.
         "oauth008-n": _n(_top_misconfig(data, "AAK-OAUTH-008")["configs"]),
         "oauth008-pct": f"{_top_misconfig(data, 'AAK-OAUTH-008')['config_pct']:g}",
+        **_prevalence_figures(data),
     }
+
+
+def _share(n: int, total: int) -> str:
+    """A share of the corpus with one decimal, as PREVALENCE.md prints it."""
+    return f"{100 * n / total:.1f}"
+
+
+# results.json category key -> marker key, in PREVALENCE.md's table order.
+_CATEGORY_MARKERS = (
+    ("mcp-config", "mcp-config"),
+    ("secret-exposure", "secret"),
+    ("transport-security", "transport"),
+    ("tool-poisoning", "tool-poisoning"),
+    ("composition", "composition"),
+)
+
+
+def _prevalence_figures(data: dict) -> dict[str, str]:
+    """PREVALENCE.md's grade table, severity line and category table.
+
+    These were typed by hand and drifted. On 2026-10-12 the grade table said
+    A 632, B 1,426 and F 85, the severity line 1,338 critical and 318 high, the
+    per-config line 52.8% and the MCP-configuration row 2,299, against 636,
+    1,421, 86, 1,335, 319, 52.7% and 2,300 in results.json. Shares and the
+    cumulative column are computed from the counts here, so they cannot
+    disagree with them.
+    """
+    total = data["distinct_configs_scanned"]
+    grades = data["grade_distribution"]
+    out: dict[str, str] = {}
+    running = 0
+    for grade in "ABCDF":
+        count = grades[grade]
+        running += count
+        key = f"grade-{grade.lower()}"
+        out[key] = f"{count:,}"
+        out[f"{key}-pct"] = _share(count, total)
+        if grade != "F":  # F's cumulative share is always 100%
+            out[f"{key}-cum"] = _share(running, total)
+    out["grade-ab-n"] = f"{grades['A'] + grades['B']:,}"
+    out["grade-df-n"] = f"{grades['D'] + grades['F']:,}"
+    out["grade-df-pct"] = _share(grades["D"] + grades["F"], total)
+    for severity in ("critical", "high", "medium", "low"):
+        out[f"findings-{severity}"] = f"{data['severity_totals'][severity]:,}"
+    out["high-pct"] = f"{data['configs_with_high_pct']:g}"
+    for category, key in _CATEGORY_MARKERS:
+        row = data["category_hit_rate"][category]
+        out[f"cat-{key}-n"] = f"{row['configs']:,}"
+        out[f"cat-{key}-pct"] = f"{row['pct']:.1f}"
+    return out
 
 
 def _top_misconfig(data: dict, rule_id: str) -> dict:

@@ -40,16 +40,16 @@
 
 | Grade | Configs | Share | Cumulative |
 |:-----:|--------:|------:|-----------:|
-| **A** | 632 | 27.4% | 27.4% |
-| **B** | 1,426 | 61.9% | 89.4% |
-| **C** | 111 | 4.8% | 94.2% |
-| **D** | 49 | 2.1% | 96.3% |
-| **F** | 85 | 3.7% | 100% |
+| **A** | <!-- report:grade-a -->636<!-- /report --> | <!-- report:grade-a-pct -->27.6<!-- /report -->% | <!-- report:grade-a-cum -->27.6<!-- /report -->% |
+| **B** | <!-- report:grade-b -->1,421<!-- /report --> | <!-- report:grade-b-pct -->61.7<!-- /report -->% | <!-- report:grade-b-cum -->89.3<!-- /report -->% |
+| **C** | <!-- report:grade-c -->111<!-- /report --> | <!-- report:grade-c-pct -->4.8<!-- /report -->% | <!-- report:grade-c-cum -->94.1<!-- /report -->% |
+| **D** | <!-- report:grade-d -->49<!-- /report --> | <!-- report:grade-d-pct -->2.1<!-- /report -->% | <!-- report:grade-d-cum -->96.3<!-- /report -->% |
+| **F** | <!-- report:grade-f -->86<!-- /report --> | <!-- report:grade-f-pct -->3.7<!-- /report -->% | 100% |
 
 - **Median grade: B** (the 1,152nd config falls inside the B band: cumulative
-  A = 632 is below the midpoint, A+B = 2,058 is above it).
-- **Top 10% (best ~230 configs): all grade A** (A alone holds 632).
-- **5.8% (134) land at D or F.**
+  A = <!-- report:grade-a -->636<!-- /report --> is below the midpoint, A+B = <!-- report:grade-ab-n -->2,057<!-- /report --> is above it).
+- **Top 10% (best ~230 configs): all grade A** (A alone holds <!-- report:grade-a -->636<!-- /report -->).
+- **<!-- report:grade-df-pct -->5.9<!-- /report -->% (<!-- report:grade-df-n -->135<!-- /report -->) land at D or F.**
 
 The grade is AAK's penalty-based score (start at 100; deduct 20/CRITICAL,
 10/HIGH, 5/MEDIUM, 2/LOW), identical to `aak score`. **Calibration takeaway for
@@ -63,15 +63,16 @@ posture is. No penalty re-weighting is done in this report (that's a follow-up).
 
 ## Severity + category prevalence
 
-**All findings:** 1,338 critical · 318 high · 4,426 medium · 1,221 low.
-**Per-config:** 52.8% have ≥1 critical; 7.2% have ≥1 high.
+**All findings:** <!-- report:findings-critical -->1,335<!-- /report --> critical · <!-- report:findings-high -->319<!-- /report --> high · <!-- report:findings-medium -->4,432<!-- /report --> medium · <!-- report:findings-low -->1,224<!-- /report --> low.
+**Per-config:** <!-- report:critical-pct -->52.7<!-- /report -->% have ≥1 critical; <!-- report:high-pct -->7.2<!-- /report -->% have ≥1 high.
 
 | AAK category | Configs with ≥1 finding | Share |
 |---|--:|--:|
-| MCP configuration | 2,299 | 99.8% |
-| Secret exposure | 70 | 3.0% |
-| Transport security | 42 | 1.8% |
-| Tool poisoning / agent-config | 1 each | ~0.0% |
+| MCP configuration | <!-- report:cat-mcp-config-n -->2,300<!-- /report --> | <!-- report:cat-mcp-config-pct -->99.9<!-- /report -->% |
+| Secret exposure | <!-- report:cat-secret-n -->70<!-- /report --> | <!-- report:cat-secret-pct -->3.0<!-- /report -->% |
+| Transport security | <!-- report:cat-transport-n -->42<!-- /report --> | <!-- report:cat-transport-pct -->1.8<!-- /report -->% |
+| Tool poisoning | <!-- report:cat-tool-poisoning-n -->1<!-- /report --> | <!-- report:cat-tool-poisoning-pct -->0.0<!-- /report -->% |
+| Composition | <!-- report:cat-composition-n -->1<!-- /report --> | <!-- report:cat-composition-pct -->0.0<!-- /report -->% |
 
 ### OWASP MCP Top 10 — configs tripping each risk
 

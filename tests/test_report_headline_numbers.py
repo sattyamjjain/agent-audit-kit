@@ -119,7 +119,46 @@ def _expected() -> dict[str, float]:
         # in sibling files, because neither cell was marker-driven.
         "oauth008-n": float(_top_misconfig(data, "AAK-OAUTH-008")["configs"]),
         "oauth008-pct": float(_top_misconfig(data, "AAK-OAUTH-008")["config_pct"]),
+        **_prevalence_expected(data),
     }
+
+
+def _prevalence_expected(data: dict) -> dict[str, float]:
+    """PREVALENCE.md's grade table, severity line and category table, re-derived.
+
+    Computed here independently of the generator, as the rest of _expected() is:
+    each share is the count over the corpus to one decimal, and the cumulative
+    column sums the counts before dividing, so 89.3 for A+B rather than the 89.4
+    that adding the two rounded shares gives.
+    """
+    total = data["distinct_configs_scanned"]
+    grades = data["grade_distribution"]
+
+    def share(n: int) -> float:
+        return float(f"{100 * n / total:.1f}")
+
+    out: dict[str, float] = {}
+    running = 0
+    for grade in "ABCDF":
+        running += grades[grade]
+        out[f"grade-{grade.lower()}"] = float(grades[grade])
+        out[f"grade-{grade.lower()}-pct"] = share(grades[grade])
+        if grade != "F":
+            out[f"grade-{grade.lower()}-cum"] = share(running)
+    out["grade-ab-n"] = float(grades["A"] + grades["B"])
+    out["grade-df-n"] = float(grades["D"] + grades["F"])
+    out["grade-df-pct"] = share(grades["D"] + grades["F"])
+    for severity in ("critical", "high", "medium", "low"):
+        out[f"findings-{severity}"] = float(data["severity_totals"][severity])
+    out["high-pct"] = float(data["configs_with_high_pct"])
+    categories = {"mcp-config": "mcp-config", "secret": "secret-exposure",
+                  "transport": "transport-security", "tool-poisoning": "tool-poisoning",
+                  "composition": "composition"}
+    for key, category in categories.items():
+        row = data["category_hit_rate"][category]
+        out[f"cat-{key}-n"] = float(row["configs"])
+        out[f"cat-{key}-pct"] = float(row["pct"])
+    return out
 
 
 def _top_misconfig(data: dict, rule_id: str) -> dict:
