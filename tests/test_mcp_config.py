@@ -312,3 +312,44 @@ def test_mcp_002_a_vscode_variable_is_not_shell_expansion(tmp_path: Path, comman
 def test_mcp_002_shell_syntax_beside_a_vscode_variable_still_fires(tmp_path: Path, command: str) -> None:
     _write_vscode(tmp_path, {"s": {"type": "stdio", "command": command}})
     assert "AAK-MCP-002" in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+# The scanner skips a config over 1,000,000 characters, so the crafted values
+# below are as large as a config it reads can hold.
+_LARGEST_VALUE = 999_000
+
+
+@pytest.mark.parametrize("unit", ["${env:", "${file:", "${input:"])
+def test_mcp_002_a_crafted_command_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """A 1 MB command of VS Code variable openers with no closer. With `[^}]*`
+    every opener rescanned to the end of the command, and 56,000 characters of
+    `${file:` already took 1.6 seconds. The bound is loose for slow CI runners;
+    the linear strip takes milliseconds."""
+    import time
+
+    _write_vscode(tmp_path, {"s": {"type": "stdio", "command": unit * (_LARGEST_VALUE // len(unit))}})
+    started = time.perf_counter()
+    rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert time.perf_counter() - started < 5.0
+    assert "AAK-MCP-002" in rule_ids  # nothing closed, so nothing was stripped
+
+
+@pytest.mark.parametrize("opener", ["{{", "${", "<"])
+def test_mcp_001_a_hostile_header_value_scans_in_linear_time(tmp_path: Path, opener: str) -> None:
+    """A credential header whose value is 1 MB of an opener with no closer. With
+    `[^}]*` every opener rescanned to the end of the value: 200,000 characters of
+    `{{` took 25 seconds, and a 1 MB value about ten minutes. The bound is loose
+    for slow CI runners; the linear search takes a fraction of a second."""
+    import time
+
+    value = opener * (_LARGEST_VALUE // len(opener))
+    (tmp_path / ".mcp.json").write_text(
+        json.dumps({"mcpServers": {"api": {
+            "url": "https://mcp.example.com/mcp", "headers": {"X-Service-Token": value},
+        }}}),
+        encoding="utf-8",
+    )
+    started = time.perf_counter()
+    rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert time.perf_counter() - started < 5.0
+    assert "AAK-MCP-001" in rule_ids  # a literal, not a reference, so no declared scheme

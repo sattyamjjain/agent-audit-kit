@@ -5,6 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import mcp_sampling_capability
 
 FIXTURES = Path(__file__).parent / "fixtures" / "mcp_sampling"
@@ -167,3 +169,38 @@ def test_the_source_half_stays_off_without_an_sdk(tmp_path: Path) -> None:
     (tmp_path / "sampler.py").write_text(_SAMPLER, encoding="utf-8")
     findings, _ = mcp_sampling_capability.scan(tmp_path)
     assert not any(f.rule_id == RULE_ID for f in findings)
+
+
+def _declare_sdk_and_write(root: Path, name: str, source: str) -> list[str]:
+    (root / "requirements.txt").write_text("mcp\n", encoding="utf-8")
+    (root / name).write_text(source, encoding="utf-8")
+    findings, _ = mcp_sampling_capability.scan(root)
+    return [f.file_path for f in findings if f.rule_id == RULE_ID]
+
+
+@pytest.mark.parametrize(("name", "source", "fires"), [
+    ("caps.ts", "const server = new Server(info, { capabilities: { sampling: {} } });\n", True),
+    ("caps.ts", "const caps = {\n  capabilities: {\n    sampling: {},\n  },\n};\n", True),
+    # Named after the first closing brace or parenthesis: not read (the limitation).
+    ("caps.ts", "const c = { capabilities: { roots: { listChanged: true }, sampling: {} } };\n", False),
+    ("caps.py", "caps = ServerCapabilities(sampling={})\n", True),
+    ("caps.py", "caps = ServerCapabilities(tools=ToolsCapability(), sampling={})\n", False),
+])
+def test_the_capability_markers_read_up_to_the_first_closer(
+    tmp_path: Path, name: str, source: str, fires: bool
+) -> None:
+    assert _declare_sdk_and_write(tmp_path, name, source) == ([name] if fires else [])
+
+
+@pytest.mark.parametrize("unit", ["capabilities: {", "ServerCapabilities("])
+def test_a_crafted_source_file_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """1 MB of a capability opener with no closer. Each opener rescanned to the
+    first closer, so 400,000 characters of `capabilities: {` took 4.4 seconds and
+    the time grew with the square of the file. The bound is loose for slow CI
+    runners; the linear scan takes milliseconds."""
+    import time
+
+    started = time.perf_counter()
+    hits = _declare_sdk_and_write(tmp_path, "caps.ts", unit * (1_000_000 // len(unit)))
+    assert time.perf_counter() - started < 5.0
+    assert hits == []

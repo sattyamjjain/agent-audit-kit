@@ -88,11 +88,18 @@ _CUSTOM_AUTH_HEADER_RE = re.compile(
 # Only such a value counts as a genuine declared scheme for the custom family; a
 # hardcoded literal in a custom auth header still trips AAK-MCP-001 because the
 # credential is exposed in the config, so the endpoint is effectively unprotected.
+#
+# The bracketed reference arms exclude their own opener (`[^{}]`, `[^<>]`). With
+# `[^}]*` every `${`, `{{` or `<` that has no closer rescanned to the end of the
+# value: 200,000 characters of `{{` took 25 seconds to search, four times the
+# 100,000-character time, so a 1 MB header value took about ten minutes.
+# Excluding the opener ends each attempt at the next one, so the search is
+# linear.
 _CREDENTIAL_REF_RE = re.compile(
-    r"\$\{[^}]*\}"        # ${VAR}
+    r"\$\{[^{}]*\}"       # ${VAR}
     r"|\$[A-Za-z_]\w*"    # $VAR
-    r"|\{\{[^}]*\}\}"     # {{VAR}}
-    r"|<[^>]+>"           # <your-key>
+    r"|\{\{[^{}]*\}\}"    # {{VAR}}
+    r"|<[^<>]+>"          # <your-key>
     r"|%[A-Za-z_]\w*%"    # %VAR%
     r"|your[_\- ]?\w*"    # YOUR_API_KEY, your-key
     r"|change[_\- ]?me|changeme|placeholder|redacted|dummy|\bexample\b|\bsample\b"

@@ -182,13 +182,17 @@ def url_host(value: str) -> str | None:
 # The variables VS Code substitutes itself, per its variables reference: the 20
 # predefined ones (each may take a `:FolderName` scope in a multi-root
 # workspace) and the `env:`, `config:`, `command:` and `input:` forms. Longer
-# names come first so a prefix such as `file` never shadows `fileDirname`.
+# names come first so a prefix such as `file` never shadows `fileDirname`. The
+# argument class excludes `{` as well as `}`: with `[^}]*`, every `${env:` with
+# no closer rescanned to the end of the string, so a crafted command grew
+# quadratically (56,000 characters of `${file:` took 1.6 seconds). No VS Code
+# variable has a brace inside it.
 _VSCODE_VARIABLE_RE = re.compile(
     r"\$\{(?:(?:fileBasenameNoExtension|fileDirnameBasename|fileWorkspaceFolder"
     r"|workspaceFolderBasename|relativeFileDirname|defaultBuildTask|workspaceFolder"
     r"|pathSeparator|selectedText|fileBasename|columnNumber|relativeFile|fileDirname"
-    r"|fileExtname|lineNumber|execPath|userHome|file|cwd)(?::[^}]*)?"
-    r"|/|(?:env|config|command|input):[^}]*)\}"
+    r"|fileExtname|lineNumber|execPath|userHome|file|cwd)(?::[^{}]*)?"
+    r"|/|(?:env|config|command|input):[^{}]*)\}"
 )
 
 

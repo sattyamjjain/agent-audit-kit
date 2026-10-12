@@ -47,9 +47,13 @@ _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs"
 # Markers that prove the repo participates in MCP sampling. Each pattern is
 # scoped tightly enough that bare prose mentioning "sampling" won't fire.
 _SAMPLING_MARKERS = (
-    # Server / client capability declarations.
-    re.compile(r"capabilities\s*[:=]\s*\{[^}]*sampling\s*[:=]"),
-    re.compile(r"ServerCapabilities\s*\([^)]*sampling\s*="),
+    # Server / client capability declarations. The scan to `sampling` also stops
+    # at the next `capabilities` / `ServerCapabilities`, so each opener reads only
+    # up to the next one: with a bare `[^}]*`, every opener in a file of repeated
+    # `capabilities: {` rescanned to the first `}`, and 400,000 characters took
+    # 4.4 seconds, four times the 200,000-character time.
+    re.compile(r"capabilities\s*[:=]\s*\{(?:(?!capabilities)[^}])*sampling\s*[:=]"),
+    re.compile(r"ServerCapabilities\s*\((?:(?!ServerCapabilities)[^)])*sampling\s*="),
     re.compile(r"SamplingCapability\s*\("),
     # Request schemas — server-side handler installation.
     re.compile(r"CreateMessageRequestSchema"),

@@ -249,19 +249,30 @@ _JS_MCP_HINT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Both patterns keep each scan inside one call and one object or interpolation,
+# so a crafted file is read in linear time. They were super-linear: the
+# argument scan of every `exec(` ran on to the next `)` across later calls, the
+# object scan of every `{` ran on to the next `}` across later objects, and an
+# extra `\s*` beside another one split each whitespace run every possible way.
+# 3,600 characters of `exec({` took 1.6 seconds and doubling it took eight times
+# as long. Now the argument scan stops at the next call, the object scan stops at
+# the next brace of either kind (the walk over the arguments still tries every
+# `{`, so `shell: true` directly in the options object matches exactly as
+# before), and the interpolation scan stops at the next `$`, `}` or backtick,
+# with the closing backtick checked once, up front.
 _JS_SHELL_TRUE_RE = re.compile(
     r"""(?:child_process\.)?(?:spawn|exec|execFile|execa)\s*\(
-        [^)]*?
-        \{\s*[^}]*?\bshell\s*:\s*true\b
+        (?:(?!(?:spawn|exec|execFile|execa)\s*\()[^)])*?
+        \{[^{}]*?\bshell\s*:\s*true\b
     """,
     re.IGNORECASE | re.VERBOSE | re.DOTALL,
 )
 
 _JS_DYNAMIC_CMD_RE = re.compile(
     r"""(?:child_process\.)?(?:spawn|exec|execFile|execa)\s*\(\s*
-        (?:`[^`]*\$\{[^}]*(?:req|request|body|params|event|stdin|tool_input)[^`]*`
-         |\s*[\"'][^\"']*[\"']\s*\+\s*\w*(?:req|request|body|params|event|stdin|tool_input)
-         |\s*\w+(?:\.\w+)*(?:req|request|body|params|event|stdin|tool_input)
+        (?:`(?=[^`]*`)[^`]*\$\{[^$}`]*(?:req|request|body|params|event|stdin|tool_input)[^`]*`
+         |[\"'][^\"']*[\"']\s*\+\s*\w*(?:req|request|body|params|event|stdin|tool_input)
+         |\w+(?:\.\w+)*(?:req|request|body|params|event|stdin|tool_input)
          )""",
     re.IGNORECASE | re.VERBOSE,
 )

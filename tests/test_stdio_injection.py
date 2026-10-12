@@ -151,3 +151,52 @@ def test_parenthesised_tool_without_caller_input_in_the_command_is_quiet(tmp_pat
         f"@mcp.tool()\ndef listing(path: str) -> str:\n{body}\n"
     )
     assert "AAK-STDIO-001" not in _stdio(tmp_path, source)
+
+
+_JS_HINT = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";\n'
+
+
+def _js(tmp_path: Path, source: str) -> list[str]:
+    (tmp_path / "server.ts").write_text(_JS_HINT + source, encoding="utf-8")
+    findings, _ = stdio_injection.scan(tmp_path)
+    return [f.evidence for f in findings if f.rule_id == "AAK-STDIO-001"]
+
+
+@pytest.mark.parametrize(("source", "fires"), [
+    ("execa(req.body.cmd, { shell: true });\n", True),
+    ("spawn(`${bin}`, args, { shell: true });\n", True),  # a `${}` before the options
+    ("spawn(cmd, args, {\n  cwd: dir,\n  shell: true,\n});\n", True),
+    ("exec(cmd, { cwd: path.resolve(dir), shell: true });\n", True),
+    ("spawn(cmd, args, { shell: false });\n", False),
+    ('spawn("ls", ["-la"]);\n', False),
+    ("exec(`git log ${req.params.branch}`);\n", True),
+    ("exec(`echo ${JSON.stringify({ q: req.body.q })}`);\n", True),  # an object in the interpolation
+    ('exec("git log " + req.query.branch);\n', True),
+    ("exec(`git log ${branch}`);\n", False),  # a destructured argument (the limitation)
+])
+def test_js_shell_and_dynamic_command_shapes(tmp_path: Path, source: str, fires: bool) -> None:
+    assert bool(_js(tmp_path, source)) is fires
+
+
+_CRAFTED_JS = {
+    "exec-brace": "exec({" * 83_000,               # cubic before: every `{` rescanned to the end
+    "exec-call": "exec(" * 100_000,                # every call's argument scan ran to the end
+    "interpolations": "exec(`" + "${" * 249_000,   # every interpolation rescanned to the end
+    "unterminated": "exec(`${" + "req " * 124_000,  # an unclosed template full of request names
+    "whitespace": "exec(" + " " * 499_000 + "x",    # two adjacent `\s*` split the run every way
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_JS))
+def test_a_crafted_js_file_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """Just under the scanner's 512,000-byte file cap. Before, 3,600 characters of
+    `exec({` took 1.6 seconds and doubling them took eight times as long, so this
+    size did not finish. The bound is loose for slow CI runners; the linear scan
+    takes a fraction of a second."""
+    import time
+
+    body = _CRAFTED_JS[shape]
+    assert len(_JS_HINT + body) < 512_000
+    started = time.perf_counter()
+    _js(tmp_path, body)
+    assert time.perf_counter() - started < 5.0
