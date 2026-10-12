@@ -1,4 +1,5 @@
 {
+  // VS Code reads this file as JSONC, so a comment does not break it there.
   "servers": {
     "c": {
       "command": "npx",

@@ -84,6 +84,32 @@ def _version_in_range(version: str, affected: str) -> bool:
         return False
 
 
+# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
+def _mcp_server_entries(data: object) -> list[tuple[str, dict]]:
+    """(name, entry) for each server in a config's top-level server maps.
+
+    VS Code keeps its servers under `servers` in .vscode/mcp.json, and this
+    rule read `mcpServers` alone, so a VS Code config was never judged. The
+    keys are read in the order `mcpServers`, `servers`. A map counts only when
+    it is a JSON object at the top level of the config: a `servers` array (a
+    registry listing) is not one, and neither is a map nested deeper. When a
+    file has both keys, each map is read on its own. An entry whose value is
+    not an object is skipped, and a config whose top level is not an object
+    yields nothing rather than raising.
+    """
+    entries: list[tuple[str, dict]] = []
+    if not isinstance(data, dict):
+        return entries
+    for key in ("mcpServers", "servers"):
+        servers = data.get(key)
+        if not isinstance(servers, dict):
+            continue
+        for name, entry in servers.items():
+            if isinstance(entry, dict):
+                entries.append((str(name), entry))
+    return entries
+
+
 def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
     """Check MCP configs for unpinned packages (AAK-SUPPLY-001)."""
     findings: list[Finding] = []
@@ -101,17 +127,11 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
         try:
             raw = mcp_path.read_text(encoding="utf-8")
             data = json.loads(raw)
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             continue
 
         rel_path = str(mcp_path.relative_to(project_root))
-        servers = data.get("mcpServers", {})
-        if not isinstance(servers, dict):
-            continue
-
-        for server_name, server_cfg in servers.items():
-            if not isinstance(server_cfg, dict):
-                continue
+        for server_name, server_cfg in _mcp_server_entries(data):
             command = server_cfg.get("command", "")
             args = server_cfg.get("args", [])
 
@@ -121,7 +141,9 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             # no package fetcher to identify here, so skip it.
             if not isinstance(command, str):
                 continue
-            if not command or command.strip().split()[0] not in PACKAGE_FETCHERS:
+            # A blank command has no first word; indexing one raised.
+            argv = command.split()
+            if not argv or argv[0] not in PACKAGE_FETCHERS:
                 continue
 
             # Only the package specs are judged: the first positional argument
@@ -129,7 +151,6 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             # `--with` / extra `-p`), read with the launcher's option values
             # skipped. Every other argument belongs to the server. The inline
             # form (`"command": "npx -y pkg"`) carries its spec in `command`.
-            argv = command.split()
             if isinstance(args, list):
                 argv += [str(a) for a in args
                          if isinstance(a, (str, int, float)) and not isinstance(a, bool)]

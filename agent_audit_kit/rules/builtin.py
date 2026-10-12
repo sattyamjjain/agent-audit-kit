@@ -1651,15 +1651,15 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-03"],
     limitations=(
-        "Reads the `mcpServers` entries of .mcp.json, .cursor/mcp.json, "
-        ".vscode/mcp.json, .amazonq/mcp.json and mcp.json at the project root, for "
-        "the launchers npx, uvx, bunx and pnpx, and reports each package spec that "
-        "is not an exact version or a commit, a floating tag (`@latest`) or a range "
-        "(`@^1.0.0`, `>=1`) included. A launcher outside those four is not read, "
-        "whether another fetcher (`pnpm dlx some-mcp-server`) or npx behind a shell "
-        "(`cmd /c npx -y some-mcp-server`), nor is a `docker run` image tagged "
-        "`latest` or an entry under the `servers` key that VS Code uses in "
-        ".vscode/mcp.json."
+        "Reads the top-level `mcpServers` and `servers` maps of .mcp.json, "
+        ".cursor/mcp.json, .vscode/mcp.json, .amazonq/mcp.json and mcp.json at the "
+        "project root, for the launchers npx, uvx, bunx and pnpx, and reports each "
+        "package spec that is not an exact version or a commit, a floating tag "
+        "(`@latest`) or a range (`@^1.0.0`, `>=1`) included. A launcher outside "
+        "those four is not read, whether another fetcher (`pnpm dlx "
+        "some-mcp-server`) or npx behind a shell (`cmd /c npx -y some-mcp-server`), "
+        "nor is a `docker run` image tagged `latest`, or a config with comments or "
+        "trailing commas, which VS Code accepts in .vscode/mcp.json."
     ),
 )
 

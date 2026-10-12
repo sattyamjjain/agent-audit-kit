@@ -419,3 +419,48 @@ def test_the_value_of_a_credential_option_is_never_read_as_the_package(tmp_path:
     key became the package, and the finding quoted it."""
     server = {"command": "npx", "args": ["--api-key", "k-5e3c9a1f", "some-mcp-server"]}
     assert _supply001(tmp_path, server) == ["Server 'srv' arg: some-mcp-server (no version pin)"]
+
+
+# ---------------------------------------------------------------------------
+# AAK-SUPPLY-001 reads VS Code's `servers` map too
+# ---------------------------------------------------------------------------
+
+_UNPINNED = {"command": "npx", "args": ["-y", "some-mcp-server"]}
+
+
+def _supply001_in(tmp_path: Path, rel: str, config: object) -> list[str]:
+    target = tmp_path / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(config))
+    findings, _ = scan(tmp_path)
+    return [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-001"]
+
+
+def test_vscode_servers_map_is_read(tmp_path: Path) -> None:
+    """VS Code keeps its servers under `servers`; the rule read `mcpServers` only."""
+    evidence = _supply001_in(tmp_path, ".vscode/mcp.json", {"servers": {"c": _UNPINNED}})
+    assert evidence == ["Server 'c' arg: some-mcp-server (no version pin)"]
+
+
+def test_both_maps_are_read_each_on_its_own(tmp_path: Path) -> None:
+    config = {"mcpServers": {"a": _UNPINNED}, "servers": {"a": _UNPINNED}}
+    assert len(_supply001_in(tmp_path, ".mcp.json", config)) == 2
+
+
+@pytest.mark.parametrize("config", [
+    {"servers": [{"name": "listing", "command": "npx", "args": ["some-mcp-server"]}]},
+    {"mcp": {"servers": {"c": _UNPINNED}}},
+    {"servers": {"c": "npx -y some-mcp-server", "d": ["npx"], "e": None}},
+    ["npx", "-y", "some-mcp-server"],
+    "npx -y some-mcp-server",
+])
+def test_only_top_level_object_maps_of_object_entries_are_read(
+    tmp_path: Path, config: object
+) -> None:
+    """A registry listing (`servers` array), a nested map, a non-object entry and a
+    non-object config are not server maps, and none of them raises."""
+    assert _supply001_in(tmp_path, ".vscode/mcp.json", config) == []
+
+
+def test_a_blank_command_does_not_raise(tmp_path: Path) -> None:
+    assert _supply001_in(tmp_path, ".mcp.json", {"mcpServers": {"a": {"command": "   "}}}) == []
