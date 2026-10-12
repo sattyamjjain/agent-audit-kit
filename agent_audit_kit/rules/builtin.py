@@ -2160,8 +2160,8 @@ _r(
 _r(
     "AAK-TAINT-001",
     "Tool parameter flows to shell command",
-    "A @tool function parameter is passed to os.system(), os.popen(), a "
-    "blocking subprocess call, subprocess.getoutput() or "
+    "A @tool function parameter is passed to os.system(), os.popen(), an "
+    "os.exec*() function, a blocking subprocess call, subprocess.getoutput() or "
     "asyncio.create_subprocess_shell() without sanitization. "
     "CVE-2026-90617 (GH05TCREW PentestAgent) is the 2026 exemplar: the "
     "`run_task` MCP tool hands its caller-supplied task string to "
@@ -2178,11 +2178,13 @@ _r(
     adversa_references=["ADV-INJECT-04"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. A "
-        "call to `os.system`, `os.popen`, a `subprocess` function or "
-        "`asyncio.create_subprocess_shell` is reported only when a parameter's bare "
-        "name is its argument. A command built from the parameter (`f\"ls {path}\"`, "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. A call to `os.system`, "
+        "`os.popen`, an `os.exec*` function, a `subprocess` function or "
+        "`asyncio.create_subprocess_shell` is reported only when its argument is a "
+        "parameter or an item read from one (`arguments[\"cmd\"]`, "
+        "`arguments.get(\"cmd\")`). A command built from the parameter (`f\"ls {path}\"`, "
         "`\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 reports the "
         "f-string form, and neither is a sink imported by name (`from subprocess "
         "import run`). The TypeScript arm reads `.ts` and `.tsx` files only and "
@@ -2205,10 +2207,11 @@ _r(
     adversa_references=["ADV-INJECT-05"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
-        "`eval`, `exec` and `compile` are reported only when a parameter's bare "
-        "name is the argument, so `eval(expression.strip())` and `exec(\"result = \" "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. `eval`, `exec` and `compile` are "
+        "reported only when the argument is a parameter or an item read from one "
+        "(`arguments[\"expr\"]`), so `eval(expression.strip())` and `exec(\"result = \" "
         "+ code)` are not. The TypeScript arm reads `.ts` and `.tsx` files only: "
         "the same `eval(...)` in a `.js` file is not read."
     ),
@@ -2228,10 +2231,11 @@ _r(
     adversa_references=["ADV-INJECT-06"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
-        "`open(...)` and `pathlib.Path(...)` are reported only when a parameter's "
-        "bare name is the argument, so `open(os.path.join(ROOT, name))` is not, and "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. `open(...)` and `pathlib.Path(...)` "
+        "are reported only when the argument is a parameter or an item read from "
+        "one (`arguments[\"path\"]`), so `open(os.path.join(ROOT, name))` is not, and "
         "`Path(path)` after `from pathlib import Path` is not matched at all. The "
         "TypeScript arm looks at `fs.writeFile` and `appendFile` calls only: a tool "
         "that reads a path with `fs.readFileSync(path)` is not reported."
@@ -2255,11 +2259,12 @@ _r(
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
-        "Reports `requests.get/post/put/delete`, `httpx.get/post` and "
-        "`urllib.request.urlopen`, written that way, with a parameter's bare name "
-        "as the argument. A client instance (`await client.get(url)` on an "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. Reports "
+        "`requests.get/post/put/delete`, `httpx.get/post` and "
+        "`urllib.request.urlopen`, written that way, with a parameter, or an item "
+        "read from one, as the argument. A client instance (`await client.get(url)` on an "
         "`httpx.AsyncClient`), `requests.request(\"GET\", url)` and `from "
         "urllib.request import urlopen` are not matched."
     ),
@@ -2279,11 +2284,12 @@ _r(
     adversa_references=["ADV-INJECT-07"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
-        "Reports `cursor.execute`, `connection.execute` and `session.execute` only "
-        "when a parameter's bare name is the whole argument, that is, a "
-        "caller-supplied query. A query built by formatting "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. Reports `cursor.execute`, "
+        "`connection.execute` and `session.execute` only when a parameter, or an "
+        "item read from one, is the whole argument, that is, a caller-supplied "
+        "query. A query built by formatting "
         "(`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), the "
         "usual shape of SQL injection, is not reported, and neither is the same "
         "call on a variable under another name (`conn.execute(query)`)."
@@ -2304,10 +2310,11 @@ _r(
     adversa_references=["ADV-INJECT-08"],
     limitations=(
         "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, "
-        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, "
-        "so a FastMCP instance under another name (`@app.tool()`) is skipped. "
-        "Reports `pickle.load/loads`, `yaml.load/unsafe_load` and `marshal.loads` "
-        "with a parameter's bare name as the argument. Other loaders that can run "
+        "`@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool`, and a low-level "
+        "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
+        "another name (`@app.tool()`) is skipped. Reports `pickle.load/loads`, "
+        "`yaml.load/unsafe_load` and `marshal.loads` with a parameter, or an item "
+        "read from one, as the argument. Other loaders that can run "
         "code from the data are not sinks: `torch.load`, `joblib.load` and "
         "`dill.loads` are not reported."
     ),

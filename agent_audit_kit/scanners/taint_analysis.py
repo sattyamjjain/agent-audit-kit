@@ -41,6 +41,18 @@ _SINKS: dict[str, set[tuple[str | None, str]]] = {
         ("asyncio", "create_subprocess_shell"),
         ("subprocess", "getoutput"),
         ("subprocess", "getstatusoutput"),
+        # `os.exec*` replaces the process with the program its first argument
+        # names. A caller-chosen program is run as surely as by
+        # `subprocess.run(param)`, which this set has always counted, and
+        # `os.execvp(cmd, [cmd])` in a tool scanned clean while it was absent.
+        ("os", "execl"),
+        ("os", "execle"),
+        ("os", "execlp"),
+        ("os", "execlpe"),
+        ("os", "execv"),
+        ("os", "execve"),
+        ("os", "execvp"),
+        ("os", "execvpe"),
     },
     "AAK-TAINT-002": {
         (None, "eval"),
@@ -114,6 +126,25 @@ def _is_tool_function(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+def _is_call_tool_handler(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True for the low-level MCP SDK's tool handler, ``@<server>.call_tool()``.
+
+    `mcp.server.lowlevel.Server` registers no function per tool. It calls one
+    handler with the requested tool's name and the caller's `arguments` dict,
+    so that handler is where every tool's input arrives. It was not an entry
+    point here, and `subprocess.run(arguments["cmd"], shell=True)` inside it
+    scanned clean.
+
+    Any receiver counts. The SDK's own examples name the server `server` and
+    `app`, and unlike `.tool`, a decorator name other agent frameworks use too,
+    `call_tool` as a decorator belongs to this API.
+    """
+    for deco in func_def.decorator_list:
+        if _get_decorator_name(deco).endswith(".call_tool"):
+            return True
+    return False
+
+
 def _get_param_names(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     """Collect all parameter names from a function definition (excluding ``self`` / ``cls``)."""
     names: set[str] = set()
@@ -157,16 +188,36 @@ def _resolve_callee(node: ast.Call) -> tuple[str | None, str] | None:
     return None
 
 
+def _reads_param(node: ast.expr, param_names: set[str]) -> bool:
+    """True when ``node`` is a parameter, or an item read out of one.
+
+    A bare name is the parameter itself. `arguments["cmd"]`, `arguments.get("cmd")`
+    (with or without a default) and chains of them (`arguments["opts"]["cmd"]`)
+    are the caller's data as surely: the parameter only holds it. A low-level
+    `call_tool` handler receives every input as one `arguments` dict, so without
+    item reads its entry point would see nothing. Anything else built on the
+    value (`arguments["expr"].strip()`, an f-string, a concatenation) is not
+    followed, the same as for a bare parameter.
+    """
+    if isinstance(node, ast.Name):
+        return node.id in param_names
+    if isinstance(node, ast.Subscript):
+        return _reads_param(node.value, param_names)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get":
+        return _reads_param(node.func.value, param_names)
+    return False
+
+
 def _call_uses_param(call_node: ast.Call, param_names: set[str]) -> bool:
-    """Return True if any positional or keyword argument is a bare Name matching a parameter."""
+    """True if any positional or keyword argument is a parameter or an item read from one."""
     for arg in call_node.args:
-        if isinstance(arg, ast.Name) and arg.id in param_names:
+        if _reads_param(arg, param_names):
             return True
         # Also check starred args: *args
         if isinstance(arg, ast.Starred) and isinstance(arg.value, ast.Name) and arg.value.id in param_names:
             return True
     for kw in call_node.keywords:
-        if isinstance(kw.value, ast.Name) and kw.value.id in param_names:
+        if _reads_param(kw.value, param_names):
             return True
     return False
 
@@ -185,8 +236,20 @@ def _has_any_type_hints(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> boo
 def _analyse_tool_function(
     func_def: ast.FunctionDef | ast.AsyncFunctionDef,
     rel_path: str,
+    per_tool_rules: bool = True,
 ) -> list[Finding]:
-    """Perform taint analysis on a single @tool function."""
+    """Perform taint analysis on a single @tool function.
+
+    Args:
+        func_def: The decorated function.
+        rel_path: Its file, relative to the project root.
+        per_tool_rules: Whether AAK-TAINT-007 and -008 apply. They describe one
+            tool (its parameters carry no type hints; its body reaches three
+            kinds of sink), and a low-level `call_tool` handler is every tool's
+            dispatcher: its signature is the SDK's and its schema comes from
+            `list_tools`, so on it they would report the SDK's shape, not a
+            tool's. The flow rules, 001 to 006, apply to it as to any tool.
+    """
     findings: list[Finding] = []
     param_names = _get_param_names(func_def)
     func_name = func_def.name
@@ -220,6 +283,9 @@ def _analyse_tool_function(
                 f"Function '{func_name}': param flows to {sink_label}()",
                 line,
             ))
+
+    if not per_tool_rules:
+        return findings
 
     # AAK-TAINT-007: No type hints on any parameter
     if param_names and not _has_any_type_hints(func_def):
@@ -292,5 +358,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if _is_tool_function(node):
                     findings.extend(_analyse_tool_function(node, rel_path))
+                elif _is_call_tool_handler(node):
+                    findings.extend(_analyse_tool_function(node, rel_path, per_tool_rules=False))
 
     return findings, scanned_files

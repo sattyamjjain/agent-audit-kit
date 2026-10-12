@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners.taint_analysis import scan
 
 
@@ -271,3 +273,104 @@ async def async_dangerous(query):
     findings, _ = scan(tmp_path)
     taint_001 = [f for f in findings if f.rule_id == "AAK-TAINT-001"]
     assert len(taint_001) >= 1, "Async tool with subprocess should trigger AAK-TAINT-001"
+
+
+# ---------------------------------------------------------------------------
+# The low-level MCP SDK registers every tool through one `@server.call_tool()`
+# handler, called with the tool name and the caller's `arguments` dict. It was
+# not an entry point, so a command taken from `arguments` scanned clean.
+# ---------------------------------------------------------------------------
+
+_LOW_LEVEL = """\
+import os
+import pickle
+import subprocess
+
+import requests
+from mcp.server.lowlevel import Server
+
+{receiver} = Server("demo")
+
+
+@{receiver}.call_tool()
+async def handle_call_tool({params}) -> list:
+{body}
+"""
+
+
+def _low_level(
+    tmp_path: Path, body: str, receiver: str = "server", params: str = "name: str, arguments: dict"
+) -> list[str]:
+    (tmp_path / "server.py").write_text(_LOW_LEVEL.format(receiver=receiver, params=params, body=body))
+    findings, _ = scan(tmp_path)
+    return [f.rule_id for f in findings]
+
+
+@pytest.mark.parametrize("receiver", ["server", "app"])
+@pytest.mark.parametrize(("body", "rule"), [
+    ('    return subprocess.run(arguments["cmd"], shell=True).returncode', "AAK-TAINT-001"),
+    ('    os.execvp(arguments["prog"], [arguments["prog"]])', "AAK-TAINT-001"),
+    ('    return eval(arguments.get("expr"))', "AAK-TAINT-002"),
+    ('    return open(arguments.get("path", "notes.txt")).read()', "AAK-TAINT-003"),
+    ('    return requests.get(arguments["url"]).text', "AAK-TAINT-004"),
+    ('    return pickle.loads(arguments["blob"]["data"])', "AAK-TAINT-006"),
+])
+def test_low_level_call_tool_handler_is_an_entry_point(
+    tmp_path: Path, receiver: str, body: str, rule: str
+) -> None:
+    assert rule in _low_level(tmp_path, body, receiver)
+
+
+@pytest.mark.parametrize("body", [
+    # A fixed command, and a value that is not the caller's.
+    '    return subprocess.run("uptime", shell=True).returncode',
+    '    return subprocess.run(CONFIG.get("cmd"), shell=True).returncode',
+    # The item read counts, not every expression built on it.
+    '    return eval(arguments["expr"].strip())',
+    '    return subprocess.run(["git", "log", arguments["ref"]]).returncode',
+])
+def test_low_level_handler_reports_only_caller_input_reaching_a_sink(tmp_path: Path, body: str) -> None:
+    assert _low_level(tmp_path, body) == []
+
+
+def test_low_level_handler_is_not_held_to_the_per_tool_rules(tmp_path: Path) -> None:
+    """One handler dispatches every tool, and its schema comes from list_tools.
+
+    AAK-TAINT-007 (no type hints) and -008 (three sink categories in one tool)
+    describe a single `@tool` function; on the dispatcher they would report
+    the shape of the SDK rather than of any tool.
+    """
+    body = (
+        '    os.system("tar czf /tmp/notes.tgz notes")\n'
+        '    index = open("notes/index.txt").read()\n'
+        '    requests.post("https://backup.example.com/upload", data=index)\n'
+        "    return []"
+    )
+    assert _low_level(tmp_path, body, params="name, arguments") == []
+
+
+def test_os_exec_runs_a_tool_parameter(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "import os\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef run(command: str) -> None:\n    os.execvp(command, [command])\n"
+    )
+    findings, _ = scan(tmp_path)
+    assert [f.rule_id for f in findings] == ["AAK-TAINT-001"]
+    assert "os.execvp()" in findings[0].evidence
+
+
+def test_os_exec_of_a_fixed_program_is_not_reported(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "import os\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef restart(reason: str) -> None:\n    os.execv('/usr/bin/uptime', ['uptime'])\n"
+    )
+    assert scan(tmp_path)[0] == []
+
+
+def test_an_item_read_from_a_tool_parameter_is_the_parameter(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef run(options: dict) -> int:\n"
+        "    return subprocess.run(options['cmd'], shell=True).returncode\n"
+    )
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-001"]
