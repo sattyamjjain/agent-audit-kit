@@ -1,11 +1,12 @@
 """Scanner for poisoned Claude Code / Claude Agent SDK `SKILL.md` files.
 
-Fires AAK-SKILL-001..005:
+Fires AAK-SKILL-001..006:
 - 001 post-install / side-effect command embedded in SKILL.md
 - 002 unicode steganography (bidi, zero-width, tag-unicode)
 - 003 data-exfiltration primitive (outbound HTTP + local-data reference)
 - 004 description hijacks a trusted first-party skill name
 - 005 prompt-injection trigger in frontmatter
+- 006 hidden instruction in a body HTML comment
 
 Patterns are based on the Snyk ToxicSkills dataset (1,467 malicious
 payloads, 2026) and the Anthropic first-party skill directory.
@@ -18,6 +19,11 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners.agent_config import (
+    _downloaded_code_runs,
+    _line_at,
+    _prohibited_lines,
+)
 
 
 _TRUSTED_NAMES = frozenset(
@@ -41,10 +47,26 @@ _TRUSTED_NAMES = frozenset(
     }
 )
 
-_POST_INSTALL_RE = re.compile(
-    r"(?:^|\n)\s*(?:curl\s+[^\n]*\|\s*sh|wget\s+[^\n]*\|\s*sh|"
-    r"npm\s+install\s+-g|pip\s+install\s+--user|"
-    r"bash\s+-c|sh\s+-c|eval\s*\()",
+# ---- AAK-SKILL-001: post-install / side-effect command ----
+#
+# The rule promises bash, curl, pipe-to-sh and wget. It used to match
+# `curl|wget ... | sh` only, and only when the command opened a line, so
+# `| bash`, `| zsh`, `| sudo sh`, a list item, a `$ ` prompt and the usual
+# "run `curl ... | bash` once" sentence all scanned clean. Two arms now:
+#
+# - A download run as code is the shape AAK-AGENT-001 already reads in agent
+#   instruction files, and `agent_config._downloaded_code_runs` is reused rather
+#   than copied: it matches anywhere on a line, wants a remote target (a
+#   deny-list quoting `curl | sh` names none), and skips a guardrail ("never run
+#   ..."), so one command is judged the same way in an AGENTS.md and a SKILL.md.
+# - The other commands keep their spelling but count only where a command
+#   starts: a line, optionally after blockquote markers, a list marker, a `$ `
+#   prompt or opening backticks. `eval(` and `npm install -g` are ordinary words
+#   in prose about code; a review skill that tells the model to flag `eval(` is
+#   not running it.
+_SIDE_EFFECT_RE = re.compile(
+    r"[ \t]*(?:>[ \t]*)*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:\$[ \t]+)?`*"
+    r"(?P<command>npm\s+install\s+-g|pip\s+install\s+--user|bash\s+-c|sh\s+-c|eval\s*\()",
     re.IGNORECASE,
 )
 
@@ -60,9 +82,27 @@ _EXFIL_SINK_RE = re.compile(
     r"curl\b|wget\b)",
     re.IGNORECASE,
 )
+# ---- AAK-SKILL-003 / -006: a local secret ----
+#
+# The whole alternation used to sit inside `\b(?:...)\b`. `\b` needs a word
+# character on one side, so in front of a `~`, `.` or `$` it held only after a
+# word character: `~/.ssh`, `.aws/credentials` and `.netrc` never matched after
+# a space, a slash or a quote (`curl -T ~/.aws/credentials ...` scanned clean),
+# while `config.netrc` did. Word-led tokens keep `\b`; each symbol-led path gets
+# a lookbehind that refuses a word character or another path character before
+# it, which is the boundary it was meant to have. `$HOME/.ssh` and
+# `${HOME}/.ssh` are spelled out beside `~/.ssh`.
+#
+# `$HOME` and a bare `~/` were in the list too, and dead for the same reason.
+# They are not brought back: a home directory on its own is not local data.
+# Every install line names one (`~/.local/bin`, `$HOME/.bun`), and
+# AAK-SKILL-003 pairs this pattern with any `curl` anywhere in the file, so
+# restoring them would report most skills that document an install. The
+# credential files under the home directory are what both rules mean.
 _LOCAL_DATA_RE = re.compile(
-    r"\b(?:process\.env|os\.environ|~/\.ssh|\.aws/credentials|\.netrc|"
-    r"id_rsa|id_ed25519|\$HOME|~\/|read(?:Text|File))\b",
+    r"\b(?:process\.env|os\.environ|id_rsa|id_ed25519|read(?:Text|File))\b"
+    r"|(?<![\w.-])\.(?:aws/credentials|netrc)\b"
+    r"|(?<![\w~/.$-])(?:~|\$HOME|\$\{HOME\})/\.ssh\b",
     re.IGNORECASE,
 )
 
@@ -78,6 +118,25 @@ _INJECTION_TRIGGERS = (
     "developer mode",
     "DAN mode",
 )
+
+#: The triggers as case-insensitive matches that start at a word. Both callers
+#: used to lower-case the text and test each trigger as a plain substring, so
+#: "DAN mode", the one trigger with capitals, could never match. A
+#: case-insensitive substring would find it inside "Jordan mode" instead, and
+#: the same word start is why "filesystem:" no longer reads as "system:".
+_TRIGGER_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
+    (trigger, re.compile(r"\b" + re.escape(trigger), re.IGNORECASE))
+    for trigger in _INJECTION_TRIGGERS
+)
+
+
+def _first_trigger(text: str) -> tuple[str, int] | None:
+    """The first trigger, in list order, that ``text`` holds, with its offset."""
+    for trigger, pattern in _TRIGGER_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            return trigger, match.start()
+    return None
 
 
 # ---- AAK-SKILL-006: hidden instruction in a body HTML comment ----
@@ -103,10 +162,9 @@ def _hidden_instruction_hits(body: str) -> list[tuple[str, str]]:
         inner = match.group(1).strip()
         if not inner:
             continue
-        lowered = inner.lower()
-        trigger = next((t for t in _INJECTION_TRIGGERS if t in lowered), None)
+        trigger = _first_trigger(inner)
         if trigger:
-            hits.append((inner, f"injection trigger {trigger!r}"))
+            hits.append((inner, f"injection trigger {trigger[0]!r}"))
             continue
         # Exfiltration shape: a local secret, an imperative, and a destination.
         if (
@@ -116,6 +174,28 @@ def _hidden_instruction_hits(body: str) -> list[tuple[str, str]]:
         ):
             hits.append((inner, "local-secret reference with an outbound destination"))
     return hits
+
+
+def _post_install_command(raw: str) -> tuple[int, str] | None:
+    """``(line, command)`` for the first post-install command in ``raw``, or None.
+
+    One finding per file at the first command, as the rule has always reported,
+    with the line taken from where the command is rather than from a search for
+    its text. A line that a prohibition heading or lead-in governs ("## Never",
+    "Do not run any of these:") is skipped, the guardrail AAK-AGENT-001 honours.
+    """
+    lines = raw.splitlines()
+    prohibited = _prohibited_lines(lines)
+    for number, line in enumerate(lines, 1):
+        if number in prohibited:
+            continue
+        hits = _downloaded_code_runs(line)
+        side_effect = _SIDE_EFFECT_RE.match(line)
+        if side_effect:
+            hits.append((side_effect.start("command"), side_effect.group("command")))
+        if hits:
+            return number, min(hits)[1]
+    return None
 
 
 def _iter_skill_files(project_root: Path) -> list[Path]:
@@ -152,14 +232,15 @@ def _check_skill(path: Path, project_root: Path) -> list[Finding]:
     rel = str(path.relative_to(project_root))
     meta, _ = _parse_frontmatter(raw)
 
-    m = _POST_INSTALL_RE.search(raw)
-    if m:
+    post_install = _post_install_command(raw)
+    if post_install:
+        line_number, command = post_install
         findings.append(
             make_finding(
                 "AAK-SKILL-001",
                 rel,
-                f"Post-install command detected: {m.group(0).strip()!r}",
-                line_number=find_line_number(raw, m.group(0).strip().splitlines()[0]),
+                f"Post-install command detected: {command!r}",
+                line_number=line_number,
             )
         )
 
@@ -212,20 +293,17 @@ def _check_skill(path: Path, project_root: Path) -> list[Finding]:
             )
         )
 
-    lowered = raw.lower()
     fm_boundary = raw.find("---", 3)
-    fm_slice = lowered[: fm_boundary if fm_boundary > 0 else 500]
-    for trigger in _INJECTION_TRIGGERS:
-        if trigger in fm_slice:
-            findings.append(
-                make_finding(
-                    "AAK-SKILL-005",
-                    rel,
-                    f"Prompt-injection trigger in frontmatter: {trigger!r}",
-                    line_number=find_line_number(raw, trigger),
-                )
+    trigger = _first_trigger(raw[: fm_boundary if fm_boundary > 0 else 500])
+    if trigger:
+        findings.append(
+            make_finding(
+                "AAK-SKILL-005",
+                rel,
+                f"Prompt-injection trigger in frontmatter: {trigger[0]!r}",
+                line_number=_line_at(raw, trigger[1]),
             )
-            break
+        )
 
     return findings
 

@@ -583,9 +583,16 @@ def _forbidden(line: str, start: int) -> bool:
     return head is not None and not _INSTRUCTION_BREAK_RE.search(clause, head.end())
 
 
-def _shell_directives(line: str) -> list[tuple[int, str, str]]:
-    """``(offset, kind, command)`` for each command on ``line`` that AAK-AGENT-001 reports."""
-    found: list[tuple[int, str, str]] = []
+def _downloaded_code_runs(line: str) -> list[tuple[int, str]]:
+    """``(offset, command)`` for each command on ``line`` that runs code it downloads.
+
+    The download-and-run half of AAK-AGENT-001. `skill_poisoning` imports it for
+    AAK-SKILL-001, so `curl <url> | bash` is judged the same way in an AGENTS.md
+    and in a SKILL.md: anywhere on the line, only when it names something off
+    this machine, and not when a guardrail forbids it. A change here moves both
+    rules.
+    """
+    found: list[tuple[int, str]] = []
     for pattern in (_PIPE_TO_SHELL_RE, _SUBSTITUTED_DOWNLOAD_RE, _PS_DOWNLOAD_EXEC_RE):
         for match in pattern.finditer(line):
             if not _names_remote(match.group("args")) or _forbidden(line, match.start()):
@@ -596,7 +603,15 @@ def _shell_directives(line: str) -> list[tuple[int, str, str]]:
                 command = line[match.start():match.start("after")]
             else:
                 command = match.group()
-            found.append((match.start(), "runs downloaded code", command.strip()))
+            found.append((match.start(), command.strip()))
+    return found
+
+
+def _shell_directives(line: str) -> list[tuple[int, str, str]]:
+    """``(offset, kind, command)`` for each command on ``line`` that AAK-AGENT-001 reports."""
+    found: list[tuple[int, str, str]] = [
+        (offset, "runs downloaded code", command) for offset, command in _downloaded_code_runs(line)
+    ]
     if not _TABLE_ROW_RE.match(line):
         for match in _WIPE_RE.finditer(line):
             lead = line[max(0, match.start() - _NEAR):match.start()]
