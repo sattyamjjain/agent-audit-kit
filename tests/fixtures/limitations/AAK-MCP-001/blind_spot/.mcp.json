@@ -22,6 +22,9 @@
       "headers": {
         "X-Foo-Key": "k9f2-example-77a1"
       }
+    },
+    "local": {
+      "url": "http://localhost:8001/mcp"
     }
   }
 }

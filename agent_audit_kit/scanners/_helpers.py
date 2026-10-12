@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from pathlib import Path
@@ -213,6 +214,15 @@ def url_host(value: str) -> str | None:
     IPv6 literal, a malformed authority) returns None, so a caller comparing the
     host against an allowlist fails closed on it.
     """
+    host = _whatwg_hostname(value)
+    if host is None or not set(host) <= _HOSTNAME_CHARS:
+        return None
+    return host
+
+
+def _whatwg_hostname(value: str) -> str | None:
+    """`url_host`'s normalisation and parse, without its character filter, so an
+    IPv6 literal (`[::1]`) comes back as `::1`."""
     url = value.strip(_C0_CONTROL_OR_SPACE)
     for ch in "\t\r\n":
         url = url.replace(ch, "")
@@ -225,10 +235,32 @@ def url_host(value: str) -> str | None:
         return None
     if not host:
         return None
-    host = host.rstrip(".")
-    if not host or not set(host) <= _HOSTNAME_CHARS:
-        return None
-    return host
+    return host.rstrip(".") or None
+
+
+def is_loopback_url(value: str) -> bool:
+    """True for a URL on this machine: `localhost`, 127.0.0.0/8, `::1` or 0.0.0.0.
+
+    One definition for every rule that treats a local server differently.
+    TRANSPORT-001 exempted these from "cleartext" with an anchored regex that
+    knew only 127.0.0.1 and an `http`/`ws` scheme, while AAK-MCP-001 reported a
+    developer's own `http://localhost:8001/mcp` as a remote server without
+    authentication (CRITICAL) and AAK-MCP-009 reported it again as an internal
+    network address. On 190 real `.vscode/mcp.json` files that was 51 findings
+    and not one true positive. The host is read as `url_host` reads it, so
+    `http://evil.example\\@localhost/` is not local and
+    `http://localhost\\@evil.example/` is.
+    """
+    host = _whatwg_hostname(value)
+    if host is None:
+        return False
+    if host == "localhost":
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or (address.version == 4 and address.is_unspecified)
 
 
 # The variables VS Code substitutes itself, per its variables reference: the 20

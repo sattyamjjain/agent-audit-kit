@@ -9,6 +9,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     in_skip_dir,
+    is_loopback_url,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
@@ -37,12 +38,11 @@ _MCP_CONFIG_FILES: list[str] = [
 # `http://` server was CRITICAL. Found via CVE-2026-37006 (gpt-researcher
 # WebSocket endpoint); see tests/test_cve_2026_37006_websocket_transport.py.
 #
-# stdio has no URL and is out of scope for this rule by construction.
+# stdio has no URL and is out of scope for this rule by construction. A loopback
+# host is exempt through `_helpers.is_loopback_url`, the definition AAK-MCP-001
+# and AAK-MCP-009 share; it replaced an anchored regex that knew 127.0.0.1 alone
+# of the 127.0.0.0/8 block.
 _CLEARTEXT_URL_RE = re.compile(r"^(?:http|ws)://", re.IGNORECASE)
-_LOCALHOST_RE = re.compile(
-    r"^(?:http|ws)://(localhost|127\.0\.0\.1|0\.0\.0\.0|\[?::1\]?)(:\d+)?(/|$)",
-    re.IGNORECASE,
-)
 
 # ---- AAK-TRANSPORT-002: TLS validation disabling ----
 _TLS_DISABLE_KEYS = {
@@ -95,7 +95,7 @@ def _check_server(
     transport: str = _raw_transport if isinstance(_raw_transport, str) else ""
 
     # AAK-TRANSPORT-001: cleartext http:// or ws://, excluding loopback
-    if url and _CLEARTEXT_URL_RE.match(url) and not _LOCALHOST_RE.match(url):
+    if url and _CLEARTEXT_URL_RE.match(url) and not is_loopback_url(url):
         scheme = url.split("://", 1)[0].lower()
         secure = "wss" if scheme == "ws" else "https"
         findings.append(make_finding(

@@ -10,6 +10,7 @@ from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     in_skip_dir,
+    is_loopback_url,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
@@ -215,8 +216,11 @@ def _check_server(
     # the custom X-*-Key / *-API-Key family and the x402 X-PAYMENT gate — is
     # authenticated and must not fire (#475). A custom auth header whose value is
     # a hardcoded literal secret still fires: the credential is exposed in the
-    # config, so the endpoint is effectively unprotected.
-    if url:
+    # config, so the endpoint is effectively unprotected. A loopback server
+    # (localhost, 127.0.0.0/8, ::1, 0.0.0.0) is the developer's own process, not
+    # the remote server this rule is about; on 190 real `.vscode/mcp.json` files
+    # its 24 loopback findings held no true positive.
+    if url and not is_loopback_url(url):
         if not _server_declares_auth(server_cfg.get("headers", {})):
             findings.append(_make_finding(
                 "AAK-MCP-001", file_path,
@@ -309,8 +313,12 @@ def _check_server(
             _find_line_number(raw_text, "headersHelper"),
         ))
 
-    # AAK-MCP-009: Internal/localhost URL
-    if url and INTERNAL_URL_PATTERNS.search(url):
+    # AAK-MCP-009: Internal-network URL. A loopback server is left out, as in
+    # AAK-MCP-001: a client config pointing at the local machine is not the
+    # server-side reach into an internal network the rule describes, and 27 of its
+    # 28 findings on real `.vscode/mcp.json` files were loopback, none a true
+    # positive. RFC 1918 and `.local` hosts still fire.
+    if url and not is_loopback_url(url) and INTERNAL_URL_PATTERNS.search(url):
         findings.append(_make_finding(
             "AAK-MCP-009", file_path,
             f"Server '{server_name}' URL: {url}",

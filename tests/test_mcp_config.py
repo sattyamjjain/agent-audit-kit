@@ -336,6 +336,41 @@ def test_no_module_reads_both_server_maps_by_hand() -> None:
     assert not offenders, f"read the server maps with _helpers.iter_mcp_servers: {offenders}"
 
 
+# ---------------------------------------------------------------------------
+# A loopback server is the developer's own process. AAK-MCP-001 reported it as a
+# remote server without authentication (CRITICAL) and AAK-MCP-009 again as an
+# internal network address: 51 findings on 190 real `.vscode/mcp.json` files,
+# none a true positive.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("url", [
+    "http://localhost:8001/mcp",
+    "https://localhost/mcp",
+    "http://127.0.0.1:3000/mcp",
+    "http://127.0.0.2/mcp",
+    "http://[::1]:9000/mcp",
+    "http://0.0.0.0:8080/mcp",
+    "http://LOCALHOST.:8001/mcp",
+    "http://localhost\\@evil.example/mcp",  # Node reads `\` as `/`: the host is localhost
+])
+def test_a_loopback_server_is_not_remote_or_internal(tmp_path: Path, url: str) -> None:
+    _write_vscode(tmp_path, {"local": {"type": "http", "url": url}})
+    ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert not ids & {"AAK-MCP-001", "AAK-MCP-009"}
+
+
+@pytest.mark.parametrize(("url", "rules"), [
+    ("http://localhost.evil.example/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
+    ("http://evil.example\\@localhost/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),  # the host is evil.example
+    ("http://127.0.0.1.nip.io/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
+    ("http://192.168.1.20:8080/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
+])
+def test_a_host_that_only_looks_local_still_fires(tmp_path: Path, url: str, rules: set[str]) -> None:
+    _write_vscode(tmp_path, {"remote": {"type": "http", "url": url}})
+    assert rules <= {f.rule_id for f in scan(tmp_path)[0]}
+
+
 @pytest.mark.parametrize("command", [
     "${workspaceFolder}/run.sh",
     "${userHome}/go/bin/tool",
@@ -420,3 +455,21 @@ def test_mcp_001_reads_a_custom_header_value_as_a_reference_or_a_literal(
     (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {"api": server}}), encoding="utf-8")
     rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
     assert ("AAK-MCP-001" not in rule_ids) is declared
+
+
+@pytest.mark.parametrize(("url", "loopback"), [
+    ("http://localhost:8001/mcp", True),
+    ("http://127.10.20.30/", True),
+    ("http://[::1]/", True),
+    ("http://0.0.0.0:80/", True),
+    ("localhost:8080", True),
+    ("http://localhost.evil.example/", False),
+    ("http://10.0.0.5/", False),
+    ("http://[::ffff:10.0.0.5]/", False),
+    ("http://[::1/", False),
+    ("${input:host}", False),
+])
+def test_is_loopback_url(url: str, loopback: bool) -> None:
+    from agent_audit_kit.scanners._helpers import is_loopback_url
+
+    assert is_loopback_url(url) is loopback

@@ -291,6 +291,20 @@ def test_a_loopback_vscode_server_is_not_cleartext(tmp_path: Path) -> None:
     assert scan(tmp_path)[0] == []
 
 
+@pytest.mark.parametrize(("url", "fires"), [
+    # The exemption is the one AAK-MCP-001 and 009 share: all of 127.0.0.0/8,
+    # where the old anchored regex knew 127.0.0.1 alone.
+    ("http://127.0.0.2:8080/mcp", False),
+    ("ws://[::1]:9000/mcp", False),
+    ("http://localhost.evil.example/mcp", True),
+    ("http://127.0.0.1@evil.example/mcp", True),
+])
+def test_the_loopback_exemption_is_the_shared_one(tmp_path: Path, url: str, fires: bool) -> None:
+    _write_mcp_config(tmp_path, {"x": {"url": url}})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-001"]
+    assert bool(hits) is fires
+
+
 def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:
     """`data.get` on a JSON array raised AttributeError and failed the scanner."""
     (tmp_path / ".mcp.json").write_text("[1, 2]", encoding="utf-8")

@@ -134,8 +134,12 @@ CASES: list[Case] = [
     Case("mcp-005 npx with a pinned version", "AAK-MCP-005", mcp_config, _mcp({"s": {"command": "npx", "args": ["-y", "pkg@1.2.3"]}}), True),
     Case("mcp-005 uvx", "AAK-MCP-005", mcp_config, _mcp({"s": {"command": "uvx", "args": ["pkg"]}}), True),
     Case("mcp-005 installed program", "AAK-MCP-005", mcp_config, _mcp({"s": {"command": "node", "args": ["./node_modules/pkg/dist/index.js"]}}), False),
-    # ---- AAK-MCP-009 -------------------------------------------------------
-    Case("mcp-009 localhost", "AAK-MCP-009", mcp_config, _mcp({"s": {"url": "http://localhost:3000/mcp"}}), True),
+    # ---- AAK-MCP-009: not the URL's own loopback host ----------------------
+    Case("mcp-009 a loopback host is not reported", "AAK-MCP-009", mcp_config, _mcp({"s": {"url": "http://localhost:3000/mcp"}}), False),
+    Case(
+        "mcp-009 loopback in the query", "AAK-MCP-009", mcp_config,
+        _mcp({"s": {"url": "https://proxy.example.com/mcp?target=http://127.0.0.1:8080"}}), True,
+    ),
     Case("mcp-009 private address", "AAK-MCP-009", mcp_config, _mcp({"s": {"url": "http://10.0.0.5/mcp"}}), True),
     Case("mcp-009 .local host", "AAK-MCP-009", mcp_config, _mcp({"s": {"url": "http://box.local/mcp"}}), True),
     Case("mcp-009 public endpoint", "AAK-MCP-009", mcp_config, _mcp({"s": {"url": "https://mcp.example.com/mcp"}}), False),
@@ -370,7 +374,7 @@ def test_pinning_again_records_a_tool_that_was_added_or_removed(
 def test_exclude_rules_in_the_config_file_accepts_a_finding(tmp_path: Path) -> None:
     """AAK-MCP-009 and AAK-MCP-018 tell the reader to accept a deliberate finding by
     listing it under `exclude-rules` in `.agent-audit-kit.yml`."""
-    _write(tmp_path, _mcp({"s": {"url": "http://localhost:3000/mcp"}}))
+    _write(tmp_path, _mcp({"s": {"url": "http://10.0.0.5:3000/mcp"}}))
 
     def reported() -> set[str]:
         result = CliRunner().invoke(cli, ["scan", str(tmp_path), "--format", "json", "--fail-on", "none"])

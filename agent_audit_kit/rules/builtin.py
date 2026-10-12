@@ -427,7 +427,9 @@ _r(
         "`\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared "
         "scheme. A remote URL given any other way is not examined: as an argument to a "
         "bridge (`npx mcp-remote https://...`) or under another key such as "
-        "`serverUrl`."
+        "`serverUrl`. A server on a loopback host (localhost, 127.0.0.0/8, ::1 or "
+        "0.0.0.0) is not reported, though one that checks no `Origin` header can still "
+        "be reached from a web page through DNS rebinding."
     ),
 )
 
@@ -604,10 +606,11 @@ _r(
     owasp_mcp_references=["MCP09:2025"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Looks in the server `url` for localhost, 127.0.0.1, 0.0.0.0, ::1, the 10.x, "
-        "172.16-31.x and 192.168.x ranges and a `.local` name. Other internal "
-        "addresses are not matched: a name such as `mcp.corp.internal` or the shared "
-        "range 100.64.0.0/10."
+        "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a "
+        "`.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1; a URL whose "
+        "own host is loopback (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not "
+        "reported. Other internal addresses are not matched: a name such as "
+        "`mcp.corp.internal` or the shared range 100.64.0.0/10."
     ),
 )
 
@@ -2450,7 +2453,7 @@ _r(
     limitations=(
         "Reads the `url` field of each server under `mcpServers`, or `servers` in VS "
         "Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is "
-        "localhost, 127.0.0.1, 0.0.0.0 or ::1. A cleartext URL passed as an argument "
+        "loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. A cleartext URL passed as an argument "
         "to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is "
         "not read."
     ),
