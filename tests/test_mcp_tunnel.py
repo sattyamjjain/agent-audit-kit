@@ -16,6 +16,8 @@ import json
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.output.compliance import FRAMEWORKS, format_results
 from agent_audit_kit.output.sarif import format_results as format_sarif
@@ -156,6 +158,57 @@ def test_001_rfc1918_only_passes(tmp_path: Path) -> None:
     """)
     findings, _ = scan(tmp_path)
     assert "AAK-MCP-TUNNEL-001" not in _ids(findings)
+
+
+# Multi-document files. `yaml.safe_load` raises on more than one document and
+# both callers skipped the file on that error, so a second document, or only a
+# trailing `---`, hid a CRITICAL finding and dropped the file from files_scanned.
+
+_DISABLED = (
+    "tunnel_domain: acme.tunnel.anthropic.com\n"
+    "routes:\n"
+    "  wiki: http://wiki.internal:8080\n"
+    "upstream:\n"
+    "  disable_ip_validation: true\n"
+)
+
+
+def _scan_config(root: Path, text: str) -> tuple[list[str], set[str]]:
+    path = root / "mcp-gateway" / "config.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    findings, scanned = scan(root)
+    return [f.rule_id for f in findings], scanned
+
+
+@pytest.mark.parametrize("text", [
+    "---\n# production\n" + _DISABLED + "---\n# staging overrides\nlisten_addr: \":9444\"\n",
+    _DISABLED + "---\n",
+    "listen_addr: \":9444\"\n---\n" + _DISABLED,
+])
+def test_001_reads_every_document_of_a_file(tmp_path: Path, text: str) -> None:
+    ids, scanned = _scan_config(tmp_path, text)
+    assert ids == ["AAK-MCP-TUNNEL-001"]
+    assert scanned == {"mcp-gateway/config.yaml"}
+
+
+def test_001_the_same_setting_in_two_documents_is_reported_once(tmp_path: Path) -> None:
+    ids, _ = _scan_config(tmp_path, _DISABLED + "---\n" + _DISABLED)
+    assert ids == ["AAK-MCP-TUNNEL-001"]
+
+
+def test_002_reads_a_proxy_config_in_a_second_document(tmp_path: Path) -> None:
+    second = "tunnel_domain: acme.tunnel.anthropic.com\nroutes:\n  docs: https://docs.internal:8443\n"
+    ids, _ = _scan_config(tmp_path, "log_level: debug\n---\n" + second)
+    assert ids == ["AAK-MCP-TUNNEL-002"]
+
+
+@pytest.mark.parametrize("text", [
+    "listen_addr: \":9443\"\n---\nlog_level: debug\n",
+    "tunnel_domain: [unclosed\nroutes: {}\n",
+])
+def test_a_file_with_no_readable_proxy_config_is_skipped(tmp_path: Path, text: str) -> None:
+    assert _scan_config(tmp_path, text) == ([], set())
 
 
 # ---------------------------------------------------------------------------

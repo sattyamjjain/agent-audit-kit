@@ -120,28 +120,14 @@ _CI_FILE_GLOBS: tuple[str, ...] = (
 )
 
 
-def _looks_like_tunnel_proxy_config(data: Any) -> bool:
-    """True iff a parsed YAML doc has the unambiguous MCP Tunnels proxy shape.
+def _unwrap_proxy_config(data: Any) -> dict[str, Any] | None:
+    """Return the proxy config in a parsed YAML document, or None if it has none.
 
     Per the reference table at
     https://platform.claude.com/docs/en/agents-and-tools/mcp-tunnels/reference,
-    the proxy config always carries `tunnel_domain` and `routes`. We also
-    accept the Helm wrapper, which nests the same shape under `gateway.config`.
+    the proxy config always carries `tunnel_domain` and `routes`. The Helm
+    wrapper nests the same shape under `gateway.config`, which is walked past.
     """
-    if not isinstance(data, dict):
-        return False
-    if "tunnel_domain" in data and "routes" in data:
-        return True
-    gw = data.get("gateway")
-    if isinstance(gw, dict):
-        inner = gw.get("config")
-        if isinstance(inner, dict) and "tunnel_domain" in inner and "routes" in inner:
-            return True
-    return False
-
-
-def _unwrap_proxy_config(data: Any) -> dict[str, Any] | None:
-    """Return the proxy-config sub-dict, walking past the Helm `gateway.config` wrapper."""
     if not isinstance(data, dict):
         return None
     if "tunnel_domain" in data and "routes" in data:
@@ -152,6 +138,26 @@ def _unwrap_proxy_config(data: Any) -> dict[str, Any] | None:
         if isinstance(inner, dict) and "tunnel_domain" in inner and "routes" in inner:
             return inner
     return None
+
+
+def _proxy_configs(raw: str) -> list[dict[str, Any]]:
+    """The proxy configs in every YAML document of `raw`, Helm wrapper removed.
+
+    This was `yaml.safe_load`, which raises on a stream of more than one
+    document. Both callers skipped the file on that error, so a proxy config
+    with a second document after it (prod and staging bundled in one file), or
+    with nothing but a trailing `---` (which PyYAML reads as an empty second
+    document), produced no AAK-MCP-TUNNEL finding at all and dropped out of
+    files_scanned, a CRITICAL `disable_ip_validation: true` included. The Secret
+    check further down already read every document. A document that is not a
+    whole proxy config (an override without `tunnel_domain` and `routes`) is
+    still not checked; the AAK-MCP-TUNNEL-001 limitation says so.
+    """
+    try:
+        documents = list(yaml.safe_load_all(raw))
+    except yaml.YAMLError:
+        return []
+    return [cfg for cfg in map(_unwrap_proxy_config, documents) if cfg is not None]
 
 
 def _path_hints_tunnel(p: Path, project_root: Path) -> bool:
@@ -178,11 +184,7 @@ def _find_tunnel_proxy_configs(project_root: Path) -> list[Path]:
             continue
         if len(raw) > 1_000_000:
             continue
-        try:
-            data = yaml.safe_load(raw)
-        except yaml.YAMLError:
-            continue
-        if _looks_like_tunnel_proxy_config(data):
+        if _proxy_configs(raw):
             found.append(p)
     return found
 
@@ -489,16 +491,23 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for cfg_path in _find_tunnel_proxy_configs(project_root):
         try:
             raw = cfg_path.read_text(encoding="utf-8")
-            data = yaml.safe_load(raw)
-        except (OSError, UnicodeDecodeError, yaml.YAMLError):
+        except (OSError, UnicodeDecodeError):
             continue
-        cfg = _unwrap_proxy_config(data)
-        if cfg is None:
+        configs = _proxy_configs(raw)
+        if not configs:
             continue
         rel = str(cfg_path.relative_to(project_root))
         scanned.add(rel)
-        findings.extend(_check_ssrf_defense(cfg, rel, raw))
-        findings.extend(_check_upstream_trust_anchor(cfg, rel, raw))
+        # Two documents that set the same thing would report it twice at the
+        # line of its first occurrence; once is enough.
+        seen: set[tuple[str, int | None, str]] = set()
+        for cfg in configs:
+            for finding in (_check_ssrf_defense(cfg, rel, raw)
+                            + _check_upstream_trust_anchor(cfg, rel, raw)):
+                key = (finding.rule_id, finding.line_number, finding.evidence)
+                if key not in seen:
+                    seen.add(key)
+                    findings.append(finding)
 
     # Credential-exposure detections (rule -003).
     findings.extend(_check_ci_for_tunnel_tokens(project_root))

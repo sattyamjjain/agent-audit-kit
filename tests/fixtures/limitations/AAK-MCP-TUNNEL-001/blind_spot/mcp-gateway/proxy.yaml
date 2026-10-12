@@ -3,6 +3,9 @@ tunnel_domain: tunnel.example.com
 routes:
   crm: http://crm.internal:8080
 upstream:
-  disable_ip_validation: true
+  allowed_ips:
+    - 10.0.0.0/8
 ---
-log_level: debug
+# staging override, layered onto the document above
+upstream:
+  disable_ip_validation: true

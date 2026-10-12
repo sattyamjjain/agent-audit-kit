@@ -688,13 +688,14 @@ _r(
     limitations=(
         "Fires on `upstream.disable_ip_validation: true`, or an `upstream.allowed_ips` "
         "entry that is `0.0.0.0/0` or `::/0` or has an IPv4 prefix of /7 or shorter or "
-        "an IPv6 prefix of /31 or shorter, in a YAML file that parses as a single "
-        "document with `tunnel_domain` and `routes` at the top (or under "
-        "`gateway.config`). Only a file named config, proxy or values (.yaml or .yml), "
-        "or one under a directory named tunnel, gateway, mcp-tunnel, mcp-tunnels, "
-        "mcp-gateway, mcp_tunnel or mcp_gateway, is read, so the same settings "
-        "embedded as a string in a Kubernetes ConfigMap's `data:`, or in a file with a "
-        "`---` separator and a second document, are not seen."
+        "an IPv6 prefix of /31 or shorter, in a YAML document with `tunnel_domain` and "
+        "`routes` at the top (or under `gateway.config`); every document of a "
+        "multi-document file is read. Only a file named config, proxy or values "
+        "(.yaml or .yml), or one under a directory named tunnel, gateway, mcp-tunnel, "
+        "mcp-tunnels, mcp-gateway, mcp_tunnel or mcp_gateway, is read, so the same "
+        "settings embedded as a string in a Kubernetes ConfigMap's `data:`, or set in "
+        "a document with no `tunnel_domain` and `routes` of its own (an override "
+        "layered onto another document), are not seen."
     ),
 )
 
