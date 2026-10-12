@@ -112,6 +112,11 @@ CASES: list[Case] = [
     Case("mcp-002 $HOME in the path", "AAK-MCP-002", mcp_config, _mcp({"s": {"command": "$HOME/bin/server"}}), True),
     Case("mcp-002 parentheses in the path", "AAK-MCP-002", mcp_config, _mcp({"s": {"command": "/opt/My (old)/server"}}), True),
     Case("mcp-002 program plus args", "AAK-MCP-002", mcp_config, _mcp({"s": {"command": "node", "args": ["server.js"]}}), False),
+    Case(
+        "mcp-002 a VS Code variable", "AAK-MCP-002", mcp_config,
+        {".vscode/mcp.json": json.dumps({"servers": {"s": {"command": "${workspaceFolder}/run.sh"}}})},
+        False,
+    ),
     # ---- AAK-MCP-003: `${NAME}` is the one accepted reference -------------
     Case("mcp-003 literal secret", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "abc123"}}}), True),
     Case("mcp-003 bare $NAME is not accepted", "AAK-MCP-003", mcp_config, _mcp({"s": {"command": "node", "env": {"API_KEY": "$API_KEY"}}}), True),

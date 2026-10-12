@@ -16,6 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.mcp_stdio_launcher import scan
 
@@ -155,3 +157,37 @@ def test_plain_launcher_without_flag_passes(tmp_path: Path) -> None:
     }}})
     findings, _ = scan(tmp_path)
     assert not _hits(findings), "npx <pkg> without an exec flag must not fire"
+
+
+# ---------------------------------------------------------------------------
+# VS Code variables. VS Code substitutes them itself and passes the result as a
+# literal argv element: 31 of this rule's 32 findings on 190 real
+# `.vscode/mcp.json` files were one of them.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("arg", [
+    "${workspaceFolder}/server.js",
+    "${workspaceFolder:api}/server.js",
+    "${userHome}/.config/tool.json",
+    "${input:github-token}",
+    "--token=${input:github-token}",
+    "${env:HOME}/data",
+    "${config:myext.endpoint}",
+    "${fileDirname}${/}x",
+])
+def test_a_vscode_variable_is_not_an_interpolation_token(tmp_path: Path, arg: str) -> None:
+    _write(tmp_path, {"servers": {"s": {"command": "node", "args": [arg]}}}, name="mcp.json")
+    findings, _ = scan(tmp_path)
+    assert not _hits(findings)
+
+
+@pytest.mark.parametrize("args", [
+    ["--path=${workspaceFolder}/${USER_INPUT}"],  # a non-VS Code ${...} beside one
+    ["-e", "require('${workspaceFolder}/x')"],    # the exec-flag arm is untouched
+    ["--name={{tool}}"],
+])
+def test_other_interpolation_beside_a_vscode_variable_still_fires(tmp_path: Path, args: list[str]) -> None:
+    _write(tmp_path, {"servers": {"s": {"command": "node", "args": args}}}, name="mcp.json")
+    findings, _ = scan(tmp_path)
+    assert _hits(findings)

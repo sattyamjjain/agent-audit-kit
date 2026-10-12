@@ -2743,7 +2743,7 @@
       "cve_references": [],
       "description": "An MCP server command contains shell metacharacters or shell wrappers (sh -c, bash -c). This enables command injection via argument composition.",
       "incident_references": [],
-      "limitations": "Looks only at the `command` string of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, for one of the characters | ; & ` $ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`. The same wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by this rule.",
+      "limitations": "Looks only at the `command` string of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, for one of the characters | ; & ` $ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`, after removing any VS Code variable (`${workspaceFolder}`, `${userHome}`, `${env:...}` and the others VS Code documents), which VS Code substitutes itself. The same wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by this rule.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -2751,7 +2751,7 @@
       "owasp_mcp_references": [
         "MCP05:2025"
       ],
-      "remediation": "Put only the program in `command` and every argument in `args`. This rule matches `sh -c`, `bash -c`, `cmd /c` and any of `|`, `;`, `&`, `$`, `(`, `)` or a backtick in `command`, so a path such as `$HOME/bin/server`, or one containing parentheses, fires it too.",
+      "remediation": "Put only the program in `command` and every argument in `args`. This rule matches `sh -c`, `bash -c`, `cmd /c` and any of `|`, `;`, `&`, `$`, `(`, `)` or a backtick in `command`, so a path such as `$HOME/bin/server`, or one containing parentheses, fires it too. A VS Code variable such as `${workspaceFolder}`, which VS Code substitutes itself, does not.",
       "rule_id": "AAK-MCP-002",
       "sarif_name": "McpCommandShellInjection",
       "severity": "critical",
@@ -7520,7 +7520,7 @@
       ],
       "description": "An MCP stdio server definition (`command` + `args` in a `.mcp.json` / `mcpServers` block) launches a shell-style interpreter (`npx`, `node`, `bash`, `sh`, `python`) with a code-execution flag (`-c`, `-e`, `--eval`), or passes an arg carrying a template / interpolation token (`${...}` embedded in a larger string, `{{...}}`, `%s`) that is not a pinned static literal. Either shape turns the launched process into an arbitrary-code sink the moment the value is attacker- or model-influenced. This is the CVE-2026-40933 class (Flowise < 3.1.0 unsafely serialised stdio commands in its MCP adapter \u2014 an authenticated actor could register an stdio server whose allowlisted launcher, e.g. `npx`, was combined with `-c` to run arbitrary OS commands; CWE-78, CVSS 9.9). Distinct from AAK-MCP-002 (which inspects only the `command` string for `sh -c`/`bash -c` wrappers and shell metacharacters, never `args`) and from the source-code taint rules AAK-MCP-STDIO-CMD-INJ-001..004 (which model `StdioServerParameters(command=tainted)` in Python/TS/Java/Rust). A standalone env reference (`${VAR}`) is treated as pinned and does not fire.",
       "incident_references": [],
-      "limitations": "Fires when the launcher is npx, node, bash, sh, python or python3 and an argument is exactly `-c`, `-e`, `-eval` or `--eval`, or when any argument contains `{{...}}`, `%s` or a `${...}` that is not exactly `${NAME}` (a letter or underscore, then letters, digits or underscores), such as `x-${KEY}`, `${KEY:-x}` or `${input:id}`. Combined short flags (`bash -lc \"...\"`) and other shells (`zsh -c`) are not matched.",
+      "limitations": "Fires when the launcher is npx, node, bash, sh, python or python3 and an argument is exactly `-c`, `-e`, `-eval` or `--eval`, or when any argument contains `{{...}}`, `%s` or a `${...}` that is not exactly `${NAME}` (a letter or underscore, then letters, digits or underscores), such as `x-${KEY}` or `${KEY:-x}`; a VS Code variable (`${workspaceFolder}`, `${userHome}`, `${env:...}`, `${input:...}` and the others VS Code documents) does not count, since VS Code substitutes it itself. Combined short flags (`bash -lc \"...\"`) and other shells (`zsh -c`) are not matched.",
       "owasp_agentic_references": [
         "ASI05"
       ],

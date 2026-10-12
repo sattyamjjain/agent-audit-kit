@@ -31,7 +31,12 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+    strip_vscode_variables,
+)
 
 _RULE_ID = "AAK-MCP-STDIO-LAUNCHER-INJECT-001"
 
@@ -119,7 +124,16 @@ def _argv_tokens(cfg: dict[str, Any]) -> tuple[str, list[str]]:
 
 
 def _interpolation_hit(token: str) -> bool:
-    """True if a token carries a non-pinned template/interpolation token."""
+    """True if a token carries a non-pinned template/interpolation token.
+
+    VS Code variables are removed first. VS Code substitutes `${workspaceFolder}`,
+    `${input:token}` and their kind itself, from the workspace path, the user's
+    own prompt and their environment, and passes the result as a literal argv
+    element, so they are neither a template an adapter fills nor a value an
+    attacker reaches. On main this rule fired 32 times in 28 of 190 real
+    `.vscode/mcp.json` files, 31 of them on such a variable.
+    """
+    token = strip_vscode_variables(token)
     if "{{" in token and "}}" in token:
         return True
     if "%s" in token:

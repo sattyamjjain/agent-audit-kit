@@ -439,7 +439,8 @@ _r(
     "Put only the program in `command` and every argument in `args`. This rule matches "
     "`sh -c`, `bash -c`, `cmd /c` and any of `|`, `;`, `&`, `$`, `(`, `)` or a backtick "
     "in `command`, so a path such as `$HOME/bin/server`, or one containing parentheses, "
-    "fires it too.",
+    "fires it too. A VS Code variable such as `${workspaceFolder}`, which VS Code "
+    "substitutes itself, does not.",
     sarif_name="McpCommandShellInjection",
     owasp_mcp_references=["MCP05:2025"],
     owasp_agentic_references=["ASI05"],
@@ -447,9 +448,11 @@ _r(
     limitations=(
         "Looks only at the `command` string of each server in `mcpServers`, or "
         "`servers` in VS Code's `.vscode/mcp.json`, for one of the characters | ; & ` "
-        "$ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`. The same "
-        "wrapper split into `command: bash` and `args: [\"-c\", ...]` is not read by "
-        "this rule."
+        "$ ( ) or a leading `sh -c`, `bash -c`, `cmd /c` or `cmd.exe /c`, after "
+        "removing any VS Code variable (`${workspaceFolder}`, `${userHome}`, "
+        "`${env:...}` and the others VS Code documents), which VS Code substitutes "
+        "itself. The same wrapper split into `command: bash` and `args: [\"-c\", "
+        "...]` is not read by this rule."
     ),
 )
 
@@ -8111,8 +8114,11 @@ _r(
         "argument is exactly `-c`, `-e`, `-eval` or `--eval`, or when any argument "
         "contains `{{...}}`, `%s` or a `${...}` that is not exactly `${NAME}` (a "
         "letter or underscore, then letters, digits or underscores), such as "
-        "`x-${KEY}`, `${KEY:-x}` or `${input:id}`. Combined short flags (`bash -lc "
-        "\"...\"`) and other shells (`zsh -c`) are not matched."
+        "`x-${KEY}` or `${KEY:-x}`; a VS Code variable (`${workspaceFolder}`, "
+        "`${userHome}`, `${env:...}`, `${input:...}` and the others VS Code "
+        "documents) does not count, since VS Code substitutes it itself. Combined "
+        "short flags (`bash -lc \"...\"`) and other shells (`zsh -c`) are not "
+        "matched."
     ),
 )
 

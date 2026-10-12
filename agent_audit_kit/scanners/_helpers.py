@@ -179,6 +179,33 @@ def url_host(value: str) -> str | None:
     return host
 
 
+# The variables VS Code substitutes itself, per its variables reference: the 20
+# predefined ones (each may take a `:FolderName` scope in a multi-root
+# workspace) and the `env:`, `config:`, `command:` and `input:` forms. Longer
+# names come first so a prefix such as `file` never shadows `fileDirname`.
+_VSCODE_VARIABLE_RE = re.compile(
+    r"\$\{(?:(?:fileBasenameNoExtension|fileDirnameBasename|fileWorkspaceFolder"
+    r"|workspaceFolderBasename|relativeFileDirname|defaultBuildTask|workspaceFolder"
+    r"|pathSeparator|selectedText|fileBasename|columnNumber|relativeFile|fileDirname"
+    r"|fileExtname|lineNumber|execPath|userHome|file|cwd)(?::[^}]*)?"
+    r"|/|(?:env|config|command|input):[^}]*)\}"
+)
+
+
+def strip_vscode_variables(text: str) -> str:
+    """`text` without the VS Code variables in it (`${workspaceFolder}`,
+    `${userHome}`, `${env:X}`, `${input:X}`, ...).
+
+    VS Code substitutes these itself before it spawns the server, with no
+    shell, so their `$`, `{` and `:` are not shell expansion or template
+    interpolation. AAK-MCP-002 read `${workspaceFolder}/run.sh` as a shell
+    metacharacter, and AAK-MCP-STDIO-LAUNCHER-INJECT-001 read `${input:token}`
+    as a non-pinned interpolation token: 31 of its 32 findings on 190 real
+    `.vscode/mcp.json` files were a VS Code variable.
+    """
+    return _VSCODE_VARIABLE_RE.sub("", text)
+
+
 #: The keys an MCP client config keeps its server map under. `mcpServers` is the
 #: key of Claude Code, Cursor, Windsurf, Gemini CLI and most other clients; VS
 #: Code's `.vscode/mcp.json` keeps the same map under `servers`.

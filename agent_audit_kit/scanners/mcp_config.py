@@ -12,6 +12,7 @@ from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
     make_finding,
     mcp_server_maps,
+    strip_vscode_variables,
 )
 from agent_audit_kit.scanners._launchers import launch_evidence
 
@@ -212,9 +213,12 @@ def _check_server(
                 _find_line_number(raw_text, url),
             ))
 
-    # AAK-MCP-002: Shell expansion in command
+    # AAK-MCP-002: Shell expansion in command. A VS Code variable is removed
+    # first: VS Code substitutes `${workspaceFolder}` and its kind itself and
+    # spawns without a shell, so its `$` is not one (both MCP-002 findings on
+    # 190 real `.vscode/mcp.json` files were exactly that).
     if command:
-        has_shell_meta = bool(SHELL_METACHARACTERS.search(command))
+        has_shell_meta = bool(SHELL_METACHARACTERS.search(strip_vscode_variables(command)))
         has_shell_wrapper = any(command.strip().startswith(sw) for sw in SHELL_WRAPPERS)
         if has_shell_meta or has_shell_wrapper:
             findings.append(_make_finding(
