@@ -66,7 +66,10 @@ def format_results(result: ScanResult, min_severity: Severity = Severity.LOW) ->
             # (issue #743); `scannerFailures > 0` means the rules those scanners
             # own were never evaluated, so `complete` is false.
             "scannerFailures": len(result.scanner_failures),
-            "complete": not result.scanner_failures,
+            # Tools `--llm-scan` was asked to analyze and did not (AAK-LLM-002).
+            # Same meaning for `complete`: part of the requested run is missing.
+            "llmGaps": len(result.llm_gaps),
+            "complete": not result.incomplete,
         },
         "findings": [_finding_to_dict(f) for f in filtered],
     }

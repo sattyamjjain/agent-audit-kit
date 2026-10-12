@@ -47,7 +47,9 @@ Nothing here was cut; it is the same content with a home of its own.
 | `--compliance FRAMEWORK` | | Compliance report: `eu-ai-act`, `soc2`, `iso27001`, `hipaa`, `nist-ai-rmf`, `mcp-2026-roadmap` |
 | `--verify-secrets` | | Ask Anthropic, OpenAI, GitHub and GitLab whether leaked keys are live (opt-in, network; AWS and GCP keys are reported but not checked) |
 | `--diff BASE_REF` | | Only report findings in files changed since BASE_REF |
-| `--llm-scan` | | Local LLM semantic analysis via Ollama (opt-in) |
+| `--llm-scan` | | Ask a model whether each tool's metadata tries to manipulate the agent (opt-in; sends that text to the provider). See [LLM scan](llm-scan.md) |
+| `--llm MODEL` | `ollama/gemma2:2b` | Model for `--llm-scan`: `claude-*` (`ANTHROPIC_API_KEY`), `gpt-*` (`OPENAI_API_KEY`), `gemini-*` (`GEMINI_API_KEY`) or `ollama/<model>` (local) |
+| `--allow-scanner-failure` | | Exit 0 even when a scanner crashed or `--llm-scan` left a tool unanalyzed |
 | `--sessions PATH` | | Run the session-scoped rules over agent transcripts — OpenAI Agents SDK traces, LangGraph checkpoints, JSONL. See [Session transcripts](https://github.com/sattyamjjain/agent-audit-kit/blob/main/docs/session-transcripts.md) |
 | `--strict-loading` | | Fail loudly if any optional scanner module can't be imported (default: silently skip) |
 | `--verbose` / `-v` | | Detailed scan progress |

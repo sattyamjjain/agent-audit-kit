@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from agent_audit_kit import __version__
-from agent_audit_kit.models import Finding, ScanResult, Severity
+from agent_audit_kit.models import LLM_INCOMPLETE_RULE_ID, Finding, ScanResult, Severity
 from agent_audit_kit.output._rule_doc_pages import RULE_DOC_PAGES
 from agent_audit_kit.rules.builtin import RULES
 
@@ -327,10 +327,10 @@ def format_results(
                 # with four dead scanners previously looked clean (issue #743).
                 "invocations": [
                     {
-                        "executionSuccessful": not result.scanner_failures,
+                        "executionSuccessful": not result.incomplete,
                         "toolExecutionNotifications": [
                             _scanner_failure_notification(f)
-                            for f in result.scanner_failures
+                            for f in result.scanner_failures + result.llm_gaps
                         ],
                     }
                 ],
@@ -346,14 +346,13 @@ def format_results(
 
 
 def _scanner_failure_notification(finding) -> dict:
-    """A SARIF `notification` object (§3.58) for one crashed scanner."""
+    """A SARIF `notification` object (§3.58) for one crashed scanner or LLM gap."""
+    if finding.rule_id == LLM_INCOMPLETE_RULE_ID:
+        text = f"--llm-scan did not analyze a tool. {finding.evidence}"
+    else:
+        text = f"Scanner crashed; the rules it owns were not evaluated. {finding.evidence}"
     return {
         "level": "error",
-        "message": {
-            "text": (
-                f"Scanner crashed; the rules it owns were not evaluated. "
-                f"{finding.evidence}"
-            )
-        },
+        "message": {"text": text},
         "descriptor": {"id": finding.rule_id},
     }
