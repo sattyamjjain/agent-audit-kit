@@ -34,6 +34,7 @@ import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -571,7 +572,7 @@ class _FakeServers:
         if "tlsbad" in url:
             return {"ok": False, "error": "tls-certificate", "error_type": "SSLCertVerificationError",
                     "elapsed_ms": 50}
-        if method == "POST" and "oauth.example-real.com" in url:
+        if method == "POST" and urlsplit(url).hostname == "oauth.example-real.com":
             rm = "https://oauth.example-real.com/.well-known/oauth-protected-resource/mcp"
             return ok(401, [("WWW-Authenticate", f'Bearer resource_metadata="{rm}"'),
                             ("Content-Type", "application/json")], b'{"error":"invalid_token"}')
@@ -634,7 +635,7 @@ def test_prober_sends_exactly_the_two_request_kinds(tmp_path: Path) -> None:
             assert method == "GET"
             assert "/.well-known/oauth-protected-resource" in url or url == "https://auth.example-real.com/prm"
     # The private-resolving and unresolvable hosts are never contacted.
-    assert not any("lan.example-real.com" in u or "gone.example-real.com" in u for _, u in sent)
+    assert not any(urlsplit(u).hostname in {"lan.example-real.com", "gone.example-real.com"} for _, u in sent)
     # The root metadata is fetched once per host, however many endpoints share it.
     root = "https://oauth.example-real.com/.well-known/oauth-protected-resource"
     assert sent.count(("GET", root)) == 1
