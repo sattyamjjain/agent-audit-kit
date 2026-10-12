@@ -71,15 +71,24 @@ _NON_AUTH_TOKEN_HEADERS = re.compile(r"^x-(?:csrf|xsrf)-token$", re.IGNORECASE)
 # identifier, not a credential; `X-SignDocs-Client-Id` is recognized only because
 # its companion `X-SignDocs-Client-Secret` is. Adding `-id` would also swallow
 # `X-Request-Id` / `X-Trace-Id` / `X-Correlation-Id`, which authenticate nothing.
+#
+# A third step out, 2026-10-12, on 190 real `.vscode/mcp.json` files: 8 servers
+# that send a key under a name the family required hyphens for, or that carries
+# no `x-` / `-api-key` affix, were reported "without authentication":
+# `CONTEXT7_API_KEY` (underscores) and Azure API Management's
+# `Ocp-Apim-Subscription-Key`. Any name ending in an API key spelling, and the
+# `-subscription-key` suffix, now count, still only with a referenced value.
 _CUSTOM_AUTH_HEADER_RE = re.compile(
     r"^(?:"
     # X-Nefesh-Key, X-Goog-Api-Key, X-Velarion-Agent-Token, X-SignDocs-Client-Secret
     r"x-[a-z0-9]+(?:-[a-z0-9]+)*-(?:key|token|secret)"
     r"|[a-z0-9-]+-api-key"               # *-api-key
+    r"|[a-z0-9_-]*(?:api_key|apikey)"    # CONTEXT7_API_KEY, ServiceApiKey, apikey
     r"|[a-z0-9-]+-api-token"             # *-api-token
     r"|[a-z0-9-]+-access-key"            # *-access-key
     r"|[a-z0-9-]+-client-secret"         # OAuth client-credentials pair
-    r"|apikey|x-auth-token|x-access-token"
+    r"|[a-z0-9_-]+[-_]subscription[-_]key"  # Ocp-Apim-Subscription-Key
+    r"|x-auth-token|x-access-token"
     r"|x-payment"                        # x402 pay-to-access gate
     r")$",
     re.IGNORECASE,

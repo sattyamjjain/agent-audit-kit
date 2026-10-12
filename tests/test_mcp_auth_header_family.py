@@ -51,6 +51,11 @@ RECOGNISED = [
         {"X-SignDocs-Client-Id": REF, "X-SignDocs-Client-Secret": REF},
         id="client-credentials-pair",
     ),
+    # 2026-10-12 - real .vscode/mcp.json files: underscores, a camel-case suffix,
+    # and Azure API Management's subscription key.
+    pytest.param({"CONTEXT7_API_KEY": "${input:context7-key}"}, id="underscore-api-key"),
+    pytest.param({"ServiceApiKey": REF}, id="camel-case-apikey"),
+    pytest.param({"Ocp-Apim-Subscription-Key": "${input:apim-key}"}, id="apim-subscription-key"),
 ]
 
 NOT_RECOGNISED = [
@@ -69,6 +74,9 @@ NOT_RECOGNISED = [
     # otherwise swallow them.
     pytest.param({"X-CSRF-Token": REF}, id="csrf-token"),
     pytest.param({"X-XSRF-Token": REF}, id="xsrf-token"),
+    # The new suffixes are suffixes: a name that only contains one is not a key.
+    pytest.param({"X-Api-Key-Url": REF}, id="api-key-not-at-the-end"),
+    pytest.param({"Ocp-Apim-Subscription-Region": REF}, id="subscription-region"),
 ]
 
 
@@ -91,6 +99,9 @@ def test_family_stays_value_aware() -> None:
     """
     assert _server_declares_auth({"X-Vendor-Token": "sk-live-abc123def456"}) is False
     assert _server_declares_auth({"X-Vendor-Token": REF}) is True
+    # The 2026-10-12 suffixes join the same value-aware family.
+    assert _server_declares_auth({"CONTEXT7_API_KEY": "k9f2Lq7XvN3mR8tW1zP5"}) is False
+    assert _server_declares_auth({"Ocp-Apim-Subscription-Key": "k9f2Lq7XvN3mR8tW1zP5"}) is False
 
 
 def test_end_to_end_a_vendor_token_server_is_not_reported_unauthenticated(
