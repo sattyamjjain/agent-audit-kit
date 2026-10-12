@@ -541,14 +541,24 @@ def _resolve_lockfile_versions(
     marker fork. Judging only the lowest misses an affected version above it
     whenever the lowest sits below a pin's `introduced` bound, which is the
     "first match decides" mistake the manifest reader stopped making.
+
+    PyPI lockfiles compare names as PEP 503 normalises them: uv.lock records
+    `awslabs-healthlake-mcp-server` for the package published as
+    `awslabs.healthlake-mcp-server`, and the dotted name never matched it.
     """
-    lower = {n.lower() for n in names}
+    pypi = filename in ("uv.lock", "poetry.lock", "pipfile.lock")
+
+    def canon(name: str) -> str:
+        lowered = name.lower()
+        return re.sub(r"[-_.]+", "-", lowered) if pypi else lowered
+
+    lower = {canon(n) for n in names}
     found: list[str] = []
 
     if filename in ("uv.lock", "poetry.lock"):
         for block in re.split(r"(?=^\[\[package\]\])", text, flags=re.MULTILINE):
             nm = re.search(r'^\s*name\s*=\s*["\']([^"\']+)["\']', block, re.MULTILINE)
-            if nm and nm.group(1).lower() in lower:
+            if nm and canon(nm.group(1)) in lower:
                 vm = re.search(r'^\s*version\s*=\s*["\']([0-9][\w.\-]*)', block, re.MULTILINE)
                 if vm:
                     found.append(vm.group(1))
@@ -559,7 +569,7 @@ def _resolve_lockfile_versions(
             data = {}
         for section in ("default", "develop"):
             for pkg, meta in (data.get(section) or {}).items():
-                if pkg.lower() in lower and isinstance(meta, dict):
+                if canon(pkg) in lower and isinstance(meta, dict):
                     v = str(meta.get("version", "")).lstrip("=")
                     if v:
                         found.append(v)

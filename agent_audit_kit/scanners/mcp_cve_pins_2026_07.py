@@ -189,6 +189,7 @@ module — see CHANGELOG.cves.md.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -210,7 +211,7 @@ _Ver = tuple[int, int, int]
 # package.json dependency maps and overrides, and the packages a launcher fetches
 # in an MCP config or a package.json script (`_launchers`). A pin matches a
 # declaration on its whole name only, compared as the registry compares names:
-# case-insensitively, and for PyPI with `-` and `_` folded. Comments,
+# case-insensitively, and for PyPI as PEP 503 normalises them. Comments,
 # descriptions, server names, paths, image names and URLs are never
 # declarations, so none of them can stand in for the package or hide it.
 #
@@ -1285,10 +1286,16 @@ def _candidate_files(project_root: Path) -> list[Path]:
 
 
 def _canonical(name: str, ecosystem: str | None) -> str:
-    """A package name as its registry compares it: case-insensitively, and for
-    PyPI with `-` and `_` folded."""
+    """A package name as its registry compares it.
+
+    npm compares names case-insensitively. PyPI normalises them (PEP 503):
+    every run of `-`, `_` and `.` is one `-`, so `awslabs.healthlake-mcp-server`,
+    `awslabs-healthlake-mcp-server` (the spelling uv.lock records) and
+    `awslabs_healthlake_mcp_server` are one package. Matching the dotted
+    spelling only left every other awslabs.* spelling silent.
+    """
     lowered = name.strip().lower()
-    return lowered.replace("_", "-") if ecosystem == "py" else lowered
+    return re.sub(r"[-_.]+", "-", lowered) if ecosystem == "py" else lowered
 
 
 def _names_match(pin: _Pin, declaration: Declaration) -> bool:

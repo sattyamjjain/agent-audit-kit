@@ -9080,9 +9080,7 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). The normalised spelling "
-        "`awslabs-healthlake-mcp-server`, which uv.lock records, is not matched in "
-        "a requirements file or in uv.lock."
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -9572,14 +9570,11 @@ _r(
         "depth and, at the project root only, in pyproject.toml, Pipfile, "
         "package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
         "Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and "
-        "yarn.lock lockfiles, taking the lowest version a range allows and "
-        "reporting a reference that states no version. The dependency is not read "
-        "when it is declared in a sub-directory manifest "
-        "(`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`). The normalised spelling "
-        "`awslabs-aws-healthomics-mcp-server`, which uv.lock records, is not "
-        "matched in a requirements file or in uv.lock."
+        "yarn.lock lockfiles, taking the lowest version a range allows and reporting "
+        "a reference that states no version. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -9801,9 +9796,7 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). The normalised spelling "
-        "`awslabs-aws-api-mcp-server`, which uv.lock records, is not matched in a "
-        "requirements file or in uv.lock."
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -9829,17 +9822,15 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `awslabs.amazon-mq-mcp-server` in requirements*.txt at any depth "
-        "and, at the project root only, in pyproject.toml, Pipfile, package.json, "
+        "Reads `awslabs.amazon-mq-mcp-server` in requirements*.txt at any depth and, "
+        "at the project root only, in pyproject.toml, Pipfile, package.json, "
         ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
         "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). The normalised spelling "
-        "`awslabs-amazon-mq-mcp-server`, which uv.lock records, is not matched in a "
-        "requirements file or in uv.lock."
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -9919,9 +9910,7 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). The normalised spelling "
-        "`awslabs-documentdb-mcp-server`, which uv.lock records, is not matched in "
-        "a requirements file or in uv.lock."
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -12288,9 +12277,7 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). The normalised spelling "
-        "`awslabs-postgres-mcp-server`, which uv.lock records, is not matched in a "
-        "requirements file or in uv.lock."
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 
@@ -12317,18 +12304,15 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-DATA-01"],
     limitations=(
-        "Reads `awslabs.security-agent-mcp-server` in requirements*.txt at any "
-        "depth and, at the project root only, in pyproject.toml, Pipfile, "
-        "package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
-        "Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and "
-        "yarn.lock lockfiles, taking the lowest version a range allows and "
-        "reporting a reference that states no version. The dependency is not read "
-        "when it is declared in a sub-directory manifest "
-        "(`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`). The normalised spelling `awslabs-security-agent-mcp-server`, "
-        "which uv.lock records, is not matched in a requirements file or in "
-        "uv.lock."
+        "Reads `awslabs.security-agent-mcp-server` in requirements*.txt at any depth "
+        "and, at the project root only, in pyproject.toml, Pipfile, package.json, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
+        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
+        "lockfiles, taking the lowest version a range allows and reporting a "
+        "reference that states no version. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
+        "reader does not parse (`pdm.lock`)."
     ),
 )
 

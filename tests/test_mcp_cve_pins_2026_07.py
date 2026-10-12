@@ -2494,3 +2494,58 @@ def test_the_evidence_quotes_the_declaration(tmp_path: Path) -> None:
     hits = [f for f in scan(tmp_path)[0] if f.rule_id == _LITELLM]
     assert len(hits) == 1
     assert "'litellm[proxy]<1.84'" in hits[0].evidence
+
+
+# --- PyPI names compare as PEP 503 normalises them --------------------------------
+#
+# The table matched `awslabs.<x>-mcp-server` as spelled on PyPI's project page, and
+# every other spelling of the same package was silent: the hyphenated name uv.lock
+# records, the underscore form, a mixed-case requirement, `uvx awslabs-...@0.0.5`.
+
+_AWSLABS_PINS = [p for p in _PINS if any(n.startswith("awslabs.") for n in p.names)]
+
+
+def _awslabs_spellings(name: str) -> list[str]:
+    hyphens = name.replace(".", "-")
+    return [hyphens, hyphens.replace("-", "_"), name.upper(), name.replace("-", "_")]
+
+
+@pytest.mark.parametrize("pin", _AWSLABS_PINS, ids=lambda p: p.display)
+def test_every_pep503_spelling_of_an_awslabs_pin_is_read(tmp_path: Path, pin: object) -> None:
+    name = pin.names[0]  # type: ignore[attr-defined]
+    version = _affected_version(pin)
+    rule_id = pin.rule_id  # type: ignore[attr-defined]
+    for spelling in _awslabs_spellings(name):
+        assert rule_id in _ids(tmp_path, "requirements.txt", f"{spelling}=={version}\n"), spelling
+    (tmp_path / "requirements.txt").unlink()
+    normalised = name.replace(".", "-")
+    uv_lock = f'version = 1\n\n[[package]]\nname = "{normalised}"\nversion = "{version}"\n'
+    assert rule_id in _ids(tmp_path, "uv.lock", uv_lock)
+    (tmp_path / "uv.lock").unlink()
+    poetry_lock = f'[[package]]\nname = "{normalised}"\nversion = "{version}"\n'
+    assert rule_id in _ids(tmp_path, "poetry.lock", poetry_lock)
+    (tmp_path / "poetry.lock").unlink()
+    pipfile_lock = '{"default": {"%s": {"version": "==%s"}}}' % (normalised, version)
+    assert rule_id in _ids(tmp_path, "Pipfile.lock", pipfile_lock)
+    (tmp_path / "Pipfile.lock").unlink()
+    config = '{"mcpServers": {"a": {"command": "uvx", "args": ["%s@%s"]}}}' % (normalised, version)
+    assert rule_id in _ids(tmp_path, ".mcp.json", config)
+
+
+def test_a_normalised_lockfile_name_clears_at_the_floor(tmp_path: Path) -> None:
+    lock = 'version = 1\n\n[[package]]\nname = "awslabs-healthlake-mcp-server"\nversion = "0.0.14"\n'
+    assert "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001" not in _ids(tmp_path, "uv.lock", lock)
+
+
+def test_npm_names_are_not_normalised(tmp_path: Path) -> None:
+    """npm has no PEP 503: `neo-mjs` and `neo.mjs` are two packages there."""
+    content = '{"dependencies": {"neo-mjs": "13.1.0"}}'
+    assert "AAK-MCP-NEOMJS-CVE-2026-18482-001" not in _ids(tmp_path, "package.json", content)
+    assert "AAK-MCP-NEOMJS-CVE-2026-18482-001" in _ids(
+        tmp_path, "package.json", '{"dependencies": {"neo.mjs": "13.1.0"}}'
+    )
+
+
+def test_a_longer_normalised_name_is_still_another_package(tmp_path: Path) -> None:
+    content = "awslabs-healthlake-mcp-server-extras==0.0.1\n"
+    assert "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001" not in _ids(tmp_path, "requirements.txt", content)
