@@ -75,6 +75,21 @@ from agent_audit_kit.scanners._launchers import (
 )
 
 
+# How large a file the dependency readers take in, checked with stat() before
+# the file is read. A manifest is written by hand and stays small. A lockfile
+# is generated and grows with the whole resolved graph: a lockfileVersion 3
+# package-lock.json spends about 450 bytes a package, so it passes 1 MB at
+# about 2,200 packages. The readers used to skip a lockfile over 1 MB
+# (AAK-SUPPLY-002/005) or 2 MB (the CVE pin table) without a finding, a silent
+# all-clear on exactly the projects with the most dependencies. A lockfile now
+# has to pass 32 MiB, some 70,000 packages at that density, before it is
+# skipped, and every rule that reads lockfiles states the limit in its
+# limitations. A file over the limit is still skipped without a finding; the
+# limit exists only to bound what a crafted file can cost the scan.
+MAX_MANIFEST_BYTES = 2_000_000
+MAX_LOCKFILE_BYTES = 32 * 1024 * 1024
+
+
 @dataclass(frozen=True)
 class Declaration:
     """One declared dependency on one package."""

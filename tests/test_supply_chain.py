@@ -464,3 +464,140 @@ def test_only_top_level_object_maps_of_object_entries_are_read(
 
 def test_a_blank_command_does_not_raise(tmp_path: Path) -> None:
     assert _supply001_in(tmp_path, ".mcp.json", {"mcpServers": {"a": {"command": "   "}}}) == []
+
+
+# ---------------------------------------------------------------------------
+# Large lockfiles
+#
+# package-lock.json, Pipfile.lock and Cargo.lock over 1,000,000 characters were
+# skipped without a finding, a silent all-clear on the projects with the most
+# dependencies: a lockfileVersion 3 package-lock.json passes 1 MB at about 2,200
+# packages, which is also where AAK-SUPPLY-005 has the most to say. Lockfiles are
+# now read up to MAX_LOCKFILE_BYTES (32 MiB), checked with stat() before reading.
+# ---------------------------------------------------------------------------
+
+
+def _write_padded_package_lock(path: Path, minimum_bytes: int, packages: dict) -> None:
+    """A lockfileVersion 3 package-lock.json over `minimum_bytes`, holding
+    `packages` among filler entries shaped like real ones."""
+    entry = {
+        "version": "1.0.0",
+        "resolved": "https://registry.npmjs.org/filler/-/filler-1.0.0.tgz",
+        "integrity": "sha512-" + "A" * 86 + "==",
+    }
+    count = minimum_bytes // len(json.dumps(entry)) + 1
+    filled: dict = {"": {"name": "app", "version": "1.0.0"}}
+    filled.update({f"node_modules/filler-{i}": entry for i in range(count)})
+    filled.update(packages)
+    lockfile = {"name": "app", "lockfileVersion": 3, "packages": filled}
+    path.write_text(json.dumps(lockfile), encoding="utf-8")
+    assert path.stat().st_size > minimum_bytes
+
+
+def test_a_package_lock_over_1mb_is_read(tmp_path: Path) -> None:
+    _write_padded_package_lock(
+        tmp_path / "package-lock.json", 1_100_000, {"node_modules/axios": {"version": "1.7.2"}}
+    )
+    findings, _ = scan(tmp_path)
+    supply002 = [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-002"]
+    assert any(e.startswith("axios@1.7.2") for e in supply002), supply002
+    assert [f for f in findings if f.rule_id == "AAK-SUPPLY-005"], "the count was skipped too"
+
+
+def test_a_cargo_lock_over_1mb_is_counted(tmp_path: Path) -> None:
+    block = (
+        '[[package]]\nname = "crate-{i}"\nversion = "1.0.0"\n'
+        'source = "registry+https://github.com/rust-lang/crates.io-index"\n'
+        'checksum = "' + "0" * 64 + '"\n\n'
+    )
+    count = 1_100_000 // len(block) + 1
+    lock = tmp_path / "Cargo.lock"
+    packages = "".join(block.replace("{i}", str(i)) for i in range(count))
+    lock.write_text("version = 3\n\n" + packages, encoding="utf-8")
+    assert lock.stat().st_size > 1_100_000
+    findings, _ = scan(tmp_path)
+    supply005 = [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-005"]
+    assert supply005 == [f"{count} dependencies (threshold: 200)"]
+
+
+def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The stated limitation, at a size a test can write: the size is checked
+    before the file is read, and a lockfile over it yields nothing."""
+    from agent_audit_kit.scanners import supply_chain
+
+    _write_padded_package_lock(
+        tmp_path / "package-lock.json", 60_000, {"node_modules/axios": {"version": "1.7.2"}}
+    )
+    rules = ("AAK-SUPPLY-002", "AAK-SUPPLY-005")
+    assert {f.rule_id for f in scan(tmp_path)[0]} >= set(rules), "the file is reportable"
+    monkeypatch.setattr(supply_chain, "MAX_LOCKFILE_BYTES", 50_000)
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id in rules]
+
+
+def test_the_lockfile_index_reads_each_format() -> None:
+    """One pass a lockfile, every package in it, by the name its registry compares."""
+    from agent_audit_kit.scanners.supply_chain import _lockfile_index
+
+    yarn_v1 = (
+        "# yarn lockfile v1\n\n"
+        '"@scope/pkg@^1.0.0", "@scope/pkg@^1.1.0":\n  version "1.2.0"\n'
+        '  resolved "https://registry.yarnpkg.com/@scope/pkg/-/pkg-1.2.0.tgz"\n\n'
+        "next@^15.0.0:\n  version \"15.0.0\"\n  dependencies:\n    react \"^18.0.0\"\n\n"
+        'next@^16.1.0:\n  version "16.1.0"\n'
+    )
+    assert _lockfile_index(yarn_v1, "yarn.lock") == {
+        "@scope/pkg": [(1, 2, 0)], "next": [(15, 0, 0), (16, 1, 0)],
+    }
+    yarn_berry = '__metadata:\n  version: 6\n\n"next@npm:^16.1.0":\n  version: 16.1.0\n'
+    assert _lockfile_index(yarn_berry, "yarn.lock") == {}
+    pnpm = (
+        "packages:\n  /next@16.1.0:\n    resolution: {integrity: a}\n"
+        "  '@next/eslint-plugin-next@16.2.0':\n    resolution: {integrity: b}\n"
+        "snapshots:\n  next@16.1.0(react@18.0.0):\n    dependencies: {}\n"
+    )
+    assert _lockfile_index(pnpm, "pnpm-lock.yaml") == {
+        "next": [(16, 1, 0)], "@next/eslint-plugin-next": [(16, 2, 0)], "react": [(18, 0, 0)],
+    }
+    package_lock_v1 = json.dumps({"lockfileVersion": 1, "dependencies": {
+        "axios": {"version": "1.7.2", "dependencies": {"follow-redirects": {"version": "1.15.0"}}},
+    }})
+    assert _lockfile_index(package_lock_v1, "package-lock.json") == {
+        "axios": [(1, 7, 2)], "follow-redirects": [(1, 15, 0)],
+    }
+    uv_lock = 'version = 1\n\n[[package]]\nname = "Awslabs.Healthlake_MCP-Server"\nversion = "0.0.5"\n'
+    assert _lockfile_index(uv_lock, "uv.lock") == {"awslabs-healthlake-mcp-server": [(0, 0, 5)]}
+    pipfile_lock = json.dumps({"default": {"litellm": {"version": "==1.83.0"}}, "develop": []})
+    assert _lockfile_index(pipfile_lock, "pipfile.lock") == {"litellm": [(1, 83, 0)]}
+    assert _lockfile_index("[not json", "package-lock.json") == {}
+    assert _lockfile_index("[1, 2]", "pipfile.lock") == {}
+
+
+def _blank_run_toml_lock() -> str:
+    """A package block of 300,000 blank lines and no keys, then a readable one."""
+    return "[[package]]\n" + "\n" * 300_000 + '[[package]]\nname = "a"\nversion = "1.0.0"\n'
+
+
+_CRAFTED_LOCKFILES = {
+    # `^\s*name` crossed newlines, so in a block without the key every line start
+    # of a blank run rescanned the rest of the run: 300,000 blank lines took 71 s.
+    "uv.lock": _blank_run_toml_lock,
+    "poetry.lock": _blank_run_toml_lock,
+    # If a name character could precede a name, every position of a run of them
+    # would start a match and read up to 214 characters: about ten seconds here.
+    "pnpm-lock.yaml": lambda: "~" * 9_000_000 + " next@16.1.0\n",
+}
+
+
+@pytest.mark.parametrize("filename", sorted(_CRAFTED_LOCKFILES))
+def test_a_crafted_lockfile_indexes_in_linear_time(filename: str) -> None:
+    """A lockfile is read up to 32 MiB now, so its parsing must stay linear. The
+    bound is loose for slow CI runners; the linear version takes milliseconds."""
+    import time
+
+    from agent_audit_kit.scanners.supply_chain import _lockfile_index
+
+    text = _CRAFTED_LOCKFILES[filename]()
+    started = time.perf_counter()
+    index = _lockfile_index(text, filename)
+    assert time.perf_counter() - started < 10.0
+    assert index, "the crafted file still holds one readable entry"

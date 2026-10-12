@@ -2611,3 +2611,79 @@ def test_poetry_multiple_constraints_are_alternatives(tmp_path: Path) -> None:
                '  {version = "^1.0", python = "<3.9"},\n'
                '  {version = "1.90.0", python = ">=3.9"},\n]\n')
     assert _LITELLM in _ids(tmp_path, "pyproject.toml", content)
+
+
+# --- Large lockfiles -----------------------------------------------------------------
+#
+# Every candidate over 2,000,000 bytes was skipped, lockfiles included, so a large
+# project's package-lock.json reported nothing for any pin in the table. A lockfile is
+# now read up to MAX_LOCKFILE_BYTES; manifests and MCP configs keep MAX_MANIFEST_BYTES.
+
+
+def test_a_package_lock_over_2mb_is_read(tmp_path: Path) -> None:
+    entry = {
+        "version": "1.0.0",
+        "resolved": "https://registry.npmjs.org/filler/-/filler-1.0.0.tgz",
+        "integrity": "sha512-" + "A" * 86 + "==",
+    }
+    count = 2_100_000 // len(json.dumps(entry)) + 1
+    packages = {f"node_modules/filler-{i}": entry for i in range(count)}
+    packages["node_modules/repomix"] = {"version": "1.0.0"}
+    lock = tmp_path / "package-lock.json"
+    lock.write_text(json.dumps({"lockfileVersion": 3, "packages": packages}), encoding="utf-8")
+    assert lock.stat().st_size > 2_000_000
+    hits = [f.evidence for f in scan(tmp_path)[0] if f.rule_id == _REPOMIX]
+    assert len(hits) == 1 and "resolves to 1.0.0 in package-lock.json" in hits[0], hits
+
+
+def test_each_kind_of_file_keeps_its_own_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A manifest and a lockfile of the same size: only the lockfile is within its limit."""
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+
+    padding = " " * 400
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"repomix": "^1.0.0"}}' + padding, encoding="utf-8"
+    )
+    lock = {"lockfileVersion": 3, "packages": {"node_modules/repomix": {"version": "1.0.0"}}}
+    (tmp_path / "package-lock.json").write_text(json.dumps(lock) + padding, encoding="utf-8")
+    monkeypatch.setattr(pins, "MAX_MANIFEST_BYTES", 300)
+    monkeypatch.setattr(pins, "MAX_LOCKFILE_BYTES", 1_000)
+    findings, scanned = scan(tmp_path)
+    assert [f.file_path for f in findings if f.rule_id == _REPOMIX] == ["package-lock.json"]
+    assert scanned == {"package-lock.json"}, "a skipped file is not reported as scanned"
+
+
+def test_a_lockfile_is_parsed_once_for_the_whole_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A hundred pins used to re-parse a lockfile a hundred times."""
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+
+    calls: list[str] = []
+    real = pins._lockfile_index
+
+    def counting(text: str, filename: str) -> dict:
+        calls.append(filename)
+        return real(text, filename)
+
+    monkeypatch.setattr(pins, "_lockfile_index", counting)
+    lock = "packages:\n  /repomix@1.0.0:\n    resolution: {integrity: a}\n"
+    assert _REPOMIX in _ids(tmp_path, "pnpm-lock.yaml", lock)
+    assert calls == ["pnpm-lock.yaml"]
+
+
+def test_every_lockfile_rule_states_the_size_limits() -> None:
+    """The limitations quote the limits the readers apply, so changing one without
+    the other fails here."""
+    from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
+
+    assert MAX_LOCKFILE_BYTES % 2**20 == 0 and MAX_MANIFEST_BYTES % 10**6 == 0
+    lockfile_limit = f"lockfile over {MAX_LOCKFILE_BYTES // 2**20} MiB"
+    file_limit = f"over {MAX_MANIFEST_BYTES // 10**6} MB"
+    pin_rules = sorted({p.rule_id for p in _PINS})
+    for rule_id in [*pin_rules, "AAK-SUPPLY-002", "AAK-SUPPLY-005"]:
+        assert lockfile_limit in RULES[rule_id].limitations, rule_id
+    for rule_id in [*pin_rules, "AAK-SUPPLY-002"]:
+        assert file_limit in RULES[rule_id].limitations, rule_id

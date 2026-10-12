@@ -1680,10 +1680,11 @@ _r(
     limitations=(
         "Reads package-lock.json, requirements*.txt and Pipfile.lock at the project "
         "root against a fixed table of two packages, `axios` 1.7.0 to 1.7.3 and "
-        "`openclaw` below 2.1.0, plus three typosquat name patterns, so a "
-        "vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) "
-        "is not reported. The npm check does not read yarn.lock or pnpm-lock.yaml, "
-        "and a package-lock.json in a sub-directory is not read."
+        "`openclaw` below 2.1.0, plus three typosquat name patterns, so a vulnerable "
+        "version of any other package (`lodash` 4.17.15 in a lockfile) is not "
+        "reported. The npm check does not read yarn.lock or pnpm-lock.yaml, and a "
+        "package-lock.json in a sub-directory is not read. A requirements file over "
+        "2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -1756,7 +1757,7 @@ _r(
         "Counts the entries of the root package-lock.json, the root package itself "
         "included, and the packages of the root Cargo.lock, and reports more than "
         "200. A uv.lock or yarn.lock of any size and a package-lock.json in a "
-        "sub-directory are not counted."
+        "sub-directory are not counted. A lockfile over 32 MiB is not counted."
     ),
 )
 
@@ -8839,7 +8840,7 @@ _r(
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). The `ghcr.io/berriai/litellm` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
-        "run`."
+        "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8871,7 +8872,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`)."
+        "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -8902,7 +8904,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8934,7 +8936,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
-        "tag is not read."
+        "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8965,7 +8967,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -8999,7 +9002,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`packages/app/package.json`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "reader does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9034,7 +9038,7 @@ _r(
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
         "Yarn 2+ `yarn.lock`). The `flux159/mcp-server-kubernetes` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
-        "run`."
+        "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9066,7 +9070,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
         "does not parse (`pdm.lock`). The `soulter/astrbot` image tag is not read, "
-        "in a compose file or in an MCP config that starts it with `docker run`."
+        "in a compose file or in an MCP config that starts it with `docker run`. A "
+        "file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9104,7 +9109,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -9157,7 +9163,8 @@ _r(
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`)."
+        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9190,7 +9197,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9220,7 +9228,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9260,14 +9269,15 @@ _r(
     owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `openclaw` in requirements*.txt at any depth and, at the project "
-        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "Reads `openclaw` in requirements*.txt at any depth and, at the project root "
+        "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`)."
+        "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -9298,7 +9308,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9335,11 +9346,11 @@ _r(
         "at any depth and, at the project root only, in pyproject.toml, Pipfile, "
         "package.json, .mcp.json, mcp.json, claude_desktop_config.json and the "
         "Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and "
-        "yarn.lock lockfiles, taking the lowest version a range allows and "
-        "reporting a reference that states no version. The dependency is not read "
-        "when it is declared in a sub-directory manifest "
-        "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`)."
+        "yarn.lock lockfiles, taking the lowest version a range allows and reporting "
+        "a reference that states no version. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`packages/app/package.json`) or in a "
+        "lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9378,7 +9389,8 @@ _r(
         "lowest version a range allows. A reference must state a version to be "
         "reported, so a bare `mcp` is not. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`)."
+        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9415,7 +9427,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9447,7 +9460,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9490,7 +9504,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9529,14 +9543,15 @@ _r(
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `@apify/actors-mcp-server` in requirements*.txt at any depth and, at "
-        "the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9567,7 +9582,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -9598,7 +9614,8 @@ _r(
         "a reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -9646,7 +9663,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9688,7 +9705,8 @@ _r(
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`)."
+        "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -9738,7 +9756,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9781,7 +9799,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
-        "tag is not read."
+        "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -9820,7 +9838,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -9854,7 +9873,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -9899,8 +9919,9 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -9934,7 +9955,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -9975,11 +9997,12 @@ _r(
     limitations=(
         "Reads `frontmcp` and `@frontmcp/adapters` in package.json, .mcp.json, "
         "mcp.json, claude_desktop_config.json and the package-lock.json, "
-        "pnpm-lock.yaml and yarn.lock lockfiles at the project root only, taking "
-        "the lowest version a range allows and reporting a reference that states no "
+        "pnpm-lock.yaml and yarn.lock lockfiles at the project root only, taking the "
+        "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`)."
+        "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -10015,8 +10038,9 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -10063,7 +10087,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -10095,15 +10120,16 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Reads `@adenot/mcp-google-search` in requirements*.txt at any depth and, "
-        "at the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, and reports every version, a future fixed one included, until "
-        "the pin gets a floor. The dependency is not read when it is declared in a "
-        "sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "Reads `@adenot/mcp-google-search` in requirements*.txt at any depth and, at "
+        "the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and "
+        "reports every version, a future fixed one included, until the pin gets a "
+        "floor. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10147,7 +10173,8 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). The `grafana/mcp-grafana` image tag is not read, in a compose "
-        "file or in an MCP config that starts it with `docker run`."
+        "file or in an MCP config that starts it with `docker run`. A file over 2 "
+        "MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10209,7 +10236,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
-        "tag is not read."
+        "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10271,7 +10298,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10301,14 +10329,14 @@ _r(
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `mcp-sequential-thinking` in requirements*.txt at any depth and, at "
-        "the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10341,15 +10369,16 @@ _r(
     owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `claude-code-templates` in requirements*.txt at any depth and, at "
-        "the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "Reads `claude-code-templates` in requirements*.txt at any depth and, at the "
+        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10547,7 +10576,8 @@ _r(
         "handler and open `file_path`, `filepath`, `attachment_path` or `path` in "
         "`rb` mode with no path-validation call, so a copy that opens the path under "
         "another name (`abs_path = os.path.abspath(file_path)`, then `open(abs_path, "
-        "\"rb\")`) is not reported."
+        "\"rb\")`) is not reported. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
     ),
 )
 
@@ -10586,7 +10616,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10628,7 +10659,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10670,7 +10702,8 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). The `doobidoo/mcp-memory-service` image tag is not read, in a "
-        "compose file or in an MCP config that starts it with `docker run`."
+        "compose file or in an MCP config that starts it with `docker run`. A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10714,7 +10747,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10758,15 +10791,16 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Reads `@aborruso/ckan-mcp-server` in requirements*.txt at any depth and, "
-        "at the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`)."
+        "Reads `@aborruso/ckan-mcp-server` in requirements*.txt at any depth and, at "
+        "the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -10823,9 +10857,9 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). A compose file's `letta/letta` image "
-        "tag is not read."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A compose file's `letta/letta` image tag is "
+        "not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10859,8 +10893,9 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -10941,7 +10976,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
         "a lockfile format the reader does not parse (`pdm.lock`). A compose file's "
-        "`langflowai/langflow` image tag is not read."
+        "`langflowai/langflow` image tag is not read. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -10975,7 +11011,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11172,15 +11208,15 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Reads `mcp-florence2` in requirements*.txt at any depth and, at the "
-        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
-        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
-        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and "
-        "reports every version, a future fixed one included, until the pin gets a "
-        "floor. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
+        "Reads `mcp-florence2` in requirements*.txt at any depth and, at the project "
+        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports "
+        "every version, a future fixed one included, until the pin gets a floor. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11228,7 +11264,7 @@ _r(
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). Cargo manifests are not read, so "
         "the crates.io crate `codewhale-tui`, which has the same defect, is not "
-        "reported."
+        "reported. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11266,7 +11302,8 @@ _r(
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`)."
+        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11297,13 +11334,14 @@ _r(
     owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
-        "Reads `omnigent` in requirements*.txt at any depth and, at the project "
-        "root only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
+        "Reads `omnigent` in requirements*.txt at any depth and, at the project root "
+        "only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock and uv.lock "
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`)."
+        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11341,10 +11379,11 @@ _r(
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports "
-        "every version, a future fixed one included, until the pin gets a floor. "
-        "The dependency is not read when it is declared in a sub-directory manifest "
+        "every version, a future fixed one included, until the pin gets a floor. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`)."
+        "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -11381,11 +11420,11 @@ _r(
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports "
-        "every version, a future fixed one included, until the pin gets a floor. "
-        "The dependency is not read when it is declared in a sub-directory manifest "
-        "(`services/api/pyproject.toml`) or in a lockfile format the reader does "
-        "not parse (`pdm.lock`). A compose file's `rockchin/langbot` image tag is "
-        "not read."
+        "every version, a future fixed one included, until the pin gets a floor. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
+        "parse (`pdm.lock`). A compose file's `rockchin/langbot` image tag is not "
+        "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11424,15 +11463,15 @@ _r(
     owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-RCE-04"],
     limitations=(
-        "Reads `qwed-mcp` in requirements*.txt at any depth and, at the project "
-        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "Reads `qwed-mcp` in requirements*.txt at any depth and, at the project root "
+        "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11467,7 +11506,7 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11503,7 +11542,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -11537,7 +11577,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -11574,7 +11615,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
+        "read."
     ),
 )
 
@@ -11854,14 +11896,15 @@ _r(
     cve_references=["CVE-2026-55235"],
     owasp_agentic_references=["ASI03", "ASI04"],
     limitations=(
-        "Reads `langgraph-api` in requirements*.txt at any depth and, at the "
-        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
-        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
-        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
-        "the lowest version a range allows and reporting a reference that states no "
+        "Reads `langgraph-api` in requirements*.txt at any depth and, at the project "
+        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
+        "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -12161,9 +12204,10 @@ _r(
     limitations=(
         "Dependency-level detection only: this fires on the pinned or unpinned "
         "`tooluniverse` reference, not on the sandbox-escape pattern itself. The "
-        "pattern itself is covered by `AAK-SANDBOX-DENYLIST-001`, which shipped "
-        "for issue #704 and fires on a deny-list of names checked against a value "
-        "that is then executed in-process with a lookup primitive still reachable."
+        "pattern itself is covered by `AAK-SANDBOX-DENYLIST-001`, which shipped for "
+        "issue #704 and fires on a deny-list of names checked against a value that "
+        "is then executed in-process with a lookup primitive still reachable. A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12212,14 +12256,14 @@ _r(
     adversa_references=["ADV-NET-01"],
     limitations=(
         "Reads `mcp-contextforge-gateway` in requirements*.txt at any depth and, at "
-        "the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
+        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12261,7 +12305,7 @@ _r(
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
         "(`pdm.lock`). A compose file's `crystaldba/postgres-mcp` image tag is not "
-        "read."
+        "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12301,7 +12345,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -12336,7 +12381,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -12371,15 +12417,15 @@ _r(
     owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AGENT-02"],
     limitations=(
-        "Reads `mysql-mcp-server` and `mysql_mcp_server` in requirements*.txt at "
-        "any depth and, at the project root only, in pyproject.toml, Pipfile, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock and uv.lock lockfiles, taking the lowest version a range "
-        "allows and reporting a reference that states no version. The dependency is "
-        "not read when it is declared in a sub-directory manifest "
-        "(`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`)."
+        "Reads `mysql-mcp-server` and `mysql_mcp_server` in requirements*.txt at any "
+        "depth and, at the project root only, in pyproject.toml, Pipfile, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock and "
+        "uv.lock lockfiles, taking the lowest version a range allows and reporting a "
+        "reference that states no version. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -12426,7 +12472,8 @@ _r(
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`)."
+        "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -12476,9 +12523,9 @@ _r(
         "yarn.lock lockfiles at the project root only, taking the lowest version a "
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
-        "(`packages/app/package.json`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
+        "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12518,7 +12565,7 @@ _r(
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
         "parse (a Yarn 2+ `yarn.lock`). The `flowiseai/flowise` image tag is not "
         "read, in a compose file or in an MCP config that starts it with `docker "
-        "run`."
+        "run`. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12565,7 +12612,8 @@ _r(
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`)."
+        "parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -12610,9 +12658,9 @@ _r(
         "yarn.lock lockfiles at the project root only, taking the lowest version a "
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
-        "(`packages/app/package.json`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
+        "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12647,9 +12695,9 @@ _r(
         "yarn.lock lockfiles at the project root only, taking the lowest version a "
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
-        "(`packages/app/package.json`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`)."
+        "(`packages/app/package.json`), in `.cursor/mcp.json` or `.vscode/mcp.json`, "
+        "or in a lockfile format the reader does not parse (a Yarn 2+ `yarn.lock`). "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12684,7 +12732,8 @@ _r(
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`)."
+        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12725,7 +12774,8 @@ _r(
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`)."
+        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -12769,11 +12819,11 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, and reports "
         "every version from 0.1.1 on, a future fixed one included, until the pin "
         "gets a floor. The dependency is not read when it is declared in a "
-        "sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`). The npm release 0.1.0 is "
-        "affected too but is not reported, because the same number belongs to an "
-        "unrelated PyPI package of that name."
+        "sub-directory manifest (`packages/app/package.json`), in `.cursor/mcp.json` "
+        "or `.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). The npm release 0.1.0 is affected too but is not "
+        "reported, because the same number belongs to an unrelated PyPI package of "
+        "that name. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12981,7 +13031,8 @@ _r(
         "it resolves to the newest release (0.14.x on 2026-09-27), which the "
         "advisories did not test. Versions before 0.1.16 carry CVE-2025-6514 (OS "
         "command injection through the authorization endpoint URL, fixed in 0.1.16), "
-        "which this rule does not report."
+        "which this rule does not report. A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -13010,8 +13061,9 @@ _r(
         "Reports the package where a manifest pins it. Most installs are global "
         "(`npm i -g`) and leave no file in a project, so this catches a project that "
         "declares Kimi Code as a dependency, not every machine that runs it. The "
-        "project-side half of the attack, the `.mcp.json` a hostile repository ships, "
-        "is what the MCP config rules read."
+        "project-side half of the attack, the `.mcp.json` a hostile repository "
+        "ships, is what the MCP config rules read. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -13052,7 +13104,8 @@ _r(
         "`node_modules`, which states no version, and `pi install npm:...` records "
         "the package in pi's own settings, which this scanner does not read, so a "
         "machine-wide install is not seen. npm's unscoped `pi-llm-wiki` is a "
-        "different author's package and is not matched."
+        "different author's package and is not matched. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13094,13 +13147,13 @@ _r(
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reports a reference that names the package: a requirements, pyproject or "
-        "lockfile entry, or `fast-mcp-telegram` in an MCP config, where an "
-        "unpinned `uvx fast-mcp-telegram` is reported as unpinned, as for the "
-        "other PyPI pins. It reads versions, not code: the defect's shape, a "
-        "hostname-only guard before a fetch that resolves again, is the class "
-        "`AAK-SSRF-TOCTOU-001` names, which recognises this guard in code since "
-        "#855 and keeps firing on 0.30.1's source, whose fetch still resolves "
-        "the name a second time."
+        "lockfile entry, or `fast-mcp-telegram` in an MCP config, where an unpinned "
+        "`uvx fast-mcp-telegram` is reported as unpinned, as for the other PyPI "
+        "pins. It reads versions, not code: the defect's shape, a hostname-only "
+        "guard before a fetch that resolves again, is the class "
+        "`AAK-SSRF-TOCTOU-001` names, which recognises this guard in code since #855 "
+        "and keeps firing on 0.30.1's source, whose fetch still resolves the name a "
+        "second time. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13286,11 +13339,12 @@ _r(
     limitations=(
         "Reports a reference that names the PyPI package: a requirements, pyproject "
         "or lockfile entry, or `office-powerpoint-mcp-server` in an MCP config (the "
-        "`uvx --from office-powerpoint-mcp-server ppt_mcp_server` form). A server run "
-        "from a clone of the repository (`python ppt_mcp_server.py`) names no package "
-        "and is not reported. Presence-only: every version is reported, a future "
-        "fixed one included, until the pin gets a floor. No class rule fires on the "
-        "2.0.7 tools, so this pin is the only coverage."
+        "`uvx --from office-powerpoint-mcp-server ppt_mcp_server` form). A server "
+        "run from a clone of the repository (`python ppt_mcp_server.py`) names no "
+        "package and is not reported. Presence-only: every version is reported, a "
+        "future fixed one included, until the pin gets a floor. No class rule fires "
+        "on the 2.0.7 tools, so this pin is the only coverage. A file over 2 MB, or "
+        "a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13325,14 +13379,15 @@ _r(
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports a reference that names `@penpot/mcp`: a package.json or lockfile "
-        "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference is "
-        "reported because what npm installs by default is affected (re-checked "
+        "entry, or `npx @penpot/mcp` in an MCP config, where an unpinned reference "
+        "is reported because what npm installs by default is affected (re-checked "
         "2026-10-04: `latest` is 2.15.4 and `next` is 2.17.0, both without the fix). "
         "The floor is 2.18.0, but the fixed tag's package.json reads 2.17.0 and npm "
         "already holds a 2.17.0, so a fixed build published under a lower number "
         "would be reported until the floor follows it. It reads the npm version, not "
         "Penpot's: a self-hosted Penpot 2.18.0 server does not clear an older "
-        "`@penpot/mcp`, since the bridge runs in the MCP server."
+        "`@penpot/mcp`, since the bridge runs in the MCP server. A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13366,10 +13421,11 @@ _r(
     adversa_references=["ADV-INJECT-01"],
     limitations=(
         "Reports a reference that names the PyPI package: a requirements, pyproject "
-        "or lockfile entry, or `voice-mode` in an MCP config, where an unpinned "
-        "`uvx voice-mode` is reported as unpinned, as for the other PyPI pins. It "
-        "reads versions, not the env file: a value written by an older release stays "
-        "in `voicemode.env` after the upgrade."
+        "or lockfile entry, or `voice-mode` in an MCP config, where an unpinned `uvx "
+        "voice-mode` is reported as unpinned, as for the other PyPI pins. It reads "
+        "versions, not the env file: a value written by an older release stays in "
+        "`voicemode.env` after the upgrade. A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -13398,11 +13454,12 @@ _r(
     owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
-        "Reports a reference that names `@0xshariq/github-mcp-server`: a package.json "
-        "or lockfile entry, or the package in an MCP config. Presence-only: every "
-        "version is reported, a future fixed one included, until the pin gets a "
-        "floor. GitHub's own `github-mcp-server` and `@modelcontextprotocol/server-github` "
-        "are different projects and are not matched."
+        "Reports a reference that names `@0xshariq/github-mcp-server`: a "
+        "package.json or lockfile entry, or the package in an MCP config. "
+        "Presence-only: every version is reported, a future fixed one included, "
+        "until the pin gets a floor. GitHub's own `github-mcp-server` and "
+        "`@modelcontextprotocol/server-github` are different projects and are not "
+        "matched. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13468,7 +13525,8 @@ _r(
         "numbers, so the 2026.7.2 betas before the feature landed (beta.1 to beta.3) "
         "are reported too. A later extended-stable 2026.8.x that backports the fix "
         "would still be reported until the pin learns that line. Releases below "
-        "2026.7.1 belong to the older OpenClaw pin."
+        "2026.7.1 belong to the older OpenClaw pin. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -13505,7 +13563,8 @@ _r(
         "MCP config, where an unpinned `uvx zscaler-mcp` is reported as unpinned, as "
         "for the other PyPI pins. `zscaler-mcp-server`, the name in the README's uvx "
         "example, is not a PyPI package and is not read. The Docker Hub image has no "
-        "tag below 0.12, so there is no image to pin."
+        "tag below 0.12, so there is no image to pin. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13534,10 +13593,11 @@ _r(
         "Reports a reference that names the PyPI package `utcp-mcp` below 1.1.3: a "
         "requirements, pyproject or lockfile entry, or the package in an MCP config, "
         "where an unpinned reference is reported. It reads the version, not the call "
-        "template. `AAK-TRANSPORT-001`, which flags an `http://` MCP server URL, reads "
-        "a top-level `mcpServers`, and utcp nests it under the template's `config` "
-        "or passes it inline from Python, so a plain-HTTP URL in a template is not "
-        "reported on its own."
+        "template. `AAK-TRANSPORT-001`, which flags an `http://` MCP server URL, "
+        "reads a top-level `mcpServers`, and utcp nests it under the template's "
+        "`config` or passes it inline from Python, so a plain-HTTP URL in a template "
+        "is not reported on its own. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
     ),
 )
 
@@ -13565,12 +13625,13 @@ _r(
     adversa_references=["ADV-INJECT-02"],
     limitations=(
         "Reports an npm reference to `@toolbox-sdk/server` from 1.2.0 up to 1.10.0: "
-        "a package.json or lockfile entry, or the launcher in an MCP config, where an "
-        "unpinned `npx @toolbox-sdk/server` is reported as unpinned, as for the other "
-        "npm pins. The launcher runs the binary of its own version "
+        "a package.json or lockfile entry, or the launcher in an MCP config, where "
+        "an unpinned `npx @toolbox-sdk/server` is reported as unpinned, as for the "
+        "other npm pins. The launcher runs the binary of its own version "
         "(`@toolbox-sdk/server-<os>-<arch>`), so its number is the server's. A "
         "toolbox binary started by path, or the container image, states no version "
-        "AAK reads and is not reported."
+        "AAK reads and is not reported. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -13602,7 +13663,7 @@ _r(
         "16.0.0 up to 16.3.8, and the version a lockfile resolves. `latest`, "
         "`canary` and other tags state no version and are not reported, and neither "
         "is `next dev` in a script. 16.4.0 canaries compare as 16.4.0 and are not "
-        "reported."
+        "reported. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13636,7 +13697,8 @@ _r(
         "versioned `npx` reference in an MCP config. An unpinned reference is not "
         "reported, as for the folder-trust pin on the same package: it resolves to "
         "the newest release, and the CLI updates itself. A global install, the usual "
-        "one, is in no file AAK reads."
+        "one, is in no file AAK reads. A file over 2 MB, or a lockfile over 32 MiB, "
+        "is not read."
     ),
 )
 
@@ -13677,7 +13739,8 @@ _r(
         "version, not the auth handlers, so a project that uses the SDK only as a "
         "client, or never passes `actions` to these decorators, is reported without "
         "being exposed. The JavaScript `@langchain/langgraph-sdk` is a different "
-        "package and is not read."
+        "package and is not read. A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
     ),
 )
 
@@ -13800,7 +13863,7 @@ _r(
         "SDK, or a client that speaks only stdio, is reported without being exposed. "
         "`@modelcontextprotocol/core` is not read: the advisory names it only as an "
         "upgrade for direct importers, and `@modelcontextprotocol/client` 2.2.0 pins "
-        "it at 2.2.0."
+        "it at 2.2.0. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13836,7 +13899,8 @@ _r(
         "that admits an affected version. `latest` was 3.90.2 on 2026-10-08 and "
         "states no version, so it is not reported, and 4.0.0 canaries compare as "
         "4.0.0 and are not reported either. A version below 3.61.0, such as the "
-        "0.0.1-alpha.0 placeholder that predates the first release, is not reported."
+        "0.0.1-alpha.0 placeholder that predates the first release, is not reported. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13861,12 +13925,13 @@ _r(
     owasp_agentic_references=["ASI04", "ASI06"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Reports `@langchain/redis` below 1.1.1 where a package.json, lockfile or MCP "
-        "config states the version, taking the lowest version a range allows. "
+        "Reports `@langchain/redis` below 1.1.1 where a package.json, lockfile or "
+        "MCP config states the version, taking the lowest version a range allows. "
         "`latest` and other tags state no version and are not reported. It reads the "
-        "version, not the filters, so a project whose filters never carry user "
-        "input is reported without being exposed. The Python `langchain-redis` is a "
-        "different package and is not read."
+        "version, not the filters, so a project whose filters never carry user input "
+        "is reported without being exposed. The Python `langchain-redis` is a "
+        "different package and is not read. A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read."
     ),
 )
 
@@ -13895,9 +13960,10 @@ _r(
         "Reports `@langchain/mongodb` below 1.3.1 where a package.json, lockfile or "
         "MCP config states the version, taking the lowest version a range allows. "
         "`latest` and other tags state no version and are not reported. It reads the "
-        "version, not where the session id comes from, so a project that passes "
-        "only server-side string ids is reported without being exposed. The Python "
-        "`langchain-mongodb` is a different package and is not read."
+        "version, not where the session id comes from, so a project that passes only "
+        "server-side string ids is reported without being exposed. The Python "
+        "`langchain-mongodb` is a different package and is not read. A file over 2 "
+        "MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13976,7 +14042,8 @@ _r(
         "future fixed one included, until the pin gets a floor, and `MCP_READ_ONLY` "
         "is not read. `argocd-mcp-server` and `mcp-argocd` are other projects and are "
         "not matched. The project's images (`ghcr.io/argoproj-labs/mcp-for-argocd`, "
-        "`quay.io/argoprojlabs/mcp-for-argocd`) are not read."
+        "`quay.io/argoprojlabs/mcp-for-argocd`) are not read. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -14010,7 +14077,8 @@ _r(
         "needs the HTTP transport with OAuth on; the pin reads versions, not how the "
         "agent is started, so a stdio-only setup is reported too. The unscoped npm "
         "`1mcp` is another project and is not matched, and the release binaries "
-        "state no version AAK reads."
+        "state no version AAK reads. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -14165,7 +14233,8 @@ _r(
         "which this scanner reads as exposed. The pin reads the version, not whether "
         "the MCP server runs, so an app that uses the SDK only for sign-in is "
         "reported too. `elvix`, `elvix-sdk` and `@021is/elvix-sdk` are not npm "
-        "packages and are not matched."
+        "packages and are not matched. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 

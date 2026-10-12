@@ -195,11 +195,17 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
-from agent_audit_kit.scanners._manifest_deps import Declaration, declarations
+from agent_audit_kit.scanners._manifest_deps import (
+    MAX_LOCKFILE_BYTES,
+    MAX_MANIFEST_BYTES,
+    Declaration,
+    declarations,
+)
 from agent_audit_kit.scanners._versions import TOP, ZERO, Spans, admits, intersect, parse_range
 from agent_audit_kit.scanners.supply_chain import (
     _LOCKFILES,
-    _resolve_lockfile_versions,
+    _lockfile_index,
+    _lockfile_lookup,
 )
 
 _Ver = tuple[int, int, int]
@@ -1209,7 +1215,6 @@ _CANDIDATE_NAMES = (
     ".mcp.json", "mcp.json", "claude_desktop_config.json",
 )
 _CANDIDATE_GLOBS = ("requirements*.txt", "*.mcp.yaml", "*.mcp.yml")
-_MAX_FILE_BYTES = 2_000_000
 
 
 # Manifests whose registry is unambiguous from the filename alone. Anything not
@@ -1430,8 +1435,13 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
 
     for path in _candidate_files(project_root):
+        lockfile = path.name.lower() in _LOCKFILES
+        # A lockfile grows with the resolved graph and gets the larger limit;
+        # skipping one at the manifest limit was a silent all-clear on the
+        # projects with the most dependencies (see MAX_LOCKFILE_BYTES).
+        limit = MAX_LOCKFILE_BYTES if lockfile else MAX_MANIFEST_BYTES
         try:
-            if path.stat().st_size > _MAX_FILE_BYTES:
+            if path.stat().st_size > limit:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -1442,7 +1452,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         # `len(all_scanned_files)` as files_scanned, so gating this on a match
         # under-reported the denominator and made a clean repo look unscanned.
         scanned.add(rel)
-        if path.name.lower() in _LOCKFILES:
+        if lockfile:
             findings.extend(_lockfile_findings(path, rel, text))
             continue
         found = declarations(path, text)
@@ -1465,10 +1475,14 @@ def _lockfile_findings(path: Path, rel: str, text: str) -> list[Finding]:
     """
     findings: list[Finding] = []
     file_ecosystem = _ecosystem_of(path)
+    filename = path.name.lower()
+    # Parsed once, not once a pin: a hundred pins re-parsed a large lockfile a
+    # hundred times.
+    index = _lockfile_index(text, filename)
     for pin in _PINS:
         if not _pin_applies(pin, file_ecosystem):
             continue
-        resolved = _resolve_lockfile_versions(text, path.name.lower(), pin.names)
+        resolved = _lockfile_lookup(index, filename, pin.names)
         affected = [v for v in resolved if _fires(pin, v)]
         if affected:
             shown = ".".join(str(x) for x in affected[0])
