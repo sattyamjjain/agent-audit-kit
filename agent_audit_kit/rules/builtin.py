@@ -5547,14 +5547,14 @@ _r(
     limitations=(
         "The version arm reads `flowise` and `flowise-components` under "
         "`dependencies`, `devDependencies` and `peerDependencies` of the root "
-        "package.json only, and reports a range whose first version is below 3.1.3. "
-        "package-lock.json, yarn.lock, pnpm-lock.yaml, `optionalDependencies`, "
-        "`overrides`, a sub-directory package.json, an `npx flowise` launcher in "
-        ".mcp.json and a `flowiseai/flowise` image tag in a compose file are not "
-        "read. The flow arm reads `.flowise/*.json`, `flows/*.json` and "
-        "`flows/**/*.json` that mention MCP and carry a `customFunction`, `runCode` "
-        "or `executeCommand` key, so an export saved as `chatflows/export.json` is "
-        "not reported."
+        "package.json only, and reports a range that admits a version below 3.1.3, "
+        "or a spec that states no version. package-lock.json, yarn.lock, "
+        "pnpm-lock.yaml, `optionalDependencies`, `overrides`, a sub-directory "
+        "package.json, an `npx flowise` launcher in .mcp.json and a "
+        "`flowiseai/flowise` image tag in a compose file are not read. The flow arm "
+        "reads `.flowise/*.json`, `flows/*.json` and `flows/**/*.json` that mention "
+        "MCP and carry a `customFunction`, `runCode` or `executeCommand` key, so an "
+        "export saved as `chatflows/export.json` is not reported."
     ),
 )
 

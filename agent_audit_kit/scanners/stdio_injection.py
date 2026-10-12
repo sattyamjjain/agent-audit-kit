@@ -39,6 +39,7 @@ from typing import Iterable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._versions import ZERO, admits, parse_range
 
 
 _PY_EXTS = {".py"}
@@ -322,12 +323,17 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 _FLOWISE_PATCHED_VERSION = (3, 1, 3)
 
 
-def _parse_semver(spec: str) -> tuple[int, int, int] | None:
-    import re as _re
-    m = _re.match(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?", spec)
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+def _admits_vulnerable_flowise(spec: str) -> bool:
+    """Does an npm range admit a Flowise release below the 3.1.3 floor?
+
+    The version arm used to skip the operator and read the first number, so
+    `"<3.1.3"`, which admits nothing but affected releases, read as 3.1.3 and
+    passed, while `">=3.0.0"` and `"^3.0.6"` read their lower bound. A range is
+    now judged by every version it admits. A spec that states no version
+    (`latest`, a VCS or `workspace:` reference) is reported, as before.
+    """
+    spans = parse_range(spec, "npm")
+    return spans is None or admits(spans, ZERO, _FLOWISE_PATCHED_VERSION)
 
 
 def _check_flowise(project_root: Path, scanned: set[str]) -> list[Finding]:
@@ -351,13 +357,13 @@ def _check_flowise(project_root: Path, scanned: set[str]) -> list[Finding]:
                 for name, spec in deps.items():
                     if name not in ("flowise", "flowise-components"):
                         continue
-                    version = _parse_semver(str(spec))
-                    if version is None or version < _FLOWISE_PATCHED_VERSION:
+                    if _admits_vulnerable_flowise(str(spec)):
                         findings.append(make_finding(
                             "AAK-FLOWISE-001",
                             rel,
-                            f"{name} pinned at {spec!r} — CVE-2026-40933 (CVSS 10.0) "
-                            "is patched in 3.1.0.",
+                            f"{name} pinned at {spec!r}, which admits a release below "
+                            "3.1.3 — CVE-2026-40933 (CVSS 10.0) is patched in 3.1.0 "
+                            "and the rest of the Custom-MCP cluster in 3.1.3.",
                         ))
                         vulnerable = True
 

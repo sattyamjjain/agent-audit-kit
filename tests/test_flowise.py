@@ -6,6 +6,8 @@ import json
 import shutil
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import stdio_injection
 
 FIX = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-40933"
@@ -120,3 +122,19 @@ def test_stdio_001_description_references_flowise() -> None:
     text = (stdio.description + " " + stdio.remediation).lower()
     # Keep this loose — we just want some path from STDIO → vendor rules.
     assert "mcp" in text
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("<3.1.3", True),            # every release it admits is affected; read as 3.1.3 before
+    ("<4.0.0 >=3.0.0", True),    # read as 4.0.0 before, the upper bound
+    (">=3.0.0", True),
+    ("~3.1.2", True),
+    ("latest", True),            # states no version, as before
+    ("^3.1.3", False),
+    (">=3.1.3 <4.0.0", False),
+    ("3.1.3 - 3.2.0", False),
+])
+def test_flowise_range_is_judged_by_what_it_admits(tmp_path: Path, spec: str, fires: bool) -> None:
+    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"flowise": spec}}))
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert any(f.rule_id == "AAK-FLOWISE-001" for f in findings) is fires
