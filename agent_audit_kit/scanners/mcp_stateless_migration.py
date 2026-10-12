@@ -27,9 +27,9 @@ surfaces four migration smells:
   path with no caching marker (`lru_cache`, `ttl`, `cache`, …) anywhere
   in the file, and the same file participates in per-session state.
 
-Source-side rules (001, 002, 004) are gated on a declared MCP SDK in the
-project manifest, matching the established `mcp_sampling_capability` and
-`mcp_sdk_hardening` pattern — this keeps the AAK self-scan quiet on its
+Source-side rules (001, 002, 004) are gated on a declared MCP SDK in a
+root manifest (`_helpers.declares_mcp_sdk`, shared with
+`mcp_sampling_capability`) — this keeps the AAK self-scan quiet on its
 own scanner sources and avoids firing on prose mentions in unrelated
 projects.
 
@@ -44,7 +44,6 @@ Suppression: opt in via `.agent-audit-kit.yml` with
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -52,96 +51,10 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
-
-# --------------------------------------------------------------------------
-# SDK declaration gate (mirrors mcp_sampling_capability._declares_sdk)
-# --------------------------------------------------------------------------
-
-_PY_SDK_NAMES = (
-    "mcp",
-    "modelcontextprotocol",
-    "model-context-protocol",
-)
-_TS_SDK_NAMES = (
-    "@modelcontextprotocol/sdk",
-    "@anthropic-ai/mcp",
-    "@anthropic-ai/claude-agent-sdk",
-)
-_JAVA_SDK_TOKEN = "io.modelcontextprotocol"
-_RUST_SDK_TOKENS = ("mcp", "modelcontextprotocol")
+from ._helpers import declares_mcp_sdk, in_skip_dir, make_finding
 
 _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs")
 _INFRA_EXTS = (".yaml", ".yml", ".conf", ".toml")
-
-
-def _declares_sdk(project_root: Path) -> tuple[bool, list[str]]:
-    manifests: list[str] = []
-    declared = False
-
-    pyproject = project_root / "pyproject.toml"
-    if pyproject.is_file():
-        try:
-            text = pyproject.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
-        if any(f'"{n}"' in text or f"'{n}'" in text for n in _PY_SDK_NAMES):
-            declared = True
-            manifests.append("pyproject.toml")
-
-    for req in project_root.glob("requirements*.txt"):
-        try:
-            text = req.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for line in text.splitlines():
-            name = (
-                line.split("#", 1)[0].strip().split("[")[0]
-                .split("=")[0].split(">")[0].split("<")[0].strip()
-            )
-            if name in _PY_SDK_NAMES:
-                declared = True
-                manifests.append(str(req.relative_to(project_root)))
-                break
-
-    pkg = project_root / "package.json"
-    if pkg.is_file():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8", errors="replace"))
-        except json.JSONDecodeError:
-            data = {}
-        if isinstance(data, dict):
-            for section in ("dependencies", "devDependencies", "peerDependencies"):
-                deps = data.get(section) or {}
-                if isinstance(deps, dict) and any(n in deps for n in _TS_SDK_NAMES):
-                    declared = True
-                    manifests.append("package.json")
-                    break
-
-    for maven in ("pom.xml", "build.gradle", "build.gradle.kts"):
-        p = project_root / maven
-        if p.is_file():
-            try:
-                text = p.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if _JAVA_SDK_TOKEN in text:
-                declared = True
-                manifests.append(maven)
-
-    cargo = project_root / "Cargo.toml"
-    if cargo.is_file():
-        try:
-            text = cargo.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
-        for tok in _RUST_SDK_TOKENS:
-            if re.search(rf"^\s*{re.escape(tok)}\s*=", text, re.MULTILINE):
-                declared = True
-                manifests.append("Cargo.toml")
-                break
-
-    return declared, manifests
 
 
 def _accepts_risk(project_root: Path) -> bool:
@@ -387,7 +300,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         scanned.add(".agent-audit-kit.yml")
         return findings, scanned
 
-    sdk_declared, manifests = _declares_sdk(project_root)
+    sdk_declared, manifests = declares_mcp_sdk(project_root)
 
     # 003 fires on infra files regardless of SDK (with content gate) and
     # on code files only when the SDK is declared.

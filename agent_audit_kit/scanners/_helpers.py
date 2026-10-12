@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import AbstractSet, Any, Iterator
 from urllib.parse import urlsplit
+
+try:
+    import tomllib
+except ImportError:  # Python 3.9 and 3.10
+    import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.rules.builtin import get_rule
@@ -487,3 +493,171 @@ def blank_js_comments(text: str) -> str:
             i = at + 1
             prev, word = "}", ""
     return "".join(out)
+
+
+#: MCP SDK distribution names on PyPI, PEP 503-normalised (lower case, any run
+#: of `-`, `_` and `.` as one `-`).
+MCP_PY_SDK_NAMES = frozenset({"mcp", "modelcontextprotocol", "model-context-protocol"})
+MCP_TS_SDK_NAMES = (
+    "@modelcontextprotocol/sdk",
+    "@anthropic-ai/mcp",
+    "@anthropic-ai/claude-agent-sdk",
+)
+_MCP_JAVA_SDK_TOKEN = "io.modelcontextprotocol"
+_MCP_CARGO_LINE_RE = re.compile(r"^[ \t]*(?:mcp|modelcontextprotocol)[ \t]*=", re.MULTILINE)
+# A PEP 508 requirement opens with the distribution name. Trailing `.`, `_`
+# and `-` are trimmed in code rather than in the pattern, which keeps the
+# pattern free of overlapping repeats.
+_REQUIREMENT_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
+_NAME_SEPARATORS_RE = re.compile(r"[-_.]+")
+
+
+def _pep503(name: str) -> str:
+    return _NAME_SEPARATORS_RE.sub("-", name).lower()
+
+
+def _requirement_name(spec: object) -> str | None:
+    """The normalised name a PEP 508 requirement string (`mcp[cli]>=1.2.0`) names."""
+    if not isinstance(spec, str):
+        return None
+    m = _REQUIREMENT_NAME_RE.match(spec.strip())
+    return _pep503(m.group().rstrip("._-")) if m else None
+
+
+def _pyproject_dependency_names(data: dict[str, Any]) -> set[str]:
+    """Every distribution a parsed pyproject.toml depends on, under the tables
+    the common tools write: `[project]` dependencies and optional dependencies,
+    PEP 735 `[dependency-groups]`, Poetry's dependency tables (main, dev and
+    groups), and uv's and PDM's dev dependencies."""
+    names: set[str] = set()
+
+    def specs(value: object) -> None:
+        if isinstance(value, list):
+            names.update(n for n in map(_requirement_name, value) if n)
+
+    def spec_lists(value: object) -> None:
+        if isinstance(value, dict):
+            for item in value.values():
+                specs(item)
+
+    def table(value: object) -> None:
+        if isinstance(value, dict):
+            names.update(_pep503(str(key)) for key in value)
+
+    project = data.get("project")
+    if isinstance(project, dict):
+        specs(project.get("dependencies"))
+        spec_lists(project.get("optional-dependencies"))
+    spec_lists(data.get("dependency-groups"))
+    tool = data.get("tool")
+    if isinstance(tool, dict):
+        poetry = tool.get("poetry")
+        if isinstance(poetry, dict):
+            table(poetry.get("dependencies"))
+            table(poetry.get("dev-dependencies"))
+            groups = poetry.get("group")
+            if isinstance(groups, dict):
+                for group in groups.values():
+                    if isinstance(group, dict):
+                        table(group.get("dependencies"))
+        uv = tool.get("uv")
+        if isinstance(uv, dict):
+            specs(uv.get("dev-dependencies"))
+        pdm = tool.get("pdm")
+        if isinstance(pdm, dict):
+            spec_lists(pdm.get("dev-dependencies"))
+    return names
+
+
+def _pyproject_declares_mcp(text: str) -> bool:
+    try:
+        data = tomllib.loads(text)
+    except (tomllib.TOMLDecodeError, ValueError):
+        data = None
+    if isinstance(data, dict) and _pyproject_dependency_names(data) & MCP_PY_SDK_NAMES:
+        return True
+    # The old test, kept so nothing it accepted is lost (an unparsable file
+    # included): the bare quoted name anywhere in the file.
+    return any(f'"{n}"' in text or f"'{n}'" in text for n in sorted(MCP_PY_SDK_NAMES))
+
+
+def _requirements_declare_mcp(text: str) -> bool:
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith(("#", "-")):
+            continue
+        if _requirement_name(line) in MCP_PY_SDK_NAMES:
+            return True
+    return False
+
+
+def _read_text(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def declares_mcp_sdk(project_root: Path) -> tuple[bool, list[str]]:
+    """Whether a manifest at the project root declares an MCP SDK, and which.
+
+    The gate in front of AAK-MCP-STATELESS-001..004 and the source half of
+    AAK-MCP-SAMPLING-001. Its copies took pyproject.toml only as the exact
+    quoted string `"mcp"`, so `"mcp[cli]>=1.2.0"`, the way most servers declare
+    it, and Poetry's `mcp = "^1.2.0"` never opened it, and the requirements
+    reader cut a line at its first `=`, so `mcp~=1.2.0` came out as `mcp~`.
+    Those rules never ran for a typical Python server.
+
+    pyproject.toml is parsed and read through its dependency tables (see
+    `_pyproject_dependency_names`), and each requirement's name is taken the
+    PEP 508 way and compared PEP 503-normalised, so case, extras, any version
+    operator, environment markers and `name @ url` all work. The old quoted
+    string test still runs too, so nothing it accepted is lost. package.json,
+    Maven and Gradle builds and Cargo.toml are read as before.
+
+    `mcp_sdk_hardening` keeps a copy of the old gate for AAK-ANTHROPIC-SDK-001.
+
+    Returns:
+        ``(declared, manifests)``: manifests are paths relative to the root.
+    """
+    manifests: list[str] = []
+
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        text = _read_text(pyproject)
+        if text is not None and _pyproject_declares_mcp(text):
+            manifests.append("pyproject.toml")
+
+    for req in sorted(project_root.glob("requirements*.txt")):
+        text = _read_text(req)
+        if text is not None and _requirements_declare_mcp(text):
+            manifests.append(str(req.relative_to(project_root)))
+
+    pkg = project_root / "package.json"
+    if pkg.is_file():
+        text = _read_text(pkg)
+        try:
+            data = json.loads(text) if text is not None else {}
+        except json.JSONDecodeError:
+            data = {}
+        if isinstance(data, dict):
+            for section in ("dependencies", "devDependencies", "peerDependencies"):
+                deps = data.get(section) or {}
+                if isinstance(deps, dict) and any(n in deps for n in MCP_TS_SDK_NAMES):
+                    manifests.append("package.json")
+                    break
+
+    for build in ("pom.xml", "build.gradle", "build.gradle.kts"):
+        path = project_root / build
+        if path.is_file():
+            text = _read_text(path)
+            if text is not None and _MCP_JAVA_SDK_TOKEN in text:
+                manifests.append(build)
+
+    cargo = project_root / "Cargo.toml"
+    if cargo.is_file():
+        text = _read_text(cargo)
+        if text is not None and _MCP_CARGO_LINE_RE.search(text):
+            manifests.append("Cargo.toml")
+
+    return bool(manifests), manifests

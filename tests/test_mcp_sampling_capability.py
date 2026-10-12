@@ -113,3 +113,29 @@ def test_finding_carries_owasp_mapping(tmp_path: Path) -> None:
     # ASI09's first mitigation. MCP07/ASI03 (authentication) never fit.
     assert match.owasp_mcp_references == ["MCP06:2025"]
     assert match.owasp_agentic_references == ["ASI01", "ASI09"]
+
+
+_SAMPLER = (
+    "async def ask(ctx, text):\n"
+    "    return await ctx.session.create_message(messages=[text], max_tokens=64)\n"
+)
+
+
+def test_the_source_half_runs_for_a_versioned_pyproject_dependency(tmp_path: Path) -> None:
+    """The SDK gate took pyproject.toml only as the bare quoted "mcp", so the way
+    most servers declare it, with extras and a version, kept this half off."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "d"\ndependencies = ["mcp[cli]>=1.2.0"]\n', encoding="utf-8"
+    )
+    (tmp_path / "sampler.py").write_text(_SAMPLER, encoding="utf-8")
+    findings, _ = mcp_sampling_capability.scan(tmp_path)
+    assert [f.file_path for f in findings if f.rule_id == RULE_ID] == ["sampler.py"]
+
+
+def test_the_source_half_stays_off_without_an_sdk(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "d"\ndependencies = ["httpx>=0.27"]\n', encoding="utf-8"
+    )
+    (tmp_path / "sampler.py").write_text(_SAMPLER, encoding="utf-8")
+    findings, _ = mcp_sampling_capability.scan(tmp_path)
+    assert not any(f.rule_id == RULE_ID for f in findings)

@@ -5,6 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import mcp_stateless_migration
 
 FIXTURES = Path(__file__).parent / "fixtures" / "mcp_stateless"
@@ -197,3 +199,67 @@ def test_scanner_registered_in_engine() -> None:
     from agent_audit_kit.engine import _OPTIONAL_SCANNERS
     names = {name for name, _, _ in _OPTIONAL_SCANNERS}
     assert "mcp_stateless_migration" in names
+
+
+# --------------------------------------------------------------------------
+# The SDK gate. It took pyproject.toml only as the bare quoted "mcp", and cut
+# a requirements line at its first `=`, so `"mcp[cli]>=1.2.0"`, Poetry's
+# `mcp = "^1.2.0"` and `mcp~=1.2.0` never opened it: 001, 002 and 004 never ran
+# for a typical Python server.
+# --------------------------------------------------------------------------
+
+_SESSION_SERVER = (
+    "from mcp.server.fastmcp import FastMCP\n\n"
+    'mcp = FastMCP("demo")\n\n\n'
+    "def session_of(request):\n"
+    '    return request.headers.get("Mcp-Session-Id")\n'
+)
+
+
+def _gate_fires(root: Path, manifest: str, text: str) -> bool:
+    (root / manifest).write_text(text, encoding="utf-8")
+    (root / "server.py").write_text(_SESSION_SERVER, encoding="utf-8")
+    return any(f.rule_id == RULE_001 for f in mcp_stateless_migration.scan(root)[0])
+
+
+@pytest.mark.parametrize(("manifest", "text"), [
+    ("pyproject.toml", '[project]\nname = "d"\ndependencies = ["mcp[cli]>=1.2.0"]\n'),
+    ("pyproject.toml", '[project]\nname = "d"\ndependencies = ["MCP>=1.2"]\n'),
+    ("pyproject.toml", '[project]\nname = "d"\n[project.optional-dependencies]\nserver = ["mcp>=1.2"]\n'),
+    ("pyproject.toml", '[dependency-groups]\ndev = ["mcp>=1.2", {include-group = "x"}]\n'),
+    ("pyproject.toml", '[tool.poetry.dependencies]\npython = "^3.10"\nmcp = "^1.2.0"\n'),
+    ("pyproject.toml", '[tool.poetry.group.server.dependencies]\nmcp = {version = "^1.2", extras = ["cli"]}\n'),
+    ("pyproject.toml", '[tool.uv]\ndev-dependencies = ["mcp>=1.2"]\n'),
+    ("pyproject.toml", '[tool.pdm.dev-dependencies]\ndev = ["mcp>=1.2"]\n'),
+    ("pyproject.toml", 'dependencies = ["mcp"\n'),  # unparsable: the old quoted test still opens it
+    ("requirements.txt", "mcp~=1.2.0\n"),
+    ("requirements.txt", 'mcp[cli]>=1.2 ; python_version >= "3.10"\n'),
+    ("requirements.txt", "mcp @ https://files.example.com/mcp-1.2.0.tar.gz\n"),
+    ("requirements-dev.txt", "MCP==1.2.0  # pinned\n"),
+])
+def test_the_sdk_gate_reads_real_manifests(tmp_path: Path, manifest: str, text: str) -> None:
+    assert _gate_fires(tmp_path, manifest, text)
+
+
+@pytest.mark.parametrize(("manifest", "text"), [
+    ("pyproject.toml", '[project]\nname = "d"\ndependencies = ["mcp-proxy>=0.3"]\n'),
+    ("pyproject.toml", '[project]\nname = "demo-mcp"\ndependencies = ["fastmcp>=2.0"]\n'),
+    ("requirements.txt", "mcp-server-git==0.6.2\n"),
+    ("requirements.txt", "# mcp>=1.2\n-r mcp.txt\nclick>=8.1\n"),
+])
+def test_the_sdk_gate_stays_shut_for_other_distributions(
+    tmp_path: Path, manifest: str, text: str
+) -> None:
+    assert not _gate_fires(tmp_path, manifest, text)
+
+
+def test_the_sdk_gate_names_every_manifest_that_declares_it(tmp_path: Path) -> None:
+    from agent_audit_kit.scanners._helpers import declares_mcp_sdk
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "d"\ndependencies = ["mcp[cli]>=1.2.0"]\n', encoding="utf-8"
+    )
+    (tmp_path / "requirements.txt").write_text("mcp~=1.2.0\n", encoding="utf-8")
+    (tmp_path / "Cargo.toml").write_text('[dependencies]\nmcp = "0.1"\n', encoding="utf-8")
+    assert declares_mcp_sdk(tmp_path) == (True, ["pyproject.toml", "requirements.txt", "Cargo.toml"])
+    assert declares_mcp_sdk(tmp_path / "missing") == (False, [])

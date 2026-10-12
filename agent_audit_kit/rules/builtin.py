@@ -855,12 +855,18 @@ _r(
     "argument) rather than the removed session header.",
     sarif_name="McpSessionIdReliance",
     limitations=(
-        "Runs only when a manifest at the project root names an MCP SDK in a form it "
-        "recognises. In `pyproject.toml` that is one of the quoted strings `\"mcp\"`, "
-        "`\"modelcontextprotocol\"` or `\"model-context-protocol\"`, so "
-        "`\"mcp>=1.2.0\"` does not count, and a `package.json` in a subdirectory "
-        "(`svc/package.json`) is not read. When it runs, it looks in source files for "
-        "the header text `Mcp-Session-Id` (any case) or the constant `MCP_SESSION_ID`."
+        "Runs only when a manifest at the project root names an MCP SDK: `mcp`, "
+        "`modelcontextprotocol` or `model-context-protocol` as a dependency in "
+        "`pyproject.toml` (`[project]` and optional dependencies, "
+        "`[dependency-groups]`, Poetry, uv or PDM) or on a `requirements*.txt` line, "
+        "an `@modelcontextprotocol/sdk`, `@anthropic-ai/mcp` or "
+        "`@anthropic-ai/claude-agent-sdk` dependency in `package.json`, "
+        "`io.modelcontextprotocol` in a Maven or Gradle build, or an `mcp` or "
+        "`modelcontextprotocol` line in `Cargo.toml`. A framework that wraps the SDK "
+        "(`fastmcp`), the Rust SDK crate `rmcp`, a dependency declared only in "
+        "`setup.py`, and a manifest in a subdirectory (`svc/package.json`) do not "
+        "count. When it runs, it looks in source files for the header text "
+        "`Mcp-Session-Id` (any case) or the constant `MCP_SESSION_ID`."
     ),
 )
 
