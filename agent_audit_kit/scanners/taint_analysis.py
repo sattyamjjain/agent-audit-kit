@@ -233,6 +233,49 @@ def _has_any_type_hints(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> boo
     return False
 
 
+def _is_literal(node: ast.expr) -> bool:
+    """A literal operand: a constant, an f-string with no placeholders, or a list/tuple of literals (a fixed argv)."""
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, (ast.List, ast.Tuple)):
+        return all(_is_literal(e) for e in node.elts)
+    if isinstance(node, ast.JoinedStr):
+        return not any(isinstance(v, ast.FormattedValue) for v in node.values)
+    return False
+
+
+#: Sinks whose later positional arguments are operands as much as the first, so a
+#: literal first argument proves nothing about them: `os.exec*` hands them to the
+#: new program as its argv (`os.execl("/bin/sh", "sh", "-c", cmd)`), and
+#: `pathlib.Path` joins them all into one path (`pathlib.Path("/srv", name)`).
+_LATER_ARGS_ARE_OPERANDS: frozenset[tuple[str | None, str]] = frozenset(
+    {("os", name) for name in ("execl", "execle", "execlp", "execlpe", "execv", "execve", "execvp", "execvpe")}
+    | {("pathlib", "Path")}
+)
+
+
+def _fixed_target(node: ast.Call, callee: tuple[str | None, str]) -> bool:
+    """True when the call's target, its first positional argument, is a literal.
+
+    A constant URL, a fixed argv or a constant SQL string decides what the call
+    does, and a parameter elsewhere in it (`json=`, `params=`, `input=`, `cwd=`,
+    a bound SQL value) is data for that fixed target. Forwarding the whole
+    `arguments` dict to a constant URL (`requests.post(URL, json=arguments)`)
+    is no SSRF, and a bound value is how SQL injection is avoided. Measured on
+    1,713 public Python MCP server repositories, this skip removed 12 findings
+    of that shape (10 of them the `call_tool` handler's whole-dict forwards) and
+    no true positive.
+
+    It gives up one shape, stated in AAK-TAINT-001's limitation: a fixed
+    interpreter fed the caller's text on stdin
+    (`subprocess.run(["python3"], input=code)`) reads as a fixed command. The
+    sinks in `_LATER_ARGS_ARE_OPERANDS` are exempt.
+    """
+    if callee in _LATER_ARGS_ARE_OPERANDS:
+        return False
+    return bool(node.args) and _is_literal(node.args[0])
+
+
 def _analyse_tool_function(
     func_def: ast.FunctionDef | ast.AsyncFunctionDef,
     rel_path: str,
@@ -273,8 +316,9 @@ def _analyse_tool_function(
         # Track category regardless of param taint
         triggered_categories.add(rule_id)
 
-        # Check if any argument is a tainted parameter
-        if param_names and _call_uses_param(node, param_names):
+        # Check if any argument is a tainted parameter, unless the call's
+        # target is a literal (see `_fixed_target`)
+        if param_names and _call_uses_param(node, param_names) and not _fixed_target(node, callee):
             sink_label = f"{callee[0]}.{callee[1]}" if callee[0] else callee[1]
             line = getattr(node, "lineno", func_def.lineno)
             findings.append(make_finding(

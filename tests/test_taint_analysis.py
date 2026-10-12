@@ -283,6 +283,7 @@ async def async_dangerous(query):
 
 _LOW_LEVEL = """\
 import os
+import pathlib
 import pickle
 import subprocess
 
@@ -347,6 +348,48 @@ def test_low_level_handler_is_not_held_to_the_per_tool_rules(tmp_path: Path) -> 
         "    return []"
     )
     assert _low_level(tmp_path, body, params="name, arguments") == []
+
+
+# A literal first argument is the call's target: a constant URL, a fixed argv,
+# a constant SQL string. A parameter elsewhere in the call is data sent to that
+# fixed target, and forwarding the whole `arguments` dict to a constant URL was
+# the handler entry point's one false-positive shape on real servers.
+
+
+@pytest.mark.parametrize("body", [
+    '    return requests.post("http://bank.example/api/pay", json=arguments).text',
+    '    return requests.get("https://api.example.com/search", params=arguments).text',
+    '    return subprocess.run(["pbcopy"], input=arguments["text"]).returncode',
+    '    return cursor.execute("SELECT * FROM notes WHERE id = ?", arguments["id"])',
+])
+def test_a_call_to_a_fixed_target_is_not_reported(tmp_path: Path, body: str) -> None:
+    assert _low_level(tmp_path, body) == []
+
+
+@pytest.mark.parametrize(("body", "rule"), [
+    # The caller chooses the URL: SSRF, however much else the call sends.
+    ('    return requests.post(arguments["url"], json=arguments).text', "AAK-TAINT-004"),
+    # A literal first argument proves nothing where every positional argument
+    # is an operand: `os.exec*` hands them on as the new program's argv, and
+    # `pathlib.Path` joins them into one path.
+    ('    os.execl("/bin/sh", "sh", "-c", arguments["cmd"])', "AAK-TAINT-001"),
+    ('    os.execv("/bin/sh", arguments["argv"])', "AAK-TAINT-001"),
+    ('    return pathlib.Path("/srv/files", arguments["name"]).read_text()', "AAK-TAINT-003"),
+])
+def test_a_literal_first_argument_does_not_hide_a_caller_chosen_target(
+    tmp_path: Path, body: str, rule: str
+) -> None:
+    assert rule in _low_level(tmp_path, body)
+
+
+def test_stdin_data_for_a_fixed_command_is_not_reported(tmp_path: Path) -> None:
+    """The base's own false positive of this shape, in a FastMCP tool."""
+    (tmp_path / "server.py").write_text(
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef copy(text: str) -> int:\n"
+        "    return subprocess.run(['pbcopy'], input=text).returncode\n"
+    )
+    assert scan(tmp_path)[0] == []
 
 
 def test_os_exec_runs_a_tool_parameter(tmp_path: Path) -> None:
