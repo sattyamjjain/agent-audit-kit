@@ -1678,13 +1678,14 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Reads package-lock.json, requirements*.txt and Pipfile.lock at the project "
-        "root against a fixed table of two packages, `axios` 1.7.0 to 1.7.3 and "
-        "`openclaw` below 2.1.0, plus three typosquat name patterns, so a vulnerable "
-        "version of any other package (`lodash` 4.17.15 in a lockfile) is not "
-        "reported. The npm check does not read yarn.lock or pnpm-lock.yaml, and a "
-        "package-lock.json in a sub-directory is not read. A requirements file over "
-        "2 MB, or a lockfile over 32 MiB, is not read."
+        "Reads the root package-lock.json against a fixed table of two npm packages, "
+        "`axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0, plus three typosquat "
+        "name patterns, so a vulnerable version of any other package (`lodash` "
+        "4.17.15 in a lockfile) is not reported. The table lists no PyPI package or "
+        "crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so "
+        "requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, "
+        "pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over "
+        "32 MiB are not read."
     ),
 )
 
@@ -1776,12 +1777,11 @@ _r(
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Reads the `args` of the `mcpServers` entries in the root .mcp.json only, "
-        "and looks each `package@version` up in the npm section of the "
-        "vulnerability database, which bundles two packages: `axios` 1.7.0 to 1.7.3 "
-        "and `openclaw` below 2.1.0. The same package in package.json, in an MCP "
-        "config under `.cursor/` or `.vscode/`, or launched with `uvx "
-        "openclaw==2.0.0` is not read, and neither is a package that states no "
-        "version."
+        "and looks each `package@version` up in the npm section of the vulnerability "
+        "database, which bundles two packages: `axios` 1.7.0 to 1.7.3 and `openclaw` "
+        "below 2.1.0. The same package in package.json or in an MCP config under "
+        "`.cursor/` or `.vscode/` is not read, and neither is a package that states "
+        "no version."
     ),
 )
 
@@ -9269,15 +9269,15 @@ _r(
     owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `openclaw` in requirements*.txt at any depth and, at the project root "
-        "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
-        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
-        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
-        "lowest version a range allows and reporting a reference that states no "
-        "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`packages/app/package.json`) or in a lockfile format the reader "
-        "does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile "
-        "over 32 MiB, is not read."
+        "Reads the npm package `openclaw` at the project root, in package.json, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the package-lock.json, "
+        "pnpm-lock.yaml and yarn.lock lockfiles, taking the lowest version a range "
+        "allows and reporting a reference that states no version. The PyPI project "
+        "`openclaw`, an unrelated installer for the cmdop CLI, is a different "
+        "package and is not read. The dependency is not read when it is declared in "
+        "a sub-directory manifest (`packages/app/package.json`) or in a lockfile "
+        "format the reader does not parse (a Yarn 2+ `yarn.lock`). A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -13525,8 +13525,9 @@ _r(
         "numbers, so the 2026.7.2 betas before the feature landed (beta.1 to beta.3) "
         "are reported too. A later extended-stable 2026.8.x that backports the fix "
         "would still be reported until the pin learns that line. Releases below "
-        "2026.7.1 belong to the older OpenClaw pin. A file over 2 MB, or a lockfile "
-        "over 32 MiB, is not read."
+        "2026.7.1 belong to the older OpenClaw pin. The PyPI project `openclaw`, an "
+        "unrelated installer for the cmdop CLI, is a different package and is not "
+        "read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 

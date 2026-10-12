@@ -9,12 +9,7 @@
       "description": "104 CVEs catalogued by Adversa AI"
     }
   },
-  "python": {
-    "openclaw": {
-      "affected": "<2.1.0",
-      "description": "104 CVEs catalogued by Adversa AI"
-    }
-  },
+  "python": {},
   "rust": {},
   "dmca_blocklist": [
     "claude-code-leaked",

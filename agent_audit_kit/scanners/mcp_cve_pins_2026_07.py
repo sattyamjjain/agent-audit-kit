@@ -328,9 +328,16 @@ _PINS: tuple[_Pin, ...] = (
     # bridge), which GHSA-p5g8-m35v-7m82 scopes `< 2026.7.1` with no lower bound.
     # CVE-2026-100587 (Codex computer-use install) and CVE-2026-100596 (`/mcp set`
     # persisting a stdio command) are `< 2026.7.1` too, so the floor holds.
+    # npm only. Each openclaw/openclaw advisory (GHSA-52xj-c9p8-78cv,
+    # GHSA-p5g8-m35v-7m82, GHSA-pjjr-5qhr-5w6r, GHSA-wwx7-573h-pqwc) names the npm
+    # package `openclaw` and nothing else, and NVD's CPE for CVE-2026-62195 is
+    # `openclaw:openclaw` on node.js. The PyPI project `openclaw` (2.0.1 and 2.0.2,
+    # 2026-08-13) is an installer for the cmdop CLI that says it is not affiliated
+    # with OpenClaw; unscoped, `openclaw==2.0.2` read as an OpenClaw below the floor.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-62195-001", "openclaw", ("openclaw",), (2026, 7, 1),
          fix_label="2026.7.1 (CVE-2026-100585, CVE-2026-100587, CVE-2026-100596; "
-                   "CVE-2026-62195 alone was fixed in 2026.6.6)"),
+                   "CVE-2026-62195 alone was fixed in 2026.6.6)",
+         ecosystem="js"),
     _Pin("AAK-MCP-REPOMIX-CVE-2026-49988-001", "repomix", ("repomix",), (1, 14, 1),
          fix_label="1.14.1"),
     # Floor raised 1.6.11 -> 1.6.13 for CVE-2026-67333 (redirect_uri scheme not
@@ -1054,9 +1061,11 @@ _PINS: tuple[_Pin, ...] = (
     # it arrived in 7c070d6 (first in 2026.7.2-beta.4, first stable 2026.8.1); the
     # fix, 3bd8ec2b, is in 2026.9.4 and not in extended-stable 2026.8.35. MEDIUM, so
     # its own rule beside the HIGH pin above rather than a raised floor.
+    # npm only, as the pin above: the PyPI `openclaw` is another project.
     _Pin("AAK-MCP-OPENCLAW-CVE-2026-102807-001", "openclaw", ("openclaw",),
          (2026, 9, 4), introduced=(2026, 7, 2),
-         fix_label="2026.9.4 (the 2026.8.x extended-stable line has no fix yet)"),
+         fix_label="2026.9.4 (the 2026.8.x extended-stable line has no fix yet)",
+         ecosystem="js"),
     # --- 2026-10-05 wave (#887-#896) ---
     # Zscaler MCP Server signs an HMAC confirmation token over a write tool's name
     # and arguments. From 0.7.0, 31 delete tools across ZIA, ZPA and ZTW passed an

@@ -2685,5 +2685,32 @@ def test_every_lockfile_rule_states_the_size_limits() -> None:
     pin_rules = sorted({p.rule_id for p in _PINS})
     for rule_id in [*pin_rules, "AAK-SUPPLY-002", "AAK-SUPPLY-005"]:
         assert lockfile_limit in RULES[rule_id].limitations, rule_id
-    for rule_id in [*pin_rules, "AAK-SUPPLY-002"]:
+    for rule_id in pin_rules:
         assert file_limit in RULES[rule_id].limitations, rule_id
+
+
+# --- The PyPI `openclaw` is not OpenClaw ---------------------------------------------
+#
+# OpenClaw ships on npm only: each openclaw/openclaw advisory names the npm package
+# `openclaw`, and NVD's CPE for CVE-2026-62195 is node.js. PyPI's `openclaw` (2.0.1
+# and 2.0.2) is an installer for the cmdop CLI, and the unscoped pin read
+# `openclaw==2.0.2` as an OpenClaw below 2026.7.1.
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "openclaw==2.0.2\n"),
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["openclaw==2.0.2"]\n'),
+    ("Pipfile", '[packages]\nopenclaw = "==2.0.2"\n'),
+    ("uv.lock", 'version = 1\n\n[[package]]\nname = "openclaw"\nversion = "2.0.2"\n'),
+    ("poetry.lock", '[[package]]\nname = "openclaw"\nversion = "2.0.2"\n'),
+    ("Pipfile.lock", '{"default": {"openclaw": {"version": "==2.0.2"}}}'),
+    (".mcp.json", '{"mcpServers": {"a": {"command": "uvx", "args": ["openclaw@2.0.2"]}}}'),
+    (".mcp.json", '{"mcpServers": {"a": {"command": "uvx", "args": ["openclaw==2.0.2"]}}}'),
+])
+def test_the_pypi_openclaw_is_another_package(tmp_path: Path, name: str, content: str) -> None:
+    assert not _ids(tmp_path, name, content) & {_OPENCLAW_OLD, _OPENCLAW_APP}
+
+
+def test_an_npm_launch_of_openclaw_is_still_read(tmp_path: Path) -> None:
+    content = '{"mcpServers": {"a": {"command": "npx", "args": ["-y", "openclaw@2026.6.0"]}}}'
+    assert _OPENCLAW_OLD in _ids(tmp_path, ".mcp.json", content)

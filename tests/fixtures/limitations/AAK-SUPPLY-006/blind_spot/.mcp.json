@@ -1,11 +1,5 @@
 {
   "mcpServers": {
-    "x": {
-      "command": "uvx",
-      "args": [
-        "openclaw==2.0.0"
-      ]
-    },
     "y": {
       "command": "npx",
       "args": [

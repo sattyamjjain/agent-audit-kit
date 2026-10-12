@@ -119,13 +119,39 @@ def test_clean_project_no_supply_chain_findings(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_python_requirements_vulnerable_dep(tmp_path: Path) -> None:
+@pytest.fixture
+def python_table(monkeypatch: pytest.MonkeyPatch) -> str:
+    """A stand-in PyPI entry for the reader's tests; returns its name.
+
+    The PyPI table is empty. Its one entry, `openclaw`, named an unrelated PyPI
+    project (an installer for the cmdop CLI), not OpenClaw, which ships on npm.
+    """
+    from agent_audit_kit.scanners import supply_chain
+
+    monkeypatch.setitem(supply_chain.KNOWN_VULNERABLE_PACKAGES, "python", {
+        "vulnerable-pkg": {"affected": "<2.1.0", "description": "test entry"},
+    })
+    return "vulnerable-pkg"
+
+
+def test_python_requirements_vulnerable_dep(tmp_path: Path, python_table: str) -> None:
     """AAK-SUPPLY-002: A requirements.txt with a known vulnerable Python package."""
-    (tmp_path / "requirements.txt").write_text("openclaw==2.0.0\nrequests==2.31.0\n")
+    (tmp_path / "requirements.txt").write_text(f"{python_table}==2.0.0\nrequests==2.31.0\n")
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
     assert len(supply002) > 0, "Vulnerable Python package in requirements.txt should be detected"
-    assert any("openclaw" in f.evidence for f in supply002)
+    assert any(python_table in f.evidence for f in supply002)
+
+
+def test_the_pypi_openclaw_is_not_reported(tmp_path: Path) -> None:
+    """PyPI's `openclaw` (2.0.1, 2.0.2) installs the cmdop CLI and is not OpenClaw,
+    which ships on npm only; the table reported it as 104 OpenClaw CVEs."""
+    (tmp_path / "requirements.txt").write_text("openclaw==2.0.2\n")
+    (tmp_path / "Pipfile.lock").write_text(
+        json.dumps({"default": {"openclaw": {"version": "==2.0.2"}}})
+    )
+    findings, _ = scan(tmp_path)
+    assert not [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
 
 
 def test_python_pyproject_missing_lockfile(tmp_path: Path) -> None:
@@ -147,17 +173,17 @@ def test_python_requirements_safe_dep(tmp_path: Path) -> None:
     assert len(supply002) == 0, "Safe Python packages should not trigger AAK-SUPPLY-002"
 
 
-def test_python_requirements_no_version(tmp_path: Path) -> None:
+def test_python_requirements_no_version(tmp_path: Path, python_table: str) -> None:
     """Python packages without version specifiers should not trigger AAK-SUPPLY-002."""
-    (tmp_path / "requirements.txt").write_text("openclaw\nrequests\n")
+    (tmp_path / "requirements.txt").write_text(f"{python_table}\nrequests\n")
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
     assert len(supply002) == 0, "Packages without versions should not trigger vulnerable dep check"
 
 
-def test_python_requirements_with_extras(tmp_path: Path) -> None:
+def test_python_requirements_with_extras(tmp_path: Path, python_table: str) -> None:
     """Python packages with extras should be parsed correctly."""
-    (tmp_path / "requirements.txt").write_text("openclaw[full]==2.0.0\n")
+    (tmp_path / "requirements.txt").write_text(f"{python_table}[full]==2.0.0\n")
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
     assert len(supply002) > 0, "Vulnerable package with extras should still be detected"
@@ -168,11 +194,11 @@ def test_python_requirements_with_extras(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_python_requirements_dev_files_picked_up(tmp_path: Path) -> None:
+def test_python_requirements_dev_files_picked_up(tmp_path: Path, python_table: str) -> None:
     """`requirements*.txt` glob should also catch requirements-dev.txt
     and requirements-test.txt, not just requirements.txt."""
     (tmp_path / "requirements.txt").write_text("requests==2.31.0\n")
-    (tmp_path / "requirements-dev.txt").write_text("openclaw==2.0.0\n")
+    (tmp_path / "requirements-dev.txt").write_text(f"{python_table}==2.0.0\n")
     (tmp_path / "requirements-test.txt").write_text("flask==3.0.0\n")
     findings, scanned = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
@@ -200,15 +226,15 @@ def test_version_in_range_boundary_above() -> None:
     assert not _version_in_range("2.0.0", affected), "2.0.0 is well above — must pass"
 
 
-def test_python_version_range_lower_bound_trips(tmp_path: Path) -> None:
+def test_python_version_range_lower_bound_trips(tmp_path: Path, python_table: str) -> None:
     """End-to-end version-range check: pin exactly at the lower bound
     of an affected range must produce AAK-SUPPLY-002."""
     # axios >=1.7.0 <1.7.4 is the seeded range in KNOWN_VULNERABLE_PACKAGES
-    # but axios is npm-only. Use openclaw which is in python's table.
-    (tmp_path / "requirements.txt").write_text("openclaw==1.5.0\n")  # below patched 2.1.0
+    # but axios is npm-only, and the PyPI table is empty: use the stand-in.
+    (tmp_path / "requirements.txt").write_text(f"{python_table}==1.5.0\n")  # below 2.1.0
     findings, _ = scan(tmp_path)
     supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
-    assert any("openclaw" in f.evidence and "1.5.0" in f.evidence for f in supply002)
+    assert any(python_table in f.evidence and "1.5.0" in f.evidence for f in supply002)
 
 
 # ---------------------------------------------------------------------------
@@ -320,20 +346,20 @@ def test_pipfile_missing_lockfile(tmp_path: Path) -> None:
     assert len(supply004) > 0, "Missing Pipfile.lock should be detected"
 
 
-def test_pipfile_lock_vulnerable_dep(tmp_path: Path) -> None:
+def test_pipfile_lock_vulnerable_dep(tmp_path: Path, python_table: str) -> None:
     """AAK-SUPPLY-002: Vulnerable package in Pipfile.lock."""
     pipfile_lock = {
         "_meta": {"hash": {"sha256": "abc123"}},
         "default": {
-            "openclaw": {"version": "==2.0.0"},
+            python_table: {"version": "==2.0.0"},
         },
         "develop": {},
     }
-    (tmp_path / "Pipfile").write_text("[packages]\nopenclaw = '*'\n")
+    (tmp_path / "Pipfile").write_text(f"[packages]\n{python_table} = '*'\n")
     (tmp_path / "Pipfile.lock").write_text(json.dumps(pipfile_lock))
     findings, _ = scan(tmp_path)
-    supply002 = [f for f in findings if f.rule_id == "AAK-SUPPLY-002"]
-    assert len(supply002) > 0, "Vulnerable package in Pipfile.lock should be detected"
+    supply002 = [f.evidence for f in findings if f.rule_id == "AAK-SUPPLY-002"]
+    assert supply002 == [f"{python_table}==2.0.0 — test entry"], supply002
 
 
 # ---------------------------------------------------------------------------
@@ -601,3 +627,17 @@ def test_a_crafted_lockfile_indexes_in_linear_time(filename: str) -> None:
     index = _lockfile_index(text, filename)
     assert time.perf_counter() - started < 10.0
     assert index, "the crafted file still holds one readable entry"
+
+
+def test_a_pypi_launch_is_not_looked_up_in_the_npm_table(tmp_path: Path) -> None:
+    """uvx reads `openclaw@2.0.0` as the PyPI project (the cmdop CLI installer);
+    npx reads it as OpenClaw, which the npm table lists."""
+    def supply006(command: str) -> list[str]:
+        config = {"mcpServers": {"x": {"command": command, "args": ["openclaw@2.0.0"]}}}
+        (tmp_path / ".mcp.json").write_text(json.dumps(config))
+        return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-006"]
+
+    assert supply006("uvx") == []
+    assert supply006("uv tool run") == []
+    hits = supply006("npx")
+    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses openclaw@2.0.0"), hits

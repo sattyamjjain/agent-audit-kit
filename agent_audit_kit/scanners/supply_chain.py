@@ -22,12 +22,11 @@ KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, str]]] = {
             "description": "104 CVEs catalogued by Adversa AI",
         },
     },
-    "python": {
-        "openclaw": {
-            "affected": "<2.1.0",
-            "description": "104 CVEs catalogued by Adversa AI",
-        },
-    },
+    # No PyPI entry. The table listed `openclaw` here too, but OpenClaw ships on
+    # npm only, and the PyPI project of that name (2.0.1 and 2.0.2) is an
+    # unrelated installer for the cmdop CLI, so `openclaw==2.0.2` was reported as
+    # 104 OpenClaw CVEs. The reader below stays for entries a PyPI package earns.
+    "python": {},
     "rust": {},
 }
 
@@ -1068,6 +1067,15 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
             continue
         args = cfg.get("args", [])
         if not isinstance(args, list):
+            continue
+        # The table is npm's, so a PyPI launch is not looked up in it: uvx reads
+        # `openclaw@2.0.2` as the PyPI `openclaw`, an unrelated installer for the
+        # cmdop CLI, not as OpenClaw.
+        command = cfg.get("command")
+        argv = command.split() if isinstance(command, str) else []
+        argv += [a for a in args if isinstance(a, str)]
+        launches = invocation_packages(argv)
+        if launches and all(launched.ecosystem == "py" for launched in launches):
             continue
         for arg in args:
             if not isinstance(arg, str) or arg.startswith("-"):
