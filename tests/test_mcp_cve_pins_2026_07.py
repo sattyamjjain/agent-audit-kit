@@ -2549,3 +2549,65 @@ def test_npm_names_are_not_normalised(tmp_path: Path) -> None:
 def test_a_longer_normalised_name_is_still_another_package(tmp_path: Path) -> None:
     content = "awslabs-healthlake-mcp-server-extras==0.0.1\n"
     assert "AAK-MCP-HEALTHLAKE-CVE-2026-15643-001" not in _ids(tmp_path, "requirements.txt", content)
+
+
+# --- An exact pin clears only the declarations it constrains -----------------------
+#
+# A dev, optional or extra group does not constrain a production install, so its
+# patched pin must not silence an affected range in the runtime section. What does
+# constrain every install is the same section (pip merges a package's lines in one
+# requirements file or one PEP 621 list), a global constraint (uv
+# `constraint-dependencies`) and an override, which replaces the regular entries.
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0"]\n'
+                       '[dependency-groups]\ndev = ["litellm==1.90.0"]\n'),
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0"]\n'
+                       '[project.optional-dependencies]\nproxy = ["litellm==1.90.0"]\n'),
+    ("pyproject.toml", '[tool.poetry.dependencies]\nlitellm = "^1.0"\n'
+                       '[tool.poetry.group.dev.dependencies]\nlitellm = "1.90.0"\n'),
+    ("Pipfile", '[packages]\nlitellm = ">=1.0"\n[dev-packages]\nlitellm = "==1.90.0"\n'),
+])
+def test_a_patched_pin_in_another_group_does_not_clear_the_runtime_range(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _LITELLM in _ids(tmp_path, name, content)
+
+
+def test_a_patched_dev_dependency_does_not_clear_the_runtime_dependency(tmp_path: Path) -> None:
+    content = '{"dependencies": {"repomix": "^1.0.0"}, "devDependencies": {"repomix": "1.14.1"}}'
+    assert _REPOMIX in _ids(tmp_path, "package.json", content)
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    # A global constraint narrows every install of the package.
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0"]\n'
+                       '[tool.uv]\nconstraint-dependencies = ["litellm==1.90.0"]\n'),
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0"]\n'
+                       '[tool.uv]\nconstraint-dependencies = ["litellm>=1.84"]\n'),
+    # An override replaces the regular entries.
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0"]\n'
+                       '[tool.uv]\noverride-dependencies = ["litellm==1.90.0"]\n'),
+    # The same section: pip merges both lines into one requirement.
+    ("requirements.txt", "litellm>=1.0\nlitellm==1.90.0\n"),
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["litellm>=1.0", "litellm==1.90.0"]\n'),
+])
+def test_a_constraint_override_or_same_section_pin_clears(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _LITELLM not in _ids(tmp_path, name, content)
+
+
+def test_declarations_under_different_markers_do_not_constrain_each_other(tmp_path: Path) -> None:
+    """Under python_version < 3.9 only the first line applies, and it admits 1.0."""
+    content = ('litellm>=1.0 ; python_version < "3.9"\n'
+               'litellm==1.90.0 ; python_version >= "3.9"\n')
+    assert _LITELLM in _ids(tmp_path, "requirements.txt", content)
+
+
+def test_poetry_multiple_constraints_are_alternatives(tmp_path: Path) -> None:
+    content = ('[tool.poetry.dependencies]\nlitellm = [\n'
+               '  {version = "^1.0", python = "<3.9"},\n'
+               '  {version = "1.90.0", python = ">=3.9"},\n]\n')
+    assert _LITELLM in _ids(tmp_path, "pyproject.toml", content)

@@ -39,6 +39,13 @@ declarations. What it reads:
   not a launcher (`"command": "ruflo"`) is a reference to the installed program
   of that name, with no version.
 
+Each manifest declaration records its section (the requirements file, a PEP 621
+list, an extra, a dependency group, a Pipfile category, a package.json section)
+and its environment marker, because a pin constrains only the install it is
+part of: a dev group's patched pin says nothing about what production resolves.
+uv `constraint-dependencies` are the one global constraint, and the overrides
+replace the regular entries; the pin table reads both that way.
+
 A file that does not parse yields no declarations. A manifest no installer can
 read installs nothing, so there is no version in it to report.
 """
@@ -76,8 +83,14 @@ class Declaration:
     version: str            # the version text as written; empty when none
     dialect: str            # how to read `version`: "npm", "poetry" or "pep440"
     ecosystem: str | None   # "js", "py", or None when the registry is unknown
-    kind: str               # "dependency", "override" or "launch"
+    kind: str               # "dependency", "constraint", "override" or "launch"
     text: str               # the declaration as it reads, for the evidence
+    # Which install the declaration belongs to: a requirements file, a PEP 621
+    # list, an extra, a dependency group, a Pipfile category, a package.json
+    # section. A pin in one section does not constrain an install of another.
+    section: str = ""
+    # The environment marker it applies under (`python_version < "3.9"`), or "".
+    marker: str = ""
 
 
 _PIPFILE_NON_PACKAGES = frozenset({"source", "requires", "scripts", "pipenv"})
@@ -123,16 +136,24 @@ def _egg_name(reference: str) -> str:
     return ""
 
 
-def _pep508(requirement: str, kind: str = "dependency") -> Declaration | None:
+def _marker(requirement: str) -> str:
+    """The environment marker of a PEP 508 string, whitespace-normalised, or ""."""
+    marker = requirement.partition(";")[2]
+    return " ".join(marker.split())
+
+
+def _pep508(requirement: str, kind: str = "dependency", section: str = "") -> Declaration | None:
     """A PEP 508 requirement string, or None when it names no registry package."""
     parts = py_spec(requirement)
     if parts.kind == "local" or not parts.name:
         return None
     version = "" if parts.kind == "vcs" else parts.version
-    return Declaration(parts.name, version, "pep440", "py", kind, requirement.strip())
+    return Declaration(parts.name, version, "pep440", "py", kind, requirement.strip(),
+                       section, _marker(requirement))
 
 
 def requirements_declarations(text: str) -> list[Declaration]:
+    """Every line of one requirements file is one install, so one section."""
     found: list[Declaration] = []
     for line in _logical_lines(text):
         if line.startswith("-"):
@@ -141,16 +162,18 @@ def requirements_declarations(text: str) -> list[Declaration]:
             if option in ("-e", "--editable"):
                 name = _egg_name((inline if equals else rest).strip())
                 if name:
-                    found.append(Declaration(name, "", "pep440", "py", "dependency", line))
+                    found.append(Declaration(name, "", "pep440", "py", "dependency", line,
+                                             "requirements"))
             continue
         # Per-requirement options (`--hash=...`) follow the requirement.
         requirement = line.split(" --", 1)[0].split("\t--", 1)[0].strip()
         if requirement.startswith(("git+", "http://", "https://", "file:")):
             name = _egg_name(requirement)
             if name:
-                found.append(Declaration(name, "", "pep440", "py", "dependency", requirement))
+                found.append(Declaration(name, "", "pep440", "py", "dependency", requirement,
+                                         "requirements", _marker(requirement)))
             continue
-        declaration = _pep508(requirement)
+        declaration = _pep508(requirement, section="requirements")
         if declaration is not None:
             found.append(declaration)
     return found
@@ -168,87 +191,114 @@ def _table(data: object, *keys: str) -> object:
     return node
 
 
-def _requirement_list(value: object, kind: str = "dependency") -> list[Declaration]:
+def _requirement_list(
+    value: object, section: str, kind: str = "dependency"
+) -> list[Declaration]:
     found: list[Declaration] = []
     if isinstance(value, list):
         for item in value:
             if isinstance(item, str):
-                declaration = _pep508(item, kind)
+                declaration = _pep508(item, kind, section)
                 if declaration is not None:
                     found.append(declaration)
     return found
 
 
-def _requirement_groups(value: object) -> list[Declaration]:
+def _requirement_groups(value: object, prefix: str) -> list[Declaration]:
+    """Each group or extra is its own install, so its own section."""
     found: list[Declaration] = []
     if isinstance(value, dict):
-        for group in value.values():
-            found.extend(_requirement_list(group))
+        for group, items in value.items():
+            found.extend(_requirement_list(items, f"{prefix}.{group}"))
     return found
 
 
-def _poetry_value(name: str, value: object) -> list[Declaration]:
-    """`name = "^1.2"`, `name = {version = "^1.2", extras = [...]}`, or a list."""
+def _poetry_marker(value: dict) -> str:
+    parts = [f"python {value['python']}" if isinstance(value.get("python"), str) else "",
+             value["markers"] if isinstance(value.get("markers"), str) else ""]
+    return " and ".join(p for p in parts if p)
+
+
+def _poetry_value(name: str, value: object, section: str) -> list[Declaration]:
+    """`name = "^1.2"`, `name = {version = "^1.2", extras = [...]}`, or a list.
+
+    A list holds alternatives for different environments (one per `python` or
+    `markers` value), not constraints on one another, so each item is read as
+    its own section.
+    """
     if isinstance(value, str):
-        return [Declaration(name, value, "poetry", "py", "dependency", f"{name} = {value!r}")]
+        return [Declaration(name, value, "poetry", "py", "dependency", f"{name} = {value!r}",
+                            section)]
     if isinstance(value, dict):
         version = value.get("version")
         if isinstance(version, str):
             return [Declaration(name, version, "poetry", "py", "dependency",
-                                f"{name} = {{version = {version!r}}}")]
+                                f"{name} = {{version = {version!r}}}", section,
+                                _poetry_marker(value))]
         # A git, path or url source states no registry version.
-        return [Declaration(name, "", "poetry", "py", "dependency", f"{name} = {{...}}")]
+        return [Declaration(name, "", "poetry", "py", "dependency", f"{name} = {{...}}",
+                            section, _poetry_marker(value))]
     if isinstance(value, list):
         found: list[Declaration] = []
-        for item in value:
-            found.extend(_poetry_value(name, item))
+        for index, item in enumerate(value):
+            found.extend(_poetry_value(name, item, f"{section}#{index}"))
         return found
     return []
 
 
-def _poetry_table(value: object) -> list[Declaration]:
+def _poetry_table(value: object, section: str) -> list[Declaration]:
     found: list[Declaration] = []
     if isinstance(value, dict):
         for name, spec in value.items():
             if str(name).lower() != "python":
-                found.extend(_poetry_value(str(name), spec))
+                found.extend(_poetry_value(str(name), spec, section))
     return found
 
 
 def pyproject_declarations(data: dict) -> list[Declaration]:
+    """Each table is its own section. uv's `constraint-dependencies` constrain
+    every install and its `override-dependencies` (and PDM's resolution
+    overrides) replace the regular entries, so those two carry their own kinds."""
     found: list[Declaration] = []
-    found.extend(_requirement_list(_table(data, "project", "dependencies")))
-    found.extend(_requirement_groups(_table(data, "project", "optional-dependencies")))
-    found.extend(_requirement_groups(_table(data, "dependency-groups")))
-    found.extend(_requirement_list(_table(data, "build-system", "requires")))
+    found.extend(_requirement_list(_table(data, "project", "dependencies"), "project.dependencies"))
+    found.extend(_requirement_groups(_table(data, "project", "optional-dependencies"),
+                                     "project.optional-dependencies"))
+    found.extend(_requirement_groups(_table(data, "dependency-groups"), "dependency-groups"))
+    found.extend(_requirement_list(_table(data, "build-system", "requires"), "build-system.requires"))
     poetry = _table(data, "tool", "poetry")
-    found.extend(_poetry_table(_table(poetry, "dependencies")))
-    found.extend(_poetry_table(_table(poetry, "dev-dependencies")))
+    found.extend(_poetry_table(_table(poetry, "dependencies"), "tool.poetry.dependencies"))
+    found.extend(_poetry_table(_table(poetry, "dev-dependencies"), "tool.poetry.dev-dependencies"))
     groups = _table(poetry, "group")
     if isinstance(groups, dict):
-        for group in groups.values():
-            found.extend(_poetry_table(_table(group, "dependencies")))
+        for group, table in groups.items():
+            found.extend(_poetry_table(_table(table, "dependencies"), f"tool.poetry.group.{group}"))
     uv = _table(data, "tool", "uv")
-    found.extend(_requirement_list(_table(uv, "dev-dependencies")))
-    found.extend(_requirement_list(_table(uv, "constraint-dependencies")))
-    found.extend(_requirement_list(_table(uv, "override-dependencies"), kind="override"))
-    found.extend(_requirement_groups(_table(data, "tool", "pdm", "dev-dependencies")))
+    found.extend(_requirement_list(_table(uv, "dev-dependencies"), "tool.uv.dev-dependencies"))
+    found.extend(_requirement_list(_table(uv, "constraint-dependencies"),
+                                   "tool.uv.constraint-dependencies", kind="constraint"))
+    found.extend(_requirement_list(_table(uv, "override-dependencies"),
+                                   "tool.uv.override-dependencies", kind="override"))
+    found.extend(_requirement_groups(_table(data, "tool", "pdm", "dev-dependencies"),
+                                     "tool.pdm.dev-dependencies"))
     overrides = _table(data, "tool", "pdm", "resolution", "overrides")
     if isinstance(overrides, dict):
         for name, spec in overrides.items():
             if isinstance(spec, str):
                 found.append(Declaration(str(name), spec, "pep440", "py", "override",
-                                         f"{name} = {spec!r}"))
+                                         f"{name} = {spec!r}", "tool.pdm.resolution.overrides"))
     envs = _table(data, "tool", "hatch", "envs")
     if isinstance(envs, dict):
-        for env in envs.values():
-            found.extend(_requirement_list(_table(env, "dependencies")))
-            found.extend(_requirement_list(_table(env, "extra-dependencies")))
-    found.extend(_requirement_list(_table(data, "tool", "rye", "dev-dependencies")))
+        for env_name, env in envs.items():
+            found.extend(_requirement_list(_table(env, "dependencies"), f"tool.hatch.envs.{env_name}"))
+            found.extend(_requirement_list(_table(env, "extra-dependencies"),
+                                           f"tool.hatch.envs.{env_name}"))
+    found.extend(_requirement_list(_table(data, "tool", "rye", "dev-dependencies"),
+                                   "tool.rye.dev-dependencies"))
     return found
 
 
 def pipfile_declarations(data: dict) -> list[Declaration]:
+    """Each package category (`[packages]`, `[dev-packages]`, ...) is a section."""
     found: list[Declaration] = []
     for section, packages in data.items():
         if section in _PIPFILE_NON_PACKAGES or not isinstance(packages, dict):
@@ -257,22 +307,24 @@ def pipfile_declarations(data: dict) -> list[Declaration]:
             version = value if isinstance(value, str) else _table(value, "version")
             spec = version if isinstance(version, str) else ""
             shown = repr(spec) if spec else "{...}"
+            markers = _table(value, "markers")
             found.append(Declaration(str(name), spec, "pep440", "py", "dependency",
-                                     f"{name} = {shown}"))
+                                     f"{name} = {shown}", str(section),
+                                     " ".join(markers.split()) if isinstance(markers, str) else ""))
     return found
 
 
 # --- package.json -----------------------------------------------------------
 
 
-def _npm_dependency(name: str, spec: str, kind: str) -> Declaration:
+def _npm_dependency(name: str, spec: str, kind: str, section: str) -> Declaration:
     """A `"name": "spec"` entry. A git, file or URL spec reads as no version."""
     text = f'"{name}": "{spec}"'
     if spec.startswith("npm:"):
         alias = npm_spec(spec)
         if alias.kind == "registry" and alias.name:
-            return Declaration(alias.name, alias.version, "npm", "js", kind, text)
-    return Declaration(name, spec, "npm", "js", kind, text)
+            return Declaration(alias.name, alias.version, "npm", "js", kind, text, section)
+    return Declaration(name, spec, "npm", "js", kind, text, section)
 
 
 def _override_name(key: str) -> str:
@@ -296,7 +348,7 @@ def _npm_overrides(value: object, parent: str = "") -> list[Declaration]:
         name = parent if key == "." else _override_name(str(key))
         if isinstance(spec, str):
             if name and not spec.startswith("$"):
-                found.append(_npm_dependency(name, spec, "override"))
+                found.append(_npm_dependency(name, spec, "override", "overrides"))
         elif isinstance(spec, dict):
             found.extend(_npm_overrides(spec, name))
     return found
@@ -325,13 +377,14 @@ def package_json_declarations(data: dict) -> list[Declaration]:
         if isinstance(deps, dict):
             for name, spec in deps.items():
                 if isinstance(spec, str):
-                    found.append(_npm_dependency(str(name), spec, "dependency"))
+                    found.append(_npm_dependency(str(name), spec, "dependency", section))
     found.extend(_npm_overrides(data.get("overrides")))
-    for overrides in (data.get("resolutions"), _table(data, "pnpm", "overrides")):
+    for key, overrides in (("resolutions", data.get("resolutions")),
+                           ("pnpm.overrides", _table(data, "pnpm", "overrides"))):
         if isinstance(overrides, dict):
             for target, spec in overrides.items():
                 if isinstance(spec, str) and not spec.startswith("$"):
-                    found.append(_npm_dependency(_override_name(str(target)), spec, "override"))
+                    found.append(_npm_dependency(_override_name(str(target)), spec, "override", key))
     scripts = data.get("scripts")
     if isinstance(scripts, dict):
         for line in scripts.values():

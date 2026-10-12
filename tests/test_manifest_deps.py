@@ -138,3 +138,28 @@ def test_a_file_that_does_not_parse_declares_nothing() -> None:
     assert declarations(Path("package.json"), "{not json") == []
     assert declarations(Path(".mcp.json"), '{"mcpServers": ') == []
     assert declarations(Path("Pipfile"), "= =") == []
+
+
+def test_declarations_record_their_section_and_marker() -> None:
+    """A pin constrains only its own install, so the reader keeps where it sits."""
+    pyproject = (
+        '[project]\nname = "x"\ndependencies = ["litellm>=1.0 ; python_version < \\"3.9\\""]\n'
+        '[project.optional-dependencies]\nproxy = ["litellm==1.90.0"]\n'
+        '[dependency-groups]\ndev = ["litellm==1.90.0"]\n'
+        '[tool.poetry.dependencies]\nlitellm = [{version = "^1.0", python = "<3.9"}, "1.90.0"]\n'
+        '[tool.uv]\nconstraint-dependencies = ["litellm==1.90.0"]\n'
+    )
+    found = [(d.kind, d.section, d.marker) for d in declarations(Path("pyproject.toml"), pyproject)]
+    assert found == [
+        ("dependency", "project.dependencies", 'python_version < "3.9"'),
+        ("dependency", "project.optional-dependencies.proxy", ""),
+        ("dependency", "dependency-groups.dev", ""),
+        ("dependency", "tool.poetry.dependencies#0", "python <3.9"),
+        ("dependency", "tool.poetry.dependencies#1", ""),
+        ("constraint", "tool.uv.constraint-dependencies", ""),
+    ]
+    package = {"dependencies": {"repomix": "^1.0.0"}, "devDependencies": {"repomix": "1.14.1"},
+               "overrides": {"repomix": "1.14.1"}}
+    found = [(d.kind, d.section) for d in declarations(Path("package.json"), json.dumps(package))]
+    assert found == [("dependency", "dependencies"), ("dependency", "devDependencies"),
+                     ("override", "overrides")]

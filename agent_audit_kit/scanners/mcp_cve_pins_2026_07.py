@@ -196,7 +196,7 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 from agent_audit_kit.scanners._manifest_deps import Declaration, declarations
-from agent_audit_kit.scanners._versions import TOP, ZERO, admits, exact_version, parse_range
+from agent_audit_kit.scanners._versions import TOP, ZERO, Spans, admits, intersect, parse_range
 from agent_audit_kit.scanners.supply_chain import (
     _LOCKFILES,
     _resolve_lockfile_versions,
@@ -1321,21 +1321,29 @@ def _admits_affected(pin: _Pin, declaration: Declaration) -> bool:
     dist-tag, a git or file reference) is reported, the house default for an
     unpinned reference, unless the pin requires a stated version.
     """
-    spans = parse_range(declaration.version, declaration.dialect)
+    return _spans_admit_affected(pin, parse_range(declaration.version, declaration.dialect))
+
+
+def _combined(declarations: list[Declaration]) -> Spans | None:
+    """The versions every readable one of `declarations` admits, or None.
+
+    pip and uv merge all the specifiers one install names for a package, so a
+    group is the intersection of its members. A member that states no version
+    (`pkg`, a VCS reference) adds no constraint; a group of only those is None.
+    """
+    result: Spans | None = None
+    for declaration in declarations:
+        spans = parse_range(declaration.version, declaration.dialect)
+        if spans is not None:
+            result = spans if result is None else intersect(result, spans)
+    return result
+
+
+def _spans_admit_affected(pin: _Pin, spans: Spans | None) -> bool:
     if spans is None:
         return not pin.requires_version
     lo, hi = _affected(pin)
     return admits(spans, lo, hi)
-
-
-def _pinned_unaffected(pin: _Pin, declaration: Declaration) -> bool:
-    """Is the declaration an exact pin to a version the pin does not cover?"""
-    spans = parse_range(declaration.version, declaration.dialect)
-    exact = exact_version(spans) if spans else None
-    if exact is None:
-        return False
-    lo, hi = _affected(pin)
-    return not lo <= exact < hi
 
 
 def _deciding_declaration(pin: _Pin, found: list[Declaration]) -> Declaration | None:
@@ -1354,25 +1362,49 @@ def _deciding_declaration(pin: _Pin, found: list[Declaration]) -> Declaration | 
 
     Launches (a launcher in an MCP config or a package.json script) run
     independently, so each is judged alone: an affected one is reported even
-    when another server runs a patched release. The manifest declarations of a
-    file constrain one install, so there an override (npm `overrides`, Yarn
+    when another server runs a patched release.
+
+    A manifest's declarations are judged by the install they constrain, and a
+    pin constrains only that install. An override (npm `overrides`, Yarn
     `resolutions`, `pnpm.overrides`, uv `override-dependencies`, PDM
-    resolution overrides) replaces the regular entries, and an exact pin to an
-    unaffected version clears the rest: `"pkg": "^1.0.0"` beside an override
-    `"pkg": "1.9.0"` installs 1.9.0, as `pkg>=1.0` beside `pkg==1.9.0` does
-    under pip.
+    resolution overrides) replaces the regular entries, so when one exists it
+    alone is judged: `"pkg": "^1.0.0"` beside an override `"pkg": "1.9.0"`
+    installs 1.9.0. Otherwise the regular declarations are grouped by section
+    and marker, and each group is the intersection of its members, which is
+    how pip reads `pkg>=1.0` beside `pkg==1.9.0` in one file, narrowed by any
+    global constraint (uv `constraint-dependencies`). A group is reported when
+    what it still admits includes an affected version. A pin in another section
+    does not clear it: a dev group's or an extra's `pkg==1.9.0` leaves the
+    production install's `pkg>=1.0` free to resolve below the fix, and an
+    earlier version of this rule let any exact patched pin in the file clear
+    every range in it, which silenced exactly that. Declarations under
+    different markers are alternatives for different environments, not
+    constraints on one another.
     """
     matching = [d for d in found if _pin_applies(pin, d.ecosystem) and _names_match(pin, d)]
     for declaration in matching:
         if declaration.kind == "launch" and _admits_affected(pin, declaration):
             return declaration
     manifest = [d for d in matching if d.kind != "launch"]
-    pool = [d for d in manifest if d.kind == "override"] or manifest
-    if any(_pinned_unaffected(pin, d) for d in pool):
-        return None
-    for declaration in pool:
-        if _admits_affected(pin, declaration):
-            return declaration
+    overrides = [d for d in manifest if d.kind == "override"]
+    if overrides:
+        return next((d for d in overrides if _admits_affected(pin, d)), None)
+    constraints = [d for d in manifest if d.kind == "constraint"]
+    groups: dict[tuple[str, str], list[Declaration]] = {}
+    for declaration in manifest:
+        if declaration.kind == "dependency":
+            groups.setdefault((declaration.section, declaration.marker), []).append(declaration)
+    if not groups:
+        # Constraints with nothing else to narrow still pin whatever installs
+        # the package transitively, so they are judged as a group of their own.
+        return constraints[0] if constraints and _spans_admit_affected(pin, _combined(constraints)) else None
+    narrowing = _combined(constraints)
+    for members in groups.values():
+        spans = _combined(members)
+        if narrowing is not None:
+            spans = narrowing if spans is None else intersect(spans, narrowing)
+        if _spans_admit_affected(pin, spans):
+            return members[0]
     return None
 
 
