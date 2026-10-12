@@ -153,6 +153,48 @@ def test_parenthesised_tool_without_caller_input_in_the_command_is_quiet(tmp_pat
     assert "AAK-STDIO-001" not in _stdio(tmp_path, source)
 
 
+# ---------------------------------------------------------------------------
+# A loose last-name match (`x.run`, `x.call`, ...) needs an executor. Naming
+# parenthesised tools added 68 CRITICAL findings on 1,713 real Python MCP repos
+# and 33 were false, nearly all `asyncio.run(main(args))`, a database or
+# LLM-tool `client.run(...)` and `registry.call(name, arguments)` dispatchers.
+# ---------------------------------------------------------------------------
+
+def _tool(imports: str, body: str) -> str:
+    return (
+        f"{imports}\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('t')\n\n\n"
+        f"@mcp.tool()\nasync def tool(command: str, arguments: dict) -> object:\n    return {body}\n"
+    )
+
+
+@pytest.mark.parametrize(("imports", "body"), [
+    ("import asyncio", "asyncio.run(main(command))"),
+    ("from asyncio import run", "run(main(command))"),
+    ("", "client.run(command, {'id': 1})"),        # a Cozo or database client
+    ("", "registry.call(command, arguments)"),     # a tool dispatcher
+    ("", "browser.eval(command)"),
+    ("", "run(['context', command])"),             # a bare name not imported from an executor
+    ("import subprocess", "subprocess.run(['git'] + command.split())"),  # an argv list
+    ("import subprocess as sp", "sp.run(['ls', command])"),              # an argv list, aliased
+])
+def test_a_call_that_runs_no_command_is_quiet(tmp_path: Path, imports: str, body: str) -> None:
+    assert "AAK-STDIO-001" not in _stdio(tmp_path, _tool(imports, body))
+
+
+@pytest.mark.parametrize(("imports", "body"), [
+    ("import subprocess", "subprocess.run(command, shell=True)"),
+    ("import os", "os.system(command)"),
+    ("import subprocess as sp", "sp.run(command, shell=True)"),
+    ("from subprocess import run", "run(command, shell=True)"),
+    ("from os import system", "system(command)"),
+    ("", "self.shell.run(command)"),
+    ("", "eval(command)"),
+    ("import subprocess", "subprocess.run(['git'] + command.split(), shell=True)"),
+])
+def test_an_executor_call_on_a_tool_parameter_still_fires(tmp_path: Path, imports: str, body: str) -> None:
+    assert "AAK-STDIO-001" in _stdio(tmp_path, _tool(imports, body))
+
+
 _JS_HINT = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";\n'
 
 

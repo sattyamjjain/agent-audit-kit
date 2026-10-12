@@ -77,6 +77,62 @@ _DANGEROUS_CALLS = {
     "eval", "exec",
 }
 
+# Any call whose last name is one of these is a candidate sink...
+_LOOSE_SINK_NAMES = frozenset({
+    "system", "popen", "exec", "eval", "run", "Popen", "call", "check_call", "check_output",
+})
+# ...but one that is not a `_DANGEROUS_CALLS` name after the file's imports are
+# resolved counts only on a receiver that names an executor. Matching the last
+# name alone reported `asyncio.run(main(args))`, a Cozo or LLM-tool
+# `client.run(...)`, a `registry.call(name, arguments)` dispatcher and a file's
+# own `run(...)` helper as command injection: on 1,713 real Python MCP repos 88
+# judged findings had that shape and none was real. The cost is an executor
+# behind a short name, such as Fabric's `c.run(cmd)`.
+_EXEC_RECEIVER_RE = re.compile(
+    r"(?i)(subprocess|popen|shell|interpreter|process|proc|sandbox|executor|terminal|cmd|command|spawn|runner)"
+)
+# Modules a file may import an executor from, bare or under an alias. Not
+# asyncio: `from asyncio import run` binds a coroutine runner, not a process.
+_EXEC_MODULES = frozenset({"subprocess", "os", "commands"})
+
+
+def _exec_import_names(tree: ast.AST) -> tuple[dict[str, str], dict[str, str]]:
+    """The names a file binds to an executor module, and to a function of one.
+
+    `import subprocess as sp` maps `sp` to `subprocess`, and `from subprocess
+    import run` maps `run` to `subprocess.run`, so `sp.run(...)` and a bare
+    `run(...)` resolve to the call they make.
+    """
+    modules: dict[str, str] = {}
+    functions: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name in _EXEC_MODULES:
+                    modules[alias.asname or alias.name] = alias.name
+        elif isinstance(node, ast.ImportFrom) and node.module in _EXEC_MODULES:
+            for alias in node.names:
+                functions[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+    return modules, functions
+
+
+def _resolve_call(fqn: str, modules: dict[str, str], functions: dict[str, str]) -> str:
+    """`fqn` with an imported alias replaced by the name it binds."""
+    head, _, rest = fqn.partition(".")
+    if rest and head in modules:
+        return f"{modules[head]}.{rest}"
+    if not rest and fqn in functions:
+        return functions[fqn]
+    return fqn
+
+
+def _is_executor_call(fqn: str, resolved: str) -> bool:
+    """Whether a call whose last name is a candidate sink runs a command."""
+    if resolved in _DANGEROUS_CALLS:
+        return True
+    receiver = fqn.rpartition(".")[0]
+    return bool(receiver) and bool(_EXEC_RECEIVER_RE.search(receiver))
+
 
 def _iter_python_files(project_root: Path) -> Iterable[Path]:
     for path in project_root.rglob("*.py"):
@@ -188,20 +244,22 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
                 tool_params.update(arg.arg for arg in node.args.kwonlyargs)
 
     taint_names_in_file = set(_TAINT_NAME) | tool_params
+    exec_modules, exec_functions = _exec_import_names(tree)
 
     for call in (n for n in ast.walk(tree) if isinstance(n, ast.Call)):
         fqn = _call_fqn(call.func)
         if not fqn:
             continue
-        if fqn not in _DANGEROUS_CALLS and fqn.split(".")[-1] not in {
-            "system", "popen", "exec", "eval", "run", "Popen", "call", "check_call", "check_output",
-        }:
+        if fqn not in _DANGEROUS_CALLS and fqn.split(".")[-1] not in _LOOSE_SINK_NAMES:
+            continue
+        resolved = _resolve_call(fqn, exec_modules, exec_functions)
+        if not _is_executor_call(fqn, resolved):
             continue
 
         # For subprocess.*, only fire if shell=True OR the first arg is a
         # dynamic expression. For os.system / os.popen / exec / eval we
         # always fire when tainted.
-        is_subprocess = fqn.startswith("subprocess.")
+        is_subprocess = resolved.startswith("subprocess.")
         shell_true = False
         for kw in call.keywords:
             if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
@@ -224,6 +282,10 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
         if is_subprocess and not shell_true:
             first_arg = call.args[0] if call.args else None
             if isinstance(first_arg, (ast.List, ast.Tuple)):
+                continue
+            # `["git"] + args` is an argv list too: a list on the left of `+`.
+            if (isinstance(first_arg, ast.BinOp) and isinstance(first_arg.op, ast.Add)
+                    and isinstance(first_arg.left, (ast.List, ast.Tuple))):
                 continue
         if not _args_reference_taint():
             continue
