@@ -205,10 +205,8 @@ def test_one_advisory_two_packages_keeps_two_floors(tmp_path: Path) -> None:
     )
 
 
-def test_browse_mcp_regex_is_bounded(tmp_path: Path) -> None:
+def test_browse_mcp_matches_the_whole_name(tmp_path: Path) -> None:
     """The `cline` lesson, held for this name."""
-    pin = next(p for p in _PINS if p.rule_id == PINNED["CVE-2026-55557"])
-    assert pin.regexes, "browse-mcp must carry an explicit bounded regex"
     assert PINNED["CVE-2026-55557"] not in _ids(
         tmp_path,
         "package.json",

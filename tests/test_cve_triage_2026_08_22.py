@@ -50,10 +50,8 @@ def test_omnigent_at_floor_is_quiet(tmp_path: Path) -> None:
     assert OMNIGENT_RULE not in _ids(tmp_path, "requirements.txt", "omnigent==0.3.0\n")
 
 
-def test_omnigent_regex_is_bounded(tmp_path: Path) -> None:
+def test_omnigent_matches_the_whole_name(tmp_path: Path) -> None:
     """The 0.3.82 `cline` lesson, and the npm collision."""
-    pin = next(p for p in _PINS if p.rule_id == OMNIGENT_RULE)
-    assert pin.regexes, "omnigent must carry an explicit bounded regex"
     assert OMNIGENT_RULE not in _ids(
         tmp_path, "requirements.txt", "omnigent-extras==1.0.0\nsub-omnigent==2.0.0\n"
     )

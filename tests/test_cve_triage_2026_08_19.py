@@ -31,13 +31,14 @@ defect none of them can fix and none of them still has.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
-from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
+from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, scan
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER = REPO_ROOT / "CHANGELOG.cves.md"
@@ -201,28 +202,27 @@ def test_codewhale_pins_cover_both_names_under_one_rule() -> None:
     assert floors["deepseek-tui"] == (0, 8, 41)
 
 
-def test_codewhale_pins_are_bounded_and_do_not_match_prose() -> None:
+def test_codewhale_pins_match_whole_names_and_not_prose(tmp_path: Path) -> None:
     """The 0.3.82 ``cline`` regression, held for the names added here.
 
     ``codewhale`` must also stay off ``codewhale-tui``: that crate has the same defect
     but lives in an ecosystem the detector does not read, so matching it from a JS
-    manifest would report something the scanner cannot actually establish.
+    manifest would report something the scanner cannot actually establish. Prose is
+    never a declaration, and a longer name is another package.
     """
-    pins = [p for p in _PINS if p.rule_id == "AAK-MCP-CODEWHALE-CVE-2026-75858-001"]
-    for pin in pins:
-        assert pin.regexes, f"{pin.display} must carry an explicit bounded regex"
-    patterns = [rx for p in pins for rx in p.compiled()]
-    must_not_match = (
-        "the codewhale-tui crate is out of reach",
-        "see github.com/Hmbown/CodeWhale for details",
-        "deepseek-tui-legacy is a different package",
-        "a codewhaler is not a package",
-    )
-    for line in must_not_match:
-        hits = [rx.pattern for rx in patterns if rx.search(line)]
-        assert not hits, f"{hits} matched prose: {line!r}"
-    for line in ('"codewhale": "^0.8.50"', '"deepseek-tui": "0.8.39"'):
-        assert any(rx.search(line) for rx in patterns), f"no pin matched {line!r}"
+    rule = "AAK-MCP-CODEWHALE-CVE-2026-75858-001"
+    manifest = tmp_path / "package.json"
+    quiet = {
+        "description": "the codewhale-tui crate is out of reach; see "
+                       "github.com/Hmbown/CodeWhale for details",
+        "dependencies": {"codewhale-tui": "0.8.50", "deepseek-tui-legacy": "0.1.0",
+                         "codewhaler": "0.1.0"},
+    }
+    manifest.write_text(json.dumps(quiet), encoding="utf-8")
+    assert rule not in {f.rule_id for f in scan(tmp_path)[0]}
+    for dep in ({"codewhale": "^0.8.50"}, {"deepseek-tui": "0.8.39"}):
+        manifest.write_text(json.dumps({"dependencies": dep}), encoding="utf-8")
+        assert rule in {f.rule_id for f in scan(tmp_path)[0]}, dep
 
 
 def test_deepseek_tui_remediation_says_migrate_not_upgrade_in_place() -> None:

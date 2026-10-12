@@ -8812,9 +8812,10 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). A compose file's "
-        "`ghcr.io/berriai/litellm` image tag is not read."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). The `ghcr.io/berriai/litellm` image tag is not "
+        "read, in a compose file or in an MCP config that starts it with `docker "
+        "run`."
     ),
 )
 
@@ -8966,11 +8967,11 @@ _r(
     owasp_agentic_references=["ASI03", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `@arikusi/deepseek-mcp-server` in requirements*.txt at any depth "
-        "and, at the project root only, in pyproject.toml, Pipfile, package.json, "
+        "Reads `@arikusi/deepseek-mcp-server` in requirements*.txt at any depth and, "
+        "at the project root only, in pyproject.toml, Pipfile, package.json, "
         ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
         "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
+        "lockfiles, reporting a range that admits an affected version and a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`packages/app/package.json`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
@@ -8999,16 +9000,17 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-01"],
     limitations=(
-        "Reads `mcp-server-kubernetes` in requirements*.txt at any depth and, at "
-        "the project root only, in pyproject.toml, Pipfile, package.json, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`packages/app/package.json`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (a Yarn 2+ `yarn.lock`). A compose file's "
-        "`flux159/mcp-server-kubernetes` image tag is not read."
+        "Reads `mcp-server-kubernetes` in requirements*.txt at any depth and, at the "
+        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
+        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
+        "the lowest version a range allows and reporting a reference that states no "
+        "version. The dependency is not read when it is declared in a sub-directory "
+        "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
+        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
+        "Yarn 2+ `yarn.lock`). The `flux159/mcp-server-kubernetes` image tag is not "
+        "read, in a compose file or in an MCP config that starts it with `docker "
+        "run`."
     ),
 )
 
@@ -9038,9 +9040,9 @@ _r(
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`) or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). A compose file's `soulter/astrbot` "
-        "image tag is not read."
+        "manifest (`services/api/pyproject.toml`) or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). The `soulter/astrbot` image tag is not read, "
+        "in a compose file or in an MCP config that starts it with `docker run`."
     ),
 )
 
@@ -9755,8 +9757,8 @@ _r(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
-        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
-        "lowest version a range allows and reporting a reference that states no "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, reporting a "
+        "range that admits an affected version and a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
@@ -9795,7 +9797,7 @@ _r(
         "at the project root only, in pyproject.toml, Pipfile, package.json, "
         ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
         "poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
+        "lockfiles, reporting a range that admits an affected version and a "
         "reference that states no version. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
         "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
@@ -10131,8 +10133,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`). A compose file's `grafana/mcp-grafana` image tag is not "
-        "read."
+        "(`pdm.lock`). The `grafana/mcp-grafana` image tag is not read, in a compose "
+        "file or in an MCP config that starts it with `docker run`."
     ),
 )
 
@@ -10189,8 +10191,8 @@ _r(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
-        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
-        "lowest version a range allows and reporting a reference that states no "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, reporting a "
+        "range that admits an affected version and a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
@@ -10525,12 +10527,14 @@ _r(
         "lockfiles, taking the lowest version a range allows and reporting a "
         "reference that states no version; it is not read when declared in a "
         "sub-directory manifest (`services/api/pyproject.toml`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in `pdm.lock`. The source arm "
-        "reads Python files that define a `confluence_upload_attachment` or "
-        "`_upload_attachment_direct` handler and open `file_path`, `filepath`, "
-        "`attachment_path` or `path` in `rb` mode with no path-validation call, so "
-        "a copy that opens the path under another name (`abs_path = "
-        "os.path.abspath(file_path)`, then `open(abs_path, \"rb\")`) is not reported."
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in `pdm.lock`, and the "
+        "`ghcr.io/sooperset/mcp-atlassian` image tag of an MCP config that starts it "
+        "with `docker run` is not read either. The source arm reads Python files "
+        "that define a `confluence_upload_attachment` or `_upload_attachment_direct` "
+        "handler and open `file_path`, `filepath`, `attachment_path` or `path` in "
+        "`rb` mode with no path-validation call, so a copy that opens the path under "
+        "another name (`abs_path = os.path.abspath(file_path)`, then `open(abs_path, "
+        "\"rb\")`) is not reported."
     ),
 )
 
@@ -10652,8 +10656,8 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`). A compose file's `doobidoo/mcp-memory-service` image tag is "
-        "not read."
+        "(`pdm.lock`). The `doobidoo/mcp-memory-service` image tag is not read, in a "
+        "compose file or in an MCP config that starts it with `docker run`."
     ),
 )
 
@@ -10918,14 +10922,13 @@ _r(
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reads `langflow`, `langflow-base` and `lfx` in requirements*.txt at any "
-        "depth and, at the project root only, in pyproject.toml, Pipfile, "
-        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
-        "poetry.lock and uv.lock lockfiles, taking the lowest version a range "
-        "allows and reporting a reference that states no version. The dependency is "
-        "not read when it is declared in a sub-directory manifest "
-        "(`services/api/pyproject.toml`) or in a lockfile format the reader does "
-        "not parse (`pdm.lock`). A compose file's `langflowai/langflow` image tag "
-        "is not read."
+        "depth and, at the project root only, in pyproject.toml, Pipfile, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock and "
+        "uv.lock lockfiles, reporting a range that admits an affected version and a "
+        "reference that states no version. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
+        "a lockfile format the reader does not parse (`pdm.lock`). A compose file's "
+        "`langflowai/langflow` image tag is not read."
     ),
 )
 
@@ -10951,11 +10954,11 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
-        "Reads `gemini-bridge` in requirements*.txt at any depth and, at the "
-        "project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, "
-        "mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, "
-        "uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking "
-        "the lowest version a range allows and reporting a reference that states no "
+        "Reads `gemini-bridge` in requirements*.txt at any depth and, at the project "
+        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, reporting a "
+        "range that admits an affected version and a reference that states no "
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
@@ -12505,8 +12508,9 @@ _r(
         "range allows and reporting a reference that states no version. The "
         "dependency is not read when it is declared in a sub-directory manifest "
         "(`packages/app/package.json`) or in a lockfile format the reader does not "
-        "parse (a Yarn 2+ `yarn.lock`). A compose file's `flowiseai/flowise` image "
-        "tag is not read."
+        "parse (a Yarn 2+ `yarn.lock`). The `flowiseai/flowise` image tag is not "
+        "read, in a compose file or in an MCP config that starts it with `docker "
+        "run`."
     ),
 )
 
@@ -13585,11 +13589,12 @@ _r(
     adversa_references=["ADV-NETWORK-01"],
     limitations=(
         "Dev server only, so a project that never runs `next dev` is reported "
-        "without being exposed. Reads a `\"next\": \"<version>\"` dependency entry, "
-        "taking the lowest version a range allows, or the version a lockfile "
-        "resolves. `latest`, `canary` and other tags state no version and are not "
-        "reported, and neither is `next dev` in a script. 16.4.0 canaries compare as "
-        "16.4.0 and are not reported."
+        "without being exposed. Reads a `\"next\"` dependency entry or a versioned "
+        "`npx next@<version>` launch, reporting a range that admits a version from "
+        "16.0.0 up to 16.3.8, and the version a lockfile resolves. `latest`, "
+        "`canary` and other tags state no version and are not reported, and neither "
+        "is `next dev` in a script. 16.4.0 canaries compare as 16.4.0 and are not "
+        "reported."
     ),
 )
 
@@ -13780,11 +13785,11 @@ _r(
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
         "Reports `@modelcontextprotocol/sdk` from 1.12.0 up to 1.31.0 and "
-        "`@modelcontextprotocol/client` below 2.2.0 where a package.json, lockfile or "
-        "MCP config states the version, taking the lowest version a range allows. "
-        "`latest` and other tags state no version and are not reported. It reads the "
-        "version, not how the SDK is used, so an MCP server built on the SDK, or a "
-        "client that speaks only stdio, is reported without being exposed. "
+        "`@modelcontextprotocol/client` below 2.2.0 where a package.json, lockfile "
+        "or MCP config states the version, reporting a range that admits an affected "
+        "version. `latest` and other tags state no version and are not reported. It "
+        "reads the version, not how the SDK is used, so an MCP server built on the "
+        "SDK, or a client that speaks only stdio, is reported without being exposed. "
         "`@modelcontextprotocol/core` is not read: the advisory names it only as an "
         "upgrade for direct importers, and `@modelcontextprotocol/client` 2.2.0 pins "
         "it at 2.2.0."
@@ -13819,11 +13824,11 @@ _r(
     adversa_references=["ADV-AUTH-01"],
     limitations=(
         "Reports `@payloadcms/plugin-mcp` from 3.61.0 up to 3.88.0 where a "
-        "package.json, lockfile or MCP config states the version, taking the lowest "
-        "version a range allows. `latest` was 3.90.2 on 2026-10-08 and states no "
-        "version, so it is not reported, and 4.0.0 canaries compare as 4.0.0 and are "
-        "not reported either. A version below 3.61.0, such as the 0.0.1-alpha.0 "
-        "placeholder that predates the first release, is not reported."
+        "package.json, lockfile or MCP config states the version, reporting a range "
+        "that admits an affected version. `latest` was 3.90.2 on 2026-10-08 and "
+        "states no version, so it is not reported, and 4.0.0 canaries compare as "
+        "4.0.0 and are not reported either. A version below 3.61.0, such as the "
+        "0.0.1-alpha.0 placeholder that predates the first release, is not reported."
     ),
 )
 

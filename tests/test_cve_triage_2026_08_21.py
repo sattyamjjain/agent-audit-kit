@@ -124,15 +124,13 @@ def test_marimo_pin_has_no_lower_bound() -> None:
     assert pin.introduced is None
 
 
-def test_marimo_regex_is_bounded_and_stays_off_lookalikes(tmp_path: Path) -> None:
-    """The 0.3.82 ``cline`` regression, held for this name."""
-    pin = next(p for p in _PINS if p.rule_id == MARIMO_RULE)
-    assert pin.regexes, "marimo must carry an explicit bounded regex"
+def test_marimo_matches_the_whole_name_and_stays_off_lookalikes(tmp_path: Path) -> None:
+    """The 0.3.82 ``cline`` regression, held for this name: a longer name is
+    another package, and a comment naming the project is not a declaration."""
     assert MARIMO_RULE not in _ids(
-        tmp_path, "requirements.txt", "marimo-extras==0.1.0\nsubmarimo==0.2.0\n"
+        tmp_path, "requirements.txt",
+        "# see marimo-team/marimo 0.23.10 for details\nmarimo-extras==0.1.0\nsubmarimo==0.2.0\n",
     )
-    patterns = list(pin.compiled())
-    assert not any(rx.search("see marimo-team/marimo for details") for rx in patterns)
 
 
 def test_marimo_remediation_says_do_not_open_untrusted_notebooks() -> None:

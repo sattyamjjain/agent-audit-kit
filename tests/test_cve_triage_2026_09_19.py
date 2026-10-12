@@ -145,15 +145,27 @@ def test_scoped_and_bare_below_the_floor_both_still_fire(
     assert rule_id in _rule_ids(_js(other, bare, vulnerable))
 
 
-def test_no_pin_has_an_unguarded_substring_shadowing_pair():
-    """Any future pin naming both a bare package and its scoped sibling must
-    guard the bare one, or it reintroduces the `_mk_bare_re` bug."""
+def test_no_pin_name_matches_inside_a_longer_name_in_the_table(tmp_path):
+    """The `_mk_bare_re` bug, held for every pair of names the table carries.
+
+    A bare name used to match inside its scoped sibling (`frontmcp` inside
+    `@frontmcp/adapters`) and read as unpinned. Names now match whole, so a
+    declaration of the longer name, at a version every pin covers, must not fire
+    a rule whose pins name only the shorter one.
+    """
+    names = sorted({n for pin in pins._PINS for n in pin.names})
     offenders = []
-    for pin in pins._PINS:
-        for a in pin.names:
-            for b in pin.names:
-                if a != b and a in b and not pin.regexes:
-                    offenders.append((pin.rule_id, a, b))
+    for index, pin in enumerate(pins._PINS):
+        mates = {n for p in pins._PINS if p.rule_id == pin.rule_id for n in p.names}
+        version = ".".join(str(n) for n in (pin.introduced or (0, 0, 1)))
+        for shorter in pin.names:
+            for other, longer in enumerate(names):
+                if longer == shorter or shorter not in longer or longer in mates:
+                    continue
+                project = tmp_path / f"pin{index}-name{other}"
+                project.mkdir()
+                if pin.rule_id in _rule_ids(_js(project, longer, version)):
+                    offenders.append((pin.rule_id, shorter, longer))
     assert offenders == [], offenders
 
 

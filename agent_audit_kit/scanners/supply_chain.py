@@ -527,6 +527,21 @@ def _resolve_lockfile_version(
     """Lowest resolved version of any of ``names`` in a lockfile, or None if the
     package is absent / unparseable (conservative — a `None` result means the
     pin does not fire on this lockfile)."""
+    resolved = _resolve_lockfile_versions(text, filename, names)
+    return min(resolved) if resolved else None
+
+
+def _resolve_lockfile_versions(
+    text: str, filename: str, names: tuple[str, ...]
+) -> list[tuple[int, int, int]]:
+    """Every resolved version of any of ``names`` in a lockfile, lowest first.
+
+    A lockfile can resolve one package to several versions: pnpm and Yarn keep
+    one entry per distinct range that resolved differently, and uv one per
+    marker fork. Judging only the lowest misses an affected version above it
+    whenever the lowest sits below a pin's `introduced` bound, which is the
+    "first match decides" mistake the manifest reader stopped making.
+    """
     lower = {n.lower() for n in names}
     found: list[str] = []
 
@@ -585,8 +600,7 @@ def _resolve_lockfile_version(
             for m in re.finditer(pat, text, re.IGNORECASE | re.MULTILINE):
                 found.append(m.group(1))
 
-    parsed = [v for v in (_semver3(x) for x in found) if v]
-    return min(parsed) if parsed else None
+    return sorted({v for v in (_semver3(x) for x in found) if v})
 
 
 def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:

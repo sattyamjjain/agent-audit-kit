@@ -7,6 +7,7 @@ stays quiet at/above it. Package names + floors were verified against PyPI/npm.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -1359,17 +1360,54 @@ def test_cline_unpinned_mcp_config_still_fires(tmp_path: Path) -> None:
     assert _CLINE_RULE in _ids(tmp_path, ".mcp.json", content)
 
 
-def test_cline_pin_uses_a_bounded_regex() -> None:
-    """Assert the mechanism, not just the behaviour.
+def _affected_version(pin: object) -> str:
+    """A version inside the pin's affected range, so a match is a finding."""
+    lowest = getattr(pin, "introduced", None) or (0, 0, 1)
+    return ".".join(str(n) for n in lowest)
 
-    A future edit that drops back to the default `_mk_re` would reintroduce the
-    substring match, and the prose cases above are the only thing that would catch
-    it — so pin the explicit-regex decision here too.
+
+@pytest.mark.parametrize("pin", _PINS, ids=lambda p: f"{p.rule_id}:{p.display}")
+def test_every_pin_matches_whole_names_only(tmp_path: Path, pin: object) -> None:
+    """Assert the mechanism, not just the behaviour, for every row of the table.
+
+    Each pin used to need its own bounded regex, because the default pattern had
+    no left boundary and stopped at the first textual match: `cline` fired on
+    "declined", `n8n` on a server *named* n8n, `openclaw` on
+    `@agenticmail/openclaw`, and a comment naming the package with a number hid
+    the real declaration. Pins now read parsed declarations by whole name, so a
+    longer name, a scoped lookalike, prose and a server label cannot stand in for
+    the package. The positive control proves each fixture would have fired.
     """
-    from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS
+    name = pin.names[0]  # type: ignore[attr-defined]
+    version = _affected_version(pin)
+    rule_id = pin.rule_id  # type: ignore[attr-defined]
+    ecosystem = pin.ecosystem  # type: ignore[attr-defined]
+    base = name.rsplit("/", 1)[-1]
+    lookalikes = {f"{name}-extras", f"@lookalike/{base}"}
+    if not name.startswith("@"):
+        lookalikes.add(f"sub{name}")
+    mates = {n for p in _PINS if p.rule_id == rule_id for n in p.names}
+    lookalikes -= mates
 
-    pin = next(p for p in _PINS if p.rule_id == _CLINE_RULE)
-    assert pin.regexes, "the cline pin must carry an explicit bounded regex"
+    if ecosystem in (None, "js"):
+        quiet = {
+            "description": f"works with {name} {version} and later",
+            "keywords": [name],
+            "dependencies": {other: version for other in sorted(lookalikes)},
+        }
+        assert rule_id not in _ids(tmp_path, "package.json", json.dumps(quiet))
+        config = {"mcpServers": {name: {"command": "node", "args": [f"/opt/{name}/index.js"]},
+                                 f"{name}-remote": {"url": f"https://example.test/{name}"}}}
+        assert rule_id not in _ids(tmp_path, ".mcp.json", json.dumps(config))
+        (tmp_path / ".mcp.json").unlink()
+        real = {"dependencies": {name: version}}
+        assert rule_id in _ids(tmp_path, "package.json", json.dumps(real))
+        (tmp_path / "package.json").unlink()
+    if ecosystem in (None, "py") and not name.startswith("@"):
+        quiet_lines = [f"# see {name} {version} for details"]
+        quiet_lines += [f"{other}=={version}" for other in sorted(lookalikes) if not other.startswith("@")]
+        assert rule_id not in _ids(tmp_path, "requirements.txt", "\n".join(quiet_lines) + "\n")
+        assert rule_id in _ids(tmp_path, "requirements.txt", f"{name}=={version}\n")
 
 
 # --- 2026-09-26 wave -------------------------------------------------------
@@ -2257,3 +2295,202 @@ def test_elvix_lockfile_reads_the_locked_version(tmp_path: Path) -> None:
         '"node_modules/@elvix.is/sdk": {"version": "0.10.1"}}}'
     )
     assert _ELVIX in _ids(tmp_path, "package-lock.json", lock)
+# --- Declarations, not text (found while proving the table's limitations) -------
+#
+# The scan used to search each file for a package name and judge the first match.
+# Each case below was wrong on that code: a prose mention hid the real pin, a
+# patched pin read as unpinned, a longer name or a scoped lookalike read as the
+# package, and an upper bound read as the version.
+
+_LITELLM = "AAK-MCP-LITELLM-CVE-2026-59822-001"
+_CLINE = "AAK-MCP-CLINE-CVE-2026-59723-001"
+_REPOMIX = "AAK-MCP-REPOMIX-CVE-2026-49988-001"
+_OPENCLAW = "AAK-MCP-OPENCLAW-CVE-2026-62195-001"
+_AGENTICMAIL = "AAK-MCP-AGENTICMAIL-CVE-2026-57495-001"
+_DEEPSEEK = "AAK-MCP-DEEPSEEK-CVE-2026-55604-001"
+_N8N_65594 = "AAK-MCP-N8N-CVE-2026-65594-001"
+_RUFLO = "AAK-MCP-RUFLO-CVE-2026-59726-001"
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "# gateway needs litellm 1.90 or newer\nlitellm==1.0.0\n"),
+    ("pyproject.toml", '[project]\nname = "gw"\ndescription = "a litellm 1.90 gateway"\n'
+                       'dependencies = ["litellm==1.0.0"]\n'),
+    ("package.json", '{"description": "works with litellm 1.90", "dependencies": {"litellm": "1.0.0"}}'),
+])
+def test_prose_naming_the_package_does_not_hide_the_real_pin(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _LITELLM in _ids(tmp_path, name, content)
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "# we moved off litellm 1.0.0 last year\nrequests==2.31.0\n"),
+    ("pyproject.toml", '[project]\nname = "gw"\ndescription = "replaces litellm 1.0"\n'
+                       'dependencies = ["requests==2.31.0"]\n'),
+    (".mcp.json", '{"mcpServers": {"n8n": {"url": "https://n8n.example.test/mcp"},'
+                  ' "better-auth": {"url": "https://auth.example.test/mcp"}}}'),
+    (".mcp.json", '{"mcpServers": {"w": {"command": "uv", "args": ["--directory",'
+                  ' "/opt/whatsapp-mcp", "run", "main.py"]}}}'),
+])
+def test_prose_labels_and_paths_are_not_declarations(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert not _ids(tmp_path, name, content)
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "litellm[proxy]==1.90.0\n"),
+    ("requirements.txt", "litellm [proxy] >= 1.90.0, < 2\n"),
+    ("pyproject.toml", '[tool.poetry.dependencies]\npython = "^3.9"\nlitellm = "^1.90.0"\n'),
+    ("pyproject.toml", '[tool.poetry.dependencies]\n'
+                       'litellm = {version = "^1.90.0", extras = ["proxy"]}\n'),
+    ("Pipfile", '[packages]\nlitellm = "==1.90.0"\n'),
+    ("Pipfile", '[packages]\nlitellm = {version = "==1.90.0", extras = ["proxy"]}\n'),
+])
+def test_a_patched_pin_clears_in_every_manifest_format(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _LITELLM not in _ids(tmp_path, name, content)
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "litellm[proxy]==1.80.0\n"),
+    ("pyproject.toml", '[tool.poetry.dependencies]\nlitellm = "^1.80.0"\n'),
+    ("Pipfile", '[packages]\nlitellm = "==1.80.0"\n'),
+    ("Pipfile", '[packages]\nlitellm = "*"\n'),
+])
+def test_an_affected_pin_fires_in_every_manifest_format(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert _LITELLM in _ids(tmp_path, name, content)
+
+
+@pytest.mark.parametrize(("content", "rule_id"), [
+    ("repomix-plugin-extras==0.0.1\n", _REPOMIX),
+    ("ruflo-extras==0.0.1\n", _RUFLO),
+    ("mcp-text-editor-extras==0.0.1\n", "AAK-MCP-TEXTEDITOR-CVE-2026-15138-001"),
+    ("litellm-proxy-extras==0.4.3\n", _LITELLM),
+])
+def test_a_longer_name_is_another_package(tmp_path: Path, content: str, rule_id: str) -> None:
+    assert rule_id not in _ids(tmp_path, "requirements.txt", content)
+
+
+def test_a_scoped_package_is_not_the_bare_one(tmp_path: Path) -> None:
+    """`@agenticmail/openclaw` is AgenticMail's package, on its own version line."""
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"@agenticmail/openclaw": "0.9.9"}}')
+    assert _OPENCLAW not in ids
+    assert _AGENTICMAIL not in ids          # 0.9.9 is past its 0.5.71 floor
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"@agenticmail/openclaw": "0.5.0"}}')
+    assert _AGENTICMAIL in ids and _OPENCLAW not in ids
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("requirements.txt", "litellm<1.84.0\n", True),               # every allowed version is affected
+    ("requirements.txt", "litellm<2.0.0,>=1.0.0\n", True),        # read as 2.0.0 before
+    ("requirements.txt", "litellm>=1.0.0,<2.0.0\n", True),
+    ("requirements.txt", "litellm>=1.84.0,<2.0.0\n", False),
+    ("requirements.txt", "litellm~=1.90\n", False),
+    ("requirements.txt", "litellm>=2.0,<1.0\n", False),           # admits nothing
+    ("package.json", '{"dependencies": {"cline": "<3.0.30"}}', True),
+    ("package.json", '{"dependencies": {"cline": ">=3.0.0 <4.0.0"}}', True),
+    ("package.json", '{"dependencies": {"cline": "^3.0.30"}}', False),
+    ("package.json", '{"dependencies": {"cline": ">=3.0.30"}}', False),
+])
+def test_a_range_is_judged_by_what_it_admits(
+    tmp_path: Path, name: str, content: str, fires: bool
+) -> None:
+    rule_id = _LITELLM if name == "requirements.txt" else _CLINE
+    assert (rule_id in _ids(tmp_path, name, content)) is fires
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("^1.3.0", True),    # admits 1.4.2 to 1.7.x, though its lowest version predates the flaw
+    ("~1.3.0", False),   # 1.3.x only, all before 1.4.2
+    ("1.3.0", False),
+])
+def test_a_range_reaching_past_introduced_fires(tmp_path: Path, spec: str, fires: bool) -> None:
+    content = '{"dependencies": {"@arikusi/deepseek-mcp-server": "%s"}}' % spec
+    assert (_DEEPSEEK in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_a_caret_reaching_a_vulnerable_branch_fires(tmp_path: Path) -> None:
+    """`^2.29.8` clears the mainline fix but admits 2.30.0, which needs 2.30.1."""
+    assert _N8N_65594 in _n8n(tmp_path, "^2.29.8")
+    assert _N8N_65594 not in _n8n(tmp_path, "~2.29.8")
+    assert _N8N_65594 not in _n8n(tmp_path, "^2.30.1")
+
+
+@pytest.mark.parametrize(("dep", "rule_id"), [
+    ('"next": ">=15.0.0"', "AAK-MCP-NEXTJS-CVE-2026-94486-001"),
+    ('"@modelcontextprotocol/sdk": ">=1.0.0"', "AAK-MCP-TSSDK-CVE-2026-104850-001"),
+    ('"@payloadcms/plugin-mcp": "^3.0.0"', "AAK-MCP-PAYLOAD-CVE-2026-105806-001"),
+])
+def test_a_stated_range_reaching_a_versioned_pin_fires(
+    tmp_path: Path, dep: str, rule_id: str
+) -> None:
+    assert rule_id in _ids(tmp_path, "package.json", '{"dependencies": {%s}}' % dep)
+
+
+def test_an_exact_override_decides_the_installed_version(tmp_path: Path) -> None:
+    patched = '{"dependencies": {"cline": "^3.0.20"}, "overrides": {"cline": "3.0.31"}}'
+    assert _CLINE not in _ids(tmp_path, "package.json", patched)
+    affected = '{"dependencies": {"cline": "^3.0.30"}, "overrides": {"cline": "3.0.20"}}'
+    assert _CLINE in _ids(tmp_path, "package.json", affected)
+    assert _LITELLM not in _ids(tmp_path, "requirements.txt", "litellm>=1.0\nlitellm==1.90.0\n")
+
+
+def test_each_mcp_server_launch_is_judged_on_its_own(tmp_path: Path) -> None:
+    config = ('{"mcpServers": {"old": {"command": "npx", "args": ["cline@3.0.20"]},'
+              ' "new": {"command": "npx", "args": ["cline@3.0.31"]}}}')
+    assert _CLINE in _ids(tmp_path, ".mcp.json", config)
+
+
+def test_the_launcher_names_the_registry(tmp_path: Path) -> None:
+    """`npx` installs from npm and `uvx` from PyPI, so a same-named package on the
+    other registry is not the pinned one."""
+    npm_praisonai = '{"mcpServers": {"p": {"command": "npx", "args": ["-y", "praisonai@1.7.0"]}}}'
+    ids = _ids(tmp_path, ".mcp.json", npm_praisonai)
+    assert "AAK-MCP-PRAISONAI-TS-CVE-2026-57139-001" in ids
+    assert "AAK-MCP-PRAISONAI-CVE-2026-61427-001" not in ids
+    pypi_flowise = '{"mcpServers": {"f": {"command": "uvx", "args": ["flowise==3.0.0"]}}}'
+    assert "AAK-MCP-FLOWISE-CVE-2026-91931-001" not in _ids(tmp_path, ".mcp.json", pypi_flowise)
+
+
+@pytest.mark.parametrize("config", [
+    '{"mcpServers": {"r": {"command": "ruflo", "args": ["mcp", "start"]}}}',
+    '{"mcpServers": {"w": {"command": "cmd", "args": ["/c", "npx", "-y", "ruflo@3.0.0"]}}}',
+    '{"mcpServers": {"b": {"command": "bash", "args": ["-c", "cd /x && npx -y ruflo@3.0.0"]}}}',
+    '{"mcpServers": {"s": {"command": "npx", "args": ["-y", "supergateway", "--stdio",'
+    ' "npx -y ruflo@3.0.0"]}}}',
+])
+def test_a_launch_behind_a_shell_or_a_program_run_by_name_is_read(
+    tmp_path: Path, config: str
+) -> None:
+    assert _RUFLO in _ids(tmp_path, ".mcp.json", config)
+
+
+def test_a_from_option_names_the_package_and_not_the_command(tmp_path: Path) -> None:
+    config = ('{"mcpServers": {"a": {"command": "uvx", "args": ["--from",'
+              ' "mcp-atlassian==0.22.0", "mcp-atlassian"]}}}')
+    assert "AAK-MCP-ATLASSIAN-CVE-2026-73498-001" not in _ids(tmp_path, ".mcp.json", config)
+
+
+def test_a_launch_in_a_package_json_script_is_read(tmp_path: Path) -> None:
+    content = '{"scripts": {"mcp": "npx -y repomix@1.0.0 --mcp"}}'
+    assert _REPOMIX in _ids(tmp_path, "package.json", content)
+
+
+def test_a_lockfile_reports_any_affected_resolution(tmp_path: Path) -> None:
+    """The lowest locked `next` predates the MCP middleware; another is affected."""
+    lock = ("packages:\n"
+            "  next@15.0.0:\n    resolution: {integrity: a}\n"
+            "  next@16.1.0:\n    resolution: {integrity: b}\n")
+    assert "AAK-MCP-NEXTJS-CVE-2026-94486-001" in _ids(tmp_path, "pnpm-lock.yaml", lock)
+
+
+def test_the_evidence_quotes_the_declaration(tmp_path: Path) -> None:
+    (tmp_path / "requirements.txt").write_text("# litellm 1.90\nlitellm[proxy]<1.84\n", encoding="utf-8")
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == _LITELLM]
+    assert len(hits) == 1
+    assert "'litellm[proxy]<1.84'" in hits[0].evidence
