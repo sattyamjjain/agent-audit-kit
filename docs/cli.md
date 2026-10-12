@@ -151,7 +151,7 @@ agent-audit-kit pin .
 agent-audit-kit verify .
 ```
 
-Detects: tool definitions changed (AAK-RUGPULL-001), new tools added (AAK-RUGPULL-002), tools removed (AAK-RUGPULL-003).
+Detects: tool definitions changed (AAK-RUGPULL-001), new tools added (AAK-RUGPULL-002), tools removed (AAK-RUGPULL-003). `verify` exits 1 when it finds any of them and 0 when every tool matches its pin, so the CI line above fails the job on drift.
 
 A pin file that exists but cannot be read (not valid JSON, not UTF-8, not a map of pins) is never a pass: `verify` exits 2, `watch` prints "not verified", and `scan` files `AAK-INTERNAL-SCANNER-FAIL` against the pin file and exits 1 as incomplete. Restore the file from git rather than re-pinning blind: `pin` accepts whatever the config declares now.
 

@@ -142,7 +142,11 @@ def pin_cmd(path: str) -> None:
 @click.version_option(version=__version__)
 @click.argument("path", default=".", type=click.Path(exists=True, file_okay=False, resolve_path=True))
 def verify_cmd(path: str) -> None:
-    """Verify MCP tool definitions against pinned hashes."""
+    """Verify MCP tool definitions against pinned hashes.
+
+    Exits 1 when a tool changed, was added or was removed, 2 when the pin file
+    cannot be read, and 0 when every tool matches its pin.
+    """
     from agent_audit_kit.pinning import PinFileError, verify_pins
 
     project_root = Path(path)
@@ -159,6 +163,9 @@ def verify_cmd(path: str) -> None:
         click.echo(f"{len(findings)} tool definition change(s) detected:")
         for f in findings:
             click.echo(f"  {f.severity.value.upper()}: {f.title} -- {f.evidence}")
+        # This exited 0 after listing the changes, so the "in CI, verify nothing
+        # changed" step in docs/cli.md could never fail a job.
+        sys.exit(EXIT_FINDINGS)
 
 
 @cli.command("fix")
