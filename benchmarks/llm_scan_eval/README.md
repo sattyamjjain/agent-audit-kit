@@ -54,6 +54,8 @@ python score.py --cases cases.jsonl --group <paradigm field> runs/* --json resul
   the cleaner number.
 - **One prompt.** The numbers measure this system prompt at this effort. A
   different prompt is a different measurement.
-- **Not a security boundary.** Adaptive attacks have beaten published
-  prompt-injection detectors more than 90% of the time. This layer raises
-  recall at its own false-positive cost; it does not make a tool safe.
+- **Not a security boundary.** Adaptive attacks have bypassed 12 published
+  defenses against jailbreaks and prompt injection, most of them more than
+  90% of the time ([Nasr et al., 2025](https://arxiv.org/abs/2510.09023)).
+  This layer raises recall at its own false-positive cost; it does not make a
+  tool safe.
