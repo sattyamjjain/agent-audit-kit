@@ -3954,7 +3954,7 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
-# .claude-plugin/marketplace.json Security (AAK-MARKETPLACE-001..004)
+# .claude-plugin/marketplace.json Security (AAK-MARKETPLACE-001..005)
 #
 # References:
 #   - Anthropic Claude Code plugins/marketplaces (GA Apr 2026).
@@ -3979,12 +3979,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Checks only that each entry in the `plugins` list of a marketplace.json "
-        "has a key named `signature`, `integrity`, `sha256`, `sigstore` or "
-        "`publicKey`, not that the value is a signature or that it verifies, so "
-        "`\"signature\": \"TODO\"` passes. Plugins listed as an object instead of a "
-        "list are not read, and a manifest that is not valid JSON is skipped "
-        "without a finding."
+        "Checks only that each entry in the `plugins` list of a marketplace.json has "
+        "a key named `signature`, `integrity`, `sha256`, `sigstore` or `publicKey`, "
+        "not that the value is a signature or that it verifies, so `\"signature\": "
+        "\"TODO\"` passes. Plugins listed as an object instead of a list are not read, "
+        "and a manifest that is not valid JSON is not checked for a signature at "
+        "all: AAK-MARKETPLACE-005 reports that it could not be read."
     ),
 )
 
@@ -4054,6 +4054,29 @@ _r(
         "(`github:acme/tool@main`) and an all-digit tag such as `20260101`, which "
         "reads as a short commit hash, are not reported."
     ),
+)
+
+_r(
+    "AAK-MARKETPLACE-005",
+    "Marketplace manifest could not be read",
+    "A `marketplace.json` is not valid JSON, is not UTF-8 text, or is JSON whose "
+    "top level is not an object, so none of its plugin entries could be checked "
+    "for a signature, broad permissions, a typosquatted name or a mutable source "
+    "ref (AAK-MARKETPLACE-001..004). AAK reports this rather than skipping the "
+    "file, which is what it used to do: a manifest the scanner cannot read is not "
+    "a clean one, and a client that parses more leniently may still install what "
+    "it lists.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Fix the manifest so it is a UTF-8 JSON object (a trailing comma, a comment "
+    "and an unquoted key are the usual causes), then re-run the scan so its "
+    "plugins are audited. If the file is not a plugin marketplace manifest, "
+    "rename it.",
+    sarif_name="MarketplaceManifestUnreadable",
+    # Same shape as AAK-IDE-TASK-004, the parse-failure rule for VS Code task
+    # files, and LOW for the same reason: visible at the default reporting floor,
+    # without failing `--fail-on medium` over a file the client cannot load either.
+    owasp_agentic_references=["ASI04"],
 )
 
 # ---------------------------------------------------------------------------

@@ -2605,7 +2605,7 @@
       "cve_references": [],
       "description": ".claude-plugin/marketplace.json lacks a signature or integrity hash field. An attacker with write access to the marketplace can replace the plugin bundle with no detection.",
       "incident_references": [],
-      "limitations": "Checks only that each entry in the `plugins` list of a marketplace.json has a key named `signature`, `integrity`, `sha256`, `sigstore` or `publicKey`, not that the value is a signature or that it verifies, so `\"signature\": \"TODO\"` passes. Plugins listed as an object instead of a list are not read, and a manifest that is not valid JSON is skipped without a finding.",
+      "limitations": "Checks only that each entry in the `plugins` list of a marketplace.json has a key named `signature`, `integrity`, `sha256`, `sigstore` or `publicKey`, not that the value is a signature or that it verifies, so `\"signature\": \"TODO\"` passes. Plugins listed as an object instead of a list are not read, and a manifest that is not valid JSON is not checked for a signature at all: AAK-MARKETPLACE-005 reports that it could not be read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -2688,6 +2688,26 @@
       "sarif_name": "MarketplaceMutableRef",
       "severity": "high",
       "title": "Plugin source pins to a mutable git ref"
+    },
+    {
+      "adversa_references": [],
+      "aicm_references": [],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [],
+      "description": "A `marketplace.json` is not valid JSON, is not UTF-8 text, or is JSON whose top level is not an object, so none of its plugin entries could be checked for a signature, broad permissions, a typosquatted name or a mutable source ref (AAK-MARKETPLACE-001..004). AAK reports this rather than skipping the file, which is what it used to do: a manifest the scanner cannot read is not a clean one, and a client that parses more leniently may still install what it lists.",
+      "incident_references": [],
+      "limitations": "",
+      "owasp_agentic_references": [
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Fix the manifest so it is a UTF-8 JSON object (a trailing comma, a comment and an unquoted key are the usual causes), then re-run the scan so its plugins are audited. If the file is not a plugin marketplace manifest, rename it.",
+      "rule_id": "AAK-MARKETPLACE-005",
+      "sarif_name": "MarketplaceManifestUnreadable",
+      "severity": "low",
+      "title": "Marketplace manifest could not be read"
     },
     {
       "adversa_references": [

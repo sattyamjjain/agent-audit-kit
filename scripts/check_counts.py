@@ -284,6 +284,9 @@ SWEEP_ALLOW: dict[tuple[str, str], str] = {
         "sentence exists to describe that bug, so correcting it would erase the point",
     ("docs/RELEASING.md", "13 scanners"):
         "same sentence as above",
+    ("docs/research-log.md", "395 rules"):
+        "the 2026-10-15 OWASP remap entry (#971): references changed on 350 of the "
+        "395 rules the registry held that day, a dated record and not a live count",
 }
 
 # A number introduced by a threshold operator states a bar, not a count:

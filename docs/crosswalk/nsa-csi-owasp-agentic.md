@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (395 total; 356 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (396 total; 357 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -122,6 +122,7 @@ Every AgentAuditKit rule (395 total; 356 mapped) against two agentic-security st
 | `AAK-MARKETPLACE-002` | medium | supply-chain | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution | ASI02 Tool Misuse and Exploitation |
 | `AAK-MARKETPLACE-003` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MARKETPLACE-004` | high | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
+| `AAK-MARKETPLACE-005` | low | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-MCP-001` | critical | mcp-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-MCP-002` | critical | mcp-config | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-MCP-003` | high | mcp-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
