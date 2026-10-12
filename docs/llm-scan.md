@@ -104,10 +104,11 @@ Identical metadata in several files is sent once.
 ## What it is not
 
 A model's verdict is not proof. It can miss manipulation phrased as ordinary
-documentation, and it can flag benign text. Published research has adaptive
-attacks beating prompt-injection detectors more than 90% of the time, so treat
-this layer as a recall booster with its own false-positive cost, not as a
-security boundary.
+documentation, and it can flag benign text. Adaptive attacks have bypassed 12
+published defenses against jailbreaks and prompt injection, most of them more
+than 90% of the time ([Nasr et al., 2025](https://arxiv.org/abs/2510.09023)),
+so treat this layer as a recall booster with its own false-positive cost, not
+as a security boundary.
 
 ## Canary
 
