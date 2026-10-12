@@ -5349,9 +5349,9 @@ _r(
     incident_references=["OX-MCP-2026-04-15"],
     limitations=(
         "A Python value counts as caller input when it is named stdin, request, req, "
-        "event, params, tool_input, input_data, args or payload; a tool's own "
-        "parameters are added only when the decorator is written without parentheses "
-        "(`@mcp.tool`), so `run(command)` under `@mcp.tool()` is missed. The sinks are "
+        "event, params, tool_input, input_data, args or payload, or is a parameter of "
+        "a function whose decorator name ends in `tool` (`@mcp.tool`, `@mcp.tool()`, "
+        "`@server.call_tool()`). The sinks are "
         "calls whose last name is run, call, Popen, check_call, check_output, system, "
         "popen, exec or eval (plus `os.execv` and `os.execvp`), so "
         "`asyncio.create_subprocess_shell` is not one. In TypeScript a command counts "

@@ -5,6 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import stdio_injection
 
 FIX = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-30615"
@@ -94,3 +96,58 @@ def test_string_command_shell_true_still_fires(tmp_path: Path) -> None:
     )
     findings, _ = stdio_injection.scan(tmp_path)
     assert any(f.rule_id == "AAK-STDIO-001" for f in findings)
+
+
+# A decorator written with parentheses (`@mcp.tool()`, `@server.call_tool()`) is
+# a Call node, which `_call_fqn` cannot name, and the scanner passed the Call
+# itself in both arms of its conditional. Only the bare `@mcp.tool` spelling
+# added a tool's parameters to the taint set.
+
+
+def _stdio(tmp_path: Path, source: str) -> list[str]:
+    (tmp_path / "server.py").write_text(source, encoding="utf-8")
+    findings, _ = stdio_injection.scan(tmp_path)
+    return [f.rule_id for f in findings]
+
+
+@pytest.mark.parametrize("decorator", ["@mcp.tool()", "@mcp.tool(name='shell')", "@mcp.tool"])
+def test_tool_parameter_is_caller_input_however_the_decorator_is_written(
+    tmp_path: Path, decorator: str
+) -> None:
+    source = (
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('shell')\n\n\n"
+        f"{decorator}\ndef run(command: str) -> str:\n"
+        "    return subprocess.run(command, shell=True, capture_output=True, text=True).stdout\n"
+    )
+    assert "AAK-STDIO-001" in _stdio(tmp_path, source)
+
+
+def test_low_level_call_tool_arguments_are_caller_input(tmp_path: Path) -> None:
+    source = (
+        "import subprocess\nfrom mcp.server.lowlevel import Server\n\nserver = Server('shell')\n\n\n"
+        "@server.call_tool()\nasync def handle_call_tool(name: str, arguments: dict) -> list:\n"
+        "    subprocess.run(arguments['cmd'], shell=True)\n    return []\n"
+    )
+    assert "AAK-STDIO-001" in _stdio(tmp_path, source)
+
+
+def test_os_execvp_of_a_tool_parameter_fires(tmp_path: Path) -> None:
+    source = (
+        "import os\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('shell')\n\n\n"
+        "@mcp.tool()\ndef run(command: str) -> None:\n    os.execvp(command, [command])\n"
+    )
+    assert "AAK-STDIO-001" in _stdio(tmp_path, source)
+
+
+@pytest.mark.parametrize("body", [
+    # An argv list without a shell is the safe form, whatever names its items.
+    "    return subprocess.run(['ls', '-la', path], capture_output=True, text=True).stdout",
+    # A fixed command takes nothing from the caller.
+    "    return subprocess.run('uptime', shell=True, capture_output=True, text=True).stdout",
+])
+def test_parenthesised_tool_without_caller_input_in_the_command_is_quiet(tmp_path: Path, body: str) -> None:
+    source = (
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('shell')\n\n\n"
+        f"@mcp.tool()\ndef listing(path: str) -> str:\n{body}\n"
+    )
+    assert "AAK-STDIO-001" not in _stdio(tmp_path, source)

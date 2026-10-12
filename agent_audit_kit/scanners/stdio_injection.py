@@ -170,12 +170,17 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     rel = str(path.relative_to(project_root))
 
-    # Track parameters of @tool-decorated functions as taint sources.
+    # Track parameters of @tool-decorated functions as taint sources. A
+    # decorator written with parentheses (`@mcp.tool()`, `@server.call_tool()`)
+    # is a Call, which `_call_fqn` cannot name, so it is named by its `func`.
+    # Both arms used to pass the node itself, which left every parenthesised
+    # tool, the usual FastMCP spelling and the only low-level one, with no
+    # caller input.
     tool_params: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             decorators = [
-                (_call_fqn(d) if isinstance(d, ast.Call) else _call_fqn(d))
+                (_call_fqn(d.func) if isinstance(d, ast.Call) else _call_fqn(d))
                 for d in node.decorator_list
             ]
             if any(dec.endswith("tool") or dec.endswith(".tool") for dec in decorators):
