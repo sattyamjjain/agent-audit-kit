@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, SKIP_DIRS as _SKIP_DIRS
 
 # Patterns for secret-like keys in MCP server env blocks
@@ -250,7 +251,7 @@ def _check_server(
 
     # AAK-MCP-007: Unpinned package version in args
     if command and command.strip().split()[0] in PACKAGE_FETCHERS and isinstance(args, list):
-        for arg in args:
+        for index, arg in enumerate(args):
             if isinstance(arg, str) and not arg.startswith("-"):
                 # Skip path-like arguments
                 if arg.startswith("/") or arg.startswith("./") or arg.startswith("../"):
@@ -259,7 +260,7 @@ def _check_server(
                 if arg and "@" not in arg:
                     findings.append(_make_finding(
                         "AAK-MCP-007", file_path,
-                        f"Server '{server_name}' arg: {arg} (no version pin)",
+                        f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
                         _find_line_number(raw_text, arg),
                     ))
                 elif arg and "@" in arg:
@@ -273,7 +274,7 @@ def _check_server(
                         if len(parts) < 3 or not parts[2]:
                             findings.append(_make_finding(
                                 "AAK-MCP-007", file_path,
-                                f"Server '{server_name}' arg: {arg} (no version pin)",
+                                f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
                                 _find_line_number(raw_text, arg),
                             ))
 

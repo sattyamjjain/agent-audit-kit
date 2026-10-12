@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
@@ -124,7 +125,7 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
                 continue
 
             if isinstance(args, list):
-                for arg in args:
+                for index, arg in enumerate(args):
                     if isinstance(arg, str) and not arg.startswith("-"):
                         # Skip path-like arguments (filesystem paths, not package names)
                         if arg.startswith("/") or arg.startswith("./") or arg.startswith("../"):
@@ -139,7 +140,7 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
                         if not has_version:
                             findings.append(_make_finding(
                                 "AAK-SUPPLY-001", rel_path,
-                                f"Server '{server_name}' arg: {arg} (no version pin)",
+                                f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
                                 _find_line_number(raw, arg),
                             ))
     return findings

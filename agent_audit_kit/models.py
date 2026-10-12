@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from agent_audit_kit.redaction import redact_evidence, redact_related_locations
+
 
 class Severity(Enum):
     CRITICAL = "critical"
@@ -102,6 +104,24 @@ class Finding:
     # SARIF `relatedLocations` so a code-scanning UI can navigate to each
     # contributing artifact.
     related_locations: list[dict] = field(default_factory=list)
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Redact credentials from evidence whenever it is set.
+
+        Every formatter repeats ``evidence`` and each related location's
+        ``message``: console, JSON, SARIF (so GitHub code-scanning alerts),
+        PR summaries, notification webhooks and private advisories. Scanners
+        quote what they matched, and what they matched can hold a token, so
+        the value is redacted here, the one place every finding passes
+        through, including findings built outside ``make_finding`` and
+        evidence edited after the fact (``scan --verify-secrets`` appends to
+        it). See :mod:`agent_audit_kit.redaction` for what is masked.
+        """
+        if name == "evidence" and isinstance(value, str):
+            value = redact_evidence(value)
+        elif name == "related_locations" and isinstance(value, list):
+            value = redact_related_locations(value)
+        object.__setattr__(self, name, value)
 
 
 # The engine files this rule when a scanner raises. It is referenced by the

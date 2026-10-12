@@ -1,7 +1,7 @@
 {
   "benign_slice_predicate": "listed in the SENTINEL bench manifests (main or held-out) at commit 2b70c363512d AND public, not archived, not a fork at pin time AND SENTINEL-recorded stars >= 1000 AND not in AAK's shipped CVE/advisory feed (vuln_db.json + CVE-pin package names) AND at least one instruction file fetched at the pinned commit",
   "files_scanned": 1422,
-  "finding_set_digest": "80df7fbdd26a8b1e5df61155cb4c410344028d1ecadc7eeece1b3cd5df044b4d",
+  "finding_set_digest": "aeb2eef5688029076fd04527ea4cdb2f1f0201647727753da095670d2885b884",
   "findings_by_rule": {
     "AAK-AGENT-001": 12,
     "AAK-AGENT-002": 893,

@@ -128,6 +128,15 @@ links** via the rule-level `help`; per-finding remediation is in result
 `artifactChanges`, so emitting prose there would make Code Scanning reject the
 upload.)
 
+Each finding quotes what its rule matched as evidence, and every format repeats
+it: the console, JSON, SARIF, the PR summary and `aak notify`. A credential in
+that quote is masked before any formatter sees it, keeping the shape so the
+finding still reads: `?token=***`, `https://***@host`, `--api-key ***`,
+`GITHUB_TOKEN=***`, `Authorization: Bearer ***`, `sk-proj-***`. Placeholders
+such as `${GITHUB_TOKEN}` are shown as written, because several rules exist to
+tell a placeholder from a literal. Releases through 0.6.20 quoted credentials
+as written, so SARIF uploaded by those versions can hold them.
+
 ---
 ## Tool Pinning & Rug Pull Detection
 
