@@ -34,7 +34,13 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import declares_mcp_sdk, find_line_number, in_skip_dir, make_finding
+from ._helpers import (
+    declares_mcp_sdk,
+    find_line_number,
+    in_skip_dir,
+    iter_mcp_servers,
+    make_finding,
+)
 
 _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs")
 
@@ -159,14 +165,9 @@ def _config_sampling_findings(project_root: Path) -> tuple[list[Finding], set[st
             data = json.loads(raw)
         except json.JSONDecodeError:
             continue
-        if not isinstance(data, dict):
-            continue
-        servers = data.get("mcpServers")
-        if not isinstance(servers, dict):
-            continue
-        for server_name, cfg in servers.items():
-            if not isinstance(cfg, dict):
-                continue
+        # `mcpServers`, and the `servers` map of VS Code's .vscode/mcp.json, a
+        # file this list names but whose servers were never read.
+        for server_name, cfg in iter_mcp_servers(data):
             caps = cfg.get("capabilities")
             declares_sampling = False
             if isinstance(caps, list) and "sampling" in caps:

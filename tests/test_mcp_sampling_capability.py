@@ -132,6 +132,34 @@ def test_the_source_half_runs_for_a_versioned_pyproject_dependency(tmp_path: Pat
     assert [f.file_path for f in findings if f.rule_id == RULE_ID] == ["sampler.py"]
 
 
+def _vscode_config(root: Path, server: dict) -> None:
+    import json
+
+    (root / ".vscode").mkdir(exist_ok=True)
+    (root / ".vscode" / "mcp.json").write_text(json.dumps({"servers": {"samp": server}}), encoding="utf-8")
+
+
+def test_the_config_half_reads_a_vscode_server(tmp_path: Path) -> None:
+    """.vscode/mcp.json is in the config half's own file list, but VS Code keeps
+    its servers under `servers` and only `mcpServers` was read."""
+    _vscode_config(tmp_path, {"command": "node", "args": ["server.js"], "capabilities": ["sampling"]})
+    findings, scanned = mcp_sampling_capability.scan(tmp_path)
+    assert [f.file_path for f in findings if f.rule_id == RULE_ID] == [".vscode/mcp.json"]
+    assert ".vscode/mcp.json" in scanned
+
+
+def test_the_config_half_honours_a_vscode_consent_flag(tmp_path: Path) -> None:
+    _vscode_config(tmp_path, {"command": "node", "capabilities": {"sampling": {}}, "requires_consent": True})
+    findings, _ = mcp_sampling_capability.scan(tmp_path)
+    assert not any(f.rule_id == RULE_ID for f in findings)
+
+
+def test_the_config_half_ignores_a_vscode_server_without_sampling(tmp_path: Path) -> None:
+    _vscode_config(tmp_path, {"command": "node", "capabilities": ["tools"]})
+    findings, _ = mcp_sampling_capability.scan(tmp_path)
+    assert not any(f.rule_id == RULE_ID for f in findings)
+
+
 def test_the_source_half_stays_off_without_an_sdk(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nname = "d"\ndependencies = ["httpx>=0.27"]\n', encoding="utf-8"
