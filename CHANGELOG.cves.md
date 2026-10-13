@@ -16,6 +16,123 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-13 (v0.6.21): six disclosures, two new image pins, one JVM pin, one npm pin, two out of scope
+
+The watcher opened one `cve-response` issue at 12:50Z on 2026-10-11 (#963) and
+five at 21:58Z (#973-#977), three of them `sev/high`. Four get a pin: two on
+container images, one on Maven coordinates through the JVM reader and one on npm,
+each measured with the scanner on a firing fixture and a negative one. Two are out of scope: a Go library, and a compose stack that keeps its image
+reference in an `.env` file. NVD scores all six, and the titles and `sev/` labels
+the watcher filed already match, so nothing was corrected first. NVD text below is
+quoted from the API record, read on 2026-10-13.
+
+**Unla (CVE-2026-108865) gets `AAK-MCP-UNLA-CVE-2026-108865-001` on its gateway
+images, every tag through v0.10.0.** NVD: "AmoyLab Unla through 0.10.0 contains an
+authentication bypass vulnerability that allows unauthenticated attackers to obtain
+valid access tokens because the OAuth2 server never authenticates a resource
+owner." Unla, formerly mcp-gateway, is a Go MCP gateway with no PyPI or npm
+artifact. It ships as `ghcr.io/amoylab/unla/allinone` and
+`ghcr.io/amoylab/unla/mcp-gateway`, and its Chinese README names the Aliyun mirror
+`registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone`, which carries the same
+tags. Checked in the source: OAuth2 support (`7d15eec`, 2025-06-06) is first in
+v0.6.0, the `amoylab/unla` images start at v0.7.0, and at v0.10.0 `Authorize` issues
+a code once the client and redirect URI check out, with no step that identifies a
+user. `internal/auth/oauth.go` has not changed since 2025-10-11, and v0.10.0
+(2026-08-04) is the newest release, so there is no fixed release. On 2026-10-13
+`latest` was the v0.10.0 digest for both GHCR images, so `latest` is reported; the
+`main` tag states no version and is not. The OAuth2 server is in the gateway, so
+`ghcr.io/amoylab/unla/web` is not pinned. Unla's all-in-one compose file writes
+`${IMAGE:-ghcr.io/amoylab/unla/allinone:latest}`, which the image reader does not
+resolve, so such an instance is reported only where a file states the image.
+
+**MCP Kotlin SDK (CVE-2026-108714) gets `AAK-MCP-KOTLINSDK-CVE-2026-108714-001`
+from 0.7.3, the JVM reader's second entry.** NVD: "MCP Kotlin SDK through 0.15.0
+contains an uncontrolled memory allocation vulnerability that allows remote clients
+to exhaust server memory because Application.mcpWebSocket installs Ktor WebSockets
+without a maxFrameSize limit." `jvm_mcp_sdk_pins` already reads the SDK's Gradle,
+version-catalog and Maven coordinates for CVE-2026-53937, so this one is pinnable,
+and the module now takes a table of pins. Checked in the source and on Maven
+Central: `Application.mcpWebSocket` is absent at 0.7.2, arrives in 0.7.3 with
+`install(WebSockets)` and no `maxFrameSize`, and is unchanged through 0.15.0
+(2026-07-28), the newest release. Nothing on `main` has touched the file since
+April, so there is no fixed release. The extension is in `kotlin-sdk-server`, which
+the `kotlin-sdk` umbrella pulls in (its 0.15.0 POM depends on it), so the pin reads
+`kotlin-sdk-server`, `kotlin-sdk` and their `-jvm` variants, and not
+`kotlin-sdk-core` or `kotlin-sdk-client`. Until a fix ships, install `WebSockets`
+with a `maxFrameSize` and register the endpoint with `Route.mcpWebSocket`, which does
+not install the plugin. The CVE-2026-53937 fixtures on 0.13.0 and 0.15.0 now report
+this rule too, so their tests assert only their own rule.
+
+**mcp-go (CVE-2026-108859) is out of scope.** NVD: "mcp-go through 1.2.1 contains a
+denial of service vulnerability in StreamableHTTPServer.ServeHTTP that allows remote
+unauthenticated attackers to exhaust memory by sending oversized POST bodies."
+mcp-go is the Go module `github.com/mark3labs/mcp-go`, a library compiled into each
+server, with no image of its own. No AAK reader opens `go.mod`, the basis the SiYuan
+rows (#632) and the `mcp-shell` row took. v1.2.1 (2026-10-09) is the newest release,
+and `server/streamable_http.go` on `main` still reads the body with
+`io.ReadAll(r.Body)`, so there is no fixed release yet. Until there is, wrap the
+handler in `http.MaxBytesHandler` or cap the body size at a reverse proxy.
+`tests/test_cve_triage_2026_10_13.py` holds the boundary: a `go.mod` that requires
+mcp-go 1.2.1 produces no finding for this CVE.
+
+**@elvix.is/sdk (CVE-2026-108542) gets `AAK-MCP-ELVIX-CVE-2026-108542-001`, 0.1.0 up
+to 0.10.2.** NVD: "Affected by this vulnerability is an unknown functionality of the
+file src/mcp/index.ts of the component MCP Request Handler. The manipulation of the
+argument path results in server-side request forgery." The npm package is
+`@elvix.is/sdk`, from 021is/elvix-sdk, the repository the public report names; npm
+has no `elvix`, `elvix-sdk` or `@021is/elvix-sdk`. Checked in the tarballs: 0.1.0,
+the MCP server's first release, and 0.10.1 build each request as
+`new URL(args.path ?? tool._meta.path, baseUrl)` and send it with the Bearer
+`ELVIX_API_KEY`, so an absolute URL in `path` takes the key to any host. 0.10.2
+(`ed0c622`, 2026-08-30) binds every tool to its manifest path, refuses another
+origin and does not follow redirects. NVD repeats VulDB's note that the vendor did
+not respond, but 0.10.2 shipped three days after the public report, and npm marks
+0.0.0 to 0.10.1 deprecated: "Security: MCP tool arguments could redirect the request
+and leak ELVIX_API_KEY. Upgrade to >=0.10.2 and rotate any key used with the MCP
+server." 0.0.0 is an empty placeholder, so the pin starts at 0.1.0. Upgrade to
+0.10.2 or later and rotate the key.
+
+**Trinity (CVE-2026-108756) gets `AAK-MCP-TRINITY-CVE-2026-108756-001` on its backend
+image, through 0.9.5.** NVD: "Abilityai Trinity through 0.9.5 contains a missing
+authorization vulnerability in the Telegram router that allows agent-scoped MCP API
+keys to perform human-only binding operations." The Trinity server is on neither
+PyPI nor npm: PyPI's `trinity-cli` is its command-line client on its own 0.2.x line,
+and PyPI's `trinity` is an Ethereum client. Its backend ships as
+`ghcr.io/abilityai/trinity-backend`, tagged by release from 0.9.5-rc1. Checked in
+the source: an agent-scoped key resolves to the agent's owner, and
+`configure_telegram_bot` and `delete_telegram_binding` check ownership only, with no
+`reject_agent_principal`, at v0.9.5 and at v1.0.0-rc2 (2026-10-10). So there is no
+fixed release, and on 2026-10-13 `latest` was the 0.9.5 digest. The pin follows
+NVD's range: the 1.0.0 release candidates read as 1.0.0 and are not reported,
+although they still lack the check, so the floor needs another look when 1.0.0
+ships. Trinity's own compose files build the backend from source or write
+`trinity-backend:${TRINITY_IMAGE_TAG:-latest}`, so the pin reports a deployment that
+states the tag in a manifest, as with Kortix.
+
+**Wanwu (CVE-2026-108854) is out of scope.** NVD: "Wanwu before 0.6.3 contains an
+insecure direct object reference vulnerability that allows any authenticated
+enabled user to delete other users' legacy AppKeys by supplying a numeric apiId."
+Wanwu (UnicomAI/wanwu) is on neither PyPI nor npm, and its compose file takes each
+service's whole image reference from `${WANWU_BACKEND_IMAGE}`, set in
+`.env.image.amd64` and `.env.image.arm64`. The image reader opens neither file, so
+the official deployment never states its version in a file AAK reads. The image
+itself, `crpi-6pj79y7ddzdpexs8.cn-hangzhou.personal.cr.aliyuncs.com/wanwulite/wanwu-backend`,
+is on an account-scoped Aliyun registry whose tags could not be listed from here.
+Checked in the source: `DelAppKey` deletes by id alone from v0.3.3 through v0.6.2,
+and v0.6.3 (tag 2026-08-17, fix `13d0b22`) scopes it to the caller's user and
+organization. v0.6.5 is the newest release. Upgrade to v0.6.3 or later.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-108865 | 8.2 | `ghcr.io/amoylab/unla/allinone`, `ghcr.io/amoylab/unla/mcp-gateway` and the Aliyun mirror (images) | **New pin** `AAK-MCP-UNLA-CVE-2026-108865-001`: every tag through v0.10.0, and `latest`. No fixed release. | #973 |
+| CVE-2026-108714 | 7.5 | `io.modelcontextprotocol:kotlin-sdk-server` and `kotlin-sdk` (Maven) | **New pin** `AAK-MCP-KOTLINSDK-CVE-2026-108714-001`: 0.7.3 and later. No fixed release. | #974 |
+| CVE-2026-108859 | 7.5 | `github.com/mark3labs/mcp-go` (Go module) | **Out of scope**, non-pinnable, and no fixed release yet. | #975 |
+| CVE-2026-108542 | 6.3 | `@elvix.is/sdk` (npm) | **New pin** `AAK-MCP-ELVIX-CVE-2026-108542-001`: 0.1.0 up to 0.10.2. | #963 |
+| CVE-2026-108756 | 5.4 | `ghcr.io/abilityai/trinity-backend` (image) | **New pin** `AAK-MCP-TRINITY-CVE-2026-108756-001`: up to and including 0.9.5, and `latest`. No fixed release. | #976 |
+| CVE-2026-108854 | 5.4 | Wanwu (compose stack, image set in `.env`) | **Out of scope**, non-pinnable. Fixed in v0.6.3. | #977 |
+
+CVSS is NVD's CVSS 3.1 score.
+
 ## 2026-10-11 (v0.6.21): seven disclosures, two new npm pins, one new image pin, four out of scope
 
 The watcher opened five `cve-response` issues at 21:44Z on 2026-10-10 (#953-#957)

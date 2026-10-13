@@ -3925,6 +3925,25 @@
       "title": "AWS Labs DocumentDB MCP Server aggregation-pipeline authorization bypass (< 1.0.12)"
     },
     {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108542"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI06 Memory & Context Poisoning"
+      ],
+      "owasp_mcp": [
+        "MCP09:2025 SSRF / Network Boundary"
+      ],
+      "rule_id": "AAK-MCP-ELVIX-CVE-2026-108542-001",
+      "severity": "medium",
+      "title": "@elvix.is/sdk MCP server below 0.10.2: a tool's path argument can send the elvix API key to any host"
+    },
+    {
       "category": "secret-exposure",
       "cve_references": [
         "CVE-2026-32625"
@@ -4529,6 +4548,26 @@
       "rule_id": "AAK-MCP-KORTIX-CVE-2026-108115-001",
       "severity": "medium",
       "title": "Kortix API image 0.10.7 to 0.13.51: IPv6 6to4 and Teredo addresses get past the SSRF guard"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108714"
+      ],
+      "eu_ai_act": [
+        "Art. 13 - Transparency",
+        "Art. 14 - Human Oversight"
+      ],
+      "nsa_mcp_csi": [],
+      "owasp_agentic": [
+        "ASI09 Human-Agent Trust Exploitation"
+      ],
+      "owasp_mcp": [
+        "MCP10:2025 Dependency & Package Risks"
+      ],
+      "rule_id": "AAK-MCP-KOTLINSDK-CVE-2026-108714-001",
+      "severity": "high",
+      "title": "MCP Kotlin SDK from 0.7.3: Application.mcpWebSocket accepts WebSocket frames of any size (no fixed release)"
     },
     {
       "category": "supply-chain",
@@ -6482,6 +6521,31 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-108756"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP06:2025 Privilege Escalation"
+      ],
+      "rule_id": "AAK-MCP-TRINITY-CVE-2026-108756-001",
+      "severity": "medium",
+      "title": "Trinity backend image through 0.9.5: an agent's MCP key can replace or delete its owner's Telegram binding (no fixed release)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-104850"
       ],
       "eu_ai_act": [
@@ -6596,6 +6660,31 @@
       "rule_id": "AAK-MCP-UFO-CVE-2026-73296-001",
       "severity": "critical",
       "title": "Microsoft UFO < 3.0.8 (mobile MCP servers on 8020/8021 with no authentication)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108865"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP07:2025 Insufficient Authentication"
+      ],
+      "rule_id": "AAK-MCP-UNLA-CVE-2026-108865-001",
+      "severity": "high",
+      "title": "Unla gateway image through v0.10.0: the built-in OAuth2 server issues tokens without authenticating anyone (no fixed release)"
     },
     {
       "category": "supply-chain",
@@ -8885,40 +8974,40 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 150,
+      "supply-chain": 154,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 140,
-      "Art. 13 - Transparency": 34,
-      "Art. 14 - Human Oversight": 41,
-      "Art. 15 - Robustness & Security": 235,
+      "Art. 10 - Data Governance": 143,
+      "Art. 13 - Transparency": 35,
+      "Art. 14 - Human Oversight": 42,
+      "Art. 15 - Robustness & Security": 237,
       "Art. 9 - Risk Management": 132
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 97,
+      "Choose supported MCP projects when possible (p.10)": 99,
       "Constrain and sandbox tool execution (p.11)": 117,
       "Design for boundaries (p.10)": 202,
       "Filter and monitor output pipelines and chained execution (p.12)": 81,
       "Instrument for logging and detection (p.13)": 35,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 178,
-      "Sign and verify MCP messages (p.12)": 177,
-      "Track and patch MCP related vulnerabilities (p.13)": 108,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 180,
+      "Sign and verify MCP messages (p.12)": 179,
+      "Track and patch MCP related vulnerabilities (p.13)": 110,
       "Validate parameters (p.11)": 121
     },
     "by_owasp_agentic": {
       "ASI01": 16,
       "ASI02": 57,
       "ASI03": 83,
-      "ASI04": 91,
+      "ASI04": 93,
       "ASI05": 60,
-      "ASI06": 53,
+      "ASI06": 54,
       "ASI07": 11,
       "ASI08": 5,
-      "ASI09": 19,
+      "ASI09": 20,
       "ASI10": 22
     },
     "by_owasp_mcp": {
@@ -8927,21 +9016,21 @@
       "MCP03:2025": 40,
       "MCP04:2025": 49,
       "MCP05:2025": 58,
-      "MCP06:2025": 26,
-      "MCP07:2025": 43,
+      "MCP06:2025": 27,
+      "MCP07:2025": 44,
       "MCP08:2025": 10,
-      "MCP09:2025": 34,
-      "MCP10:2025": 12
+      "MCP09:2025": 35,
+      "MCP10:2025": 13
     },
     "by_severity": {
       "critical": 89,
-      "high": 173,
+      "high": 175,
       "info": 5,
       "low": 14,
-      "medium": 110
+      "medium": 112
     },
-    "total_cves_covered": 311,
-    "total_rules": 391
+    "total_cves_covered": 315,
+    "total_rules": 395
   },
   "tool": "agent-audit-kit"
 }

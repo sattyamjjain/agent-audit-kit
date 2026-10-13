@@ -226,6 +226,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-ARGOCD-CVE-2026-108585-001": ["AIS-07", "STA-08"],
     "AAK-MCP-1MCP-CVE-2026-108586-001": ["IAM-01", "STA-08"],
     "AAK-MCP-KORTIX-CVE-2026-108115-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-UNLA-CVE-2026-108865-001": ["IAM-01", "STA-08"],
+    "AAK-MCP-KOTLINSDK-CVE-2026-108714-001": ["STA-08", "IVS-04", "BCR-01"],
+    "AAK-MCP-ELVIX-CVE-2026-108542-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-TRINITY-CVE-2026-108756-001": ["IAM-01", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -11150,6 +11154,161 @@ _r(
         "2026-10-11, both fixed, so an untagged or channel reference is not reported. "
         "Commit-hash tags, such as every tag of `ghcr.io/kortix-ai/kortix-api`, state "
         "no version."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-13 batch (#963, #973-#977). Two image pins, one JVM pin and one npm
+# pin below, and two out of scope. The dispositions are in CHANGELOG.cves.md.
+# ---------------------------------------------------------------------------
+_r(
+    "AAK-MCP-UNLA-CVE-2026-108865-001",
+    "Unla gateway image through v0.10.0: the built-in OAuth2 server issues tokens without authenticating anyone (no fixed release)",
+    "Unla (AmoyLab/Unla, formerly mcp-gateway) is a Go MCP gateway that ships as "
+    "container images: `ghcr.io/amoylab/unla/allinone`, "
+    "`ghcr.io/amoylab/unla/mcp-gateway`, and the Aliyun mirror "
+    "`registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone` its Chinese README "
+    "names. Its built-in OAuth2 server never authenticates a resource owner: "
+    "`/authorize` issues a code to any registered client without asking who the "
+    "user is, and `/token` exchanges it. So an unauthenticated attacker can register "
+    "a client, get a code and exchange it for a valid access token, which opens the "
+    "OAuth2-protected MCP prefixes, the upstream APIs Unla proxies and the "
+    "credentials it injects into them (CVE-2026-108865, CVSS 3.1 8.2, CWE-287). The "
+    "OAuth2 server arrived in v0.6.0, the `amoylab/unla` images start at v0.7.0, and "
+    "v0.10.0, the newest release, still issues codes this way. "
+    "`internal/auth/oauth.go` has not changed since 2025-10-11, so there is no fixed "
+    "release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Put an authenticating reverse proxy in front of "
+    "Unla's `/authorize`, `/token` and its OAuth2-protected MCP prefixes, and keep "
+    "the gateway off untrusted networks. If an instance was reachable, rotate the "
+    "upstream credentials it injects. Pin the first fixed release once it ships.",
+    sarif_name="UnlaOAuthServerIssuesUnauthenticatedTokens",
+    cve_references=["CVE-2026-108865"],
+    owasp_mcp_references=["MCP07:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads the three Unla image names in compose files, Kubernetes manifests, Helm "
+        "values, Dockerfiles and MCP configs, up to and including v0.10.0, and "
+        "`latest`, which was the v0.10.0 digest on 2026-10-13. The `main` tag and "
+        "commit tags state no version and are not reported, and images from before "
+        "the rename (`mcp-ecosystem/mcp-gateway`) are not read. The pin reads the image "
+        "tag, not the gateway's configuration, so an instance with no "
+        "OAuth2-protected MCP prefix is reported too."
+    ),
+)
+
+_r(
+    "AAK-MCP-KOTLINSDK-CVE-2026-108714-001",
+    "MCP Kotlin SDK from 0.7.3: Application.mcpWebSocket accepts WebSocket frames of any size (no fixed release)",
+    "The MCP Kotlin SDK server module (`io.modelcontextprotocol:kotlin-sdk-server`, "
+    "which the `kotlin-sdk` umbrella pulls in) has an `Application.mcpWebSocket` "
+    "extension that installs Ktor's `WebSockets` plugin with no `maxFrameSize`, so "
+    "Ktor's default of `Long.MAX_VALUE` applies. A remote client can send small frame "
+    "headers that declare payloads near 2 GiB, over one or a few connections, and "
+    "force the server to allocate them until the JVM runs out of heap "
+    "(CVE-2026-108714, CVSS 3.1 7.5, CWE-770). Checked in the source and on Maven "
+    "Central: the extension is absent at 0.7.2, arrives in 0.7.3 and is unchanged "
+    "through 0.15.0, the newest release, and nothing on `main` sets a frame limit, "
+    "so there is no fixed release.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Do not use `Application.mcpWebSocket`: install "
+    "`WebSockets` yourself with a `maxFrameSize` sized to your largest legitimate "
+    "message, and register the endpoint with `Route.mcpWebSocket`, which does not "
+    "install the plugin. Or keep the WebSocket transport off untrusted networks. "
+    "Pin the first fixed release once it ships.",
+    sarif_name="McpKotlinSdkWebSocketUnboundedFrame",
+    cve_references=["CVE-2026-108714"],
+    owasp_mcp_references=["MCP10:2025"],
+    owasp_agentic_references=["ASI09"],
+    adversa_references=["ADV-DOS-01"],
+    limitations=(
+        "Dependency-level detection on JVM manifests only: `build.gradle`, "
+        "`build.gradle.kts`, `gradle/libs.versions.toml` and `pom.xml`. Reports "
+        "`kotlin-sdk-server`, `kotlin-sdk` and their `-jvm` variants from 0.7.3 where "
+        "a version resolves, and not `kotlin-sdk-core` or `kotlin-sdk-client`, which "
+        "do not carry the extension. Every version from 0.7.3 is reported, a future "
+        "fixed one included, until the pin gets a floor. It reads versions, not code, "
+        "so a server that uses only stdio or SSE, or installs `WebSockets` with its "
+        "own `maxFrameSize`, is reported too. A dynamic version or a `version.ref` to "
+        "a catalog outside the scanned tree is not reported."
+    ),
+)
+
+_r(
+    "AAK-MCP-ELVIX-CVE-2026-108542-001",
+    "@elvix.is/sdk MCP server below 0.10.2: a tool's path argument can send the elvix API key to any host",
+    "`@elvix.is/sdk` (npm; 021is/elvix-sdk) is a sign-in SDK that also ships an MCP "
+    "server (`elvix mcp`, `elvix-mcp`), whose tools call the elvix API with the "
+    "configured `ELVIX_API_KEY` as a Bearer token. From 0.1.0 to 0.10.1 the shared "
+    "tool handler builds the request URL as "
+    "`new URL(args.path ?? tool._meta.path, baseUrl)`, so an absolute URL in the "
+    "caller-supplied `path` replaces the base URL, and the server sends the request, "
+    "API key included, to a loopback, internal, cloud-metadata or attacker host "
+    "(CVE-2026-108542, CVSS 3.1 6.3, CWE-918). Checked in the npm tarballs: 0.1.0 "
+    "and 0.10.1 build the URL this way, and 0.10.2 (`ed0c622`, 2026-08-30) binds "
+    "every tool to its manifest path, refuses a URL outside the configured origin "
+    "and does not follow redirects. npm marks 0.0.0 to 0.10.1 deprecated with a "
+    "security notice; 0.0.0 is an empty placeholder with no MCP server.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@elvix.is/sdk` to 0.10.2 or later and pin it. Then rotate any elvix "
+    "API key that was used with the MCP server, as the package's deprecation notice "
+    "asks.",
+    sarif_name="ElvixSdkMcpPathSsrfLeaksApiKey",
+    cve_references=["CVE-2026-108542"],
+    owasp_mcp_references=["MCP09:2025"],
+    owasp_agentic_references=["ASI06"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reports `@elvix.is/sdk` from 0.1.0 below 0.10.2 in a package.json, lockfile "
+        "or MCP config, and an unpinned reference such as `bunx @elvix.is/sdk mcp`, "
+        "which this scanner reads as exposed. The pin reads the version, not whether "
+        "the MCP server runs, so an app that uses the SDK only for sign-in is "
+        "reported too. `elvix`, `elvix-sdk` and `@021is/elvix-sdk` are not npm "
+        "packages and are not matched."
+    ),
+)
+
+_r(
+    "AAK-MCP-TRINITY-CVE-2026-108756-001",
+    "Trinity backend image through 0.9.5: an agent's MCP key can replace or delete its owner's Telegram binding (no fixed release)",
+    "Trinity (Abilityai/trinity) is a self-hosted agent platform whose backend "
+    "ships as `ghcr.io/abilityai/trinity-backend`. An agent-scoped MCP API key "
+    "resolves to the agent's owner, and the Telegram router's binding routes "
+    "(`configure_telegram_bot` and `delete_telegram_binding` in "
+    "`src/backend/routers/telegram.py`) check only that the caller owns the agent, "
+    "with no `reject_agent_principal`. So an agent, typically steered by prompt "
+    "injection, can perform what are meant to be human-only binding operations: in "
+    "NVD's words, \"send messages through the owner's bot token, replace the binding "
+    "with their own token, or delete it\" (CVE-2026-108756, CVSS 3.1 5.4, CWE-862). "
+    "The images start at 0.9.5-rc1, 0.9.5 is the newest release, and the 1.0.0 "
+    "release candidates still serve those routes without the check, so there is no "
+    "fixed release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Until one ships, treat every agent on an instance "
+    "with a Telegram binding as able to change that binding: remove the binding from "
+    "agents that do not need it, and check the bound bot after any agent run that "
+    "read untrusted content. Pin the first fixed release once it ships.",
+    sarif_name="TrinityTelegramBindingAgentKeyBypass",
+    cve_references=["CVE-2026-108756"],
+    owasp_mcp_references=["MCP06:2025"],
+    owasp_agentic_references=["ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `ghcr.io/abilityai/trinity-backend` references up to and including "
+        "0.9.5, and `latest`, which was the 0.9.5 digest on 2026-10-13, in compose "
+        "files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. "
+        "Trinity's own compose files build the backend from source or name it with "
+        "`${TRINITY_IMAGE_TAG:-latest}`, which states no version this reader trusts, "
+        "so such an instance is reported only where a manifest states the tag. The "
+        "1.0.0 release candidates read as 1.0.0 and are not reported, although they "
+        "still lack the check, and the two-part `0.9` tag floats and is not reported."
     ),
 )
 

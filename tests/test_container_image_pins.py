@@ -34,6 +34,10 @@ HEYM = "AAK-MCP-HEYM-CVE-2026-100858-001"
 MARK3LABS_FS = "AAK-MCP-MARK3LABS-FS-CVE-2026-79534-001"
 # CVE-2026-108115 (#957): Kortix's API image from 0.10.7 up to 0.13.52.
 KORTIX = "AAK-MCP-KORTIX-CVE-2026-108115-001"
+# CVE-2026-108865 (#973): Unla's gateway images, every tag through v0.10.0.
+UNLA = "AAK-MCP-UNLA-CVE-2026-108865-001"
+# CVE-2026-108756 (#976): Trinity's backend image through 0.9.5.
+TRINITY = "AAK-MCP-TRINITY-CVE-2026-108756-001"
 
 
 def _ids(root: Path) -> list[str]:
@@ -391,3 +395,79 @@ def test_kortix_self_host_compose_states_no_tag(tmp_path: Path) -> None:
     the tag in its .env, which this reader does not read."""
     ids = _write(tmp_path, "docker-compose.yml", "services:\n  kortix-api:\n    image: ${API_IMAGE}\n")
     assert KORTIX not in ids
+
+
+# --- 2026-10-13 (#973, #976): Unla and Trinity, neither with a fixed release ---
+
+
+def test_unla_and_trinity_pins_carry_their_cve_and_severity() -> None:
+    assert RULES[UNLA].cve_references == ["CVE-2026-108865"]
+    assert RULES[TRINITY].cve_references == ["CVE-2026-108756"]
+    assert (RULES[UNLA].severity.value, RULES[TRINITY].severity.value) == ("high", "medium")
+
+
+def test_unla_fixtures_positive_and_negative() -> None:
+    """The multi-container compose's `mcp-gateway:latest` (the v0.10.0 digest on
+    2026-10-13) and a Kubernetes allinone at v0.9.2 fire; the web image and an
+    interpolated tag are not read."""
+    root = FIXTURES / "cve-2026-108865-unla"
+    findings = scan(root / "vulnerable")[0]
+    assert sorted((f.file_path, f.rule_id, f.line_number) for f in findings) == [
+        ("docker-compose.yaml", UNLA, 7),
+        ("k8s/deployment.yaml", UNLA, 10),
+    ]
+    assert UNLA in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/amoylab/unla/allinone:v0.7.0", True),     # the first amoylab/unla tag
+    ("ghcr.io/amoylab/unla/allinone:v0.10.0", True),    # the newest release
+    ("ghcr.io/amoylab/unla/allinone:latest", True),     # the v0.10.0 digest
+    ("ghcr.io/amoylab/unla/allinone", True),            # untagged is latest
+    ("ghcr.io/amoylab/unla/mcp-gateway:v0.9.2", True),
+    ("registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone:v0.10.0", True),
+    ("ghcr.io/amoylab/unla/allinone:v0.10.1", False),   # past NVD's range; does not exist
+    ("ghcr.io/amoylab/unla/allinone:main", False),      # a branch tag states no version
+    ("ghcr.io/amoylab/unla/web:v0.10.0", False),        # the OAuth2 server is in the gateway
+    ("ghcr.io/amoylab/unla/mock-server:v0.10.0", False),
+])
+def test_unla_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  unla:\n    image: {ref}\n")
+    assert (UNLA in ids) is fires
+
+
+def test_unla_allinone_compose_default_is_not_read(tmp_path: Path) -> None:
+    """Unla's own all-in-one compose writes `${IMAGE:-ghcr.io/amoylab/unla/allinone:latest}`.
+    The reference sits inside an interpolation default, which this reader does not
+    resolve, so such an instance is reported only where a file states the image."""
+    ids = _write(tmp_path, "docker-compose.yml",
+                 "services:\n  unla:\n    image: ${IMAGE:-ghcr.io/amoylab/unla/allinone:latest}\n")
+    assert UNLA not in ids
+
+
+def test_trinity_fixtures_positive_and_negative() -> None:
+    """A pinned 0.9.5 backend fires once; the hosted compose's
+    `${TRINITY_IMAGE_TAG:-latest}` states no version, and the frontend image is not
+    pinned."""
+    root = FIXTURES / "cve-2026-108756-trinity"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(TRINITY, 4)]
+    assert TRINITY in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/abilityai/trinity-backend:0.9.5-rc1", True),   # the first image tag
+    ("ghcr.io/abilityai/trinity-backend:v0.9.5", True),
+    ("ghcr.io/abilityai/trinity-backend:0.9.5", True),       # the newest release
+    ("ghcr.io/abilityai/trinity-backend:latest", True),      # the 0.9.5 digest on 2026-10-13
+    ("ghcr.io/abilityai/trinity-backend", True),             # untagged is latest
+    ("ghcr.io/abilityai/trinity-backend:0.9", False),        # a two-part tag floats over the line
+    ("ghcr.io/abilityai/trinity-backend:1.0.0-rc2", False),  # reads as 1.0.0, past NVD's range
+    ("ghcr.io/abilityai/trinity-frontend:0.9.5", False),     # the routes are in the backend
+    ("ghcr.io/abilityai/trinity-mcp-server:0.9.5", False),
+])
+def test_trinity_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  backend:\n    image: {ref}\n")
+    assert (TRINITY in ids) is fires

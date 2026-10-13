@@ -14,8 +14,12 @@ only the `dify-client` SDK, and npm's `dify` is an unrelated placeholder. Grafan
 `mcp-k6` is a Go binary whose recommended install is the image `grafana/mcp-k6`.
 Kortix's API server ships as the Docker Hub image `kortix/kortix-api`, tagged by
 release; npm's `suna` is an unrelated 2025 placeholder, and the desktop app and
-the `kortix` CLI are binaries. Docker Hub images are matched by the bare name
-their docs use, so `docker.io/grafana/mcp-k6` is not read. Nothing
+the `kortix` CLI are binaries. Unla is a Go MCP gateway published as
+`ghcr.io/amoylab/unla/allinone` and `.../mcp-gateway`, with an Aliyun mirror its
+Chinese README names. Trinity's backend ships as `ghcr.io/abilityai/trinity-backend`;
+PyPI's `trinity-cli` is its command-line client on its own 0.2.x line, and PyPI's
+`trinity` is an unrelated Ethereum client. Docker Hub images are matched by the
+bare name their docs use, so `docker.io/grafana/mcp-k6` is not read. Nothing
 `mcp_cve_pins_2026_07` reads carries their version, and a pin on a look-alike
 package name would report somebody else's project. The image tag is the only
 place a deployment states which release it runs, so this module reads image
@@ -171,6 +175,44 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-KORTIX-CVE-2026-108115-001", "Kortix", "kortix/kortix-api",
         (0, 13, 52), "from 0.10.7 up to 0.13.52", "Fixed in 0.13.52.",
         ("CVE-2026-108115",), introduced=(0, 10, 7),
+    ),
+    # CVE-2026-108865: Unla's OAuth2 server issues an authorization code to any
+    # registered client without authenticating a resource owner, and the token
+    # endpoint exchanges it. The server arrived in v0.6.0 (7d15eec); the `amoylab/unla`
+    # images start at v0.7.0, and `internal/auth/oauth.go` has not changed since
+    # 2025-10-11, so every tag through v0.10.0, the newest, is affected. `latest`
+    # was the v0.10.0 digest on 2026-10-13 for both GHCR images. The OAuth2 server
+    # is in the gateway, so `ghcr.io/amoylab/unla/web` is not pinned. The Aliyun
+    # mirror carries the same tags.
+    _ImagePin(
+        "AAK-MCP-UNLA-CVE-2026-108865-001", "Unla", "ghcr.io/amoylab/unla/allinone",
+        (0, 10, 1), "up to and including v0.10.0", "No fixed release yet.",
+        ("CVE-2026-108865",), floating_affected=True,
+    ),
+    _ImagePin(
+        "AAK-MCP-UNLA-CVE-2026-108865-001", "Unla", "ghcr.io/amoylab/unla/mcp-gateway",
+        (0, 10, 1), "up to and including v0.10.0", "No fixed release yet.",
+        ("CVE-2026-108865",), floating_affected=True,
+    ),
+    _ImagePin(
+        "AAK-MCP-UNLA-CVE-2026-108865-001", "Unla",
+        "registry.ap-southeast-1.aliyuncs.com/amoylab/unla-allinone",
+        (0, 10, 1), "up to and including v0.10.0", "No fixed release yet.",
+        ("CVE-2026-108865",), floating_affected=True,
+    ),
+    # CVE-2026-108756: an agent-scoped MCP key resolves to the agent's owner, and
+    # the Telegram binding routes (`configure_telegram_bot`,
+    # `delete_telegram_binding`) check ownership only, with no
+    # `reject_agent_principal`. The images start at 0.9.5-rc1; 0.9.5 is the newest
+    # release and `latest` was its digest on 2026-10-13. The 1.0.0 release
+    # candidates still lack the check, but their tags read as 1.0.0, past NVD's
+    # range, so they are not claimed. The routes are in the backend, so the
+    # frontend, scheduler and MCP server images are not pinned.
+    _ImagePin(
+        "AAK-MCP-TRINITY-CVE-2026-108756-001", "Trinity",
+        "ghcr.io/abilityai/trinity-backend",
+        (0, 9, 6), "up to and including 0.9.5", "No fixed release yet.",
+        ("CVE-2026-108756",), floating_affected=True,
     ),
 )
 

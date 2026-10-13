@@ -104,7 +104,7 @@
     },
     {
       "module": "jvm_mcp_sdk_pins",
-      "name": "JVM MCP SDK pins in Gradle / Maven manifests (CVE-2026-53937)"
+      "name": "JVM MCP SDK pins in Gradle / Maven manifests (CVE-2026-53937, CVE-2026-108714)"
     },
     {
       "module": "langchain_prompt_loader",

@@ -349,6 +349,12 @@ _ARGOCD_MCP_RE = re.compile(
 _ONEMCP_AGENT_RE = re.compile(
     r"(?<![\w./-])@1mcp/agent(?![\w-])" + _VER_OPT, re.IGNORECASE
 )
+# `@elvix.is/sdk` (npm, 021is/elvix-sdk): a sign-in SDK that also ships the
+# `elvix mcp` / `elvix-mcp` server. The scope and the dot are the name; `elvix`,
+# `elvix-sdk` and `@021is/elvix-sdk` are not on npm.
+_ELVIX_SDK_RE = re.compile(
+    r"(?<![\w./-])@elvix\.is/sdk(?![\w-])" + _VER_OPT, re.IGNORECASE
+)
 # `letta` (the agent server, formerly MemGPT). The right boundary excludes the
 # hyphen so this stays off `letta-client`, a separate client SDK on its own
 # version line; the lookbehind keeps it off `pyletta`.
@@ -1395,6 +1401,17 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="no fixed release (0.39.0 is the newest; affected from 0.20.0); "
                    "do not rely on tag scopes to keep backends apart",
          regexes=(_ONEMCP_AGENT_RE,), ecosystem="js"),
+    # --- 2026-10-13 batch (#963, #973-#977) ---
+    # The elvix MCP server built every tool's request URL as
+    # `new URL(args.path ?? tool._meta.path, baseUrl)`, so an absolute URL in `path`
+    # replaced the base and the request went out with the Bearer `ELVIX_API_KEY`
+    # (CVE-2026-108542, CVSS 6.3, CWE-918). Checked in the npm tarballs: 0.1.0 and
+    # 0.10.1 build it that way; 0.10.2 (ed0c622, 2026-08-30) binds the tool to its
+    # manifest path and refuses another origin. 0.0.0 is an empty placeholder.
+    _Pin("AAK-MCP-ELVIX-CVE-2026-108542-001", "@elvix.is/sdk", ("@elvix.is/sdk",),
+         (0, 10, 2), introduced=(0, 1, 0),
+         fix_label="0.10.2; rotate any elvix API key used with the MCP server",
+         regexes=(_ELVIX_SDK_RE,), ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

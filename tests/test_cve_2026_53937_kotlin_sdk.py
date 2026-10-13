@@ -70,14 +70,18 @@ def test_rule_states_it_is_a_manifest_pin_not_a_source_detector() -> None:
 # ---------------------------------------------------------------------------
 
 def test_vulnerable_fixture_fires_on_every_manifest_form() -> None:
-    findings = jvm.scan(FIXTURES / "vulnerable")[0]
+    """Filtered to this rule: from 0.7.3 the same coordinates also carry
+    CVE-2026-108714 (`AAK-MCP-KOTLINSDK-CVE-2026-108714-001`), its own rule."""
+    findings = [f for f in jvm.scan(FIXTURES / "vulnerable")[0] if f.rule_id == RULE]
     files = {f.file_path for f in findings}
     assert files == {"build.gradle.kts", "pom.xml", "gradle/libs.versions.toml"}, files
-    assert all(f.rule_id == RULE for f in findings)
 
 
 def test_patched_fixture_is_silent() -> None:
-    assert _ids(FIXTURES / "patched") == set()
+    """Patched for CVE-2026-53937. Its 0.13.0 and 0.15.0 umbrella coordinates still
+    carry CVE-2026-108714, which has no fixed release, so only this rule is
+    asserted silent here."""
+    assert RULE not in _ids(FIXTURES / "patched")
 
 
 def test_pre_range_fixture_is_silent() -> None:
@@ -90,7 +94,7 @@ def test_evidence_names_the_resolved_version_not_the_reference() -> None:
     """The version comes from a `val`, a `version.ref` or a `<properties>` entry.
     Reporting the reference name instead of what it resolved to would make the
     finding unactionable."""
-    ev = {f.file_path: f.evidence for f in jvm.scan(FIXTURES / "vulnerable")[0]}
+    ev = {f.file_path: f.evidence for f in jvm.scan(FIXTURES / "vulnerable")[0] if f.rule_id == RULE}
     assert "0.12.0" in ev["build.gradle.kts"]           # val mcpVersion
     assert "0.11.1" in ev["pom.xml"]                    # ${mcp.sdk.version}
     assert "0.7.0" in ev["gradle/libs.versions.toml"]   # version.ref = "mcp"

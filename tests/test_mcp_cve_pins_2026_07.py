@@ -117,6 +117,8 @@ PINS = {
     # 2026-10-11 batch (#953-#959)
     "AAK-MCP-ARGOCD-CVE-2026-108585-001": "medium",
     "AAK-MCP-1MCP-CVE-2026-108586-001": "medium",
+    # 2026-10-13 batch (#963, #973-#977)
+    "AAK-MCP-ELVIX-CVE-2026-108542-001": "medium",
 }
 
 
@@ -2208,3 +2210,50 @@ def test_onemcp_agent_unpinned_npx_config_fires(tmp_path: Path) -> None:
 def test_onemcp_agent_pin_skips_the_unscoped_package(tmp_path: Path) -> None:
     """npm `1mcp` is buremba/1mcp, a different aggregator on its own 0.1.x line."""
     assert _ONEMCP not in _ids(tmp_path, "package.json", '{"dependencies": {"1mcp": "0.1.3"}}')
+
+
+# --- 2026-10-13 batch (#963): @elvix.is/sdk, fixed in 0.10.2 ---
+_ELVIX = "AAK-MCP-ELVIX-CVE-2026-108542-001"
+
+
+def test_elvix_fixtures_positive_and_negative() -> None:
+    """A package.json on ^0.10.1 and an MCP config on 0.9.6 fire; ^0.10.2 does not,
+    and neither does the 0.0.0 placeholder, which has no MCP server."""
+    root = _CVE_FIXTURES / "cve-2026-108542-elvix-sdk"
+    assert {f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _ELVIX} == {
+        "package.json", ".mcp.json",
+    }
+    assert _ELVIX not in {f.rule_id for f in scan(root / "negative")[0]}
+    assert _ELVIX not in {f.rule_id for f in scan(root / "negative-before-range")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.0.0", False),     # an empty placeholder, no dist/mcp
+    ("0.1.0", True),      # the MCP server's first release, already building URLs this way
+    ("0.9.6", True),
+    ("^0.10.1", True),    # the last affected release
+    ("0.10.2", False),    # ed0c622 binds each tool to its manifest path
+    ("^0.14.4", False),   # the newest release on 2026-10-13
+])
+def test_elvix_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"@elvix.is/sdk": "%s"}}' % version
+    assert (_ELVIX in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize("dep", [
+    '"elvix": "0.10.1"',              # not an npm package
+    '"elvix-sdk": "0.10.1"',          # not an npm package
+    '"@021is/elvix-sdk": "0.10.1"',   # the GitHub org, not the npm scope
+    '"@elvix.is/sdk-react": "0.10.1"',
+])
+def test_elvix_lookalikes_are_quiet(tmp_path: Path, dep: str) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert _ELVIX not in _ids(tmp_path, "package.json", content)
+
+
+def test_elvix_lockfile_reads_the_locked_version(tmp_path: Path) -> None:
+    lock = (
+        '{"name": "a", "lockfileVersion": 3, "packages": {'
+        '"node_modules/@elvix.is/sdk": {"version": "0.10.1"}}}'
+    )
+    assert _ELVIX in _ids(tmp_path, "package-lock.json", lock)
