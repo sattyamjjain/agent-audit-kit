@@ -7323,9 +7323,9 @@ _r(
     "Guard every mutation against the shared symbol with a lock "
     "primitive (`threading.Lock` / `asyncio.Lock` / "
     "`multiprocessing.Lock`). If serialization is enforced by an "
-    "external coordinator (database transaction, message queue), add "
-    "a `# noqa: AAK-AGENT-HARNESS-SHARED-STATE-001` comment with the "
-    "coordinator name to suppress.",
+    "external coordinator (database transaction, message queue), list "
+    "the file under `ignore-paths` in `.agent-audit-kit.yml`; AAK reads "
+    "no per-line suppression comment.",
     sarif_name="MultiAgentSharedStateNoLock",
     owasp_agentic_references=["ASI06", "ASI08"],
     incident_references=["ARXIV-2605.18747"],

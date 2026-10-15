@@ -59,8 +59,9 @@ normalize guard.
 
 - Cross-function flow where the token is extracted in one helper and the path
   built in another — detection is within a single function body. Consolidate,
-  or silence with `# aak: ignore[AAK-MCP-AUTH-PATHTRAVERSAL-001]` if the
-  cross-function design has its own reject-and-contain guard.
+  or, if the cross-function design has its own reject-and-contain guard, list
+  the file under `ignore-paths` in `.agent-audit-kit.yml`. AAK reads no
+  per-line suppression comment.
 - A resource-handler traversal on a request *path* parameter (that is
   `AAK-MCP-015`) — this rule is specifically the auth-*token*-as-filename case.
 

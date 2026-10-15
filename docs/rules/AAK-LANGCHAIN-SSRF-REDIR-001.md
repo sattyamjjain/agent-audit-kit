@@ -65,8 +65,9 @@ The rule also ships a pin check across `requirements*.txt`,
 - Manual redirect handling that re-validates each hop. We currently
   only check the kwargs at the fetch call site; if the caller manages
   redirects in a loop with their own validator we cannot prove safety
-  without flow analysis. False positives here can be silenced with a
-  `# aak: ignore[AAK-LANGCHAIN-SSRF-REDIR-001]` comment.
+  without flow analysis. AAK reads no per-line suppression comment, so to
+  silence a false positive, list the file under `ignore-paths` in
+  `.agent-audit-kit.yml` (or pass `--ignore-paths`).
 
 ## Remediation
 

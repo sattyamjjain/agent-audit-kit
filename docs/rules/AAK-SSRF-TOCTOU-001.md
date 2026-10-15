@@ -50,9 +50,9 @@ The pin check covers `langchain-openai < 1.1.14` across
 
 - Cross-function flow where the validator runs in one helper and the
   fetch in another — we look only within a single function body.
-  Refactor to consolidate, or silence with
-  `# aak: ignore[AAK-SSRF-TOCTOU-001]` if the cross-function design
-  has its own TTL-bounded DNS pin.
+  Refactor to consolidate, or, if the cross-function design has its
+  own TTL-bounded DNS pin, list the file under `ignore-paths` in
+  `.agent-audit-kit.yml`. AAK reads no per-line suppression comment.
 - Any pattern AAK-LANGCHAIN-SSRF-REDIR-001 already catches — when both
   rules would fire on the same code, the redirect-bypass rule wins
   by being CRITICAL-class.
