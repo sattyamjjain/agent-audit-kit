@@ -704,9 +704,12 @@ def _instruction_starts(line: str, start: int, previous: str) -> bool:
 #: A heading or lead-in that turns what follows into prohibitions: "### NEVER",
 #: "## Don'ts", "**Forbidden:**", "Never do any of the following:". On the corpus
 #: "Use `--no-verify` to bypass commit hooks" read as an order until the heading
-#: above it, "### NEVER", was read too.
+#: above it, "### NEVER", was read too. The emphasis takes its own trailing
+#: blanks: `\s*` on both sides of an empty `[*_]*` split a line's leading blank
+#: run every possible way, and every line is read with this, so a line of 10,000
+#: blanks took 4.2 seconds and the time grew with the square. Same matches.
 _PROHIBITION_HEAD_RE = re.compile(
-    r"^\s*(?:#{1,6}\s+)?[*_]*\s*(?:never|don['\u2019]?ts?|do\s+not|must\s+not|forbidden|"
+    r"^\s*(?:#{1,6}\s+)?(?:[*_]+\s*)?(?:never|don['\u2019]?ts?|do\s+not|must\s+not|forbidden|"
     r"prohibited|not\s+allowed|disallowed|banned|avoid|anti-?patterns?|blocked|"
     r"deny(?:-?list)?|denied)\b",
     re.IGNORECASE,

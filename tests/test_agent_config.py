@@ -793,6 +793,19 @@ def test_a_long_crafted_line_scans_in_linear_time(tmp_path: Path, unit: str) -> 
     assert time.perf_counter() - started < 10.0
 
 
+def test_a_long_line_of_blanks_scans_in_linear_time(tmp_path: Path) -> None:
+    """Every line is checked for a prohibition lead-in, whose two `\\s*` around an
+    empty emphasis split a leading blank run every way: a line of 10,000 blanks
+    took 4.2 seconds and the time grew with the square. The bound is loose for
+    slow CI runners."""
+    import time
+
+    (tmp_path / "CLAUDE.md").write_text(" " * 500_000 + "x\n", encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
 # ---------------------------------------------------------------------------
 # #771, second half: AAK-AGENT-005 called Hindi, Persian and emoji text
 # "hidden content"
