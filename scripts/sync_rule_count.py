@@ -76,6 +76,9 @@ _INIT_CONSTANT_RE = re.compile(
 # deterministically and `make report-check` already guards, so the README cannot drift
 # from the report it cites. Asserted by tests/test_report_headline_numbers.py.
 _REPORT_RESULTS = REPO_ROOT / "research" / "state-of-mcp-2026" / "results.json"
+# The registry half of the corpus: its server count and its candidate count (the
+# servers that carry a config, which every one does today) are report figures too.
+_REPORT_MANIFEST = REPO_ROOT / "research" / "state-of-mcp-2026" / "corpus" / "registry-manifest.json"
 _README_REPORT_RE = re.compile(
     r"(<!--\s*report:([a-z0-9-]+)\s*-->)(.*?)(<!--\s*/report\s*-->)",
     re.DOTALL,
@@ -88,6 +91,11 @@ def report_headline_numbers() -> dict[str, str]:
     Rendered here rather than in the README so one place decides formatting. Counts
     over 999 carry a thousands separator to match the surrounding prose; the test
     compares parsed integers, so a formatting change cannot fail it spuriously.
+
+    Since report v1.1 every figure in REPORT.md is a marker too, and a few values
+    are not numbers: a grade letter (`median-grade`) or a whole generated table
+    (`top-misconfig-table`). `_report_words_and_tables` builds those; the test
+    compares the words as strings and parses the tables row by row.
     """
     import json
 
@@ -117,6 +125,8 @@ def report_headline_numbers() -> dict[str, str]:
         "oauth008-n": _n(_top_misconfig(data, "AAK-OAUTH-008")["configs"]),
         "oauth008-pct": f"{_top_misconfig(data, 'AAK-OAUTH-008')['config_pct']:g}",
         **_prevalence_figures(data),
+        **_report_figures(data),
+        **_report_words_and_tables(data),
     }
 
 
@@ -125,25 +135,175 @@ def _share(n: int, total: int) -> str:
     return f"{100 * n / total:.1f}"
 
 
-# results.json category key -> marker key, in PREVALENCE.md's table order.
+# results.json category key -> marker key. PREVALENCE.md prints the categories as
+# a generated table (`category-table`); these keys are the ones REPORT.md's
+# What-changed table states on their own, the four categories v1.1 moved.
 _CATEGORY_MARKERS = (
-    ("mcp-config", "mcp-config"),
     ("secret-exposure", "secret"),
+    ("supply-chain", "supply-chain"),
+    ("legal-compliance", "legal"),
     ("transport-security", "transport"),
-    ("tool-poisoning", "tool-poisoning"),
-    ("composition", "composition"),
 )
+
+# Per-rule figures the report states, by marker key prefix: `mcp005-n`,
+# `mcp005-pct`. Read from results.json's rule_hit_rate, which lists every rule
+# that fired, so a rule that leaves the top ten keeps its source.
+_RULE_MARKERS = (
+    ("mcp005", "AAK-MCP-005"),
+    ("supply001", "AAK-SUPPLY-001"),
+    ("mcp006", "AAK-MCP-006"),
+    ("mcp003", "AAK-MCP-003"),
+    ("secret007", "AAK-SECRET-007"),
+    ("launcher-inject", "AAK-MCP-STDIO-LAUNCHER-INJECT-001"),
+    ("mcp009", "AAK-MCP-009"),
+    ("transport003", "AAK-TRANSPORT-003"),
+)
+
+# OWASP MCP Top 10 ids the report states on their own, by marker key prefix.
+_OWASP_MARKERS = (("owasp-mcp07", "MCP07:2025"),)
+
+
+def _rule_rate(data: dict, rule_id: str) -> dict:
+    """One rule's ``{configs, pct}`` from rule_hit_rate, zero when it never fired.
+
+    Unlike `_top_misconfig` this does not raise on absence: rule_hit_rate lists
+    every rule that fired on the corpus, so a rule missing from it fired on no
+    config. AAK-SECRET-007 is the case: it stands down on `.mcp.json`, the name
+    the corpus is scanned under since v1.1.
+    """
+    return data["rule_hit_rate"].get(rule_id, {"configs": 0, "pct": 0.0})
+
+
+def _report_figures(data: dict) -> dict[str, str]:
+    """REPORT.md's figures beyond the headline: corpus split, auth, transport, rules.
+
+    Shares print with one decimal (`3.0`, not `3`), as the report's tables do.
+    `median-rank` is the config the median grade is read at, and `top-decile-n`
+    the size of the best tenth, rounded down so "the top 10%" never claims more
+    configs than it has.
+    """
+    total = data["distinct_configs_scanned"]
+    auth = data["auth_profile_2026_07_28"]
+    transport = data["transport_distribution"]
+    manifest = json.loads(_REPORT_MANIFEST.read_text(encoding="utf-8"))
+    registry_candidates = sum(1 for s in manifest["servers"] if s.get("config") is not None)
+    out = {
+        "registry-servers": f"{manifest['distinct_latest_servers']:,}",
+        "registry-candidates": f"{registry_candidates:,}",
+        "crawl-candidates": f"{data['corpus_total_candidates'] - registry_candidates:,}",
+        "corpus-crawl": f"{data['corpus_sources']['crawl']:,}",
+        "corpus-registry": f"{data['corpus_sources']['registry']:,}",
+        "corpus-candidates": f"{data['corpus_total_candidates']:,}",
+        "corpus-duplicates": f"{data['duplicates_removed']:,}",
+        "corpus-unparseable": f"{data['unparseable_removed']:,}",
+        "rfc9728-pct": f"{auth['rfc9728_prm_discovery']['pct']:.1f}",
+        "remote-n": f"{auth['remote_configs']['n']:,}",
+        "remote-pct": f"{auth['remote_configs']['pct']:.1f}",
+        "transport-http": f"{transport.get('streamable-http', 0):,}",
+        "transport-stdio": f"{transport.get('stdio', 0):,}",
+        "transport-sse": f"{transport.get('sse', 0):,}",
+        "high-n": f"{data['configs_with_high']:,}",
+        "median-rank": f"{(total + 1) // 2:,}",
+        "top-decile-n": f"{total // 10:,}",
+    }
+    for category, key in _CATEGORY_MARKERS:
+        row = data["category_hit_rate"].get(category, {"configs": 0, "pct": 0.0})
+        out[f"cat-{key}-n"] = f"{row['configs']:,}"
+        out[f"cat-{key}-pct"] = f"{row['pct']:.1f}"
+    for key, rule_id in _RULE_MARKERS:
+        rate = _rule_rate(data, rule_id)
+        out[f"{key}-n"] = f"{rate['configs']:,}"
+        out[f"{key}-pct"] = f"{rate['pct']:.1f}"
+    for key, code in _OWASP_MARKERS:
+        row = data["owasp_mcp_hit_rate"].get(code, {"configs": 0, "pct": 0.0})
+        out[f"{key}-n"] = f"{row['configs']:,}"
+        out[f"{key}-pct"] = f"{row['pct']:.1f}"
+    return out
+
+
+def _grade_at(grades: dict, rank: int) -> str:
+    """The grade of the config at ``rank`` (1 is the best), reading A down to F."""
+    running = 0
+    for grade in "ABCDF":
+        running += grades.get(grade, 0)
+        if rank <= running:
+            return grade
+    raise SystemExit(f"sync_rule_count: rank {rank} is past the last graded config")
+
+
+def _report_words_and_tables(data: dict) -> dict[str, str]:
+    """Marker values that are not numbers: two grade letters and three tables.
+
+    The tables are PREVALENCE.md's top ten, categories and OWASP MCP Top 10. Each
+    had a fixed set of rows typed by hand, and v1.1 changes the rows themselves:
+    two rules enter the top ten and two leave, two categories appear, and the
+    OWASP ids are OWASP's own since #971. A generated table follows the data's
+    ranking, so a row cannot be left behind.
+    """
+    total = data["distinct_configs_scanned"]
+    grades = data["grade_distribution"]
+    return {
+        "median-grade": _grade_at(grades, (total + 1) // 2),
+        "top-decile-grade": _grade_at(grades, total // 10),
+        "top-misconfig-table": _render_top_misconfig_table(data),
+        "category-table": _render_category_table(data),
+        "owasp-mcp-table": _render_owasp_mcp_table(data),
+    }
+
+
+def _table_block(lines: list[str]) -> str:
+    """A table between its marker pair, set off by blank lines so it renders."""
+    return "\n\n" + "\n".join(lines) + "\n\n"
+
+
+def _render_top_misconfig_table(data: dict) -> str:
+    """results.json's ranked top ten, advisory rules already left out."""
+    lines = [
+        "| # | Rule | Finding | Severity | Configs | Share |",
+        "|--:|---|---|:---:|--:|--:|",
+    ]
+    for rank, row in enumerate(data["top_misconfigurations"], start=1):
+        severity = row["severity"].upper()
+        if severity == "CRITICAL":
+            severity = f"**{severity}**"
+        lines.append(
+            f"| {rank} | `{row['rule_id']}` | {row['title']} | {severity} | "
+            f"{row['configs']:,} | {row['config_pct']:.1f}% |"
+        )
+    return _table_block(lines)
+
+
+def _render_category_table(data: dict) -> str:
+    """Configs with at least one finding per AAK category, ranked as results.json is."""
+    from agent_audit_kit.models import Category
+
+    lines = ["| AAK category | Configs with ≥1 finding | Share |", "|---|--:|--:|"]
+    for value, row in data["category_hit_rate"].items():
+        name = _CATEGORY_DISPLAY[Category(value).name]
+        lines.append(f"| {name} | {row['configs']:,} | {row['pct']:.1f}% |")
+    return _table_block(lines)
+
+
+def _render_owasp_mcp_table(data: dict) -> str:
+    """Configs tripping each OWASP MCP Top 10 risk, under OWASP's ids and titles."""
+    from agent_audit_kit.output.owasp_report import OWASP_MCP
+
+    lines = ["| OWASP MCP Top 10 | Risk | Configs | Share |", "|---|---|--:|--:|"]
+    for code, row in data["owasp_mcp_hit_rate"].items():
+        lines.append(f"| **{code}** | {OWASP_MCP[code]} | {row['configs']:,} | {row['pct']:.1f}% |")
+    return _table_block(lines)
 
 
 def _prevalence_figures(data: dict) -> dict[str, str]:
-    """PREVALENCE.md's grade table, severity line and category table.
+    """PREVALENCE.md's grade table and severity line, which REPORT.md shares.
 
     These were typed by hand and drifted. On 2026-10-12 the grade table said
     A 632, B 1,426 and F 85, the severity line 1,338 critical and 318 high, the
     per-config line 52.8% and the MCP-configuration row 2,299, against 636,
     1,421, 86, 1,335, 319, 52.7% and 2,300 in results.json. Shares and the
     cumulative column are computed from the counts here, so they cannot
-    disagree with them.
+    disagree with them. The category table is generated whole since v1.1
+    (`_render_category_table`).
     """
     total = data["distinct_configs_scanned"]
     grades = data["grade_distribution"]
@@ -163,10 +323,6 @@ def _prevalence_figures(data: dict) -> dict[str, str]:
     for severity in ("critical", "high", "medium", "low"):
         out[f"findings-{severity}"] = f"{data['severity_totals'][severity]:,}"
     out["high-pct"] = f"{data['configs_with_high_pct']:g}"
-    for category, key in _CATEGORY_MARKERS:
-        row = data["category_hit_rate"][category]
-        out[f"cat-{key}-n"] = f"{row['configs']:,}"
-        out[f"cat-{key}-pct"] = f"{row['pct']:.1f}"
     return out
 
 
@@ -201,10 +357,16 @@ def _top_misconfig(data: dict, rule_id: str) -> dict:
 # Both are asserted against results.json in tests/test_report_headline_numbers.py
 # instead, so drift fails CI without putting machinery into text that leaves the
 # repository.
+#
+# REPORT.md joined at v1.1. It had been prose-asserted on the theory that the
+# document people cite should hold no machinery, and its grade table showed A 637
+# and F 85 while its own results.json said 636 and 86. Its BibTeX block stays
+# unmarked: a comment inside a code fence renders as text.
 _REPORT_MARKER_FILES = (
     "README.md",
     "docs/STATE-OF-MCP-SECURITY-2026.md",
     "research/state-of-mcp-2026/PREVALENCE.md",
+    "research/state-of-mcp-2026/REPORT.md",
 )
 
 

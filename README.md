@@ -8,7 +8,7 @@
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.9+-blue.svg" alt="Python 3.9+"></a>
   <a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="#what-it-finds"><img src="https://img.shields.io/badge/rules-398-blue.svg" alt="Rules: 398"></a>
-  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.0-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.0"></a>
+  <a href="https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report"><img src="https://img.shields.io/badge/cite-State_of_MCP_Security_2026_v1.1-informational.svg" alt="Cite the State of MCP Security 2026 report, version 1.1"></a>
   <!-- fp-badge --><a href="benchmarks/false_positive/RESULTS.md"><img src="https://img.shields.io/badge/benign--slice%20536%20MCP%20configs-1%20HIGH%2FCRIT%20finding%2C%200%20false-brightgreen.svg" alt="Benign-slice false-positive measurement: 536 MCP configs scanned, 0 of 1 HIGH/CRITICAL findings were false positives (0.0%)"></a><!-- /fp-badge -->
 </p>
 
@@ -116,8 +116,8 @@ From the [State of MCP Security 2026](https://sattyamjjain.github.io/agent-audit
 report ([how to cite](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/#how-to-cite-this-report)):
 
 - <!-- report:corpus -->2,303<!-- /report --> distinct public MCP configs scanned.
-- <!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->) declare a remote server with **no authentication**.
-- <!-- report:rfc9728-n -->0<!-- /report --> serve RFC 9728 Protected-Resource-Metadata discovery.
+- <!-- report:noauth-pct -->50.6<!-- /report -->% (<!-- report:noauth-n -->1,166<!-- /report -->) declare a remote server with **no authentication**.
+- <!-- report:rfc9728-n -->0<!-- /report --> reference RFC 9728 Protected-Resource-Metadata discovery in the config.
 - <!-- report:inline-auth-pct -->100<!-- /report -->% (<!-- report:inline-auth-n -->424<!-- /report -->/<!-- report:inline-auth-d -->424<!-- /report -->) of inline-auth remote configs **hardcode a static credential**.
 
 These regenerate from `results.json` and are asserted in CI, so they cannot
@@ -189,7 +189,7 @@ regenerated from the ledger, not asserted.
 
 <!-- scanner-count:total -->104<!-- /scanner-count --> scanner modules: AST-based taint analysis for
 Python, and regex dangerous-sink scanners for TypeScript/JavaScript and Rust.
-<!-- test-count:total -->3,467<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
+<!-- test-count:total -->3,494<!-- /test-count --> test functions. 27 CLI commands. Releases are Sigstore-signed
 and ship a deterministic rule bundle.
 
 Mechanical fix recipes cover <!-- fix-recipe-coverage:count -->11<!-- /fix-recipe-coverage --> of <!-- rule-count:total -->398<!-- /rule-count --> rules

@@ -102,7 +102,7 @@ def render_markdown() -> str:
         "requirements; these three are what checks the joins between them.",
         "",
         "**Evidence** — for how often these controls actually fail in the wild, see "
-        "*The State of MCP Security, 2026* (v1.0): a scan of 2,303 distinct public "
+        "*The State of MCP Security, 2026* (v1.1): a scan of 2,303 distinct public "
         "MCP configs. "
         "[Report](https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md)"
         " · this crosswalk says what the controls are; the report says how often they "

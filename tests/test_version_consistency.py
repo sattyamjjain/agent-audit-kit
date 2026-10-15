@@ -374,7 +374,11 @@ def test_the_guard_does_not_rewrite_the_reports_own_version() -> None:
     """
     mod = _load_sync_repo_metadata()
     text = (REPO_ROOT / "CITATION.cff").read_text(encoding="utf-8")
-    assert '  version: "1.0"' in text, "the report's version should be indented under preferred-citation"
+    report = (REPO_ROOT / "research" / "state-of-mcp-2026" / "REPORT.md").read_text(encoding="utf-8")
+    report_version = re.search(r"\*\*Report version (\d+\.\d+)\*\*", report).group(1)
+    assert f'  version: "{report_version}"' in text, (
+        "the report's version should be indented under preferred-citation, and be REPORT.md's"
+    )
     assert len(mod._CFF_VERSION_RE.findall(text)) == 1, (
         "the version pattern must match only the top-level key"
     )

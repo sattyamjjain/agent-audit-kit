@@ -44,6 +44,8 @@ _SURFACES = (
 # Protocol) server" — i.e. the corpus-size claim ("2,303 distinct public MCP server
 # configs"). Deliberately narrow so per-metric numbers ("1,205 ... remote server",
 # "1,641 ... registry servers") are not swept in.
+_MARKER_RE = re.compile(r"<!--\s*report:[a-z0-9-]+\s*-->(.*?)<!--\s*/report\s*-->", re.DOTALL)
+
 _CORPUS_CLAIM_RE = re.compile(
     r"(\d,\d{3})\s+(?:distinct\s+)?(?:public\s+)?(?:MCP|Model Context Protocol)\s+server"
 )
@@ -62,7 +64,9 @@ def test_published_corpus_size_claims_match_corpus_n() -> None:
     found = 0
     bad: list[str] = []
     for rel in _SURFACES:
-        text = (REPO / rel).read_text(encoding="utf-8")
+        # A `report:` marker sits between the number and the words after it; read
+        # the text a reader sees, so a marked claim is checked rather than skipped.
+        text = _MARKER_RE.sub(lambda m: m.group(1), (REPO / rel).read_text(encoding="utf-8"))
         for lineno, line in enumerate(text.splitlines(), start=1):
             for m in _CORPUS_CLAIM_RE.finditer(line):
                 found += 1

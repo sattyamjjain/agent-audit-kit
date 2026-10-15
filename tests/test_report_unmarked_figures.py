@@ -18,8 +18,10 @@ switched-off-in-a-week:
 * matching is anchored to the *claim*, never to bare digits -- an un-anchored
   ``N% (M)`` pattern matched all nine rows of REPORT.md's table on the first
   draft; and
-* REPORT.md is judged differently from the generated surfaces, because it is the
-  document the markers are pinned to rather than one of their outputs.
+* the prose surfaces (CITATION.cff and the distribution copy) are judged
+  differently from the generated ones, because a marker in either would be read
+  or pasted by a human. REPORT.md was judged that way until report v1.1, when it
+  became generated too.
 """
 
 from __future__ import annotations
@@ -146,27 +148,42 @@ def test_mask_is_length_preserving() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Design point: REPORT.md is judged differently, on purpose
+# Design point: the prose surfaces are judged differently, on purpose
 # ---------------------------------------------------------------------------
 
-def test_report_md_tolerates_an_unmarked_but_correct_figure(tmp_path, monkeypatch) -> None:
-    """It is the source document -- prose-asserted, never generated. Requiring
-    markers there would demand machinery in the text people cite."""
+def test_report_md_is_generated_since_v1_1(tmp_path, monkeypatch) -> None:
+    """REPORT.md left the prose-asserted mode at v1.1. As a source document its
+    grade table could say A 637 and F 85 while results.json said 636 and 86,
+    because no figure pattern covers a grade; marked, a hand-typed value there is
+    the same defect as anywhere else."""
     rel = "research/state-of-mcp-2026/REPORT.md"
+    assert rel in mod.MUST_BE_MARKED and rel not in mod.MUST_AGREE
     (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / rel).write_text(
         "| no RFC 9728 discovery | `AAK-OAUTH-008` (low) | 18.4% (424) |",
         encoding="utf-8",
     )
     monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
+    rows = mod.scan_file(rel, must_be_marked=True)
+    assert len(rows) == 1 and "not marker-driven" in rows[0]
+
+
+def test_a_prose_surface_tolerates_an_unmarked_but_correct_figure(tmp_path, monkeypatch) -> None:
+    """CITATION.cff is prose on purpose: a marker would render into the abstract
+    every citation tool shows."""
+    rel = "CITATION.cff"
+    assert rel in mod.MUST_AGREE
+    (tmp_path / rel).write_text(
+        "  abstract: >-\n    | `AAK-OAUTH-008` | 18.4% (424) |\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
     assert mod.scan_file(rel, must_be_marked=False) == []
 
 
-def test_report_md_still_fails_on_a_contradicting_figure(tmp_path, monkeypatch) -> None:
-    """This is what including REPORT.md buys: its AAK-OAUTH-008 figure is read by
-    no other test, so before this guard it could contradict PREVALENCE.md freely
-    -- which is exactly what it did."""
-    rel = "research/state-of-mcp-2026/REPORT.md"
+def test_a_prose_surface_still_fails_on_a_contradicting_figure(tmp_path, monkeypatch) -> None:
+    """Prose is allowed, a wrong value is not."""
+    rel = "docs/DISTRIBUTION-CHECKLIST.md"
+    assert rel in mod.MUST_AGREE
     (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
     (tmp_path / rel).write_text(
         "| no RFC 9728 discovery | `AAK-OAUTH-008` (low) | 18.3% (421) |",

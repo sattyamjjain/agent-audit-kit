@@ -30,17 +30,21 @@ def test_corpus_meets_1000_target() -> None:
 
 def test_report_headline_numbers_match_results() -> None:
     d = _results()
-    report = REPORT.read_text(encoding="utf-8")
+    # The figures are `report:` markers since v1.1; read what a reader sees.
+    report = re.sub(
+        r"<!--\s*report:[a-z0-9-]+\s*-->(.*?)<!--\s*/report\s*-->",
+        lambda m: m.group(1), REPORT.read_text(encoding="utf-8"), flags=re.DOTALL,
+    )
     n = d["distinct_configs_scanned"]
     # The report must cite the exact corpus size and the key metric numerators.
     assert f"{n:,}" in report, f"REPORT.md must cite corpus size {n:,}"
     ap = d["auth_profile_2026_07_28"]
     no_auth = ap["no_authentication"]
-    assert f"{no_auth['n']} of {n:,}" in report or f"{no_auth['n']} of {n}" in report
+    assert f"{no_auth['n']:,} of {n:,}" in report
     static = ap["remote_auth_static_credential"]
-    assert f"{static['n']} of {static['denominator']}" in report
+    assert f"{static['n']:,} of {static['denominator']:,}" in report
     prm = ap["rfc9728_prm_discovery"]
-    assert f"{prm['n']} of {n:,}" in report  # 0 of 1,374
+    assert f"{prm['n']:,} of {n:,}" in report  # 0 of 1,374
 
 
 def test_auth_profile_metrics_carry_n_and_denominator() -> None:
@@ -266,6 +270,8 @@ _SUPERSEDED_LITERALS = (
     r"\b664\b", r"\b748\b", r"\b1,?374\b",        # corpus sizes
     r"\b26\.1\b", r"\b35\.1\b", r"\b43\.7\b",     # critical-rate / npx-uvx-rate (664 / 1,374 corpus)
     r"\b43\.4\b", r"\b24\.2\b", r"\b99\.4\b",     # r/netsec npx duplicate / no-auth / MCP07 (664 corpus)
+    # report v1.0's no-auth, critical and MCP07 figures (2,303 corpus, superseded by v1.1)
+    r"\b52\.1\b", r"\b1,201\b", r"\b52\.7\b", r"\b1,213\b", r"\b99\.8\b",
 )
 
 # Lines where a superseded literal is legitimate: (surface, substring on the line).

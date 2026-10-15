@@ -1,6 +1,6 @@
 # MCP security coverage & crosswalk
 
-> **The corpus study is [`research/state-of-mcp-2026/REPORT.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/) (v1.0, citable).**
+> **The corpus study is [`research/state-of-mcp-2026/REPORT.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/) (v1.1, citable).**
 > This page is not a second report and does not restate its findings. It covers
 > what only lives here: the framework crosswalk generated from the committed rule
 > registry, the dated evidence anchors, and the reserved-surface status table for
@@ -31,15 +31,15 @@ each framework. The NSA-CSI + OWASP-Agentic view is also in
 
 ## Corpus findings live in the report
 
-The data run over **2,303 distinct public MCP server configs** — a GitHub crawl
+The data run over **<!-- report:corpus -->2,303<!-- /report --> distinct public MCP server configs** — a GitHub crawl
 plus the official MCP Registry's latest-version servers, deduped by content — is
 published in full as [`research/state-of-mcp-2026/REPORT.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/REPORT/)
-(v1.0, with methods, limitations and a citation block), over the raw
+(v1.1, with methods, limitations and a citation block), over the raw
 [`results.json`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/results.json). Per-rule prevalence
 is in [`PREVALENCE.md`](https://sattyamjjain.github.io/agent-audit-kit/docs/research/state-of-mcp-2026/PREVALENCE/).
 
 One figure for orientation, generated from the same data:
-**<!-- report:noauth-pct -->52.1<!-- /report -->% (<!-- report:noauth-n -->1,201<!-- /report -->/2,303) of those configs declare a remote server with no authentication.**
+**<!-- report:noauth-pct -->50.6<!-- /report -->% (<!-- report:noauth-n -->1,166<!-- /report -->/<!-- report:corpus -->2,303<!-- /report -->) of those configs declare a remote server with no authentication.**
 Everything else — grade distribution, auth-posture and transport splits, the top
 misconfigurations table — is in the report, and is deliberately not duplicated
 here. This page previously carried a stubbed "what breaks" section that competed

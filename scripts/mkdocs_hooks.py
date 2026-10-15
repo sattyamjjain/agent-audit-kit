@@ -106,6 +106,9 @@ _LINK_REWRITES: dict[str, str] = {
     "../../benchmarks/false_positive/RESULTS.md": (
         f"{_BLOB}/benchmarks/false_positive/RESULTS.md"
     ),
+    "../../benchmarks/aak_mcp_001/RESULTS.md": (
+        f"{_BLOB}/benchmarks/aak_mcp_001/RESULTS.md"
+    ),
 }
 
 #: Matches the target of a markdown link that is neither absolute nor an anchor.

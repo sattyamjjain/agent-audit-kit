@@ -73,7 +73,7 @@ _IMAGE = "ghcr.io/sattyamjjain/agent-audit-kit"
 CITATION = REPO_ROOT / "CITATION.cff"
 CHANGELOG = REPO_ROOT / "CHANGELOG.md"
 
-# Top-level keys only. `preferred-citation` carries its own `version: "1.0"` (the
+# Top-level keys only. `preferred-citation` carries its own `version:` (the
 # report's, which moves when a measurement changes, not when the software ships),
 # so an unanchored pattern would rewrite the report's identity on every release --
 # the exact confusion the file's header comment exists to prevent.

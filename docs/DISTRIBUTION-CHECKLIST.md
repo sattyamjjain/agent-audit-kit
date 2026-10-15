@@ -7,12 +7,13 @@ with score-calibration detail in
 **Nothing here auto-posts.** Copy, sanity-check the links, post one surface at a
 time, reply to comments.
 
-**Canonical numbers (from `results.json` — do not round):**
-2,303 distinct configs · 52.7% (1,213) with a critical finding · median grade B
+**Canonical numbers (from `results.json`, report version 1.1 — do not round):**
+2,303 distinct configs · 51.4% (1,184) with a critical finding · median grade B
 (top 10% A) · top misconfig = remote server with **no authentication**
-(`AAK-MCP-001`, critical, 52.1%) · 52.1% (1,201) no-auth remote · 19.5% (450)
-`npx`/`uvx` fetch-and-execute · 99.8% trip OWASP MCP07 (authorization).
-Static, offline, deterministic.
+(`AAK-MCP-001`, critical, 50.6%) · 50.6% (1,166) no-auth remote · 19.5% (450)
+`npx`/`uvx` fetch-and-execute · 12.3% (284) launch a package with no pinned
+version · 69.3% (1,595) trip OWASP MCP07 (insufficient authentication &
+authorization). Static, offline, deterministic.
 
 Report link: `https://github.com/sattyamjjain/agent-audit-kit/blob/main/research/state-of-mcp-2026/REPORT.md`
 
@@ -22,7 +23,7 @@ Report link: `https://github.com/sattyamjjain/agent-audit-kit/blob/main/research
 
 **Title:**
 ```
-Show HN: I scanned 2,303 public MCP server configs — 52% expose a remote server with no auth
+Show HN: I scanned 2,303 public MCP server configs — 51% expose a remote server with no auth
 ```
 
 **First comment (post immediately, as author):**
@@ -32,12 +33,12 @@ Apache-2.0). I took 2,303 distinct public MCP configs — a GitHub crawl plus th
 MCP Registry's latest-version servers — and scanned each one offline and
 deterministically: no cloud, no LLM, same input gives the same result.
 
-Headline: 52.1% (1,201 of 2,303) declare a remote server with no authentication —
-that's the single most common finding, and it's critical-severity. 52.7% carry at
+Headline: 50.6% (1,166 of 2,303) declare a remote server with no authentication —
+that's the single most common finding, and it's critical-severity. 51.4% carry at
 least one critical finding overall; the median config still grades a B. It lines
 up with Knostic's separate finding that 119 of 119 exposed servers they probed
-allowed unauthenticated tool-listing. The next most common issue is more boring
-and fixable: 19.5% launch their server with npx/uvx and no pinned version.
+allowed unauthenticated tool-listing. Another common issue is more boring and
+fixable: 12.3% launch a package with no pinned version.
 
 I tried to keep it honest: the sample skews to public repos and registry
 latest-version entries, static analysis over- and under-counts, auth posture is
@@ -71,12 +72,12 @@ distinct public MCP configs — a GitHub crawl plus the official MCP Registry's
 latest-version servers — with an offline, deterministic static analyzer and
 aggregated the results.
 
-Headline: 52.1% (1,201 of 2,303) declare a remote server with no authentication
-(critical severity, the single most common finding); 52.7% carry at least one
-critical finding; median grade B. Mapped to the OWASP MCP Top 10, 99.8% trip
-MCP07 (authorization / excessive permissions). Other common issues: npx/uvx
-fetch-and-execute at launch (19.5%), secret inlined in the config env block
-(3.0%).
+Headline: 50.6% (1,166 of 2,303) declare a remote server with no authentication
+(critical severity, the single most common finding); 51.4% carry at least one
+critical finding; median grade B. Mapped to the OWASP MCP Top 10, 69.3% trip
+MCP07 (insufficient authentication & authorization). Other common issues: npx/uvx
+fetch-and-execute at launch (19.5%), a package launched with no pinned version
+(12.3%), secret inlined in the config env block (1.3%).
 
 Method and raw aggregate (results.json) are committed; there's an exact
 reproduce command (`make report`, offline + byte-deterministic). The scanner is
@@ -102,12 +103,13 @@ real-world data). Open a Discussion first, not a cold PR.
 Sharing real-world prevalence data that may be useful evidence for the MCP Top
 10. I statically scanned 2,303 distinct public MCP server configs (offline,
 deterministic; method + raw results committed and reproducible). Mapped to the
-current list: 99.8% of configs trip MCP07 (authorization/excessive perms), and
-52.1% declare a remote server with no authentication (critical, the single most
-common finding) — which corroborates Knostic's 119-of-119 unauthenticated-tool-
-listing finding from the deployment side. 19.5% trip the supply-chain/untrusted-
-execution risk (npx/uvx unpinned launch). Happy to contribute the dataset or a
-category-by-category breakdown. Report: <report link>
+current list: 69.3% of configs trip MCP07 (insufficient authentication &
+authorization), and 50.6% declare a remote server with no authentication
+(critical, the single most common finding) — which corroborates Knostic's
+119-of-119 unauthenticated-tool-listing finding from the deployment side. 19.6%
+trip MCP04, the supply-chain risk (12.3% launch a package with no pinned
+version). Happy to contribute the dataset or a category-by-category breakdown.
+Report: <report link>
 ```
 
 - [ ] Contribute *data*, not a tool plug. Permalink to the merged report commit.
