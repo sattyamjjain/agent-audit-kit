@@ -64,10 +64,13 @@ _PIPE_TO_SHELL_RE = re.compile(
     re.IGNORECASE,
 )
 # An interpreter invoked on a script path inside the repo, e.g. `python ./x.py`,
-# `node scripts/setup.js`, `bash ./install.sh`.
+# `node scripts/setup.js`, `bash ./install.sh`. The path is read lazily up to a
+# `[\w-]\.<ext>`: written `\.?[\w./\\-]*[\w-]+\.<ext>`, every split of a long
+# path with no such extension was tried, so the time grew with the square of the
+# path. Both forms match the same commands.
 _INTERP_REPO_PATH_RE = re.compile(
     r"\b(?:python[23]?|node|deno|bun|ruby|perl|php|bash|sh|zsh)\b\s+"
-    r"\.?[\w./\\-]*[\w-]+\.(?:py|js|cjs|mjs|ts|rb|pl|php|sh|bash|zsh|ps1)\b",
+    r"[\w./\\-]*?[\w-]\.(?:py|js|cjs|mjs|ts|rb|pl|php|sh|bash|zsh|ps1)\b",
     re.IGNORECASE,
 )
 

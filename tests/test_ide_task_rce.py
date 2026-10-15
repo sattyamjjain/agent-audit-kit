@@ -7,7 +7,10 @@ that the scanner did not read before (`.vscode/mcp.json` was covered,
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.scanners import ide_task_rce
 
@@ -107,3 +110,25 @@ def test_folderopen_benign_command_is_high(tmp_path: Path) -> None:
 def test_no_vscode_dir_is_quiet(tmp_path: Path) -> None:
     (tmp_path / "tasks.json").write_text('{"tasks":[]}')  # not under .vscode/
     assert _ids(tmp_path) == []
+
+
+@pytest.mark.parametrize(("command", "repo_script"), [
+    ("python ./setup.py", True),
+    ("node scripts/x.js", True),
+    ("bash install.sh", True),
+    ("python3 -m pip", False),
+    ("node a.b.c", False),
+    ("sh ./x.py.bak", True),
+    ("python .py", False),
+])
+def test_interpreter_on_a_repo_script_keeps_its_shape(command: str, repo_script: bool) -> None:
+    assert bool(ide_task_rce._INTERP_REPO_PATH_RE.search(command)) is repo_script
+
+
+def test_a_long_script_path_reads_in_linear_time() -> None:
+    """A 1 MB path with no script extension. Every split of the path was
+    tried: 20,000 characters took 0.43 seconds and the time grew with the
+    square. The bound is loose for slow CI runners."""
+    started = time.perf_counter()
+    ide_task_rce._INTERP_REPO_PATH_RE.search("python " + "a" * 1_000_000)
+    assert time.perf_counter() - started < 5.0
