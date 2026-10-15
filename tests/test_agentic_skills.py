@@ -232,3 +232,29 @@ def test_the_family_does_not_duplicate_rules_that_already_cover_a_category() -> 
     for rule_id in FAMILY:
         assert "AST01" not in RULES[rule_id].owasp_ast_references
         assert "AST03" not in RULES[rule_id].owasp_ast_references
+
+
+@pytest.mark.parametrize(("text", "found"), [
+    ("npm install left-pad\n", "npm install left-pad\n"),
+    ("pip install requests==2.32.0\n", None),
+    ("npm install --save-dev\n", "npm install --save-dev\n"),     # the flag reads as the target
+    ("npm i --a\n--b ==1\n", "npm i --a\n"),                     # a marker on a later line
+    ("cargo install --locked ripgrep\n", "cargo install --locked ripgrep\n"),
+])
+def test_install_arm_finds_what_it_did(text: str, found: str | None) -> None:
+    assert agentic_skills._unpinned_install(text) == found
+
+
+@pytest.mark.parametrize("text", [
+    # `-{1,2}[\w-]+` split each `--a` two ways, and a marker after the flags made
+    # the search try every combination: 22 flags took 0.74 seconds.
+    "npm install " + "--a " * 40 + "==1\n",
+    # A marker at the end of a 1 MB line of flags: every flag given back re-read the line.
+    "npm install " + "--a " * 250_000 + "==1\n",
+])
+def test_install_arm_reads_a_crafted_line_in_linear_time(text: str) -> None:
+    import time
+
+    started = time.perf_counter()
+    agentic_skills._unpinned_install(text)
+    assert time.perf_counter() - started < 5.0

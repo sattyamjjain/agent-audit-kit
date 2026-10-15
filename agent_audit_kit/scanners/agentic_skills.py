@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import json
 import re
+from bisect import bisect_left
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -113,6 +114,21 @@ _DESERIALIZATION_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A bare install command. It read flags as `-{1,2}[\w-]+`, which splits `--save`
+# two ways, so a command whose flags were followed by a pin marker tried every
+# split of every flag: 22 flags took 0.74 seconds, and each four more took sixteen
+# times as long. `-[\w-]+` reads the same flags one way. Its `(?!.*...)` still
+# re-read the rest of the line once per flag it gave back, so `_unpinned_install`
+# searches for it.
+_INSTALL_CMD = (
+    r"(?:npm\s+(?:i|install)|pipx?\s+install|uvx?\s+(?:tool\s+)?install|"
+    r"cargo\s+install|go\s+install)\s+"
+)
+_INSTALL_ARM = re.compile(
+    _INSTALL_CMD + r"(?:-[\w-]+\s+)*(?!.*(?:==|@\d|#egg=|--version))[@\w./-]+(?:\s|$)",
+    re.IGNORECASE,
+)
+
 # An external resource with nothing pinning it. Each arm is a shape AST02 or
 # AST07 names: a floating git ref, a "latest" redirect, a bare install command.
 _UNPINNED_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
@@ -125,12 +141,52 @@ _UNPINNED_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("a pipe-to-shell install", re.compile(
         r"curl[^\n|]{0,200}\|\s*(?:sudo\s+)?(?:ba)?sh|wget[^\n|]{0,200}\|\s*(?:ba)?sh",
         re.IGNORECASE)),
-    ("an unpinned package install", re.compile(
-        r"(?:npm\s+(?:i|install)|pipx?\s+install|uvx?\s+(?:tool\s+)?install|"
-        r"cargo\s+install|go\s+install)\s+(?:-{1,2}[\w-]+\s+)*"
-        r"(?!.*(?:==|@\d|#egg=|--version))[@\w./-]+(?:\s|$)",
-        re.IGNORECASE)),
+    ("an unpinned package install", _INSTALL_ARM),
 )
+_INSTALL_CMD_RE = re.compile(_INSTALL_CMD, re.IGNORECASE)
+_ONE_FLAG_RE = re.compile(r"-[\w-]+\s+")
+_INSTALL_TARGET_RE = re.compile(r"[@\w./-]+(?:\s|$)", re.IGNORECASE)
+_PIN_MARK_RE = re.compile(r"(?=(?:==|@\d|#egg=|--version))", re.IGNORECASE)
+
+
+def _unpinned_install(text: str) -> str | None:
+    """The text ``_INSTALL_ARM.search(text)`` matches, found in linear time.
+
+    After an install command and the most flags it can take (ending at `q`), the
+    arm needs no pin marker from `q` to the end of that line, then a target; or,
+    giving flags back, no marker from a flag to the end of its line, and that
+    flag is the target. A flag that is not the last of the run on its line can
+    only do better than that last one if the last one has a marker after it,
+    which it then has too, so only the last flag per line is tried. Markers are
+    found once per file and looked up by line, so no line is read again.
+    """
+    newlines = [m.start() for m in re.finditer("\n", text)]
+    last_mark: dict[int, int] = {}
+    for m in _PIN_MARK_RE.finditer(text):
+        last_mark[bisect_left(newlines, m.start())] = m.start()
+
+    def unmarked(q: int) -> bool:
+        return last_mark.get(bisect_left(newlines, q), -1) < q
+
+    for cmd in _INSTALL_CMD_RE.finditer(text):
+        flags: list[re.Match[str]] = []
+        q = cmd.end()
+        while (flag := _ONE_FLAG_RE.match(text, q)) is not None:
+            flags.append(flag)
+            q = flag.end()
+        target = _INSTALL_TARGET_RE.match(text, q) if unmarked(q) else None
+        if target is not None:
+            return text[cmd.start():target.end()]
+        line = None
+        for flag in reversed(flags):
+            flag_line = bisect_left(newlines, flag.start())
+            if flag_line == line:
+                continue  # an earlier flag on a line whose last flag is marked
+            line = flag_line
+            if unmarked(flag.start()):
+                # The flag is the target: its characters, then one blank.
+                return text[cmd.start():flag.start() + len(flag.group(0).rstrip()) + 1]
+    return None
 
 # A pinned reference anywhere in the bundle clears the "nothing pins it" claim
 # for that resource shape. Kept separate so a bundle that pins *some* things and
@@ -255,9 +311,13 @@ def _provenance_findings(bundle: _Bundle) -> list[Finding]:
 
     hits: list[str] = []
     for label, pattern in _UNPINNED_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            hits.append(f"{label} (`{match.group(0).strip()[:70]}`)")
+        if pattern is _INSTALL_ARM:
+            found = _unpinned_install(text)
+        else:
+            match = pattern.search(text)
+            found = match.group(0) if match else None
+        if found:
+            hits.append(f"{label} (`{found.strip()[:70]}`)")
     if not hits:
         return findings
     if _PINNED_RE.search(text):
