@@ -51,7 +51,10 @@ _STDIO_OPT_OUT_RE = re.compile(
 
 _SANITIZER_HINTS = (
     re.compile(r"\bshlex\.(?:quote|split)\s*\("),
-    re.compile(r"\bexecFile\s*\(\s*[^,]+,\s*\["),
+    # The first argument stops at a later `execFile(` that has an argument of
+    # its own, which reads on to the same comma: with `[^,]+` alone a file of
+    # `execFile(` and no comma read to the end once per call.
+    re.compile(r"\bexecFile\s*\((?:(?!\bexecFile\s*\([^,])[^,])+,\s*\["),
     re.compile(r"\b(ALLOWED_[A-Z_]+|WHITELIST_[A-Z_]+|VALID_(?:TOOLS|COMMANDS))\b"),
     re.compile(r"\bProcessBuilder\s*\(\s*(?:List\.of|Arrays\.asList|\[)"),
     re.compile(r"\bstd::process::Command::new\s*\([^)]+\)\s*\.\s*arg\s*\("),

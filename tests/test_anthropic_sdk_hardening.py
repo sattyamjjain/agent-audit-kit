@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 
 import pytest
@@ -139,3 +140,23 @@ def test_the_sdk_gate_is_the_one_the_stateless_rules_use(tmp_path: Path) -> None
     _, scanned = mcp_sdk_hardening.scan(tmp_path)
     assert {"pyproject.toml", "server.py"} <= scanned
     assert mcp_sdk_hardening.declares_mcp_sdk is _helpers.declares_mcp_sdk
+
+
+@pytest.mark.parametrize(("source", "hinted"), [
+    ("execFile(cmd, [arg])", True),
+    ("execFile(execFile(x), [y])", True),
+    ("execFile(, [x])", False),
+    ("execFile(cmd,\n  [arg])", True),
+    ("execFile(cmd, arg)", False),
+])
+def test_execfile_argv_hint_keeps_its_shape(source: str, hinted: bool) -> None:
+    assert bool(mcp_sdk_hardening._SANITIZER_HINTS[1].search(source)) is hinted
+
+
+def test_the_execfile_hint_reads_a_crafted_file_in_linear_time() -> None:
+    """1 MB of `execFile(` and no comma. Each call read the rest of the file:
+    80 KB took 0.22 seconds and the time grew with the square. The bound is
+    loose for slow CI runners."""
+    started = time.perf_counter()
+    mcp_sdk_hardening._SANITIZER_HINTS[1].search("execFile(" * 110_000)
+    assert time.perf_counter() - started < 5.0
