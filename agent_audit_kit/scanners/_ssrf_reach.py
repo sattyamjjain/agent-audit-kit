@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import NamedTuple
+from typing import Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments
 
@@ -37,9 +37,17 @@ _PY_FETCH_CALLEES = (
     "httpx.delete", "httpx.request", "httpx.stream", "session.get", "session.post",
     "client.get", "client.post", "aiohttp.request",
 )
+# A call site and its first argument, read without backtracking. The argument is
+# everything up to the first `,`, `)` or `;` (at most 200 characters before the
+# closer's leading whitespace), and the call counts only when a `,` or `)` closes
+# it; `_js_fetch_calls` drops the trailing whitespace and applies that test.
+# This is exactly what `\s*(?P<arg>[^;]{0,200}?)\s*[,)]` returned, but that form
+# re-read every whitespace run once per character before it, so a call followed
+# by a long run with no closer grew with the square of the run: "fetch(" and
+# 8,000 spaces took 32 seconds.
 _JS_FETCH_RE = re.compile(
     r"\b(?P<callee>fetch|axios\.(?:get|post|put|delete|request)|axios|got|node_fetch|"
-    r"superagent\.(?:get|post))\s*\(\s*(?P<arg>[^;]{0,200}?)\s*[,)]",
+    r"superagent\.(?:get|post))\s*\(\s*(?P<arg>[^,);]{0,200})(?P<close>\s*[,)])?",
 )
 
 # Caller-controlled sources.
@@ -57,6 +65,25 @@ _PRIVATE_ADDR_RE = re.compile(
     r"10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)",
     re.IGNORECASE,
 )
+
+# `const x = ...` / `let x = ...` / `x = ...`. The old one-piece pattern,
+# `(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=\s*([^;\n]{0,200})`, began an
+# attempt at every character of a long word or blank run and read to its end
+# (a hex blob in an ordinary JS file), so 40,000 characters took 7.2 seconds and
+# the time grew with the square. A match now starts only where one could first
+# succeed: at the start of a blank run (the name after it is read whole), at the
+# start of a word run, past any leading digits (a leading `const` / `let` / `var`
+# is dropped from the name, as before, so `;variable=1` still records `iable`),
+# or at one of those words that ends a run. Every other start failed for the
+# same reason as one of these. `_JS_ASSIGN_AT_RE` is the old attempt, tried once
+# where a 200-character right-hand side stopped inside a run, the one place the
+# old pattern restarted mid-run. The table is the same as before.
+_JS_ASSIGN_RE = re.compile(
+    r"(?:(?<!\s)\s+|(?<![\w$])[^\W_A-Za-z]*(?:(?:const|let|var)\s*)?|(?:const|let|var)(?![\w$])\s*)"
+    r"([A-Za-z_$][\w$]*)\s*=\s*([^;\n]{0,200})"
+)
+_JS_ASSIGN_AT_RE = re.compile(r"[^\W_A-Za-z]*(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=\s*([^;\n]{0,200})")
+_JS_WORD_RE = re.compile(r"[\w$]")
 
 
 class Reach(NamedTuple):
@@ -205,8 +232,8 @@ def analyze_js(text: str) -> list[Reach]:
 
     # name -> RHS text, for `const x = ...` / `let x = ...` / `x = ...`
     assigns: dict[str, str] = {}
-    for m in re.finditer(r"(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=\s*([^;\n]{0,200})", code):
-        assigns.setdefault(m.group(1), m.group(2))
+    for name, rhs in _js_assignments(code):
+        assigns.setdefault(name, rhs)
 
     def resolve(expr: str, depth: int = 0) -> str:
         """Inline single-hop assignments of the identifiers in expr."""
@@ -220,17 +247,56 @@ def analyze_js(text: str) -> list[Reach]:
         return out
 
     results: list[Reach] = []
-    for m in _JS_FETCH_RE.finditer(code):
-        arg = m.group("arg") or ""
+    for callee, arg, start in _js_fetch_calls(code):
         expanded = resolve(arg)
         addr = _PRIVATE_ADDR_RE.search(expanded)
         results.append(Reach(
-            callee=m.group("callee"),
-            line=code.count("\n", 0, m.start()) + 1,
+            callee=callee,
+            line=code.count("\n", 0, start) + 1,
             tainted=bool(_JS_USER_RE.search(expanded)),
             private_addr=addr.group(0).lower() if addr else None,
         ))
     return results
+
+
+def _js_assignments(code: str) -> Iterator[tuple[str, str]]:
+    """``(name, right-hand side)`` pairs in the order ``finditer`` over the old
+    one-piece pattern found them (see `_JS_ASSIGN_RE`)."""
+    pos = 0
+    while True:
+        m = None
+        if 0 < pos < len(code) and _same_run(code[pos - 1], code[pos]):
+            m = _JS_ASSIGN_AT_RE.match(code, pos)
+        if m is None:
+            m = _JS_ASSIGN_RE.search(code, pos)
+        if m is None:
+            return
+        yield m.group(1), m.group(2)
+        pos = m.end()
+
+
+def _same_run(a: str, b: str) -> bool:
+    """Both blanks, or both word characters: a right-hand side cut there."""
+    if a.isspace():
+        return b.isspace()
+    return bool(_JS_WORD_RE.match(a)) and bool(_JS_WORD_RE.match(b))
+
+
+def _js_fetch_calls(code: str) -> Iterator[tuple[str, str, int]]:
+    """``(callee, first argument, offset)`` for each outbound call, in the order
+    and with the overlap rules of ``finditer`` over the old one-piece pattern: a
+    call that is not closed is skipped and the search resumes one character
+    later, and a closed one resumes after its closer."""
+    pos = 0
+    while True:
+        m = _JS_FETCH_RE.search(code, pos)
+        if m is None:
+            return
+        if m.group("close") is None:
+            pos = m.start() + 1
+            continue
+        yield m.group("callee"), m.group("arg").rstrip(), m.start()
+        pos = m.end()
 
 
 def analyze(text: str, is_python: bool) -> list[Reach]:

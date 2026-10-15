@@ -248,3 +248,49 @@ def test_ts_comment_stripping_is_linear(unit: str) -> None:
     started = time.perf_counter()
     strip_comments(src, is_python=False)
     assert time.perf_counter() - started < 5.0
+
+
+def _js_arg(length: int) -> str:
+    """A call argument of exactly ``length`` characters that names a request field."""
+    return "'" + "a" * (length - 18) + "' + req.query.url"
+
+
+@pytest.mark.parametrize(("source", "sites"), [
+    ("fetch( req.query.url   );\n", [("fetch", 1, True, None)]),
+    # The argument is read up to 200 characters before the closer's blanks.
+    ("fetch(" + _js_arg(200) + ");\n", [("fetch", 1, True, None)]),
+    ("fetch(" + _js_arg(201) + ");\n", []),
+    ("fetch(" + _js_arg(199) + " " * 500 + ");\n", [("fetch", 1, True, None)]),
+    ("fetch(req.query.url; got(req.body.u);\n", [("got", 1, True, None)]),
+    ("fetch(fetch(req.query.url));\n", [("fetch", 1, True, None)]),
+    ("axios.get(req.body.target, { timeout: 5 });\n", [("axios.get", 1, True, None)]),
+    ("const base = '169.254.169.254/latest';\nfetch(base);\n", [("fetch", 2, False, "169.254.169.254")]),
+])
+def test_js_backend_call_shapes_keep_their_result(source: str, sites: list[tuple[object, ...]]) -> None:
+    assert [tuple(s) for s in analyze_js(source)] == sites
+
+
+_CRAFTED_JS = {
+    # A call with a long blank run and no closer re-read the run once per
+    # character before it: "fetch(" and 8,000 blanks took 32 seconds.
+    "call-blanks": "fetch(" + " " * 500_000,
+    "calls": "fetch(" * 83_000,
+    # Every unclosed `/*` read on to the end of the file.
+    "open-comments": "/* a" * 125_000,
+    # Every character of a long word began an assignment read to its end.
+    "word": "a" * 500_000,
+    "blanks": " " * 500_000 + "x",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_JS))
+def test_a_crafted_js_file_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """Just under the scanner's 512,000-byte file cap, with the MCP hint. The
+    bound is loose for slow CI runners; each takes a fraction of a second."""
+    import time
+
+    body = _CRAFTED_JS[shape]
+    assert len(_HINT + body) < 512_000
+    started = time.perf_counter()
+    _ids(tmp_path, "server.ts", body)
+    assert time.perf_counter() - started < 5.0
