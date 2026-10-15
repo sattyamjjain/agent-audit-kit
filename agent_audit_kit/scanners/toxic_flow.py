@@ -29,7 +29,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import in_skip_dir, loads_jsonc, make_finding
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -121,7 +121,7 @@ def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:
         if not p.is_file():
             continue
         try:
-            data = json.loads(p.read_text(encoding="utf-8", errors="replace"))
+            data = loads_jsonc(p.read_text(encoding="utf-8", errors="replace"))
         except (json.JSONDecodeError, OSError):
             continue
         parsed.add(cfg)

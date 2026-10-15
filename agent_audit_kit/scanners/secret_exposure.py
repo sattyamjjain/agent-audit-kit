@@ -7,7 +7,7 @@ from bisect import bisect_right
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
 
 # API key patterns
 ANTHROPIC_KEY = re.compile(r"sk-ant-[a-zA-Z0-9_-]{20,}")
@@ -330,7 +330,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files)
     if file_path.suffix == ".json" and file_path.name != ".mcp.json":
         try:
-            data = json.loads(content)
+            data = loads_jsonc(content)
             servers = data.get("mcpServers", {})
             if isinstance(servers, dict):
                 for server_name, server_cfg in servers.items():

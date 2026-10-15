@@ -29,7 +29,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
 
 _CAP_TO_RULE = {
     "roots": "AAK-MCP-DEPRECATED-001",
@@ -115,11 +115,16 @@ def _walk_capabilities(obj: object, found: set[str]) -> None:
             _walk_capabilities(item, found)
 
 
-def _json_capability_hits(text: str) -> set[str]:
+def _json_capability_hits(text: str, jsonc: bool = False) -> set[str]:
     """Rule IDs for deprecated capabilities declared in a JSON `capabilities`
-    block (precise; multi-key safe). Empty when the file is not JSON."""
+    block (precise; multi-key safe). Empty when the file is not JSON.
+
+    With `jsonc`, an MCP config is read as VS Code reads `.vscode/mcp.json`, so
+    a comment or a trailing comma no longer hides its `capabilities` block.
+    Source files and `package.json` stay strict JSON.
+    """
     try:
-        data = json.loads(text)
+        data = loads_jsonc(text) if jsonc else json.loads(text)
     except (json.JSONDecodeError, ValueError):
         return set()
     found: set[str] = set()
@@ -127,7 +132,7 @@ def _json_capability_hits(text: str) -> set[str]:
     return {_CAP_TO_RULE[c] for c in found}
 
 
-def _check_text(text: str, has_hint: bool) -> dict[str, int]:
+def _check_text(text: str, has_hint: bool, jsonc: bool = False) -> dict[str, int]:
     """Return {rule_id: line} for each deprecated feature matched in text.
 
     Merges regex markers (source-side) with a JSON `capabilities` walk
@@ -141,7 +146,7 @@ def _check_text(text: str, has_hint: bool) -> dict[str, int]:
         if m is not None:
             out[rule_id] = _line_of(text, m.start())
 
-    for rule_id in _json_capability_hits(text):
+    for rule_id in _json_capability_hits(text, jsonc):
         if rule_id not in out:
             cap = next(c for c, r in _CAP_TO_RULE.items() if r == rule_id)
             out[rule_id] = find_line_number(text, f'"{cap}"') or 1
@@ -192,7 +197,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         has_hint = bool(_MCP_HINT.search(text))
-        for rule_id, line in _check_text(text, has_hint).items():
+        jsonc = path.suffix == ".json" and path.name != "package.json"
+        for rule_id, line in _check_text(text, has_hint, jsonc).items():
             findings.append(make_finding(rule_id, rel, _EVIDENCE[rule_id], line))
 
     return findings, scanned

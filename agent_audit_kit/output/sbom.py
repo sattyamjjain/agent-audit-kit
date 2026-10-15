@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent_audit_kit import __version__
+from agent_audit_kit.scanners._helpers import loads_jsonc
 
 
 _MCP_CONFIG_NAMES = (
@@ -38,7 +39,7 @@ def _discover_mcp_packages(project_root: Path) -> list[dict]:
         if not path.is_file():
             continue
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = loads_jsonc(path.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
         for server_name, server_cfg in (data.get("mcpServers") or {}).items():

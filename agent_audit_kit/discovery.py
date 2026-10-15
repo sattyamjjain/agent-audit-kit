@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_audit_kit.scanners._helpers import iter_hook_handlers, mcp_server_maps
+from agent_audit_kit.scanners._helpers import iter_hook_handlers, loads_jsonc, mcp_server_maps
 
 
 @dataclass
@@ -119,15 +119,22 @@ def discover_agents(
                     if fp.suffix != ".json":
                         continue
 
+                    # An MCP config is read the way VS Code reads
+                    # `.vscode/mcp.json`, comments and trailing commas allowed.
+                    # Claude Code's settings files stay strict JSON: Claude Code
+                    # rejects a comment or a trailing comma in them, and skips
+                    # the file, hooks included.
+                    is_mcp_config = "mcp" in fp.name.lower()
                     try:
-                        data = json.loads(fp.read_text())
+                        text = fp.read_text()
+                        data = loads_jsonc(text) if is_mcp_config else json.loads(text)
                     except (json.JSONDecodeError, OSError):
                         continue
 
                     # Count MCP servers from mcp config files, under either key:
                     # VS Code's `.vscode/mcp.json` uses `servers`, so reading
                     # only `mcpServers` reported every VS Code workspace as 0.
-                    if "mcp" in fp.name.lower():
+                    if is_mcp_config:
                         agent.mcp_server_count += sum(
                             len(servers) for _, servers in mcp_server_maps(data)
                         )

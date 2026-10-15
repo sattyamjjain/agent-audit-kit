@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
 from agent_audit_kit.scanners._launchers import invocation_packages, launch_evidence, pin_problem
 from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
 
@@ -126,7 +126,7 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             continue
         try:
             raw = mcp_path.read_text(encoding="utf-8")
-            data = json.loads(raw)
+            data = loads_jsonc(raw)
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             continue
 
@@ -1052,7 +1052,7 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
     if not mcp_path.is_file():
         return findings
     try:
-        data = json.loads(mcp_path.read_text(encoding="utf-8"))
+        data = loads_jsonc(mcp_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return findings
 

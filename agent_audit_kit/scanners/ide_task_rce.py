@@ -19,8 +19,9 @@ Detections:
   exactly where an auto-run task would hide).
 
 These files are JSONC (VS Code permits comments and trailing commas), so a plain
-`json.loads` raises on real-world files; comments and trailing commas are
-stripped first, respecting string context so a `//` inside a URL survives.
+`json.loads` raises on real-world files. They are read with `_helpers.loads_jsonc`,
+the reader the MCP config scanners share, which strips comments and trailing
+commas outside strings, so a `//` inside a URL survives.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     in_skip_dir,
     find_line_number,
+    loads_jsonc,
     make_finding,
 )
 
@@ -92,50 +94,6 @@ def _finding(
     return finding
 
 
-def _strip_jsonc(text: str) -> str:
-    """Strip `//` and `/* */` comments and trailing commas, respecting strings.
-
-    A naive strip would corrupt `"https://example.com"`; this walks the text and
-    only treats `//` / `/*` as comments when not inside a double-quoted string.
-    """
-    out: list[str] = []
-    i, n = 0, len(text)
-    in_str = False
-    while i < n:
-        c = text[i]
-        if in_str:
-            out.append(c)
-            if c == "\\" and i + 1 < n:
-                out.append(text[i + 1])
-                i += 2
-                continue
-            if c == '"':
-                in_str = False
-            i += 1
-            continue
-        if c == '"':
-            in_str = True
-            out.append(c)
-            i += 1
-            continue
-        if c == "/" and i + 1 < n and text[i + 1] == "/":
-            while i < n and text[i] != "\n":
-                i += 1
-            continue
-        if c == "/" and i + 1 < n and text[i + 1] == "*":
-            i += 2
-            while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
-                i += 1
-            i += 2
-            continue
-        out.append(c)
-        i += 1
-    stripped = "".join(out)
-    # Trailing commas before a closing } or ].
-    stripped = re.sub(r",(\s*[}\]])", r"\1", stripped)
-    return stripped
-
-
 def _flatten_strings(value: object) -> list[str]:
     """Flatten a command/args value (string, platform dict, or list) to strings.
 
@@ -172,7 +130,7 @@ def _parse(path: Path, rel: str) -> tuple[object | None, Finding | None]:
     except OSError:
         return None, None
     try:
-        return json.loads(_strip_jsonc(raw)), None
+        return loads_jsonc(raw), None
     except (json.JSONDecodeError, ValueError) as exc:
         return None, _finding(
             "AAK-IDE-TASK-004",

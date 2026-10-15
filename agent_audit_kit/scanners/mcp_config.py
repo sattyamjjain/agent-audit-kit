@@ -10,6 +10,7 @@ from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     in_skip_dir,
+    loads_jsonc,
     make_finding,
     mcp_server_maps,
     strip_vscode_variables,
@@ -378,7 +379,7 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
             raw_text = config_path.read_text(encoding="utf-8")
             if len(raw_text) > 1_000_000:
                 continue
-            data = json.loads(raw_text)
+            data = loads_jsonc(raw_text)
         except (json.JSONDecodeError, OSError):
             continue
 

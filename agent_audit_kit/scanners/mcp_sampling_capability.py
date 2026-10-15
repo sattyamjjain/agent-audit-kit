@@ -39,6 +39,7 @@ from ._helpers import (
     find_line_number,
     in_skip_dir,
     iter_mcp_servers,
+    loads_jsonc,
     make_finding,
 )
 
@@ -166,7 +167,7 @@ def _config_sampling_findings(project_root: Path) -> tuple[list[Finding], set[st
         except OSError:
             continue
         try:
-            data = json.loads(raw)
+            data = loads_jsonc(raw)
         except json.JSONDecodeError:
             continue
         # `mcpServers`, and the `servers` map of VS Code's .vscode/mcp.json, a

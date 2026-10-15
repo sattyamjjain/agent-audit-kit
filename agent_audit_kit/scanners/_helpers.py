@@ -210,6 +210,124 @@ def strip_vscode_variables(text: str) -> str:
     return _VSCODE_VARIABLE_RE.sub("", text)
 
 
+# JSONC tokens outside a string: a run of anything that is not JSON whitespace
+# or one of the characters that change state, or one of those characters. JSON
+# whitespace is the four characters the search skips between two tokens.
+_JSONC_TOKEN_RE = re.compile(r'[^ \t\r\n"/,\]}]+|["/,\]}]')
+_JSON_STRING_SPECIAL_RE = re.compile(r'["\\]')
+_LINE_BREAK_RE = re.compile(r"[\r\n]")
+_NOT_LINE_BREAK_RE = re.compile(r"[^\r\n]")
+# The last token before a comma that leaves no value for the comma to follow:
+# the start of the text, an opening bracket, a colon or another comma.
+_JSONC_NO_VALUE_BEFORE = frozenset({"", "{", "[", ":", ","})
+
+
+def _json_string_end(text: str, start: int) -> int:
+    """Index just past the string opened by the quote at `start`.
+
+    A backslash escapes the next character, so `"a\\"b"` is one string. A
+    string that never closes raises the error `json.loads` gives for one.
+    """
+    i = start + 1
+    while True:
+        m = _JSON_STRING_SPECIAL_RE.search(text, i)
+        if m is None:
+            raise json.JSONDecodeError("Unterminated string starting at", text, start)
+        if m.group() == "\\":
+            i = m.start() + 2
+        else:
+            return m.end()
+
+
+def strip_jsonc(text: str) -> str:
+    """`text` with its JSONC comments and trailing commas blanked out.
+
+    VS Code reads `.vscode/mcp.json`, `settings.json`, `tasks.json` and
+    `launch.json` as JSONC: JSON plus `//` and `/* */` comments and a comma
+    before a closing `}` or `]`. The MCP config readers here called
+    `json.loads`, which raises on either, and skipped the file, so a VS Code
+    config with one comment in it scanned clean.
+
+    Strings are tracked first: a `"` opens one, a backslash escapes the next
+    character, and only outside a string does `//` or `/*` start a comment, so
+    `"url": "http://x"` keeps its `//`. Two regexes that do not know what a
+    string is broke the TS/JS SSRF comment stripper on exactly that (see
+    `blank_js_comments`). A comma is a trailing comma only when a value comes
+    before it and, past whitespace and comments, a `}` or `]` comes after it,
+    so `[,]` and `{"a": 1,,}` stay invalid, as VS Code reports them. A
+    byte-order mark at the start goes too.
+
+    Every removed character becomes a space and every line break stays, so
+    offsets and line numbers, those in a `json.JSONDecodeError` included, still
+    match the raw text. It is linear: every search resumes where the last one
+    stopped, and a comma is settled by the next token after it.
+
+    Raises:
+        json.JSONDecodeError: a block comment or a string runs to the end of
+            the text. That is a parse failure, the same as invalid JSON.
+    """
+    n = len(text)
+    i = 1 if text.startswith("\ufeff") else 0
+    blanks: list[tuple[int, int]] = [(0, 1)] if i else []
+    pending_comma = -1  # a comma no token has followed yet
+    prev = ""  # the last character of the last token, "" before the first
+    while True:
+        m = _JSONC_TOKEN_RE.search(text, i)
+        if m is None:
+            break
+        at, token = m.start(), m.group()
+        if token == '"':
+            i = _json_string_end(text, at)
+            prev, pending_comma = '"', -1
+        elif text.startswith("//", at):
+            eol = _LINE_BREAK_RE.search(text, at)
+            i = n if eol is None else eol.start()
+            blanks.append((at, i))
+        elif text.startswith("/*", at):
+            close = text.find("*/", at + 2)
+            if close == -1:
+                raise json.JSONDecodeError("Unterminated comment starting at", text, at)
+            i = close + 2
+            blanks.append((at, i))
+        elif token == ",":
+            pending_comma = -1 if prev in _JSONC_NO_VALUE_BEFORE else at
+            prev, i = ",", at + 1
+        elif token in ("]", "}"):
+            if pending_comma != -1:
+                blanks.append((pending_comma, pending_comma + 1))
+            prev, pending_comma, i = token, -1, at + 1
+        else:  # a number, a literal, `{`, `[`, `:`, or a `/` no JSON allows
+            prev, pending_comma, i = token[-1], -1, m.end()
+    if not blanks:
+        return text
+    blanks.sort()
+    parts: list[str] = []
+    last = 0
+    for start, end in blanks:
+        parts.append(text[last:start])
+        parts.append(_NOT_LINE_BREAK_RE.sub(" ", text[start:end]))
+        last = end
+    parts.append(text[last:])
+    return "".join(parts)
+
+
+def loads_jsonc(text: str) -> Any:
+    """Parse `text` as JSON or, when that fails, as JSONC (see `strip_jsonc`).
+
+    The one reader for MCP client configs and the VS Code files beside them.
+    Valid JSON is parsed by `json.loads` alone, so a reader that switches to
+    this returns what it did for every file it could read before, and only
+    stops skipping the ones with comments or trailing commas. A file that is
+    invalid even as JSONC raises `json.JSONDecodeError` as before, with a
+    position that matches the raw text.
+    """
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    return json.loads(strip_jsonc(text))
+
+
 #: The keys an MCP client config keeps its server map under. `mcpServers` is the
 #: key of Claude Code, Cursor, Windsurf, Gemini CLI and most other clients; VS
 #: Code's `.vscode/mcp.json` keeps the same map under `servers`.

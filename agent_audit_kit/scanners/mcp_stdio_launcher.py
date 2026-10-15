@@ -34,6 +34,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     in_skip_dir,
+    loads_jsonc,
     make_finding,
     strip_vscode_variables,
 )
@@ -183,7 +184,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             raw_text = config_path.read_text(encoding="utf-8", errors="ignore")
             if len(raw_text) > 1_000_000:
                 continue
-            data = json.loads(raw_text)
+            data = loads_jsonc(raw_text)
         except (json.JSONDecodeError, OSError):
             continue
 

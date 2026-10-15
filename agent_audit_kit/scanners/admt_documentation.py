@@ -67,7 +67,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import in_skip_dir, loads_jsonc, make_finding
 
 _DECL_EXTS = {".py"}
 _DOC_EXTS = {".md", ".txt", ".rst", ".html"}
@@ -272,7 +272,7 @@ def _mcp_descriptions(project_root: Path) -> list[tuple[str, str]]:
     for path in _mcp_config_paths(project_root):
         name = str(path.relative_to(project_root))
         try:
-            data = json.loads(_read(path))
+            data = loads_jsonc(_read(path))
         except (json.JSONDecodeError, ValueError):
             continue
         if not isinstance(data, dict):

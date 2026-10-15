@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Callable
 
 from agent_audit_kit.models import Category, Finding, Severity
+from agent_audit_kit.scanners._helpers import loads_jsonc
 
 
 ANALYSIS_PROMPT = """Analyze this MCP tool description for security issues.
@@ -198,7 +199,7 @@ def run_llm_analysis(
         if not config_path.is_file():
             continue
         try:
-            data = json.loads(config_path.read_text(encoding="utf-8"))
+            data = loads_jsonc(config_path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
         rel_path = str(config_path.relative_to(project_root))

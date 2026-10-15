@@ -64,7 +64,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, loads_jsonc, make_finding
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
 from agent_audit_kit.scanners.secret_exposure import MCP_ENV_SECRET_KEYS
 from agent_audit_kit.scanners.skill_composition import (
@@ -300,7 +300,7 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
             if config_path.stat().st_size > _MAX_FILE_BYTES:
                 continue
             raw = config_path.read_text(encoding="utf-8", errors="replace")
-            data = json.loads(raw)
+            data = loads_jsonc(raw)
         except (OSError, json.JSONDecodeError):
             continue
         if not isinstance(data, dict):

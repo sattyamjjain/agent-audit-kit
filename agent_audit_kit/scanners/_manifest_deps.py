@@ -64,6 +64,7 @@ except ImportError:  # Python < 3.11
 
 import yaml
 
+from agent_audit_kit.scanners._helpers import loads_jsonc
 from agent_audit_kit.scanners._launchers import (
     Launched,
     basename,
@@ -458,15 +459,6 @@ def mcp_config_declarations(data: object) -> list[Declaration]:
 # --- dispatch ----------------------------------------------------------------
 
 
-def _load_json(text: str) -> object:
-    try:
-        return json.loads(text)
-    except ValueError:
-        from agent_audit_kit.scanners.ide_task_rce import _strip_jsonc
-
-        return json.loads(_strip_jsonc(text))
-
-
 def declarations(path: Path, text: str) -> list[Declaration]:
     """The declarations `path` makes, or [] when it does not parse.
 
@@ -491,7 +483,7 @@ def declarations(path: Path, text: str) -> list[Declaration]:
         if name.endswith((".yaml", ".yml")):
             return mcp_config_declarations(yaml.safe_load(text))
         if name.endswith(".json"):
-            return mcp_config_declarations(_load_json(text))
+            return mcp_config_declarations(loads_jsonc(text))
     except (ValueError, tomllib.TOMLDecodeError, yaml.YAMLError, RecursionError):
         return []
     return []

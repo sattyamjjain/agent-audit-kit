@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import loads_jsonc, make_finding
 
 
 # Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
@@ -82,7 +82,7 @@ def _discover_tools(project_root: Path) -> dict[str, dict]:
         if not config_path.is_file():
             continue
         try:
-            data = json.loads(config_path.read_text())
+            data = loads_jsonc(config_path.read_text())
         except (json.JSONDecodeError, OSError):
             continue
 
