@@ -21,10 +21,14 @@ from agent_audit_kit.models import Finding
 from ._helpers import in_skip_dir, make_finding
 
 
+# The imported names stop at the next `from langchain... import` on the line,
+# which reads on itself: with `[^\n]*` alone a line of such imports and no
+# matching name was read to its end once per import.
+_LANGCHAIN_FROM = r"from\s+langchain(?:\.[\w.]+)?\s+import"
 _LANGCHAIN_IMPORT_RE = re.compile(
     r"""
     (?:
-        from\s+langchain(?:\.[\w.]+)?\s+import[^\n]*\b(?:load_prompt|PromptTemplate)\b
+        """ + _LANGCHAIN_FROM + r"""(?:(?!""" + _LANGCHAIN_FROM + r""")[^\n])*\b(?:load_prompt|PromptTemplate)\b
       | from\s+langchain_core\.prompts\s+import\b
       | import\s+langchain_core\.prompts
       | import\s+langchain\.prompts

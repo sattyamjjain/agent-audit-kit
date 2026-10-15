@@ -1,7 +1,10 @@
 """Smoke tests for the v0.3.9 rules (4 SAST scanners + autofix codemod)."""
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.autofix.langgraph_toolnode import fix as autofix_toolnode
 from agent_audit_kit.scanners.deepseek_v4_tool_injection import scan as deepseek_scan
@@ -163,3 +166,26 @@ def test_tiktok_agent_hijack_no_user_input_passes(tmp_path: Path) -> None:
     )
     findings, _ = social_scan(tmp_path)
     assert not any(f.rule_id == "AAK-TIKTOK-AGENT-HIJACK-001" for f in findings)
+
+
+@pytest.mark.parametrize(("line", "imports"), [
+    ("from langgraph.prebuilt import ToolNode", True),
+    ("from langgraph.prebuilt import x, ToolNode", True),
+    ("from langgraph.prebuilt import ToolNodes", False),
+    ("from langgraph.prebuilt import x from langgraph.prebuilt import ToolNode", True),
+])
+def test_toolnode_import_keeps_its_shape(line: str, imports: bool) -> None:
+    from agent_audit_kit.scanners.langgraph_toolnode import _TOOLNODE_IMPORT_RE
+
+    assert bool(_TOOLNODE_IMPORT_RE.search(line)) is imports
+
+
+def test_a_line_of_langgraph_imports_reads_in_linear_time() -> None:
+    """1 MB of `from langgraph.prebuilt import x ` on one line. Each import read
+    the rest of the line: 80 KB took 0.49 seconds and the time grew with the
+    square. The bound is loose for slow CI runners."""
+    from agent_audit_kit.scanners.langgraph_toolnode import _TOOLNODE_IMPORT_RE
+
+    started = time.perf_counter()
+    _TOOLNODE_IMPORT_RE.search("from langgraph.prebuilt import x " * 30_000)
+    assert time.perf_counter() - started < 5.0

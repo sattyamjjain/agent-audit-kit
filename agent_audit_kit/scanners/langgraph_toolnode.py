@@ -20,10 +20,13 @@ from agent_audit_kit.models import Finding
 from ._helpers import in_skip_dir, make_finding
 
 
+# The imported names stop at the next `from langgraph.prebuilt import` on the
+# line, which reads on itself: with `[^\n]*` alone a line of such imports and no
+# `ToolNode` was read to its end once per import.
 _TOOLNODE_IMPORT_RE = re.compile(
     r"""
     (?:
-        from\s+langgraph\.prebuilt\s+import[^\n]*\bToolNode\b
+        from\s+langgraph\.prebuilt\s+import(?:(?!from\s+langgraph\.prebuilt\s+import)[^\n])*\bToolNode\b
       | from\s+langgraph\s+import\s+prebuilt
       | import\s+langgraph\.prebuilt
     )

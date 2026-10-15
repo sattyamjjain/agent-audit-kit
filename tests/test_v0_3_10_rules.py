@@ -2,7 +2,10 @@
 OpenClaw privesc."""
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.scanners.crewai_rce_chain import scan as crewai_scan
 from agent_audit_kit.scanners.langchain_prompt_loader import scan as langchain_scan
@@ -111,3 +114,27 @@ def test_openclaw_no_import_passes(tmp_path: Path) -> None:
     )
     findings, _ = openclaw_scan(tmp_path)
     assert findings == []
+
+
+@pytest.mark.parametrize(("line", "imports"), [
+    ("from langchain.prompts import PromptTemplate", True),
+    ("from langchain import x, load_prompt", True),
+    ("from langchain import x from langchain import load_prompt", True),
+    ("from langchain import PromptTemplates", False),
+    ("from langchain import x\nPromptTemplate", False),
+])
+def test_langchain_prompt_import_keeps_its_shape(line: str, imports: bool) -> None:
+    from agent_audit_kit.scanners.langchain_prompt_loader import _LANGCHAIN_IMPORT_RE
+
+    assert bool(_LANGCHAIN_IMPORT_RE.search(line)) is imports
+
+
+def test_a_line_of_langchain_imports_reads_in_linear_time() -> None:
+    """1 MB of `from langchain import x ` on one line. Each import read the
+    rest of the line: 80 KB took 0.74 seconds and the time grew with the
+    square. The bound is loose for slow CI runners."""
+    from agent_audit_kit.scanners.langchain_prompt_loader import _LANGCHAIN_IMPORT_RE
+
+    started = time.perf_counter()
+    _LANGCHAIN_IMPORT_RE.search("from langchain import x " * 42_000)
+    assert time.perf_counter() - started < 5.0
