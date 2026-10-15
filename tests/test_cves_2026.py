@@ -132,6 +132,56 @@ def test_hook_rce_reads_the_documented_matcher_group_shape(tmp_path: Path) -> No
     assert "AAK-HOOK-RCE-001" in {f.rule_id for f in findings}
 
 
+_CRAFTED_INTERPOLATIONS = {
+    # The `"+` and `{{` openers ended in a `\s*` of their own, beside the shared
+    # one, so a blank run after either was split between the two every way.
+    "braces-blanks": "{{" + " " * 990_000 + "x",
+    "concat-blanks": '"' + " " * 495_000 + "+" + " " * 495_000 + "x",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_INTERPOLATIONS))
+@pytest.mark.parametrize("where", ["settings", "script"])
+def test_hook_rce_a_crafted_interpolation_scans_in_linear_time(tmp_path: Path, shape: str, where: str) -> None:
+    """A hook command or hook script of about 1 MB. Before, 40,000 blanks after
+    `{{` took 30 seconds and the time grew with the square of the run. The bound
+    is loose for slow CI runners; each takes a fraction of a second."""
+    import json
+    import time
+
+    text = _CRAFTED_INTERPOLATIONS[shape]
+    claude_dir = tmp_path / ".claude"
+    (claude_dir / "hooks").mkdir(parents=True)
+    if where == "settings":
+        settings = {"hooks": {"Stop": [{"command": text}]}}
+        (claude_dir / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    else:
+        (claude_dir / "hooks" / "stop.sh").write_text(text, encoding="utf-8")
+    started = time.perf_counter()
+    findings, _ = hook_rce.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert not any(f.rule_id == "AAK-HOOK-RCE-001" for f in findings)
+
+
+@pytest.mark.parametrize(("command", "fires"), [
+    ('echo "$X" + input', True),
+    ("echo {{ input }}", True),
+    ("echo {{   argv }}", True),
+    ('echo "x"   +   args', True),
+    ("echo $(input)", True),
+    ("echo {{ name }}", False),
+])
+def test_hook_rce_interpolation_shapes_keep_their_result(tmp_path: Path, command: str, fires: bool) -> None:
+    import json
+
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir()
+    settings = {"hooks": {"Stop": [{"command": command}]}}
+    (claude_dir / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    findings, _ = hook_rce.scan(tmp_path)
+    assert any(f.rule_id == "AAK-HOOK-RCE-001" for f in findings) is fires
+
+
 # ---------------------------------------------------------------------------
 # AAK-LANGCHAIN-001..003
 # ---------------------------------------------------------------------------

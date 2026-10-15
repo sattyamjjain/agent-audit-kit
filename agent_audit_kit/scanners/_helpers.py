@@ -18,8 +18,14 @@ from agent_audit_kit.rules.builtin import get_rule
 # Shared by hook_rce and ide_task_rce so there is exactly ONE definition of the
 # "user input reaches a command string" signature (promoted here from
 # hook_rce.py, which now imports it).
+#
+# The `"+` and `{{` arms used to end in a `\s*` of their own, right before the
+# shared one, so a whitespace run after either opener could be split between
+# the two every possible way: 40,000 spaces after `{{` took 30 seconds, and
+# the time grew with the square of the run. The shared `\s*` matches the same
+# whitespace alone, so the pattern matches exactly what it did, in linear time.
 INTERPOLATION_RE = re.compile(
-    r"""(?:["']\s*\+\s*|\$\{|%\{|{{\s*|\$\(|`)\s*(?:input|args|event|payload|user|argv|request)""",
+    r"""(?:["']\s*\+|\$\{|%\{|{{|\$\(|`)\s*(?:input|args|event|payload|user|argv|request)""",
     re.IGNORECASE,
 )
 
