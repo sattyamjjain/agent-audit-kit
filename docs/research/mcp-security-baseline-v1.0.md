@@ -109,7 +109,7 @@ This is deliberately labelled *benign-slice HIGH/CRITICAL false-positive rate*, 
 servers that look benign, half were wrong, and both share one fixable root cause
 (`AAK-MCP-001` not recognising custom API-key headers). The interval is wide
 because n is small — stated plainly. Full adjudication:
-[`benchmarks/false_positive/triage.md`](../../benchmarks/false_positive/triage.md).
+[`benchmarks/false_positive/triage.md`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/triage.md).
 
 ## Re-measuring after the spec ships
 

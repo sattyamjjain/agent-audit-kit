@@ -117,6 +117,37 @@ jobs:
       # --timeout stays at 30 regardless: it is a reasonable default for the
       # remaining hosts and costs nothing.
 
+  # --------------------------------------------------------------------------
+  # The docs site, built the way it ships, with every MkDocs warning an error.
+  #
+  # A relative link from a docs page to a file outside docs/ (`../README.md`,
+  # `../../scripts/cve_watcher.py`) resolves on GitHub and 404s on the
+  # published site, where only docs/ exists. MkDocs reports it as a warning
+  # and builds anyway, so ten of them sat in the docs with every check green:
+  # lychee reads the markdown, not the site, and tests/test_docs_links.py asks
+  # whether the target file exists, not whether the site serves it. --strict
+  # fails the PR that adds one. Point such a link at the docs page that
+  # publishes the target, or at its blob/main URL on GitHub.
+  #
+  # The install is the one the deploy job in mcp-security-index.yml runs, so
+  # the build checked here is the build that ships.
+  # --------------------------------------------------------------------------
+  docs-build:
+    name: Docs build has no dead link (mkdocs --strict)
+    if: github.event_name != 'schedule' || github.event.schedule == '23 6 * * 1'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.11'
+      - name: Install agent-audit-kit + MkDocs
+        run: |
+          pip install -e .
+          pip install mkdocs mkdocs-material
+      - name: Build the docs, failing on any warning
+        run: mkdocs build --strict -d "$RUNNER_TEMP/site"
+
   index-cadence:
     name: MCP Security Index is still publishing
     if: github.event_name != 'schedule' || github.event.schedule == '23 6 * * 1'

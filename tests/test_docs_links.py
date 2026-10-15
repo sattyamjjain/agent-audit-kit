@@ -61,3 +61,30 @@ def test_docs_tree_is_actually_being_checked() -> None:
     assert len(files) > 20, f"only {len(files)} markdown files found under docs/"
     assert any(_RELATIVE_LINK_RE.search(p.read_text(encoding="utf-8", errors="ignore"))
                for p in files), "no relative links found at all — the regex may have broken"
+
+
+# A link to a repo file the site does not publish is a blob/main URL: a relative
+# one resolves on GitHub but 404s on the site, which serves docs/ alone, and
+# `mkdocs build --strict` fails on it (the docs-build job in link-check.yml).
+# lychee skips blob/main URLs (a PR that adds a file and links to it would 404
+# until it merged), so they are checked here, against the working tree.
+_BLOB_MAIN_LINK_RE = re.compile(
+    r"\]\(https://github\.com/sattyamjjain/agent-audit-kit/(?:blob|tree)/main/([^)\s#?]+)"
+)
+
+
+def test_blob_main_links_in_docs_resolve() -> None:
+    checked = 0
+    dangling: list[str] = []
+    for md in _markdown_files():
+        text = md.read_text(encoding="utf-8", errors="ignore")
+        for match in _BLOB_MAIN_LINK_RE.finditer(text):
+            checked += 1
+            if not (REPO_ROOT / match.group(1)).exists():
+                rel = md.relative_to(REPO_ROOT).as_posix()
+                dangling.append(f"{rel}: {match.group(1)}")
+    assert checked, "no blob/main links found in docs/ — the regex may have broken"
+    assert not dangling, (
+        "blob/main link(s) in docs/ point at files that do not exist:\n  "
+        + "\n  ".join(sorted(set(dangling)))
+    )

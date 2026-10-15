@@ -47,7 +47,7 @@ explicit `capabilities:` list, and an `egress:` list of network destinations:
 
 ### The default boundary, and why
 
-Shipped in [`agent_audit_kit/data/composition_boundaries.yaml`](../../agent_audit_kit/data/composition_boundaries.yaml):
+Shipped in [`agent_audit_kit/data/composition_boundaries.yaml`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/agent_audit_kit/data/composition_boundaries.yaml):
 
 > **{filesystem read OR credential access} + {network egress to a non-allowlisted
 > destination} = exfiltration path, flag HIGH — even when every contributing skill

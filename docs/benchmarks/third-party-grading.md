@@ -68,13 +68,13 @@ tool to one number.
 
 Both are self-benchmarks, reproducible from this repo, offline, no LLM in the path:
 
-- **Determinism.** [`benchmarks/determinism/RESULTS.md`](../../benchmarks/determinism/RESULTS.md):
+- **Determinism.** [`benchmarks/determinism/RESULTS.md`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/determinism/RESULTS.md):
   20/20 runs collapse to **one** finding-set digest, 0% variance — shared SHA-256
   `189055d0853a2fa67061541e0f79ca2156435e3d797b0c872aee692cd8827600`. An LLM-judge
   scanner cannot promise a byte-identical re-run; AAK can, and the digest is in the
   tree for anyone to reproduce.
 - **Benign-slice HIGH/CRITICAL false-positive rate.**
-  [`benchmarks/false_positive/RESULTS.md`](../../benchmarks/false_positive/RESULTS.md):
+  [`benchmarks/false_positive/RESULTS.md`](https://github.com/sattyamjjain/agent-audit-kit/blob/main/benchmarks/false_positive/RESULTS.md):
   on a pre-registered 368-config benign slice, **0 / 1 = 0.0%**, Wilson 95% CI
   **[0.0%, 79.3%]**. The interval is wide because n is 1, and we state that plainly
   rather than smooth it over; the earlier run that scored 50% (n = 4) is published

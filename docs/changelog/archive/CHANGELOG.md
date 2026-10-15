@@ -1,6 +1,6 @@
 # AgentAuditKit changelog — archive (0.3.58 and earlier)
 
-Frozen release history. Current entries live in [/CHANGELOG.md](../../../CHANGELOG.md). These sections were moved out of the main changelog on 2026-08-09 to keep PR diffs reviewable; they are not edited further.
+Frozen release history. Current entries live in [/CHANGELOG.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.md). These sections were moved out of the main changelog on 2026-08-09 to keep PR diffs reviewable; they are not edited further.
 
 ---
 
@@ -37,7 +37,7 @@ deterministic, no LLM-graded findings; SARIF shape unchanged.
     already shipped as `AAK-OAUTH-006` (RFC 9207); it was deliberately not
     re-added.
 - **Standards crosswalk** — a new `report --framework standards-crosswalk`
-  artifact and committed doc ([`docs/crosswalk/nsa-csi-owasp-agentic.md`](docs/crosswalk/nsa-csi-owasp-agentic.md))
+  artifact and committed doc ([`docs/crosswalk/nsa-csi-owasp-agentic.md`](../../crosswalk/nsa-csi-owasp-agentic.md))
   mapping every AAK rule to the **NSA MCP Security CSI** control it evidences and
   its **OWASP Agentic Top-10 (2026)** item. Reuses the committed compliance +
   OWASP mappings (no invented mapping), so it can't drift from the reports.
@@ -3168,7 +3168,7 @@ the Docker image.
 ## [0.3.0] - 2026-04-18
 
 Retroactive SLA coverage for the 2026 MCP CVE wave. See [v0.3.0 release
-notes](docs/launch/release-notes-v0.3.0.md) for the full scope — 46 new
+notes](https://github.com/sattyamjjain/agent-audit-kit/blob/040b56d7118255ebed51ce2d8176b6f03757d362/docs/launch/release-notes-v0.3.0.md) for the full scope — 46 new
 rules across the 10 ROADMAP §2.2 families (AAK-MCP-011..020, SSRF,
 OAUTH, HOOK-RCE, LANGCHAIN, MARKETPLACE, ROUTINE, A2A-008..012,
 TASKS, SKILL). Rule count 77 → 138.

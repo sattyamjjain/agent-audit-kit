@@ -25,7 +25,7 @@ file an issue and we will correct it (best-effort — no fixed clock).
 | Signed rule bundle | Yes (Sigstore) | Partial (SLSA provenance on releases) | No — it GPG-signs release checksums and ships an SBOM, but there is no rule set on disk to sign | No | No |
 | Deterministic (reproducible CI) | **Yes** | Yes (sub-ms policy enforcement) | No — analysis runs through the Agent Scan API against a dated API model, so a result depends on service state as well as the commit | Partial | No |
 | Public CVE-to-rule ledger | **Yes** (CHANGELOG.cves.md) | No (internal cadence) | No | No | No |
-| MCP Security Index / leaderboard | **Yes** — server count and last-snapshot date are [stated once in the README](../README.md#mcp-security-index), which `scripts/index_cadence.py` writes from the published `history.json` | No | No | No | No |
+| MCP Security Index / leaderboard | **Yes** — server count and last-snapshot date are [stated once in the README](https://github.com/sattyamjjain/agent-audit-kit/blob/main/README.md#mcp-security-index), which `scripts/index_cadence.py` writes from the published `history.json` | No | No | No | No |
 | Pin + drift verification of tool surface | **Yes** | Yes (via Agent Runtime rings) | Partial — it models a `ServerSignature` of the tool surface and sends it for analysis, but ships no pin/verify command to fail a build on drift | No | No |
 | OWASP Agentic Top 10 coverage | 10/10 | 10/10 | Not advertised (no OWASP mapping in its README or `docs/`, checked 2026-09-16) | Partial | Partial |
 

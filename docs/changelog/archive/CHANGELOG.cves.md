@@ -1,6 +1,6 @@
 # AAK CVE-to-Rule Ledger — archive (v0.3.58 and earlier)
 
-Frozen CVE ledger history. Current entries live in [/CHANGELOG.cves.md](../../../CHANGELOG.cves.md). These sections were moved out on 2026-08-09 to keep the ledger reviewable; they are not edited further.
+Frozen CVE ledger history. Current entries live in [/CHANGELOG.cves.md](https://github.com/sattyamjjain/agent-audit-kit/blob/main/CHANGELOG.cves.md). These sections were moved out on 2026-08-09 to keep the ledger reviewable; they are not edited further.
 
 ---
 
