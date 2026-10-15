@@ -134,3 +134,30 @@ def test_mcp_json_pair_is_still_reported_against_mcp_json(tmp_path: Path, enable
     findings, scanned = scan(tmp_path)
     assert {f.file_path for f in findings} == {".mcp.json"}
     assert scanned == {".mcp.json"}
+
+
+@pytest.mark.parametrize(("line", "decorator"), [
+    ("@tool", False),
+    ("@tool()", True),
+    ("@mcp.tool( )", True),
+    ("@tool\n", True),
+    ("@tool(name='x')", False),
+    ("@tool )", True),
+])
+def test_tool_decorator_keeps_its_shape(line: str, decorator: bool) -> None:
+    from agent_audit_kit.scanners.toxic_flow import _TOOL_DECORATOR_RE
+
+    assert bool(_TOOL_DECORATOR_RE.search(line)) is decorator
+
+
+def test_a_long_decorator_line_reads_in_linear_time() -> None:
+    """`@tool` and 1 MB of blanks. The two `\\s*` around an optional `(`
+    split the run every way: 40,000 blanks took 4 seconds and the time grew
+    with the square. The bound is loose for slow CI runners."""
+    import time
+
+    from agent_audit_kit.scanners.toxic_flow import _TOOL_DECORATOR_RE
+
+    started = time.perf_counter()
+    _TOOL_DECORATOR_RE.search("@tool" + " " * 1_000_000 + "x")
+    assert time.perf_counter() - started < 5.0

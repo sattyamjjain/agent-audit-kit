@@ -118,10 +118,12 @@ def _discover_mcp_tools(project_root: Path) -> set[str]:
     return set(_mcp_tool_origins(project_root)[0])
 
 
+# `\s*(?:\(\s*)?`, not `\s*\(?\s*`: with no `(`, the two `\s*` split a run of
+# blanks every way, so a long line of them took the square of its length.
 _TOOL_DECORATOR_RE = re.compile(
     r"""
     @(?:mcp\s*\.\s*tool|server\s*\.\s*tool|tool|langchain\s*\.\s*tools\s*\.\s*tool)
-    \s*\(?\s*[\)\n]
+    \s*(?:\(\s*)?[\)\n]
     """,
     re.VERBOSE,
 )
