@@ -19,6 +19,7 @@ clears it, and a plain argv list with no interpreter flag clears it.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from agent_audit_kit.rules.builtin import RULES
@@ -256,3 +257,71 @@ def uptime(unused: str) -> str:
     return subprocess.run(["uptime"], capture_output=True).stdout.decode()
 """)
     assert PROFILE_RULE not in _ids(tmp_path)
+
+
+# --------------------------------------------------------------------------
+# Linear time.
+# --------------------------------------------------------------------------
+
+_HANDLER = """
+import {{ exec }} from "child_process";
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {{
+  const username = request.params.arguments.username as string;
+  exec(`{command}`);
+}});
+"""
+
+
+def test_unclosed_interpolations_after_the_last_brace_add_nothing(tmp_path: Path) -> None:
+    _write(tmp_path, "tool.ts", _HANDLER.format(command='id "${username}" ${host ${port'))
+    findings = _interp(tmp_path)
+    assert len(findings) == 1
+    assert "parameter 'username'" in findings[0].evidence
+
+
+def test_a_template_with_no_closing_brace_has_no_interpolation(tmp_path: Path) -> None:
+    _write(tmp_path, "tool.ts", _HANDLER.format(command="id ${username"))
+    assert _interp(tmp_path) == []
+
+
+def test_a_template_of_unclosed_interpolations_scans_in_linear_time(tmp_path: Path) -> None:
+    """300 KB of `${` that never closes, after one that does. `[^}]*` read from
+    each to the end of the template: 40,000 characters took 1.5 seconds, and
+    the time grew with the square of the template. The bound is loose for slow
+    CI runners; the scan takes milliseconds."""
+    _write(tmp_path, "tool.ts", _HANDLER.format(command='id "${username}" ' + "${" * 150_000))
+    started = time.perf_counter()
+    findings = _interp(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert len(findings) == 1
+
+
+_TYPED_LOCAL = """import { exec } from "child_process";
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const host = request.params.arguments.host as string;
+  const cmd: Array<string> | string = `ping -c 1 ${host}`;
+  exec(cmd);
+});
+"""
+
+
+def test_a_typed_local_template_is_followed(tmp_path: Path) -> None:
+    _write(tmp_path, "tool.ts", _TYPED_LOCAL)
+    findings = _interp(tmp_path)
+    assert len(findings) == 1
+    assert "parameter 'host'" in findings[0].evidence
+
+
+def test_a_long_blank_type_scans_in_linear_time(tmp_path: Path) -> None:
+    """300 KB of blanks after `cmd :` and no type. The type's class and the
+    `\\s*` around it split the run every way: 2,000 blanks took 2.1 seconds and
+    the time grew with the cube of the run. The bound is loose for slow CI
+    runners; the scan takes milliseconds."""
+    crafted = _TYPED_LOCAL.replace("const cmd:", "let cmd :" + " " * 300_000 + "\t\nconst cmd:")
+    _write(tmp_path, "tool.ts", crafted)
+    started = time.perf_counter()
+    findings = _interp(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert len(findings) == 1

@@ -101,7 +101,11 @@ _JS_SHELL_SINK_RE = re.compile(
 )
 _JS_SHELL_ONLY = frozenset({"execAsync", "execSync", "exec"})
 
-# A `${...}` interpolation inside a template literal.
+# A `${...}` interpolation inside a template literal. It is applied to the
+# template only up to its last `}` (see `_js_sinks`): a `${` after that can never
+# close, but `[^}]*` still read from each one to the end of the template, so a
+# template of unclosed `${` grew with the square of its length. No match can
+# extend past the last `}`, so the interpolations are the same.
 _JS_INTERP_RE = re.compile(r"\$\{([^}]*)\}")
 
 # Tool-argument origins in a TS/JS MCP handler.
@@ -420,6 +424,17 @@ _JS_FIRST_IDENT_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*[,)]")
 # How far back an assignment to that identifier is looked for.
 _JS_LOCAL_WINDOW_LINES = 60
 
+# What follows a name it is assigned to, up to the value: an optional type and
+# `=`. Written `\s*(?::\s*[\w$<>\[\]|, ]+)?\s*=(?![=>])\s*`, a type's trailing
+# blanks could go to the class or to `\s*`, and so could the blanks of a name
+# with no type, so a long run of them with no `=` after it was split every way:
+# 32,000 blanks took 1.6 seconds. Here the type runs from its first to its last
+# non-blank, or is a single blank, so each run is read one way. The same text
+# matches and every match ends where it did.
+_JS_TYPED_ASSIGN = (
+    r"\s*(?::(?:\s*[\w$<>\[\]|,](?:[ ]*[\w$<>\[\]|,])*|[^\S ]*[ ])\s*)?=(?![=>])\s*"
+)
+
 
 def _js_assigned_templates(text: str, ident: str, before: int) -> list[str]:
     """Template literals assigned to ``ident`` shortly before a sink.
@@ -434,9 +449,7 @@ def _js_assigned_templates(text: str, ident: str, before: int) -> list[str]:
             start = 0
             break
         start = prev
-    assign_re = re.compile(
-        rf"(?<![\w$.]){re.escape(ident)}\s*(?::\s*[\w$<>\[\]|, ]+)?\s*=(?![=>])\s*`"
-    )
+    assign_re = re.compile(rf"(?<![\w$.]){re.escape(ident)}{_JS_TYPED_ASSIGN}`")
     templates: list[str] = []
     for m in assign_re.finditer(text, start, before):
         template = _template_literals(text, m.end() - 1)
@@ -485,7 +498,7 @@ def _js_sinks(text: str) -> list[_JsSink]:
         seen: set[tuple[str, str]] = set()
         interps: list[tuple[str, str, str, str]] = []
         for tpl in templates:
-            for expr in _JS_INTERP_RE.findall(tpl):
+            for expr in _JS_INTERP_RE.findall(tpl, 0, tpl.rfind("}") + 1):
                 quoting = _quote_context(tpl, "${" + expr + "}")
                 name = expr.strip().split(".")[-1].split(" ")[0] or "argument"
                 if (name, quoting) not in seen:
