@@ -759,12 +759,13 @@ def _read_text(path: Path) -> str | None:
 def declares_mcp_sdk(project_root: Path) -> tuple[bool, list[str]]:
     """Whether a manifest at the project root declares an MCP SDK, and which.
 
-    The gate in front of AAK-MCP-STATELESS-001..004 and the source half of
-    AAK-MCP-SAMPLING-001. Its copies took pyproject.toml only as the exact
-    quoted string `"mcp"`, so `"mcp[cli]>=1.2.0"`, the way most servers declare
-    it, and Poetry's `mcp = "^1.2.0"` never opened it, and the requirements
-    reader cut a line at its first `=`, so `mcp~=1.2.0` came out as `mcp~`.
-    Those rules never ran for a typical Python server.
+    The gate in front of AAK-MCP-STATELESS-001..004, the source half of
+    AAK-MCP-SAMPLING-001, and AAK-ANTHROPIC-SDK-001. Its three copies took
+    pyproject.toml only as the exact quoted string `"mcp"`, so
+    `"mcp[cli]>=1.2.0"`, the way most servers declare it, and Poetry's
+    `mcp = "^1.2.0"` never opened it, and the requirements reader cut a line
+    at its first `=`, so `mcp~=1.2.0` came out as `mcp~`. Those rules never
+    ran for a typical Python server.
 
     pyproject.toml is parsed and read through its dependency tables (see
     `_pyproject_dependency_names`), and each requirement's name is taken the
@@ -772,8 +773,6 @@ def declares_mcp_sdk(project_root: Path) -> tuple[bool, list[str]]:
     operator, environment markers and `name @ url` all work. The old quoted
     string test still runs too, so nothing it accepted is lost. package.json,
     Maven and Gradle builds and Cargo.toml are read as before.
-
-    `mcp_sdk_hardening` keeps a copy of the old gate for AAK-ANTHROPIC-SDK-001.
 
     Returns:
         ``(declared, manifests)``: manifests are paths relative to the root.

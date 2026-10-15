@@ -5,7 +5,9 @@ The upstream SDKs pass configuration to the OS as command execution by
 design, so every downstream MCP server that uses the SDKs and exposes a
 STDIO transport must add its own argv sanitizer. This scanner fires when:
 
-1. A dependency manifest declares the upstream SDK (Python / TS / Java / Rust).
+1. A dependency manifest at the project root declares the upstream SDK
+   (Python / TS / Java / Rust), read by `_helpers.declares_mcp_sdk`, the gate
+   AAK-MCP-STATELESS-001..004 and AAK-MCP-SAMPLING-001 share.
 2. A repo file uses a STDIO-transport API from the SDK.
 3. None of the opt-outs are present:
    - `shlex.quote` / `shlex.split` call (Python) or `execFile([...])` (Node).
@@ -17,7 +19,6 @@ STDIO transport must add its own argv sanitizer. This scanner fires when:
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -25,20 +26,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
-
-_PY_SDK_NAMES = (
-    "mcp",
-    "modelcontextprotocol",
-    "model-context-protocol",
-)
-_TS_SDK_NAMES = (
-    "@modelcontextprotocol/sdk",
-    "@anthropic-ai/mcp",
-    "@anthropic-ai/claude-agent-sdk",
-)
-_JAVA_SDK_TOKEN = "io.modelcontextprotocol"
-_RUST_SDK_TOKENS = ("mcp", "modelcontextprotocol")
+from ._helpers import declares_mcp_sdk, in_skip_dir, make_finding
 
 _STDIO_MARKERS = (
     "StdioServerTransport",
@@ -70,73 +58,6 @@ _SANITIZER_HINTS = (
 )
 
 _LANG_EXTS_FOR_STDIO_MARKERS = (".py", ".ts", ".tsx", ".js", ".mjs", ".java", ".kt", ".rs")
-
-
-def _declares_sdk(project_root: Path) -> tuple[bool, list[str]]:
-    """Returns (any_sdk_declared, list_of_manifest_relpaths)."""
-    manifests: list[str] = []
-    declared = False
-
-    pyproject = project_root / "pyproject.toml"
-    if pyproject.is_file():
-        try:
-            text = pyproject.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
-        if any(f'"{n}"' in text or f"'{n}'" in text for n in _PY_SDK_NAMES):
-            declared = True
-            manifests.append("pyproject.toml")
-
-    for req in project_root.glob("requirements*.txt"):
-        try:
-            text = req.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        for line in text.splitlines():
-            name = line.split("#", 1)[0].strip().split("[")[0].split("=")[0].split(">")[0].split("<")[0].strip()
-            if name in _PY_SDK_NAMES:
-                declared = True
-                manifests.append(str(req.relative_to(project_root)))
-                break
-
-    pkg = project_root / "package.json"
-    if pkg.is_file():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8", errors="replace"))
-        except json.JSONDecodeError:
-            data = {}
-        if isinstance(data, dict):
-            for section in ("dependencies", "devDependencies", "peerDependencies"):
-                deps = data.get(section) or {}
-                if isinstance(deps, dict) and any(n in deps for n in _TS_SDK_NAMES):
-                    declared = True
-                    manifests.append("package.json")
-                    break
-
-    for maven in ("pom.xml", "build.gradle", "build.gradle.kts"):
-        p = project_root / maven
-        if p.is_file():
-            try:
-                text = p.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            if _JAVA_SDK_TOKEN in text:
-                declared = True
-                manifests.append(maven)
-
-    cargo = project_root / "Cargo.toml"
-    if cargo.is_file():
-        try:
-            text = cargo.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
-        for tok in _RUST_SDK_TOKENS:
-            if re.search(rf'^\s*{re.escape(tok)}\s*=', text, re.MULTILINE):
-                declared = True
-                manifests.append("Cargo.toml")
-                break
-
-    return declared, manifests
 
 
 def _uses_stdio(project_root: Path) -> list[Path]:
@@ -191,7 +112,11 @@ def _accepts_risk(project_root: Path) -> bool:
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
-    declared, manifests = _declares_sdk(project_root)
+    # The gate used to be a copy of its own that took pyproject.toml only as the
+    # exact quoted "mcp" and cut a requirements line at its first `=`, so
+    # "mcp[cli]>=1.2.0", Poetry's `mcp = "^1.2.0"` and `mcp~=1.2.0` never
+    # opened it, and a typical Python server was never checked.
+    declared, manifests = declares_mcp_sdk(project_root)
     if not declared:
         return [], scanned
     for m in manifests:
