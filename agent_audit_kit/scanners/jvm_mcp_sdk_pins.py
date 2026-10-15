@@ -106,7 +106,18 @@ _MAX_FILE_BYTES = 2_000_000
 
 _VER_RE = re.compile(r"^(\d+)\.(\d+)(?:\.(\d+))?")
 # `val mcpVersion = "0.12.0"` / `mcpVersion = '0.12.0'` / `ext.mcp = "0.12.0"`
-_ASSIGN_RE = re.compile(r"""(?:val|var|def|ext\.)?\s*([\w.]+)\s*=\s*["']v?([\d][\w.\-]*)["']""")
+# The old `(?:val|var|def|ext\.)?\s*([\w.]+)` let a match start at every
+# character of a long word or blank run and read to its end, so a build file of
+# either grew with the square of the run. A match now starts only where one
+# could first succeed: at the start of a blank run (the name after it is read
+# whole), at the start of a `[\w.]` run (a leading `val` / `var` / `def` /
+# `ext.` is dropped from the name, as before), or at one of those words that
+# ends a run (`myval x = "1"` names `x`). Every other start failed for the same
+# reason as one of these, so the table is unchanged.
+_ASSIGN_RE = re.compile(
+    r"""(?:(?<!\s)\s+|(?<![\w.])(?:(?:val|var|def|ext\.)\s*)?|(?:val|var|def|ext\.)(?![\w.])\s*)"""
+    r"""([\w.]+)\s*=\s*["']v?([\d][\w.\-]*)["']"""
+)
 _CATALOG_GROUP_RE = re.compile(r"""group\s*=\s*["']""" + re.escape(_GROUP) + r"""["']""")
 _VERSION_REF_RE = re.compile(r"""version\.ref\s*=\s*["']([\w.\-]+)["']""")
 _VERSION_LIT_RE = re.compile(r"""version\s*=\s*["']v?([\d][\w.\-]*)["']""")
@@ -186,10 +197,21 @@ def _versions_table(text: str) -> dict[str, str]:
 
 
 def _maven_props(text: str) -> dict[str, str]:
-    block = re.search(r"<properties>(.*?)</properties>", text, re.DOTALL)
-    if not block:
+    """The first `<properties>` block, up to the first `</properties>` after it.
+
+    `str.find`, not `<properties>(.*?)</properties>`: with no closer, the lazy
+    pattern read from every `<properties>` to the end of the file, so a pom of
+    repeated openers grew with the square of its size. A search past the first
+    opener could only fail the same way, so the block is the same one.
+    """
+    start = text.find("<properties>")
+    if start < 0:
         return {}
-    return {m.group(1): m.group(2) for m in _MAVEN_PROP_RE.finditer(block.group(1))}
+    end = text.find("</properties>", start + len("<properties>"))
+    if end < 0:
+        return {}
+    block = text[start + len("<properties>"):end]
+    return {m.group(1): m.group(2) for m in _MAVEN_PROP_RE.finditer(block)}
 
 
 def _line_of(text: str, needle: str) -> int | None:

@@ -190,3 +190,34 @@ def test_rule_fires_through_run_scan() -> None:
     from agent_audit_kit.engine import run_scan
     result = run_scan(FIXTURES / "vulnerable")
     assert RULE in {f.rule_id for f in result.findings}
+
+
+# ---------------------------------------------------------------------------
+# The version table reads a crafted manifest in linear time, and the same names.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("text", "table"), [
+    ('val mcpVersion = "0.12.0"', {"mcpVersion": "0.12.0"}),
+    ('ext.mcp = "0.12.0"', {"mcp": "0.12.0"}),
+    ('  val   x   =   "v1.2"', {"x": "1.2"}),
+    ('myval x = "1"', {"x": "1"}),            # a `val` that ends a word still opens
+    ('\tvalx = "1"', {"valx": "1"}),          # after blanks the name is read whole
+    ('valx = "1"', {"x": "1"}),               # ... and without them, `val` is dropped
+])
+def test_the_version_table_reads_the_same_names(text: str, table: dict[str, str]) -> None:
+    assert jvm._versions_table(text) == table
+
+
+@pytest.mark.parametrize("unit", ["a", " ", "ext.", "<properties>"])
+def test_a_crafted_build_file_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """A 2 MB build file (the scanner's cap) of one word, blank or opener repeated,
+    with the group named so the version table and properties are read. Before,
+    20,000 characters of a word took 2.1 seconds and the time grew with the square;
+    `<properties>` with no closer read to the end of the file from every opener."""
+    import time
+
+    body = "io.modelcontextprotocol\n" + unit * (1_990_000 // len(unit))
+    root = _write(tmp_path, "pom.xml" if unit == "<properties>" else "build.gradle", body)
+    started = time.perf_counter()
+    _ids(root)
+    assert time.perf_counter() - started < 5.0
