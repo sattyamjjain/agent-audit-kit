@@ -85,10 +85,15 @@ _JAVA_TOOL_RE = re.compile(
     """,
     re.VERBOSE,
 )
+# The arguments before `description` stop at the next `#[mcp_tool(` as well as
+# at `)`. With `[^)]*?` alone every attribute in a file of unclosed ones read to
+# the end, so the time grew with the square of the file. An attribute inside
+# another's arguments reads the rest itself, so the same descriptions are found;
+# the match then starts at the inner attribute.
 _RUST_TOOL_RE = re.compile(
     r"""
     \#\[\s*mcp_tool\s*\(
-    [^)]*?
+    (?:(?!\#\[\s*mcp_tool\s*\()[^)])*?
     description\s*=\s*['"](?P<description>[^'"]*)['"]
     """,
     re.VERBOSE | re.DOTALL,
@@ -129,7 +134,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
         if suffix == ".py":
             # Python: docstring of the decorated function OR description= kwarg.
-            for m in _PY_TOOL_RE.finditer(text):
+            # Only up to the last `)`: past it no decorator closes, and each one
+            # there read `[^)]*` to the end of the file.
+            for m in _PY_TOOL_RE.finditer(text, 0, text.rfind(")") + 1):
                 args = m.group("args") or ""
                 desc_m = re.search(r"description\s*=\s*['\"]([^'\"]*)['\"]", args)
                 if desc_m:
