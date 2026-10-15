@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -380,6 +382,241 @@ def test_a_literal_first_argument_does_not_hide_a_caller_chosen_target(
     tmp_path: Path, body: str, rule: str
 ) -> None:
     assert rule in _low_level(tmp_path, body)
+
+
+# Real handlers copy the input into a local first (`cmd = arguments["cmd"]`, then
+# `subprocess.run(cmd, ...)`). In a `call_tool` handler such a local is followed
+# for AAK-TAINT-001, -003, -004 and -006.
+
+
+@pytest.mark.parametrize(("body", "rule"), [
+    ('    cmd = arguments["cmd"]\n    return subprocess.run(cmd, shell=True).returncode', "AAK-TAINT-001"),
+    ('    path = arguments.get("path", "notes.txt")\n    return open(path).read()', "AAK-TAINT-003"),
+    ('    url: str = arguments["url"]\n    return requests.get(url).text', "AAK-TAINT-004"),
+    ('    blob = arguments["blob"]\n    return pickle.loads(blob)', "AAK-TAINT-006"),
+    # One link further, and an item read from a local.
+    ('    opts = arguments["opts"]\n    cmd = opts["cmd"]\n    return subprocess.run(cmd, shell=True).returncode',
+     "AAK-TAINT-001"),
+    ('    opts = arguments\n    return open(opts["path"]).read()', "AAK-TAINT-003"),
+])
+def test_a_handler_local_assigned_from_the_arguments_is_followed(tmp_path: Path, body: str, rule: str) -> None:
+    assert _low_level(tmp_path, body) == [rule]
+
+
+@pytest.mark.parametrize("body", [
+    # Reassigned from a constant, or rebuilt by a call: no longer the caller's.
+    '    cmd = arguments["cmd"]\n    cmd = "uptime"\n    return subprocess.run(cmd, shell=True).returncode',
+    '    cmd = arguments["cmd"]\n    cmd = shlex.quote(cmd)\n    return subprocess.run(cmd, shell=True).returncode',
+    # A third link is not followed.
+    '    a = arguments["a"]\n    b = a\n    c = b\n    return subprocess.run(c, shell=True).returncode',
+    # The literal-target skip applies to a local as to a parameter.
+    '    payload = arguments\n    return requests.post("https://api.example.com/pay", json=payload).text',
+])
+def test_a_handler_local_that_does_not_hold_the_arguments_is_silent(tmp_path: Path, body: str) -> None:
+    assert _low_level(tmp_path, body) == []
+
+
+@pytest.mark.parametrize("body", [
+    '    expr = arguments["expr"]\n    return eval(expr)',
+    '    sql = arguments["sql"]\n    return cursor.execute(sql)',
+])
+def test_aliased_eval_and_sql_sinks_are_not_followed_yet(tmp_path: Path, body: str) -> None:
+    """A pending decision: on 1,713 public servers the additions were 24 of 38
+    true positives for AAK-TAINT-002 and 32 of 44 for AAK-TAINT-005."""
+    assert _low_level(tmp_path, body) == []
+
+
+def test_a_handler_alias_finding_names_the_local(tmp_path: Path) -> None:
+    body = '    cmd = arguments["cmd"]\n    return subprocess.run(cmd, shell=True).returncode'
+    source = _LOW_LEVEL.format(receiver="server", params="name: str, arguments: dict", body=body)
+    (tmp_path / "server.py").write_text(source)
+    (finding,) = scan(tmp_path)[0]
+    assert finding.rule_id == "AAK-TAINT-001"
+    assert finding.evidence.endswith("via local 'cmd'")
+    sink_line = next(i for i, line in enumerate(source.splitlines(), 1) if "subprocess.run(cmd" in line)
+    assert finding.line_number == sink_line
+
+
+def test_a_call_the_direct_rule_reports_is_not_reported_twice(tmp_path: Path) -> None:
+    body = '    cmd = arguments["cmd"]\n    return subprocess.run(arguments["cmd"], cwd=cmd).returncode'
+    assert _low_level(tmp_path, body) == ["AAK-TAINT-001"]
+
+
+def test_a_local_in_a_tool_function_is_not_followed(tmp_path: Path) -> None:
+    """Only the `call_tool` handler follows locals; `@tool` behaviour is unchanged."""
+    (tmp_path / "server.py").write_text(
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef run(command: str) -> int:\n"
+        "    cmd = command\n    return subprocess.run(cmd, shell=True).returncode\n"
+    )
+    assert scan(tmp_path)[0] == []
+
+
+# Paths: a local holds the input after an `if`, a loop, a `try` or a `match` when
+# some branch that gets there leaves it holding it. A branch that returns or
+# raises gets nowhere, and a loop body may run no times.
+
+
+# `match` is 3.10 syntax: on 3.9 the file does not parse and the scanner skips it.
+_needs_match = pytest.mark.skipif(sys.version_info < (3, 10), reason="match needs Python 3.10")
+
+
+def _flow(tmp_path: Path, body: str) -> list[tuple[str, int]]:
+    """(rule, line) for each finding in a handler with this body, indented for it."""
+    body = textwrap.indent(textwrap.dedent(body).strip("\n"), "    ")
+    (tmp_path / "server.py").write_text(
+        _LOW_LEVEL.format(receiver="server", params="name: str, arguments: dict", body=body)
+    )
+    return sorted((f.rule_id, f.line_number or 0) for f in scan(tmp_path)[0])
+
+
+@pytest.mark.parametrize(("body", "rule"), [
+    # Either branch order: the branch read last no longer decides.
+    ("""
+     if "cmd" in arguments:
+         cmd = arguments["cmd"]
+     else:
+         cmd = "uptime"
+     return subprocess.run(cmd, shell=True).returncode
+     """, "AAK-TAINT-001"),
+    ("""
+     if "cmd" not in arguments:
+         cmd = "uptime"
+     else:
+         cmd = arguments["cmd"]
+     return subprocess.run(cmd, shell=True).returncode
+     """, "AAK-TAINT-001"),
+    ("""
+     try:
+         path = arguments["path"]
+     except KeyError:
+         path = "notes.txt"
+     return open(path).read()
+     """, "AAK-TAINT-003"),
+    # A loop body may not run, so what it assigns does not replace the input.
+    ("""
+     url = arguments["url"]
+     for mirror in MIRRORS:
+         url = mirror
+     return requests.get(url).text
+     """, "AAK-TAINT-004"),
+    ("""
+     blob = arguments["blob"]
+     while False:
+         blob = b""
+     else:
+         return pickle.loads(blob)
+     """, "AAK-TAINT-006"),
+    # `:=` binds like an assignment, and a starred argument is read too.
+    ("""
+     if not (url := arguments.get("url")):
+         raise ValueError("url is required")
+     return requests.get(url).text
+     """, "AAK-TAINT-004"),
+    ("""
+     argv = arguments["argv"]
+     os.execvp(*argv)
+     """, "AAK-TAINT-001"),
+    # One case per tool, the usual shape of a dispatcher.
+    pytest.param("""
+     match name:
+         case "run":
+             cmd = arguments["cmd"]
+             return subprocess.run(cmd, shell=True).returncode
+         case _:
+             raise ValueError(name)
+     """, "AAK-TAINT-001", marks=_needs_match),
+])
+def test_a_local_that_holds_the_input_on_some_path_is_followed(
+    tmp_path: Path, body: str, rule: str
+) -> None:
+    assert [r for r, _ in _flow(tmp_path, body)] == [rule]
+
+
+@pytest.mark.parametrize("body", [
+    # The `else` branch never sees what the `if` branch bound.
+    """
+    if name == "run":
+        cmd = arguments["cmd"]
+    else:
+        other = cmd
+        subprocess.run(other, shell=True)
+    """,
+    # Rebound by `:=`, by a comprehension's own variable, by a `case` capture, by an
+    # import and by a nested `def`.
+    """
+    cmd = arguments["cmd"]
+    if (cmd := "uptime"):
+        subprocess.run(cmd, shell=True)
+    """,
+    """
+    cmd = arguments["cmd"]
+    return [subprocess.run(cmd, shell=True) for cmd in ("uptime", "date")]
+    """,
+    pytest.param("""
+    cmd = arguments["cmd"]
+    match name:
+        case str(cmd):
+            subprocess.run(cmd, shell=True)
+    """, marks=_needs_match),
+    """
+    path = arguments["path"]
+    from os import path
+    return open(path).read()
+    """,
+    """
+    cmd = arguments["cmd"]
+    def cmd():
+        return "uptime"
+    return subprocess.run(cmd, shell=True).returncode
+    """,
+])
+def test_a_local_rebound_before_the_sink_is_silent(tmp_path: Path, body: str) -> None:
+    assert _flow(tmp_path, body) == []
+
+
+def test_a_local_bound_in_a_branch_that_returns_does_not_reach_past_it(tmp_path: Path) -> None:
+    """The sink inside the branch is reported; the one after it, where the branch
+    never gets, is not."""
+    found = _flow(tmp_path, """
+        if name == "run":
+            cmd = arguments["cmd"]
+            return [subprocess.run(cmd, shell=True)]
+        return [subprocess.run(cmd, shell=True)]
+        """)
+    source = (tmp_path / "server.py").read_text().splitlines()
+    sinks = [i for i, line in enumerate(source, 1) if "subprocess.run(cmd" in line]
+    assert len(sinks) == 2
+    assert found == [("AAK-TAINT-001", sinks[0])]
+
+
+@pytest.mark.parametrize("body", [
+    '    path = os.path.basename(arguments["path"])\n    return open(path).read()',
+    '    url = validate_url(arguments["url"])\n    return requests.get(url).text',
+    '    blob = arguments["blob"]\n    blob = verify_signature(blob)\n    return pickle.loads(blob)',
+])
+def test_a_value_passed_through_a_call_is_not_followed(tmp_path: Path, body: str) -> None:
+    """There is no list of sanitisers: whatever a call returns is no longer the
+    caller's value, the same as for a parameter in the direct rules."""
+    assert _low_level(tmp_path, body) == []
+
+
+def test_a_crafted_handler_scans_in_linear_time(tmp_path: Path) -> None:
+    """Thousands of locals and branches: a join costs the names its branches
+    wrote, never a copy of every local. The bound is loose for slow CI runners."""
+    import time
+
+    lines = [f'    v{i} = arguments["k{i}"]' for i in range(5_000)]
+    for i in range(5_000):
+        lines += [f"    if name == 'n{i}':", f'        v{i} = "fixed"', "    else:", "        pass"]
+    lines.append("    return subprocess.run(v0, shell=True).returncode")
+    (tmp_path / "server.py").write_text(
+        _LOW_LEVEL.format(receiver="server", params="name: str, arguments: dict", body="\n".join(lines))
+    )
+    started = time.perf_counter()
+    findings, _ = scan(tmp_path)
+    assert time.perf_counter() - started < 20.0
+    assert [f.rule_id for f in findings] == ["AAK-TAINT-001"]
 
 
 def test_stdin_data_for_a_fixed_command_is_not_reported(tmp_path: Path) -> None:
