@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.scanners import mcp_middleware
 
@@ -108,3 +111,57 @@ def test_rule_metadata_cve_and_incident() -> None:
     assert rule.owasp_agentic_references == ["ASI03"]
     assert rule.owasp_mcp_references == ["MCP07:2025"]
     assert "MCPWN-2026-04-16" in rule.incident_references
+
+
+# ---------------------------------------------------------------------------
+# Route extraction keeps its shape, and reads a crafted file in linear time.
+# ---------------------------------------------------------------------------
+
+
+def _hits(hits: list) -> list[tuple[str, int, str, bool]]:
+    return [(h.route, h.line, h.line_text, h.has_auth) for h in hits]
+
+
+@pytest.mark.parametrize(("source", "hits"), [
+    ('@app.post("/mcp")\n@limit(1)\nasync def a(x): ...\n', [("/mcp", 1, '@app.post("/mcp")', False)]),
+    ('@app.post("/mcp", dependencies=[Depends(auth)])\ndef a(x): ...\n\n@app.post("/mcp_message")\ndef b(y): ...\n',
+     [("/mcp", 1, '@app.post("/mcp", dependencies=[Depends(auth)])', True), ("/mcp_message", 4, '@app.post("/mcp_message")', False)]),
+    ('@app.post("/mcp")\nprint(x)\ndef a(x): ...\n', [("/mcp", 1, '@app.post("/mcp")', False)]),
+    ('@app.post("/mcp")\nx = 1\n', []),
+])
+def test_fastapi_routes_keep_their_shape(source: str, hits: list) -> None:
+    assert _hits(mcp_middleware._extract_fastapi(source)) == hits
+
+
+@pytest.mark.parametrize(("source", "hits"), [
+    ('app.post("/mcp", authMw, h);\napp.post("/mcp_message", h);\n', [("/mcp", 1, "authMw, h", True), ("/mcp_message", 2, "h", False)]),
+    ('app.post("/mcp", )', [("/mcp", 1, " ", False)]),
+    ('app.post("/mcp",)', []),
+    ('app.post("/mcp", a; b)', []),
+    ('app.post("/mcp", app.post("/mcp_message", h))', [("/mcp", 1, 'app.post("/mcp_message", h', False)]),
+])
+def test_express_routes_keep_their_shape(source: str, hits: list) -> None:
+    assert _hits(mcp_middleware._extract_express(source)) == hits
+
+
+_CRAFTED = {
+    "word.go": "/mcp " + "a" * 500_000 + ")",
+    "calls.go": 'r.POST("/mcp", ' * 30_000,
+    "groups.go": '/mcp g := r.Group("x", ' * 20_000,
+    "calls.ts": 'app.post("/mcp", ' * 28_000,
+    "statements.ts": 'app.post("/mcp", h;' * 25_000 + ")",
+    "decorators.py": '@app.post("/mcp")\n' * 27_000,
+}
+
+
+@pytest.mark.parametrize("name", sorted(_CRAFTED))
+def test_a_crafted_route_file_scans_in_linear_time(tmp_path: Path, name: str) -> None:
+    """About 500 KB each, under the scanner's 512 KB cap. Before, a long word
+    was read once per character, a call with no `)` after it once per call
+    (120 KB of Gin calls took 3.8 seconds), and the FastAPI pattern tried
+    every split of the decorator lines, doubling with each one: 22 took half
+    a second. The bound is loose for slow CI runners; each takes milliseconds."""
+    (tmp_path / name).write_text(_CRAFTED[name], encoding="utf-8")
+    started = time.perf_counter()
+    mcp_middleware.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0

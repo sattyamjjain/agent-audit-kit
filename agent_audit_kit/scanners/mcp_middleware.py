@@ -32,7 +32,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
@@ -97,8 +97,15 @@ class _RouteHit:
 # ---------------------------------------------------------------------------
 
 
+# The Gin, Express and group patterns start at a word run. A start inside the
+# run reads the same run to the same end, so it fails wherever the run's first
+# character failed; `(?<!\w)` keeps the matches and stops a long word with no
+# `.` after it from being read once per character (20,000 characters took 1.05
+# seconds, and the time grew with the square of the run). Each also reads its
+# arguments to a `)`, so they run only up to the last `)` in the file: past it
+# no match can end, and every call there read on to the end of the file.
 _GIN_LINE_RE = re.compile(
-    r"""(?P<router>\w+)\.(?:Handle|POST|GET|PUT|DELETE|PATCH|Any)\s*\(
+    r"""(?<!\w)(?P<router>\w+)\.(?:Handle|POST|GET|PUT|DELETE|PATCH|Any)\s*\(
         \s*(?:"[A-Z]+"\s*,\s*)?                # optional HTTP method literal
         "(?P<route>/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?)"
         \s*,\s*(?P<mw_and_handler>[^)]+)\)""",
@@ -108,50 +115,155 @@ _GIN_LINE_RE = re.compile(
 
 def _extract_gin(text: str) -> list[_RouteHit]:
     hits: list[_RouteHit] = []
-    for m in _GIN_LINE_RE.finditer(text):
+    lineno, counted = 1, 0
+    for m in _GIN_LINE_RE.finditer(text, 0, text.rfind(")") + 1):
         mw_segment = m.group("mw_and_handler")
         has_auth = any(marker in mw_segment for marker in _AUTH_MARKERS)
         line_text = text[m.start(): m.end()]
-        lineno = text[: m.start()].count("\n") + 1
+        lineno += text.count("\n", counted, m.start())
+        counted = m.start()
         hits.append(_RouteHit(m.group("route"), lineno, line_text, has_auth))
     return hits
 
 
-_FASTAPI_DECORATOR_RE = re.compile(
+_FASTAPI_ROUTE_RE = re.compile(
     r"""@\w+\.(?:post|get|put|patch|delete|api_route)\s*\(
         \s*"(?P<route>/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?)"
-        .*?\)\s*\n                     # end of decorator
-        (?P<body>(?:\s*@.*\n)*         # extra decorators
-         \s*(?:async\s+)?def\s+\w+\([^)]*\))""",
-    re.VERBOSE | re.DOTALL,
+    """,
+    re.VERBOSE,
 )
+_DEF_HEAD_RE = re.compile(r"(?:async\s+)?def\s+\w+\(")
+# A newline whose next line opens a `def`.
+_DEF_LINE_RE = re.compile(r"\n(?=[^\S\n]*(?:async\s+)?def\s+\w+\()")
+# A `)` that only whitespace separates from the end of its line.
+_CLOSE_AT_EOL_RE = re.compile(r"\)(?=[^\S\n]*\n)")
+_WHITESPACE_RE = re.compile(r"\s*")
+
+
+def _skip_whitespace(text: str, at: int) -> int:
+    m = _WHITESPACE_RE.match(text, at)
+    return m.end() if m else at
+
+
+def _def_end(text: str, at: int, last_close: int) -> int | None:
+    """End of `(?:async\\s+)?def\\s+\\w+\\([^)]*\\)` at ``at``, or None."""
+    m = _DEF_HEAD_RE.match(text, at)
+    if m is None or m.end() > last_close:
+        return None
+    return text.find(")", m.end()) + 1
+
+
+def _last_def_line(text: str, last_close: int) -> tuple[int, int | None]:
+    """The last newline after which a `def` opens and closes, and that
+    `def`'s end; (-1, None) when there is none."""
+    newline = -1
+    for m in _DEF_LINE_RE.finditer(text, 0, last_close + 1):
+        newline = m.start()
+    if newline < 0:
+        return -1, None
+    return newline, _def_end(text, _skip_whitespace(text, newline + 1), last_close)
+
+
+def _fastapi_routes(text: str) -> Iterator[tuple[int, int, str]]:
+    """(start, end, route) of each MCP route decorator with the `def` it
+    decorates: the matches of the DOTALL pattern this scanner used,
+
+        @\\w+\\.(?:post|get|...)\\s*\\(\\s*"(?P<route>/mcp...)"
+        .*?\\)\\s*\\n (?:\\s*@.*\\n)* \\s*(?:async\\s+)?def\\s+\\w+\\([^)]*\\)
+
+    found without its backtracking. The decorator ends at the first `)` at
+    the end of a line that a `def` follows, or an `@` line when a later line
+    opens a `def`: with DOTALL, `(?:\\s*@.*\\n)*` ran from that `@` to the
+    last such line in the file, and tried every split of the lines between
+    before it gave up, so 26 repeated decorators with no `def` after them
+    took 8.7 seconds, 30 took 144, and each added line doubled it. Where a
+    decorator ends depends only on that `)`, not on the decorator that
+    reached it, so once one finds no end, none after it can.
+    """
+    last_close = text.rfind(")")
+    last_def: tuple[int, int | None] | None = None
+    pos = 0
+    while True:
+        head = _FASTAPI_ROUTE_RE.search(text, pos)
+        if head is None:
+            return
+        end = None
+        for close in _CLOSE_AT_EOL_RE.finditer(text, head.end()):
+            after = _skip_whitespace(text, close.end())
+            if not text.startswith("@", after):
+                end = _def_end(text, after, last_close)
+            else:
+                if last_def is None:
+                    last_def = _last_def_line(text, last_close)
+                if last_def[0] > after:
+                    end = last_def[1]
+            if end is not None:
+                break
+        if end is None:
+            return
+        yield head.start(), end, head.group("route")
+        pos = end
 
 
 def _extract_fastapi(text: str) -> list[_RouteHit]:
     hits: list[_RouteHit] = []
-    for m in _FASTAPI_DECORATOR_RE.finditer(text):
-        block = text[m.start(): m.end()]
+    lineno, counted = 1, 0
+    for start, end, route in _fastapi_routes(text):
+        block = text[start:end]
         has_auth = any(marker in block for marker in _AUTH_MARKERS)
-        lineno = text[: m.start()].count("\n") + 1
-        hits.append(_RouteHit(m.group("route"), lineno, block.splitlines()[0], has_auth))
+        lineno += text.count("\n", counted, start)
+        counted = start
+        hits.append(_RouteHit(route, lineno, block.splitlines()[0], has_auth))
     return hits
 
 
-_EXPRESS_LINE_RE = re.compile(
-    r"""(?P<app>\w+)\.(?:post|get|put|patch|delete|use|all)\s*\(
+_EXPRESS_HEAD_RE = re.compile(
+    r"""(?<!\w)(?P<app>\w+)\.(?:post|get|put|patch|delete|use|all)\s*\(
         \s*["'](?P<route>/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?)["']
-        \s*,\s*(?P<mw_and_handler>[^;]+?)\)""",
+        \s*,(?P<pad>\s*)""",
     re.VERBOSE,
 )
 
 
+def _express_routes(text: str) -> Iterator[tuple[int, str, str]]:
+    """(start, route, middleware and handler) of each Express MCP route: the
+    matches of `<head>\\s*,\\s*(?P<mw_and_handler>[^;]+?)\\)`.
+
+    The arguments run to the first `)` that no `;` precedes. A call with a `;`
+    first fails, and so does every call between it and that `;`, which the
+    pattern read to the same `;` once per call. Backing off the whitespace
+    after the comma rescues only `, )`, which keeps the last space.
+    """
+    end = text.rfind(")") + 1
+    pos = 0
+    while True:
+        m = _EXPRESS_HEAD_RE.search(text, pos, end)
+        if m is None:
+            return
+        args = m.end()
+        semi = text.find(";", args, end)
+        stop = semi if semi >= 0 else end
+        close = text.find(")", args + 1, stop)
+        if close >= 0:
+            yield m.start(), m.group("route"), text[args:close]
+            pos = close + 1
+        elif m.group("pad") and text.startswith(")", args):
+            yield m.start(), m.group("route"), text[args - 1:args]
+            pos = args + 1
+        elif semi >= 0:
+            pos = semi + 1
+        else:
+            return
+
+
 def _extract_express(text: str) -> list[_RouteHit]:
     hits: list[_RouteHit] = []
-    for m in _EXPRESS_LINE_RE.finditer(text):
-        mw_segment = m.group("mw_and_handler")
+    lineno, counted = 1, 0
+    for start, route, mw_segment in _express_routes(text):
         has_auth = any(marker in mw_segment for marker in _AUTH_MARKERS)
-        lineno = text[: m.start()].count("\n") + 1
-        hits.append(_RouteHit(m.group("route"), lineno, mw_segment, has_auth))
+        lineno += text.count("\n", counted, start)
+        counted = start
+        hits.append(_RouteHit(route, lineno, mw_segment, has_auth))
     return hits
 
 
@@ -263,7 +375,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
 
 
 _GIN_GROUP_AUTHED_RE = re.compile(
-    r"""(?P<varname>\w+)\s*:=\s*\w+\.Group\s*\(\s*
+    r"""(?<!\w)(?P<varname>\w+)\s*:=\s*\w+\.Group\s*\(\s*
         "(?P<prefix>[^"]*)"\s*,\s*(?P<mw>[^)]+)\)""",
     re.VERBOSE,
 )
@@ -282,7 +394,7 @@ def _gin_grouped_auth_prefixes(text: str) -> list[str]:
     which is safe and should not fire AAK-MCPWN-001.
     """
     prefixes: list[str] = []
-    for m in _GIN_GROUP_AUTHED_RE.finditer(text):
+    for m in _GIN_GROUP_AUTHED_RE.finditer(text, 0, text.rfind(")") + 1):
         mw = m.group("mw")
         if any(marker in mw for marker in _AUTH_MARKERS):
             prefixes.append(m.group("prefix") or "/")
