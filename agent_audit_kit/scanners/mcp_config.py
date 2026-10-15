@@ -8,6 +8,7 @@ from typing import Any
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._launchers import launch_evidence
 
 # Patterns for secret-like keys in MCP server env blocks
 SECRET_KEY_PATTERNS = re.compile(
@@ -249,7 +250,9 @@ def _check_server(
                 _find_line_number(raw_text, cmd_bin),
             ))
 
-    # AAK-MCP-007: Unpinned package version in args
+    # AAK-MCP-007: Unpinned package version in args. `engine.run_scan` drops a
+    # finding here when AAK-SUPPLY-001 reports the same launch, which it
+    # recognises by the evidence `launch_evidence` builds.
     if command and command.strip().split()[0] in PACKAGE_FETCHERS and isinstance(args, list):
         for index, arg in enumerate(args):
             if isinstance(arg, str) and not arg.startswith("-"):
@@ -260,7 +263,7 @@ def _check_server(
                 if arg and "@" not in arg:
                     findings.append(_make_finding(
                         "AAK-MCP-007", file_path,
-                        f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
+                        launch_evidence(server_name, str(shown_arg(args, index)), "no version pin"),
                         _find_line_number(raw_text, arg),
                     ))
                 elif arg and "@" in arg:
@@ -274,7 +277,7 @@ def _check_server(
                         if len(parts) < 3 or not parts[2]:
                             findings.append(_make_finding(
                                 "AAK-MCP-007", file_path,
-                                f"Server '{server_name}' arg: {shown_arg(args, index)} (no version pin)",
+                                launch_evidence(server_name, str(shown_arg(args, index)), "no version pin"),
                                 _find_line_number(raw_text, arg),
                             ))
 

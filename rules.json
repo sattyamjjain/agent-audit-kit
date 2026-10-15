@@ -2863,7 +2863,7 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions.",
+      "description": "Package name in args lacks @version suffix when using npx/uvx. Unpinned packages can silently update to malicious versions. Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
       "incident_references": [],
       "limitations": "Looks for a package argument after npx, uvx, bunx or pnpx that has no `@version` suffix. Any suffix counts as a pin, including the floating tag `@latest`. The same package fetched through `cmd /c npx`, or declared in VS Code's `.vscode/mcp.json` (servers under `servers`), is not checked.",
       "owasp_agentic_references": [
@@ -10039,7 +10039,7 @@
       "remediation": "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
       "rule_id": "AAK-SUPPLY-001",
       "sarif_name": "McpPackageNotPinned",
-      "severity": "high",
+      "severity": "medium",
       "title": "MCP server package not pinned to exact version"
     },
     {

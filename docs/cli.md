@@ -72,7 +72,8 @@ ignore-paths:
   - vendor/
   - third_party/
 exclude-rules:
-  - AAK-MCP-007    # We intentionally don't pin npx versions
+  - AAK-SUPPLY-001  # We intentionally don't pin npx versions
+  - AAK-MCP-007     # (reports the same launches once AAK-SUPPLY-001 is excluded)
 include-user-config: false
 ```
 

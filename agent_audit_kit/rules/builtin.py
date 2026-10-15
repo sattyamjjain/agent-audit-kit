@@ -546,7 +546,8 @@ _r(
     "AAK-MCP-007",
     "MCP server lacks version pinning in args",
     "Package name in args lacks @version suffix when using npx/uvx. "
-    "Unpinned packages can silently update to malicious versions.",
+    "Unpinned packages can silently update to malicious versions. "
+    "Not reported for a launch AAK-SUPPLY-001 reports in the same scan.",
     Severity.LOW,
     Category.MCP_CONFIG,
     "Pin with @x.y.z suffix, e.g., @modelcontextprotocol/server-filesystem@2025.1.1",
@@ -1643,7 +1644,7 @@ _r(
     "MCP server package not pinned to exact version",
     "MCP server args contain package names without @x.y.z version pinning. "
     "Unpinned packages fetch latest at runtime, vulnerable to rug pull attacks.",
-    Severity.HIGH,
+    Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
     "Pin to exact version. Example: @modelcontextprotocol/server-filesystem@2025.1.1",
     sarif_name="McpPackageNotPinned",

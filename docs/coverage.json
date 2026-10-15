@@ -8939,7 +8939,7 @@
         "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
       ],
       "rule_id": "AAK-SUPPLY-001",
-      "severity": "high",
+      "severity": "medium",
       "title": "MCP server package not pinned to exact version"
     },
     {
@@ -9673,10 +9673,10 @@
     },
     "by_severity": {
       "critical": 89,
-      "high": 175,
+      "high": 174,
       "info": 5,
       "low": 15,
-      "medium": 112
+      "medium": 113
     },
     "total_cves_covered": 315,
     "total_rules": 396

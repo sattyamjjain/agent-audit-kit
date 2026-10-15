@@ -15,7 +15,8 @@ ignore-paths:
 
 # Rules to skip (uncomment as needed)
 # exclude-rules:
-#   - AAK-MCP-007    # We intentionally don't pin npx versions
+#   - AAK-SUPPLY-001  # We intentionally don't pin npx versions
+#   - AAK-MCP-007     # (reports the same launches once AAK-SUPPLY-001 is excluded)
 #   - AAK-SUPPLY-005  # Large dependency tree is expected
 
 # Scan user-level agent configs (~/.claude/, etc.)

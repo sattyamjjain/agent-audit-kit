@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
-from agent_audit_kit.scanners._launchers import invocation_packages, pin_problem
+from agent_audit_kit.scanners._launchers import invocation_packages, launch_evidence, pin_problem
 from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
@@ -159,7 +159,7 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
                 if problem is not None:
                     findings.append(_make_finding(
                         "AAK-SUPPLY-001", rel_path,
-                        f"Server '{server_name}' arg: {launched.spec} ({problem})",
+                        launch_evidence(server_name, launched.spec, problem),
                         _find_line_number(raw, launched.spec),
                     ))
     return findings

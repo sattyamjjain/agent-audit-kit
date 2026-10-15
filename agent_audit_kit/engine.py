@@ -283,7 +283,9 @@ def run_scan(
             continue
         kept.append(finding)
 
-    result.findings.extend(_drop_covered_composition_findings(kept))
+    result.findings.extend(
+        _drop_launches_supply_chain_reports(_drop_covered_composition_findings(kept))
+    )
 
     result.files_scanned = len(all_scanned_files)
     result.scan_duration_ms = (time.monotonic() - start) * 1000
@@ -348,3 +350,58 @@ def _drop_covered_composition_findings(findings: list[Finding]) -> list[Finding]
         f for f in findings
         if f.category is not Category.COMPOSITION or not _is_covered(f)
     ]
+
+
+def _drop_launches_supply_chain_reports(findings: list[Finding]) -> list[Finding]:
+    """Stand AAK-MCP-007 down on a launch AAK-SUPPLY-001 reports in the same run.
+
+    Both rules report one fact, a server launch that fetches a package without
+    pinning it (`npx -y pkg`, `uvx pkg`). AAK-SUPPLY-001 reads the launcher's
+    grammar and judges the package spec; AAK-MCP-007 is the older reading,
+    every argument without an `@`. On a config both read, one fix came back
+    as two findings at two severities.
+
+    The answer needs the assembled list, as the composition pass above does: a
+    scanner sees neither its peers' findings nor the active rule set. Dropping
+    AAK-MCP-007 at its source would take it from a user who runs `--rules
+    AAK-MCP-007` or excludes AAK-SUPPLY-001. Here it runs after the `--rules`,
+    `--exclude-rules` and `ignore_paths` filter, so AAK-MCP-007 stands down
+    only for an AAK-SUPPLY-001 finding that is going to be reported.
+    `scan --diff` keeps or drops a whole file, and both findings sit in the
+    same one, so it cannot split the pair either. Dropping adds no result and
+    leaves AAK-SUPPLY-001's fingerprints alone (SARIF fingerprints read neither
+    the evidence nor the severity), so a baseline diff shows the AAK-MCP-007
+    entry resolved while AAK-SUPPLY-001 still reports the launch.
+
+    A launch is the same when the file and the `Server '<name>' arg: <spec>`
+    head of the evidence match (`_launchers.launch_subject`). The line is no
+    key: both rules point at the first line holding the spec, so two servers
+    launching one package share it. AAK-MCP-007 keeps every finding
+    AAK-SUPPLY-001 does not match, which covers the configs it alone reads
+    (`.windsurf/mcp.json`, any `*mcp*.json` below the root) and arguments
+    AAK-SUPPLY-001 does not judge as a package.
+
+    As in the composition pass, it stands down only for a finding at or above
+    its own severity, so the `--severity` floor can never hide a launch that
+    AAK-MCP-007 alone would have shown.
+    """
+    from agent_audit_kit.scanners._launchers import launch_subject
+
+    reported: dict[tuple[str, str], int] = {}
+    for f in findings:
+        if f.rule_id != "AAK-SUPPLY-001":
+            continue
+        subject = launch_subject(f.evidence)
+        if subject is not None:
+            key = (f.file_path, subject)
+            reported[key] = max(reported.get(key, 0), f.severity.numeric())
+    if not reported:
+        return findings
+
+    def _reported(finding: Finding) -> bool:
+        subject = launch_subject(finding.evidence)
+        if subject is None:
+            return False
+        return reported.get((finding.file_path, subject), 0) >= finding.severity.numeric()
+
+    return [f for f in findings if f.rule_id != "AAK-MCP-007" or not _reported(f)]

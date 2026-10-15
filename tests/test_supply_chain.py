@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 
+from agent_audit_kit.cli import cli
+from agent_audit_kit.engine import _drop_launches_supply_chain_reports, run_scan
+from agent_audit_kit.models import Severity
+from agent_audit_kit.scanners import mcp_config, supply_chain
+from agent_audit_kit.scanners._launchers import launch_evidence, launch_subject
 from agent_audit_kit.scanners.supply_chain import scan, _version_in_range
 
 
@@ -641,3 +648,179 @@ def test_a_pypi_launch_is_not_looked_up_in_the_npm_table(tmp_path: Path) -> None
     assert supply006("uv tool run") == []
     hits = supply006("npx")
     assert len(hits) == 1 and hits[0].startswith("Server 'x' uses openclaw@2.0.0"), hits
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-007 stands down where AAK-SUPPLY-001 reports the same launch
+# ---------------------------------------------------------------------------
+#
+# Both rules report an unpinned package launch: AAK-SUPPLY-001 (MEDIUM) reads the
+# launcher's grammar, AAK-MCP-007 (LOW) every argument without an `@`. On a config
+# both read, `engine.run_scan` keeps AAK-SUPPLY-001 and drops AAK-MCP-007, after
+# the rule and path filters, so selecting or excluding a rule still works.
+
+_LAUNCH_RULES = ("AAK-MCP-007", "AAK-SUPPLY-001")
+_NPX = {"command": "npx", "args": ["-y", "@scope/pkg"]}
+_NPX_EVIDENCE = "Server 'fs' arg: @scope/pkg (no version pin)"
+
+
+def _write(root: Path, rel: str, config: object) -> None:
+    target = root / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(config, indent=2))
+
+
+def _launches(root: Path, **kwargs: object) -> list[tuple[str, str, str]]:
+    result = run_scan(root, **kwargs)  # type: ignore[arg-type]
+    return sorted(
+        (f.rule_id, f.severity.value, f.evidence)
+        for f in result.findings
+        if f.rule_id in _LAUNCH_RULES
+    )
+
+
+def _launch_files(root: Path, **kwargs: object) -> list[tuple[str, str]]:
+    result = run_scan(root, **kwargs)  # type: ignore[arg-type]
+    return sorted((f.rule_id, f.file_path) for f in result.findings if f.rule_id in _LAUNCH_RULES)
+
+
+def test_a_launch_both_rules_report_is_reported_once(tmp_path: Path) -> None:
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    by_scanner = mcp_config.scan(tmp_path)[0] + supply_chain.scan(tmp_path)[0]
+    assert sorted(
+        (f.rule_id, f.line_number, f.evidence) for f in by_scanner if f.rule_id in _LAUNCH_RULES
+    ) == [("AAK-MCP-007", 7, _NPX_EVIDENCE), ("AAK-SUPPLY-001", 7, _NPX_EVIDENCE)]
+    assert _launches(tmp_path) == [("AAK-SUPPLY-001", "medium", _NPX_EVIDENCE)]
+
+
+def test_the_vscode_servers_shape_is_reported_once(tmp_path: Path) -> None:
+    server = {"type": "stdio", **_NPX}
+    _write(tmp_path, ".vscode/mcp.json", {"servers": {"fs": server}})
+    assert _launches(tmp_path) == [("AAK-SUPPLY-001", "medium", _NPX_EVIDENCE)]
+    # mcp_config reads only `mcpServers` on this branch. Its per-server check does
+    # not care which map an entry came from, so build the AAK-MCP-007 finding it
+    # reports for this entry and check the engine drops it beside AAK-SUPPLY-001.
+    raw = (tmp_path / ".vscode" / "mcp.json").read_text()
+    mcp007 = [
+        f for f in mcp_config._check_server("fs", server, ".vscode/mcp.json", raw)
+        if f.rule_id == "AAK-MCP-007"
+    ]
+    supply001 = [f for f in supply_chain.scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-001"]
+    assert [f.evidence for f in mcp007] == [_NPX_EVIDENCE]
+    assert _drop_launches_supply_chain_reports(mcp007 + supply001) == supply001
+
+
+@pytest.mark.parametrize(("server", "supply_reason"), [
+    ({"command": "uvx", "args": ["some-mcp-server>=1.0"]}, "version range `>=1.0`"),
+    ({"command": "npx", "args": ["-y", "github:org/repo"]},
+     "a git or URL reference without a commit"),
+])
+def test_the_same_launch_is_matched_whatever_reason_each_rule_gives(
+    tmp_path: Path, server: dict, supply_reason: str
+) -> None:
+    """AAK-MCP-007 says "no version pin" for a range or a git reference too, so
+    the launch is matched on the server and the spec, not on the whole evidence."""
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"s": server}})
+    found = _launches(tmp_path)
+    assert [(rule, sev) for rule, sev, _ in found] == [("AAK-SUPPLY-001", "medium")]
+    assert found[0][2].endswith(f"({supply_reason})")
+    assert [rule for rule, _, _ in _launches(tmp_path, rules=["AAK-MCP-007"])] == ["AAK-MCP-007"]
+
+
+def test_selecting_aak_mcp_007_alone_still_reports_it(tmp_path: Path) -> None:
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    assert _launches(tmp_path, rules=["AAK-MCP-007"]) == [("AAK-MCP-007", "low", _NPX_EVIDENCE)]
+
+
+def test_excluding_aak_supply_001_brings_aak_mcp_007_back(tmp_path: Path) -> None:
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    assert _launches(tmp_path, exclude_rules=["AAK-SUPPLY-001"]) == [
+        ("AAK-MCP-007", "low", _NPX_EVIDENCE)
+    ]
+
+
+@pytest.mark.parametrize("how", ["--rules", "--exclude-rules", "config file"])
+def test_the_cli_keeps_aak_mcp_007_when_aak_supply_001_is_not_reported(
+    tmp_path: Path, how: str
+) -> None:
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    args = ["scan", str(tmp_path), "--format", "json"]
+    if how == "--rules":
+        args += ["--rules", "AAK-MCP-007"]
+    elif how == "--exclude-rules":
+        args += ["--exclude-rules", "AAK-SUPPLY-001"]
+    else:
+        (tmp_path / ".agent-audit-kit.yml").write_text("exclude-rules:\n  - AAK-SUPPLY-001\n")
+    result = CliRunner().invoke(cli, args)
+    rule_ids = {f["ruleId"] for f in json.loads(result.output)["findings"]}
+    assert "AAK-MCP-007" in rule_ids and "AAK-SUPPLY-001" not in rule_ids, rule_ids
+
+
+def test_an_ignored_path_takes_only_its_own_findings(tmp_path: Path) -> None:
+    """AAK-SUPPLY-001 reads the root config; AAK-MCP-007 reads both. A launch is
+    matched within one file, so ignoring the root does not take the other's."""
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    _write(tmp_path, "deploy/mcp.json", {"mcpServers": {"fs": _NPX}})
+    assert _launch_files(tmp_path) == [
+        ("AAK-MCP-007", "deploy/mcp.json"), ("AAK-SUPPLY-001", ".mcp.json"),
+    ]
+    assert _launch_files(tmp_path, ignore_paths=[".mcp.json"]) == [
+        ("AAK-MCP-007", "deploy/mcp.json"),
+    ]
+    assert _launch_files(tmp_path, ignore_paths=["deploy"]) == [("AAK-SUPPLY-001", ".mcp.json")]
+
+
+def test_a_config_only_aak_mcp_007_reads_keeps_it(tmp_path: Path) -> None:
+    _write(tmp_path, ".windsurf/mcp.json", {"mcpServers": {"fs": _NPX}})
+    assert _launches(tmp_path) == [("AAK-MCP-007", "low", _NPX_EVIDENCE)]
+
+
+def test_the_same_spec_under_another_server_is_another_launch(tmp_path: Path) -> None:
+    """Server `b` passes `some-mcp-server` as an argument to a pinned package, so
+    AAK-SUPPLY-001 does not report it there. Both findings name the first line that
+    holds the spec, which is why the line is not what a launch is matched on."""
+    _write(tmp_path, ".mcp.json", {"mcpServers": {
+        "a": {"command": "npx", "args": ["-y", "some-mcp-server"]},
+        "b": {"command": "npx", "args": ["-y", "other-mcp-server@1.0.0", "some-mcp-server"]},
+    }})
+    result = run_scan(tmp_path)
+    found = sorted(
+        (f.rule_id, f.line_number, f.evidence)
+        for f in result.findings
+        if f.rule_id in _LAUNCH_RULES
+    )
+    assert found == [
+        ("AAK-MCP-007", 7, "Server 'b' arg: some-mcp-server (no version pin)"),
+        ("AAK-SUPPLY-001", 7, "Server 'a' arg: some-mcp-server (no version pin)"),
+    ]
+
+
+def test_aak_mcp_007_never_gives_way_to_a_lower_severity(tmp_path: Path) -> None:
+    _write(tmp_path, ".mcp.json", {"mcpServers": {"fs": _NPX}})
+    mcp007 = [f for f in mcp_config.scan(tmp_path)[0] if f.rule_id == "AAK-MCP-007"]
+    supply001 = [f for f in supply_chain.scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-001"]
+    lowered = [dataclasses.replace(f, severity=Severity.INFO) for f in supply001]
+    assert _drop_launches_supply_chain_reports(mcp007 + lowered) == mcp007 + lowered
+    assert _drop_launches_supply_chain_reports(mcp007 + supply001) == supply001
+
+
+def test_launch_subject_reads_back_what_launch_evidence_wrote() -> None:
+    evidence = launch_evidence("it's", "pkg (beta)", "version range `^1`")
+    assert launch_subject(evidence) == "Server 'it's' arg: pkg (beta)"
+    assert launch_subject("Server 'a' arg: pkg") is None
+
+
+@pytest.mark.parametrize(("rel", "config"), [
+    (".mcp.json", {"mcpServers": {"fs": _NPX}}),
+    (".vscode/mcp.json", {"servers": {"fs": {"type": "stdio", **_NPX}}}),
+])
+def test_fail_on_high_passes_an_unpinned_npx_launch(
+    tmp_path: Path, rel: str, config: dict
+) -> None:
+    """`npx -y pkg` is how VS Code's docs start a server. AAK-SUPPLY-001 is MEDIUM,
+    so the launch fails `--fail-on medium` and no longer fails `--fail-on high`."""
+    _write(tmp_path, rel, config)
+    passed = CliRunner().invoke(cli, ["scan", str(tmp_path), "--fail-on", "high"])
+    assert passed.exit_code == 0, passed.output
+    failed = CliRunner().invoke(cli, ["scan", str(tmp_path), "--fail-on", "medium"])
+    assert failed.exit_code == 1, failed.output

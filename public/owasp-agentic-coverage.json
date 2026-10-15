@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-15T11:59:55Z",
+  "last_updated": "2026-10-15T12:03:50Z",
   "aak_version": "0.6.20",
   "rule_count": 396,
   "coverage": [
@@ -3965,7 +3965,7 @@
         },
         {
           "id": "AAK-SUPPLY-001",
-          "severity": "high",
+          "severity": "medium",
           "cve_references": [],
           "aicm_references": [
             "STA-02"

@@ -389,3 +389,32 @@ def pin_problem(launched: Launched) -> str | None:
             if clauses[0].startswith(op) and "*" not in target and target[:1].isdigit():
                 return None
     return _unpinned_label(version)
+
+
+# The ` (<problem>)` that closes `launch_evidence`. `pin_problem`'s wording holds
+# no parenthesis, and `[^()]` ends each attempt at the next one, so the search is
+# linear. A version echoed into a problem can hold one; that evidence gets no
+# subject, and its finding is kept.
+_LAUNCH_PROBLEM_RE = re.compile(r" \([^()]*\)\Z")
+
+
+def launch_evidence(server: str, spec: str, problem: str) -> str:
+    """The evidence of a finding on one package spec a server launches.
+
+    AAK-SUPPLY-001 and AAK-MCP-007 both report an unpinned launch, and
+    `engine.run_scan` drops AAK-MCP-007 where AAK-SUPPLY-001 reports the same
+    one. It recognises the launch by the `Server '<name>' arg: <spec>` head
+    (`launch_subject`), so both rules build their evidence here, where the
+    format and its reader cannot drift apart.
+    """
+    return f"Server '{server}' arg: {spec} ({problem})"
+
+
+def launch_subject(evidence: str) -> str | None:
+    """The `Server '<name>' arg: <spec>` head of `launch_evidence` output.
+
+    None for evidence without the closing `(<problem>)`; the engine then keeps
+    the finding, so an unexpected format costs a duplicate, never a finding.
+    """
+    m = _LAUNCH_PROBLEM_RE.search(evidence)
+    return evidence[: m.start()] if m else None

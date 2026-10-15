@@ -24,7 +24,7 @@ runner = CliRunner()
 
 def _write_vulnerable_mcp(project: Path) -> None:
     """Write a .mcp.json that triggers CRITICAL (AAK-MCP-001) and MEDIUM
-    (AAK-MCP-005 / AAK-MCP-007) findings."""
+    (AAK-MCP-005 / AAK-SUPPLY-001) findings."""
     mcp = {
         "mcpServers": {
             "remote-no-auth": {
@@ -42,7 +42,7 @@ def _write_vulnerable_mcp(project: Path) -> None:
 
 def _write_medium_only_mcp(project: Path) -> None:
     """Write a .mcp.json that triggers only MEDIUM-severity findings
-    (AAK-MCP-005 npx without version pin)."""
+    (AAK-MCP-005 for the npx fetch, AAK-SUPPLY-001 for the missing version pin)."""
     mcp = {
         "mcpServers": {
             "npx-no-pin": {
