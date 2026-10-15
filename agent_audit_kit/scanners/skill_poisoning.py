@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, finditer_up_to_last
 from agent_audit_kit.scanners.agent_config import (
     _downloaded_code_runs,
     _line_at,
@@ -158,7 +158,7 @@ _IMPERATIVE_EXFIL_RE = re.compile(
 def _hidden_instruction_hits(body: str) -> list[tuple[str, str]]:
     """Return (comment_text, why) for each body comment that reads as an order."""
     hits: list[tuple[str, str]] = []
-    for match in _HTML_COMMENT_RE.finditer(body):
+    for match in finditer_up_to_last(_HTML_COMMENT_RE, body, "-->"):
         inner = match.group(1).strip()
         if not inner:
             continue

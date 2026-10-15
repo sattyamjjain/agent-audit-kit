@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
 
 _RULE_ID = "AAK-MCP-TOOLGATE-ASYMMETRY-001"
 
@@ -149,7 +149,7 @@ _TS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 def _strip_ts_comments(text: str) -> str:
     """Remove block + line comments so a comment mentioning the gate word
     (e.g. ``// TODO: add readOnly check``) cannot mask the asymmetry."""
-    text = _TS_BLOCK_COMMENT_RE.sub(" ", text)
+    text = sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/")
     text = _TS_LINE_COMMENT_RE.sub(" ", text)
     return text
 

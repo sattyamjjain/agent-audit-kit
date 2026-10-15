@@ -37,7 +37,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
 
 _RULE_ID = "AAK-POLICY-TRUNCATION-001"
 _MAX_FILE_BYTES = 1_000_000
@@ -94,7 +94,7 @@ def _strip_prose(text: str, is_python: bool) -> str:
     """Comments must not create or clear a finding."""
     if is_python:
         return _PY_COMMENT_RE.sub(" ", _PY_DOCSTRING_RE.sub(" ", text))
-    return _TS_LINE_COMMENT_RE.sub(" ", _TS_BLOCK_COMMENT_RE.sub(" ", text))
+    return _TS_LINE_COMMENT_RE.sub(" ", sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/"))
 
 
 def _source_used_untruncated(code: str, src: str, var: str) -> bool:

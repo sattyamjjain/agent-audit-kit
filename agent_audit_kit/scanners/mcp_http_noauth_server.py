@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, sub_up_to_last
 
 # Reuse the Azure scanner's route + auth-marker + identity patterns so the two
 # rules stay consistent.
@@ -143,7 +143,7 @@ _CONFIG_SUFFIXES = (".json", ".yaml", ".yml")
 
 
 def _strip_ts_comments(text: str) -> str:
-    text = _TS_BLOCK_COMMENT_RE.sub(" ", text)
+    text = sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/")
     text = _TS_LINE_COMMENT_RE.sub(" ", text)
     return text
 

@@ -46,7 +46,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
 
 _RULE_ID = "AAK-LLM-SQL-RCE-001"
 
@@ -241,7 +241,7 @@ _TS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 
 def _strip_ts_comments(text: str) -> str:
     # Preserve newline count so reported line numbers stay accurate.
-    text = _TS_BLOCK_COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    text = sub_up_to_last(_TS_BLOCK_COMMENT_RE, lambda m: "\n" * m.group(0).count("\n"), text, "*/")
     return _TS_LINE_COMMENT_RE.sub("", text)
 
 

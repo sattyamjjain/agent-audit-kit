@@ -50,7 +50,7 @@ from xml.etree import ElementTree
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding, sub_comments
 
 _PY_PATCHED = (1, 23, 0)
 _TS_PATCHED = (1, 21, 1)
@@ -115,6 +115,7 @@ _HOST_ALLOWLIST_RE = re.compile(
 )
 
 _LINE_COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/|\#.*?$", re.MULTILINE | re.DOTALL)
+_LINE_ONLY_COMMENT_RE = re.compile(r"//.*?$|\#.*?$", re.MULTILINE | re.DOTALL)
 
 
 def _parse_semver(spec: str | None) -> tuple[int, int, int] | None:
@@ -127,7 +128,7 @@ def _parse_semver(spec: str | None) -> tuple[int, int, int] | None:
 
 
 def _strip_comments(text: str) -> str:
-    return _LINE_COMMENT_RE.sub("", text)
+    return sub_comments(_LINE_COMMENT_RE, _LINE_ONLY_COMMENT_RE, text)
 
 
 # ---------------------------------------------------------------------------

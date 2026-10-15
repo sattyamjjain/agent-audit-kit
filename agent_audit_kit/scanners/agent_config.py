@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import make_finding, finditer_up_to_last
 
 # ---- Target files to scan (relative to project root) ----
 _AGENT_CONFIG_FILES: list[str] = [
@@ -1117,7 +1117,7 @@ def _check_content(
 
     # AAK-AGENT-005: Hidden content
     # HTML comments
-    for match in _HTML_COMMENT_RE.finditer(content):
+    for match in finditer_up_to_last(_HTML_COMMENT_RE, content, "-->"):
         comment = match.group()
         if _TOOL_MARKER_RE.fullmatch(comment):
             continue

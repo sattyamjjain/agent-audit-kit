@@ -58,7 +58,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
 
 # Reuse the generic rule's own predicates so the deferral below tracks it
 # automatically rather than restating it and drifting.
@@ -156,7 +156,7 @@ _INBOUND_AUTH_RE = re.compile(
 
 
 def _strip_ts_comments(text: str) -> str:
-    return _TS_LINE_COMMENT_RE.sub(" ", _TS_BLOCK_COMMENT_RE.sub(" ", text))
+    return _TS_LINE_COMMENT_RE.sub(" ", sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/"))
 
 
 def _is_mcp_http_server(text: str) -> bool:

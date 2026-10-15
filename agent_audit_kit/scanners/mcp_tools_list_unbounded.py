@@ -27,7 +27,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding, sub_up_to_last
 
 _RULE_ID = "AAK-MCP-TOOLS-LIST-UNBOUNDED-001"
 
@@ -77,7 +77,7 @@ _BOUND_RE = re.compile(
 def _strip_comments(text: str, is_py: bool) -> str:
     if is_py:
         return text
-    return _TS_LINE_COMMENT_RE.sub(" ", _TS_BLOCK_COMMENT_RE.sub(" ", text))
+    return _TS_LINE_COMMENT_RE.sub(" ", sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/"))
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

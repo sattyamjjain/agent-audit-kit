@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import AbstractSet, Any, Iterator
+from typing import AbstractSet, Any, Callable, Iterator
 from urllib.parse import urlsplit
 
 try:
@@ -28,6 +28,52 @@ INTERPOLATION_RE = re.compile(
     r"""(?:["']\s*\+|\$\{|%\{|{{|\$\(|`)\s*(?:input|args|event|payload|user|argv|request)""",
     re.IGNORECASE,
 )
+
+# Block comments (`/\*.*?\*/`, `<!--[\s\S]*?-->`) do not nest, so an opener after
+# the last closer can never close. A lazy pattern still read from each such
+# opener to the end of the text, so a file of unclosed `/*` grew with the square
+# of its size (80,000 characters of `/* a` took 3.3 seconds). These read only up
+# to the last closer: every match ends at a closer, none can extend past the
+# last one, and an opener before it closes and consumes what it read, so the
+# result is the same and each character is read once.
+
+
+def sub_up_to_last(
+    pattern: re.Pattern[str], repl: str | Callable[[re.Match[str]], str], text: str, closer: str
+) -> str:
+    """``pattern.sub(repl, text)`` for a pattern whose every match ends with ``closer``."""
+    end = text.rfind(closer)
+    if end < 0:
+        return text
+    end += len(closer)
+    return pattern.sub(repl, text[:end]) + text[end:]
+
+
+def finditer_up_to_last(pattern: re.Pattern[str], text: str, closer: str) -> Iterator[re.Match[str]]:
+    """``pattern.finditer(text)`` for a pattern whose every match ends with ``closer``."""
+    return pattern.finditer(text, 0, text.rfind(closer) + len(closer) if closer in text else 0)
+
+
+def sub_comments(pattern: re.Pattern[str], line_pattern: re.Pattern[str], text: str) -> str:
+    """``pattern.sub("", text)`` for a MULTILINE comment pattern of line-comment
+    arms (`//` or `#` to the end of the line) and a block-comment arm, where
+    ``line_pattern`` is the same pattern without the block arm. Up to the last
+    `*/` the whole pattern runs, and a line comment that reaches past it is read
+    again in full; after it only the line arms can match, so only they run.
+    """
+    end = text.rfind("*/") + 2
+    if end < 2:
+        return line_pattern.sub("", text)
+    out: list[str] = []
+    pos = 0
+    for m in pattern.finditer(text, 0, end):
+        if m.end() == end and text[end:end + 1] not in ("", "\n") and not m.group(0).startswith("/*"):
+            m = pattern.match(text, m.start()) or m
+        out.append(text[pos:m.start()])
+        pos = m.end()
+    out.append(line_pattern.sub("", text[pos:]))
+    return "".join(out)
+
 
 SKIP_DIRS = frozenset({
     "node_modules", ".git", "dist", "build", "__pycache__",

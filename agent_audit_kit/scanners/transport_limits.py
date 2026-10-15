@@ -20,7 +20,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._helpers import in_skip_dir, find_line_number, make_finding, sub_comments
 
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
@@ -67,10 +67,11 @@ _SIZE_GUARD_RE = re.compile(
 )
 
 _LINE_COMMENT_RE = re.compile(r"//.*?$|/\*.*?\*/", re.MULTILINE | re.DOTALL)
+_LINE_ONLY_COMMENT_RE = re.compile(r"//.*?$", re.MULTILINE | re.DOTALL)
 
 
 def _strip_comments(text: str) -> str:
-    return _LINE_COMMENT_RE.sub("", text)
+    return sub_comments(_LINE_COMMENT_RE, _LINE_ONLY_COMMENT_RE, text)
 
 
 def _parse_semver(spec: str) -> tuple[int, int, int] | None:
