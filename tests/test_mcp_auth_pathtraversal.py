@@ -14,7 +14,10 @@ security-severity.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.models import ScanResult
 from agent_audit_kit.output.sarif import format_results
@@ -207,3 +210,35 @@ def load_session(request):
     assert "resolve" in rule_obj["help"]["text"].lower()
     # CVE tag carried
     assert "CVE-2026-52830" in rule_obj["properties"]["tags"]
+
+
+@pytest.mark.parametrize(("text", "start"), [
+    ("path.join(dir, token)", 0),
+    ("const p = `${dir}/${token}`;", 10),
+    ("path.join(`token-${x}`)", 0),
+    ("path.join(a);\ntoken", None),
+    ('format!("{}", session_id)', 0),
+    ("PathBuf::from(x).join(apiKey)", 0),
+])
+def test_path_token_keeps_its_shape(text: str, start: int | None) -> None:
+    from agent_audit_kit.scanners.mcp_auth_pathtraversal import _path_token_start
+
+    assert _path_token_start(text) == start
+
+
+@pytest.mark.parametrize("text", [
+    "path.join" * 110_000,
+    "`${" * 330_000,
+    "headers" * 140_000,
+])
+def test_a_crafted_line_reads_in_linear_time(text: str) -> None:
+    """About 1 MB with no token word. Each `path.join`, `${` or `headers` read
+    the rest of the line: 40 KB took 1.4 to 1.8 seconds (80 KB of `headers`,
+    8.9) and the time grew with the square. The bound is loose for slow CI
+    runners."""
+    from agent_audit_kit.scanners.mcp_auth_pathtraversal import _HEADER_TOKEN_RE, _path_token_start
+
+    started = time.perf_counter()
+    _path_token_start(text)
+    _HEADER_TOKEN_RE.search(text)
+    assert time.perf_counter() - started < 5.0
