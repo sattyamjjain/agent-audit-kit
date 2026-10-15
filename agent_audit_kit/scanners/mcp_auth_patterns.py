@@ -144,11 +144,44 @@ _ALLOWLIST_EMPTY_RE = re.compile(
     re.IGNORECASE,
 )
 
-# AAK-MCP-011 Python FastAPI / aiohttp handler without Depends(auth) or similar
-_FASTAPI_HANDLER_NO_AUTH_RE = re.compile(
-    r"""@app\.(?:get|post|put|patch|delete)\(\s*['"]/mcp[^'"]*['"][^)]*\)\s*(?:async\s+)?def\s+\w+\([^)]*\)\s*(?::|\s*->)""",
-    re.IGNORECASE | re.DOTALL,
+# AAK-MCP-011 Python FastAPI / aiohttp handler without Depends(auth) or similar:
+# an `@app.<verb>("/mcp...")` route whose decorator closes at its first `)` and
+# is followed by the `def` it decorates.
+_FASTAPI_MCP_ROUTE_RE = re.compile(
+    r"""@app\.(?:get|post|put|patch|delete)\(\s*['"]/mcp[^'"]*['"]""",
+    re.IGNORECASE,
 )
+_FASTAPI_ROUTE_DEF_RE = re.compile(
+    r"""\)\s*(?:async\s+)?def\s+\w+\([^)]*\)\s*(?::|->)""",
+    re.IGNORECASE,
+)
+
+
+def _first_fastapi_mcp_handler(text: str) -> tuple[int, int] | None:
+    """Span of the first MCP route with the `def` it decorates.
+
+    This was one DOTALL pattern, `<route>[^)]*\\)\\s*(?:async\\s+)?def...`.
+    Every route before the same `)` read to it, so a file of routes and no
+    `)` took the square of its length, and each `def` check depends only on
+    that `)`, so it is made once per `)`. `\\s*(?::|\\s*->)` became
+    `\\s*(?::|->)`: the second `\\s*` only split a run of blanks every way.
+    """
+    tried_close = close = -1
+    pos = 0
+    while True:
+        route = _FASTAPI_MCP_ROUTE_RE.search(text, pos)
+        if route is None:
+            return None
+        if route.end() > close:
+            close = text.find(")", route.end())
+            if close < 0:
+                return None
+        if close != tried_close:
+            handler = _FASTAPI_ROUTE_DEF_RE.match(text, close)
+            if handler:
+                return route.start(), handler.end()
+            tried_close = close
+        pos = route.start() + 1
 
 # AAK-MCP-018: no rate limit mention near handler
 _RATELIMIT_HINT_RE = re.compile(
@@ -252,9 +285,10 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             )
         )
 
-    if _FASTAPI_HANDLER_NO_AUTH_RE.search(text):
-        snippet = _FASTAPI_HANDLER_NO_AUTH_RE.search(text)
-        surrounding = text[max(0, (snippet.start() if snippet else 0) - 200) : (snippet.end() if snippet else 0)] if snippet else ""
+    handler = _first_fastapi_mcp_handler(text)
+    if handler:
+        start, end = handler
+        surrounding = text[max(0, start - 200) : end]
         if "Depends(" not in surrounding and "@require_auth" not in surrounding:
             findings.append(
                 make_finding(
