@@ -71,20 +71,26 @@ _STRONG = {
     ),
 }
 
-# Softer markers — require an MCP hint in the same file.
+# Softer markers — require an MCP hint in the same file. The block after
+# `capabilities: {` or `ServerCapabilities(` stops at the next such opener as
+# well as at its closer: with `[^}]*` alone, a file of openers and no closer read
+# to the end once per opener. An opener inside another's block reads the rest
+# itself, so a file matches exactly when it did; the match then starts there.
+_CAPS_BLOCK = r"capabilities\s*[:=]\s*\{(?:(?!capabilities\s*[:=]\s*\{)[^}])*"
+_CAPS_CALL = r"ServerCapabilities\s*\((?:(?!ServerCapabilities\s*\()[^)])*"
 _WEAK = {
     "AAK-MCP-DEPRECATED-001": re.compile(
-        r"\blist_roots\s*\(|\blistRoots\s*\(|capabilities\s*[:=]\s*\{[^}]*\broots\b"
-        r"|ServerCapabilities\s*\([^)]*\broots\s*="
+        r"\blist_roots\s*\(|\blistRoots\s*\(|" + _CAPS_BLOCK + r"\broots\b"
+        r"|" + _CAPS_CALL + r"\broots\s*="
     ),
     "AAK-MCP-DEPRECATED-002": re.compile(
         r"\bcreate_message\s*\(|\.sampling\.create\s*\("
-        r"|capabilities\s*[:=]\s*\{[^}]*\bsampling\b"
-        r"|ServerCapabilities\s*\([^)]*\bsampling\s*="
+        r"|" + _CAPS_BLOCK + r"\bsampling\b"
+        r"|" + _CAPS_CALL + r"\bsampling\s*="
     ),
     "AAK-MCP-DEPRECATED-003": re.compile(
-        r"capabilities\s*[:=]\s*\{[^}]*\blogging\b"
-        r"|ServerCapabilities\s*\([^)]*\blogging\s*="
+        _CAPS_BLOCK + r"\blogging\b"
+        r"|" + _CAPS_CALL + r"\blogging\s*="
     ),
 }
 

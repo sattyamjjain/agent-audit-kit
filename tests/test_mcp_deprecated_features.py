@@ -10,7 +10,10 @@ logging pass). AAK-OAUTH-006 covers the RC's actual new OAuth requirement — RF
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.rules.builtin import RULES
@@ -161,3 +164,22 @@ def test_non_oauth_code_param_passes(tmp_path: Path) -> None:
         "    return code\n"
     )
     assert OAUTH_ISS not in _oauth_ids(tmp_path, "misc.py", src)
+
+
+@pytest.mark.parametrize(("text", "found"), [
+    ("capabilities: { roots: { listChanged: true } }", {ROOTS: 1}),
+    ("server.capabilities = {\n  sampling: {}\n}", {SAMPLING: 1}),
+    ("x\nServerCapabilities(logging=LoggingCapability())", {LOGGING: 2}),
+    ("capabilities: { tools: {} }", {}),
+])
+def test_weak_markers_keep_their_shape(text: str, found: dict[str, int]) -> None:
+    assert mcp_deprecated_features._check_text(text, True) == found
+
+
+def test_a_file_of_unclosed_capability_blocks_reads_in_linear_time() -> None:
+    """900 KB of `capabilities: {` and no `}`. Each opener read the rest of
+    the file: 40 KB took 0.70 seconds and the time grew with the square. The
+    bound is loose for slow CI runners."""
+    started = time.perf_counter()
+    mcp_deprecated_features._check_text("capabilities: {" * 60_000, True)
+    assert time.perf_counter() - started < 5.0
