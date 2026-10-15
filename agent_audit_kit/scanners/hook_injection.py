@@ -480,7 +480,12 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                     _find_line_number(raw_text, command.split()[0] if command.split() else command),
                 ))
 
-            # AAK-HOOK-004: Suspicious lifecycle hook
+            # AAK-HOOK-004: an inventory of hooks on the events that fire around
+            # tool calls, on each prompt and at session start, rated LOW. At HIGH
+            # it failed `--fail-on high` on 150 of 159 real hook-bearing settings
+            # files at about 4% precision, and 12 of its 14 true positives did
+            # their work in a script the settings file only names, which nothing
+            # on the command line shows (hook-precision, 2026-10-12).
             if event_name in SENSITIVE_EVENTS and not _is_formatting_tool(command):
                 findings.append(_make_finding(
                     "AAK-HOOK-004", rel_path,

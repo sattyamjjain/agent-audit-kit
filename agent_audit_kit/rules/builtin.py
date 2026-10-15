@@ -1187,13 +1187,16 @@ _r(
 
 _r(
     "AAK-HOOK-004",
-    "Hook on security-sensitive lifecycle event",
-    "A non-formatting hook is attached to a sensitive lifecycle event "
-    "(PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). "
-    "These events fire on every tool call or session start.",
-    Severity.HIGH,
+    "Hook runs a command on tool use, prompt submit or session start",
+    "A hook runs a command on PreToolUse, PostToolUse, SessionStart or "
+    "UserPromptSubmit, so it runs automatically around tool calls, on every prompt "
+    "and at session start. This is an inventory entry, not evidence of harm: the "
+    "rule reads only the event and whether the command names a formatter, not what "
+    "the command or a script it calls does. Review what it runs.",
+    Severity.LOW,
     Category.HOOK_INJECTION,
-    "Audit all hooks on critical lifecycle events. Use deny-lists for non-formatting commands.",
+    "Review what the command runs, including any script it calls. Keep the hooks "
+    "you can account for and remove the rest.",
     sarif_name="HookSensitiveLifecycleEvent",
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-HOOK-01"],

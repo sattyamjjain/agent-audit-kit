@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from click.testing import CliRunner
 
+from agent_audit_kit.cli import cli
+from agent_audit_kit.models import Severity
 from agent_audit_kit.scanners._helpers import hook_command, iter_hook_handlers
 from agent_audit_kit.scanners.hook_injection import scan
 
@@ -327,3 +330,20 @@ def test_a_long_crafted_command_line_is_read_in_linear_time(tmp_path: Path) -> N
     hits = _hits(tmp_path, "AAK-HOOK-003")
     assert len(hits) == 1
     assert time.perf_counter() - start < 5
+
+
+# ---------------------------------------------------------------------------
+# AAK-HOOK-004 is an inventory, rated LOW. It reads the event and whether the
+# command names a formatter, never what the command does. At HIGH it failed
+# `--fail-on high` on 150 of the 159 files at about 4% precision, and 12 of its
+# 14 true positives did their work in a script the settings file only names.
+# ---------------------------------------------------------------------------
+
+
+def test_hook_004_lists_a_hook_without_failing_a_high_gate(tmp_path: Path) -> None:
+    _write_settings(tmp_path, {"hooks": {"PreToolUse": [_group("bash .claude/hooks/check.sh")]}})
+    findings = scan(tmp_path)[0]
+    assert [(f.rule_id, f.severity) for f in findings] == [("AAK-HOOK-004", Severity.LOW)]
+    runner = CliRunner()
+    assert runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "high"]).exit_code == 0
+    assert runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "low"]).exit_code == 1

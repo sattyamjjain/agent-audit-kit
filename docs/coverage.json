@@ -1560,8 +1560,8 @@
       ],
       "owasp_mcp": [],
       "rule_id": "AAK-HOOK-004",
-      "severity": "high",
-      "title": "Hook on security-sensitive lifecycle event"
+      "severity": "low",
+      "title": "Hook runs a command on tool use, prompt submit or session start"
     },
     {
       "category": "hook-injection",
@@ -9673,9 +9673,9 @@
     },
     "by_severity": {
       "critical": 89,
-      "high": 174,
+      "high": 173,
       "info": 5,
-      "low": 15,
+      "low": 16,
       "medium": 113
     },
     "total_cves_covered": 315,

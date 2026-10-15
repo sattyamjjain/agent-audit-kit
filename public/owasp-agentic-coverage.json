@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-15T12:03:50Z",
+  "last_updated": "2026-10-15T12:48:08Z",
   "aak_version": "0.6.20",
   "rule_count": 396,
   "coverage": [
@@ -4208,7 +4208,7 @@
         },
         {
           "id": "AAK-HOOK-004",
-          "severity": "high",
+          "severity": "low",
           "cve_references": [],
           "aicm_references": [
             "IAM-01"

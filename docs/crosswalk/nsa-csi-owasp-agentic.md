@@ -84,7 +84,7 @@ Every AgentAuditKit rule (396 total; 357 mapped) against two agentic-security st
 | `AAK-HOOK-001` | critical | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-002` | critical | hook-injection | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-HOOK-003` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
-| `AAK-HOOK-004` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
+| `AAK-HOOK-004` | low | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-005` | high | hook-injection | Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Filter and monitor output pipelines and chained execution | ASI05 Unexpected Code Execution (RCE) |
 | `AAK-HOOK-006` | medium | hook-injection | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-HOOK-007` | medium | hook-injection | — | — |

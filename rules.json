@@ -1809,7 +1809,7 @@
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
-      "description": "A non-formatting hook is attached to a sensitive lifecycle event (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit). These events fire on every tool call or session start.",
+      "description": "A hook runs a command on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit, so it runs automatically around tool calls, on every prompt and at session start. This is an inventory entry, not evidence of harm: the rule reads only the event and whether the command names a formatter, not what the command or a script it calls does. Review what it runs.",
       "incident_references": [],
       "limitations": "Fires only for a hook on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit whose command names none of a list of formatters. The same command on any other event, such as Stop, is not reported, and a command that merely contains a formatter name anywhere, even in a trailing comment (`# prettier`), counts as a formatter. A hook that runs no command (`http`, `prompt`, `agent`, `mcp_tool`) is not reported on any event, and the hooks a plugin ships in `hooks/hooks.json` are not read.",
       "owasp_agentic_references": [
@@ -1817,11 +1817,11 @@
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Audit all hooks on critical lifecycle events. Use deny-lists for non-formatting commands.",
+      "remediation": "Review what the command runs, including any script it calls. Keep the hooks you can account for and remove the rest.",
       "rule_id": "AAK-HOOK-004",
       "sarif_name": "HookSensitiveLifecycleEvent",
-      "severity": "high",
-      "title": "Hook on security-sensitive lifecycle event"
+      "severity": "low",
+      "title": "Hook runs a command on tool use, prompt submit or session start"
     },
     {
       "adversa_references": [
