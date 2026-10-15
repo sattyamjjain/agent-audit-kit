@@ -399,3 +399,24 @@ def test_mcp_001_a_hostile_header_value_scans_in_linear_time(tmp_path: Path, ope
     rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
     assert time.perf_counter() - started < 5.0
     assert "AAK-MCP-001" in rule_ids  # a literal, not a reference, so no declared scheme
+
+
+@pytest.mark.parametrize(("value", "declared"), [
+    ("${API_TOKEN}", True),
+    ("{{ secrets.token }}", True),
+    ("<your-token>", True),
+    ("$API_TOKEN", True),
+    # A brace or bracket inside a reference keeps it a reference.
+    ("${env:{TOKEN}}", True),
+    ("<token<>", True),
+    ("k9f2Lq7XvN3mR8tW1zP5bY6cH0dJ4sA2", False),
+])
+def test_mcp_001_reads_a_custom_header_value_as_a_reference_or_a_literal(
+    tmp_path: Path, value: str, declared: bool
+) -> None:
+    import json
+
+    server = {"url": "https://mcp.example.com/mcp", "headers": {"X-Service-Token": value}}
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {"api": server}}), encoding="utf-8")
+    rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert ("AAK-MCP-001" not in rule_ids) is declared
