@@ -15,6 +15,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.models import ScanResult
 from agent_audit_kit.output.sarif import format_results
 from agent_audit_kit.rules.builtin import RULES
@@ -177,3 +179,49 @@ AUTH_TOKEN = "changeme"
     assert any(r["ruleId"] == RULE_ID for r in run["results"])
     assert "fail closed" in ro["help"]["text"].lower()
     assert "CVE-2026-48814" in ro["properties"]["tags"]
+
+
+# ---------------------------------------------------------------------------
+# The config patterns read a crafted file in linear time, and a disabled-auth
+# finding names the keyword's own line.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("src", "line"), [
+    ("mcp:\n  host: 0.0.0.0\nauth:\n  enabled: false\n", 3),
+    ("server:\n  name: mcp\n  bind: 0.0.0.0\n  governance:\n    auth_config:\n      is_enabled: false\n", 4),
+])
+def test_disabled_auth_config_names_the_keyword_line(tmp_path: Path, src: str, line: int) -> None:
+    """A lazy prefix before the keyword let the match start on an earlier line
+    (the `0.0.0.0` line here), so the finding named that line."""
+    _write(tmp_path, "config.yaml", src)
+    findings, _ = scan(tmp_path)
+    assert [f.line_number for f in _hits(findings)] == [line]
+
+
+_CRAFTED_CONFIGS = {
+    # 4 KB of this took 16 seconds: the key prefix, the key path, two adjacent
+    # `\s*` and the nested-`enabled` window all rescanned the newline run.
+    "auth-newlines": "auth:" + "\n" * 990_000 + "x",
+    "auth-repeated": "auth: " * 165_000,
+    "auth-path": "auth." * 198_000,
+    # `[\w-]*secret[\w-]*` started at every character and tried every `secret`
+    # in the run: 5,000 characters took 66 seconds.
+    "secret-run": "secret" * 165_000,
+    "word-run": "a" * 990_000,
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_CONFIGS))
+def test_a_crafted_config_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """Just under the scanner's 1,000,000-byte file cap, with the MCP hint and a
+    non-loopback bind so the config patterns run. The bound is loose for slow
+    CI runners; each takes about a second or less."""
+    import time
+
+    src = "mcp 0.0.0.0\n" + _CRAFTED_CONFIGS[shape]
+    assert len(src) < 1_000_000
+    _write(tmp_path, "config.yaml", src)
+    started = time.perf_counter()
+    findings, _ = scan(tmp_path)
+    assert time.perf_counter() - started < 10.0
+    assert _hits(findings) == []

@@ -179,8 +179,15 @@ _WEAK_CFG_WORDS = (
     r"changeme|change-me|change_me|secret|password|admin|default|placeholder"
     r"|xxx|example|token|test"
 )
+# The key is matched only from the start of its `[\w-]` run, and the secret word
+# is found by a lookahead before the run is consumed once. `[\w-]*WORD[\w-]*`
+# let a match start at every character of a run and place the word at every
+# occurrence inside it: 10,000 letters took 1.7 seconds and 5,000 characters of
+# `secret` repeated took 66. A match from the run's start exists exactly when
+# one from inside it does, so what matches, and where, is unchanged.
 _CFG_SECRET_KV_RE = re.compile(
-    r"[\"']?[\w-]*(?:secret|token|api[_-]?key|apikey|password|auth[_-]?key)[\w-]*[\"']?"
+    r"(?<![\w-])[\"']?"
+    r"(?=[\w-]*(?:secret|token|api[_-]?key|apikey|password|auth[_-]?key))[\w-]+[\"']?"
     r"[ \t]*[:=][ \t]*"
     r"(?:"
     rf"[\"'](?:{_WEAK_CFG_WORDS}|)[\"']"          # quoted weak word, or empty ""
@@ -196,17 +203,32 @@ _CFG_SECRET_KV_RE = re.compile(
 # `governance.auth_config.is_enabled: false`, carries no secret at all, and so
 # matched nothing. Covers YAML/TOML (`enabled: false`), JSON
 # (`"enabled": false`) and env (`AUTH_ENABLED=false`).
+#
+# This took 16 seconds on a 4 KB config of `auth:` and blank lines, four times
+# the 2 KB time, and 220 seconds on 8 KB of `auth.` repeated, seven times the
+# 4 KB time. Three overlapping scans did it, each now fixed without changing
+# what matches:
+# - A lazy `[\s"'.\w-]*?` before the keyword let a match start anywhere in the
+#   run before it, across newlines. It only moved the start, so it is gone,
+#   and the finding now names the keyword's line instead of an earlier one.
+# - The key path stops at the next auth keyword (a tempered token), so a path
+#   of repeated keywords is read once; a match that ran past one also exists
+#   from it, on the same line.
+# - `\s*\{?\s*` split each whitespace run between two `\s*` every possible way,
+#   and the nested `enabled` window could start inside that run. The `{` now
+#   takes its own trailing whitespace, and the window starts at a non-space.
+_AUTH_KEYWORDS = (
+    r"auth|authentication|authorization|auth_config|require_auth|requireauth|security|governance"
+)
 _CFG_AUTH_DISABLED_RE = re.compile(
-    r"""
+    rf"""
     (?:
-        # auth-ish key, then a false-y value, tolerating a `.`/`_` prefix path
-        (?:^|[\s"'.\w-]*?)
-        \b(?:auth|authentication|authorization|auth_config|require_auth|
-             requireauth|security|governance)\b
-        [\w."'\-]*
+        # auth-ish key, then a false-y value, tolerating a `.`/`_` key path
+        \b(?:{_AUTH_KEYWORDS})\b
+        (?:(?!\b(?:{_AUTH_KEYWORDS})\b)[\w."'\-])*
         \s*[:=]\s*
-        \{?\s*
-        (?:[\s\S]{0,120}?\b(?:is_enabled|enabled|required|require)\b\s*[:=]\s*)?
+        (?:\{{\s*)?
+        (?:(?:\S[\s\S]{{0,119}}?)?\b(?:is_enabled|enabled|required|require)\b\s*[:=]\s*)?
         ["']?(?:false|0|no|off|disabled)["']?
       |
         \b(?:disable_auth|no_auth|auth_disabled|skip_auth|allow_anonymous)\b
