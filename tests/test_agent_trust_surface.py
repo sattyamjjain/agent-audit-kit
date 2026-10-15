@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.agent_trust_surface import scan
 
@@ -123,3 +125,32 @@ def test_settings_autoapprove_list_fires_003(tmp_path: Path) -> None:
 def test_gemini_prose_only_is_silent(tmp_path: Path) -> None:
     _write(tmp_path, "GEMINI.md", "# Guide\n\nPrefer small functions. Nothing to run here.\n")
     assert "AAK-AGENT-TRUST-004" not in _ids(tmp_path)
+
+
+_CRAFTED_WORKFLOWS = {
+    # Every `claude` on a line read on to the line's end looking for a flag.
+    "cli-words": "on: push\njobs:\n  a:\n    steps:\n      - run: " + "claude " * 140_000 + "\n",
+    # From every line start in a run of blank lines `^\s*` read to its end.
+    "blank-lines": "on: push\n" + "\n" * 990_000 + "x\n",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_WORKFLOWS))
+def test_a_crafted_workflow_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """About 1 MB, the scanner's workflow cap. Both shapes grew with the square
+    of the line or run. The bound is loose for slow CI runners."""
+    import time
+
+    _write(tmp_path, ".github/workflows/ci.yml", _CRAFTED_WORKFLOWS[shape])
+    started = time.perf_counter()
+    _ids(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
+def test_headless_evidence_quotes_from_the_first_cli_name(tmp_path: Path) -> None:
+    """Only the first `claude` per stretch of a line is tried now; the match is
+    still the one that starts there and reads on past a second mention."""
+    from agent_audit_kit.scanners.agent_trust_surface import _headless_hit
+
+    hit = _headless_hit('steps:\n  - run: claude "ask claude about the diff" -p\n')
+    assert hit is not None and hit.group(0) == 'claude "ask claude about the diff" -p'

@@ -72,8 +72,12 @@ _HEADLESS_AGENT_RES: tuple[re.Pattern[str], ...] = (
 
 # Workflow triggers where the checked-out / referenced content can be
 # attacker-controlled while the job holds the base repo's write-scoped token.
+# Indentation is `[^\S\n]*`: from every line start in a run of blank lines `^\s*`
+# read to the end of the run, so a crafted workflow grew with the square of the
+# run. The match now opens on the trigger's own line; its stripped text, which
+# the evidence quotes, is the same.
 _UNTRUSTED_TRIGGER_RE = re.compile(
-    r"^\s*(?:-\s*)?(pull_request_target|issue_comment|workflow_run|pull_request_review_comment|pull_request_review)\b",
+    r"^[^\S\n]*(?:-\s*)?(pull_request_target|issue_comment|workflow_run|pull_request_review_comment|pull_request_review)\b",
     re.M,
 )
 # An explicit checkout of the PR head ref (the classic pwn-request escalation).
@@ -154,9 +158,41 @@ def _present_surfaces(project_root: Path) -> list[str]:
     return [s for s in _AUTOTRUST_SURFACES if (project_root / s).exists()]
 
 
+# The patterns that open with a CLI name and read on with `[^\n|&;]*?` to a flag.
+# Every such opening in one stretch of a line (up to a newline, `|`, `&` or `;`)
+# reads to the same end, so a later opening can match only if the stretch's
+# first one does, and that one would match first. Trying only the first opening
+# per stretch keeps the search linear (a line of `claude claude claude ...` used
+# to read to its end from every word) and finds the same match.
+_STRETCH_READ = r"[^\n|&;]*?"
+# Each such pattern's opening, the part before its `[^\n|&;]*?` (`\bclaude\b`).
+_CLI_LEADS = {
+    rx: re.compile(rx.pattern[: rx.pattern.index(_STRETCH_READ)], rx.flags)
+    for rx in _HEADLESS_AGENT_RES
+    if _STRETCH_READ in rx.pattern
+}
+_STRETCH_END_RE = re.compile(r"[\n|&;]")
+
+
+def _first_per_stretch(rx: re.Pattern[str], lead: re.Pattern[str], text: str) -> re.Match[str] | None:
+    pos = 0
+    while True:
+        opening = lead.search(text, pos)
+        if opening is None:
+            return None
+        m = rx.match(text, opening.start())
+        if m:
+            return m
+        stop = _STRETCH_END_RE.search(text, opening.end())
+        if stop is None:
+            return None
+        pos = stop.end()
+
+
 def _headless_hit(text: str) -> re.Match[str] | None:
     for rx in _HEADLESS_AGENT_RES:
-        m = rx.search(text)
+        lead = _CLI_LEADS.get(rx)
+        m = _first_per_stretch(rx, lead, text) if lead else rx.search(text)
         if m:
             return m
     return None
