@@ -138,12 +138,19 @@ def _scan_002_tasks_list(source_files: list[Path]) -> list[tuple[Path, int]]:
 
 # Infrastructure-level sticky-session markers. Kept narrow so generic
 # K8s manifests / nginx configs in unrelated projects don't fire.
+# Indentation is `[^\S\n]*`, whitespace other than a newline, not `\s*`. With
+# `^\s*` every line start in a run of blank lines could reach across the rest of
+# the run, so each one rescanned it and the time grew with the square of the
+# run. The match also started at the first blank line above the directive, so
+# the finding named that line instead of the `ip_hash;` / `sticky` line.
+# Traefik's `sticky:` split its run the same way between `\s*` and `\n\s*`; the
+# first newline now ends the leading part. A file matches exactly when it did.
 _STICKY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("nginx ip_hash", re.compile(r"^\s*ip_hash\s*;", re.MULTILINE)),
-    ("nginx sticky", re.compile(r"^\s*sticky\s+(?:cookie|route|learn)", re.MULTILINE)),
+    ("nginx ip_hash", re.compile(r"^[^\S\n]*ip_hash\s*;", re.MULTILINE)),
+    ("nginx sticky", re.compile(r"^[^\S\n]*sticky\s+(?:cookie|route|learn)", re.MULTILINE)),
     ("k8s sessionAffinity", re.compile(r"\bsessionAffinity\s*:\s*ClientIP\b")),
     ("ALB sticky", re.compile(r"stickiness\.enabled\s*=\s*true", re.IGNORECASE)),
-    ("Traefik sticky", re.compile(r"sticky\s*:\s*\n\s*cookie\s*:", re.MULTILINE)),
+    ("Traefik sticky", re.compile(r"sticky\s*:[^\S\n]*\n\s*cookie\s*:", re.MULTILINE)),
 )
 
 # Code-side: a function that reads a shared store keyed on a session id

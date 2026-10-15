@@ -107,6 +107,42 @@ def test_003_session_store_code_fires(tmp_path: Path) -> None:
     assert any(m.file_path.endswith("handlers.py") for m in matches)
 
 
+@pytest.mark.parametrize(("conf", "line"), [
+    ("# mcp gateway\nupstream mcp {\n    server a:8080;\n\n\n    ip_hash;\n}\n", 6),
+    ("# mcp gateway\nupstream mcp {\n\n    sticky cookie srv_id expires=1h;\n}\n", 4),
+    ("# mcp\nhttp:\n  services:\n    mcp:\n      loadBalancer:\n        sticky:   \n\n          cookie:\n", 6),
+])
+def test_003_sticky_finding_names_the_directive_line(tmp_path: Path, conf: str, line: int) -> None:
+    """`^\\s*` let the nginx match start at the first blank line above the
+    directive, so the finding named that line; Traefik's `sticky:` line is
+    where its match always started."""
+    (tmp_path / "gateway.conf").write_text(conf, encoding="utf-8")
+    findings, _ = mcp_stateless_migration.scan(tmp_path)
+    assert [f.line_number for f in findings if f.rule_id == RULE_003] == [line]
+
+
+_CRAFTED_INFRA = {
+    # From every line start in a run of blank lines `^\\s*` read to the end of the run.
+    "blank-lines": "# mcp\n" + "\n" * 1_999_000 + "x",
+    # `sticky:` then `\\s*\\n\\s*` split a run of newlines at every newline.
+    "traefik-newlines": "# mcp\nsticky:" + "\n" * 1_999_000 + "x",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_INFRA))
+def test_003_a_crafted_manifest_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """A 2 MB manifest that mentions MCP, so the sticky patterns run. Before,
+    40,000 blank lines took 1.2 seconds, 80,000 took 4.9, and the time grew
+    with the square. The bound is loose for slow CI runners."""
+    import time
+
+    (tmp_path / "gateway.conf").write_text(_CRAFTED_INFRA[shape], encoding="utf-8")
+    started = time.perf_counter()
+    findings, _ = mcp_stateless_migration.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert not any(f.rule_id == RULE_003 for f in findings)
+
+
 def test_003_unrelated_k8s_manifest_quiet(tmp_path: Path) -> None:
     """A K8s manifest with sessionAffinity but no MCP mention and no MCP
     SDK in the project must not fire."""
