@@ -104,11 +104,22 @@ def _content_key(text: str) -> str | None:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
+# The name each config is scanned under. `.mcp.json` is the name the crawl
+# files came from and one that every scanner reading MCP configs opens. Up to
+# v1.0 the harness wrote `config.mcp.json`, which seven scanners never open:
+# they read `.mcp.json`, `mcp.json` and the client-specific paths by name, the
+# supply-chain scanner and the CVE pin table among them, so their rules were
+# never measured on the corpus. And AAK-SECRET-007, which stands down on
+# `.mcp.json` because AAK-MCP-003 reports the same env literal there, counted
+# every env secret a second time.
+SCAN_FILENAME = ".mcp.json"
+
+
 def _scan_text(text: str) -> Any:
     """Scan one config in isolation via engine.run_scan + scoring.compute_score."""
     tmp = Path(tempfile.mkdtemp(prefix="aak-somcp-"))
     try:
-        (tmp / "config.mcp.json").write_text(text, encoding="utf-8")
+        (tmp / SCAN_FILENAME).write_text(text, encoding="utf-8")
         result = run_scan(tmp)
         compute_score(result)
         return result

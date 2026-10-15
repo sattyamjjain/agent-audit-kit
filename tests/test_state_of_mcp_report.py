@@ -86,6 +86,69 @@ def test_harness_aggregate_smoke(tmp_path: Path) -> None:
     assert data["auth_profile_2026_07_28"]["no_authentication"]["n"] == 1
 
 
+def test_harness_scans_each_config_as_dot_mcp_json(tmp_path: Path, monkeypatch) -> None:
+    """Every config is scanned as `.mcp.json`, the name every scanner reads.
+
+    Up to report v1.0 the harness wrote `config.mcp.json`. The supply-chain
+    scanner and the CVE pin table open configs by name and never read that one,
+    so AAK-SUPPLY-001 and every pin rule went unmeasured on the corpus.
+    """
+    mod = _load_run_report()
+    seen: list[list[str]] = []
+    real_run_scan = mod.run_scan
+
+    def spy(root: Path, *args, **kwargs):
+        seen.append(sorted(p.name for p in Path(root).iterdir()))
+        return real_run_scan(root, *args, **kwargs)
+
+    monkeypatch.setattr(mod, "run_scan", spy)
+    corpus = tmp_path / "data"
+    corpus.mkdir()
+    (corpus / "npx.json").write_text(
+        json.dumps({"mcpServers": {"s": {"command": "npx", "args": ["-y", "some-mcp-server"]}}}),
+        encoding="utf-8",
+    )
+    data = mod.aggregate(corpus, None)
+    assert seen == [[".mcp.json"]]
+    # The unpinned launch is reported only when supply_chain reads the file.
+    assert "AAK-SUPPLY" in data["rule_family_distribution"]
+
+
+def test_harness_counts_an_env_secret_once(tmp_path: Path) -> None:
+    """AAK-SECRET-007 stands down on `.mcp.json`, where AAK-MCP-003 reports it.
+
+    Under `config.mcp.json` both rules fired on the same env literal, so the
+    v1.0 top-ten table listed one finding twice (rows 5 and 6, 70 configs each).
+    """
+    mod = _load_run_report()
+    corpus = tmp_path / "data"
+    corpus.mkdir()
+    (corpus / "env.json").write_text(
+        json.dumps({"mcpServers": {"s": {
+            "command": "node", "args": ["server.js"],
+            "env": {"SERVICE_API_KEY": "Zq8RkT3vLmN5pW7xY2bC4dF6gH9jK1sQ0aE3uI5o"},
+        }}}),
+        encoding="utf-8",
+    )
+    rules = {row["rule_id"] for row in mod.aggregate(corpus, None)["top_misconfigurations"]}
+    assert "AAK-MCP-003" in rules
+    assert "AAK-SECRET-007" not in rules
+
+
+def test_fp_benchmark_scans_under_the_report_harness_name() -> None:
+    """The benign-slice benchmark measures what the report measures."""
+    import sys
+
+    fp_dir = REPO / "benchmarks" / "false_positive"
+    if str(fp_dir) not in sys.path:
+        sys.path.insert(0, str(fp_dir))
+    spec = importlib.util.spec_from_file_location("fp_run_name_check", fp_dir / "run.py")
+    assert spec and spec.loader
+    fp_run = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fp_run)
+    assert fp_run.SCAN_FILENAME == _load_run_report().SCAN_FILENAME == ".mcp.json"
+
+
 def test_harness_is_deterministic(tmp_path: Path) -> None:
     """Two aggregations of the same corpus are byte-identical (the report's core claim)."""
     mod = _load_run_report()

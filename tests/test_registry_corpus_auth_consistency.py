@@ -75,9 +75,10 @@ def _declared_headers(config: dict[str, Any] | None) -> set[str]:
 
 
 def _scan_config(config: dict[str, Any]) -> list[Any]:
+    """Scan a corpus config under the name the report harness uses (`.mcp.json`)."""
     tmp = Path(tempfile.mkdtemp(prefix="aak-corpus-test-"))
     try:
-        (tmp / "config.mcp.json").write_text(json.dumps(config), encoding="utf-8")
+        (tmp / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
         return list(run_scan(tmp).findings)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

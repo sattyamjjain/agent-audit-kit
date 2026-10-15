@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -49,6 +50,19 @@ def test_harness_output_is_deterministic_across_two_runs() -> None:
     assert a == b, "false-positive harness output differs between runs"
     assert a["finding_set_digest"] == b["finding_set_digest"]
     assert a["benign_slice_n"] == 3
+
+
+def test_harness_scans_each_config_as_dot_mcp_json() -> None:
+    """An unpinned launch is reported, which needs the supply-chain scanner to read the file.
+
+    It reads `.mcp.json` by name and never opened the `config.mcp.json` this
+    harness used to write.
+    """
+    run = _load("run")
+    config = {"mcpServers": {"s": {"command": "npx", "args": ["-y", "some-pkg"]}}}
+    findings = run._scan_config("ex/npx", json.dumps(config))
+    assert run.SCAN_FILENAME == ".mcp.json"
+    assert "AAK-SUPPLY-001" in {f["rule_id"] for f in findings}
 
 
 def test_benign_predicate_is_pure() -> None:

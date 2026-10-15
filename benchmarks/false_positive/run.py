@@ -51,11 +51,18 @@ def _family(rule_id: str) -> str:
     return "-".join(parts[:2]) if len(parts) >= 2 else rule_id
 
 
+# Scanned under the same name as the State of MCP harness
+# (`run_report.SCAN_FILENAME`): `.mcp.json`, which every scanner that reads MCP
+# configs opens. Seven of them, the supply-chain scanner and the CVE pin table
+# among them, never opened the `config.mcp.json` this used to write.
+SCAN_FILENAME = ".mcp.json"
+
+
 def _scan_config(name: str, config_json: str) -> list[dict[str, str]]:
     """Scan one benign config in isolation via engine.run_scan; return findings."""
     tmp = Path(tempfile.mkdtemp(prefix="aak-fp-"))
     try:
-        (tmp / "config.mcp.json").write_text(config_json, encoding="utf-8")
+        (tmp / SCAN_FILENAME).write_text(config_json, encoding="utf-8")
         result = run_scan(tmp)
         return [
             {
