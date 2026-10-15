@@ -181,6 +181,10 @@ def _declare_sdk_and_write(root: Path, name: str, source: str) -> list[str]:
 @pytest.mark.parametrize(("name", "source", "fires"), [
     ("caps.ts", "const server = new Server(info, { capabilities: { sampling: {} } });\n", True),
     ("caps.ts", "const caps = {\n  capabilities: {\n    sampling: {},\n  },\n};\n", True),
+    # The word `capabilities` inside the object is not an opener, so the read
+    # goes past it.
+    ("caps.ts", "capabilities: {\n  // advertise sampling capabilities\n  sampling: {},\n}\n", True),
+    ("caps.ts", "const c = { capabilities: { experimental_capabilities: [], sampling: {} } };\n", True),
     # Named after the first closing brace or parenthesis: not read (the limitation).
     ("caps.ts", "const c = { capabilities: { roots: { listChanged: true }, sampling: {} } };\n", False),
     ("caps.py", "caps = ServerCapabilities(sampling={})\n", True),

@@ -49,12 +49,15 @@ _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs"
 # scoped tightly enough that bare prose mentioning "sampling" won't fire.
 _SAMPLING_MARKERS = (
     # Server / client capability declarations. The scan to `sampling` also stops
-    # at the next `capabilities` / `ServerCapabilities`, so each opener reads only
-    # up to the next one: with a bare `[^}]*`, every opener in a file of repeated
+    # at the next opener of its own kind (`capabilities: {`, `ServerCapabilities(`),
+    # whose own scan reaches the same closer, so each opener reads only up to the
+    # next one: with a bare `[^}]*`, every opener in a file of repeated
     # `capabilities: {` rescanned to the first `}`, and 400,000 characters took
-    # 4.4 seconds, four times the 200,000-character time.
-    re.compile(r"capabilities\s*[:=]\s*\{(?:(?!capabilities)[^}])*sampling\s*[:=]"),
-    re.compile(r"ServerCapabilities\s*\((?:(?!ServerCapabilities)[^)])*sampling\s*="),
+    # 4.1 seconds, four times the 200,000-character time. A file matches exactly
+    # when it did; with one opener nested in another before the first closer, the
+    # match now starts at the inner one, the object that holds `sampling`.
+    re.compile(r"capabilities\s*[:=]\s*\{(?:(?!capabilities\s*[:=]\s*\{)[^}])*sampling\s*[:=]"),
+    re.compile(r"ServerCapabilities\s*\((?:(?!ServerCapabilities\s*\()[^)])*sampling\s*="),
     re.compile(r"SamplingCapability\s*\("),
     # Request schemas — server-side handler installation.
     re.compile(r"CreateMessageRequestSchema"),
