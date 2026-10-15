@@ -120,6 +120,8 @@ PINS = {
     "AAK-MCP-1MCP-CVE-2026-108586-001": "medium",
     # 2026-10-13 batch (#963, #973-#977)
     "AAK-MCP-ELVIX-CVE-2026-108542-001": "medium",
+    # 2026-10-15 batch (#982-#986)
+    "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001": "critical",
 }
 
 
@@ -2714,3 +2716,73 @@ def test_the_pypi_openclaw_is_another_package(tmp_path: Path, name: str, content
 def test_an_npm_launch_of_openclaw_is_still_read(tmp_path: Path) -> None:
     content = '{"mcpServers": {"a": {"command": "npx", "args": ["-y", "openclaw@2026.6.0"]}}}'
     assert _OPENCLAW_OLD in _ids(tmp_path, ".mcp.json", content)
+
+
+# --- 2026-10-15 batch (#982, #984): obsidian-tc, fixed in 1.3.1 ---------------------
+#
+# One rule for the five CVEs 1.3.1 closes. Checked in the npm tarballs: 1.0.1, 1.0.2
+# and 1.2.1 resolve each tool's `vault` argument against every vault and carry no Host
+# or Origin check; 1.3.1 has both guards. 0.0.1 is a placeholder with no server, there
+# is no 1.3.0, and `latest` is 1.33.1, so an unstated version is not reported.
+_OBSIDIANTC = "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001"
+
+
+def test_obsidian_tc_rule_carries_all_five_cves() -> None:
+    assert RULES[_OBSIDIANTC].cve_references == [
+        "CVE-2026-77366", "CVE-2026-77363", "CVE-2026-77364", "CVE-2026-77361",
+        "CVE-2026-77362",
+    ]
+
+
+def test_obsidian_tc_fixtures_positive_and_negative() -> None:
+    """The README's client block on 1.2.1 and a package.json on 1.0.2 fire; the block
+    on 1.3.1 does not, and neither do the two 0.0.1 placeholders."""
+    root = _CVE_FIXTURES / "cve-2026-77366-obsidian-tc"
+    assert {f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _OBSIDIANTC} == {
+        ".mcp.json", "package.json",
+    }
+    assert _OBSIDIANTC not in {f.rule_id for f in scan(root / "negative")[0]}
+    assert _OBSIDIANTC not in {f.rule_id for f in scan(root / "negative-placeholder")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.0.1", False),     # "Reserved namespace placeholder", no dist/
+    ("1.0.1", True),      # the first release with a server
+    ("1.0.2", True),
+    ("1.2.1", True),      # the last release before the fix
+    ("^1.2.1", True),     # admits 1.2.1
+    ("1.3.1", False),     # 38b4992 (vault binding) and 6428bfe (Host and Origin)
+    ("^1.3.1", False),
+    ("1.33.1", False),    # the newest release on 2026-10-15
+])
+def test_obsidian_tc_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"obsidian-tc": "%s"}}' % version
+    assert (_OBSIDIANTC in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_obsidian_tc_readme_config_states_no_version(tmp_path: Path) -> None:
+    """The README's own client block launches `npx -y obsidian-tc`, which installs
+    `latest` (1.33.1, fixed), so the pin needs a stated version."""
+    content = (
+        '{"mcpServers": {"obsidian-tc": {"command": "npx", "args": ["-y", "obsidian-tc"], '
+        '"env": {"OBSIDIAN_TC_CONFIG": "/ABSOLUTE/PATH/TO/obsidian-tc.config.json"}}}}'
+    )
+    assert _OBSIDIANTC not in _ids(tmp_path, ".mcp.json", content)
+
+
+@pytest.mark.parametrize("dep", [
+    '"@the-40-thieves/obsidian-tc": "0.0.1"',          # the scoped placeholder
+    '"@the-40-thieves/obsidian-tc-shared": "1.2.1"',   # a monorepo part, not the server
+    '"@the-40-thieves/obsidian-tc-native": "1.2.1"',
+])
+def test_obsidian_tc_lookalikes_are_quiet(tmp_path: Path, dep: str) -> None:
+    content = '{"dependencies": {%s}}' % dep
+    assert _OBSIDIANTC not in _ids(tmp_path, "package.json", content)
+
+
+def test_obsidian_tc_lockfile_reads_the_locked_version(tmp_path: Path) -> None:
+    lock = (
+        '{"name": "a", "lockfileVersion": 3, "packages": {'
+        '"node_modules/obsidian-tc": {"version": "1.2.1"}}}'
+    )
+    assert _OBSIDIANTC in _ids(tmp_path, "package-lock.json", lock)

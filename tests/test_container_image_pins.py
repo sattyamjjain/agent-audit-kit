@@ -471,3 +471,81 @@ def test_trinity_fixtures_positive_and_negative() -> None:
 def test_trinity_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yaml", f"services:\n  backend:\n    image: {ref}\n")
     assert (TRINITY in ids) is fires
+
+
+# --- 2026-10-15 (#982-#986): Nginx UI's image, and obsidian-tc's beside its npm row ---
+
+NGINXUI = "AAK-MCP-NGINXUI-CVE-2026-84317-001"
+OBSIDIANTC = "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001"
+
+
+def test_nginx_ui_and_obsidian_tc_pins_carry_their_cves_and_severity() -> None:
+    assert RULES[NGINXUI].cve_references == [
+        "CVE-2026-84317", "CVE-2026-84318", "CVE-2026-84319", "CVE-2026-84360",
+    ]
+    assert (RULES[NGINXUI].severity.value, RULES[OBSIDIANTC].severity.value) == (
+        "high", "critical",
+    )
+
+
+def test_nginx_ui_fixtures_positive_and_negative() -> None:
+    """The README's compose service on v2.4.0 fires on its image line; on v2.4.1,
+    which carries 23d1934, it does not."""
+    root = FIXTURES / "cve-2026-84317-nginx-ui"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(NGINXUI, 15)]
+    assert NGINXUI in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("uozi/nginx-ui:v1.9.9", False),           # before the MCP server existed
+    ("uozi/nginx-ui:2.0.0-beta.42", False),    # reads as 2.0.0, and predates the MCP tools
+    ("uozi/nginx-ui:2.0.0-rc.5", False),       # mcp/config/ is absent
+    ("uozi/nginx-ui:2.0.0-rc.6", False),       # has the tools, but reads as 2.0.0: stated limitation
+    ("uozi/nginx-ui:v2.0.0", False),           # affected, the same limitation
+    ("uozi/nginx-ui:v2.0.1", True),
+    ("uozi/nginx-ui:v2.1", True),              # the two-part tag floats over an affected line
+    ("uozi/nginx-ui:2.3.8", True),             # before ValidateConfigFile existed at all
+    ("uozi/nginx-ui:v2.3.11", True),           # where GHSA-76pm-mq2q-9gcr's range ends
+    ("uozi/nginx-ui:2.4.0", True),             # still affected: 23d1934 is not in it
+    ("uozi/nginx-ui:v2.4.0", True),
+    ("uozi/nginx-ui:2.4.1", False),            # the fix
+    ("uozi/nginx-ui:v2.4.1", False),
+    ("uozi/nginx-ui:v2.8.4", False),           # the newest release on 2026-10-15
+    ("uozi/nginx-ui:latest", False),           # the v2.8.4 digest on 2026-10-15
+    ("uozi/nginx-ui", False),                  # untagged is latest
+    ("uozi/nginx-ui:dev", False),              # a branch tag states no version
+    ("uozi/nginx-ui:sha-7a9ad96", False),      # a commit tag states no version
+    ("docker.io/uozi/nginx-ui:v2.4.0", False), # the bare Docker Hub name only
+    ("uozi/nginx-ui-demo:v2.4.0", False),      # another image name
+])
+def test_nginx_ui_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  nginx-ui:\n    image: {ref}\n")
+    assert (NGINXUI in ids) is fires
+
+
+def test_obsidian_tc_image_fixtures_positive_and_negative() -> None:
+    """A client config that runs the GHCR image on 1.2.1, as the install docs run
+    it, fires on the image argument; the same config on 1.3.1 does not."""
+    root = FIXTURES / "cve-2026-77366-obsidian-tc"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.file_path, f.line_number) for f in findings] == [
+        (OBSIDIANTC, "claude_desktop_config.json", 9),
+    ]
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/the-40-thieves/obsidian-tc:1.0.0", True),   # the tag the v1.2.1 install doc names
+    ("ghcr.io/the-40-thieves/obsidian-tc:1.0.1", True),   # the first image tag
+    ("ghcr.io/the-40-thieves/obsidian-tc:1.2.1", True),
+    ("ghcr.io/the-40-thieves/obsidian-tc:1.3.1", False),
+    ("ghcr.io/the-40-thieves/obsidian-tc:1.33.1", False),
+    ("ghcr.io/the-40-thieves/obsidian-tc:latest", False),  # the 1.33.1 digest on 2026-10-15
+    ("ghcr.io/the-40-thieves/obsidian-tc", False),
+    ("ghcr.io/the-40-thieves/obsidian-tc:smoke-1.33.1", False),
+])
+def test_obsidian_tc_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  vaults:\n    image: {ref}\n")
+    assert (OBSIDIANTC in ids) is fires

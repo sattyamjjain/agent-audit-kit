@@ -92,6 +92,11 @@ def test_contextforge_rule_cites_all_five_cves() -> None:
         # subprocess.Popen, CRITICAL 10.0) is fixed at 1.0.2, below the 1.0.9
         # floor, so it joined the same rule rather than gaining a pin.
         "CVE-2026-53710",
+        # 2026-10-15: CVE-2026-53709 (the published default JWT key, CRITICAL 9.8,
+        # fixed 1.0.2) and CVE-2026-53711 (Admin UI stored XSS, fixed 0.3.1), both
+        # below the floor. tests/test_cve_triage_2026_10_15.py holds their proof.
+        "CVE-2026-53709",
+        "CVE-2026-53711",
     }
 
 

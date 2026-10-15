@@ -1367,9 +1367,10 @@
         "CVE-2025-66416",
         "CVE-2026-35568",
         "CVE-2026-35577",
-        "CVE-2026-81102"
+        "CVE-2026-81102",
+        "CVE-2026-77363"
       ],
-      "description": "The upstream MCP Python, Java, Apollo and TypeScript SDKs shipped a StreamableHTTP transport that trusts the browser-supplied `Host` header. A malicious web page that a user visits can resolve a custom domain to 127.0.0.1 via DNS rebinding and reach a local MCP server, turning every browser tab into a remote-attack surface for stdio-grade tools. The upstream patch adds a Host allow-list; downstream servers embedding StreamableHTTP must enforce one too. See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), CVE-2026-35577 (Apollo), CVE-2026-81102 (Python FastMCP). Detection reads the raw SDK transport classes and, since v0.3.93, the Python **FastMCP** wrapper when it is told to run over a network transport (`run(transport=\"streamable-http\"/\"sse\")`, `streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are deliberately not flagged**: FastMCP defaults to stdio and a stdio server has no listener to rebind onto. **Binding to loopback is not a mitigation** and does not clear this rule -- CVE-2026-81102 was loopback-bound; the Host allow-list is the control. Single-file pattern detection with a project-wide mitigation check: one allow-list anywhere in the tree clears every candidate, so a server whose middleware lives in a separate package that is not scanned together will read as mitigated.",
+      "description": "The upstream MCP Python, Java, Apollo and TypeScript SDKs shipped a StreamableHTTP transport that trusts the browser-supplied `Host` header. A malicious web page that a user visits can resolve a custom domain to 127.0.0.1 via DNS rebinding and reach a local MCP server, turning every browser tab into a remote-attack surface for stdio-grade tools. The upstream patch adds a Host allow-list; downstream servers embedding StreamableHTTP must enforce one too. See CVE-2025-66414 / CVE-2025-66416 (Python), CVE-2026-35568 (Java), CVE-2026-35577 (Apollo), CVE-2026-81102 (Python FastMCP), and CVE-2026-77363, a downstream server (obsidian-tc before 1.3.1) whose TypeScript transport checked neither Host nor Origin. Detection reads the raw SDK transport classes and, since v0.3.93, the Python **FastMCP** wrapper when it is told to run over a network transport (`run(transport=\"streamable-http\"/\"sse\")`, `streamable_http_app()`, `sse_app()`). **stdio FastMCP servers are deliberately not flagged**: FastMCP defaults to stdio and a stdio server has no listener to rebind onto. **Binding to loopback is not a mitigation** and does not clear this rule -- CVE-2026-81102 was loopback-bound; the Host allow-list is the control. Single-file pattern detection with a project-wide mitigation check: one allow-list anywhere in the tree clears every candidate, so a server whose middleware lives in a separate package that is not scanned together will read as mitigated.",
       "incident_references": [
         "MCP-DNS-REBIND-2026-04"
       ],
@@ -4266,26 +4267,30 @@
         "CVE-2026-18486",
         "CVE-2026-18489",
         "CVE-2026-53710",
-        "CVE-2026-78573"
+        "CVE-2026-78573",
+        "CVE-2026-53709",
+        "CVE-2026-53711"
       ],
-      "description": "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below 1.0.8 carries four disclosed defects that one floor remediates. CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint `POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection time \u2014 unlike every other egress path in the gateway \u2014 so an authenticated low-privileged user reaches internal addresses by DNS rebinding and receives the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq filters are validated improperly, letting a remote authenticated attacker read credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the Translate utility exposes data elements to the wrong session, leaking across sessions, at or below 1.0.8. CVE-2026-78573 (CRITICAL 9.8): 1.0.0 through 1.0.7 ship default credentials, so a remote attacker gains administrative access outright \u2014 the floor already in place covers it, and it is recorded here rather than as a second rule because one upgrade remediates all five. Treat < 1.0.9 (and unpinned) as exposed.",
+      "description": "IBM ContextForge MCP Gateway (`mcp-contextforge-gateway`, PyPI) at or below 1.0.8 carries four disclosed defects that one floor remediates. CVE-2026-77822 (HIGH 8.2): the A2A invocation endpoint `POST /a2a/{agent_name}/invoke` does not pin the DNS-resolved IP at connection time \u2014 unlike every other egress path in the gateway \u2014 so an authenticated low-privileged user reaches internal addresses by DNS rebinding and receives the full response body. CVE-2026-18905 (HIGH 7.7): the same rebinding class during tool invocation, at or below 1.0.6. CVE-2026-18486 (HIGH 8.8): jq filters are validated improperly, letting a remote authenticated attacker read credentials and escalate, at or below 1.0.7. CVE-2026-18489 (HIGH 7.4): the Translate utility exposes data elements to the wrong session, leaking across sessions, at or below 1.0.8. CVE-2026-78573 (CRITICAL 9.8): 1.0.0 through 1.0.7 ship default credentials, so a remote attacker gains administrative access outright \u2014 the floor already in place covers it, and it is recorded here rather than as a second rule because one upgrade remediates all of them. CVE-2026-53709 (CRITICAL 9.8): below 1.0.2 the default `JWT_SECRET_KEY` is a published string (`my-test-key` in 0.1.0, a longer variant by 1.0.1), and while `REQUIRE_USER_IN_DB` is false, its default before 1.0.2, a token whose subject is the platform administrator's email is accepted as that administrator with no database account, so a remote attacker can mint admin tokens. CVE-2026-53711 (MEDIUM, CVSS 4.0 5.1): before 0.3.1 the Admin UI writes a saved Global Prompts template into the page as HTML, a stored XSS against whoever views it. Both are fixed below this floor. Treat < 1.0.9 (and unpinned) as exposed.",
       "incident_references": [],
       "limitations": "Reads `mcp-contextforge-gateway` in requirements*.txt at any depth and, at the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the lowest version a range allows and reporting a reference that states no version. The dependency is not read when it is declared in a sub-directory manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read.",
       "owasp_agentic_references": [
         "ASI02",
+        "ASI03",
         "ASI04"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
         "MCP04:2025",
         "MCP05:2025",
+        "MCP07:2025",
         "MCP10:2025"
       ],
-      "remediation": "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Change any credential that shipped as a default before doing anything else. Where the gateway makes outbound requests on behalf of a caller, resolve the destination once and connect to the pinned IP rather than re-resolving the hostname after the allow-list check.",
+      "remediation": "Upgrade `mcp-contextforge-gateway` to >= 1.0.9 and pin it. Change any credential that shipped as a default before doing anything else, `JWT_SECRET_KEY` included: generate a new one (from 1.0.2, `python -m mcpgateway.scripts.init_secrets`), because a token signed with the old key stays valid while that key is configured, and in development mode 1.0.2 and later accept a known key with only a warning. Where the gateway makes outbound requests on behalf of a caller, resolve the destination once and connect to the pinned IP rather than re-resolving the hostname after the allow-list check.",
       "rule_id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
       "sarif_name": "ContextForgeGatewayRebindAndSessionLeak",
       "severity": "critical",
-      "title": "IBM ContextForge MCP Gateway: default credentials, DNS-rebind SSRF, jq-filter and cross-session leaks (<= 1.0.8)"
+      "title": "IBM ContextForge MCP Gateway: default credentials and JWT key, DNS-rebind SSRF, jq-filter, Admin UI XSS and cross-session leaks (<= 1.0.8)"
     },
     {
       "adversa_references": [
@@ -4733,25 +4738,29 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [
-        "CVE-2026-67425"
+        "CVE-2026-67425",
+        "CVE-2026-55786"
       ],
-      "description": "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent workflows, before 2.26.6 has `llm.chat` read provider credentials such as `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` from the environment and send them in the `Authorization: Bearer` header to a caller-controlled `base_url`. An actor who can steer `base_url` to a public host that clears the SSRF guard receives the operator's provider key (CVE-2026-67425, CVSS 8.6). Fixed in 2.26.6; treat < 2.26.6 (and unpinned) as exposed. The env-var-key exfil-to-caller-controlled-endpoint class here is adjacent to the config-side env-secret exfil surface `AAK-MCP-ENV-PLACEHOLDER-EXFIL-001` covers.",
+      "description": "Flyto2 Core (`flyto-core`), an MCP-native execution kernel for AI-agent workflows, before 2.26.6 has `llm.chat` read provider credentials such as `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` from the environment and send them in the `Authorization: Bearer` header to a caller-controlled `base_url`. An actor who can steer `base_url` to a public host that clears the SSRF guard receives the operator's provider key (CVE-2026-67425, CVSS 8.6). Fixed in 2.26.6; treat < 2.26.6 (and unpinned) as exposed. The env-var-key exfil-to-caller-controlled-endpoint class here is adjacent to the config-side env-secret exfil surface `AAK-MCP-ENV-PLACEHOLDER-EXFIL-001` covers. CVE-2026-55786 (CVSS 8.4) sits under the same floor: from 2.26.2 to 2.26.3 the HTTP MCP route (`POST /mcp`) takes `tools/call` requests without the `require_auth` dependency the REST execution routes use, so an unauthenticated caller can run `execute_module` with `sandbox.execute_shell` and a command of its choosing. Fixed in 2.26.4.",
       "incident_references": [],
       "limitations": "Reads `flyto-core` in requirements*.txt at any depth and, at the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the lowest version a range allows and reporting a reference that states no version. The dependency is not read when it is declared in a sub-directory manifest (`services/api/pyproject.toml`) or in a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read.",
       "owasp_agentic_references": [
         "ASI03",
-        "ASI04"
+        "ASI04",
+        "ASI05"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
         "MCP01:2025",
-        "MCP04:2025"
+        "MCP04:2025",
+        "MCP05:2025",
+        "MCP07:2025"
       ],
-      "remediation": "Upgrade `flyto-core` to >= 2.26.6 and pin it. Restrict `llm.chat` `base_url` to an allow-list of trusted provider hosts, and never forward environment-sourced provider keys to a caller-supplied endpoint.",
+      "remediation": "Upgrade `flyto-core` to >= 2.26.6 and pin it. Restrict `llm.chat` `base_url` to an allow-list of trusted provider hosts, and never forward environment-sourced provider keys to a caller-supplied endpoint. Until the upgrade, do not expose the HTTP API, whose `/mcp` route runs modules without authentication from 2.26.2 to 2.26.3, beyond localhost.",
       "rule_id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
       "sarif_name": "Flyto2CoreProviderKeyExfil",
       "severity": "high",
-      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url (<2.26.6)"
+      "title": "Flyto2 Core forwards provider API keys to a caller-controlled base_url, and its HTTP MCP route runs modules unauthenticated (<2.26.6)"
     },
     {
       "adversa_references": [
@@ -6239,6 +6248,44 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-05",
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "IAM-01",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-84317",
+        "CVE-2026-84318",
+        "CVE-2026-84319",
+        "CVE-2026-84360"
+      ],
+      "description": "Nginx UI is a web UI for nginx with a built-in MCP server (`/mcp` and `/mcp_message`), deployed from the Docker Hub image `uozi/nginx-ui`. Its MCP tools first ship in 2.0.0-rc.6. Through 2.4.0 the `nginx_config_add` tool writes the caller's content to disk and reloads nginx without `ValidateConfigFile`, the check the REST API and `nginx_config_modify` apply from 2.3.9, so an authenticated MCP caller, or an agent steered by prompt injection, can write `js_*`, `perl*`, `load_module` or `user root` directives. Where the njs or Perl module is loaded, as in the official image, that runs code in the nginx worker. CVE-2026-84317 and CVE-2026-84318 (both CVSS 8.8) report this defect twice, and CVE-2026-84319 (CVSS 8.3) a third time, for a secondary user. The MCP routes also skip the `RequireSecureSession` step-up the REST configuration routes require, so an OTP-enabled user without a secure session can still change the configuration (CVE-2026-84360, CVSS 8.1). 2.4.1 (`23d1934`) validates the content and requires the secure session for the sensitive MCP tools.",
+      "incident_references": [],
+      "limitations": "Reads `uozi/nginx-ui` references from 2.0.1 below 2.4.1 in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. The README's compose file and `docker run` use `latest`, which was the v2.8.4 digest on 2026-10-15, so they are not reported, and the `docker.io/` form is not read. 2.0.0 and its betas and release candidates all read as 2.0.0, and the MCP tools arrived in 2.0.0-rc.6, so the reader cannot tell an affected 2.0.0 tag from an older one: none of them is reported, although 2.0.0-rc.6 to 2.0.0 are affected. The release binaries and the install script state no image tag and are not read.",
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI04",
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP05:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade the `uozi/nginx-ui` image to 2.4.1 or later and pin the tag. Until then, give MCP access only to trusted principals, do not load the njs or Perl modules, and check configuration written through MCP for `js_*`, `perl*`, `load_module` and `user root` directives.",
+      "rule_id": "AAK-MCP-NGINXUI-CVE-2026-84317-001",
+      "sarif_name": "NginxUiMcpConfigDirectiveInjection",
+      "severity": "high",
+      "title": "Nginx UI image 2.0.1 to 2.4.0: MCP config tools write blocked nginx directives and skip the secure-session step-up (code execution where njs or Perl is loaded)"
+    },
+    {
+      "adversa_references": [
         "ADV-AUTH-01"
       ],
       "aicm_references": [],
@@ -6332,6 +6379,42 @@
       "sarif_name": "ObotCatalogEntryStaticSecretRead",
       "severity": "medium",
       "title": "Obot image v0.12.0 to v0.26.1: a user granted a catalog entry can read its static secrets"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-77366",
+        "CVE-2026-77363",
+        "CVE-2026-77364",
+        "CVE-2026-77361",
+        "CVE-2026-77362"
+      ],
+      "description": "obsidian-tc is an MCP server for Obsidian vaults, published on npm as `obsidian-tc` and as the image `ghcr.io/the-40-thieves/obsidian-tc`. Every release below 1.3.1 (1.0.1, 1.0.2 and 1.2.1) carries five disclosed defects that one upgrade fixes. CVE-2026-77366 (CRITICAL 9.9): tool dispatch never compares a call's `vault` argument with the caller's vault, the JWT has no vault claim and the folder ACL is global, so any valid HTTP token reads, writes or deletes every configured vault. CVE-2026-77363 (HIGH 8.8): the Streamable HTTP transport checks neither Host nor Origin, so with the documented loopback setup and `auth.mode: \"none\"` a web page drives the endpoint as the all-scopes `http-local` caller. CVE-2026-77364 (MEDIUM 6.5): an undefined `readPaths` or `writePaths` allows every path, and `.obsidian`, `.git` and `.trash` are hidden only from listings, so a caller reads plugin API keys and Sync passwords from `.obsidian/plugins/*/data.json` by path. CVE-2026-77361 (MEDIUM 4.7): read-ACL checks use the lexical path, so an in-vault symlink under an allowed folder reads a denied one. CVE-2026-77362 (MEDIUM 4.3): the `tasks_filter`, `makemd_query` and `list_templates` bridge tools return data from notes outside the caller's read ACL. The first two need the HTTP transport, which is off by default.",
+      "incident_references": [],
+      "limitations": "Reports `obsidian-tc` below 1.3.1, from 1.0.0 on, where a package.json, lockfile or MCP config states the version, reporting a range that admits an affected version, and `ghcr.io/the-40-thieves/obsidian-tc` tags below 1.3.1 in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. An unpinned `npx -y obsidian-tc`, the README's own config, installs 1.33.1, the newest release on 2026-10-15, so it is not reported, and neither is the image's `latest`. The 0.0.1 placeholder and the scoped `@the-40-thieves/obsidian-tc` placeholder have no server and are not reported. The pin reads the version, not the transport setting, so a stdio-only install is reported too. The Claude Desktop bundle (`.mcpb`) and the Obsidian plugin are not read. A file over 2 MB, or a lockfile over 32 MiB, is not read.",
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "Upgrade `obsidian-tc` (npm or the GHCR image) to 1.3.1 or later and pin it. Until then keep the HTTP transport off, or require JWT auth and run one vault per server process; set explicit `readPaths` and `writePaths` that leave out `.obsidian`, `.git` and `.trash`; and allow no untrusted symlinks in the vault. After upgrading, give each tenant's token a `vault` claim.",
+      "rule_id": "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001",
+      "sarif_name": "ObsidianTcVaultBindingAndOriginBypass",
+      "severity": "critical",
+      "title": "obsidian-tc below 1.3.1: any HTTP token reaches every configured vault, the HTTP transport answers cross-origin requests, and the read ACL leaks"
     },
     {
       "adversa_references": [

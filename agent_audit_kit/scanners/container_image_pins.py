@@ -18,12 +18,16 @@ the `kortix` CLI are binaries. Unla is a Go MCP gateway published as
 `ghcr.io/amoylab/unla/allinone` and `.../mcp-gateway`, with an Aliyun mirror its
 Chinese README names. Trinity's backend ships as `ghcr.io/abilityai/trinity-backend`;
 PyPI's `trinity-cli` is its command-line client on its own 0.2.x line, and PyPI's
-`trinity` is an unrelated Ethereum client. Docker Hub images are matched by the
-bare name their docs use, so `docker.io/grafana/mcp-k6` is not read. Nothing
-`mcp_cve_pins_2026_07` reads carries their version, and a pin on a look-alike
-package name would report somebody else's project. The image tag is the only
-place a deployment states which release it runs, so this module reads image
-references and nothing else.
+`trinity` is an unrelated Ethereum client. Nginx UI is a Go binary on neither
+registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. Docker Hub
+images are matched by the bare name their docs use, so `docker.io/grafana/mcp-k6`
+is not read. Nothing `mcp_cve_pins_2026_07` reads carries their version, and a pin
+on a look-alike package name would report somebody else's project. The image tag is
+the only place a deployment states which release it runs, so this module reads
+image references and nothing else. That also holds for a package that ships an
+image beside its npm release: obsidian-tc's npm package is a row in
+`mcp_cve_pins_2026_07`, and a deployment that runs `ghcr.io/the-40-thieves/obsidian-tc`
+states its release only in the tag, so the same rule has a row here too.
 
 Where a reference is read
 -------------------------
@@ -213,6 +217,33 @@ _PINS: tuple[_ImagePin, ...] = (
         "ghcr.io/abilityai/trinity-backend",
         (0, 9, 6), "up to and including 0.9.5", "No fixed release yet.",
         ("CVE-2026-108756",), floating_affected=True,
+    ),
+    # CVE-2026-77366, CVE-2026-77363, CVE-2026-77364, CVE-2026-77361 and
+    # CVE-2026-77362: every obsidian-tc release below 1.3.1. The npm package is the
+    # pin table's row for the same rule; this row is the image its install docs run
+    # (`docker run ... ghcr.io/the-40-thieves/obsidian-tc:<version> <config>`). GHCR
+    # carries 1.0.1, 1.0.2 and 1.2.1, the affected releases, then 1.3.1 onward, and
+    # on 2026-10-15 `latest` was the 1.33.1 digest. The tags start at 1.0.1, after
+    # the npm placeholder, so no `introduced` is needed.
+    _ImagePin(
+        "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001", "obsidian-tc",
+        "ghcr.io/the-40-thieves/obsidian-tc",
+        (1, 3, 1), "below 1.3.1", "Fixed in 1.3.1.",
+        ("CVE-2026-77366", "CVE-2026-77363", "CVE-2026-77364", "CVE-2026-77361",
+         "CVE-2026-77362"),
+    ),
+    # CVE-2026-84317, CVE-2026-84318 and CVE-2026-84319 (`nginx_config_add` writes
+    # directives `ValidateConfigFile` would block) and CVE-2026-84360 (the MCP routes
+    # skip `RequireSecureSession`). `mcp/config/` is absent at 2.0.0-rc.5 and present
+    # at rc.6; the fix, 23d1934, is in 2.4.1 and not 2.4.0. Docker Hub tags 2.0.0 and
+    # its betas and release candidates so that all read as 2.0.0 here, and most of
+    # them predate the MCP tools, so the range starts at 2.0.1 and rc.6 to 2.0.0 go
+    # unreported. `latest` was the v2.8.4 digest on 2026-10-15, fixed.
+    _ImagePin(
+        "AAK-MCP-NGINXUI-CVE-2026-84317-001", "Nginx UI", "uozi/nginx-ui",
+        (2, 4, 1), "from 2.0.1 up to 2.4.1", "Fixed in 2.4.1.",
+        ("CVE-2026-84317", "CVE-2026-84318", "CVE-2026-84319", "CVE-2026-84360"),
+        introduced=(2, 0, 1),
     ),
 )
 

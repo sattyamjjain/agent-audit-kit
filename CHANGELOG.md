@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AAK-MCP-KOTLINSDK-CVE-2026-108714-001`: the MCP Kotlin SDK server module from 0.7.3 (CVE-2026-108714, #974). `Application.mcpWebSocket` sets no WebSocket frame limit, so a client can force a 2 GiB allocation. There is no fixed release. `jvm_mcp_sdk_pins` now takes a table of pins.
 - `AAK-MCP-ELVIX-CVE-2026-108542-001`: `@elvix.is/sdk` from 0.1.0 up to 0.10.2 (CVE-2026-108542, #963). Its MCP server let a tool's `path` argument send the elvix API key to any host.
 - `AAK-MCP-TRINITY-CVE-2026-108756-001`: the `ghcr.io/abilityai/trinity-backend` image through 0.9.5 and `latest` (CVE-2026-108756, #976). An agent's MCP key could replace or delete its owner's Telegram binding. There is no fixed release.
+- `AAK-MCP-OBSIDIANTC-CVE-2026-77366-001`: `obsidian-tc` below 1.3.1, on npm and as the `ghcr.io/the-40-thieves/obsidian-tc` image (CVE-2026-77366 and CVE-2026-77363, #982 and #984, and three read-ACL CVEs fixed in the same release). Any HTTP token could reach every configured vault, and a web page could drive a loopback server running without auth.
+- `AAK-MCP-NGINXUI-CVE-2026-84317-001`: the `uozi/nginx-ui` image from 2.0.1 up to 2.4.1 (CVE-2026-84317 and CVE-2026-84318, #985 and #986, and CVE-2026-84319 and CVE-2026-84360). Its MCP config tools wrote nginx directives the REST API blocks and skipped the secure-session step-up, which runs code where the njs or Perl module is loaded.
 
 ### Security
 
@@ -28,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disposed #936 and #937, two x64dbg-MCP Server records. The plugin ships as x64dbg DLLs whose version no file AAK reads, and the npm packages with its name are other projects, so both are out of scope. The reasoning is in CHANGELOG.cves.md.
 - Disposed #953 to #959. Three get a measured pin. Tabularis and GenOffice are desktop apps, InnoShop is a Composer project and JeecgBoot a Maven application, none with an artifact AAK reads, so those four are out of scope. The reasoning is in CHANGELOG.cves.md.
 - Disposed #963 and #973 to #977. Four get a measured pin. mcp-go is a Go library and Wanwu keeps its image reference in an `.env` file, neither of which AAK reads, so those two are out of scope. The reasoning is in CHANGELOG.cves.md.
+- Disposed #982 to #986. obsidian-tc and Nginx UI get a measured pin each, and CVE-2026-53709 joins the ContextForge pin, whose 1.0.9 floor is above its 1.0.2 fix. Eleven records the watcher had not filed yet were triaged with them, so it won't file them: six ride on those three pins, CVE-2026-55786 joins the Flyto2 Core pin, and four are out of scope (mac-shell-mcp, two Wanwu records and phpMyFAQ). CVE-2026-77363 is also listed on `AAK-DNS-REBIND-001`, which fires on the affected transport shape and clears on the fix. The ContextForge and Flyto2 Core rules gain the OWASP references for their new authentication and code-execution CVEs. The reasoning is in CHANGELOG.cves.md.
 
 ### Fixed
 

@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-15T12:48:08Z",
+  "last_updated": "2026-10-15T13:40:17Z",
   "aak_version": "0.6.20",
-  "rule_count": 396,
+  "rule_count": 398,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -530,7 +530,9 @@
             "CVE-2026-18486",
             "CVE-2026-18489",
             "CVE-2026-18905",
+            "CVE-2026-53709",
             "CVE-2026-53710",
+            "CVE-2026-53711",
             "CVE-2026-77822",
             "CVE-2026-78573"
           ],
@@ -1141,7 +1143,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 95,
+      "rule_density": 98,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1395,6 +1397,21 @@
           ]
         },
         {
+          "id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-18486",
+            "CVE-2026-18489",
+            "CVE-2026-18905",
+            "CVE-2026-53709",
+            "CVE-2026-53710",
+            "CVE-2026-53711",
+            "CVE-2026-77822",
+            "CVE-2026-78573"
+          ],
+          "aicm_references": []
+        },
+        {
           "id": "AAK-MCP-DEEPSEEK-CVE-2026-55604-001",
           "severity": "high",
           "cve_references": [
@@ -1429,6 +1446,7 @@
           "id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-55786",
             "CVE-2026-67425"
           ],
           "aicm_references": [
@@ -1634,6 +1652,21 @@
           ]
         },
         {
+          "id": "AAK-MCP-NGINXUI-CVE-2026-84317-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-84317",
+            "CVE-2026-84318",
+            "CVE-2026-84319",
+            "CVE-2026-84360"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-NOAUTH-DEFAULT",
           "severity": "high",
           "cve_references": [
@@ -1666,6 +1699,22 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-77361",
+            "CVE-2026-77362",
+            "CVE-2026-77363",
+            "CVE-2026-77364",
+            "CVE-2026-77366"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -2084,7 +2133,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 182,
+      "rule_density": 184,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2683,7 +2732,9 @@
             "CVE-2026-18486",
             "CVE-2026-18489",
             "CVE-2026-18905",
+            "CVE-2026-53709",
             "CVE-2026-53710",
+            "CVE-2026-53711",
             "CVE-2026-77822",
             "CVE-2026-78573"
           ],
@@ -2805,6 +2856,7 @@
           "id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-55786",
             "CVE-2026-67425"
           ],
           "aicm_references": [
@@ -3343,6 +3395,21 @@
           ]
         },
         {
+          "id": "AAK-MCP-NGINXUI-CVE-2026-84317-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-84317",
+            "CVE-2026-84318",
+            "CVE-2026-84319",
+            "CVE-2026-84360"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-OBOT-CVE-2026-101084-001",
           "severity": "critical",
           "cve_references": [
@@ -3366,6 +3433,22 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001",
+          "severity": "critical",
+          "cve_references": [
+            "CVE-2026-77361",
+            "CVE-2026-77362",
+            "CVE-2026-77363",
+            "CVE-2026-77364",
+            "CVE-2026-77366"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -4044,7 +4127,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 85,
+      "rule_density": 87,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -4459,6 +4542,19 @@
           ]
         },
         {
+          "id": "AAK-MCP-FLYTO-CVE-2026-67425-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-55786",
+            "CVE-2026-67425"
+          ],
+          "aicm_references": [
+            "DSP-17",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FRONTMCP-CVE-2026-67531-001",
           "severity": "high",
           "cve_references": [
@@ -4585,6 +4681,21 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NGINXUI-CVE-2026-84317-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-84317",
+            "CVE-2026-84318",
+            "CVE-2026-84319",
+            "CVE-2026-84360"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "IAM-01",
             "STA-08"
           ]
         },
@@ -5070,6 +5181,7 @@
             "CVE-2025-66416",
             "CVE-2026-35568",
             "CVE-2026-35577",
+            "CVE-2026-77363",
             "CVE-2026-81102"
           ],
           "aicm_references": [

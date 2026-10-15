@@ -16,6 +16,154 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-15 (v0.6.21): five disclosures and eleven held-back records, two new pins, four rules extended, four out of scope
+
+The watcher opened five `cve-response` issues at 11:29Z on 2026-10-15 (#982-#986),
+two `sev/critical` and three `sev/high`. A dry run of the watcher found 26 more
+MCP records in its 7-day window, held back by its five-per-run cap, and eleven of
+them are triaged here as well, so it does not file them: six are fixed in the same
+releases as #982 to #986 and ride on the same pins, one is fixed below an existing
+pin's floor, and four are out of scope. The other fifteen need new pins or floor
+changes and are left for the watcher; they are listed in the PR rather than here,
+because the watcher treats any CVE id in this file as tracked. Two pins are new,
+obsidian-tc on npm and its GHCR image and Nginx UI on its Docker Hub image, each
+measured with the scanner on a firing fixture and a negative one. NVD scores the
+five filed records, and the titles and `sev/` labels the watcher filed already
+match, so nothing was corrected first. NVD text below is quoted from the API
+record, read on 2026-10-15.
+
+**obsidian-tc (CVE-2026-77366, CVE-2026-77363, CVE-2026-77364, CVE-2026-77361,
+CVE-2026-77362) gets `AAK-MCP-OBSIDIANTC-CVE-2026-77366-001`, every release below
+1.3.1.** NVD, CVE-2026-77366: "Prior to 1.3.1, tool dispatch does not compare the
+caller-controlled input.vault value with the vault bound to the caller, the JSON
+Web Token (JWT) has no vault claim, and the folder access-control list is shared
+globally." NVD, CVE-2026-77363: "Prior to 1.3.1, the Streamable HTTP transport does
+not validate the Host or Origin header or enable DNS-rebinding protection." The
+server is the npm package `obsidian-tc`, which its MCP Registry entry names, and the
+image `ghcr.io/the-40-thieves/obsidian-tc`, which its install docs run, so the rule
+has a row in each reader. Checked in the npm tarballs: 1.0.1, the first release
+with a server, 1.0.2 and 1.2.1 resolve each vault tool's `vault` argument against
+every configured vault and check neither Host nor Origin, and `auth.mode: "none"`
+answers as the all-scopes `http-local` caller. 1.3.1 (2026-07-03) carries both
+fixes, `38b4992` and `6428bfe`, and there is no 1.3.0. The three held-back records,
+a fail-open default ACL that exposes `.obsidian` plugin secrets (CVE-2026-77364), a
+symlink read-ACL bypass (CVE-2026-77361) and bridge tools that return denied notes'
+data (CVE-2026-77362), all give `< 1.3.1` in their advisories, and the bridge tools
+and the `readPaths` ACL are in 1.0.1's bundle, so they join the rule at its CRITICAL
+severity. 0.0.1 and the scoped `@the-40-thieves/obsidian-tc` are placeholders with
+no server and are not reported. `latest` is 1.33.1 on npm and GHCR, and the README
+launches an unpinned `npx -y obsidian-tc`, so the npm row needs a stated version.
+NVD scores CVE-2026-77363 8.8; its GitHub advisory says 9.6 with a changed scope.
+Upgrade to 1.3.1 or later.
+
+**CVE-2026-77363 is also listed on `AAK-DNS-REBIND-001`.** That rule flags a file
+that builds the SDK's StreamableHTTP transport with no Host allow-list anywhere in
+the project. Probed on obsidian-tc's own `transports/http.ts`, `cli.ts` and
+`config.schema.ts`, it fires at v1.0.1 and v1.2.1 and clears at v1.3.1, which
+threads `allowedHosts` through the CLI and the config schema. obsidian-tc is
+AGPL-3.0-only, so the fixture pair (`cve-2026-77363-obsidian-tc-rebind`) is written
+by hand and keeps only the constructs that decide the rule.
+
+**Nginx UI (CVE-2026-84317, CVE-2026-84318, CVE-2026-84319, CVE-2026-84360) gets
+`AAK-MCP-NGINXUI-CVE-2026-84317-001` on its image, from 2.0.1 up to 2.4.1.** NVD,
+CVE-2026-84318: "From 2.0.0-rc.6 until 2.4.1, the MCP tool nginx_config_add writes
+nginx configuration files to disk and triggers an nginx reload without calling
+config.ValidateConfigFile." CVE-2026-84317 reports the same defect, and the
+held-back CVE-2026-84319 reports it a third time, for a secondary user. Nginx UI is
+a Go binary with no npm or PyPI artifact, and its README deploys the Docker Hub
+image `uozi/nginx-ui`. Checked in the source: `mcp/config/` is absent at
+2.0.0-rc.5 and present at rc.6, and through 2.4.0 `handleNginxConfigAdd` writes and
+reloads without `ValidateConfigFile`. The validator itself first ships in 2.3.9
+(`3e411d38`), so before that no path blocked these directives and the MCP tool
+wrote them as the REST API did; the records' range covers both. The fix, `23d1934`,
+is in 2.4.1 and not 2.4.0, although GHSA-76pm-mq2q-9gcr stops its range at 2.3.11.
+The held-back CVE-2026-84360 has the same range. NVD: "the HTTP configuration
+mutation routes require RequireSecureSession, but /mcp and /mcp_message require only
+ordinary authentication". `RequireSecureSession` guards the REST configuration
+routes from rc.6, and 2.4.1 adds it for the sensitive MCP tools. Docker Hub tags
+2.0.0 and its betas and release candidates so that all of them read as 2.0.0, and
+most of them predate the MCP tools, so the pin starts at 2.0.1 and rc.6 to 2.0.0 go
+unreported; a limitations fixture proves it. `latest` was the v2.8.4 digest on
+2026-10-15. Upgrade to 2.4.1 or later.
+
+**IBM ContextForge (CVE-2026-53709) joins `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001`.**
+NVD: "A remote unauthenticated attacker can therefore mint accepted administrator
+tokens without a database account." GHSA-m8rv-5m6m-32ff gives
+`mcp-contextforge-gateway` `<= 1.0.1`, patched 1.0.2, and the fix, `2af690f`, is in
+v1.0.2 and not v1.0.1. Checked in the wheels: 1.0.1 defaults `JWT_SECRET_KEY` to
+`my-test-key-but-now-longer-than-32-bytes` with `require_user_in_db=False`, and
+0.1.0 already shipped `my-test-key`. 1.0.2 lists both keys as weak, rejects them in
+staging and production but only warns in development, and turns
+`require_user_in_db` on. The CRITICAL pin's 1.0.9 floor has no lower bound, so every
+affected release already fires. The held-back CVE-2026-53711, a stored XSS in the
+Admin UI's Global Prompts that NVD dates "From 0.2.0 until 0.3.1", joins it too:
+`viewPrompt` writes the saved template into `innerHTML` in the 0.1.0 to 0.3.0 wheels
+and sets `textContent` from 0.3.1, so the real range starts at 0.1.0. The rule now
+carries MCP07 and ASI03 for its two authentication CVEs, and its remediation says to
+replace `JWT_SECRET_KEY`, since a forged token keeps working while the old key is
+configured.
+
+**Flyto2 Core (CVE-2026-55786) joins `AAK-MCP-FLYTO-CVE-2026-67425-001`.** NVD:
+"From 2.26.2 until 2.26.4, the HTTP MCP POST /mcp route accepts unauthenticated
+JSON-RPC tools/call requests and forwards execute_module arguments to the module
+registry without the require_auth dependency used by the REST execution routes."
+GHSA-h9f9-h6gm-wc85 gives `flyto-core` `>= 2.26.2, < 2.26.4`. Checked in the wheels:
+the POST handler in `core/api/routes/mcp.py` has no `require_auth` in 2.26.3, and
+2.26.4 (`db7f116`) adds it. The HIGH pin's 2.26.6 floor has no lower bound, so
+2.26.2 and 2.26.3 already fire. The rule now carries MCP05, MCP07 and ASI05 for it.
+
+**mac-shell-mcp (CVE-2026-108953) is out of scope.** NVD: "mac-shell-mcp before
+2.0.0 contains an OS command injection vulnerability that allows MCP clients to
+bypass the command whitelist by injecting shell metacharacters into execute_command
+arguments." Before 2.0.0, cfdude/mac-shell-mcp was installed from a git clone and
+started by path, which states no version. Its only npm release,
+`@the_cfdude/mac-shell-mcp` 2.0.0 (2026-09-24), carries the fix (`932ce73`), so no
+artifact AAK reads holds an affected version. npm's unscoped `mac-shell-mcp` 1.0.4
+is a 2025 republish of the early code by another account, which the record does not
+name, so it is not claimed. Upgrade to 2.0.0 or later.
+
+**Wanwu (CVE-2026-108855, CVE-2026-108856) is out of scope, as #977 was.** NVD,
+CVE-2026-108855: "UnicomAI Wanwu through 0.6.5 contains a missing authorization
+vulnerability that allows any authenticated enabled user to revoke other users'
+AppKeys for arbitrary apps via the unpublish endpoint." NVD, CVE-2026-108856: "...
+allows authenticated users to mint AppKeys bound to other users' MCP servers via
+POST /v1/appspace/app/key." The compose file still takes every image reference from
+`${WANWU_*_IMAGE}` in `.env.image.*`, which the image reader does not open. v0.6.5
+(2026-09-18) is the newest release, so neither has a fixed release yet.
+
+**phpMyFAQ (CVE-2026-108851) is out of scope, like InnoShop (#958).** NVD: "phpMyFAQ
+through 4.1.10 contains a missing authorization vulnerability in the MCP server
+faq_search tool that allows MCP clients to read restricted FAQs because
+Search::searchDatabase() never applies user or group permission checks." phpMyFAQ
+ships as release zips and the Packagist package `thorsten/phpmyfaq`, and AAK reads
+no `composer.json` or `composer.lock`. The Docker Hub image `phpmyfaq/phpmyfaq`
+stops at 2.9 and 3.0-alpha tags, long before the MCP server arrived in 4.1.0. 4.1.10
+is the newest release, so there is no fixed release yet.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-77366 | 9.9 | `obsidian-tc` (npm) and `ghcr.io/the-40-thieves/obsidian-tc` (image) | **New pin** `AAK-MCP-OBSIDIANTC-CVE-2026-77366-001`: below 1.3.1 (1.0.1 to 1.2.1). | #982 |
+| CVE-2026-53709 | 9.8 | `mcp-contextforge-gateway` (PyPI) | No new rule, no new pin. Fixed in 1.0.2, below the 1.0.9 floor; recorded against `AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001`. | #983 |
+| CVE-2026-77363 | 8.8 | `obsidian-tc` (npm, image) | Same pin as CVE-2026-77366, and recorded against `AAK-DNS-REBIND-001`, which fires on the affected transport shape. | #984 |
+| CVE-2026-84317 | 8.8 | `uozi/nginx-ui` (image) | **New pin** `AAK-MCP-NGINXUI-CVE-2026-84317-001`: from 2.0.1 up to 2.4.1. | #985 |
+| CVE-2026-84318 | 8.8 | `uozi/nginx-ui` (image) | Same pin; the same defect as CVE-2026-84317. | #986 |
+| CVE-2026-55786 | 8.4 | `flyto-core` (PyPI) | No new rule, no new pin. 2.26.2 up to 2.26.4, below the 2.26.6 floor; recorded against `AAK-MCP-FLYTO-CVE-2026-67425-001`. | not filed |
+| CVE-2026-84319 | 8.3 | `uozi/nginx-ui` (image) | Same pin as CVE-2026-84317, a third report of its defect. | not filed |
+| CVE-2026-84360 | 8.1 | `uozi/nginx-ui` (image) | Same pin; the MCP routes skip the secure-session step-up from 2.0.0-rc.6 to 2.4.0. | not filed |
+| CVE-2026-108953 | 7.8 | mac-shell-mcp (git clone; npm `@the_cfdude/mac-shell-mcp` from 2.0.0) | **Out of scope**, non-pinnable: no affected version was published to a registry. Fixed in 2.0.0. | not filed |
+| CVE-2026-77364 | 6.5 | `obsidian-tc` (npm, image) | Same pin as CVE-2026-77366. | not filed |
+| CVE-2026-108855 | 5.4 | Wanwu (compose stack, image set in `.env`) | **Out of scope**, non-pinnable, the #977 basis. No fixed release yet. | not filed |
+| CVE-2026-53711 | 5.1 | `mcp-contextforge-gateway` (PyPI) | No new rule, no new pin. 0.1.0 up to 0.3.1 (the record says from 0.2.0), below the 1.0.9 floor; recorded against the ContextForge pin. | not filed |
+| CVE-2026-77361 | 4.7 | `obsidian-tc` (npm, image) | Same pin as CVE-2026-77366. | not filed |
+| CVE-2026-77362 | 4.3 | `obsidian-tc` (npm, image) | Same pin as CVE-2026-77366. | not filed |
+| CVE-2026-108856 | 4.2 | Wanwu (compose stack, image set in `.env`) | **Out of scope**, non-pinnable, the #977 basis. No fixed release yet. | not filed |
+| CVE-2026-108851 | 3.3 | phpMyFAQ (Packagist `thorsten/phpmyfaq`) | **Out of scope**, non-pinnable: Composer. No fixed release yet (4.1.10 is newest). | not filed |
+
+CVSS is NVD's CVSS 3.1 score, except CVE-2026-53711, for which NVD gives only a CVSS
+4.0 score.
+
+Dispositioned at 2026-10-15T13:17:23Z.
+
 ## 2026-10-13 (v0.6.21): six disclosures, two new image pins, one JVM pin, one npm pin, two out of scope
 
 The watcher opened one `cve-response` issue at 12:50Z on 2026-10-11 (#963) and

@@ -95,7 +95,9 @@ available) before shipping:
     the exact clause in prose fails the self-scan on a finding that is a
     docstring)
   - mcp-contextforge-gateway        >= 1.0.9   (+ CVE-2026-78573 default
-    credentials, 1.0.0–1.0.7; already under the existing floor)
+    credentials, 1.0.0–1.0.7; already under the existing floor. CVE-2026-53709,
+    a published default JWT key below 1.0.2, and CVE-2026-53711, an Admin UI
+    stored XSS below 0.3.1, joined it the same way)
   - awslabs.security-agent-mcp-server >= 0.2.0   (CVE-2026-87913; unverified S3
     bucket ownership for scan output)
   - mysql-mcp-server               >= 0.4.2   (CVE-2026-59971; SSE transport with no
@@ -177,6 +179,10 @@ available) before shipping:
     are not escaped. LOW)
   - @langchain/mongodb             >= 1.3.1   (CVE-2026-106119; MongoDBChatMessageHistory
     takes an object session id as a query condition)
+  - obsidian-tc                    1.0.0 <= v < 1.3.1  (CVE-2026-77366, CVE-2026-77363,
+    CVE-2026-77364, CVE-2026-77361, CVE-2026-77362; the HTTP transport's vault
+    binding and Origin checks, and three read-ACL gaps. One fix release, one rule,
+    a stated version required. `container_image_pins` reads the GHCR image)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -251,14 +257,17 @@ _Ver = tuple[int, int, int]
 #     `@toolbox-sdk/server-<os>-<arch>` binaries are not the launcher, and
 #     `postgres-mcp-server`, `awslabs.postgres-mcp-server` and `postgres-mcp-pro`
 #     are not `postgres-mcp`, `argocd-mcp-server` and `mcp-argocd` (other npm
-#     projects) and any `@scope/argocd-mcp` are not `argocd-mcp`, and the unscoped
-#     npm `1mcp` (buremba/1mcp, its own 0.1.x line) is not `@1mcp/agent`.
+#     projects) and any `@scope/argocd-mcp` are not `argocd-mcp`, the unscoped
+#     npm `1mcp` (buremba/1mcp, its own 0.1.x line) is not `@1mcp/agent`, and the
+#     scoped `@the-40-thieves/obsidian-tc` (a 0.0.1 placeholder) and the monorepo's
+#     `@the-40-thieves/obsidian-tc-*` parts are not the `obsidian-tc` server.
 #
 # `requires_version` marks the pins that report only a stated version, because
 # an unpinned reference resolves to a release the advisory does not cover:
 # mcp-remote (`npx mcp-remote` installs 0.14.x, and it sits in a large share of
-# all MCP configs), the MCP TypeScript SDKs, Payload's plugin and the two
-# LangChain.js integrations (`latest` resolved to a fixed release for each),
+# all MCP configs), the MCP TypeScript SDKs, Payload's plugin, the two
+# LangChain.js integrations and obsidian-tc (`latest` resolved to a fixed release
+# for each),
 # Claude Code (the CLI updates itself), pi-llm-wiki (upstream registers it by a
 # node_modules path, which states none), bare `mcp` (a lone `mcp` names too much
 # to report unversioned), and `next`, where only a declared version says which
@@ -411,7 +420,9 @@ _PINS: tuple[_Pin, ...] = (
     # (OPENAI_API_KEY / ANTHROPIC_API_KEY) from the environment and forwards them in
     # the Authorization: Bearer header to a caller-controlled `base_url` that clears
     # the SSRF guard → operator provider-key exfiltration. Fixed 2.26.6 (all prior
-    # versions affected, so no `introduced` bound).
+    # versions affected, so no `introduced` bound). CVE-2026-55786 (the HTTP MCP
+    # route runs `execute_module` unauthenticated, 2.26.2 to 2.26.3, fixed 2.26.4)
+    # sits under the same floor and joined the rule with no row change.
     _Pin("AAK-MCP-FLYTO-CVE-2026-67425-001", "flyto-core", ("flyto-core",),
          (2, 26, 6), fix_label="2.26.6"),
     # --- 2026-07-30..31 wave ---
@@ -813,6 +824,11 @@ _PINS: tuple[_Pin, ...] = (
     # for CVE-2026-77822 at all, and the project's GitHub advisory list stops at a
     # v1.0.8 patched-version. A floor inferred from either source alone would have
     # shipped one release short and called four vulnerable installs patched.
+    #
+    # Four more have since joined below the floor, no row change: CVE-2026-53710
+    # (1.0.2), CVE-2026-78573 (1.0.8), CVE-2026-53709 (a published default JWT key
+    # and the platform-admin bootstrap, fixed 1.0.2) and CVE-2026-53711 (an Admin
+    # UI stored XSS, fixed 0.3.1). No `introduced`, so every one of them fires.
     _Pin("AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001", "mcp-contextforge-gateway",
          ("mcp-contextforge-gateway",), (1, 0, 9),
          fix_label="1.0.9 (affected <= 1.0.8)"),
@@ -1216,6 +1232,20 @@ _PINS: tuple[_Pin, ...] = (
          (0, 10, 2), introduced=(0, 1, 0),
          fix_label="0.10.2; rotate any elvix API key used with the MCP server",
          ecosystem="js"),
+    # --- 2026-10-15 batch (#982-#986) ---
+    # obsidian-tc's HTTP transport let any token reach every configured vault
+    # (CVE-2026-77366, CVSS 9.9) and answered cross-origin requests on loopback
+    # (CVE-2026-77363, CVSS 8.8), and three read-ACL gaps ride the same fix
+    # (CVE-2026-77364, CVE-2026-77361, CVE-2026-77362). Checked in the npm
+    # tarballs: 1.0.1, 1.0.2 and 1.2.1 resolve each tool's `vault` argument against
+    # every vault and carry no Host or Origin check; 1.3.1 (38b4992, 6428bfe) has
+    # both guards. There is no 1.3.0. 0.0.1 is a placeholder with no server, so the
+    # pin starts at 1.0.0, and `latest` (1.33.1) is fixed, so a stated version is
+    # required: the README's own config is an unpinned `npx -y obsidian-tc`.
+    _Pin("AAK-MCP-OBSIDIANTC-CVE-2026-77366-001", "obsidian-tc", ("obsidian-tc",),
+         (1, 3, 1), introduced=(1, 0, 0),
+         fix_label="1.3.1 (affected 1.0.1 to 1.2.1)",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
