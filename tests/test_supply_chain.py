@@ -824,3 +824,34 @@ def test_fail_on_high_passes_an_unpinned_npx_launch(
     assert passed.exit_code == 0, passed.output
     failed = CliRunner().invoke(cli, ["scan", str(tmp_path), "--fail-on", "medium"])
     assert failed.exit_code == 1, failed.output
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    # No operator after the name: two `\s*` split the blank run every way.
+    ("requirements.txt", "litellm" + " " * 990_000 + "x\n"),
+    ("requirements.txt", "semantic-kernel" + " " * 990_000 + "x\n"),
+    # Every `git+https://` in one long token read to the token's end.
+    ("package-lock.json", '{"x": "' + "git+https://" * 82_000 + '"}'),
+    ("package.json", '{"dependencies": {"docsgpt": "' + "git+https://" * 82_000 + '"}}'),
+])
+def test_a_crafted_manifest_scans_in_linear_time(tmp_path: Path, name: str, content: str) -> None:
+    """About 1 MB. Before, 40,000 blanks after `litellm` took 5 seconds and
+    80 KB of `git+https://` 2.7, and both grew with the square. The bound is loose for slow CI runners."""
+    import time
+
+    (tmp_path / name).write_text(content, encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize(("requirement", "fires"), [
+    ("litellm==1.83.6", True),
+    ("litellm >= 1.83.6", True),
+    ("litellm\t1.83.6", True),
+    ("litellm==1.83.7", False),
+])
+def test_litellm_pin_keeps_its_version(tmp_path: Path, requirement: str, fires: bool) -> None:
+    (tmp_path / "requirements.txt").write_text(requirement + "\n", encoding="utf-8")
+    rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert any("LITELLM" in r for r in rule_ids) is fires

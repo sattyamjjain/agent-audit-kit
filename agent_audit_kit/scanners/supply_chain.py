@@ -497,9 +497,16 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 # this check to run even if that table hasn't been extended yet.
 # ---------------------------------------------------------------------------
 
+# A requirement's version after its name: blanks, an optional operator with its
+# own trailing blanks, then the version. The operator used to sit between two
+# `\s*`, so with no operator a blank run after the name was split between them
+# every possible way, and a crafted requirements file grew with the square of
+# the run. The same text matches, with the same version.
+_PY_VERSION_TAIL = r"\s*(?:(?:==|>=|~=|<=|<|>)\s*)?([0-9][\w.\-]*)"
+
 _DORIS_PATCHED = (0, 6, 1)
 _DORIS_VERSION_RE = re.compile(
-    r"apache-doris-mcp-server\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"apache-doris-mcp-server" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -899,7 +906,7 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
 
 _EXCEL_FIRST_PATCHED = (0, 1, 8)
 _EXCEL_VERSION_RE = re.compile(
-    r"excel-mcp-server\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"excel-mcp-server" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -1230,7 +1237,7 @@ def _scan_astro_mcp_query_concat(
 
 _LITELLM_PATCHED = (1, 83, 7)
 _LITELLM_VERSION_RE = re.compile(
-    r"(?<![\w-])litellm\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"(?<![\w-])litellm" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -1256,8 +1263,15 @@ _CHATGPT_MCP_PACKAGE_RE = re.compile(
 # git+https / git+ssh / GitHub shorthand pinned via package.json:
 # "chatgpt-mcp-server": "github:Toowiredd/chatgpt-mcp-server"
 # "chatgpt-mcp-server": "git+https://github.com/Toowiredd/chatgpt-mcp-server.git"
+#
+# Here and in the agent-zero, DocsGPT and gpt-researcher patterns below, the URL
+# is read up to the next `git+https://` rather than to the end of the token:
+# with `[^"\s]*`, every `git+https://` in a long token with no repository after
+# it read to the token's end, so a crafted lockfile grew with the square of the
+# token. A file matches exactly when it did; only the quoted evidence of a token
+# that holds two `git+` prefixes can differ.
 _CHATGPT_MCP_GIT_RE = re.compile(
-    r'(?:github:|git\+https?://[^"\s]*)?Toowiredd/chatgpt-mcp-server',
+    r'(?:github:|git\+https?://(?:(?!git\+https?://)[^"\s])*)?Toowiredd/chatgpt-mcp-server',
     re.IGNORECASE,
 )
 
@@ -1295,7 +1309,7 @@ _CHATGPT_MCP_GIT_RE = re.compile(
 # prefix and get flagged as the vulnerable project.
 _AGENT_ZERO_REPO = r'(?:frdel|agent0ai)/agent-zero(?![\w-])'
 _AGENT_ZERO_GIT_RE = re.compile(
-    r'(?:github:|git\+(?:https?|ssh)://[^"\s]*)?' + _AGENT_ZERO_REPO,
+    r'(?:github:|git\+(?:https?|ssh)://(?:(?!git\+(?:https?|ssh)://)[^"\s])*)?' + _AGENT_ZERO_REPO,
     re.IGNORECASE,
 )
 # A version-ish ref hanging off that git URL: `...agent-zero@v0.9.8`,
@@ -1445,11 +1459,11 @@ _DOCSGPT_LOCKLINE_RE = re.compile(
     re.IGNORECASE,
 )
 _DOCSGPT_GIT_RE = re.compile(
-    r'(?:github:|git\+https?://[^"\s]*)?arc53/DocsGPT',
+    r'(?:github:|git\+https?://(?:(?!git\+https?://)[^"\s])*)?arc53/DocsGPT',
     re.IGNORECASE,
 )
 _DOCSGPT_PYTHON_RE = re.compile(
-    r"\bdocsgpt(?:-mcp)?\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"\bdocsgpt(?:-mcp)?" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -1551,7 +1565,7 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
 
 _MCP_CALC_PATCHED = (0, 1, 1)
 _MCP_CALC_PYTHON_RE = re.compile(
-    r"\bmcp[-_]calculate[-_]server\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"\bmcp[-_]calculate[-_]server" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -1616,7 +1630,7 @@ def _check_mcp_calculate_server_pin(project_root: Path, scanned_files: set[str])
 
 _SEMANTIC_KERNEL_PATCHED = (1, 39, 4)
 _SEMANTIC_KERNEL_PYTHON_RE = re.compile(
-    r"\bsemantic[-_]kernel\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"\bsemantic[-_]kernel" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
@@ -1774,11 +1788,11 @@ _GPT_RESEARCHER_LOCKLINE_RE = re.compile(
     re.IGNORECASE,
 )
 _GPT_RESEARCHER_GIT_RE = re.compile(
-    r'(?:github:|git\+https?://[^"\s]*)?assafelovic/gpt-researcher',
+    r'(?:github:|git\+https?://(?:(?!git\+https?://)[^"\s])*)?assafelovic/gpt-researcher',
     re.IGNORECASE,
 )
 _GPT_RESEARCHER_PYTHON_RE = re.compile(
-    r"\bgpt[-_]researcher(?:-mcp)?\s*(?:==|>=|~=|<=|<|>)?\s*([0-9][\w.\-]*)",
+    r"\bgpt[-_]researcher(?:-mcp)?" + _PY_VERSION_TAIL,
     re.IGNORECASE,
 )
 
