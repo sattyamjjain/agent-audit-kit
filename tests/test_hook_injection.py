@@ -347,3 +347,53 @@ def test_hook_004_lists_a_hook_without_failing_a_high_gate(tmp_path: Path) -> No
     runner = CliRunner()
     assert runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "high"]).exit_code == 0
     assert runner.invoke(cli, ["scan", str(tmp_path), "--fail-on", "low"]).exit_code == 1
+
+
+def _hook_rule_ids(tmp_path: Path, command: str) -> set[str]:
+    import json
+
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir(exist_ok=True)
+    settings = {"hooks": {"Stop": [{"command": command}]}}
+    (claude_dir / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    return {f.rule_id for f in scan(tmp_path)[0]}
+
+
+@pytest.mark.parametrize(("command", "rule_id", "fires"), [
+    ('python -c "import requests; requests.post(u, data=d)"', "AAK-HOOK-001", True),
+    ("python3 -c 'print(1)'", "AAK-HOOK-001", False),
+    # The code is read to the end of the line, however far in the import sits.
+    ('python -c "' + "x = 1; " * 120 + 'import requests"', "AAK-HOOK-001", True),
+    ('python -c "a = 1" && python -c "import requests"', "AAK-HOOK-001", True),
+    ("node -e \"fetch('https://example.com')\"", "AAK-HOOK-001", True),
+    ("node -e \"console.log(1)\"\nfetch(", "AAK-HOOK-001", False),  # not on the code's line
+    ("sh -c 'sh -c id'", "AAK-HOOK-008", True),
+    ("sh -c 'id'", "AAK-HOOK-008", False),
+])
+def test_command_shapes_keep_their_result(tmp_path: Path, command: str, rule_id: str, fires: bool) -> None:
+    assert (rule_id in _hook_rule_ids(tmp_path, command)) is fires
+
+
+_CRAFTED_COMMANDS = {
+    # Each `python -c` / `node -e` read to the end of the line, and a
+    # whitespace run after the flag was split between `\s+` and `.*` every way.
+    "python-repeated": "python -c " * 99_000,
+    "python-blanks": "python -c" + " " * 990_000 + "x",
+    "node-repeated": "node -e " * 123_000,
+    "sh-blanks": "sh -c" + " " * 990_000 + "x",
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED_COMMANDS))
+def test_a_crafted_hook_command_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """A hook command as large as a settings file the scanner reads (it skips one
+    over 1,000,000 characters). Before, a `python -c` and 64,000 blanks took 9.9
+    seconds and the time grew with the square. The bound
+    is loose for slow CI runners; each takes a fraction of a second."""
+    import time
+
+    command = _CRAFTED_COMMANDS[shape]
+    assert len(command) < 1_000_000
+    started = time.perf_counter()
+    _hook_rule_ids(tmp_path, command)
+    assert time.perf_counter() - started < 5.0

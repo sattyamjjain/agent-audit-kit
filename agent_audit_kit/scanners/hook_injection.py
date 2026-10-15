@@ -15,10 +15,17 @@ from agent_audit_kit.scanners._helpers import (
 )
 
 # Network-capable commands
+# The inline-code arms used to read `\s+.*` after the flag, which split each
+# whitespace run between `\s+` and `.*` every possible way and let every
+# `python -c` / `node -e` on a line rescan to its end: a `python -c` and 64,000
+# blanks took 9.9 seconds, and the time grew with the square. Now `\s+`
+# takes the whole run and the code is read from its first non-space character,
+# and the read stops at the next `python -c` / `node -e`, which reaches the same
+# `import requests` / `fetch(` itself. A command matches exactly when it did.
 NETWORK_COMMANDS = re.compile(
     r"\b(curl|wget|nc|ncat|ssh|scp|rsync|ftp)\b|"
-    r"python\s+-c\s+.*import\s+requests|"
-    r"node\s+-e\s+.*fetch\(",
+    r"python\s+-c\s+(?:\S(?:(?!python\s+-c\s).)*?)?import\s+requests|"
+    r"node\s+-e\s+(?:\S(?:(?!node\s+-e\s).)*?)?fetch\(",
     re.IGNORECASE,
 )
 
@@ -60,8 +67,11 @@ PRIVILEGE_PATTERNS = re.compile(
 )
 
 # Obfuscation indicators
+# A nested `sh -c` is read from the first non-space character after the outer
+# one's whitespace. `\s+.*` split that run between `\s+` and `.*` every possible
+# way, so a long run with no second `sh -c` grew with the square.
 OBFUSCATION_PATTERNS = re.compile(
-    r"(\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|sh\s+-c\s+.*sh\s+-c)",
+    r"(\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|sh\s+-c\s+(?:\S.*?)?sh\s+-c)",
 )
 
 # An embedded encoded payload (AAK-HOOK-008): 64 or more base64 characters in
