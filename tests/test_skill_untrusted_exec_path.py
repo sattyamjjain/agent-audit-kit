@@ -14,7 +14,10 @@ pinned binary PASSES. SARIF output carries the rule ID + CWE-426 + the fix hint.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.models import ScanResult
 from agent_audit_kit.output.sarif import format_results
@@ -175,3 +178,27 @@ subprocess.run([brew, "install", "ripgrep"])
     assert "absolute path" in blob
     # CVE tag carried
     assert "CVE-2026-53819" in rule_obj["properties"]["tags"]
+
+
+@pytest.mark.parametrize(("line", "tainted"), [
+    ("export PATH=bin:$PATH", True),
+    ("export PATH=/usr/bin:$PATH", False),
+    ("export PATH=bin export PATH=/x:$PATH", True),
+    ("export PATH=bin\n:$PATH", False),
+    ('export PATH="/opt":$PATH', False),
+])
+def test_path_prepend_keeps_its_shape(line: str, tainted: bool) -> None:
+    from agent_audit_kit.scanners.skill_untrusted_exec_path import _SH_TAINT_PATH_RE
+
+    assert bool(_SH_TAINT_PATH_RE.search(line)) is tainted
+
+
+def test_a_line_of_path_exports_reads_in_linear_time() -> None:
+    """1 MB of `export PATH=x ` and no `:$PATH`. Each export read the rest of
+    the line: 80 KB took 0.14 seconds and the time grew with the square. The
+    bound is loose for slow CI runners."""
+    from agent_audit_kit.scanners.skill_untrusted_exec_path import _SH_TAINT_PATH_RE
+
+    started = time.perf_counter()
+    _SH_TAINT_PATH_RE.search("export PATH=x " * 72_000)
+    assert time.perf_counter() - started < 5.0

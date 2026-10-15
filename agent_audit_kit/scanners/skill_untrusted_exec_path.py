@@ -65,8 +65,11 @@ _PIN_RE = re.compile(
 )
 
 # Shell: a PATH prepend with a non-absolute element, or sourcing a workspace .env.
+# The line after `export PATH=<non-abs>` stops at the next such export, which
+# reads on itself: with `[^\n]*` alone a line of them and no `:$PATH` was read to
+# its end once per export.
 _SH_TAINT_PATH_RE = re.compile(
-    r"export\s+PATH=(?![\"']?/)[^\n]*:\$PATH"     # PATH=<non-abs>:$PATH
+    r"export\s+PATH=(?![\"']?/)(?:(?!export\s+PATH=(?![\"']?/))[^\n])*:\$PATH"     # PATH=<non-abs>:$PATH
     r"|PATH=\.[:/]"                                 # PATH=.: or PATH=./...
     r"|export\s+PATH=\$\(pwd\)|export\s+PATH=\$PWD",
 )
