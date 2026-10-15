@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.policy_truncation import scan
 
@@ -188,3 +190,30 @@ def test_short_slice_bounds_are_ignored(tmp_path: Path) -> None:
     }
     """
     assert RULE not in _ids(_write(tmp_path, "bridge.js", src))
+
+
+_CRAFTED_SOURCES = {
+    # Every character of a long word or blank run began a truncation attempt.
+    ("x.js", "word"): "const denyList = [];\n" + "a" * 990_000,
+    ("x.js", "blanks"): "const denyList = [];\n" + " " * 990_000 + "x",
+    ("x.py", "word"): "deny_list = []\n" + "a" * 990_000,
+    # Every unclosed `/*` was read to the end of the file.
+    ("x.js", "open-comments"): "const denyList = [];\n" + "/* a" * 247_000,
+    # Every `search(` read its arguments to the first `)`.
+    ("x.js", "calls"): "const denyList = [];\nconst short = cmd.slice(0, 50);\n" + "search(" * 141_000,
+}
+
+
+@pytest.mark.parametrize(("name", "shape"), sorted(_CRAFTED_SOURCES))
+def test_a_crafted_source_scans_in_linear_time(tmp_path: Path, name: str, shape: str) -> None:
+    """Just under the scanner's 1,000,000-byte cap, with a deny context so the
+    truncation patterns run. Before, 80 KB of `search(` took 0.29 seconds,
+    and every shape grew with the square. The bound is loose for slow CI runners."""
+    import time
+
+    content = _CRAFTED_SOURCES[(name, shape)]
+    assert len(content) < 1_000_000
+    _write(tmp_path, name, content)
+    started = time.perf_counter()
+    _ids(tmp_path)
+    assert time.perf_counter() - started < 5.0

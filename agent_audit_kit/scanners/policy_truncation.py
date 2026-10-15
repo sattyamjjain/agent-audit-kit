@@ -43,15 +43,26 @@ _RULE_ID = "AAK-POLICY-TRUNCATION-001"
 _MAX_FILE_BYTES = 1_000_000
 
 # `const short = cmd.slice(0, 500)` / `.substring(0, 500)` / `.substr(0, 500)`
+#
+# Both patterns start a match only where one could first succeed. Their old
+# openings, `(?:const|let|var)?\s*` and a bare name, began an attempt at every
+# character of a long word or blank run and read to its end, so a crafted
+# source file grew with the square of the run. A JS match now starts at the
+# start of a blank run (the name after it is read whole), at the start of a word
+# run past any leading digits (a leading `const` / `let` / `var` is dropped from
+# the name, as before), or at one of those words that ends a run; a Python match
+# at the start of a word run past any leading digits. Every other start failed
+# for the same reason as one of these, so the matches are the same.
 _JS_TRUNC_RE = re.compile(
-    r"""(?:const|let|var)?\s*(?P<var>[A-Za-z_$][\w$]*)\s*=\s*
+    r"""(?:(?<!\s)\s+|(?<![\w$])[^\W_A-Za-z]*(?:(?:const|let|var)\s*)?|(?:const|let|var)(?![\w$])\s*)
+        (?P<var>[A-Za-z_$][\w$]*)\s*=\s*
         (?P<src>[A-Za-z_$][\w$.\[\]]*)\s*\.\s*
         (?:slice|substring|substr)\s*\(\s*0\s*,\s*(?P<n>\d{2,})\s*\)""",
     re.VERBOSE,
 )
 # `short = cmd[:500]`
 _PY_TRUNC_RE = re.compile(
-    r"""(?P<var>[A-Za-z_]\w*)\s*=\s*
+    r"""(?<!\w)[^\W_A-Za-z]*(?P<var>[A-Za-z_]\w*)\s*=\s*
         (?P<src>[A-Za-z_][\w.\[\]]*)\s*\[\s*:\s*(?P<n>\d{2,})\s*\]""",
     re.VERBOSE,
 )
@@ -72,10 +83,20 @@ _DENY_CONTEXT_RE = re.compile(
 # argument positions, because the idiom differs by language: JS tends to put the
 # subject first (`target.match(p)`, `p.test(target)`) while Python's `re` module
 # puts it last (`re.search(pattern, target)`).
+#
+# The call form reads its arguments up to the next call of the same names as
+# well as up to `)`: with a bare `[^)]*`, every `search(` in a file of them read
+# to the first `)`: 80,000 characters took 0.29 seconds and the time grew with
+# the square of the file. A call nested in the arguments before `, var)` reads the
+# rest itself, so the match is the inner call, and tests inside the outer call's
+# arguments are no longer swallowed by it. The deny-context window around the
+# inner call is inside the outer one's, so the decision can differ only when the
+# deny word is more than 400 characters before the inner call.
+_TEST_CALL = r"\b(?:search|match|fullmatch|findall|test|exec)\s*\("
 _TEST_TEMPLATE = (
     r"(?:{var}\s*\.\s*(?:match|search|test|includes|startsWith|indexOf)\s*\()"
     r"|(?:\.\s*(?:test|exec|search|match|fullmatch)\s*\(\s*{var}\s*\))"
-    r"|(?:\b(?:search|match|fullmatch|findall|test|exec)\s*\([^)]*,\s*{var}\s*\))"
+    r"|(?:" + _TEST_CALL + r"(?:(?!" + _TEST_CALL + r")[^)])*,\s*{var}\s*\))"
     r"|(?:\bin\s+{var}\b)"
     r"|(?:{var}\s+in\b)"
     r"|(?:\(\s*{var}\s*\))"
