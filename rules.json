@@ -10677,9 +10677,9 @@
       "auto_fixable": false,
       "category": "transport-security",
       "cve_references": [],
-      "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP. **Applies to: `sse` only** -- matched from an explicit `\"transport\": \"sse\"` or a `/sse` path in the URL. **Does not apply to: `stdio`, `http`/`streamable-http`, or `ws`/`wss`.** WebSocket is a different transport, not a deprecated one: it is outside this rule rather than silently passing it.",
+      "description": "An MCP server uses deprecated Server-Sent Events (SSE) transport instead of Streamable HTTP. **Applies to: `sse` only** -- matched from an explicit `\"type\": \"sse\"` or `\"transport\": \"sse\"` (any case), or a `/sse` path in the URL. **Does not apply to: `stdio`, `http`/`streamable-http`, or `ws`/`wss`.** WebSocket is a different transport, not a deprecated one: it is outside this rule rather than silently passing it.",
       "incident_references": [],
-      "limitations": "Fires on a server whose `url` contains `/sse` as a whole word (`/sse_events` does not count) or whose `transport` key is `sse`. A server declared with `\"type\": \"sse\"`, the key Claude Code and VS Code configs use, at a URL without a whole-word `/sse` is not matched.",
+      "limitations": "Fires once per server, on a `type` or `transport` key set to `sse` in any case, or else on a `url` that contains `/sse` as a whole word (`/sse_events` does not count). A server that names SSE only under another key, such as `transportType`, at a URL without a whole-word `/sse` is not matched.",
       "owasp_agentic_references": [
         "ASI07"
       ],

@@ -52,6 +52,11 @@ _SSL_CERT_OVERRIDE_KEY = "SSL_CERT_FILE"
 
 # ---- AAK-TRANSPORT-003: SSE transport indicators ----
 _SSE_URL_RE = re.compile(r"/sse\b", re.IGNORECASE)
+# The keys a client config declares a server's transport under. `type` is the
+# one Claude Code and VS Code write. The rule read `transport` alone, so
+# on the State of MCP corpus it missed 11 of the 47 configs that declare SSE:
+# each a `"type": "sse"` server at a URL without a whole-word `/sse`.
+_TRANSPORT_KEYS = ("transport", "type")
 
 # ---- AAK-TRANSPORT-004: Token in URL query string ----
 _TOKEN_QUERY_RE = re.compile(
@@ -91,8 +96,6 @@ def _check_server(
     _raw_url = server_cfg.get("url", "")
     url: str = _raw_url if isinstance(_raw_url, str) else ""
     env: dict[str, Any] = server_cfg.get("env", {})
-    _raw_transport = server_cfg.get("transport", "")
-    transport: str = _raw_transport if isinstance(_raw_transport, str) else ""
 
     # AAK-TRANSPORT-001: cleartext http:// or ws://, excluding loopback
     if url and _CLEARTEXT_URL_RE.match(url) and not is_loopback_url(url):
@@ -126,20 +129,31 @@ def _check_server(
                 find_line_number(raw_text, _SSL_CERT_OVERRIDE_KEY),
             ))
 
-    # AAK-TRANSPORT-003: Deprecated SSE transport
-    if url and _SSE_URL_RE.search(url):
+    # AAK-TRANSPORT-003: Deprecated SSE transport, reported once per server: by
+    # the key that declares it when the server has one, otherwise by its URL.
+    # Read as two independent checks, a `type: sse` server at an `/sse` URL, the
+    # commonest shape, would be reported twice, as one with `transport: sse`
+    # was. The line is the server's own `url` line when it has one: the first
+    # "sse" anywhere in the file can sit in another server, or in a name such as
+    # `assessment`.
+    declared = next(
+        (key for key in _TRANSPORT_KEYS
+         if isinstance(server_cfg.get(key), str) and server_cfg[key].lower() == "sse"),
+        None,
+    )
+    if declared is not None:
+        findings.append(make_finding(
+            "AAK-TRANSPORT-003",
+            rel_path,
+            f"Server '{server_name}' {declared}: sse (deprecated)",
+            find_line_number(raw_text, url) if url else find_line_number(raw_text, "sse"),
+        ))
+    elif url and _SSE_URL_RE.search(url):
         findings.append(make_finding(
             "AAK-TRANSPORT-003",
             rel_path,
             f"Server '{server_name}' URL contains /sse: {url}",
             find_line_number(raw_text, url),
-        ))
-    if isinstance(transport, str) and transport.lower() == "sse":
-        findings.append(make_finding(
-            "AAK-TRANSPORT-003",
-            rel_path,
-            f"Server '{server_name}' transport: sse (deprecated)",
-            find_line_number(raw_text, "sse"),
         ))
 
     # AAK-TRANSPORT-004: Token / key / secret in URL query string

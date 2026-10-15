@@ -1,11 +1,11 @@
 {
   "mcpServers": {
     "x": {
-      "type": "sse",
+      "transportType": "sse",
       "url": "https://mcp.example.com/events"
     },
     "y": {
-      "type": "sse",
+      "transportType": "sse",
       "url": "https://mcp.example.com/sse_events"
     }
   }

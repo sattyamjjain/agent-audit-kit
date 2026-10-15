@@ -197,6 +197,50 @@ def test_sse_transport_field_flagged(tmp_path: Path) -> None:
     assert len(transport_003) >= 1, "transport: sse should trigger AAK-TRANSPORT-003"
 
 
+@pytest.mark.parametrize("value", ["sse", "SSE", "Sse"])
+def test_sse_type_field_flagged(tmp_path: Path, value: str) -> None:
+    """`type` is the key Claude Code and VS Code declare a transport under.
+
+    The rule read `transport` alone, so a `type: sse` server at a URL without a
+    whole-word `/sse` passed: 11 of the 47 State of MCP configs that declare SSE.
+    """
+    _write_mcp_config(tmp_path, {"x": {"type": value, "url": "https://mcp.example.com/events"}})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-003"]
+    assert [f.evidence for f in hits] == ["Server 'x' type: sse (deprecated)"]
+
+
+@pytest.mark.parametrize("key", ["type", "transport"])
+def test_a_declared_sse_server_at_an_sse_url_is_reported_once(tmp_path: Path, key: str) -> None:
+    """One server, one finding: the declaring key is the evidence, the URL is not a second."""
+    _write_mcp_config(tmp_path, {"x": {key: "sse", "url": "https://mcp.example.com/sse"}})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-003"]
+    assert [f.evidence for f in hits] == [f"Server 'x' {key}: sse (deprecated)"]
+
+
+def test_another_transport_type_is_not_sse(tmp_path: Path) -> None:
+    _write_mcp_config(tmp_path, {
+        "h": {"type": "http", "url": "https://mcp.example.com/mcp"},
+        "s": {"type": "streamable-http", "url": "https://mcp.example.com/stream"},
+    })
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-003"]
+
+
+def test_a_declared_sse_finding_sits_on_its_own_server(tmp_path: Path) -> None:
+    """The line is the server's `url` line, not the file's first "sse".
+
+    An earlier server named `assessment` holds an "sse" too, and the old search
+    put the finding on its line.
+    """
+    text = json.dumps({"mcpServers": {
+        "assessment": {"type": "http", "url": "https://grader.example.com/mcp"},
+        "events": {"type": "sse", "url": "https://mcp.example.com/events"},
+    }}, indent=2)
+    (tmp_path / ".mcp.json").write_text(text, encoding="utf-8")
+    (hit,) = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-003"]
+    lines = text.splitlines()
+    assert "https://mcp.example.com/events" in lines[hit.line_number - 1]
+
+
 def test_various_token_query_params(tmp_path: Path) -> None:
     """Various credential-like query params should trigger AAK-TRANSPORT-004."""
     servers = {

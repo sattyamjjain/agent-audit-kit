@@ -1,7 +1,7 @@
 {
   "servers": {
     "x": {
-      "type": "sse",
+      "transportType": "sse",
       "url": "https://mcp.example.com/events"
     }
   }
