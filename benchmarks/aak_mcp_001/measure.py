@@ -71,6 +71,7 @@ REPO = HERE.parents[1]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
+from agent_audit_kit.redaction import redact_evidence  # noqa: E402
 from agent_audit_kit.scanners import mcp_config  # noqa: E402
 
 RESEARCH = REPO / "research" / "state-of-mcp-2026"
@@ -242,7 +243,11 @@ def scan_corpus(corpus: Path, manifest: Path | None) -> list[dict[str, Any]]:
         seen.add(key)
         result = rr._scan_text(text)
         derived = hits_for(text)
-        expected = Counter(_EVIDENCE.format(name=n, url=u) for n, _, u in derived)
+        # The engine masks credentials in evidence (agent_audit_kit.redaction),
+        # so the derived strings go through the same mask before comparing.
+        expected = Counter(
+            redact_evidence(_EVIDENCE.format(name=n, url=u)) for n, _, u in derived
+        )
         actual = Counter(f.evidence for f in result.findings if f.rule_id == RULE)
         if expected != actual:
             raise MeasurementError(
