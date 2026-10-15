@@ -42,11 +42,16 @@ _TS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 # TS: a `.replace(` whose first arg is a regex/string carrying a ${...}
 # placeholder, followed (same call) by a replacer that reads process.env.
 # Tolerant of escaping (\$\{ in a regex literal) and whitespace/newlines.
+#
+# The read for the placeholder stops at the next `.replace(` as well as at `;`.
+# With a bare `[^;]*?`, every `.replace(` in a file of them with no `;` read to
+# the end of the file: 40,000 characters took 0.63 seconds and the time grew with
+# the square. A later `.replace(` reaches the same placeholder itself, so a file matches exactly when it did.
 _TS_ENV_PLACEHOLDER_RE = re.compile(
-    r"\.replace\s*\(\s*"          # .replace(
-    r"[^;]*?\\?\$\\?\{"           # first arg carries a ${ placeholder
-    r"[^;]{0,200}?"               # ...up to the replacer (escaping-tolerant)
-    r"process\.env",              # ...which reads process.env
+    r"\.replace\s*\("                                 # .replace(
+    r"(?:(?!\.replace\s*\()[^;])*?\\?\$\\?\{"      # first arg carries a ${ placeholder
+    r"[^;]{0,200}?"                                    # ...up to the replacer (escaping-tolerant)
+    r"process\.env",                                   # ...which reads process.env
     re.DOTALL,
 )
 

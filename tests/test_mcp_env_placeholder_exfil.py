@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.mcp_env_placeholder_exfil import scan
 
@@ -137,3 +139,32 @@ function connectMcp(url: string) { return fetch(url); }
 ''')
     findings, _ = scan(tmp_path)
     assert not _hits(findings), "commented-out pattern must not fire"
+
+
+# ---------------------------------------------------------------------------
+# A crafted file reads in linear time, and the call shapes keep their result.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("src", "fires"), [
+    ('const u = url.replace(/\\$\\{(\\w+)\\}/g, (_, k) => process.env[k]);\n', True),
+    # A second `.replace(` before the placeholder reads it too.
+    ('const u = a.replace("x", y.replace(/\\$\\{(\\w+)\\}/g, (_, k) => process.env[k]));\n', True),
+    ('const u = url.replace(/x/g, "y"); const k = process.env.KEY;\n', False),  # a `;` ends the call
+])
+def test_replace_shapes_keep_their_result(tmp_path: Path, src: str, fires: bool) -> None:
+    _write(tmp_path, "mcp.ts", 'import { McpServer } from "@modelcontextprotocol/sdk";\n' + src)
+    findings, _ = scan(tmp_path)
+    assert bool(_hits(findings)) is fires
+
+
+@pytest.mark.parametrize("unit", [".replace(", ".replace(${", "/* a"])
+def test_a_crafted_source_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """About 1 MB of `.replace(` with no `;`: every call read on to the end of the
+    file, and every unclosed `/*` did too. The bound is loose for slow CI runners."""
+    import time
+
+    _write(tmp_path, "mcp.ts", 'import { McpServer } from "@modelcontextprotocol/sdk";\n' + unit * (990_000 // len(unit)))
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
