@@ -114,7 +114,10 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
 
     # APPS-001: iframe sandbox.
-    unsafe_iframe = next((t for t in _IFRAME_TAG_RE.findall(text) if _iframe_unsafe(t)), None)
+    # Only up to the last `>`: past it no tag closes, and each `<iframe` there
+    # read `[^>]*` to the end of the file.
+    tags = _IFRAME_TAG_RE.findall(text, 0, text.rfind(">") + 1)
+    unsafe_iframe = next((t for t in tags if _iframe_unsafe(t)), None)
     if unsafe_iframe is not None:
         findings.append(make_finding(
             "AAK-MCP-APPS-001",

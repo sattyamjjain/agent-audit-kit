@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 
 from agent_audit_kit.models import ScanResult
@@ -75,3 +76,14 @@ def test_sarif_shape_unchanged(tmp_path: Path) -> None:
     assert "fixes" not in result
     assert result["properties"]["remediation"]
     assert float(rule["properties"]["security-severity"]) >= 7.0
+
+
+def test_unclosed_iframe_tags_scan_in_linear_time(tmp_path: Path) -> None:
+    """About 1 MB of `<iframe` and no `>`, under the scanner's cap. Each tag
+    read the rest of the file: 1 MB took 45 seconds. The bound is loose for
+    slow CI runners."""
+    src = "// @mcp-ui/client ui://\n" + "<iframe" * 140_000
+    started = time.perf_counter()
+    ids = _ids(tmp_path, "App.tsx", src)
+    assert time.perf_counter() - started < 5.0
+    assert "AAK-MCP-APPS-001" not in ids
