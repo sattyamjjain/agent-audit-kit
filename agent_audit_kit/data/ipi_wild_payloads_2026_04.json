@@ -7,7 +7,7 @@
     {
       "id": "IPI-2026-04-WILD-01",
       "label": "ignore-prior + exfil",
-      "regex": "(?i)ignore\\s+(?:(?:all|any|previous|prior|preceding|earlier|above)\\s+)+(?:instructions|tools|prompts?).*?(?:read|cat|leak|exfil|send|post|upload)",
+      "regex": "(?i)(?:(?=ignore[^\\S\\n]+(?:(?:all|any|previous|prior|preceding|earlier|above)[^\\S\\n]+)+(?:instructions|tools|prompts?))ignore\\s+(?:(?:all|any|previous|prior|preceding|earlier|above)\\s+)+(?:instructions|tools|prompts?)(?:(?!ignore\\s+(?:(?:all|any|previous|prior|preceding|earlier|above)\\s+)+(?:instructions|tools|prompts?)).)*?|(?!ignore[^\\S\\n]+(?:(?:all|any|previous|prior|preceding|earlier|above)[^\\S\\n]+)+(?:instructions|tools|prompts?))ignore\\s+(?:(?:all|any|previous|prior|preceding|earlier|above)\\s+)+(?:instructions|tools|prompts?).*?)(?:read|cat|leak|exfil|send|post|upload)",
       "severity": "critical",
       "first_seen": "2026-04-24",
       "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/",
@@ -16,7 +16,7 @@
     {
       "id": "IPI-2026-04-WILD-02",
       "label": "system-role override",
-      "regex": "(?i)<\\|?(?:system|admin|root)\\|?>.*?(?:execute|run|fetch|disclose)",
+      "regex": "(?i)<\\|?(?:system|admin|root)\\|?>(?:(?!<\\|?(?:system|admin|root)\\|?>).)*?(?:execute|run|fetch|disclose)",
       "severity": "high",
       "first_seen": "2026-04-24",
       "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
@@ -32,7 +32,7 @@
     {
       "id": "IPI-2026-04-WILD-04",
       "label": "credential exfil via cURL",
-      "regex": "(?i)curl\\s+[^\\n]*(?:GITHUB_TOKEN|GH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET)",
+      "regex": "(?i)curl(?:(?=([^\\S\\n]+))\\1(?!\\n)(?:(?!curl\\s)[^\\n])*|(?=[^\\S\\n]*\\n)(?=(\\s+))\\2[^\\n]*)(?:GITHUB_TOKEN|GH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET)",
       "severity": "critical",
       "first_seen": "2026-04-24",
       "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
@@ -56,7 +56,7 @@
     {
       "id": "IPI-2026-04-WILD-07",
       "label": "admin role escalation",
-      "regex": "(?i)(?:assume|elevate|sudo).*?(?:admin|root|superuser).*?(?:privileges|permissions)",
+      "regex": "(?i)(?:assume|elevate|sudo)(?:(?!assume|elevate|sudo).)*?(?:admin|root|superuser)(?:(?!admin|root|superuser).)*?(?:privileges|permissions)",
       "severity": "high",
       "first_seen": "2026-04-24",
       "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
@@ -64,7 +64,7 @@
     {
       "id": "IPI-2026-04-WILD-08",
       "label": "obfuscated prompt break",
-      "regex": "(?i)\\\\u006e\\\\u0065\\\\u0077.*?(?:instructions?|prompt)",
+      "regex": "(?i)\\\\u006e\\\\u0065\\\\u0077(?:(?!\\\\u006e\\\\u0065\\\\u0077).)*?(?:instructions?|prompt)",
       "severity": "medium",
       "first_seen": "2026-04-24",
       "source_url": "https://www.helpnetsecurity.com/2026/04/24/indirect-prompt-injection-in-the-wild/"
@@ -72,7 +72,7 @@
     {
       "id": "IPI-2026-04-WILD-09",
       "label": "image-attached IPI",
-      "regex": "(?i)\\[image:.*?\\].*?(?:instructions?|ignore)",
+      "regex": "(?i)\\[image:(?:(?!\\[image:).)*?\\](?:(?!\\]).)*?(?:instructions?|ignore)",
       "severity": "medium",
       "first_seen": "2026-04-24",
       "source_url": "https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/"
@@ -80,7 +80,7 @@
     {
       "id": "IPI-2026-04-WILD-10",
       "label": "RAG-poisoned document",
-      "regex": "(?i)<!--\\s*PROMPT_INJECT.*?-->",
+      "regex": "(?i)(?:(?=<!--[^\\S\\n]*PROMPT_INJECT)<!--\\s*PROMPT_INJECT(?:(?!<!--\\s*PROMPT_INJECT).)*?|(?!<!--[^\\S\\n]*PROMPT_INJECT)<!--\\s*PROMPT_INJECT.*?)-->",
       "severity": "high",
       "first_seen": "2026-04-24",
       "source_url": "https://www.infosecurity-magazine.com/news/researchers-10-wild-indirect/"
