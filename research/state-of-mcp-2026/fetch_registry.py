@@ -13,6 +13,8 @@ reproducible from the committed manifest without hitting the network.
 
 Usage:
     python research/state-of-mcp-2026/fetch_registry.py --target 5000
+    # re-convert the raw pages cached by an earlier fetch, offline, keeping its date
+    python research/state-of-mcp-2026/fetch_registry.py --from-cache --fetched-at 2026-07-26
 """
 
 from __future__ import annotations
@@ -73,6 +75,35 @@ def _auth_mode(server: dict[str, Any]) -> str:
     return "unknown"
 
 
+def _launch_spec(registry: str, ident: str, version: str | None) -> str:
+    """The package spec a converted config launches, at the version the record states.
+
+    A registry package names one release (`packages[].version`), and that is
+    the release a client following the record installs. Up to report v1.0 the
+    conversion dropped it, so all 161 npm and PyPI configs in the 2026-07-26
+    snapshot were unpinned launches by construction, and the corpus measured
+    the converter rather than the servers.
+
+    npm takes `name@1.2.3`. PyPI takes uvx's own spelling, `name@1.2.3`:
+    AAK-SUPPLY-001 reads it as an exact pin, as it does `name==1.2.3`, but
+    AAK-MCP-007 counts any argument without an `@` as unpinned. An OCI image
+    takes `:1.2.3` only when its reference names neither a tag nor a digest
+    (a `:` before the last `/` is a registry port). An identifier that
+    already carries a version, and a record that states none, are left as
+    they are.
+    """
+    if not version:
+        return ident
+    if registry == "npm":
+        return ident if "@" in ident[1:] else f"{ident}@{version}"
+    if registry == "pypi":
+        return ident if any(c in ident for c in "@=<>!~") else f"{ident}@{version}"
+    if registry == "oci":
+        has_tag = ":" in ident.rsplit("/", 1)[-1]
+        return ident if has_tag or "@" in ident else f"{ident}:{version}"
+    return ident
+
+
 def _to_config(server: dict[str, Any]) -> dict[str, Any] | None:
     """Synthesise a scannable `.mcp.json`-shaped config from a registry server."""
     name = server.get("name") or "server"
@@ -105,12 +136,13 @@ def _to_config(server: dict[str, Any]) -> dict[str, Any] | None:
         p = packages[0]
         reg = (p.get("registryType") or p.get("registry_name") or "").lower()
         ident = p.get("identifier") or name
+        spec = _launch_spec(reg, ident, p.get("version"))
         if reg == "npm":
-            cmd, args = "npx", ["-y", ident]
+            cmd, args = "npx", ["-y", spec]
         elif reg == "pypi":
-            cmd, args = "uvx", [ident]
+            cmd, args = "uvx", [spec]
         elif reg == "oci":
-            cmd, args = "docker", ["run", "-i", "--rm", ident]
+            cmd, args = "docker", ["run", "-i", "--rm", spec]
         else:
             cmd, args = ident, []
         env = {}
@@ -121,6 +153,56 @@ def _to_config(server: dict[str, Any]) -> dict[str, Any] | None:
             entry["env"] = env
         return {"mcpServers": {key: entry}}
     return None
+
+
+def _collect(data: dict[str, Any], records: dict[str, dict[str, Any]]) -> None:
+    """Fold one raw registry page into `records` (name -> latest active record)."""
+    for e in data.get("servers", []):
+        server = e.get("server") or {}
+        meta = (e.get("_meta") or {}).get("io.modelcontextprotocol.registry/official") or {}
+        if not meta.get("isLatest"):
+            continue
+        if meta.get("status") and meta["status"] != "active":
+            continue
+        name = server.get("name")
+        if not name:
+            continue
+        config = _to_config(server)
+        if config is None:
+            continue
+        src = None
+        if server.get("remotes"):
+            src = (server["remotes"][0] or {}).get("url")
+        src = src or f"{REGISTRY}?search={name}"
+        records[name] = {
+            "name": name,
+            "version": server.get("version"),
+            "transport": _transport_of(server),
+            "auth_mode": _auth_mode(server),
+            "source_url": src,
+            "registry_status": meta.get("status"),
+            "published_at": meta.get("publishedAt"),
+            "fetched_at": data.get("_fetched_at"),
+            "config": config,
+        }
+
+
+def from_cache(cache_dir: Path) -> list[dict[str, Any]]:
+    """Rebuild the records offline from the raw pages a previous `fetch` cached.
+
+    Pages are folded in page order, the order `fetch` walked them, so a server
+    listed on two pages keeps the record `fetch` kept. This re-converts a
+    snapshot without touching the network: the registry's servers, versions
+    and metadata are the ones on the cached pages, and only the conversion
+    is today's. The pages record no fetch date, so the caller supplies it.
+    """
+    pages = sorted(cache_dir.glob("page-*.json"))
+    if not pages:
+        raise SystemExit(f"no cached registry pages (page-*.json) in {cache_dir}")
+    records: dict[str, dict[str, Any]] = {}
+    for path in pages:
+        _collect(json.loads(path.read_text(encoding="utf-8")), records)
+    return list(records.values())
 
 
 def fetch(target: int, page_size: int = 100, max_pages: int = 40, sleep: float = 0.4) -> list[dict[str, Any]]:
@@ -135,34 +217,7 @@ def fetch(target: int, page_size: int = 100, max_pages: int = 40, sleep: float =
         (CACHE_DIR / f"page-{page:03d}.json").write_text(
             json.dumps(data, indent=2), encoding="utf-8"
         )
-        for e in data.get("servers", []):
-            server = e.get("server") or {}
-            meta = (e.get("_meta") or {}).get("io.modelcontextprotocol.registry/official") or {}
-            if not meta.get("isLatest"):
-                continue
-            if meta.get("status") and meta["status"] != "active":
-                continue
-            name = server.get("name")
-            if not name:
-                continue
-            config = _to_config(server)
-            if config is None:
-                continue
-            src = None
-            if server.get("remotes"):
-                src = (server["remotes"][0] or {}).get("url")
-            src = src or f"{REGISTRY}?search={name}"
-            records[name] = {
-                "name": name,
-                "version": server.get("version"),
-                "transport": _transport_of(server),
-                "auth_mode": _auth_mode(server),
-                "source_url": src,
-                "registry_status": meta.get("status"),
-                "published_at": meta.get("publishedAt"),
-                "fetched_at": data.get("_fetched_at"),
-                "config": config,
-            }
+        _collect(data, records)
         cursor = (data.get("metadata") or {}).get("nextCursor")
         print(f"page {page}: {len(records)} distinct latest servers so far"
               f" (cursor={'…' if cursor else 'END'})")
@@ -183,21 +238,34 @@ def main() -> int:
                              "tests/test_corpus_target_consistency.py.")
     parser.add_argument("--fetched-at", default=None,
                         help="Override the fetch date stamp (ISO, for reproducibility).")
+    parser.add_argument("--from-cache", nargs="?", const=str(CACHE_DIR), default=None,
+                        metavar="DIR",
+                        help="Rebuild the manifest offline from the raw pages cached in DIR "
+                             "(default: cache/ beside this script) instead of fetching. "
+                             "Needs --fetched-at: the pages record no fetch date, and the "
+                             "manifest keeps the snapshot's, not today's.")
+    parser.add_argument("--out", type=Path, default=MANIFEST,
+                        help="Where to write the manifest (default: corpus/registry-manifest.json).")
     args = parser.parse_args()
 
-    records = fetch(args.target)
+    if args.from_cache is not None:
+        if not args.fetched_at:
+            parser.error("--from-cache needs --fetched-at (the date the cached pages were fetched)")
+        records = from_cache(Path(args.from_cache))
+    else:
+        records = fetch(args.target)
     stamp = args.fetched_at or time.strftime("%Y-%m-%d", time.gmtime())
     for r in records:
         r["fetched_at"] = stamp
-    CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     manifest = {
         "source": REGISTRY,
         "fetched_at": stamp,
         "distinct_latest_servers": len(records),
         "servers": sorted(records, key=lambda r: r["name"]),
     }
-    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {MANIFEST} — {len(records)} distinct latest-version servers")
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote {args.out} — {len(records)} distinct latest-version servers")
     return 0
 
 

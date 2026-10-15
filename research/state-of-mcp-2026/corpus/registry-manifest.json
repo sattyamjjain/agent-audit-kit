@@ -165,7 +165,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@adeu/mcp-server"
+              "@adeu/mcp-server@1.7.1"
             ]
           }
         }
@@ -246,7 +246,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@aetherwealth/mcp"
+              "@aetherwealth/mcp@0.2.2"
             ]
           }
         }
@@ -432,7 +432,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agenttrust/mcp-server"
+              "@agenttrust/mcp-server@1.1.1"
             ],
             "env": {
               "AGENTTRUST_API_KEY": "${VALUE}"
@@ -456,7 +456,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-agentops"
+              "@agentutility/mcp-agentops@0.1.1"
             ]
           }
         }
@@ -477,7 +477,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-bestiary"
+              "@agentutility/mcp-bestiary@0.1.3"
             ]
           }
         }
@@ -498,7 +498,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-browser-workflow"
+              "@agentutility/mcp-browser-workflow@0.1.1"
             ]
           }
         }
@@ -519,7 +519,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-compose"
+              "@agentutility/mcp-compose@0.13.0"
             ]
           }
         }
@@ -540,7 +540,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-edge-finance"
+              "@agentutility/mcp-edge-finance@0.18.8"
             ]
           }
         }
@@ -561,7 +561,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-edge-market"
+              "@agentutility/mcp-edge-market@0.15.6"
             ]
           }
         }
@@ -582,7 +582,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-locale"
+              "@agentutility/mcp-locale@0.8.7"
             ]
           }
         }
@@ -603,7 +603,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-matchpoint"
+              "@agentutility/mcp-matchpoint@0.1.4"
             ]
           }
         }
@@ -624,7 +624,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-mediakit"
+              "@agentutility/mcp-mediakit@0.11.9"
             ]
           }
         }
@@ -645,7 +645,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-model-router"
+              "@agentutility/mcp-model-router@0.1.1"
             ]
           }
         }
@@ -666,7 +666,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-prooflayer"
+              "@agentutility/mcp-prooflayer@0.2.4"
             ]
           }
         }
@@ -687,7 +687,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-retail"
+              "@agentutility/mcp-retail@0.2.1"
             ]
           }
         }
@@ -708,7 +708,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-rollforge"
+              "@agentutility/mcp-rollforge@0.1.5"
             ]
           }
         }
@@ -729,7 +729,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-statline"
+              "@agentutility/mcp-statline@0.1.3"
             ]
           }
         }
@@ -750,7 +750,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-synthforge"
+              "@agentutility/mcp-synthforge@0.8.2"
             ]
           }
         }
@@ -771,7 +771,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-web-probe"
+              "@agentutility/mcp-web-probe@0.32.1"
             ]
           }
         }
@@ -792,7 +792,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@agentutility/mcp-wordmint"
+              "@agentutility/mcp-wordmint@0.16.1"
             ]
           }
         }
@@ -1025,7 +1025,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@ankimcp/anki-mcp-server"
+              "@ankimcp/anki-mcp-server@0.22.5"
             ]
           }
         }
@@ -1372,7 +1372,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@contextlayer/mcp"
+              "@contextlayer/mcp@0.0.3"
             ]
           }
         }
@@ -1393,7 +1393,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ctxl"
+              "ctxl@0.0.2"
             ]
           }
         }
@@ -1414,7 +1414,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ctxl-mcp"
+              "ctxl-mcp@0.0.2"
             ]
           }
         }
@@ -1435,7 +1435,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@autonomad1/computeback-mcp"
+              "@autonomad1/computeback-mcp@1.1.3"
             ],
             "env": {
               "COMPUTEBACK_API_URL": "${VALUE}",
@@ -1798,7 +1798,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "bizmuse-mcp"
+              "bizmuse-mcp@0.1.6"
             ],
             "env": {
               "BIZMUSE_API_KEY": "${VALUE}",
@@ -1895,7 +1895,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@bolthub/mcp"
+              "@bolthub/mcp@0.7.2"
             ],
             "env": {
               "LND_REST_HOST": "${VALUE}",
@@ -2037,7 +2037,7 @@
           "bourdon": {
             "command": "uvx",
             "args": [
-              "bourdon"
+              "bourdon@0.12.3"
             ]
           }
         }
@@ -2187,7 +2187,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@buywhere/mcp-server"
+              "@buywhere/mcp-server@0.3.1"
             ],
             "env": {
               "BUYWHERE_API_KEY": "${VALUE}",
@@ -2308,7 +2308,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@callmcp/server"
+              "@callmcp/server@0.1.2"
             ],
             "env": {
               "CALLMCP_CONFIG": "${VALUE}",
@@ -2408,7 +2408,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@certscore/mcp"
+              "@certscore/mcp@0.2.4"
             ],
             "env": {
               "CERTSCORE_API_KEY": "${VALUE}",
@@ -2562,7 +2562,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@circulara/plugin"
+              "@circulara/plugin@0.1.2"
             ],
             "env": {
               "CIRCULARA_BACKEND_URL": "${VALUE}",
@@ -2644,7 +2644,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@clarxai/mcp"
+              "@clarxai/mcp@0.2.1"
             ],
             "env": {
               "ANTHROPIC_API_KEY": "${VALUE}",
@@ -2690,7 +2690,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@clize/clize"
+              "@clize/clize@0.23.1"
             ]
           }
         }
@@ -2974,7 +2974,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "contextstudios-mcp"
+              "contextstudios-mcp@2.0.0"
             ]
           }
         }
@@ -3145,7 +3145,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@cueapi/mcp"
+              "@cueapi/mcp@0.1.3"
             ],
             "env": {
               "CUEAPI_API_KEY": "${VALUE}",
@@ -3420,7 +3420,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@demomagic/mcp"
+              "@demomagic/mcp@0.1.0"
             ]
           }
         }
@@ -3477,7 +3477,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "apprise-rmcp"
+              "apprise-rmcp@0.1.3"
             ],
             "env": {
               "APPRISE_URL": "${VALUE}",
@@ -3506,7 +3506,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "arcane-rmcp"
+              "arcane-rmcp@0.4.2"
             ],
             "env": {
               "RARCANE_API_URL": "${VALUE}",
@@ -3535,7 +3535,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "cortex-rmcp"
+              "cortex-rmcp@3.9.1"
             ],
             "env": {
               "CORTEX_HOME": "${VALUE}",
@@ -3565,7 +3565,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "gotify-rmcp"
+              "gotify-rmcp@0.1.3"
             ],
             "env": {
               "GOTIFY_URL": "${VALUE}",
@@ -3595,7 +3595,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "labby-mcp"
+              "labby-mcp@1.3.0"
             ],
             "env": {
               "LABBY_VERSION": "${VALUE}",
@@ -3651,7 +3651,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "synapse-rmcp"
+              "synapse-rmcp@0.5.4"
             ],
             "env": {
               "SYNAPSE_HOME": "${VALUE}",
@@ -3681,7 +3681,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "tailscale-rmcp"
+              "tailscale-rmcp@0.1.3"
             ],
             "env": {
               "TAILSCALE_API_KEY": "${VALUE}",
@@ -3709,7 +3709,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "unifi-rmcp"
+              "unifi-rmcp@0.2.4"
             ],
             "env": {
               "UNIFI_URL": "${VALUE}",
@@ -3738,7 +3738,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "unraid-rmcp"
+              "unraid-rmcp@0.2.3"
             ],
             "env": {
               "UNRAID_API_URL": "${VALUE}",
@@ -3767,7 +3767,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "yarr-mcp"
+              "yarr-mcp@1.1.1"
             ],
             "env": {
               "YARR_SONARR_URL": "${VALUE}",
@@ -3800,7 +3800,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ytdl-rmcp"
+              "ytdl-rmcp@1.0.2"
             ],
             "env": {
               "YTDLP_PLEX_URL": "${VALUE}",
@@ -4032,7 +4032,7 @@
           "sac": {
             "command": "uvx",
             "args": [
-              "sac-sdk"
+              "sac-sdk@0.1.2"
             ],
             "env": {
               "SAC_API_KEY": "${VALUE}",
@@ -4536,7 +4536,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "fodda-mcp"
+              "fodda-mcp@1.32.1"
             ],
             "env": {
               "FODDA_API_KEY": "${VALUE}",
@@ -4687,7 +4687,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@optimalai/optibot-mcp"
+              "@optimalai/optibot-mcp@1.4.1"
             ],
             "env": {
               "OPTIBOT_API_KEY": "${VALUE}"
@@ -4747,7 +4747,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@getvetai/mcp"
+              "@getvetai/mcp@0.4.2"
             ],
             "env": {
               "VET_API_KEY": "${VALUE}",
@@ -5050,7 +5050,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@ai-dossier/mcp-server"
+              "@ai-dossier/mcp-server@1.0.4"
             ]
           }
         }
@@ -5329,7 +5329,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "justdrop-mcp"
+              "justdrop-mcp@0.1.6"
             ],
             "env": {
               "JUSTDROP_ROOT": "${VALUE}",
@@ -5372,7 +5372,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "kavel-mcp"
+              "kavel-mcp@0.1.1"
             ]
           }
         }
@@ -5393,7 +5393,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@kawacode/mcp"
+              "@kawacode/mcp@6.9.4"
             ]
           }
         }
@@ -5767,7 +5767,7 @@
           "linkguard-mcp": {
             "command": "uvx",
             "args": [
-              "linkguard-mcp"
+              "linkguard-mcp@0.1.0"
             ],
             "env": {
               "LINKGUARD_API_KEY": "${VALUE}",
@@ -5792,7 +5792,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "lithtrix-mcp"
+              "lithtrix-mcp@0.20.2"
             ],
             "env": {
               "LITHTRIX_API_KEY": "${VALUE}"
@@ -5948,7 +5948,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@mafdet/mcp"
+              "@mafdet/mcp@0.1.3"
             ],
             "env": {
               "MAFDET_API_KEY": "${VALUE}"
@@ -6035,7 +6035,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@marchward/mcp-server"
+              "@marchward/mcp-server@0.2.4"
             ],
             "env": {
               "MARCHWARD_API_URL": "${VALUE}",
@@ -6227,7 +6227,7 @@
           "mcpcap": {
             "command": "uvx",
             "args": [
-              "mcpcap"
+              "mcpcap@0.9.6"
             ]
           }
         }
@@ -6452,7 +6452,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@monnet/mcp"
+              "@monnet/mcp@0.2.3"
             ],
             "env": {
               "MONNET_API_KEY": "${VALUE}"
@@ -6625,7 +6625,7 @@
           "nauro": {
             "command": "uvx",
             "args": [
-              "nauro"
+              "nauro@1.9.0"
             ]
           }
         }
@@ -6720,7 +6720,7 @@
           "nexustoken-sdk": {
             "command": "uvx",
             "args": [
-              "nexustoken-sdk"
+              "nexustoken-sdk@0.6.5"
             ],
             "env": {
               "NEXUS_API_KEY": "${VALUE}",
@@ -6763,7 +6763,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "nocturnusai-mcp"
+              "nocturnusai-mcp@0.3.11"
             ],
             "env": {
               "NOCTURNUSAI_URL": "${VALUE}",
@@ -7436,7 +7436,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@perplexity-ai/mcp-server"
+              "@perplexity-ai/mcp-server@0.9.0"
             ]
           }
         }
@@ -7586,7 +7586,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ponlo-ai"
+              "ponlo-ai@1.13.2"
             ],
             "env": {
               "PONLO_API_URL": "${VALUE}",
@@ -7610,7 +7610,7 @@
           "positif": {
             "command": "uvx",
             "args": [
-              "positif-ai"
+              "positif-ai@0.2.1"
             ]
           }
         }
@@ -7784,7 +7784,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@proofslip/mcp-server"
+              "@proofslip/mcp-server@0.2.3"
             ],
             "env": {
               "PROOFSLIP_API_KEY": "${VALUE}",
@@ -7827,7 +7827,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "proxyllm-mcp"
+              "proxyllm-mcp@1.0.2"
             ],
             "env": {
               "PROXYLLM_ACCOUNT_TOKEN": "${VALUE}",
@@ -8098,7 +8098,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@rapay/mcp-server"
+              "@rapay/mcp-server@1.2.5"
             ]
           }
         }
@@ -8443,7 +8443,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@rolli/mcp"
+              "@rolli/mcp@1.2.1"
             ],
             "env": {
               "ROLLI_API_TOKEN": "${VALUE}",
@@ -8563,7 +8563,7 @@
           "roxels-mcp": {
             "command": "uvx",
             "args": [
-              "roxels-mcp"
+              "roxels-mcp@0.5.1"
             ],
             "env": {
               "ROXELS_API_KEY": "${VALUE}",
@@ -8963,7 +8963,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@shipeasy/mcp"
+              "@shipeasy/mcp@2.5.0"
             ]
           }
         }
@@ -8984,7 +8984,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@shippp/mcp"
+              "@shippp/mcp@0.1.1"
             ],
             "env": {
               "SHIPPP_API_KEY": "${VALUE}",
@@ -13632,7 +13632,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@corralimited/snapdiff-mcp"
+              "@corralimited/snapdiff-mcp@0.4.2"
             ],
             "env": {
               "SNAPDIFF_API_KEY": "${VALUE}",
@@ -13693,7 +13693,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "mcp-socialapi"
+              "mcp-socialapi@1.2.0"
             ],
             "env": {
               "SOCIALAPI_API_KEY": "${VALUE}"
@@ -13773,7 +13773,7 @@
           "engrava": {
             "command": "uvx",
             "args": [
-              "engrava-mcp"
+              "engrava-mcp@0.5.1"
             ]
           }
         }
@@ -13854,7 +13854,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@spideriq/mcp-gate"
+              "@spideriq/mcp-gate@1.3.0"
             ]
           }
         }
@@ -13875,7 +13875,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@spideriq/mcp-mail"
+              "@spideriq/mcp-mail@1.4.0"
             ]
           }
         }
@@ -13896,7 +13896,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@spideriq/mcp-media"
+              "@spideriq/mcp-media@1.1.0"
             ]
           }
         }
@@ -13917,7 +13917,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@spideriq/mcp-publish"
+              "@spideriq/mcp-publish@1.25.0"
             ]
           }
         }
@@ -13959,7 +13959,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ssid-mcp"
+              "ssid-mcp@0.1.1"
             ]
           }
         }
@@ -14124,7 +14124,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@synchronex/mcp-proxy"
+              "@synchronex/mcp-proxy@1.0.1"
             ]
           }
         }
@@ -14382,7 +14382,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "telbase"
+              "telbase@0.14.0-beta.2"
             ]
           }
         }
@@ -14421,7 +14421,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@tensorfeed/x402-base-mcp"
+              "@tensorfeed/x402-base-mcp@0.2.1"
             ],
             "env": {
               "TENSORFEED_RPC_URL": "${VALUE}"
@@ -14682,7 +14682,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "tokonomix-council-mcp"
+              "tokonomix-council-mcp@1.8.4"
             ],
             "env": {
               "TOKONOMIX_API_KEY": "${VALUE}"
@@ -14724,7 +14724,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@toolprint/hypertool-mcp"
+              "@toolprint/hypertool-mcp@0.0.42"
             ]
           }
         }
@@ -14763,7 +14763,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@traderouter/trade-router-mcp"
+              "@traderouter/trade-router-mcp@1.0.13"
             ],
             "env": {
               "TRADEROUTER_PRIVATE_KEY": "${VALUE}",
@@ -14793,7 +14793,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@tradesearcher/mcp-server"
+              "@tradesearcher/mcp-server@0.1.1"
             ],
             "env": {
               "TRADESEARCHER_API_KEY": "${VALUE}"
@@ -15279,7 +15279,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@trusty-squire/mcp"
+              "@trusty-squire/mcp@1.1.4"
             ]
           }
         }
@@ -15408,7 +15408,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@unpaper/cli"
+              "@unpaper/cli@0.2.1"
             ]
           }
         }
@@ -15621,7 +15621,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@variel/mcp-server"
+              "@variel/mcp-server@0.1.0"
             ],
             "env": {
               "BRAND_API_KEY": "${VALUE}",
@@ -15746,7 +15746,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@verlon-ai/mcp"
+              "@verlon-ai/mcp@0.3.2"
             ],
             "env": {
               "VERLON_API_KEY": "${VALUE}",
@@ -15861,7 +15861,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@voris-ai/mcp"
+              "@voris-ai/mcp@0.0.2"
             ],
             "env": {
               "VORIS_API_KEY": "${VALUE}"
@@ -15903,7 +15903,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@voxell/forge-mcp"
+              "@voxell/forge-mcp@0.1.5"
             ],
             "env": {
               "FORGE_API_KEY": "${VALUE}"
@@ -16257,7 +16257,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@webuplink/mcp"
+              "@webuplink/mcp@0.1.1"
             ],
             "env": {
               "WEBUPLINK_API_KEY": "${VALUE}"
@@ -16317,7 +16317,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@wildcard-ai/deepcontext"
+              "@wildcard-ai/deepcontext@0.1.15"
             ],
             "env": {
               "JINA_API_KEY": "${VALUE}",
@@ -16639,7 +16639,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "3dstreet-mcp"
+              "3dstreet-mcp@0.2.2"
             ]
           }
         }
@@ -16749,7 +16749,7 @@
           "asmhunter-mcp": {
             "command": "uvx",
             "args": [
-              "asmhunter-mcp"
+              "asmhunter-mcp@0.1.2"
             ],
             "env": {
               "ASMHUNTER_TOKEN": "${VALUE}"
@@ -16848,7 +16848,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@businys/mcp-server"
+              "@businys/mcp-server@1.0.1"
             ]
           }
         }
@@ -17013,7 +17013,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "cloudmindmaps-mcp"
+              "cloudmindmaps-mcp@1.1.0"
             ],
             "env": {
               "CLOUDMINDMAPS_API_KEY": "${VALUE}",
@@ -17625,7 +17625,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@humanform/mcp"
+              "@humanform/mcp@0.1.3"
             ],
             "env": {
               "HUMANFORM_API_KEY": "${VALUE}",
@@ -18295,7 +18295,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@odyssey365/mcp-server"
+              "@odyssey365/mcp-server@0.6.4"
             ],
             "env": {
               "ODYSSEY_API_KEY": "${VALUE}"
@@ -18468,7 +18468,7 @@
           "peil-mcp": {
             "command": "uvx",
             "args": [
-              "peil-mcp"
+              "peil-mcp@0.1.3"
             ],
             "env": {
               "PEIL_API_KEY": "${VALUE}",
@@ -18964,7 +18964,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@scanbim-labs/scanbim-mcp"
+              "@scanbim-labs/scanbim-mcp@1.0.6"
             ]
           }
         }
@@ -18985,7 +18985,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "mcp-server-scf"
+              "mcp-server-scf@2.0.1"
             ],
             "env": {
               "SCF_API_KEY": "${VALUE}",
@@ -19322,7 +19322,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@takehub/mcp"
+              "@takehub/mcp@1.1.2"
             ]
           }
         }
@@ -19509,7 +19509,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@trustrails/mcp-server"
+              "@trustrails/mcp-server@1.0.7"
             ]
           }
         }
@@ -19548,7 +19548,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@sonarapp/mcp"
+              "@sonarapp/mcp@0.6.0"
             ],
             "env": {
               "SONAR_API_KEY": "${VALUE}",
@@ -19594,7 +19594,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@undisk-mcp/stdio-proxy"
+              "@undisk-mcp/stdio-proxy@0.46.2"
             ],
             "env": {
               "UNDISK_API_KEY": "${VALUE}"
@@ -19618,7 +19618,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@drantoniou/uploadcheck-mcp"
+              "@drantoniou/uploadcheck-mcp@0.1.1"
             ],
             "env": {
               "UPLOADCHECK_API_BASE_URL": "${VALUE}",
@@ -19643,7 +19643,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@vayacore/mcp"
+              "@vayacore/mcp@0.1.2"
             ],
             "env": {
               "VAYAPIN_PAT": "${VALUE}",
@@ -22305,7 +22305,7 @@
           "nginx-proxy-manager": {
             "command": "uvx",
             "args": [
-              "nginx-proxy-manager-mcp-full"
+              "nginx-proxy-manager-mcp-full@0.1.1"
             ]
           }
         }
@@ -22595,7 +22595,7 @@
           "server": {
             "command": "uvx",
             "args": [
-              "mcp-proxy-for-aws"
+              "mcp-proxy-for-aws@1.1.6"
             ]
           }
         }
@@ -22615,7 +22615,7 @@
           "server": {
             "command": "uvx",
             "args": [
-              "mcp-proxy-for-aws"
+              "mcp-proxy-for-aws@1.1.6"
             ]
           }
         }
@@ -23223,7 +23223,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@uplink-code/mcp"
+              "@uplink-code/mcp@0.1.4"
             ]
           }
         }
@@ -23478,7 +23478,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@hovecapital/read-only-mysql-mcp-server"
+              "@hovecapital/read-only-mysql-mcp-server@0.1.1"
             ]
           }
         }
@@ -23499,7 +23499,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@hovecapital/read-only-postgres-mcp-server"
+              "@hovecapital/read-only-postgres-mcp-server@0.1.0"
             ]
           }
         }
@@ -23666,7 +23666,7 @@
           "operandi": {
             "command": "uvx",
             "args": [
-              "operandi-mcp"
+              "operandi-mcp@1.0.3"
             ],
             "env": {
               "OPERANDI_API_URL": "${VALUE}",
@@ -24268,7 +24268,7 @@
           "agentdomain-mcp": {
             "command": "uvx",
             "args": [
-              "agentdomain-mcp"
+              "agentdomain-mcp@1.0.1"
             ]
           }
         }
@@ -25376,7 +25376,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@policyforge/mcp"
+              "@policyforge/mcp@0.4.0"
             ],
             "env": {
               "POLICYFORGE_API_KEY": "${VALUE}"
@@ -25399,7 +25399,7 @@
           "security": {
             "command": "uvx",
             "args": [
-              "promptguard-mcp-server"
+              "promptguard-mcp-server@1.0.0"
             ],
             "env": {
               "PROMPTGUARD_API_KEY": "${VALUE}",
@@ -25634,7 +25634,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@truncus/mcp-server"
+              "@truncus/mcp-server@0.1.1"
             ],
             "env": {
               "TRUNCUS_API_KEY": "${VALUE}"
@@ -25823,7 +25823,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "402coffee-mcp"
+              "402coffee-mcp@0.1.1"
             ]
           }
         }
@@ -26057,7 +26057,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@636865636b73756d/mcp-v1"
+              "@636865636b73756d/mcp-v1@1.0.1"
             ]
           }
         }
@@ -26519,7 +26519,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "mason-context"
+              "mason-context@0.6.0"
             ]
           }
         }
@@ -26557,7 +26557,7 @@
           "mcp": {
             "command": "uvx",
             "args": [
-              "advisorfinder-mcp"
+              "advisorfinder-mcp@1.1.5"
             ]
           }
         }
@@ -26887,7 +26887,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "docqa-mcp"
+              "docqa-mcp@1.0.2"
             ],
             "env": {
               "DOCQA_API_KEY": "${VALUE}"
@@ -27036,7 +27036,7 @@
           "ai-rete-rag-mcp": {
             "command": "uvx",
             "args": [
-              "ai-rete-rag-mcp"
+              "ai-rete-rag-mcp@0.5.1"
             ],
             "env": {
               "AI_RETE_RAG_API_KEY": "${VALUE}",
@@ -27061,7 +27061,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "ai-rook-trading-mcp"
+              "ai-rook-trading-mcp@1.0.3"
             ]
           }
         }
@@ -27121,7 +27121,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@aicandidatehub/mcp"
+              "@aicandidatehub/mcp@0.5.2"
             ],
             "env": {
               "CANDIDATEHUB_TOKEN": "${VALUE}",
@@ -27235,7 +27235,7 @@
           "mcp-anvil": {
             "command": "uvx",
             "args": [
-              "mcp-anvil"
+              "mcp-anvil@0.2.0"
             ]
           }
         }
@@ -27328,7 +27328,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@aioproductoscom/mcp-studio"
+              "@aioproductoscom/mcp-studio@0.2.3"
             ]
           }
         }
@@ -27729,7 +27729,7 @@
           "allstacks-mcp": {
             "command": "uvx",
             "args": [
-              "allstacks-mcp"
+              "allstacks-mcp@0.1.3"
             ]
           }
         }
@@ -28109,7 +28109,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@apogeoapi/mcp"
+              "@apogeoapi/mcp@1.0.2"
             ],
             "env": {
               "APOGEOAPI_KEY": "${VALUE}"
@@ -28133,7 +28133,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "appdex-mcp"
+              "appdex-mcp@1.0.2"
             ],
             "env": {
               "APPDEX_API_KEY": "${VALUE}",
@@ -28176,7 +28176,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@appfigures/cli"
+              "@appfigures/cli@1.0.3"
             ],
             "env": {
               "APPFIGURES_API_KEY": "${VALUE}"
@@ -28397,7 +28397,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "arc-security-mcp"
+              "arc-security-mcp@0.5.1"
             ]
           }
         }
@@ -28418,7 +28418,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@argosvix/mcp-server"
+              "@argosvix/mcp-server@1.0.1"
             ],
             "env": {
               "ARGOSVIX_API_KEY": "${VALUE}"
@@ -28478,7 +28478,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "artifyde-mcp"
+              "artifyde-mcp@0.1.2"
             ],
             "env": {
               "ARTIFYDE_TOKEN": "${VALUE}",
@@ -28647,7 +28647,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "kogiqa-mcp"
+              "kogiqa-mcp@1.3.29"
             ]
           }
         }
@@ -28725,7 +28725,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@attribloom/mcp"
+              "@attribloom/mcp@0.1.0"
             ],
             "env": {
               "ATTRIBLOOM_API_KEY": "${VALUE}",
@@ -28840,7 +28840,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@auth0/auth0-mcp-server"
+              "@auth0/auth0-mcp-server@0.1.0-beta.10"
             ]
           }
         }
@@ -28881,7 +28881,7 @@
           "automox-mcp": {
             "command": "uvx",
             "args": [
-              "automox-mcp"
+              "automox-mcp@2.2.9"
             ],
             "env": {
               "AUTOMOX_API_KEY": "${VALUE}",
@@ -29180,7 +29180,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "kodiak-mcp"
+              "kodiak-mcp@0.1.2"
             ],
             "env": {
               "KODIAK_API_KEY": "${VALUE}",
@@ -29433,7 +29433,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@beacio/mcp"
+              "@beacio/mcp@1.0.1"
             ]
           }
         }
@@ -29472,7 +29472,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "bellwether-mcp"
+              "bellwether-mcp@0.1.0"
             ],
             "env": {
               "BELLWETHER_API_KEY": "${VALUE}"
@@ -29664,7 +29664,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@billingserv/mcp-server"
+              "@billingserv/mcp-server@0.1.9"
             ],
             "env": {
               "BILLINGSERV_API_BASE_URL": "${VALUE}",
@@ -29765,7 +29765,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@bitsbound/mcp-server"
+              "@bitsbound/mcp-server@1.0.6"
             ]
           }
         }
@@ -29786,7 +29786,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@bitsbound/mcp-server"
+              "@bitsbound/mcp-server@1.0.8"
             ]
           }
         }
@@ -29888,7 +29888,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@black-duck/mcp-server"
+              "@black-duck/mcp-server@1.1.8"
             ]
           }
         }
@@ -29929,7 +29929,7 @@
           "target-mcp": {
             "command": "uvx",
             "args": [
-              "target-mcp"
+              "target-mcp@0.1.2"
             ]
           }
         }
@@ -29968,7 +29968,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "blackwall-mcp"
+              "blackwall-mcp@1.4.1"
             ],
             "env": {
               "BLACKWALL_API_KEY": "${VALUE}",
@@ -30065,7 +30065,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@bvcc/agent-mcp"
+              "@bvcc/agent-mcp@0.1.6"
             ],
             "env": {
               "AGENT_PRIVATE_KEY": "${VALUE}",
@@ -30456,7 +30456,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@bounceprotect/mcp"
+              "@bounceprotect/mcp@1.0.6"
             ],
             "env": {
               "YOUR_API_KEY": "${VALUE}"
@@ -30498,7 +30498,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@braincloud/mcp-helper"
+              "@braincloud/mcp-helper@6.0.0"
             ]
           }
         }
@@ -30632,7 +30632,7 @@
           "browser-use": {
             "command": "uvx",
             "args": [
-              "browser-use"
+              "browser-use@0.13.5"
             ]
           }
         }
@@ -30800,7 +30800,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "bykaranteli-mcp"
+              "bykaranteli-mcp@0.1.1"
             ]
           }
         }
@@ -31259,7 +31259,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "chartforge-mcp"
+              "chartforge-mcp@0.1.4"
             ],
             "env": {
               "CHARTFORGE_API_KEY": "${VALUE}"
@@ -31652,7 +31652,7 @@
             "command": "npx",
             "args": [
               "-y",
-              "@clauderecallhq/cli"
+              "@clauderecallhq/cli@0.96.9"
             ]
           }
         }

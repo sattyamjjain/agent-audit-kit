@@ -77,6 +77,19 @@ def cve_feed_identifiers() -> frozenset[str]:
     return frozenset(ids)
 
 
+def _package_name(token: str) -> str:
+    """A launch argument without its version: `@scope/pkg@1.2.3` -> `@scope/pkg`.
+
+    Since report v1.1 the manifest's configs launch the version the registry
+    record states (`npx -y pkg@1.2.3`, `uvx pkg@1.2.3`), and the CVE feed names
+    bare packages. Matching the versioned spec would let a package the feed
+    names into the slice: 8 servers on the 2026-07-26 snapshot.
+    """
+    token = token.split("==", 1)[0]
+    at = token.find("@", 1)
+    return token if at == -1 else token[:at]
+
+
 def _server_identifiers(server: dict[str, Any]) -> set[str]:
     """Candidate package/name tokens for a server, for CVE-feed matching."""
     out: set[str] = set()
@@ -90,7 +103,7 @@ def _server_identifiers(server: dict[str, Any]) -> set[str]:
             continue
         args = entry.get("args") or []
         for a in args:
-            tok = str(a).strip().lower()
+            tok = _package_name(str(a).strip().lower())
             if tok and not tok.startswith("-"):
                 out.add(tok)
                 out.add(tok.split("/")[-1])
