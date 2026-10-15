@@ -966,7 +966,9 @@ def test_results_page_states_the_committed_numbers() -> None:
         "private/http": "private network / http", "template/https": "template variable / https",
         "template/none": "template variable / no scheme", "placeholder/https": "placeholder name / https",
     }
-    assert set(s1["host_class_by_scheme"]) == set(host_labels)
+    # A subset since report v1.1, when the rule stopped reporting loopback hosts
+    # and the loopback / http class went empty.
+    assert set(s1["host_class_by_scheme"]) <= set(host_labels)
     rows += [f"| {host_labels[k]} | {_c(v)} |" for k, v in s1["host_class_by_scheme"].items()]
     outcome_rows = {
         "HTTP 401 or 403 (refused)": ["auth-required"],

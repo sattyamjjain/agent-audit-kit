@@ -2,9 +2,9 @@
 """AAK-MCP-001 measurement, Steps 0 and 1: offline, deterministic, no LLM.
 
 ``AAK-MCP-001`` fires CRITICAL on every URL server whose config carries no
-recognized auth header. It is also the State of MCP report's headline: 1,201 of
-2,303 configs, and all of them among the 1,213 (52.7%) that carry a critical
-finding. A hosted server that follows the MCP authorization specification puts
+recognized auth header. It is also the State of MCP report's headline: in report
+v1.0, 1,201 of 2,303 configs, all of them among the 1,213 (52.7%) that carry a
+critical finding. A hosted server that follows the MCP authorization specification puts
 no credential in the config at all, because the client runs OAuth at connect
 time, so its correct config fires too. This module measures how much of the
 headline rests on that. It does not change the rule.

@@ -12,17 +12,17 @@
     "aak_mcp_001": {
       "configs": {
         "denominator": 2303,
-        "n": 1201,
-        "pct": 52.1
+        "n": 1166,
+        "pct": 50.6
       },
-      "configs_also_carrying_critical": 1201,
-      "findings": 1311,
+      "configs_also_carrying_critical": 1166,
+      "findings": 1263,
       "findings_per_config": {
-        "1": 1162,
+        "1": 1136,
         "11": 2,
-        "2": 20,
-        "3": 8,
-        "4": 2,
+        "2": 14,
+        "3": 6,
+        "4": 1,
         "6": 1,
         "7": 2,
         "8": 1,
@@ -31,39 +31,43 @@
     },
     "configs_with_a_critical_other_than_aak_mcp_001": {
       "denominator": 2303,
-      "n": 14,
-      "pct": 0.6
+      "n": 19,
+      "pct": 0.8
     },
-    "configs_with_aak_mcp_001_and_another_critical": 2,
+    "configs_with_aak_mcp_001_and_another_critical": 1,
     "configs_with_critical": {
       "denominator": 2303,
-      "n": 1213,
-      "pct": 52.7
+      "n": 1184,
+      "pct": 51.4
     },
-    "configs_with_critical_but_no_aak_mcp_001": 12,
+    "configs_with_critical_but_no_aak_mcp_001": 18,
     "distinct_configs_scanned": 2303,
     "other_critical_rules_by_config": {
       "AAK-MCP-002": 9,
+      "AAK-MCP-GITLAB-ZEREIGHT-CVE-2026-61560-001": 1,
+      "AAK-MCP-K8S-CVE-2026-61459-001": 2,
+      "AAK-MCP-N8NMCP-CVE-2026-54052-001": 2,
+      "AAK-MCP-RUFLO-CVE-2026-59726-001": 1,
       "AAK-POISON-001": 1,
       "AAK-POISON-002": 1,
       "AAK-SECRET-008": 2,
-      "AAK-TRANSPORT-001": 2
+      "AAK-TRANSPORT-001": 1
     },
     "published_check": {
       "aak_mcp_001_configs": {
         "equal": true,
-        "fresh": 1201,
-        "published": 1201
+        "fresh": 1166,
+        "published": 1166
       },
       "configs_with_critical": {
         "equal": true,
-        "fresh": 1213,
-        "published": 1213
+        "fresh": 1184,
+        "published": 1184
       },
       "configs_with_critical_pct": {
         "equal": true,
-        "fresh": 52.7,
-        "published": 52.7
+        "fresh": 51.4,
+        "published": 51.4
       },
       "distinct_configs_scanned": {
         "equal": true,
@@ -75,13 +79,13 @@
       {
         "configs_where_aak_mcp_001_stays_critical": {
           "denominator": 2303,
-          "n": 1201,
-          "pct": 52.1
+          "n": 1166,
+          "pct": 50.6
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 1213,
-          "pct": 52.7
+          "n": 1184,
+          "pct": 51.4
         },
         "description": "the rule as shipped",
         "scenario": "as-published"
@@ -94,25 +98,11 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 14,
-          "pct": 0.6
+          "n": 19,
+          "pct": 0.8
         },
         "description": "every AAK-MCP-001 hit is a false positive",
         "scenario": "every-hit-wrong"
-      },
-      {
-        "configs_where_aak_mcp_001_stays_critical": {
-          "denominator": 2303,
-          "n": 1167,
-          "pct": 50.7
-        },
-        "configs_with_critical": {
-          "denominator": 2303,
-          "n": 1180,
-          "pct": 51.2
-        },
-        "description": "loopback hosts exempt",
-        "scenario": "loopback-exempt"
       },
       {
         "configs_where_aak_mcp_001_stays_critical": {
@@ -122,8 +112,22 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 1180,
-          "pct": 51.2
+          "n": 1184,
+          "pct": 51.4
+        },
+        "description": "loopback hosts exempt",
+        "scenario": "loopback-exempt"
+      },
+      {
+        "configs_where_aak_mcp_001_stays_critical": {
+          "denominator": 2303,
+          "n": 1165,
+          "pct": 50.6
+        },
+        "configs_with_critical": {
+          "denominator": 2303,
+          "n": 1184,
+          "pct": 51.4
         },
         "description": "loopback and private-network hosts exempt",
         "scenario": "loopback-and-private-exempt"
@@ -131,13 +135,13 @@
       {
         "configs_where_aak_mcp_001_stays_critical": {
           "denominator": 2303,
-          "n": 40,
-          "pct": 1.7
+          "n": 4,
+          "pct": 0.2
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 52,
-          "pct": 2.3
+          "n": 22,
+          "pct": 1.0
         },
         "description": "https without a header downgraded below critical",
         "scenario": "https-downgraded"
@@ -150,8 +154,8 @@
         },
         "configs_with_critical": {
           "denominator": 2303,
-          "n": 17,
-          "pct": 0.7
+          "n": 22,
+          "pct": 1.0
         },
         "description": "loopback exempt and https downgraded",
         "scenario": "loopback-exempt-and-https-downgraded"
@@ -160,44 +164,42 @@
   },
   "step1": {
     "declared_type": {
-      "(none)": 10,
-      "http": 1257,
-      "sse": 41,
+      "(none)": 7,
+      "http": 1224,
+      "sse": 29,
       "url": 3
     },
     "header_auth": {
-      "literal-value": 1,
-      "none": 1302,
-      "unrecognized-name": 8
+      "literal-value": 3,
+      "none": 1257,
+      "unrecognized-name": 3
     },
-    "hits": 1311,
+    "hits": 1263,
     "hits_by_source": {
-      "crawl": 271,
+      "crawl": 223,
       "registry": 1040
     },
     "host_class": {
-      "loopback": 45,
       "placeholder": 1,
       "private": 4,
-      "public": 1254,
+      "public": 1251,
       "template": 7
     },
     "host_class_by_scheme": {
-      "loopback/http": 45,
       "placeholder/https": 1,
       "private/http": 4,
-      "public/https": 1254,
+      "public/https": 1251,
       "template/https": 4,
       "template/none": 3
     },
     "probe_plan": {
       "candidate_distinct_endpoints": 1157,
       "candidate_distinct_hosts": 1081,
-      "candidate_hits": 1230,
+      "candidate_hits": 1227,
       "skipped_hits": {
         "credential in URL": 14,
         "credential in URL (suspected)": 8,
-        "non-public host": 49,
+        "non-public host": 4,
         "placeholder host": 1,
         "template host": 7,
         "template in URL": 2
@@ -209,18 +211,17 @@
       "none": 1037
     },
     "scheme": {
-      "http": 49,
-      "https": 1259,
+      "http": 4,
+      "https": 1256,
       "none": 3
     },
     "transport": {
-      "sse": 41,
-      "stdio": 1,
-      "streamable-http": 1269
+      "sse": 29,
+      "streamable-http": 1234
     },
     "url_credential": {
       "literal": 4,
-      "none": 1296,
+      "none": 1248,
       "template": 11
     },
     "url_credential_where": {

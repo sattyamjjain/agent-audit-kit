@@ -2,21 +2,22 @@
   "benign_slice_n": 536,
   "benign_slice_predicate": "official MCP Registry latest-version server AND status=active AND auth_mode in {static-credential, header-nonsecret, local-stdio} AND not in AAK's shipped CVE/advisory feed (vuln_db.json + CVE-pin package names)",
   "configs_with_high_critical": 1,
-  "finding_set_digest": "031300fd8e5125023a199c1fac0f7b037a6b2b42c13ad5d564107140f09d3fac",
-  "findings_per_config": 2.16,
+  "finding_set_digest": "fe1d5e7c5c2d72925016d9b47c04281816d19c853e744589f245cb961f76a1ed",
+  "findings_per_config": 1.94,
   "high_critical_config_rate": 0.0019,
   "high_critical_findings": 1,
   "rule_family_buckets": {
-    "AAK-MCP": 787,
+    "AAK-AIACT50": 1,
+    "AAK-MCP": 664,
     "AAK-OAUTH": 369,
-    "AAK-TRANSPORT": 2
+    "AAK-TRANSPORT": 4
   },
   "severity_buckets": {
     "critical": 1,
     "high": 0,
     "info": 0,
-    "low": 492,
-    "medium": 665
+    "low": 369,
+    "medium": 668
   },
   "tool": "agent-audit-kit",
   "top30_high_critical": [
@@ -55,17 +56,17 @@
       "title": "MCP server uses npx/uvx to fetch and execute remote packages"
     },
     {
-      "findings": 123,
-      "rule_id": "AAK-MCP-007",
-      "severity": "low",
-      "title": "MCP server lacks version pinning in args"
-    },
-    {
       "findings": 4,
       "rule_id": "AAK-MCP-006",
       "severity": "medium",
       "title": "MCP server command uses relative path"
+    },
+    {
+      "findings": 4,
+      "rule_id": "AAK-TRANSPORT-003",
+      "severity": "medium",
+      "title": "Deprecated SSE transport in use"
     }
   ],
-  "total_findings": 1158
+  "total_findings": 1038
 }
