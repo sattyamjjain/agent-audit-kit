@@ -265,7 +265,9 @@ def _planted_corpus(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
                     "env": {"API_KEY": s["aws"]}},
             "cap": {"type": "http", "url": f"https://cap.example-real.com/s/{s['uuid']}/mcp"},
             "b62": {"type": "http", "url": f"https://b62.example-real.com/mcp/{s['base62']}"},
+            # Loopback is exempt from the rule (report v1.1), a private host is not.
             "local": {"type": "http", "url": "http://localhost:3000/mcp"},
+            "lan": {"type": "http", "url": "http://192.168.1.20:3000/mcp"},
             "ok": {"type": "http", "url": "https://ok.example-real.com/mcp",
                    "headers": {"Authorization": "Bearer ${TOKEN}"}},
         }},
@@ -311,8 +313,9 @@ def test_population_redacts_every_planted_secret(tmp_path: Path) -> None:
     configs = measure.scan_corpus(corpus, manifest)
     hits = [h for c in configs for h in c["hits"]]
     assert {h["server_name"] for h in hits} >= {"userinfo", "query", "path", "jwt", "header", "env",
-                                                "cap", "b62", "local", "leaky"}
+                                                "cap", "b62", "lan", "leaky"}
     assert "ok" not in {h["server_name"] for h in hits}  # a recognized header is not a hit
+    assert "local" not in {h["server_name"] for h in hits}  # nor is a loopback host
 
     records = measure.population_records(configs, manifest, cache)
     blob = "".join(json.dumps(r, sort_keys=True) + "\n" for r in records)
@@ -343,13 +346,34 @@ def test_population_features(tmp_path: Path) -> None:
     corpus, manifest, _ = _planted_corpus(tmp_path)
     configs = measure.scan_corpus(corpus, manifest)
     by_name = {h["server_name"]: h for c in configs for h in c["hits"]}
-    assert by_name["local"]["host_class"] == "loopback"
+    assert "local" not in by_name
+    assert by_name["lan"]["host_class"] == "private"
     assert by_name["header"]["header_auth"] == "unrecognized-name"
     assert by_name["userinfo"]["url_credential"] == "literal"
     assert by_name["path"]["transport"] == "sse"
-    assert measure.probe_candidate(by_name["local"]) == "non-public host"
+    assert measure.probe_candidate(by_name["lan"]) == "non-public host"
     assert measure.probe_candidate(by_name["query"]) == "credential in URL"
     assert measure.probe_candidate(by_name["env"]) is None  # env is not part of the URL
+
+
+def test_hits_follow_the_rule_on_loopback_and_vscode_maps(tmp_path: Path) -> None:
+    """`hits_for` is the rule's predicate, so it moves when the rule does.
+
+    A loopback host is not a hit, and a server in VS Code's `servers` map is
+    read like one in `mcpServers`. `scan_corpus` agrees with the engine on the
+    same file, so the population is still the rule's.
+    """
+    measure = _load("measure")
+    text = json.dumps({"servers": {
+        "remote": {"type": "http", "url": "https://r.example-real.com/mcp"},
+        "loop": {"type": "http", "url": "http://127.0.0.2:8080/mcp"},
+    }})
+    assert [name for name, _, _ in measure.hits_for(text)] == ["remote"]
+    corpus = tmp_path / "data"
+    corpus.mkdir()
+    (corpus / "0001_owner_repo.mcp.json").write_text(text, encoding="utf-8")
+    configs = measure.scan_corpus(corpus, None)
+    assert [h["server_name"] for c in configs for h in c["hits"]] == ["remote"]
 
 
 def test_results_json_reproduces_from_the_corpus() -> None:
