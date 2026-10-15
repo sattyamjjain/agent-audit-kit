@@ -141,6 +141,16 @@ _CVE_FIXABLE_RULES: frozenset[str] = frozenset({
 
 # Both floors are langchain-core's, so both bumps rewrite that one distribution,
 # in any PEP 503 spelling, the same name `langchain_vuln` reports.
+# A requirement line's optional operator, with the blanks after it. The pin
+# patterns below start at `^[^\S\n]*`, not `^\s*`: with MULTILINE, `^\s*` started
+# at every line of a run of blank lines and read to its end, and the two `\s*`
+# around an optional operator split a run of blanks every way, so either shape
+# took the square of its length. A blank line before a pin is no longer part of
+# the match, and the replacement wrote it back anyway, so the text comes out the
+# same.
+_PIN_OPERATOR = r"(?:(?:==|>=|<=|<|>|~=|!=)\s*)?"
+
+
 _LANGCHAIN_MIN_VERSIONS = {
     "AAK-LANGCHAIN-001": ("1.2.22", r"langchain[-_.]+core"),
     "AAK-LANGCHAIN-003": ("0.3.14", r"langchain[-_.]+core"),
@@ -191,7 +201,7 @@ def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction
 
     if path.name.endswith(".txt"):
         pin_re = _re.compile(
-            rf"^(\s*)({name_pattern})\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)",
+            rf"^([^\S\n]*)({name_pattern})\s*{_PIN_OPERATOR}([0-9][0-9a-zA-Z.\-_]*)",
             _re.MULTILINE | _re.IGNORECASE,
         )
         floor = tuple(int(n) for n in min_version.split("."))
@@ -247,7 +257,7 @@ def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
 
     if path.name.endswith(".txt"):
         pin_re = _re.compile(
-            r"^(\s*)(litellm)\s*(?:==|>=|<=|<|>|~=|!=)?\s*[0-9][0-9a-zA-Z.\-_]*",
+            r"^([^\S\n]*)(litellm)\s*" + _PIN_OPERATOR + r"[0-9][0-9a-zA-Z.\-_]*",
             _re.MULTILINE | _re.IGNORECASE,
         )
         new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
@@ -326,7 +336,7 @@ def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
 
     if path.name.endswith(".txt"):
         pin_re = re.compile(
-            rf"^(\s*)({name_pattern})\s*(?:==|>=|<=|<|>|~=|!=)?\s*[0-9][0-9a-zA-Z.\-_]*",
+            rf"^([^\S\n]*)({name_pattern})\s*{_PIN_OPERATOR}[0-9][0-9a-zA-Z.\-_]*",
             re.MULTILINE | re.IGNORECASE,
         )
         new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)

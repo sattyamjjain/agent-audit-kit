@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from agent_audit_kit.fix import (
     _apply_fix,
     _fix_enable_all_mcp,
     _fix_env_gitignore,
+    _fix_litellm_version,
     _fix_missing_allowlist,
     _fix_missing_deny,
     _write_fix_log,
@@ -430,3 +432,23 @@ class TestFixMissingAllowlist:
         fix = _fix_missing_allowlist(cfg_file, dry_run=False)
         assert fix.applied is False
         assert "Failed" in fix.description
+
+
+class TestRequirementPinRewrite:
+    def test_blank_lines_and_indentation_are_kept(self, tmp_path: Path) -> None:
+        req = tmp_path / "requirements.txt"
+        req.write_text("click\n\n\n  litellm == 1.80.0\nrequests\n", encoding="utf-8")
+        assert _fix_litellm_version(req, dry_run=False).applied
+        assert req.read_text(encoding="utf-8") == "click\n\n\n  litellm>=1.83.7\nrequests\n"
+
+    def test_a_crafted_requirements_file_rewrites_in_linear_time(self, tmp_path: Path) -> None:
+        """1 MB of blank lines with no pin after them, then a name and 1 MB of
+        blanks with no version. `^\\s*` started at every blank line and read to
+        the end of the run (40,000 took 4.3 seconds), and the blanks around the
+        optional operator were split every way (20,000 took 1 second); both
+        grew with the square. The bound is loose for slow CI runners."""
+        req = tmp_path / "requirements.txt"
+        req.write_text("\n" * 1_000_000 + "x\nlitellm" + " " * 1_000_000 + "x\n", encoding="utf-8")
+        started = time.perf_counter()
+        _fix_litellm_version(req, dry_run=False)
+        assert time.perf_counter() - started < 5.0
