@@ -54,11 +54,15 @@ _COMMERCE_HINT_RE = re.compile(
     """,
     re.VERBOSE,
 )
+# A dotted prefix (`x.y.parity.check`) needs no pattern of its own: the `.`
+# before `parity` is the `\W` that opens a match. Reading the prefix with
+# `(?:[\w.]+\.)?` started at every `.` of a dotted run and read to its end, so a
+# long decorator took the square of its length.
 _PARITY_DECORATOR_RE = re.compile(
     r"""
     (?:^|\W)
     (?:
-        (?:[\w.]+\.)?parity\s*\.\s*check
+        parity\s*\.\s*check
       | parity_check
       | aak\.parity\.check
       | parity\b
