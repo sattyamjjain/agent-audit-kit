@@ -316,6 +316,12 @@ def aggregate(corpus: Path, registry_manifest: Path | None) -> dict[str, Any]:
             "removal_clock_features_measured_from_config": _metric(removal_clock, total),
         },
         "top_misconfigurations": top_misconfig,
+        # Every rule that fired, advisory ones included: the source for a
+        # per-rule figure outside the top ten, which REPORT.md states for rules
+        # that left it (AAK-MCP-009, AAK-SECRET-007 in v1.1).
+        "rule_hit_rate": {
+            rid: {"configs": n, "pct": _pct(n)} for rid, n in _ranked(rule_configs)
+        },
         "excluded_advisory_rules": sorted(_ADVISORY_RULES),
     }
 

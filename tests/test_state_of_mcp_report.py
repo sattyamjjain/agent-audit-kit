@@ -160,6 +160,35 @@ def test_owasp_tally_leaves_out_the_advisory_rules(tmp_path: Path) -> None:
     assert set(mod.aggregate(corpus, None)["owasp_mcp_hit_rate"]) == expected
 
 
+def test_rule_hit_rate_counts_every_rule_by_config(tmp_path: Path) -> None:
+    """Each rule that fired, with the configs it fired on, advisory rules too.
+
+    The top-ten table cannot source a rule that left it, so this map is what a
+    per-rule figure outside the top ten is rendered and checked from. Re-derived
+    here from each config's findings.
+    """
+    mod = _load_run_report()
+    corpus = tmp_path / "data"
+    corpus.mkdir()
+    texts = [
+        json.dumps({"mcpServers": {"r": {"type": "http", "url": "https://x.example/mcp"}}}),
+        json.dumps({"mcpServers": {"r": {"type": "http", "url": "https://y.example/mcp"},
+                                   "s": {"command": "npx", "args": ["-y", "pkg"]}}}),
+    ]
+    for i, text in enumerate(texts):
+        (corpus / f"c{i}.json").write_text(text, encoding="utf-8")
+    expected: dict[str, int] = {}
+    for text in texts:
+        for rid in {f.rule_id for f in mod._scan_text(text).findings}:
+            expected[rid] = expected.get(rid, 0) + 1
+    rates = mod.aggregate(corpus, None)["rule_hit_rate"]
+    assert {rid: row["configs"] for rid, row in rates.items()} == expected
+    assert set(mod._ADVISORY_RULES) & set(rates), "advisory rules are kept in this map"
+    assert rates["AAK-MCP-001"] == {"configs": 2, "pct": 100.0}
+    counts = [row["configs"] for row in rates.values()]
+    assert counts == sorted(counts, reverse=True)
+
+
 def test_fp_benchmark_scans_under_the_report_harness_name() -> None:
     """The benign-slice benchmark measures what the report measures."""
     import sys
