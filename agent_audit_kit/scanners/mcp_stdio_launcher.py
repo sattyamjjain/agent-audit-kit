@@ -34,6 +34,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
     in_skip_dir,
+    iter_mcp_servers,
     loads_jsonc,
     make_finding,
     strip_vscode_variables,
@@ -76,24 +77,6 @@ def _find_mcp_configs(project_root: Path) -> list[Path]:
         if p.is_file() and p not in found:
             found.append(p)
     return found
-
-
-def _server_blocks(data: Any) -> list[tuple[str, dict[str, Any]]]:
-    """Return (server_name, server_cfg) for every MCP server entry.
-
-    Supports both the ``mcpServers`` (Claude/Cursor/…) and ``servers``
-    (VS Code) container keys.
-    """
-    out: list[tuple[str, dict[str, Any]]] = []
-    if not isinstance(data, dict):
-        return out
-    for container_key in ("mcpServers", "servers"):
-        servers = data.get(container_key)
-        if isinstance(servers, dict):
-            for name, cfg in servers.items():
-                if isinstance(cfg, dict):
-                    out.append((str(name), cfg))
-    return out
 
 
 def _argv_tokens(cfg: dict[str, Any]) -> tuple[str, list[str]]:
@@ -195,7 +178,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        for server_name, cfg in _server_blocks(data):
+        # `mcpServers` (Claude, Cursor, ...) and VS Code's `servers`.
+        for server_name, cfg in iter_mcp_servers(data):
             # stdio transport only: an entry with a `url` (and no `command`)
             # is an HTTP/SSE server — out of scope for launcher injection.
             if not cfg.get("command"):

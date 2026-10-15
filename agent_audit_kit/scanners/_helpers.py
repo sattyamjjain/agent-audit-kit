@@ -357,7 +357,16 @@ def mcp_server_maps(data: object) -> list[tuple[str, dict[str, Any]]]:
 def iter_mcp_servers(data: object) -> Iterator[tuple[str, dict[str, Any]]]:
     """Yield ``(name, server)`` for every server object in a config's server maps.
 
-    An entry that is not a JSON object is skipped, as every reader here did.
+    The maps come from `mcp_server_maps`, in key order and each on its own,
+    never merged. An entry that is not a JSON object is skipped, and a top
+    level that is not an object yields nothing: the scanners glob `*mcp*.json`,
+    which reaches files holding a JSON array, and `data.get` on one raised
+    `AttributeError` and took the scanner down.
+
+    A module that reads both maps does it through here or `mcp_server_maps`.
+    pinning, toxic_flow, supply_chain, tool_poisoning and mcp_stdio_launcher
+    each kept a copy of this loop until they were routed here, and
+    `tests/test_mcp_config.py` fails on a module that writes another.
     """
     for _key, servers in mcp_server_maps(data):
         for name, server in servers.items():

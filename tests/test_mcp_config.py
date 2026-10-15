@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -288,6 +289,51 @@ def test_mcp_server_maps_reads_both_keys_at_the_top_only() -> None:
     assert [name for name, _ in iter_mcp_servers(data)] == ["a", "b"]
     assert mcp_server_maps({"servers": [{"name": "x"}]}) == []
     assert mcp_server_maps(["not", "a", "config"]) == []
+
+
+def test_iter_mcp_servers_keeps_the_semantics_of_the_readers_it_replaced() -> None:
+    """pinning, toxic_flow, supply_chain, tool_poisoning and mcp_stdio_launcher
+    each kept a copy of this loop; this is what all of them did."""
+    both = {
+        "mcpServers": {"a": {"command": "x"}, "dup": {"command": "1"}, "str": "npx thing"},
+        "servers": {"dup": {"command": "2"}, "b": {"type": "http", "url": "https://h.example/mcp"}, "nil": None},
+    }
+    # Keys in order, each map's entries on their own, non-object entries skipped.
+    assert list(iter_mcp_servers(both)) == [
+        ("a", {"command": "x"}),
+        ("dup", {"command": "1"}),
+        ("dup", {"command": "2"}),
+        ("b", {"type": "http", "url": "https://h.example/mcp"}),
+    ]
+    # A name is always a string.
+    assert list(iter_mcp_servers({"servers": {1: {"command": "x"}}})) == [("1", {"command": "x"})]
+    # A registry-style array is not a map, and neither is a nested one.
+    assert list(iter_mcp_servers({"servers": [{"name": "listing", "command": "x"}]})) == []
+    assert list(iter_mcp_servers({"config": {"mcpServers": {"a": {"command": "x"}}}})) == []
+    # A top level that is not an object yields nothing and does not raise.
+    for top in ([], "mcpServers", 3, None, True):
+        assert list(iter_mcp_servers(top)) == []
+
+
+# A tuple, list or argument list naming both server-map keys, either order.
+_BOTH_SERVER_KEYS = re.compile(
+    r"""["']mcpServers["']\s*,\s*["']servers["']|["']servers["']\s*,\s*["']mcpServers["']"""
+)
+
+
+def test_no_module_reads_both_server_maps_by_hand() -> None:
+    """Five modules kept their own copy of the two-key loop, each pinned to the
+    shared semantics by a comment. One reader means one place to change when a
+    client adds a key; read the maps with `iter_mcp_servers` or `mcp_server_maps`."""
+    repo = Path(__file__).resolve().parent.parent
+    offenders: list[str] = []
+    for py in sorted((repo / "agent_audit_kit").rglob("*.py")):
+        if py.name == "_helpers.py" and py.parent.name == "scanners":
+            continue
+        text = py.read_text(encoding="utf-8")
+        for m in _BOTH_SERVER_KEYS.finditer(text):
+            offenders.append(f"{py.relative_to(repo)}:{text.count(chr(10), 0, m.start()) + 1}")
+    assert not offenders, f"read the server maps with _helpers.iter_mcp_servers: {offenders}"
 
 
 @pytest.mark.parametrize("command", [

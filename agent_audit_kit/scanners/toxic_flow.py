@@ -23,13 +23,13 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, loads_jsonc, make_finding
+from ._helpers import in_skip_dir, iter_mcp_servers, loads_jsonc, make_finding
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -79,32 +79,6 @@ _MCP_CONFIG_FILES: tuple[str, ...] = (
 )
 
 
-# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
-def _server_entries(data: Any) -> list[tuple[str, dict[str, Any]]]:
-    """Every ``(name, config)`` server entry under ``mcpServers`` or VS Code's ``servers``.
-
-    `.vscode/mcp.json` keeps its servers under `servers`. It was on the file
-    list while only `mcpServers` was read, so a VS Code project exposed no MCP
-    tools to this rule. A copy of `tool_poisoning._server_entries`: keys in
-    that order, each map's entries on their own, only a top-level JSON object
-    counts as a map, and a top level that is not an object yields nothing. An
-    entry that is not an object is skipped, so its name is no longer counted
-    as a tool identifier the way it was when only `mcpServers` was read: such
-    an entry declares no server.
-    """
-    if not isinstance(data, dict):
-        return []
-    entries: list[tuple[str, dict[str, Any]]] = []
-    for key in ("mcpServers", "servers"):
-        block = data.get(key)
-        if not isinstance(block, dict):
-            continue
-        for name, cfg in block.items():
-            if isinstance(cfg, dict):
-                entries.append((str(name), cfg))
-    return entries
-
-
 def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:
     """Tool/server identifiers from MCP config files, each with the file it came from.
 
@@ -125,7 +99,11 @@ def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:
         except (json.JSONDecodeError, OSError):
             continue
         parsed.add(cfg)
-        for name, cfg_data in _server_entries(data):
+        # VS Code's `servers` map counts too: `.vscode/mcp.json` was on the
+        # list while only `mcpServers` was read, so a VS Code project exposed
+        # no MCP tools here. An entry that is not an object declares no
+        # server, so its name is not taken as a tool identifier.
+        for name, cfg_data in iter_mcp_servers(data):
             origins.setdefault(name, cfg)
             args = cfg_data.get("args")
             if isinstance(args, list):

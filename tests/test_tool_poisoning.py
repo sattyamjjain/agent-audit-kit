@@ -3,10 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from agent_audit_kit import pinning
-from agent_audit_kit.scanners import tool_poisoning, toxic_flow
 from agent_audit_kit.scanners.tool_poisoning import scan
 
 
@@ -582,34 +578,3 @@ def test_a_file_with_both_keys_has_both_maps_read(tmp_path: Path) -> None:
     findings, _ = scan(tmp_path)
     servers = sorted(f.evidence.split("'")[1] for f in findings if f.rule_id == "AAK-POISON-002")
     assert servers == ["claude-side", "vscode-side"]
-
-
-@pytest.mark.parametrize(
-    "reader",
-    [tool_poisoning._server_entries, pinning._server_entries, toxic_flow._server_entries],
-    ids=["tool_poisoning", "pinning", "toxic_flow"],
-)
-def test_server_readers_keep_the_shared_semantics(reader) -> None:
-    """The local readers stay interchangeable with `_helpers.iter_mcp_servers`.
-
-    That helper lands on fix/config-hook-trust-detection, and these three
-    become calls to it once both branches merge, so the semantics are pinned
-    here rather than left to each copy.
-    """
-    both = {
-        "mcpServers": {"a": {"command": "x"}, "dup": {"command": "1"}, "str": "npx thing"},
-        "servers": {"dup": {"command": "2"}, "b": {"type": "http", "url": "https://h.example/mcp"}, "nil": None},
-    }
-    # Keys in order, each map's entries on their own, non-object entries skipped.
-    assert reader(both) == [
-        ("a", {"command": "x"}),
-        ("dup", {"command": "1"}),
-        ("dup", {"command": "2"}),
-        ("b", {"type": "http", "url": "https://h.example/mcp"}),
-    ]
-    # A registry-style array is not a map, and neither is a nested one.
-    assert reader({"servers": [{"name": "listing", "command": "x"}]}) == []
-    assert reader({"config": {"mcpServers": {"a": {"command": "x"}}}}) == []
-    # A top level that is not an object yields nothing and does not raise.
-    for top in ([], "mcpServers", 3, None, True):
-        assert reader(top) == []

@@ -5,7 +5,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    iter_mcp_servers,
+    loads_jsonc,
+    make_finding,
+)
 from agent_audit_kit.scanners._launchers import invocation_packages, launch_evidence, pin_problem
 from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
 
@@ -84,32 +90,6 @@ def _version_in_range(version: str, affected: str) -> bool:
         return False
 
 
-# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
-def _mcp_server_entries(data: object) -> list[tuple[str, dict]]:
-    """(name, entry) for each server in a config's top-level server maps.
-
-    VS Code keeps its servers under `servers` in .vscode/mcp.json, and this
-    rule read `mcpServers` alone, so a VS Code config was never judged. The
-    keys are read in the order `mcpServers`, `servers`. A map counts only when
-    it is a JSON object at the top level of the config: a `servers` array (a
-    registry listing) is not one, and neither is a map nested deeper. When a
-    file has both keys, each map is read on its own. An entry whose value is
-    not an object is skipped, and a config whose top level is not an object
-    yields nothing rather than raising.
-    """
-    entries: list[tuple[str, dict]] = []
-    if not isinstance(data, dict):
-        return entries
-    for key in ("mcpServers", "servers"):
-        servers = data.get(key)
-        if not isinstance(servers, dict):
-            continue
-        for name, entry in servers.items():
-            if isinstance(entry, dict):
-                entries.append((str(name), entry))
-    return entries
-
-
 def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
     """Check MCP configs for unpinned packages (AAK-SUPPLY-001)."""
     findings: list[Finding] = []
@@ -131,7 +111,9 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
             continue
 
         rel_path = str(mcp_path.relative_to(project_root))
-        for server_name, server_cfg in _mcp_server_entries(data):
+        # Both server maps: VS Code keeps its servers under `servers` in
+        # .vscode/mcp.json, and reading `mcpServers` alone never judged one.
+        for server_name, server_cfg in iter_mcp_servers(data):
             command = server_cfg.get("command", "")
             args = server_cfg.get("args", [])
 

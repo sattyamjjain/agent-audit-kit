@@ -6,32 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import loads_jsonc, make_finding
-
-
-# Same semantics as _helpers.iter_mcp_servers (fix/config-hook-trust-detection); unify after both merge.
-def _server_entries(data: Any) -> list[tuple[str, dict[str, Any]]]:
-    """Every ``(name, config)`` server entry under ``mcpServers`` or VS Code's ``servers``.
-
-    `.vscode/mcp.json` keeps its servers under `servers`. It was on the
-    discovery list while only `mcpServers` was read, so `pin` recorded none of
-    its tools and a rug pull there was never reported. A copy of
-    `tool_poisoning._server_entries`: keys in that order, each map's entries on
-    their own, only a top-level JSON object counts as a map, an entry that is
-    not an object is skipped, and a top level that is not an object yields
-    nothing (a top-level array used to raise `AttributeError` here).
-    """
-    if not isinstance(data, dict):
-        return []
-    entries: list[tuple[str, dict[str, Any]]] = []
-    for key in ("mcpServers", "servers"):
-        block = data.get(key)
-        if not isinstance(block, dict):
-            continue
-        for name, cfg in block.items():
-            if isinstance(cfg, dict):
-                entries.append((str(name), cfg))
-    return entries
+from agent_audit_kit.scanners._helpers import iter_mcp_servers, loads_jsonc, make_finding
 
 
 def _hash_tool(name: str, description: str, input_schema: str) -> str:
@@ -86,7 +61,10 @@ def _discover_tools(project_root: Path) -> dict[str, dict]:
         except (json.JSONDecodeError, OSError):
             continue
 
-        for server_name, server_cfg in _server_entries(data):
+        # `mcpServers`, and the `servers` map of VS Code's `.vscode/mcp.json`.
+        # That file was on the list while only `mcpServers` was read, so `pin`
+        # recorded none of its tools and a rug pull there was never reported.
+        for server_name, server_cfg in iter_mcp_servers(data):
             server_tools = server_cfg.get("tools", [])
             if isinstance(server_tools, list):
                 for tool in server_tools:
