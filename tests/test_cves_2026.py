@@ -163,6 +163,37 @@ def test_hook_rce_a_crafted_interpolation_scans_in_linear_time(tmp_path: Path, s
     assert not any(f.rule_id == "AAK-HOOK-RCE-001" for f in findings)
 
 
+@pytest.mark.parametrize(("source", "fires"), [
+    ("import subprocess\nsubprocess.run(cmd, shell=True)\n", True),
+    ("const cp = require('child_process');\ncp.spawn(cmd, args, { shell: true });\n", True),
+    ("os.system(cmd)\n", False),
+    ("subprocess.run(cmd, check=True)\nlog(shell=True)\n", False),  # after the call's `)`
+])
+def test_hook_rce_shell_true_shapes_keep_their_result(tmp_path: Path, source: str, fires: bool) -> None:
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "stop.py").write_text(source, encoding="utf-8")
+    findings, _ = hook_rce.scan(tmp_path)
+    assert any(f.rule_id == "AAK-HOOK-RCE-002" for f in findings) is fires
+
+
+@pytest.mark.parametrize("unit", ["spawn(", "os.system(", "subprocess.run("])
+def test_hook_rce_a_crafted_script_of_calls_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """A 1 MB hook script of one call opener repeated with no `)`. Every opener
+    read on to the first `)`, so 40,000 characters of `spawn(` took 1.9 seconds
+    and the time grew with the square; hook scripts are read whatever their size.
+    The bound is loose for slow CI runners."""
+    import time
+
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "stop.py").write_text(unit * (1_000_000 // len(unit)), encoding="utf-8")
+    started = time.perf_counter()
+    findings, _ = hook_rce.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert not any(f.rule_id == "AAK-HOOK-RCE-002" for f in findings)
+
+
 @pytest.mark.parametrize(("command", "fires"), [
     ('echo "$X" + input', True),
     ("echo {{ input }}", True),

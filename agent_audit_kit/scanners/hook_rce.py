@@ -37,8 +37,18 @@ _HOOK_SCRIPT_EXTS = {".sh", ".bash", ".py", ".js", ".ts", ".mjs"}
 # existing references below (and any importer) stay valid.
 _INTERPOLATION_RE = INTERPOLATION_RE
 
+# The argument scan stops at the next call of the same kinds as well as at `)`.
+# With a bare `[^)]*`, every call in a script of repeated `spawn(` rescanned to
+# the first `)`, so the time grew with the square of the script: 40,000
+# characters took 1.9 seconds, and hook scripts are read whatever their size.
+# A call nested in the arguments before `shell=True` reads the rest itself, so
+# a script matches exactly when it did; the match then starts at that inner call.
+_SHELL_CALL = (
+    r"(?:subprocess\.(?:run|call|Popen|check_output)|os\.system|exec\s*\(|"
+    r"child_process\.exec(?:Sync)?|spawnSync|spawn)\s*\("
+)
 _SHELL_TRUE_RE = re.compile(
-    r"""(?:subprocess\.(?:run|call|Popen|check_output)|os\.system|exec\s*\(|child_process\.exec(?:Sync)?|spawnSync|spawn)\s*\([^)]*(?:shell\s*=\s*True|{\s*shell\s*:\s*true)""",
+    _SHELL_CALL + r"(?:(?!" + _SHELL_CALL + r")[^)])*(?:shell\s*=\s*True|{\s*shell\s*:\s*true)",
     re.IGNORECASE | re.DOTALL,
 )
 
