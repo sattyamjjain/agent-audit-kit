@@ -91,8 +91,12 @@ _PIN_FINDINGS: tuple[tuple[str, str], ...] = (
     ("AAK-MCP-ATLASSIAN-CVE-2026-27826-001",
      "CVE-2026-27826 (two custom headers without Authorization make the server request any host)"),
 )
+# `[^\S\n]*` after the newline, not `\s*`: from every newline in a run of blank
+# lines `\s*` read to the end of the run, so a crafted manifest grew with the
+# square of the run. The match now opens at the newline nearest the name, which
+# the name's offset below does not depend on.
 _PIN_RE = re.compile(
-    r"""(?:^|\n)\s*(?:["']?)mcp-atlassian(?:["']?)\s*[=<>~!]+\s*['"]?([0-9][\w.\-]*)"""
+    r"""(?:^|\n)[^\S\n]*(?:["']?)mcp-atlassian(?:["']?)\s*[=<>~!]+\s*['"]?([0-9][\w.\-]*)"""
 )
 
 

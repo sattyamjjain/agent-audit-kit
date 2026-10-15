@@ -15,6 +15,8 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import (
     agent_config,
     log_injection,
@@ -102,6 +104,27 @@ def test_neo4j_vulnerable_pin_fires(tmp_path: Path) -> None:
     findings, _ = neo4j_cve.scan(tmp_path)
     ids = {f.rule_id for f in findings}
     assert "AAK-NEO4J-001" in ids
+
+
+def test_neo4j_pin_after_blank_lines_names_its_line(tmp_path: Path) -> None:
+    """The match opened at the first blank line above the pin, so its text held a
+    newline and `find_line_number` found no line for the finding."""
+    (tmp_path / "requirements.txt").write_text("flask\n\n\nmcp-neo4j-cypher==0.5.0\n")
+    findings, _ = neo4j_cve.scan(tmp_path)
+    assert [f.line_number for f in findings if f.rule_id == "AAK-NEO4J-001"] == [4]
+
+
+@pytest.mark.parametrize("requirements", ["\n" * 1_999_000 + "x", "mcp-neo4j-cypher" + " " * 1_999_000 + "x"])
+def test_neo4j_pin_reads_a_crafted_requirements_file_in_linear_time(tmp_path: Path, requirements: str) -> None:
+    """From every line start in a run of blank lines `^\\s*` read to the end of the
+    run, and two `\\s*` around the optional operator split a blank run every way,
+    so both shapes grew with the square. The bound is loose for slow CI runners."""
+    import time
+
+    (tmp_path / "requirements.txt").write_text(requirements, encoding="utf-8")
+    started = time.perf_counter()
+    neo4j_cve.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
 
 
 def test_neo4j_patched_pin_is_quiet(tmp_path: Path) -> None:

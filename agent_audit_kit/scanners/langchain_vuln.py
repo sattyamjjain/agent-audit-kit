@@ -58,8 +58,16 @@ def _version_lt(a: tuple[int, int, int], b: tuple[int, int, int]) -> bool:
 # start of a requirement line, with the version straight after the name, so
 # `langchain-community` or a longer name that starts with `langchain-core` is
 # never read as it.
+#
+# Indentation is `[^\S\n]*` and each optional part takes its own trailing
+# blanks. `^\s*` read across a run of blank lines from every line start in it,
+# and the three `\s*` around the optional extras and operator split a blank run
+# every possible way, so a crafted requirements file grew with the cube of the
+# run. The match now starts on the requirement's own line, which also gives
+# `find_line_number` a key it can find: a match that opened with blank lines
+# contained a newline, so the finding had no line.
 _REQ_PIN_RE = re.compile(
-    r"""^\s*(langchain[-_.]+core)\s*(?:\[[^\]\n]*\])?\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)""",
+    r"""^[^\S\n]*(langchain[-_.]+core)\s*(?:\[[^\]\n]*\]\s*)?(?:(?:==|>=|<=|<|>|~=|!=)\s*)?([0-9][0-9a-zA-Z.\-_]*)""",
     re.MULTILINE | re.IGNORECASE,
 )
 

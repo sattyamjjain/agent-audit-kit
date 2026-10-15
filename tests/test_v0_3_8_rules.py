@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners.ipi_wild_corpus import scan as ipi_scan
 from agent_audit_kit.scanners.mcp_atlassian import scan as atlassian_scan
 from agent_audit_kit.scanners.mcp_fhi import scan as fhi_scan
@@ -109,6 +111,25 @@ def test_atlassian_pin_below_the_fix_reports_both_cves(tmp_path: Path) -> None:
 def test_atlassian_pin_at_the_fix_is_silent(tmp_path: Path) -> None:
     ids = _pin_ids(tmp_path, "mcp-atlassian==0.17.0")
     assert _PIN_27825 not in ids and _PIN_27826 not in ids
+
+
+@pytest.mark.parametrize("requirements", [
+    "\n" * 1_999_000 + "mcp-atlassian==0.16.2",
+    "mcp-atlassian" + " " * 1_999_000 + "x",
+])
+def test_atlassian_pin_reads_a_crafted_manifest_in_linear_time(tmp_path: Path, requirements: str) -> None:
+    """From every newline in a run of blank lines the pin pattern's `\\s*` read
+    to the end of the run, so 40,000 blank lines took 6.7 seconds and the time
+    grew with the square. The bound is loose for slow CI runners; the pin after the blank
+    lines is still read, on its own line."""
+    import time
+
+    (tmp_path / "requirements.txt").write_text(requirements, encoding="utf-8")
+    started = time.perf_counter()
+    findings, _ = atlassian_scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    lines = {f.line_number for f in findings if f.rule_id == _PIN_27825}
+    assert lines == ({1_999_001} if requirements.endswith("0.16.2") else set())
 
 
 def test_atlassian_patched_pin_is_silent(tmp_path: Path) -> None:

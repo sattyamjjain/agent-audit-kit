@@ -20,8 +20,14 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
+# Indentation is `[^\S\n]*` and the operator takes its own trailing blanks:
+# `^\s*` read across a run of blank lines from every line start in it, and the
+# two `\s*` around the optional operator split a blank run every possible way,
+# so a crafted requirements file grew with the square of the run. The match now
+# starts on the requirement's own line, so `find_line_number` can find it (a
+# match that opened with blank lines left the finding without a line).
 _REQ_PIN_RE = re.compile(
-    r"""^\s*(mcp-neo4j-cypher)\s*(?:==|>=|<=|<|>|~=|!=)?\s*([0-9][0-9a-zA-Z.\-_]*)""",
+    r"""^[^\S\n]*(mcp-neo4j-cypher)\s*(?:(?:==|>=|<=|<|>|~=|!=)\s*)?([0-9][0-9a-zA-Z.\-_]*)""",
     re.MULTILINE,
 )
 

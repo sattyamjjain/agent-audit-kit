@@ -231,6 +231,28 @@ def test_langchain_vulnerable_requirements_fires(tmp_path: Path) -> None:
     assert "AAK-LANGCHAIN-003" in ids
 
 
+def test_langchain_core_pin_after_blank_lines_names_its_line(tmp_path: Path) -> None:
+    """The match opened at the first blank line above the pin, so its text held a
+    newline and `find_line_number` found no line for the finding."""
+    (tmp_path / "requirements.txt").write_text("flask\n\n\nlangchain-core==0.3.0\n", encoding="utf-8")
+    findings, _ = langchain_vuln.scan(tmp_path)
+    assert {f.line_number for f in findings if f.rule_id in ("AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003")} == {4}
+
+
+@pytest.mark.parametrize("requirements", ["\n" * 1_999_000 + "x", "langchain-core" + " " * 1_999_000 + "x"])
+def test_langchain_core_pin_reads_a_crafted_requirements_file_in_linear_time(tmp_path: Path, requirements: str) -> None:
+    """`^\\s*` read across a run of blank lines from every line start in it, and
+    three `\\s*` around the optional extras and operator split a blank run every
+    way, so the second shape grew with the cube of the run. The bound is loose
+    for slow CI runners."""
+    import time
+
+    (tmp_path / "requirements.txt").write_text(requirements, encoding="utf-8")
+    started = time.perf_counter()
+    langchain_vuln.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
 def test_langchain_safe_requirements_is_quiet(tmp_path: Path) -> None:
     shutil.copy(FIX / "langchain" / "safe_requirements.txt", tmp_path / "requirements.txt")
     findings, _ = langchain_vuln.scan(tmp_path)
