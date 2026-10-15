@@ -135,6 +135,31 @@ def test_harness_counts_an_env_secret_once(tmp_path: Path) -> None:
     assert "AAK-SECRET-007" not in rules
 
 
+def test_owasp_tally_leaves_out_the_advisory_rules(tmp_path: Path) -> None:
+    """The OWASP MCP hit rate counts what the top-ten table counts.
+
+    AAK-MCP-ATTEST-001 fires on nearly every config. Counted, it put its own
+    OWASP id at 99.9% of the corpus, a figure about the attestation rule rather
+    than the servers. Re-derived here from the findings, minus the advisory set.
+    """
+    from agent_audit_kit.rules.builtin import RULES
+
+    mod = _load_run_report()
+    text = json.dumps({"mcpServers": {"r": {"type": "http", "url": "https://x.example/mcp"}}})
+    corpus = tmp_path / "data"
+    corpus.mkdir()
+    (corpus / "remote.json").write_text(text, encoding="utf-8")
+
+    fired = {f.rule_id for f in mod._scan_text(text).findings}
+    counted = fired - mod._ADVISORY_RULES
+    expected = {ref for rid in counted for ref in RULES[rid].owasp_mcp_references}
+    advisory_only = {
+        ref for rid in fired & mod._ADVISORY_RULES for ref in RULES[rid].owasp_mcp_references
+    } - expected
+    assert advisory_only, "the config must trip an OWASP id only an advisory rule carries"
+    assert set(mod.aggregate(corpus, None)["owasp_mcp_hit_rate"]) == expected
+
+
 def test_fp_benchmark_scans_under_the_report_harness_name() -> None:
     """The benign-slice benchmark measures what the report measures."""
     import sys

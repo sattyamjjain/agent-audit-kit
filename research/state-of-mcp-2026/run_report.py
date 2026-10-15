@@ -48,8 +48,11 @@ from agent_audit_kit.scanners.oauth_misconfig import (
 from agent_audit_kit.scoring import compute_score
 
 # Findings AAK reports that are advisory *posture* signals, not exploitable
-# misconfigurations. Excluded from the "top misconfigurations" headline so the
-# story isn't inflated (documented in REPORT.md).
+# misconfigurations. Excluded from the "top misconfigurations" headline and from
+# the OWASP MCP hit-rate tally so the story isn't inflated (documented in
+# REPORT.md). The tally counted them until report v1.1: AAK-MCP-ATTEST-001
+# fires on nearly every config, so under #971's mapping it alone put MCP04 at
+# 99.9% of the corpus.
 _ADVISORY_RULES = frozenset({"AAK-MCP-ATTEST-001", "AAK-MCP-007"})
 
 # The remote MCP server "no authentication" rule.
@@ -237,7 +240,7 @@ def aggregate(corpus: Path, registry_manifest: Path | None) -> dict[str, Any]:
             cats_here.add(f.category.value)
             rules_here.add(f.rule_id)
             rule = RULES.get(f.rule_id)
-            if rule:
+            if rule and f.rule_id not in _ADVISORY_RULES:
                 owasp_here.update(rule.owasp_mcp_references)
         for c in cats_here:
             category_configs[c] += 1
