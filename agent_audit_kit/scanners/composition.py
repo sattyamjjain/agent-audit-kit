@@ -62,6 +62,7 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, loads_jsonc, make_finding
@@ -402,10 +403,49 @@ def _body_caps(body: str, skill_dir: Path) -> set[str]:
     return {cap for cap, rx in _BODY_CAPABILITY_SIGNALS if rx.search(text)}
 
 
+# A run of path characters. Every `_STATE_PATH_RE` match ends where its run ends.
+_PATH_RUN_RE = re.compile(r"[\w./-]+")
+_WORD_OR_HYPHEN_RE = re.compile(r"[\w-]")
+
+
+def _state_path_matches(text: str) -> Iterator[str]:
+    """What ``_STATE_PATH_RE.finditer(text)`` matches, tried only where a match
+    can first succeed.
+
+    In a run of dots every `.` could open the `./`-relative arm, which reads the
+    rest of the run looking for `cache` / `state` / ...: 16,000 dots took 8.3
+    seconds, and the time grew with the square of the run. Within one stretch
+    of word characters, dots and hyphens, an opening `.` reaches only text that
+    the stretch's first opening `.` reaches too, so a later one can match only
+    if the first does, except a `.` right before a `/`, which reaches past it.
+    Only those two are tried, with `/` and `~` as before, so the matches are the
+    same, each running to the end of its run as it always did.
+    """
+    for run in _PATH_RUN_RE.finditer(text):
+        start, end = run.span()
+        candidates = [start - 1] if start and text[start - 1] == "~" else []
+        first_dot = True
+        for i in range(start, end):
+            ch = text[i]
+            if ch == "/":
+                candidates.append(i)
+                first_dot = True
+            elif ch == ".":
+                opens = i == 0 or not _WORD_OR_HYPHEN_RE.match(text, i - 1)
+                if opens and (first_dot or text[i + 1:i + 2] == "/"):
+                    candidates.append(i)
+                first_dot = first_dot and not opens
+        for i in candidates:
+            m = _STATE_PATH_RE.match(text, i)
+            if m:
+                yield m.group(0)
+                break
+
+
 def _state_paths(text: str) -> set[str]:
     out = set()
-    for m in _STATE_PATH_RE.finditer(text):
-        candidate = m.group(0).rstrip(".,;:)`'\"")
+    for candidate in _state_path_matches(text):
+        candidate = candidate.rstrip(".,;:)`'\"")
         # A bare directory prefix is not a channel; require something after it.
         if len(candidate) > 6 and not candidate.endswith("/"):
             out.add(candidate)

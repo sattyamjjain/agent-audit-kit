@@ -477,3 +477,27 @@ def test_exceeding_the_graph_bound_yields_silence_not_a_crash() -> None:
         (root / ".mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
         findings, _ = scan(root)
         assert not [f for f in findings if f.rule_id == CHAIN]
+
+
+@pytest.mark.parametrize(("text", "paths"), [
+    ("writes to /tmp/agent-handoff.json", {"/tmp/agent-handoff.json"}),
+    ("reads ./.cache/session.db and ../state/run.json", {"./.cache/session.db", "./state/run.json"}),
+    ("x..cache/q", {".cache/q"}),  # opens at the second dot, as before
+    ("~/.myapp/state", {"~/.myapp/state"}),
+    ("a.b.c and ... only", set()),
+])
+def test_state_paths_are_read_as_before(text: str, paths: set[str]) -> None:
+    assert composition._state_paths(text) == paths
+
+
+@pytest.mark.parametrize("unit", [".", "~/.", "-."])
+def test_a_crafted_skill_body_scans_its_state_paths_in_linear_time(unit: str) -> None:
+    """A run of dots at the 512,000-byte file cap. Every dot opened the relative
+    arm and read the rest of the run for a state word: 16,000 dots took 8.3
+    seconds and the time grew with the square. The bound is loose for slow CI
+    runners."""
+    import time
+
+    started = time.perf_counter()
+    composition._state_paths(unit * (512_000 // len(unit)))
+    assert time.perf_counter() - started < 5.0
