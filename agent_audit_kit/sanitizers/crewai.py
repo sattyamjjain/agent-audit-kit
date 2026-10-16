@@ -20,6 +20,8 @@ import socket
 from pathlib import Path
 from urllib.parse import urlparse
 
+from agent_audit_kit.scanners._helpers import url_hosts
+
 
 _PRIVATE_NETS: tuple[str, ...] = (
     "10.", "127.", "169.254.", "172.16.", "172.17.", "172.18.", "172.19.",
@@ -79,6 +81,12 @@ def validate_rag_url(url: str, *, allowlist: list[str]) -> str:
 
     Rejects URLs that resolve to private networks or whose hostname is
     not in `allowlist`. Returns the URL unchanged on success.
+
+    A URL whose host URL parsers read differently is rejected too. `urlparse`
+    keeps a backslash inside the authority, so it read
+    `http://evil.example\\@docs.example/` as docs.example and passed it, while
+    requests (urllib3) ends the authority at the backslash and fetches
+    evil.example. A guard has to hold whichever client does the fetch.
     """
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
@@ -86,6 +94,11 @@ def validate_rag_url(url: str, *, allowlist: list[str]) -> str:
             f"RagTool refuses scheme {parsed.scheme!r} (CVE-2026-2286)."
         )
     host = parsed.hostname or ""
+    if url_hosts(url) != (host,):
+        raise CrewAIGuardError(
+            f"RagTool: URL parsers read the host of {url!r} differently "
+            "(CVE-2026-2286)."
+        )
     if host not in set(allowlist):
         raise CrewAIGuardError(
             f"RagTool host {host!r} not in allowlist (CVE-2026-2286)."
