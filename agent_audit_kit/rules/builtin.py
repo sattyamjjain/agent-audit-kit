@@ -6927,11 +6927,23 @@ _r(
     Category.TOOL_POISONING,
     "Add the source/sink pair to `.aak-toxic-flow-trust.yml` with a "
     "`justification:` field, scope the source tool to a directory the "
-    "sink cannot reach, or remove one side of the pair. Run "
-    "`agent-audit-kit toxic-flow --explain` to see the full graph.",
+    "sink cannot reach, or remove one side of the pair. The finding's "
+    "evidence names the families and the tools on each side.",
     sarif_name="ToxicFlowSourceSink",
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-CHAIN-01"],
+    limitations=(
+        "Off unless `AAK_TOXIC_FLOW=1` is in the environment. It reads the server "
+        "names and `args` strings of `.mcp.json`, `.cursor/mcp.json`, "
+        "`.vscode/mcp.json`, `.amazonq/mcp.json` and `mcp.json` at the scan root, and "
+        "the names of Python functions decorated `@tool`, `@mcp.tool` or "
+        "`@server.tool` with no arguments, and matches each against the names in "
+        "`toxic_flow_pairs.yml`. A server is judged by its name and arguments, not by "
+        "the tools it lists at run time, so `@modelcontextprotocol/server-filesystem`, "
+        "whose read tool is `read_text_file`, is no source. A decorator with arguments "
+        "(`@tool(\"read_file\")`, `@mcp.tool(name=...)`), a TypeScript "
+        "`server.tool(...)` and a skill under `.claude/skills/` declare no tool."
+    ),
 )
 
 

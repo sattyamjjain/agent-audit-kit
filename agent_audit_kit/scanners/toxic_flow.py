@@ -1,12 +1,13 @@
 """AAK-TOXICFLOW-001 — toxic-flow source/sink pair scoring.
 
-Snyk Agent Scan parity. Discover every tool the agent project exposes
-(MCP servers in `.mcp.json` and the other MCP config files, VS Code's
-`servers` object included, + skills in `.claude/skills/` + first-party
-tools the codebase imports) and emit a HIGH finding for every
+Snyk Agent Scan parity. Discover the tools the agent project exposes
+(MCP server names and args in `.mcp.json` and the other MCP config
+files, VS Code's `servers` object included, + `@tool`-decorated Python
+functions in the repo) and emit a HIGH finding for every
 (sensitive_source, external_sink) pair listed in
 `agent_audit_kit/data/toxic_flow_pairs.yml` — unless the pair appears
-in `.aak-toxic-flow-trust.yml` with a non-empty justification.
+in `.aak-toxic-flow-trust.yml` with a non-empty justification. Skills
+are not read; the rule's limitation text lists what else is not.
 
 Off by default: requires `AAK_TOXIC_FLOW=1` in the environment to fire.
 That was introduced as a v0.3.5 temporary measure and is still the
@@ -120,20 +121,32 @@ def _discover_mcp_tools(project_root: Path) -> set[str]:
 
 # `\s*(?:\(\s*)?`, not `\s*\(?\s*`: with no `(`, the two `\s*` split a run of
 # blanks every way, so a long line of them took the square of its length.
+# The second arm is the bare decorator, `@tool` with nothing after it but
+# blanks or a comment, which is the form LangChain documents. The first arm
+# alone never saw it: it wants `)` or a newline after the name, and the lines
+# come from `splitlines()`, which drops the newline. The `$` arm cannot follow
+# a `(`, so a call whose arguments sit on the next lines (`@tool(`) stays out.
 _TOOL_DECORATOR_RE = re.compile(
     r"""
     @(?:mcp\s*\.\s*tool|server\s*\.\s*tool|tool|langchain\s*\.\s*tools\s*\.\s*tool)
-    \s*(?:\(\s*)?[\)\n]
+    (?:\s*(?:\(\s*)?[\)\n]|\s*(?:\#[^\n]*)?$)
     """,
     re.VERBOSE,
 )
 _DEF_NAME_RE = re.compile(r"def\s+([A-Za-z_][A-Za-z_0-9]*)\s*\(")
 
 
-def _discover_repo_tools(project_root: Path) -> set[str]:
-    """Names of @tool / @mcp.tool decorated functions in the repo."""
-    tools: set[str] = set()
-    for path in project_root.rglob("*.py"):
+def _repo_tool_origins(project_root: Path) -> dict[str, tuple[str, int]]:
+    """Names of @tool / @mcp.tool decorated functions in the repo, with where each is.
+
+    Maps a name to the file (relative to ``project_root``) and the line of the
+    first ``def`` that declared it, in path order, so a pair made only of
+    these functions is reported where its first tool is written instead of
+    against a `.mcp.json` the project may not have. The walk is sorted: in
+    directory order a name declared in two files could point at either.
+    """
+    origins: dict[str, tuple[str, int]] = {}
+    for path in sorted(project_root.rglob("*.py")):
         if in_skip_dir(path, project_root):
             continue
         try:
@@ -142,6 +155,7 @@ def _discover_repo_tools(project_root: Path) -> set[str]:
             continue
         if "@tool" not in text and "@mcp.tool" not in text and "@server.tool" not in text:
             continue
+        rel = str(path.relative_to(project_root))
         # Cheap pass: pair @-decorator with the immediately following def.
         lines = text.splitlines()
         for i, line in enumerate(lines):
@@ -152,9 +166,14 @@ def _discover_repo_tools(project_root: Path) -> set[str]:
                         break
                     m = _DEF_NAME_RE.search(lines[i + off])
                     if m:
-                        tools.add(m.group(1))
+                        origins.setdefault(m.group(1), (rel, i + off + 1))
                         break
-    return tools
+    return origins
+
+
+def _discover_repo_tools(project_root: Path) -> set[str]:
+    """Names of @tool / @mcp.tool decorated functions in the repo."""
+    return set(_repo_tool_origins(project_root))
 
 
 def _classify(tool_id: str, family_map: dict[str, list[str]]) -> set[str]:
@@ -185,7 +204,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     trust = _load_trust(project_root)
 
     origins, scanned = _mcp_tool_origins(project_root)
-    discovered = set(origins) | _discover_repo_tools(project_root)
+    repo_origins = _repo_tool_origins(project_root)
+    # A file that declared a tool was read for the graph, like a config.
+    scanned |= {rel for rel, _ in repo_origins.values()}
+    discovered = set(origins) | set(repo_origins)
     if not discovered:
         return [], scanned
 
@@ -222,20 +244,27 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             "with a justification, or remove one side of the pair."
         )
         # The config that declared the pair's first MCP tool, sources first.
-        # A pair made only of `@tool` functions in the repo keeps the old
-        # `.mcp.json` placeholder: those are not tracked to a file.
-        report_path = next(
-            (origins[t] for t in (*source_tools, *sink_tools) if t in origins),
-            ".mcp.json",
-        )
+        # A pair made only of `@tool` functions in the repo has no config: it
+        # is reported at the `def` of its first tool, which used to be the
+        # `.mcp.json` placeholder whether or not the project had one. Every
+        # discovered tool has one origin or the other.
+        pair = (*source_tools, *sink_tools)
+        report_path = next((origins[t] for t in pair if t in origins), None)
+        line: int | None = None
+        if report_path is None:
+            report_path, line = repo_origins[pair[0]]
         findings.append(make_finding(
             "AAK-TOXICFLOW-001",
             report_path,
             evidence,
+            line,
         ))
     return findings, scanned
 
 
 def discovered_tools(project_root: Path) -> Iterable[str]:
-    """Helper for `agent-audit-kit toxic-flow --explain` (future CLI)."""
+    """Every tool identifier the rule pairs, sorted: MCP server names and args, and repo functions.
+
+    No CLI command calls it; the finding's evidence names the tools of each pair.
+    """
     return sorted(_discover_mcp_tools(project_root) | _discover_repo_tools(project_root))

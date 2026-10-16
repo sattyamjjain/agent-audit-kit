@@ -16,10 +16,10 @@
 
 ## Feature-flag status
 
-This rule is **off by default in v0.3.5**. Set `AAK_TOXIC_FLOW=1` in
-the environment to opt in. The full deny-graph design review queues
-for v0.4.0; the v0.3.5 surface is a starter pair-set sufficient for
-field validation.
+This rule is **off by default**. Set `AAK_TOXIC_FLOW=1` in the
+environment to opt in. It pairs sources and sinks from a static list,
+so it over-reports on a project that legitimately does both; the
+deny-graph design review that would replace the list has not happened.
 
 ## What it catches
 
@@ -35,7 +35,11 @@ The scanner builds a per-scan tool graph from:
   `.cursor/mcp.json` / `.vscode/mcp.json` / `.amazonq/mcp.json` /
   `mcp.json`
 - Function names of `@tool` / `@mcp.tool` / `@server.tool` decorated
-  Python functions in the repo
+  Python functions in the repo, bare or with empty parentheses
+
+A pair is reported against the config that declared its first configured
+tool or, when every tool in it is a repo function, at the `def` of its
+first tool.
 
 Tool identifiers are matched against `agent_audit_kit/data/toxic_flow_pairs.yml`
 which lists known source families (`fs_read`, `secrets_read`,
@@ -64,8 +68,8 @@ the audit trail to carry the reason, not just the decision).
   belong elsewhere.
 - Pairs not yet enumerated in `toxic_flow_pairs.yml`. Submit a PR
   with the new family + cite the canonical incident.
-- Tool calls inside other-language repos (TS / Java / Rust). v0.3.5
-  walks Python decorators only; multi-language graph queues for v0.4.0.
+- Tools declared in other languages (TS / Java / Rust): only Python
+  decorators are read.
 
 ## Remediation
 
@@ -78,8 +82,3 @@ Three knobs, in priority order:
 3. **Allow-list with justification.** Add the pair to
    `.aak-toxic-flow-trust.yml` and document the egress controls that
    make the chain safe.
-
-## Roadmap
-
-- v0.4.0: full deny-graph DR + multi-language tool discovery + TUI
-  visualization (`agent-audit-kit toxic-flow --explain`).

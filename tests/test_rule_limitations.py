@@ -26,6 +26,10 @@ from agent_audit_kit.rules.builtin import RULES
 FIXTURES = Path(__file__).parent / "fixtures" / "limitations"
 RULE_DIRS = sorted(p for p in FIXTURES.iterdir() if p.is_dir()) if FIXTURES.is_dir() else []
 
+# A rule that is off by default is measured with its opt-in set: its limitation
+# says what it misses once it runs, and without the switch positive/ proves nothing.
+OPT_IN_ENV = {"AAK-TOXICFLOW-001": {"AAK_TOXIC_FLOW": "1"}}
+
 
 def _fires(rule_id: str, project: Path) -> bool:
     result = run_scan(project_root=project, rules=[rule_id])
@@ -37,8 +41,10 @@ def test_fixture_tree_is_not_empty() -> None:
 
 
 @pytest.mark.parametrize("rule_dir", RULE_DIRS, ids=lambda p: p.name)
-def test_limitation_is_proven(rule_dir: Path) -> None:
+def test_limitation_is_proven(rule_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rule_id = rule_dir.name
+    for name, value in OPT_IN_ENV.get(rule_id, {}).items():
+        monkeypatch.setenv(name, value)
     assert rule_id in RULES, f"{rule_id}: fixture directory names no registered rule"
     assert RULES[rule_id].limitations.strip(), (
         f"{rule_id}: has a fixture but the registry states no limitation"
