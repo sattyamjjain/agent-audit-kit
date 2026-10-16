@@ -7120,13 +7120,14 @@ _r(
 _r(
     "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
     "Vendored mcpjam-inspector fork carries CVE-2026-23744",
-    "CVE-2026-23744 (CVSS 9.8) in mcp-inspector ≤ 1.4.2. The "
-    "preset-only entry from v0.3.5 caught configured presence; this "
-    "rule catches forks that vendored or `node_modules`-pinned the "
-    "vulnerable code regardless of declared dependency. Path-match on "
-    "`vendor/mcpjam-inspector/**`, `node_modules/@mcpjam/inspector/**`, "
-    "any `**/mcpjam-inspector/**` plus the unique "
-    "`inspectorServer.handle(...)` call shape.",
+    "CVE-2026-23744 (CVSS 9.8): MCPJam Inspector (`@mcpjam/inspector`) 1.4.2 "
+    "and earlier listens on 0.0.0.0, and a crafted HTTP request makes it "
+    "install and run an MCP server, so anyone who can reach the port runs "
+    "code. The preset-only entry from v0.3.5 caught configured presence; this "
+    "rule catches a copy of the package in the tree, installed under "
+    "`node_modules/@mcpjam/inspector/` or vendored in a `*mcpjam-inspector*` "
+    "directory, and judges it by the version its own package.json states. It "
+    "also reports the `inspectorServer.handle(...)` call shape anywhere else.",
     Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
     "Bump `@mcpjam/inspector` to >= 1.4.3 in package.json AND remove "
@@ -7139,13 +7140,17 @@ _r(
     adversa_references=["ADV-SUPPLY-04"],
     incident_references=["MCPJAM-INSPECTOR-2026-04"],
     limitations=(
-        "Reads files with a .ts, .tsx, .js, .mjs or .cjs extension and reports one "
-        "whose path contains `mcpjam-inspector` or `@mcpjam/inspector`, or whose "
-        "text calls `inspectorServer.handle(`, at any version, a patched one "
-        "included. It never reads package.json, a lockfile or an `npx` launcher, so "
-        "`@mcpjam/inspector` 1.4.2 declared as a dependency, the case the "
-        "remediation tells you to bump, is not reported when the code is not in the "
-        "scanned tree."
+        "Reports a copy of the package, a `node_modules/@mcpjam/inspector/` "
+        "directory or one whose name contains `mcpjam-inspector` holding .ts, .tsx, "
+        ".js, .mjs or .cjs files, once per copy, unless the copy's package.json "
+        "names `@mcpjam/inspector` at 1.4.3 or later. A copy with no such "
+        "package.json (a fork renamed to its own numbering, or none at all) is "
+        "reported at any version. Outside a copy, a file is reported only when it "
+        "calls `inspectorServer.handle(`, which the published package does not "
+        "contain. It never reads a dependency declaration, a lockfile or an `npx` "
+        "launcher, so `@mcpjam/inspector` 1.4.2 declared as a dependency, the case "
+        "the remediation tells you to bump, is not reported when the code is not in "
+        "the scanned tree."
     ),
 )
 
