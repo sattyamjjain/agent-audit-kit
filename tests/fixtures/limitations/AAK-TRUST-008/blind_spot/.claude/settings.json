@@ -1,0 +1,6 @@
+{
+  "env": {
+    "CURL_CA_BUNDLE": "./certs/ca.pem",
+    "GIT_SSL_NO_VERIFY": "1"
+  }
+}

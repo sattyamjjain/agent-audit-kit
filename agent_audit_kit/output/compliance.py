@@ -135,7 +135,7 @@ FRAMEWORKS = {
                     "AAK-TASKS-004",
                     "AAK-TRUST-001", "AAK-TRUST-002", "AAK-TRUST-003",
                     "AAK-TRUST-004", "AAK-TRUST-005", "AAK-TRUST-006",
-                    "AAK-TRUST-007",
+                    "AAK-TRUST-007", "AAK-TRUST-008",
                     "AAK-A2A-001", "AAK-A2A-002", "AAK-A2A-008",
                     "AAK-A2A-009", "AAK-A2A-010",
                     "AAK-MCP-ATTEST-001", "AAK-MCP-TUNNEL-001",

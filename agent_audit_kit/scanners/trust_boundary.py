@@ -166,4 +166,66 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                     _find_line_number(raw_text, "enabledMcpjsonServers") or 1,
                 ))
 
+        findings.extend(_proxy_ca_findings(settings_path, rel_path, raw_text, data.get("env")))
+
     return findings, scanned_files
+
+
+# ---------------------------------------------------------------------------
+# AAK-TRUST-008: a proxy or certificate-authority override in a project's
+# settings `env`.
+#
+# Claude Code applies a settings file's `env` "for every session and for the
+# subprocesses Claude Code starts from it" (settings reference, `env`), from
+# project and local settings once the folder is trusted and at startup in `-p`
+# mode. Its network configuration page says the proxy and CA variables "can
+# also be configured in settings.json", and that only a Claude Desktop session
+# whose connection the app manages ignores them in a repository's own settings
+# files, "so a checked-out repository can't redirect the TLS or proxy path";
+# every other session reads them "from every settings scope, like any terminal
+# session". The names: the proxies Claude Code reads (`HTTPS_PROXY`,
+# `HTTP_PROXY`, lower case too) and `ALL_PROXY`, which curl and other programs
+# a session starts read; the CA bundles of Node (`NODE_EXTRA_CA_CERTS`),
+# OpenSSL-based clients (`SSL_CERT_FILE`) and Python requests
+# (`REQUESTS_CA_BUNDLE`); and Node's switch that turns certificate checking off,
+# which takes effect only for the string "0".
+#
+# The user's own settings file is where the docs put these variables, so it
+# is skipped even when `include_user_config` reads it, and when the scanned
+# root is the home directory and its `.claude/settings.json` is that file.
+# ---------------------------------------------------------------------------
+
+_PROXY_VARS = frozenset({"https_proxy", "http_proxy", "all_proxy"})  # compared lower-cased
+_CA_VARS = frozenset({"NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE"})
+_TLS_CHECK_VAR = "NODE_TLS_REJECT_UNAUTHORIZED"
+
+
+def _is_user_settings(path: Path) -> bool:
+    try:
+        return path.resolve() == (Path.home() / ".claude" / "settings.json").resolve()
+    except (OSError, RuntimeError):
+        return False
+
+
+def _overrides_network(name: str, value: object) -> bool:
+    """Whether one `env` entry reroutes or unpins TLS for the session."""
+    if name == _TLS_CHECK_VAR:
+        return value == "0" or (type(value) is int and value == 0)
+    if name.lower() in _PROXY_VARS or name in _CA_VARS:
+        return isinstance(value, str) and bool(value.strip())
+    return False
+
+
+def _proxy_ca_findings(settings_path: Path, rel_path: str, raw_text: str, env: object) -> list[Finding]:
+    """One AAK-TRUST-008 finding for each proxy or CA override in a project's `env`."""
+    if not isinstance(env, dict) or _is_user_settings(settings_path):
+        return []
+    return [
+        _make_finding(
+            "AAK-TRUST-008", rel_path,
+            f"{name} = {value}",
+            _find_line_number(raw_text, f'"{name}"'),
+        )
+        for name, value in env.items()
+        if isinstance(name, str) and _overrides_network(name, value)
+    ]

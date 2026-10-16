@@ -171,6 +171,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-TRUST-005": ["IAM-16"],
     "AAK-TRUST-006": ["IAM-16"],
     "AAK-TRUST-007": ["IAM-02"],
+    "AAK-TRUST-008": ["IAM-16", "CEK-08"],
     "AAK-OAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-OAUTH-002": ["IAM-01"],
     "AAK-OAUTH-003": ["IAM-01"],
@@ -1498,7 +1499,7 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
-# Trust Boundary Violations (7 rules)
+# Trust Boundary Violations (8 rules)
 # ---------------------------------------------------------------------------
 
 _r(
@@ -1642,6 +1643,50 @@ _r(
         "Fires only when a settings file at the root of the scanned directory sits "
         "beside a root `.mcp.json`. A package directory that carries its own "
         "`.claude/settings.json` and `.mcp.json` (`packages/web/`) is not looked at."
+    ),
+)
+
+_r(
+    "AAK-TRUST-008",
+    "Proxy or certificate-authority override in project settings",
+    "A project settings file (`.claude/settings.json`, or a committed "
+    "`.claude/settings.local.json`) sets a proxy (`HTTPS_PROXY`, `HTTP_PROXY`, "
+    "`ALL_PROXY`), a certificate authority to trust (`NODE_EXTRA_CA_CERTS`, "
+    "`SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`) or `NODE_TLS_REJECT_UNAUTHORIZED=0` in its "
+    "`env`. Claude Code's settings reference says `env` applies \"for every session and "
+    "for the subprocesses Claude Code starts from it\", from project settings once the "
+    "folder is trusted and at once in `-p` mode, and its network configuration page "
+    "says each proxy and CA variable \"can also be configured in settings.json\" and "
+    "that a terminal session reads them \"from every settings scope\". A repository "
+    "that sets them sends the API traffic of everyone who opens it, credentials "
+    "included, through a proxy it names, or has their session and the servers and "
+    "commands it starts trust a certificate authority it chose, which together let it "
+    "read and change that traffic. Where Claude Desktop manages the connection it "
+    "ignores these variables in a repository's own settings files, \"so a "
+    "checked-out repository can't redirect the TLS or proxy path of a session\"; a "
+    "terminal session has no such guard.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Remove the proxy and certificate variables from the project settings' `env`. Set "
+    "them in `~/.claude/settings.json`, managed settings or your shell, where Claude "
+    "Code's network configuration docs put them, so each user chooses their own "
+    "network path. Never commit `NODE_TLS_REJECT_UNAUTHORIZED=0`.",
+    sarif_name="ProjectSettingsProxyOrCaOverride",
+    owasp_agentic_references=["ASI03", "ASI07"],
+    adversa_references=["ADV-REDIRECT-02", "ADV-TRANSPORT-02"],
+    limitations=(
+        "Reads the `env` object of `.claude/settings.json` and "
+        "`.claude/settings.local.json` at the root of the scanned directory, whether or "
+        "not the second is committed (AAK does not ask git), and reports `HTTPS_PROXY`, "
+        "`HTTP_PROXY` and `ALL_PROXY` in any case, `NODE_EXTRA_CA_CERTS`, "
+        "`SSL_CERT_FILE` and `REQUESTS_CA_BUNDLE` as written, each with a value that is "
+        "not blank, and `NODE_TLS_REJECT_UNAUTHORIZED` set to `0`. The user's own "
+        "`~/.claude/settings.json`, where the docs put these variables, is not reported, "
+        "even with `--include-user-config`. `NO_PROXY`, `CLAUDE_CODE_CERT_STORE`, the "
+        "mTLS client certificate variables, other switches with the same effect on the "
+        "programs a session starts (`CURL_CA_BUNDLE`, `GIT_SSL_NO_VERIFY`), and a "
+        "settings file in a subdirectory (`packages/web/.claude/settings.json`) are not "
+        "read."
     ),
 )
 
