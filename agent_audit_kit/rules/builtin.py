@@ -3348,6 +3348,18 @@ _r(
     ),
 )
 
+# AAK-OAUTH-002 and an omitted method. RFC 7636 section 4.3 (fetched
+# 2026-10-17, https://www.rfc-editor.org/rfc/rfc7636#section-4.3):
+#     code_challenge_method
+#        OPTIONAL, defaults to "plain" if not present in the request.
+# so a request that leaves the method out is a plain request, which the
+# description names ("or omits it") and the limitation says is not reported.
+# A request-level arm (a dict literal, `dict(...)` call or URL string naming
+# both `response_type` and `code_challenge`, in a file that never names the
+# method) was measured on 2026-10-17 on 3,876 files from GitHub code search:
+# 13 of its 17 findings were real omissions, 76.5%, under the 80% bar it had
+# to clear, and all four others were test inputs (fixtures, a test of an
+# authorization server), so it was left off.
 _r(
     "AAK-OAUTH-002",
     "PKCE using the plain challenge method",
