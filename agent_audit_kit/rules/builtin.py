@@ -2548,10 +2548,9 @@ _r(
         "function's parameter included (`def run(self)` in an unrelated class), is "
         "matched by its spelling only, so a call through that name is not reported. "
         "A file with a star import reads no name through its imports, so "
-        "`from subprocess import *` never resolves `run`. The TypeScript arm reads `.ts` and "
-        "`.tsx` files only and "
-        "matches `exec`, `execSync`, `spawn` and `spawnSync`: the same call in a "
-        "`.js` file, or `execFile`, is not reported."
+        "`from subprocess import *` never resolves `run`. The TypeScript and JavaScript "
+        "arm matches `exec`, `execSync`, `spawn` and `spawnSync`, so `execFile` is not "
+        "reported."
     ),
 )
 
@@ -2605,9 +2604,7 @@ _r(
         "repeated (`[0-9+*/() -]+`) with no flags. Every character A or P admits is "
         "an ASCII digit, punctuation other than `_`, or whitespace. Such a call "
         "still evaluates the caller's arithmetic, which can hold the process "
-        "(`9**9**9`). The "
-        "TypeScript arm reads `.ts` and `.tsx` files only: "
-        "the same `eval(...)` in a `.js` file is not read."
+        "(`9**9**9`)."
     ),
 )
 
@@ -8176,13 +8173,12 @@ _r(
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
-        "Reads `.ts` and `.tsx` files that carry a tool-call marker "
-        "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
-        "`server.tool`, `tools/call`) and reports `exec` or `execSync` whose first "
-        "argument is a template literal with `${}` or a concatenation written "
-        "inside the call. A command built into a variable first and then passed as "
-        "`exec(command)` is not reported, and neither is the same code in a `.js` "
-        "file."
+        "Reads `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs` and `.cjs` files that carry a "
+        "tool-call marker (`handleToolCall`, `CallToolRequestSchema`, "
+        "`setRequestHandler`, `server.tool`, `tools/call`) and reports `exec` or "
+        "`execSync` whose first argument is a template literal with `${}` or a "
+        "concatenation written inside the call. A command built into a variable "
+        "first and then passed as `exec(command)` is not reported."
     ),
 )
 

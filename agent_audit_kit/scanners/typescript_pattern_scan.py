@@ -235,8 +235,13 @@ def _scan_file(
     return findings
 
 
+# TypeScript and JavaScript, as the rules this module emits describe. Only the
+# first two were globbed, so a JavaScript MCP server had no file read at all.
+_SOURCE_GLOBS = ("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
-    """Scan TypeScript/TSX files for taint flows in MCP server implementations.
+    """Scan TypeScript and JavaScript files for dangerous sinks in MCP server implementations.
 
     Uses regex-based pattern matching (not AST) to detect dangerous sinks
     in files that contain MCP server patterns (createServer, McpServer, @tool).
@@ -250,7 +255,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned_files: set[str] = set()
 
-    for suffix in ("*.ts", "*.tsx"):
+    for suffix in _SOURCE_GLOBS:
         for ts_path in project_root.rglob(suffix):
             # Skip excluded directories
             if in_skip_dir(ts_path, project_root):
