@@ -50,7 +50,10 @@ Hence two rules:
 from __future__ import annotations
 
 import ast
+import math
 import re
+from bisect import bisect_left, bisect_right
+from functools import lru_cache
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
@@ -399,8 +402,32 @@ def _names_in_template(template: str, params: set[str]) -> set[str]:
     return {p for p in params if re.search(rf"\b{re.escape(p)}\b", template)}
 
 
+_NON_BLANK_RE = re.compile(r"\S+")
+_SNIPPET_CHARS = 110
+
+
+@lru_cache(maxsize=8)
+def _snippet(template: str) -> str:
+    """`" ".join(template.split())[:110]`, reading only as far as that needs.
+
+    Every finding quotes its template, and a template of many interpolations is
+    many findings: splitting all of it for each would spend 6.8 seconds on the
+    42,858 findings of a 375 KB template of distinct `${aN}`, growing with the
+    square. The words are read until there are enough, none of them longer than
+    the snippet, and a template is read once for all its findings.
+    """
+    words: list[str] = []
+    size = -1
+    for m in _NON_BLANK_RE.finditer(template):
+        words.append(template[m.start() : min(m.end(), m.start() + _SNIPPET_CHARS)])
+        size += len(words[-1]) + 1
+        if size >= _SNIPPET_CHARS:
+            break
+    return " ".join(words)[:_SNIPPET_CHARS]
+
+
 def _evidence(func_name: str, param: str, quoting: str, mode: str, template: str) -> str:
-    snippet = " ".join(template.split())[:110]
+    snippet = _snippet(template)
     if mode == "argv-eval":
         why = (
             "argv element sits behind an interpreter eval flag, so the list form "
@@ -444,20 +471,6 @@ def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
 # --------------------------------------------------------------------------
 # TypeScript / JavaScript
 # --------------------------------------------------------------------------
-def _template_literals(text: str, start: int) -> str | None:
-    """Extract the backtick template literal that starts at/after ``start``."""
-    open_idx = text.find("`", start)
-    if open_idx < 0:
-        return None
-    # Bail if a statement boundary intervenes — the literal belongs elsewhere.
-    if ";" in text[start:open_idx] or "\n\n" in text[start:open_idx]:
-        return None
-    close_idx = text.find("`", open_idx + 1)
-    if close_idx < 0:
-        return None
-    return text[open_idx + 1 : close_idx]
-
-
 # A shell sink whose command is a bare identifier: `exec(cmd, ...)`.
 _JS_FIRST_IDENT_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*[,)]")
 
@@ -474,34 +487,29 @@ _JS_LOCAL_WINDOW_LINES = 60
 _JS_TYPED_ASSIGN = (
     r"\s*(?::(?:\s*[\w$<>\[\]|,](?:[ ]*[\w$<>\[\]|,])*|[^\S ]*[ ])\s*)?=(?![=>])\s*"
 )
+# A name a template literal is assigned to, and the assignment up to its backtick.
+_JS_ASSIGNABLE_RE = re.compile(r"(?<![\w$.])[A-Za-z_$][\w$]*")
+_JS_TEMPLATE_ASSIGN_RE = re.compile(_JS_TYPED_ASSIGN + "`")
+
+_BACKTICK_RE = re.compile("`")
+_SEMICOLON_RE = re.compile(";")
+_BLANK_LINE_RE = re.compile(r"(?=\n\n)")
+_NEWLINE_RE = re.compile("\n")
+_INTERP_OPEN_RE = re.compile(r"\$\{")
+_CLOSE_BRACE_RE = re.compile(r"\}")
+_OPEN_BRACE_RE = re.compile(r"\{")
+_DOUBLE_QUOTE_RE = re.compile('"')
+_SINGLE_QUOTE_RE = re.compile("'")
 
 
-def _js_assigned_templates(text: str, ident: str, before: int) -> list[str]:
-    """Template literals assigned to ``ident`` shortly before a sink.
+def _positions(text: str, pattern: re.Pattern[str]) -> list[int]:
+    return [m.start() for m in pattern.finditer(text)]
 
-    Every branch counts: nexus-mcp assigns ``cmd`` a different template per
-    platform and then runs whichever was taken.
 
-    The walk stops at the top of the file. It used to stop only when no newline
-    was left, so from the newline at offset 0 it asked for the last newline
-    before offset -1, which `rfind` counts from the end of the file: the window
-    jumped past the sink and the template was lost in any file whose first
-    line was blank.
-    """
-    start = before
-    for _ in range(_JS_LOCAL_WINDOW_LINES):
-        prev = text.rfind("\n", 0, start - 1)
-        if prev <= 0:
-            start = 0
-            break
-        start = prev
-    assign_re = re.compile(rf"(?<![\w$.]){re.escape(ident)}{_JS_TYPED_ASSIGN}`")
-    templates: list[str] = []
-    for m in assign_re.finditer(text, start, before):
-        template = _template_literals(text, m.end() - 1)
-        if template is not None:
-            templates.append(template)
-    return templates
+def _first_at(positions: list[int], start: int) -> float:
+    """The first of ``positions`` at or after ``start``, or infinity."""
+    i = bisect_left(positions, start)
+    return positions[i] if i < len(positions) else math.inf
 
 
 class _JsSink:
@@ -517,13 +525,226 @@ class _JsSink:
         self.interps = interps
 
 
+class _JsFile:
+    """One TS/JS file, indexed once for every sink in it.
+
+    Each sink used to read the file for itself: on to the next backtick, and
+    back over everything before it, for its command template; sixty lines back,
+    which a long line makes the whole file, for a local's assignment, with a
+    regex compiled per name; and the whole prefix to count its line. A file of
+    sinks grew with the square of its length (40 KB of `exec(cmd);` took a
+    second). Each of those is now a lookup in positions found once, and a
+    template's interpolations are read once however many sinks run it.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self._ticks = _positions(text, _BACKTICK_RE)
+        self._semicolons = _positions(text, _SEMICOLON_RE)
+        self._blank_lines = _positions(text, _BLANK_LINE_RE)
+        self._newlines = _positions(text, _NEWLINE_RE)
+        self._templates: dict[int, tuple[str, list[tuple[str, str]]]] = {}
+        self._assignments: dict[str, _JsAssignments] | None = None
+
+    def template_at(self, start: int) -> tuple[str, list[tuple[str, str]]] | None:
+        """The backtick template literal that starts at or after ``start``, and
+        its interpolations, or None when there is none or a `;` or blank line
+        comes before it (the literal belongs to another statement)."""
+        i = bisect_left(self._ticks, start)
+        if i + 1 >= len(self._ticks):
+            return None  # no opening backtick, or none to close it
+        opening = self._ticks[i]
+        if _first_at(self._semicolons, start) < opening or _first_at(self._blank_lines, start) + 2 <= opening:
+            return None
+        return self._template(i)
+
+    def _template(self, i: int) -> tuple[str, list[tuple[str, str]]]:
+        hit = self._templates.get(i)
+        if hit is None:
+            template = self.text[self._ticks[i] + 1 : self._ticks[i + 1]]
+            hit = self._templates[i] = (template, _template_interps(template))
+        return hit
+
+    def assigned(self, ident: str, before: int) -> list[tuple[str, str, str, str]]:
+        """The interpolations of the templates assigned to ``ident`` shortly
+        before a sink at ``before``.
+
+        Every branch counts: nexus-mcp assigns ``cmd`` a different template per
+        platform and then runs whichever was taken.
+        """
+        if self._assignments is None:
+            self._assignments = _js_template_assignments(self.text)
+        sites = self._assignments.get(ident)
+        if sites is None:
+            return []
+        return sites.interps(self._window_start(before), before, self)
+
+    def assigned_template(self, tick: int) -> tuple[str, list[tuple[str, str]]] | None:
+        """The template an assignment's backtick at ``tick`` opens, if it closes."""
+        i = bisect_left(self._ticks, tick)
+        return self._template(i) if i + 1 < len(self._ticks) else None
+
+    def _window_start(self, before: int) -> int:
+        """Sixty lines back from ``before``, skipping blank lines.
+
+        Each step goes to the last newline at least two characters back, so a
+        newline right before the current one, a blank line, is not counted. The
+        walk stops at the top of the file. It used to stop only when no newline
+        was left, so from the newline at offset 0 it asked for the last newline
+        before offset -1, which `rfind` counts from the end of the file: the
+        window jumped past the sink and the template was lost in any file whose
+        first line was blank.
+        """
+        start = before
+        newlines = self._newlines
+        for _ in range(_JS_LOCAL_WINDOW_LINES):
+            i = bisect_right(newlines, start - 2) - 1
+            if i < 0 or newlines[i] == 0:
+                return 0
+            start = newlines[i]
+        return start
+
+
+class _JsAssignments:
+    """Where one name is assigned a template literal, and the interpolations
+    of the window last asked for, extended as the sinks move down the file.
+
+    A window is the assignments that start at or after its first line and end
+    before its sink. Overlapping assignments end at the same backtick, so they
+    add the same interpolations, and a window is a run of this list. Sinks come
+    in order, so both ends only move down: the run grows at its end until its
+    first line moves, and then starts again from the new first line. An
+    assignment is read again once for each first line it falls under, sixty or
+    so, however many sinks share them.
+    """
+
+    __slots__ = ("starts", "ends", "ticks", "_lo", "_hi", "_seen", "_merged")
+
+    def __init__(self) -> None:
+        self.starts: list[int] = []
+        self.ends: list[int] = []
+        self.ticks: list[int] = []
+        self._lo = -1
+        self._hi = 0
+        self._seen: set[tuple[str, str]] = set()
+        self._merged: list[tuple[str, str, str, str]] = []
+
+    def interps(self, start: int, before: int, js: _JsFile) -> list[tuple[str, str, str, str]]:
+        lo = bisect_left(self.starts, start)
+        hi = bisect_right(self.ends, before)
+        if lo != self._lo or hi < self._hi:
+            self._lo, self._hi, self._seen, self._merged = lo, lo, set(), []
+        while self._hi < hi:
+            found = js.assigned_template(self.ticks[self._hi])
+            self._hi += 1
+            if found is None:
+                continue
+            template, interps = found
+            for name, quoting in interps:
+                if (name, quoting) not in self._seen:
+                    self._seen.add((name, quoting))
+                    self._merged.append((name, quoting, "shell", template))
+        return list(self._merged)
+
+
+def _js_template_assignments(text: str) -> dict[str, _JsAssignments]:
+    """Every assignment of a template literal to a name, by name.
+
+    A name the sink reads, assigned with `(?<![\\w$.])name` + `_JS_TYPED_ASSIGN`
+    + a backtick, is a whole run of name characters: the lookbehind starts it
+    and the type or `=` after it ends it. So each run that starts a name is
+    tried once, for whatever name it is.
+    """
+    out: dict[str, _JsAssignments] = {}
+    for m in _JS_ASSIGNABLE_RE.finditer(text):
+        tail = _JS_TEMPLATE_ASSIGN_RE.match(text, m.end())
+        if tail:
+            sites = out.get(m.group())
+            if sites is None:
+                sites = out[m.group()] = _JsAssignments()
+            sites.starts.append(m.start())
+            sites.ends.append(tail.end())
+            sites.ticks.append(tail.end() - 1)
+    return out
+
+
+def _template_interps(template: str) -> list[tuple[str, str]]:
+    """Each `${...}` in a command template, once per (name, quoting), in order.
+
+    One command string can interpolate the same value more than once —
+    CVE-2026-55157 uses `username` twice in one template. That is one defect,
+    not two; so is one value in each branch of a platform switch.
+    """
+    exprs = _JS_INTERP_RE.findall(template, 0, template.rfind("}") + 1)
+    if not exprs:
+        return []
+    quotings = _js_quotings(template, exprs)
+    seen: set[tuple[str, str]] = set()
+    out: list[tuple[str, str]] = []
+    for expr in exprs:
+        quoting = quotings[expr]
+        name = expr.strip().split(".")[-1].split(" ")[0] or "argument"
+        if (name, quoting) not in seen:
+            seen.add((name, quoting))
+            out.append((name, quoting))
+    return out
+
+
+def _js_quotings(template: str, exprs: list[str]) -> dict[str, str]:
+    """`_quote_context(template, "${" + e + "}")` for every ``e`` in ``exprs``.
+
+    That finds `{${e}}`, or failing that `${e}`, and counts the quotes before
+    it. Asked once per interpolation, a template of many read itself once for
+    each: 14,285 distinct `${aN}` (117 KB) took 1.3 seconds, growing with the
+    square. An ``e`` never holds a `}`, so `${e}` occurs exactly where a `${` is
+    followed by ``e`` and then the first `}` after it, and `{${e}}` is that
+    with a `{` before and a `}` after. Walking the `${` openers once, each names
+    the one ``e`` it can start, and only an ``e`` of a length some interpolation
+    has is cut out to compare.
+    """
+    wanted = set(exprs)
+    lengths = {len(e) for e in wanted}
+    closes = _positions(template, _CLOSE_BRACE_RE)
+    single: dict[str, int] = {}
+    double: dict[str, int] = {}
+    for m in _INTERP_OPEN_RE.finditer(template):
+        at = m.start()
+        i = bisect_left(closes, at + 2)
+        if i == len(closes):
+            break
+        close = closes[i]
+        if close - at - 2 not in lengths:
+            continue
+        expr = template[at + 2 : close]
+        if expr not in wanted:
+            continue
+        single.setdefault(expr, at)
+        if expr not in double and at and template[at - 1] == "{" and template.startswith("}", close + 1):
+            double[expr] = at - 1
+    doubles = _positions(template, _DOUBLE_QUOTE_RE)
+    singles = _positions(template, _SINGLE_QUOTE_RE)
+    out: dict[str, str] = {}
+    for expr in wanted:
+        idx = double.get(expr, single.get(expr, -1))
+        if idx < 0:
+            out[expr] = "bare"
+        elif bisect_left(doubles, idx) % 2 == 1:
+            out[expr] = "double"
+        elif bisect_left(singles, idx) % 2 == 1:
+            out[expr] = "single"
+        else:
+            out[expr] = "bare"
+    return out
+
+
 def _js_sinks(text: str) -> list[_JsSink]:
     """Every shell sink with an interpolated command, inline or through a local."""
+    js = _JsFile(text)
     sinks: list[_JsSink] = []
+    line, counted = 1, 0
     for match in _JS_SHELL_SINK_RE.finditer(text):
         sink = match.group(0).rstrip("(").strip()
         call_start = match.end()
-        template = _template_literals(text, call_start)
 
         # `execFile`/`spawn` do not spawn a shell — only interesting when an
         # argv element rides behind an interpreter eval flag.
@@ -532,26 +753,19 @@ def _js_sinks(text: str) -> list[_JsSink]:
             if not any(f'"{f}"' in window or f"'{f}'" in window for f in _EVAL_FLAGS):
                 continue
 
-        templates = [template] if template is not None else []
-        if not templates and sink in _JS_SHELL_ONLY:
+        mode = "shell" if sink in _JS_SHELL_ONLY else "argv-eval"
+        inline = js.template_at(call_start)
+        interps: list[tuple[str, str, str, str]] = []
+        if inline is not None:
+            template, found = inline
+            interps = [(name, quoting, mode, template) for name, quoting in found]
+        elif sink in _JS_SHELL_ONLY:
             ident = _JS_FIRST_IDENT_RE.match(text, call_start)
             if ident:
-                templates = _js_assigned_templates(text, ident.group(1), match.start())
-        mode = "shell" if sink in _JS_SHELL_ONLY else "argv-eval"
-        # One command string can interpolate the same value more than once —
-        # CVE-2026-55157 uses `username` twice in one template. That is one
-        # defect, not two; so is one value in each branch of a platform switch.
-        seen: set[tuple[str, str]] = set()
-        interps: list[tuple[str, str, str, str]] = []
-        for tpl in templates:
-            for expr in _JS_INTERP_RE.findall(tpl, 0, tpl.rfind("}") + 1):
-                quoting = _quote_context(tpl, "${" + expr + "}")
-                name = expr.strip().split(".")[-1].split(" ")[0] or "argument"
-                if (name, quoting) not in seen:
-                    seen.add((name, quoting))
-                    interps.append((name, quoting, mode, tpl))
+                interps = js.assigned(ident.group(1), match.start())
         if interps:
-            line = text[: match.start()].count("\n") + 1
+            line += text.count("\n", counted, match.start())
+            counted = match.start()
             sinks.append(_JsSink(sink, match.start(), line, interps))
     return sinks
 

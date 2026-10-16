@@ -382,7 +382,20 @@ _PYTHON_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
 }
 
 
-_CRAFTED = dict(_PYTHON_SHAPES)
+_SINK_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
+    # A sink read sixty lines back, which one long line makes the whole file:
+    # 40 KB of `exec(cmd);` took a second.
+    "sinks-on-one-line": (lambda k: {"tool.js": "const cmd = `ls ${args.path}`;\n" + "exec(cmd);" * k}, 1_000),
+    # Each interpolation searched the template for its quoting, and each
+    # finding split the whole template for its snippet.
+    "distinct-interpolations": (
+        lambda k: {"tool.js": "const x = args.p;\nexec(`" + "".join("${a%d}" % i for i in range(k)) + "`);\n"},
+        300,
+    ),
+}
+
+
+_CRAFTED = {**_PYTHON_SHAPES, **_SINK_SHAPES}
 
 
 @pytest.mark.parametrize("shape", sorted(_CRAFTED))
@@ -399,3 +412,10 @@ def test_a_crafted_project_scans_in_linear_time(tmp_path: Path, shape: str) -> N
     t_small, t_large = _seconds(lambda: scan(roots[0])), _seconds(lambda: scan(roots[1]))
     assert t_large < 5.0
     assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+def test_crafted_projects_still_report_their_findings(tmp_path: Path) -> None:
+    """The timing shapes are not empty: the ones with a reachable sink report it."""
+    for rel, text in _CRAFTED["sinks-on-one-line"][0](3).items():
+        _write(tmp_path, rel, text)
+    assert len(_interp(tmp_path)) == 3
