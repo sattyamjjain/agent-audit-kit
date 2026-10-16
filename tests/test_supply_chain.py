@@ -567,6 +567,54 @@ def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pyte
     assert not [f for f in scan(tmp_path)[0] if f.rule_id in rules]
 
 
+# A lockfile each older per-CVE pin check reports. Those checks read every
+# candidate whole, however large, where the pin table skips a lockfile over
+# MAX_LOCKFILE_BYTES unread; now they skip it too, and their rules say so.
+_PIN_CHECK_LOCKFILES = [
+    ("AAK-DORIS-001", "poetry.lock", "apache-doris-mcp-server==0.5.0\n"),
+    ("AAK-MCP-KONG-CVE-2026-13341-001", "package-lock.json",
+     '{"packages": {"node_modules/@kong/konnect-mcp": {"version": "0.9.0"}}}\n'),
+    ("AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001", "uv.lock",
+     '[[package]]\nname = "mcp-gateway-registry"\nversion = "1.0.0"\n'),
+    ("AAK-MCP-SERENA-CVE-2026-49471-001", "uv.lock", '[[package]]\nname = "serena-agent"\nversion = "1.5.0"\n'),
+    ("AAK-EXCEL-MCP-001", "poetry.lock", "excel-mcp-server==0.1.7\n"),
+    ("AAK-ASTROMCP-SQLI-CVE-2026-7591-001", "yarn.lock", 'astro-mcp-server@1.1.1:\n  version "1.1.1"\n'),
+    ("AAK-AGENT-ZERO-CVE-2026-30624-PIN-001", "uv.lock",
+     'agent-zero = { git = "https://github.com/frdel/agent-zero#v0.9.8" }\n'),
+    ("AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001", "package-lock.json", '{"dependencies": {"chatgpt-mcp-server": "1.0.0"}}\n'),
+    ("AAK-DOCSGPT-MCP-STDIO-MITM-001", "uv.lock", "docsgpt==0.6.3\n"),
+    ("AAK-DOCSGPT-MCP-STDIO-MITM-001", "yarn.lock", "docsgpt@0.6.3:\n"),
+    ("AAK-MCPCALC-CVE-2026-44717-PIN-001", "uv.lock", "mcp-calculate-server==0.1.0\n"),
+    ("AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001", "poetry.lock", "semantic-kernel==1.39.0\n"),
+    ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "uv.lock", "gpt-researcher==0.14.8\n"),
+    ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "yarn.lock", "gpt-researcher@0.14.8:\n"),
+    ("AAK-LITELLM-CVE-2026-30623-PIN-001", "uv.lock", "litellm==1.83.0\n"),
+    ("AAK-CLAUDECODE-CVE-2026-40068-PIN-001", "yarn.lock", '"@anthropic-ai/claude-code@2.1.0":\n'),
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27825-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27826-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
+    ("AAK-LANGCHAIN-SSRF-REDIR-001", "uv.lock", '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.0"\n'),
+    ("AAK-SSRF-TOCTOU-001", "uv.lock", '[[package]]\nname = "langchain-openai"\nversion = "1.1.0"\n'),
+]
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "name", "text"), _PIN_CHECK_LOCKFILES, ids=[f"{r}:{n}" for r, n, _ in _PIN_CHECK_LOCKFILES]
+)
+def test_a_pin_checks_lockfile_over_the_limit_is_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rule_id: str, name: str, text: str
+) -> None:
+    from agent_audit_kit.rules.builtin import get_rule
+    from agent_audit_kit.scanners import mcp_atlassian, ssrf_redirect, ssrf_toctou, supply_chain
+
+    limited = {"AAK-LANGCHAIN-SSRF-REDIR-001": ssrf_redirect, "AAK-SSRF-TOCTOU-001": ssrf_toctou}.get(rule_id, supply_chain)
+    scanner = mcp_atlassian if rule_id.startswith("AAK-MCP-ATLASSIAN-") else limited
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    assert rule_id in {f.rule_id for f in scanner.scan(tmp_path)[0]}, "the lockfile is reportable"
+    monkeypatch.setattr(limited, "MAX_LOCKFILE_BYTES", len(text.encode()) - 1)
+    assert rule_id not in {f.rule_id for f in scanner.scan(tmp_path)[0]}
+    assert get_rule(rule_id).limitations.endswith("A lockfile over 32 MiB is not read.")
+
+
 def test_the_lockfile_index_reads_each_format() -> None:
     """One pass a lockfile, every package in it, by the name its registry compares."""
     from agent_audit_kit.scanners.supply_chain import _lockfile_index

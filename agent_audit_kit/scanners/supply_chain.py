@@ -530,6 +530,17 @@ _LOCKFILES = frozenset({
 })
 
 
+def _lockfile_over_limit(path: Path) -> bool:
+    """Is ``path`` a lockfile over MAX_LOCKFILE_BYTES?
+
+    The older per-CVE checks read lockfiles among the manifests, and read them
+    whole, however large: a crafted one costs the scan what it likes. The pin
+    table skips a lockfile over the limit unread, and so do they, stating it in
+    their limitations. ``stat`` raises OSError, as the read it guards does.
+    """
+    return path.name.lower() in _LOCKFILES and path.stat().st_size > MAX_LOCKFILE_BYTES
+
+
 def _resolve_lockfile_version(
     text: str, filename: str, names: tuple[str, ...]
 ) -> tuple[int, int, int] | None:
@@ -697,6 +708,8 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -756,6 +769,8 @@ def _check_kong_konnect_mcp_pin(project_root: Path, scanned_files: set[str]) -> 
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -817,6 +832,8 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -875,6 +892,8 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -932,6 +951,8 @@ def _check_excel_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1152,6 +1173,8 @@ def _check_astro_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1364,6 +1387,8 @@ def _check_agent_zero_pin(project_root: Path, scanned_files: set[str]) -> list[F
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1416,6 +1441,8 @@ def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1502,6 +1529,8 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1545,6 +1574,8 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             candidates.append(p)
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1606,6 +1637,8 @@ def _check_mcp_calculate_server_pin(project_root: Path, scanned_files: set[str])
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1671,6 +1704,8 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1772,6 +1807,8 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1858,6 +1895,8 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
             candidates.append(p)
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1879,6 +1918,8 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1930,6 +1971,8 @@ def _check_litellm_pin(project_root: Path, scanned_files: set[str]) -> list[Find
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue

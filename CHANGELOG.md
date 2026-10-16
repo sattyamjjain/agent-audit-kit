@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A crafted TS/JS handler file could still stall `aak scan` through AAK-SHELL-QUOTED-INTERP-001's cross-file call lookup, the path #1011 left. Where brackets straddle the arguments of a nested call chain, no level read as a piece of the one around it, so each was stripped and searched whole: `run(` nested 20,000 deep with each `)` inside a `[)]` pair took 120 s in 140 KB, and the same chain inside brackets every level shares took 37 s in 90 KB. Splitting the arguments walked every separator after each level when a `]` closed a call's `(`: `run(]` nested 20,000 deep took 45 s in 120 KB. A stripped argument is now read from each bracket pair's own content, laid out once per file, and the separators from a tree over the commas, so the same inputs take 0.10 to 0.16 s. Findings are unchanged: the old and new lookups agree on 111,681 TS/JS files from installed packages and on more than a million generated spans and call lookups.
 
+### Fixed
+
+- Eighteen older per-CVE pin rules read a lockfile whole, however large, where the pin table skips one over 32 MiB unread: AAK-DORIS-001, AAK-MCP-SERENA-CVE-2026-49471-001, AAK-ASTROMCP-SQLI-CVE-2026-7591-001 and the other pins in `supply_chain`, the two mcp-atlassian pins and the langchain SSRF pins (AAK-LANGCHAIN-SSRF-REDIR-001, AAK-SSRF-TOCTOU-001). They now skip it too, and their limitations say so.
+
 ## [0.6.22] - 2026-10-16
 
 ### Added
