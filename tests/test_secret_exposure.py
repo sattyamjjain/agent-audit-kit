@@ -750,3 +750,169 @@ def test_the_yaml_reader_takes_a_200_kb_line_in_linear_time(line: str) -> None:
     _secret_assignments("KEY:" + " " * 200_000 + "x" * 20, yaml=True)
     _secret_assignments("KEY: " * 40_000, yaml=True)
     assert time.perf_counter() - started < 10.0
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-005 reads what a key file holds
+#
+# It reported a key by its file name (`.pem`, `.key`, `.p12`, `.pfx`, exactly
+# `id_rsa` and three more) and read a PEM header only at the top of a `.crt` or
+# `.cer`. So the same key as `server-key.txt`, `id_rsa_work`, `deploy_key`, an Apple
+# `.p8`, a Java keystore, a PuTTY `.ppk` or a block pasted into a YAML deploy config
+# was missed, and a `.pem` holding only a public certificate was reported as a
+# private key, because the extension decided before the header was read.
+# ---------------------------------------------------------------------------
+
+_KEY_BODY = "\n".join(("MIIEvQIBADANBgkqhkiG9w0BAQEFAASC" + _varied(32)) for _ in range(3))
+
+
+def _pem(label: str, body: str = _KEY_BODY) -> str:
+    return "-----BEGIN " + label + "-----\n" + body + "\n-----END " + label + "-----\n"
+
+
+_PRIVATE = _pem("OPENSSH " + "PRIVATE KEY")
+_CERTIFICATE = _pem("CERTIFICATE")
+
+
+def _secret_005(root: Path) -> list[tuple[str, int | None]]:
+    return sorted((f.file_path, f.line_number) for f in scan(root)[0] if f.rule_id == "AAK-SECRET-005")
+
+
+@pytest.mark.parametrize(
+    "name, text, line",
+    [
+        ("certs/server-key.txt", _PRIVATE, 1),
+        (".ssh/id_rsa_work", _PRIVATE, 1),
+        (".ssh/id_rsa.bak", _PRIVATE, 1),
+        ("ci/deploy_key", _PRIVATE, 1),
+        ("apns/AuthKey_TEST000001.p8", _pem("PRIVATE KEY"), 1),
+        ("certs/fullchain-and-key.pem", _CERTIFICATE * 30 + _pem("RSA " + "PRIVATE KEY"), 30 * 5 + 1),
+        ("deploy.yml", "deploy:\n  private_key: |\n    " + _PRIVATE.replace("\n", "\n    "), 3),
+        ("src/keys.py", 'KEY = """' + _pem("PRIVATE KEY") + '"""\n', 1),
+        ("creds/key.json", json.dumps({"private_key": _pem("PRIVATE KEY")}) + "\n", 1),
+        ("gpg/secret.asc", _pem("PGP " + "PRIVATE KEY BLOCK"), 1),
+        ("legacy/rsa.key", "-----BEGIN RSA " + "PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\n"
+         "DEK-Info: AES-128-CBC,3F17F5316E2BAC89\n\n" + _KEY_BODY + "\n-----END RSA " + "PRIVATE KEY-----\n", 1),
+    ],
+    ids=lambda v: v if isinstance(v, str) and len(v) < 60 else "",
+)
+def test_secret_005_reports_a_private_key_wherever_it_is_written(
+    tmp_path: Path, name: str, text: str, line: int
+) -> None:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+    assert _secret_005(tmp_path) == [(name, line)]
+
+
+def _jks(*tags: int) -> bytes:
+    """A Java keystore with one entry per tag: 1 a private key, 2 a trusted certificate."""
+    out = b"\xfe\xed\xfe\xed" + (2).to_bytes(4, "big") + len(tags).to_bytes(4, "big")
+    for i, tag in enumerate(tags):
+        alias = f"entry{i}".encode()
+        out += tag.to_bytes(4, "big") + len(alias).to_bytes(2, "big") + alias + (0).to_bytes(8, "big")
+        if tag == 1:  # the protected key, then a chain of one certificate
+            key = b"\x01" * 48
+            out += len(key).to_bytes(4, "big") + key + (1).to_bytes(4, "big")
+        out += len(b"X.509").to_bytes(2, "big") + b"X.509" + (16).to_bytes(4, "big") + b"\x02" * 16
+    return out + b"\x00" * 20  # the keyed SHA-1 digest
+
+
+@pytest.mark.parametrize(
+    "name, data, reported",
+    [
+        ("android/release.jks", _jks(1), True),
+        ("android/release.keystore", _jks(2, 1), True),
+        ("certs/server.p12", b"\x30\x82\x0a\x00" + b"\x00" * 64, True),
+        ("ssh/putty.ppk", b"PuTTY-User-Key-File-3: ssh-ed25519\nEncryption: none\n", True),
+        ("certs/server.key", b"\x30\x82\x04\xa4\x02\x01\x00" + b"\x00" * 64, True),  # DER: no PEM text to read
+        ("src/main/resources/truststore.jks", _jks(2, 2), False),  # trusted certificates only
+        ("certs/cacert.pem", _CERTIFICATE.encode(), False),
+        ("certs/ca-bundle.crt", (_CERTIFICATE * 3).encode(), False),
+        ("certs/public.key", _pem("PUBLIC KEY").encode(), False),
+        ("certs/request.pem", _pem("CERTIFICATE REQUEST").encode(), False),
+        (".ssh/id_rsa.pub", b"ssh-ed25519 " + _varied(68).encode() + b" me@example\n", False),
+    ],
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+def test_secret_005_tells_a_key_container_from_a_certificate(
+    tmp_path: Path, name: str, data: bytes, reported: bool
+) -> None:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+
+    assert bool(_secret_005(tmp_path)) is reported
+
+
+@pytest.mark.parametrize(
+    "name, text",
+    [
+        # A parser's marker constant, not a key.
+        ("src/pem.py", 'BEGIN = "-----BEGIN RSA ' + 'PRIVATE KEY-----"\nEND = "-----END RSA ' + 'PRIVATE KEY-----"\n'),
+        ("src/pem.ts", 'if (pem.startsWith("-----BEGIN ' + 'PRIVATE KEY-----\\n")) { return true; }\n'),
+        # Documentation that shows where a key goes.
+        ("docs/setup.txt", _pem("PRIVATE KEY", "..."),),
+        ("docs/setup.yml", "key: |\n  " + _pem("PRIVATE KEY", "<paste your key here>").replace("\n", "\n  ")),
+        ("docs/notes.txt", _pem("RSA " + "PRIVATE KEY", "MIIEowIBAAKCAQEA...")),
+        # A header with no END marker.
+        ("notes/cut.txt", "-----BEGIN " + "PRIVATE KEY-----\n" + _KEY_BODY + "\n"),
+    ],
+    ids=lambda v: v if len(v) < 40 else "",
+)
+def test_secret_005_does_not_report_text_that_only_names_a_key(tmp_path: Path, name: str, text: str) -> None:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+    assert _secret_005(tmp_path) == []
+
+
+def test_secret_005_reports_each_key_in_a_file_on_its_own_line(tmp_path: Path) -> None:
+    text = "# keys\n" + _pem("PRIVATE KEY") + "\n" + _pem("EC " + "PRIVATE KEY")
+    (tmp_path / "keys.txt").write_text(text, encoding="utf-8")
+
+    assert _secret_005(tmp_path) == [("keys.txt", 2), ("keys.txt", 8)]
+
+
+@pytest.mark.parametrize(
+    "unit",
+    [
+        "-----BEGIN " + "PRIVATE KEY-----\n",
+        "-----BEGIN " + "PRIVATE KEY-----\n" + "A" * 64 + "\n",
+        "-----BEGIN A A A A A A A A ",
+        "-----BEGIN ",
+    ],
+    ids=["headers", "headers-and-body", "words", "begins"],
+)
+def test_secret_005_reads_a_crafted_file_in_linear_time(tmp_path: Path, unit: str) -> None:
+    (tmp_path / "blob.txt").write_text(unit * (900_000 // len(unit)), encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 10.0
+
+
+_STAND_IN_BODIES = [
+    "...",
+    "<paste your private key here>",
+    "YOUR_PRIVATE_KEY_HERE",
+    "REPLACE_WITH_YOUR_KEY_CONTENTS",
+    "x" * 64,
+    "A" * 64,
+    "MIIEowIBAAKCAQEA...",
+    "PLACEHOLDER" + "0123456789" * 3,
+]
+
+
+@pytest.mark.parametrize("body", _STAND_IN_BODIES, ids=lambda b: b[:16])
+def test_secret_005_leaves_a_stand_in_key_in_markdown_alone(tmp_path: Path, body: str) -> None:
+    (tmp_path / "README.md").write_text("## Keys\n\n```\n" + _pem("PRIVATE KEY", body) + "```\n", encoding="utf-8")
+
+    assert _secret_005(tmp_path) == []
+
+
+def test_secret_005_reports_a_key_written_out_in_markdown(tmp_path: Path) -> None:
+    (tmp_path / "README.md").write_text("## Keys\n\n```\n" + _PRIVATE + "```\n", encoding="utf-8")
+
+    assert _secret_005(tmp_path) == [("README.md", 4)]

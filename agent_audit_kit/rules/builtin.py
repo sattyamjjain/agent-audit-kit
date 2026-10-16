@@ -1814,10 +1814,14 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-07"],
     limitations=(
-        "Reports a private key by its file name (a `.pem`, `.key`, `.p12` or `.pfx` "
-        "extension, or exactly `id_rsa`, `id_ed25519`, `id_ecdsa` or `id_dsa`) or by a "
-        "PEM private-key header at the top of a `.crt` or `.cer` file. The same key "
-        "pasted into any other file, such as a YAML deploy config, is not reported."
+        "Reports a keystore (`.p12`, `.pfx`, `.jks`, `.keystore`, `.jceks` or `.ppk`) or "
+        "an ssh-keygen default name (`id_rsa`, `id_ed25519` and the like) by its name, a "
+        "private-key header in a `.pem`, `.key`, `.p8`, `.crt` or `.cer` file, and, in "
+        "any other file under 1 MB, a PEM private key written out whole: its header, its "
+        "base64 lines and its END marker. A key assembled from several quoted strings in "
+        "code is not reported: a Python module that writes the header, each base64 line "
+        "and the END marker as separate string literals is missed, although the same key "
+        "in one triple-quoted string is found."
     ),
 )
 

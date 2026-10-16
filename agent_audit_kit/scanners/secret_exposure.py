@@ -60,10 +60,44 @@ SECRET_KEY_NAMES = re.compile(
     r"(SECRET|PASSWORD|TOKEN|KEY|CREDENTIAL|API_KEY)", re.IGNORECASE
 )
 
-# Private key file extensions
-PRIVATE_KEY_EXTENSIONS = frozenset({".pem", ".key", ".p12", ".pfx"})
-PRIVATE_KEY_FILENAMES = frozenset({"id_rsa", "id_ed25519", "id_ecdsa", "id_dsa"})
-PRIVATE_KEY_HEADER = re.compile(r"-----BEGIN\s+(RSA\s+|EC\s+|OPENSSH\s+)?PRIVATE KEY-----")
+# AAK-SECRET-005 by name. A keystore or a PuTTY key is a private key by its extension:
+# PKCS#12 encrypts its entries, so nothing short of the password says what they are.
+# A Java keystore lists its entry types in the clear, and one that holds only trusted
+# certificates (a trust store) is not reported (`_keystore_holds_key`).
+KEYSTORE_EXTENSIONS = frozenset({".p12", ".pfx", ".jks", ".keystore", ".jceks", ".ppk"})
+_JAVA_KEYSTORE_EXTENSIONS = frozenset({".jks", ".keystore", ".jceks"})
+# ssh-keygen's default private key names, the FIDO (`-sk`) ones included.
+PRIVATE_KEY_FILENAMES = frozenset({"id_rsa", "id_ed25519", "id_ecdsa", "id_dsa", "id_ecdsa_sk", "id_ed25519_sk"})
+# Files that are a key or a certificate by name, where a private-key header is enough.
+# `.pem`, `.key` and `.p8` are keys unless the PEM text inside says otherwise.
+PEM_KEY_EXTENSIONS = frozenset({".pem", ".key", ".p8"})
+CERTIFICATE_EXTENSIONS = frozenset({".crt", ".cer"})
+# Files that hold no text, so no pasted key: never read for one.
+_BINARY_EXTENSIONS = frozenset({
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".bmp", ".tif", ".tiff", ".psd",
+    ".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".mp3", ".mp4", ".m4a", ".mov",
+    ".avi", ".wav", ".flac", ".ogg", ".webm", ".zip", ".gz", ".tgz", ".bz2", ".xz",
+    ".zst", ".7z", ".rar", ".jar", ".war", ".whl", ".so", ".dylib", ".dll", ".exe",
+    ".o", ".a", ".class", ".pyc", ".wasm", ".sqlite", ".db", ".parquet", ".npy",
+    ".pt", ".onnx", ".safetensors",
+})
+# A PEM private-key header: RFC 7468's PRIVATE KEY and ENCRYPTED PRIVATE KEY, the
+# algorithm forms OpenSSL and OpenSSH write (RSA, EC, DSA, OPENSSH) and OpenPGP's
+# PRIVATE KEY BLOCK. At most three words come before PRIVATE, so a read is bounded.
+PRIVATE_KEY_HEADER = re.compile(r"-----BEGIN (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----")
+_PRIVATE_KEY_END = re.compile(r"-----END (?:[A-Z0-9]+ ){0,3}PRIVATE KEY(?: BLOCK)?-----")
+# Any PEM header: a certificate, a public key, a request or parameters.
+_PEM_HEADER = re.compile(r"-----BEGIN [A-Z0-9 ]{1,40}-----")
+# What may sit between a private-key header and its END marker in a key that is
+# written out: base64 lines, the RFC 1421 and OpenPGP armor headers (`Proc-Type:`,
+# `DEK-Info:`, `Version:`), blank lines and line breaks, escaped as in a JSON string.
+_ARMOR_HEADER = re.compile(r"[A-Za-z][A-Za-z0-9-]{0,40}: ")
+_KEY_LINE = re.compile(r"[A-Za-z0-9+/=_-]+")
+_ESCAPED_BREAK = re.compile(r"\\r\\n|\\n|\\r")
+# A key is a few KB of text (an RSA-4096 key 3.2 KB); a block longer than this is
+# not read, which also bounds the work one header can cost.
+_MAX_KEY_BLOCK = 16_384
+_MAX_FILE_BYTES = 1_000_000
 
 # MCP server env secret patterns (for non-mcp config files)
 MCP_ENV_SECRET_KEYS = re.compile(
@@ -83,13 +117,18 @@ MCP_ENV_SECRET_KEYS = re.compile(
 # AWS's documented example key), these rules found 16 values in 1,909 README and docs
 # files from 1,883 public MCP repositories (2026-10-17), all AAK-SECRET-004, and at most
 # 9 of them had a credential's shape; the rest were URLs and prose. The prefix rules
-# (001, 002, 003, 008) found nothing there.
+# (001, 002, 003, 008) found nothing there. AAK-SECRET-005 does read Markdown, for a
+# private key written out whole (`_check_private_key_files`).
 SCANNABLE_EXTENSIONS = frozenset({
     ".env", ".json", ".yml", ".yaml", ".toml", ".cfg",
     ".ini", ".conf", ".xml", ".properties", ".sh", ".bash",
     ".zsh", ".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
     ".rb", ".go", ".rs", ".java", ".kt", ".swift", ".dockerfile", ".tf", ".hcl",
 })
+
+# What documentation writes where a key goes: REPLACE, YOUR, EXAMPLE, PLACEHOLDER,
+# CHANGEME or a run of four `x`, in any case.
+_PLACEHOLDER_WORDS = re.compile(r"replace|your|example|placeholder|changeme|x{4}", re.IGNORECASE)
 
 def _shannon_entropy(s: str) -> float:
     if not s:
@@ -407,7 +446,104 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     return findings
 
 
+def _is_key_body(body: str) -> bool:
+    """Whether the text between a private-key header and its END marker is a key.
+
+    Every line must be base64 (or an armor header, or blank), with at least 16
+    characters of it, more than one distinct character and no placeholder word. So
+    documentation that shows where a key goes (`...`, `<paste your key here>`,
+    `MIIEowIBAAKCAQEA...`, `YOUR_PRIVATE_KEY_HERE`, a run of `x`) is not a key, and
+    neither is a parser's pair of marker constants, whose "body" is the code between
+    them.
+    """
+    material: list[str] = []
+    for raw in _ESCAPED_BREAK.sub("\n", body).splitlines():
+        line = raw.strip()
+        if not line or _ARMOR_HEADER.match(line):
+            continue
+        if not _KEY_LINE.fullmatch(line):
+            return False
+        material.append(line)
+    text = "".join(material)
+    return len(text) >= 16 and len(set(text.lower())) > 1 and not _PLACEHOLDER_WORDS.search(text)
+
+
+def _private_key_offsets(text: str, written_out: bool) -> list[int]:
+    """Offsets of the private-key headers in ``text`` that start a key.
+
+    In a file named as a key or a certificate (``written_out`` False) the header is
+    enough. Anywhere else a key must be written out in full: an END marker within
+    ``_MAX_KEY_BLOCK`` characters and a body ``_is_key_body`` accepts, so a header that
+    only names a key (a parser's constant, a placeholder in a README) is not one.
+
+    The END marker is looked up once and reused until a header lies past it, so a file
+    of headers with no END costs one pass, not one search per header.
+    """
+    offsets: list[int] = []
+    end_at = -1
+    for header in PRIVATE_KEY_HEADER.finditer(text):
+        if not written_out:
+            offsets.append(header.start())
+            continue
+        if end_at < header.end():
+            end_at = text.find("-----END ", header.end())
+            if end_at < 0:
+                break
+        if (
+            end_at - header.end() <= _MAX_KEY_BLOCK
+            and _PRIVATE_KEY_END.match(text, end_at)
+            and _is_key_body(text[header.end():end_at])
+        ):
+            offsets.append(header.start())
+    return offsets
+
+
+def _keystore_holds_key(data: bytes) -> bool:
+    """Whether a Java keystore may hold a private or secret key.
+
+    JKS and JCEKS write each entry's type in the clear (sun.security.provider's
+    JavaKeyStore): a tag of 1 is a private key, 2 a trusted certificate, 3 a secret key.
+    A store whose every entry is a trusted certificate, a trust store such as
+    `truststore.jks`, holds no key. Anything else, a store that does not parse and a
+    PKCS#12 one included, is taken to hold one.
+    """
+    if data[:4] not in (b"\xfe\xed\xfe\xed", b"\xce\xce\xce\xce"):
+        return True
+    version = int.from_bytes(data[4:8], "big")
+    count = int.from_bytes(data[8:12], "big")
+    pos = 12
+    for _ in range(count):
+        if int.from_bytes(data[pos : pos + 4], "big") != 2:
+            return True
+        pos += 4
+        pos += 2 + int.from_bytes(data[pos : pos + 2], "big") + 8  # alias, then the date
+        if version == 2:
+            pos += 2 + int.from_bytes(data[pos : pos + 2], "big")  # certificate type
+        pos += 4 + int.from_bytes(data[pos : pos + 4], "big")  # the certificate
+        if pos > len(data):
+            return True
+    return False
+
+
 def _check_private_key_files(project_root: Path) -> list[Finding]:
+    """AAK-SECRET-005: a private key by its name, or by what a file holds.
+
+    It used to decide by name alone (`.pem`, `.key`, `.p12`, `.pfx`, exactly `id_rsa`
+    and three more) and read a PEM header only in the first 200 characters of a `.crt`
+    or `.cer`. So the same key as `server-key.txt`, `id_rsa_work`, `deploy_key`, an
+    Apple `.p8`, a Java keystore, a PuTTY `.ppk` or a block in a YAML deploy config was
+    missed, and a `.pem` holding only a public certificate was reported, because the
+    extension decided before the header was read. Now:
+
+    - a keystore (`KEYSTORE_EXTENSIONS`) or an ssh-keygen default name is reported by
+      name, a Java trust store excepted;
+    - a `.pem`, `.key` or `.p8` is reported for each private-key header it holds, not
+      at all when its PEM text is only a certificate, a public key or a request, and
+      by name when it holds no PEM text (a DER key);
+    - a `.crt` or `.cer` is reported for each private-key header it holds;
+    - every other file under 1 MB that can hold text is reported for each private key
+      written out in it in full (`_private_key_offsets`).
+    """
     findings: list[Finding] = []
     for path in project_root.rglob("*"):
         if in_skip_dir(path, project_root):
@@ -417,22 +553,43 @@ def _check_private_key_files(project_root: Path) -> list[Finding]:
         name = path.name
         suffix = path.suffix.lower()
         rel_path = str(path.relative_to(project_root))
+        by_name = f"Private key file: {name}"
 
-        if suffix in PRIVATE_KEY_EXTENSIONS or name in PRIVATE_KEY_FILENAMES:
+        if name in PRIVATE_KEY_FILENAMES:
+            findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+            continue
+        if suffix in _BINARY_EXTENSIONS:
+            continue
+        try:
+            if path.stat().st_size > _MAX_FILE_BYTES:
+                if suffix in KEYSTORE_EXTENSIONS or suffix in PEM_KEY_EXTENSIONS:
+                    findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+                continue
+            data = path.read_bytes()
+        except OSError:
+            continue
+
+        if suffix in KEYSTORE_EXTENSIONS:
+            if suffix not in _JAVA_KEYSTORE_EXTENSIONS or _keystore_holds_key(data):
+                findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+            continue
+        if b"PRIVATE KEY" not in data:
+            if suffix in PEM_KEY_EXTENSIONS and b"-----BEGIN " not in data:
+                findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+            continue
+        text = data.decode("utf-8", errors="ignore")
+        named = suffix in PEM_KEY_EXTENSIONS or suffix in CERTIFICATE_EXTENSIONS
+        offsets = _private_key_offsets(text, written_out=not named)
+        if not offsets and suffix in PEM_KEY_EXTENSIONS and not _PEM_HEADER.search(text):
+            findings.append(_make_finding("AAK-SECRET-005", rel_path, by_name))
+            continue
+        lines = LineIndex(text)
+        for offset in offsets:
             findings.append(_make_finding(
                 "AAK-SECRET-005", rel_path,
-                f"Private key file: {name}",
+                "File contains PEM private key header",
+                lines.at(offset),
             ))
-        elif suffix in (".pem", ".key", ".crt", ".cer"):
-            try:
-                header = path.read_text(encoding="utf-8", errors="ignore")[:200]
-                if PRIVATE_KEY_HEADER.search(header):
-                    findings.append(_make_finding(
-                        "AAK-SECRET-005", rel_path,
-                        "File contains PEM private key header",
-                    ))
-            except OSError:
-                pass
     return findings
 
 
