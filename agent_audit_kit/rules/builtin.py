@@ -6324,12 +6324,14 @@ _r(
     adversa_references=["ADV-LEAK-01"],
     incident_references=["SVD-2026-0405"],
     limitations=(
-        "The log-call check reads calls on a receiver named `logger`, `logging`, "
-        "`LOGGER` or `log` (and `print`, `console.*` and `System.out`) whose arguments "
-        "carry a token-shaped literal or a variable named like `access_token`, "
-        "`session_token`, `api_key` or `bearer`. A logger held under any other name is "
-        "not recognised: the same call on `_logger`, `self._logger` or `LOG` is not "
-        "reported."
+        "The log-call check reads calls on a logger (`logger`, `_logger`, `self.log`, "
+        "`LOG`, `app_logger`, `logging.getLogger(...)` and the like), `print`, "
+        "`console.*` and `System.out` that write a token-shaped literal or the value of a "
+        "credential-named variable, attribute or key (`access_token`, `github_token`, "
+        "`client_secret`, `password`, `headers[\"Authorization\"]`). It judges the name, "
+        "not where the value came from: `value = access_token` and then "
+        "`logger.info(\"auth %s\", value)` is not reported, while the same call with "
+        "`access_token` is."
     ),
 )
 

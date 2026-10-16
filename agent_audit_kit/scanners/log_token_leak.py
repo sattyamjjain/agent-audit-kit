@@ -9,8 +9,8 @@ leak into whatever the log sink is wired to.
 Two detections:
 
 1. Pattern: log-sink call (Python / TS / JS) whose argument contains a
-   token-shaped literal or a variable named `token`, `auth`, `bearer`,
-   etc., interpolated into a format string.
+   token-shaped literal or writes the value of a credential-named variable,
+   attribute or key (`access_token`, `client_secret`, `headers["Authorization"]`).
 2. Pin check: `splunk-mcp-server < 1.0.3` in Python / npm manifests.
 """
 
@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import re
+from bisect import bisect_left
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
@@ -27,17 +28,36 @@ from ._helpers import in_skip_dir, find_line_number, make_finding
 _SPLUNK_PATCHED = (1, 0, 3)
 _SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
 
-_LOG_SINK_RE = re.compile(
+# A log-level call on any receiver; `_is_logger_receiver` decides whether the receiver
+# is a logger. The receiver used to be part of this pattern, as `\b(?:logger|logging|
+# LOGGER|log)`, so `_logger`, `self._logger`, `LOG`, `app_logger` and
+# `logging.getLogger(__name__)` were not sinks, and `log` was not a method, so
+# `logger.log(level, ...)` was not a call to one.
+_LOG_METHOD_RE = re.compile(
+    r"\.\s*(?:info|warning|warn|error|critical|exception|debug|trace|fatal|severe|fine|finer|finest|log)\s*\("
+)
+_OTHER_SINK_RE = re.compile(
     r"""
     (?:
-        \b(?:logger|logging|LOGGER|log)\s*\.\s*(?:info|warning|warn|error|critical|exception|debug|severe|fine)\s*\(
-      | \bprint\s*\(
+        \bprint\s*\(
       | \bconsole\s*\.\s*(?:log|info|warn|error|debug)\s*\(
       | \bSystem\s*\.\s*out\s*\.\s*print(?:ln)?\s*\(
     )
     """,
     re.VERBOSE,
 )
+# A logger's name: `logger`, `log`, `logging`, in any case and after underscores
+# (`_logger`, `LOG`), as the last word of a snake_case name (`app_logger`,
+# `audit_log`) or a camelCase hump (`requestLogger`, `appLog`). A word that merely
+# ends in "log" (`catalog`, `dialog`, `backlog`) is not one.
+_LOGGER_NAME_RE = re.compile(r"(?i:_*(?:[a-z0-9]+_+)*(?:log|logger|logging))|_*[a-z][A-Za-z0-9]*(?:Log|Logger)")
+# Calls that hand back a logger: `logging.getLogger(__name__).info(...)`,
+# `structlog.get_logger().debug(...)`, `LoggerFactory.getLogger(X.class).info(...)`.
+_LOGGER_FACTORIES = frozenset({"getLogger", "get_logger", "getChild"})
+# How far back a receiver is read, and how far a call's arguments: bounded, so a
+# crafted file of unclosed calls costs one pass, not one walk to its end per call.
+_RECEIVER_WINDOW = 160
+_ARGS_WINDOW = 4_000
 
 _TOKEN_SHAPE_RE = re.compile(
     r"""
@@ -53,15 +73,68 @@ _TOKEN_SHAPE_RE = re.compile(
     re.VERBOSE,
 )
 
-_TOKEN_VAR_RE = re.compile(
-    r"""
-    \b(?:
-        session_?token | splunkd_session | access_?token | id_?token
-      | auth_?token | bearer | api_?key | refresh_?token
-    )\b
-    """,
-    re.VERBOSE | re.IGNORECASE,
+# A credential name counts only where the call writes its value as is:
+# a whole argument (`logger.info("x %s", token)`), a keyword argument's value, an
+# operand of `+` or `%`, an argument of `.format(...)`, or a whole `{...}` hole of an
+# f-string or `${...}` hole of a template literal. A reference may run through
+# attributes, keys and `.get("...")` (`self.token`, `headers["Authorization"]`,
+# `os.environ.get("OPENAI_API_KEY")`). So the message text never counts ("token" and
+# "password" are ordinary words there), and neither does something computed from the
+# value: `len(token)`, `token[:8]`, `'set' if API_KEY else 'unset'`, `fingerprint(token)`.
+#
+# A name is a credential when its last word is one (`github_token`, `bearerToken`,
+# `client_secret`, `jwt`, `authorization`) or it runs one in (`authtoken`, `apikey`),
+# unless an earlier word says it holds something else: a flag (`has_credentials`), a
+# transformed value (`masked_token`) or a count or cursor (`cost_per_token`,
+# `totalToken`, `next_page_token`). So `max_tokens`, `token_count`, `token_type`,
+# `secret_name` and `tokenizer` are not. A name that is only `token` counts when the
+# message also calls it a credential (`"token=%s"`, `"auth %s"`), since LLM streaming
+# (`print(token, end="")`), lexers and trading code use the word for other things.
+#
+# This replaced a `\b...\b` group of seven names (`access_token`, `session_token`,
+# `id_token`, `auth_token`, `refresh_token`, `splunkd_session`, `api_key`, `bearer`)
+# that ran over the whole call, message text included. So it missed bare `token`,
+# `jwt`, `secret`, `password` and `authorization`, and `github_token` or
+# `client_secret`, and it fired on "Bearer token authentication ENABLED" and on
+# `len(api_key)`. On 16,446 source files from public MCP repositories (2026-10-17),
+# 148 calls fired on a name only through the message text or a computed value.
+_CREDENTIAL_WORDS = frozenset({
+    "token", "jwt", "secret", "password", "passwd", "passphrase", "authorization",
+    "bearer", "apikey", "credential", "credentials",
+})
+_CREDENTIAL_SUFFIXES = (
+    "token", "secret", "password", "passwd", "apikey", "accesskey", "privatekey", "secretkey",
+    "splunkdsession",
 )
+_NOT_A_CREDENTIAL = frozenset({
+    "has", "is", "allow", "allowed", "use", "no", "require", "required", "redact",
+    "masked", "redacted", "hashed",
+    "truncated", "cost", "per", "total", "count", "num", "max", "min", "next", "page",
+    "start", "end", "progress", "cancel", "cancellation", "continuation", "cursor",
+    "sync", "symbol", "input", "output", "prompt", "completion", "handoff", "stop",
+    "eos", "bos", "pad", "unk", "special",
+})
+_CREDENTIAL_LABEL_RE = re.compile(r"token|auth|bearer|jwt|credential|secret|password|api[ _-]?key", re.IGNORECASE)
+_CAMEL_RE = re.compile(r"([a-z0-9])([A-Z])")
+_WORD_SPLIT_RE = re.compile(r"[^A-Za-z0-9]+")
+# A reference whose value is written as is: a name, then attributes, keys or
+# `.get("key")`, the key (or the last name) being what is judged. Each step opens with
+# its own character (`.`, `[`), so a read cannot backtrack.
+_KEY = r"""(?:"[^"\n]{1,64}"|'[^'\n]{1,64}')"""
+_REFERENCE_RE = re.compile(
+    r"(?:(?:os\s*\.\s*)?getenv\s*\(\s*(?P<env>" + _KEY + r")\s*(?:,[^()]{0,80})?\)"
+    r"|[A-Za-z_$][\w$]*"
+    r"(?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\[\s*(?:" + _KEY + r"|\d{1,4})\s*\]"
+    r"|\s*\.\s*get\s*\(\s*" + _KEY + r"\s*(?:,[^()]{0,80})?\))*)"
+)
+_LAST_PART_RE = re.compile(r"""[A-Za-z_$][\w$]*|"[^"\n]{1,64}"|'[^'\n]{1,64}'""")
+_KEYWORD_ARG_RE = re.compile(r"\s*[A-Za-z_]\w*\s*=(?!=)")
+_TEMPLATE_HOLE_RE = re.compile(r"\$\{([^{}]*)\}")
+_FSTRING_HOLE_RE = re.compile(r"(?<!\{)\{([^{}]*)\}")
+_STRING_PREFIX_RE = re.compile(r"(?<![\w$])[A-Za-z]{1,2}\Z")
+# A file's calls are read up to this many argument characters in all, so nested calls
+# cannot make one file cost more than a pass over it and this budget.
+_FILE_ARGS_BUDGET = 2_000_000
 
 _REDACT_HINTS_RE = re.compile(
     r"""
@@ -87,32 +160,190 @@ def _parse_semver(spec: str | None) -> tuple[int, int, int] | None:
     return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
 
 
+def _identifier_start(text: str, end: int, lo: int) -> int:
+    """Where the identifier that ends at ``end`` starts, looking no further back than ``lo``."""
+    i = end
+    while i > lo and (text[i - 1].isalnum() or text[i - 1] in "_$"):
+        i -= 1
+    return i
+
+
+def _logger_receiver(text: str, dot: int) -> int | None:
+    """Where the receiver of the ``.method(`` at ``dot`` starts, if it is a logger.
+
+    The receiver is the identifier before the dot (`_logger`, `self._logger`, `LOG`,
+    `requestLogger`), whitespace between them allowed for a chained call, or a call
+    that hands back a logger (`logging.getLogger(__name__)`). Both are read within
+    ``_RECEIVER_WINDOW`` characters.
+    """
+    lo = max(0, dot - _RECEIVER_WINDOW)
+    j = dot
+    while j > lo and text[j - 1].isspace():
+        j -= 1
+    if j > lo and text[j - 1] == ")":
+        depth = 0
+        for k in range(j - 1, lo - 1, -1):
+            if text[k] == ")":
+                depth += 1
+            elif text[k] == "(":
+                depth -= 1
+                if depth == 0:
+                    start = _identifier_start(text, k, lo)
+                    return start if text[start:k] in _LOGGER_FACTORIES else None
+        return None
+    start = _identifier_start(text, j, lo)
+    return start if start < j and _LOGGER_NAME_RE.fullmatch(text, start, j) else None
+
+
+def _paren_partners(text: str) -> dict[int, int]:
+    """Each `(` in ``text`` mapped to the `)` that closes it, in one pass.
+
+    The `)` a forward walk from a `(` stops at, counting depth, is the one a stack
+    pairs it with, so this gives what the per-call walk gave without walking from
+    every call to the end of a file that never closes it.
+    """
+    partners: dict[int, int] = {}
+    stack: list[int] = []
+    for paren in re.finditer(r"[()]", text):
+        if paren.group() == "(":
+            stack.append(paren.start())
+        elif stack:
+            partners[stack.pop()] = paren.start()
+    return partners
+
+
 def _collect_log_call_args(text: str) -> list[tuple[str, int]]:
     """Return a list of (arg_substring, line) pairs for each log-sink call.
 
-    Not a real parser — we walk the opening paren until matched. Good
-    enough for scanner heuristics; AST would be nice but per-language.
+    Not a real parser: a call's arguments run to the `)` that closes its `(`, and a
+    call whose arguments run past ``_ARGS_WINDOW`` characters, or never close, is
+    skipped. Good enough for scanner heuristics; AST would be nice but per-language.
     """
+    calls: list[tuple[int, int]] = []  # (where the sink starts, its `(`)
+    for match in _LOG_METHOD_RE.finditer(text):
+        start = _logger_receiver(text, match.start())
+        if start is not None:
+            calls.append((start, match.end() - 1))
+    for match in _OTHER_SINK_RE.finditer(text):
+        calls.append((match.start(), match.end() - 1))
+    if not calls:
+        return []
+    partners = _paren_partners(text)
+    breaks = [m.start() for m in re.finditer(r"\n", text)]
     out: list[tuple[str, int]] = []
-    for match in _LOG_SINK_RE.finditer(text):
-        open_idx = match.end() - 1  # position of '('
-        depth = 0
-        i = open_idx
-        while i < len(text):
-            ch = text[i]
-            if ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-                if depth == 0:
-                    break
-            i += 1
-        if depth != 0:
+    for start, open_idx in sorted(calls):
+        close = partners.get(open_idx)
+        if close is None or close - open_idx > _ARGS_WINDOW:
             continue
-        arg_str = text[open_idx + 1 : i]
-        line = text.count("\n", 0, match.start()) + 1
-        out.append((arg_str, line))
+        out.append((text[open_idx + 1 : close], bisect_left(breaks, start) + 1))
     return out
+
+
+# A string literal: triple-quoted, on one line, or a template literal, the shapes whose
+# content is message text. Each alternative is its quotes around a run of characters
+# that cannot close it or an escape, so a read never backtracks.
+_STRING_LITERAL_RE = re.compile(
+    r'"""(?:[^"\\]|\\.|"(?!""))*"""' r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
+    r'|"(?:[^"\\\n]|\\.)*"' r"|'(?:[^'\\\n]|\\.)*'" r"|`(?:[^`\\]|\\.)*`"
+)
+_FORMAT_CALL_RE = re.compile(r"\.\s*format\s*\(")
+
+
+def _operands(code: str, depth_left: int = 4) -> list[str]:
+    """``code`` cut at each `,`, `+` and `%` outside brackets and string literals.
+
+    A keyword argument's name, a wrapping pair of parentheses (`% (a, b)`) and a
+    `"...".format(...)` call are opened, so each piece is one value the call writes;
+    ``depth_left`` bounds how many are opened inside one another.
+    """
+    pieces: list[str] = []
+    depth = start = i = 0
+    while i < len(code):
+        ch = code[i]
+        if ch in "\"'`":
+            literal = _STRING_LITERAL_RE.match(code, i)
+            if literal is not None:
+                i = literal.end()
+                continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth = max(0, depth - 1)
+        elif depth == 0 and ch in ",+%":
+            pieces.append(code[start:i])
+            start = i + 1
+        i += 1
+    pieces.append(code[start:])
+    out: list[str] = []
+    for piece in pieces:
+        keyword = _KEYWORD_ARG_RE.match(piece)
+        piece = piece[keyword.end():] if keyword else piece
+        stripped = piece.strip()
+        call = _FORMAT_CALL_RE.search(stripped)
+        if depth_left and stripped.startswith("(") and stripped.endswith(")"):
+            out.extend(_operands(stripped[1:-1], depth_left - 1))
+        elif depth_left and call is not None and stripped.endswith(")") and _STRING_LITERAL_RE.match(stripped):
+            out.extend(_operands(stripped[call.end():-1], depth_left - 1))
+        else:
+            out.append(stripped)
+    return out
+
+
+def _referenced_name(expression: str) -> str | None:
+    """The name a reference ends in (`self.token` -> `token`, `headers["Authorization"]`
+    -> `Authorization`), or None when ``expression`` computes a value from one."""
+    if len(expression) > 200:
+        return None
+    reference = _REFERENCE_RE.fullmatch(expression.strip())
+    if reference is None:
+        return None
+    last = reference.group("env") or _LAST_PART_RE.findall(reference.group())[-1]
+    return last.strip("\"'")
+
+
+def _written_names(arg_str: str) -> tuple[list[str], str]:
+    """The names whose values a log call writes as is, and the call's message text.
+
+    See `_CREDENTIAL_WORDS` for what counts as written as is. The message text is every
+    string literal's text, the holes of an f-string or template literal left out.
+    """
+    names: list[str] = []
+    message: list[str] = []
+    for literal in _STRING_LITERAL_RE.finditer(arg_str):
+        text = literal.group()
+        quotes = 3 if text.startswith(('"""', "'''")) else 1
+        body = text[quotes:-quotes]
+        prefix = _STRING_PREFIX_RE.search(arg_str, max(0, literal.start() - 2), literal.start())
+        if text[0] == "`":
+            holes, hole_re = _TEMPLATE_HOLE_RE.findall(body), _TEMPLATE_HOLE_RE
+        elif prefix is not None and "f" in prefix.group().lower():
+            holes, hole_re = _FSTRING_HOLE_RE.findall(body), _FSTRING_HOLE_RE
+        else:
+            holes, hole_re = [], None
+        message.append(hole_re.sub(" ", body) if hole_re is not None else body)
+        for hole in holes:
+            # `{token!r}`, `{token:>8}` and `{token=}` write the value too.
+            expression = hole.split("!", 1)[0].split(":", 1)[0].rstrip("= ")
+            name = _referenced_name(expression)
+            if name is not None:
+                names.append(name)
+    for operand in _operands(arg_str):
+        name = _referenced_name(operand)
+        if name is not None:
+            names.append(name)
+    return names, " ".join(message)
+
+
+def _credential_words(name: str) -> list[str] | None:
+    """A name's words when it names a credential (see `_CREDENTIAL_WORDS`), else None."""
+    if len(name) > 64:
+        return None
+    words = [w.lower() for w in _WORD_SPLIT_RE.split(_CAMEL_RE.sub(r"\1_\2", name)) if w]
+    if not words or any(w in _NOT_A_CREDENTIAL for w in words[:-1]):
+        return None
+    if words[-1] in _CREDENTIAL_WORDS or "".join(words).endswith(_CREDENTIAL_SUFFIXES):
+        return words
+    return None
 
 
 def _contains_token_leak(arg_str: str) -> bool:
@@ -120,9 +351,15 @@ def _contains_token_leak(arg_str: str) -> bool:
         return False
     if _TOKEN_SHAPE_RE.search(arg_str):
         return True
-    # Format-string interpolation of a token-named variable.
-    # `f"session={token}"`, `logger.info("bearer %s", bearer_token)`, etc.
-    if _TOKEN_VAR_RE.search(arg_str):
+    # A credential-named value the call writes: `f"session={session_token}"`,
+    # `logger.info("bearer %s", bearer_token)`, `print(headers["Authorization"])`.
+    names, message = _written_names(arg_str)
+    for name in names:
+        words = _credential_words(name)
+        if words is None:
+            continue
+        if words == ["token"] and not _CREDENTIAL_LABEL_RE.search(message):
+            continue
         return True
     return False
 
@@ -140,7 +377,11 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        budget = _FILE_ARGS_BUDGET
         for arg_str, line in _collect_log_call_args(text):
+            budget -= len(arg_str)
+            if budget < 0:
+                break
             if _contains_token_leak(arg_str):
                 rel = str(path.relative_to(project_root))
                 scanned.add(rel)
