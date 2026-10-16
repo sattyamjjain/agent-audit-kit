@@ -85,7 +85,8 @@ _TOKEN_SHAPE_RE = re.compile(
 # A name is a credential when its last word is one (`github_token`, `bearerToken`,
 # `client_secret`, `jwt`, `authorization`) or it runs one in (`authtoken`, `apikey`),
 # unless an earlier word says it holds something else: a flag (`has_credentials`), a
-# transformed value (`masked_token`) or a count or cursor (`cost_per_token`,
+# transformed value (`masked_token`), a description of something that has one
+# (`configs_with_inline_credential`) or a count or cursor (`cost_per_token`,
 # `totalToken`, `next_page_token`). So `max_tokens`, `token_count`, `token_type`,
 # `secret_name` and `tokenizer` are not. A name that is only `token` counts when the
 # message also calls it a credential (`"token=%s"`, `"auth %s"`), since LLM streaming
@@ -107,7 +108,7 @@ _CREDENTIAL_SUFFIXES = (
     "splunkdsession",
 )
 _NOT_A_CREDENTIAL = frozenset({
-    "has", "is", "allow", "allowed", "use", "no", "require", "required", "redact",
+    "has", "is", "allow", "allowed", "use", "no", "with", "without", "require", "required", "redact",
     "masked", "redacted", "hashed",
     "truncated", "cost", "per", "total", "count", "num", "max", "min", "next", "page",
     "start", "end", "progress", "cancel", "cancellation", "continuation", "cursor",

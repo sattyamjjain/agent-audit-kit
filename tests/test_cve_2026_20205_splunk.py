@@ -179,6 +179,7 @@ def test_an_interpolated_credential_name_is_reported(tmp_path: Path, call: str) 
         'logger.info("secret %s", secret_name)',
         'logger.info("loaded %s", tokenizer)',
         'logger.info("auth %s", masked_token.replace(token, "***"))',
+        'print(f"with an inline credential: {r.configs_with_inline_credential}")',
     ],
 )
 def test_a_name_in_the_message_or_a_non_credential_name_is_not_reported(tmp_path: Path, call: str) -> None:
