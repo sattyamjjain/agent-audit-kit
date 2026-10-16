@@ -237,7 +237,7 @@ _make_finding = make_finding
 # where the event goes in a way no https endpoint on a DNS name would: in
 # cleartext to another machine, to a bare IP address, or with a credential in
 # the URL. AAK-HOOK-002 reports a header that sends one of the provider keys
-# the command arm reads. On the 109 `http` handlers in 1,475 public settings
+# the command arm reads. On the 109 `http` handlers in 1,347 public settings
 # and plugin hook files (code search, 2026-10-17), every token sent was the
 # endpoint's own (`$HOOK_SECRET`, `$SHIELD_TOKEN`, a bearer token for the
 # service the hook reports to), and every cleartext URL was 127.0.0.1 or
