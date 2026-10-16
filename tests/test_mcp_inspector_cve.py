@@ -120,3 +120,13 @@ def test_an_unparseable_package_json_counts_as_no_version(tmp_path: Path) -> Non
         f"{NPM}/bin/start.js": _JS,
     })
     assert [f.file_path for f in findings] == [f"{NPM}/bin/start.js"]
+
+
+def test_an_unversioned_copy_is_reported_on_its_call_site(tmp_path: Path) -> None:
+    """The vendored-fork fixture's finding sat on its `inspectorServer.handle(`
+    line before copies were read as a whole, and still does."""
+    findings = _project(tmp_path, {
+        "vendor/mcpjam-inspector/a.ts": _JS,
+        "vendor/mcpjam-inspector/server.ts": "import x from 'y';\n\ninspectorServer.handle(a, b);\n",
+    })
+    assert [(f.file_path, f.line_number) for f in findings] == [("vendor/mcpjam-inspector/server.ts", 3)]
