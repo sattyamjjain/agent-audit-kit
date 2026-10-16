@@ -16,6 +16,134 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.22): eight held-back records, four new pins, three floors raised, one out of scope
+
+The 2026-10-16 batch (#1001-#1005) left seven records for the watcher, and an eighth,
+the WSP MCP AI Agents Connector, was published later that day. None is filed yet, and
+all eight are triaged here, so the watcher does not file them. Two n8n records raise
+both n8n pins, a Claude Code record raises the folder-trust pin, four records get new
+pins (Open Computer Use, Odoo MCP and a LOW Network-AI record on their packages, Nezha
+on its image), and the WordPress plugin is out of scope. Every pin was measured with
+the scanner on a firing fixture and a negative one. NVD text below is quoted from the
+API record, read on 2026-10-16.
+
+**n8n (CVE-2026-110842) raises `AAK-MCP-N8N-CVE-2026-72768-001` from 2.35.4 to 2.41.4,
+with 2.42.0 still reported.** NVD: "n8n before 2.41.4 and 2.42.x before 2.42.1 contains
+a prototype pollution vulnerability in the MCP workflow-validation tool, whose
+interpreter evaluates caller-supplied code in the main process, reads inherited
+properties, and permits assignment onto shared prototypes." GHSA-5jr4-xmvf-frmj gives
+the same two ranges. Checked in the source: the MCP server's workflow-validation tool
+(`validate-workflow-code.tool.ts`) is present at n8n@2.30.0, 2.35.4, 2.36.2 and 2.41.3, and the AST interpreter it
+runs gains its built-in prototype guards (`isBuiltInPrototype`) in 2.41.4 and 2.42.1,
+not in 2.42.0. The CVE is HIGH, as the rule is, and its fix is above the old floor, so
+the floor rises. The 2.36.x range the pin carried for CVE-2026-85166 is now below the
+floor, and 2.42.0, which sorts above 2.41.4, takes its place as a further range on the
+same row: as two rows the pin reported an unversioned `n8n` twice. Upgrade to 2.41.4,
+or 2.42.1 on the 2.42.x line.
+
+**n8n (CVE-2026-110852) raises `AAK-MCP-N8N-CVE-2026-59207-001` from 2.27.4 to 2.41.4,
+with 2.42.0 still reported.** NVD: "n8n before 1.123.83, 2.x before 2.41.4, and 2.42.x
+before 2.42.1 contains an authentication bypass because dynamic-path webhook resolution
+matched requests on the path alone, ignoring the server-generated identifier that is the
+URL's only unguessable component." Checked in the source: `WebhookService` answers a
+static lookup with a bare `findOneBy({ webhookPath: path, method })` at n8n@2.0.0,
+2.27.4, 2.41.3 and 2.42.0, and 2.41.4 and 2.42.1 return nothing for a dynamic row. The
+CVE is MEDIUM, as the rule is, and the fix is above its 2.27.4 floor, so the floor
+rises the same way. The 1.x line was already reported, since all of it is below the
+2.27.4 fix for CVE-2026-59207, although 1.123.83 fixes the webhook bypass. Upgrade to
+2.41.4, or 2.42.1 on the 2.42.x line.
+
+**Claude Code (CVE-2026-86063) raises `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` from
+2.1.129 to 2.1.179.** NVD: "Prior to 2.1.179, the Claude Code and Claude Desktop plugin
+installation flow runs git checkout for a marketplace-pinned commit without verifying
+that the resulting HEAD equals the pinned 40-character SHA." GHSA-pq7j-f95f-qfcv names
+`@anthropic-ai/claude-code` below 2.1.179. Commit pins for plugins arrived in 2.1.14
+(the CHANGELOG's "Added support for pinning plugins to specific git commit SHAs"), so
+every release from the old 2.1.129 floor up has the flaw. The CVE is HIGH, as the rule
+is, so the floor rises, and the finding now names each of the rule's three bugs only in
+the range it applies to. Re-reading CVE-2026-40068 for that showed this pin had its fix
+one release early: GHSA-q5hj-mxqh-vv77 gives 2.1.63 up to 2.1.84, not 2.1.83, so a
+2.1.83 pin's evidence now names the folder-trust bug too. Every release below 2.1.179
+was already reported for one of the other two, or is now. npm's `latest` is 2.1.301,
+and the CLI updates itself, so a stated version is still required. Claude Desktop is
+in no file AAK reads. Upgrade to 2.1.179 or later.
+
+**Open Computer Use (CVE-2026-108721) gets `AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001`,
+every release, with no fixed release.** NVD: "Open Computer Use through 1.0.0 on macOS
+contains an improper case sensitivity handling vulnerability that allows local MCP
+callers to bypass the password-manager denylist using case-variant bundle identifiers."
+The project, iFurySt/open-codex-computer-use, publishes the same build to npm as
+`open-computer-use`, `open-computer-use-mcp` and `open-codex-computer-use-mcp`, all three
+published by the same npm account. Checked in the source: `AppSafetyPolicy.isBlocked` checks a
+lowercase set with `contains` while the app lookup compares bundle identifiers with
+`caseInsensitiveCompare`; the denylist ships in 0.1.2, the first npm release, and the
+check is unchanged at 1.0.0, 1.1.0 and 1.1.1, the newest (2026-10-15), and on `main`. So
+"through 1.0.0" is only the newest release at disclosure, and an unversioned reference
+is reported. The README's MCP config runs the `open-computer-use` command by name, which
+the pin reads; the `ocu` alias is not read, and a limitations fixture proves that gap.
+Lock password managers while an agent drives the desktop.
+
+**Odoo MCP (CVE-2026-108861) gets `AAK-MCP-ODOOMCP-CVE-2026-108861-001`, `odoo-mcp` from
+1.0.0, with no fixed release.** NVD: "Odoo MCP 1.0.0 through 1.3.2 contains an
+information disclosure vulnerability that allows MCP clients to bypass the field-level
+ACL by invoking the execute_method tool." The PyPI project's links point at
+erpipe-org/mcp-odoo. Checked in the
+source: `field_policy.py` is absent at v0.9.0 and arrives in v1.0.0, and
+`execute_method` in `tools_write.py` returns `read` and `search_read` results without it
+at v1.0.0 and at v1.3.2, the newest tag. Those two methods count as read-only, so the
+side-effect review does not stop them, and `ODOO_MCP_ENABLE_WRITES` gates only approved
+writes. PyPI's newest release is 1.3.0, so there is no fixed release, and the README's
+unpinned `uvx odoo-mcp` is reported. npm's `odoo-mcp` is another project, so the pin
+reads PyPI only. Enforce hidden fields with Odoo's own field groups or access rules.
+
+**Network-AI (CVE-2026-109332) gets `AAK-MCP-NETWORKAI-CVE-2026-109332-001`, LOW,
+`network-ai` from 4.0.0 up to 5.15.2.** NVD: "Network-AI (npm network-ai) before 5.15.2
+contains an origin validation error in McpSseServer._handleRequest in
+lib/mcp-transport-sse.ts that reflects localhost Origins into Access-Control-Allow-Origin
+regardless of bind interface." Checked in the npm tarballs: `lib/mcp-transport-sse` is
+absent through 3.9.0 and arrives in 4.0.0, whose `network-ai-server` binds 0.0.0.0 by
+default; 4.0.0 to 5.1.0 send `Access-Control-Allow-Origin: *`, 5.13.4 and 5.15.1 reflect
+a localhost Origin whatever the bind address, and 5.15.2 reflects only on a loopback
+bind (`_isLoopbackBind`). The CVE is LOW and the existing Network-AI pin HIGH, so it is
+its own rule rather than a change to that pin. `latest` is 5.15.4, fixed, so a stated
+version is required. Upgrade to 5.15.2 or later, or bind the SSE server to loopback.
+
+**Nezha (CVE-2026-111385) gets `AAK-MCP-NEZHA-CVE-2026-111385-001` on its image, from
+v2.1.0 up to v2.3.15.** NVD: "Nezha from 2.1.0 before 2.3.15 contains a host header
+injection vulnerability in mintTransferTool that builds fs.download_url and
+fs.upload_url transfer URLs from the unvalidated Host header." Nezha is a server
+monitoring dashboard with an MCP endpoint, a Go server whose install script writes a
+compose file running `ghcr.io/nezhahq/nezha`, or unpacks a release zip. PyPI's `nezha` is
+an unrelated utility library and npm's a 2017 0.0.1 by another author, and Docker Hub
+has no `nezhahq/nezha`. Checked in the source: `cmd/dashboard/controller/mcp_transfer.go`
+is absent at v2.0.12 and arrives in v2.1.0, where `mintTransferTool` reads
+`c.Request.Host`, as it still does at v2.3.14; v2.3.15 is the fix commit, `36b742a7`
+("harden dashboard security boundaries"), which validates the host first. The install
+script writes the image untagged, and `latest` was the v2.3.18 digest on 2026-10-16, so
+an untagged reference is not reported. Upgrade to v2.3.15 or later.
+
+**The WSP MCP AI Agents Connector (CVE-2026-109382) is out of scope.** NVD: "The WSP MCP
+AI Agents Connector plugin for WordPress is vulnerable to Sensitive Information
+Disclosure in versions up to, and including, 2.9.5." It is a wordpress.org plugin,
+`wsp-mcp-ai-agents-connector`, installed into a WordPress site, which no file AAK reads,
+as with the WordPress records in #915 and #916. Upgrade to 2.9.6 or later.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-110842 | 7.7 (4.0) | `n8n` (npm) | **Floor raised** on `AAK-MCP-N8N-CVE-2026-72768-001`: 2.35.4 to 2.41.4, and 2.42.0 in place of the 2.36.x range. | not filed |
+| CVE-2026-86063 | 7.5 (4.0) | `@anthropic-ai/claude-code` (npm) | **Floor raised** on `AAK-CLAUDECODE-CVE-2026-40068-PIN-001`: 2.1.129 to 2.1.179. | not filed |
+| CVE-2026-109382 | 6.5 | WSP MCP AI Agents Connector (WordPress plugin) | **Out of scope**, non-pinnable: no artifact AAK reads. Fixed in 2.9.6. | not filed |
+| CVE-2026-110852 | 6.3 (4.0) | `n8n` (npm) | **Floor raised** on `AAK-MCP-N8N-CVE-2026-59207-001`: 2.27.4 to 2.41.4, plus 2.42.0. | not filed |
+| CVE-2026-108721 | 5.3 | `open-computer-use`, `open-computer-use-mcp`, `open-codex-computer-use-mcp` (npm) | **New pin** `AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001`: every release. No fixed release yet. | not filed |
+| CVE-2026-111385 | 4.8 | `ghcr.io/nezhahq/nezha` (image) | **New pin** `AAK-MCP-NEZHA-CVE-2026-111385-001`: from v2.1.0 up to v2.3.15. | not filed |
+| CVE-2026-108861 | 4.3 | `odoo-mcp` (PyPI) | **New pin** `AAK-MCP-ODOOMCP-CVE-2026-108861-001`: from 1.0.0. No fixed release yet. | not filed |
+| CVE-2026-109332 | 3.1 | `network-ai` (npm) | **New pin** `AAK-MCP-NETWORKAI-CVE-2026-109332-001` (LOW): from 4.0.0 up to 5.15.2. | not filed |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that, marked
+(4.0).
+
+Dispositioned at 2026-10-16T09:07:38Z.
+
 ## 2026-10-16 (v0.6.21): five more disclosures and two held-back records, four new pins, two floors raised, one out of scope
 
 The watcher opened five `cve-response` issues at 21:23Z on 2026-10-15 (#1001-#1005),

@@ -23,7 +23,11 @@ registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. EdgeEver 
 on neither registry either; its self-hosted server is `ghcr.io/tianma-if/edgeever`.
 NullHub is a Zig binary shipped as release binaries and `ghcr.io/nullclaw/nullhub`,
 and npm and PyPI have no `nullhub`. Conductor is a Java server whose README runs
-the image `conductoross/conductor`, tagged by release. NetLicensing MCP is on PyPI
+the image `conductoross/conductor`, tagged by release. Nezha's dashboard is a Go
+server whose install script runs `ghcr.io/nezhahq/nezha` or unpacks a release zip;
+PyPI's `nezha` is an unrelated utility library, and npm's a 2017 0.0.1 by another
+author.
+NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
 Docker Hub
@@ -305,6 +309,18 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-CONDUCTOR-CVE-2026-109402-001", "Conductor", "conductoross/conductor",
         (4, 0, 1), "from 3.22.0, up to and including 4.0.0-alpha.1", "No fixed release yet.",
         ("CVE-2026-109402",), floating_affected=True, introduced=(3, 22, 0),
+    ),
+    # CVE-2026-111385: the MCP file-transfer tools build `fs.download_url` and
+    # `fs.upload_url` from the request's Host header. `mcp_transfer.go` is absent at
+    # v2.0.12 and present from v2.1.0, where `mintTransferTool` reads
+    # `c.Request.Host`, as at v2.3.14; v2.3.15 is the fix, 36b742a7, which validates
+    # the host first. The install script writes the image untagged, and on
+    # 2026-10-16 `latest` was the v2.3.18 digest, fixed. GHCR also carries a
+    # two-part `v1.1` and `dev`.
+    _ImagePin(
+        "AAK-MCP-NEZHA-CVE-2026-111385-001", "Nezha", "ghcr.io/nezhahq/nezha",
+        (2, 3, 15), "from v2.1.0 up to v2.3.15", "Fixed in v2.3.15.",
+        ("CVE-2026-111385",), introduced=(2, 1, 0),
     ),
 )
 

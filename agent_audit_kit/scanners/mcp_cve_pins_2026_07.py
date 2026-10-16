@@ -12,7 +12,9 @@ available) before shipping:
   - litellm                        >= 1.84.0  (CVE-2026-59822, CVE-2026-59820)
   - cline                          >= 3.0.30  (CVE-2026-59723)
   - mcp-text-editor                >  1.0.2   (CVE-2026-15138; NVD "up to 1.0.2")
-  - n8n                            >= 2.27.4  (CVE-2026-59207; also 2.28.1 line)
+  - n8n                            >= 2.41.4, and 2.42.0  (CVE-2026-59207, and since
+    2026-10-16 CVE-2026-110852, a webhook lookup that ignores the webhook's id; was
+    2.27.4, with a 2.28.1 line)
   - ruflo                          >= 3.16.3  (CVE-2026-59726)
   - @arikusi/deepseek-mcp-server   >= 1.8.0   (CVE-2026-55604, CVE-2026-55605)
   - mcp-server-kubernetes          >= 3.9.0   (CVE-2026-61459)
@@ -53,7 +55,9 @@ available) before shipping:
     ships no code fix and points at an SSRF-safe egress proxy, so there is no fix
     floor to wait for and presence-only is the permanent state, not a placeholder)
   - mcp-grafana                    >= 1.1.0   (CVE-2026-19516; SSRF via X-Grafana-URL destination)
-  - n8n (MCP Client node)          >= 2.32.1  (CVE-2026-72768; SSRF-protection bypass)
+  - n8n (MCP Client node)          >= 2.41.4, and 2.42.0  (CVE-2026-72768; SSRF-protection
+    bypass. The floor rose for CVE-2026-77068, -77073, -85166 and, on 2026-10-16,
+    CVE-2026-110842, the MCP workflow-validation tool's prototype pollution)
   - claude-code-templates          >= 1.29.4  (CVE-2026-73222; --studio unauth 0.0.0.0 RCE)
   - mcp-atlassian                  >= 0.22.0  (CVE-2026-73498; confluence_upload_attachment
     arbitrary file read via unvalidated file_path)
@@ -169,7 +173,7 @@ available) before shipping:
   - @anthropic-ai/claude-code      2.0.68 <= v < 2.1.260  (CVE-2026-103012; a stored API
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
     a stated version is required, and its own rule beside the HIGH folder-trust pin
-    in `supply_chain`, whose floor is 2.1.129)
+    in `supply_chain`, whose floor is 2.1.179)
   - langgraph-sdk                  0.1.45 <= v < 0.4.4  (CVE-2026-104873; the
     resource-scoped auth decorators register a handler for every action whatever
     `actions` says. Only a deployment that passes `actions` is exposed)
@@ -201,6 +205,14 @@ available) before shipping:
     (CVE-2026-108716; the device-code grant posts the client secret to http
     endpoints. No fixed release, so an unpinned launch is reported, and a launch
     without the flag, a dependency entry and a lockfile are not)
+  - open-computer-use, open-computer-use-mcp and
+    open-codex-computer-use-mcp    any version  (CVE-2026-108721; the macOS
+    password-manager denylist is case-sensitive. No fixed release)
+  - odoo-mcp                       >= 1.0.0  (CVE-2026-108861; `execute_method` skips
+    the field policy. No fixed release; PyPI only)
+  - network-ai                     4.0.0 <= v < 5.15.2  (CVE-2026-109332; the MCP SSE
+    transport answers other origins. LOW, its own rule beside the HIGH pin, and a
+    stated version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -337,8 +349,16 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="3.0.30"),
     _Pin("AAK-MCP-TEXTEDITOR-CVE-2026-15138-001", "mcp-text-editor", ("mcp-text-editor",),
          (1, 0, 3), fix_label="1.0.3 (affected up to 1.0.2)"),
-    _Pin("AAK-MCP-N8N-CVE-2026-59207-001", "n8n", ("n8n",), (2, 27, 4),
-         fix_label="2.27.4 / 2.28.1"),
+    # Floor moved 2.27.4 -> 2.41.4 for CVE-2026-110852 (MEDIUM, CVSS 4.0 6.3,
+    # GHSA-4c7j-qff5-r9cx): the static webhook lookup returned a dynamic-path row
+    # on its path alone, so a request that left out the webhook's id ran another
+    # project's workflow under that project's credentials. `WebhookService` does a
+    # bare `findOneBy({ webhookPath: path, method })` at 2.0.0, 2.27.4, 2.41.3 and
+    # 2.42.0, and 2.41.4 and 2.42.1 reject a dynamic row. 2.42.0 sorts above the
+    # floor and is still affected, so it is an `also` range on this row rather
+    # than a second row, which would report an unversioned n8n twice.
+    _Pin("AAK-MCP-N8N-CVE-2026-59207-001", "n8n", ("n8n",), (2, 41, 4),
+         also=(((2, 42, 0), (2, 42, 1)),), fix_label="2.41.4 / 2.42.1"),
     _Pin("AAK-MCP-RUFLO-CVE-2026-59726-001", "ruflo", ("ruflo",), (3, 16, 3),
          fix_label="3.16.3"),
     _Pin("AAK-MCP-DEEPSEEK-CVE-2026-55604-001", "@arikusi/deepseek-mcp-server",
@@ -631,10 +651,16 @@ _PINS: tuple[_Pin, ...] = (
     # already used for CVE-2026-65594 above: same rule_id, one arm per fix line,
     # the second bounded by `introduced` so 2.36.2+ clears and nothing below 2.36.0
     # ever reaches it. Both fix versions are published on npm (latest 2.37.10).
-    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 35, 4),
-         fix_label="2.35.4"),
-    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 36, 2),
-         introduced=(2, 36, 0), fix_label="2.36.2"),
+    #
+    # Floor moved again, 2.35.4 -> 2.41.4, for CVE-2026-110842 (HIGH, CVSS 4.0 7.7,
+    # GHSA-5jr4-xmvf-frmj): the MCP server's workflow-validation tool, present at
+    # 2.30.0, 2.35.4, 2.36.2 and 2.41.3, runs an AST interpreter that gains its
+    # built-in prototype guards in 2.41.4 and, on the 2.42.x line, in 2.42.1. The
+    # 2.36.x line now sits below the floor, so the branch range is 2.42.0, which
+    # sorts above it. It is an `also` range on one row: the two rows reported an
+    # unversioned n8n twice.
+    _Pin("AAK-MCP-N8N-CVE-2026-72768-001", "n8n", ("n8n",), (2, 41, 4),
+         also=(((2, 42, 0), (2, 42, 1)),), fix_label="2.41.4 / 2.42.1"),
     # claude-code-templates (npm) < 1.29.4: the `--studio` option launches the Claude Code
     # Studio server (`cli-tool/src/sandbox-server.js`) bound to 0.0.0.0:3444 with CORS open
     # and no authentication. `POST /api/execute` (the `prompt` body field) and
@@ -1177,7 +1203,7 @@ _PINS: tuple[_Pin, ...] = (
     # copy (CVE-2026-103012, CVSS 4.0 2.0, CWE-696, GHSA-gfvf-j8jh-jxxw). Local
     # access only, and auto-update has delivered the fix. LOW, so its own rule
     # beside the HIGH folder-trust pin in `supply_chain` (below 2.1.83 then, below
-    # 2.1.129 since CVE-2026-103435 joined it).
+    # 2.1.129 once CVE-2026-103435 joined it, below 2.1.179 since CVE-2026-86063).
     _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
@@ -1335,6 +1361,34 @@ _PINS: tuple[_Pin, ...] = (
          fix_label="no fixed release (0.15.1 is the newest); sign in without --device-code "
                    "or check that the server's OAuth endpoints are https",
          requires_arg="--device-code", ecosystem="js"),
+    # --- 2026-10-16 second batch (records the watcher had not filed) ---
+    # Open Computer Use's macOS backend checks a requested bundle identifier against
+    # its lowercase password-manager denylist with an exact `contains`, while the
+    # app lookup ignores case, so `com.1Password.1Password` passes (CVE-2026-108721).
+    # The denylist ships in 0.1.2, the first npm release, and the check is unchanged
+    # at 1.1.1, the newest, and on `main`, although the record says "through 1.0.0":
+    # no fixed release. The project publishes the same build under three names.
+    _Pin("AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001", "Open Computer Use",
+         ("open-computer-use", "open-computer-use-mcp", "open-codex-computer-use-mcp"),
+         None, fix_label="no fixed release (1.1.1 is the newest); lock password "
+                         "managers while an agent drives the desktop"),
+    # Odoo MCP's `execute_method` tool returns `read` and `search_read` results
+    # without the field policy its read tools apply (CVE-2026-108861). The policy
+    # (`field_policy.py`) arrives in 1.0.0; PyPI's newest release, 1.3.0, and the
+    # newest tag, v1.3.2, still skip it. npm's `odoo-mcp` is another project.
+    _Pin("AAK-MCP-ODOOMCP-CVE-2026-108861-001", "odoo-mcp", ("odoo-mcp",), None,
+         introduced=(1, 0, 0),
+         fix_label="no fixed release (1.3.0 is the newest on PyPI); enforce hidden "
+                   "fields with Odoo's own access rules",
+         ecosystem="py"),
+    # Network-AI's MCP SSE transport answers other origins (CVE-2026-109332, LOW):
+    # `Access-Control-Allow-Origin: *` from 4.0.0, where `lib/mcp-transport-sse`
+    # first ships, to at least 5.1.0, then a reflected localhost Origin whatever the
+    # bind address; 5.15.2 reflects only on a loopback bind. LOW, so its own rule
+    # beside the HIGH pin above, and like it a stated version is required.
+    _Pin("AAK-MCP-NETWORKAI-CVE-2026-109332-001", "network-ai", ("network-ai",), (5, 15, 2),
+         introduced=(4, 0, 0), fix_label="5.15.2 (affected from 4.0.0)",
+         requires_version=True, ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (

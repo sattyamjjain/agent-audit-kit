@@ -6,6 +6,8 @@ a version floor gets wrong if nobody writes it down:
 * **n8n CVE-2026-85166** is "before 2.35.4 **and** 2.36.x before 2.36.2". A lone
   2.35.4 floor clears 2.36.0 and 2.36.1 — versions that sort above it and are
   still vulnerable. Two arms, one rule id, exactly as CVE-2026-65594 already does.
+  Since 2026-10-16 CVE-2026-110842 sets the floor at 2.41.4, which covers the 2.36.x
+  line, and the branch range is 2.42.0, carried on the same row (`also`).
 * **MCPHub** publishes as npm ``@samanhappy/mcphub``. PyPI ``mcphub`` is a
   different project, by a different author, on a 0.1.x line whose latest release
   (0.1.11) is below every fix version here — so a bare-token pin would flag every
@@ -52,41 +54,44 @@ def _pypi(tmp_path: Path, line: str) -> set[str]:
 
 @pytest.mark.parametrize("version,fires,why", [
     ("2.34.1", True, "the previous floor is now below the new one"),
-    ("2.35.3", True, "just below the mainline fix"),
-    ("2.35.4", False, "mainline fix clears"),
-    ("2.36.0", True, "ABOVE 2.35.4 and still vulnerable — the whole reason for arm two"),
+    ("2.35.3", True, "just below the 85166 mainline fix"),
+    ("2.35.4", True, "the 85166 fix, below the 110842 one since 2026-10-16"),
+    ("2.36.0", True, "the 2.36.x line, now below the 2.41.4 floor"),
     ("2.36.1", True, "same branch, still vulnerable"),
-    ("2.36.2", False, "branch fix clears"),
-    ("2.37.10", False, "current npm latest clears"),
+    ("2.36.2", True, "the 85166 branch fix, below the 110842 one"),
+    ("2.37.10", True, "npm latest on 2026-09-04, below 2.41.4"),
+    ("2.41.4", False, "mainline fix clears"),
+    ("2.42.0", True, "ABOVE 2.41.4 and still vulnerable — the reason for the range"),
+    ("2.42.1", False, "branch fix clears"),
 ])
 def test_n8n_two_arm_floor(tmp_path: Path, version: str, fires: bool, why: str) -> None:
     assert (N8N in _npm(tmp_path, n8n=version)) is fires, why
 
 
-def test_a_single_floor_would_have_missed_the_2_36_branch(tmp_path: Path) -> None:
+def test_a_single_floor_would_miss_the_branch_above_it(tmp_path: Path) -> None:
     """States the bug in the form it would have shipped in.
 
-    If someone later "simplifies" this pin back to one arm, every n8n 2.36.0 and
-    2.36.1 install goes quiet while remaining exposed to CVE-2026-85166. This test
-    is the tripwire for that edit, and it fails loudly rather than by omission.
+    The branch was 2.36.x for CVE-2026-85166 and is 2.42.x for CVE-2026-110842. If
+    someone later "simplifies" this pin to a bare floor, every n8n 2.42.0 install
+    goes quiet while remaining exposed. This test is the tripwire for that edit, and
+    it fails loudly rather than by omission.
     """
-    assert N8N in _npm(tmp_path, n8n="2.36.0")
+    assert N8N in _npm(tmp_path, n8n="2.42.0")
     arms = [p for p in pins._PINS if p.rule_id == N8N]
-    assert len(arms) == 2, "the 2.36.x line needs its own arm"
-    assert {a.floor for a in arms} == {(2, 35, 4), (2, 36, 2)}
-    branch = next(a for a in arms if a.floor == (2, 36, 2))
-    assert branch.introduced == (2, 36, 0), (
-        "the branch arm must be introduced-bounded, or it re-flags everything "
-        "below 2.36.0 that the mainline arm already cleared"
+    assert len(arms) == 1, "one row: a second row reports an unversioned n8n twice"
+    assert arms[0].floor == (2, 41, 4)
+    assert arms[0].also == (((2, 42, 0), (2, 42, 1)),), (
+        "the branch range must start at 2.42.0, or it re-flags the 2.41.x releases "
+        "the floor already cleared"
     )
 
 
 def test_branch_fixture_on_the_2_36_line_fires() -> None:
-    """A committed fixture for the case a single floor reads as patched.
+    """A committed fixture for the case a single floor read as patched.
 
     Kept as a fixture rather than only as a parametrised string so the shape is
     visible to somebody browsing tests/fixtures/cves/ and wondering why n8n has
-    two directories.
+    two directories. The 2.42.x line has its own, cve-2026-110842-n8n.
     """
     from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import scan
 

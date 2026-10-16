@@ -684,3 +684,42 @@ def test_conductor_fixtures_positive_and_negative() -> None:
 def test_conductor_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yml", f"services:\n  conductor:\n    image: {ref}\n")
     assert (CONDUCTOR in ids) is fires
+
+
+# --- 2026-10-16 second batch: Nezha's dashboard image (CVE-2026-111385) ---
+
+NEZHA = "AAK-MCP-NEZHA-CVE-2026-111385-001"
+
+
+def test_nezha_pin_carries_its_cve_and_severity() -> None:
+    assert RULES[NEZHA].cve_references == ["CVE-2026-111385"]
+    assert RULES[NEZHA].severity.value == "medium"
+
+
+def test_nezha_fixtures_positive_and_negative() -> None:
+    """The install script's compose file on v2.3.14 fires on its image line; v2.3.15
+    and the untagged image the script writes do not."""
+    root = FIXTURES / "cve-2026-111385-nezha"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(NEZHA, 4)]
+    assert NEZHA in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/nezhahq/nezha:v2.0.12", False),   # no MCP transfer tools yet
+    ("ghcr.io/nezhahq/nezha:v2.1.0", True),     # mcp_transfer.go arrives
+    ("ghcr.io/nezhahq/nezha:v2.2", True),       # the whole v2.2 line is affected
+    ("ghcr.io/nezhahq/nezha:v2.3.14", True),
+    ("ghcr.io/nezhahq/nezha:v2.3.15", False),   # 36b742a7 validates the host
+    ("ghcr.io/nezhahq/nezha:v2.3.18", False),   # the newest release
+    ("ghcr.io/nezhahq/nezha:v2.3", False),      # the two-part tag floats to v2.3.18
+    ("ghcr.io/nezhahq/nezha:latest", False),    # the v2.3.18 digest on 2026-10-16
+    ("ghcr.io/nezhahq/nezha", False),           # untagged, as the install script writes it
+    ("ghcr.io/nezhahq/nezha:v1.1", False),      # the v1 line, before the MCP endpoint
+    ("ghcr.io/nezhahq/nezha:dev", False),       # states no version
+    ("ghcr.io/nezhahq/agent:v2.3.14", False),   # another image name
+])
+def test_nezha_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  dashboard:\n    image: {ref}\n")
+    assert (NEZHA in ids) is fires

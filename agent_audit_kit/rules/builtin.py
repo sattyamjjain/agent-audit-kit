@@ -240,6 +240,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-NETWORKAI-CVE-2026-109331-001": ["IAM-05", "STA-08"],
     "AAK-MCP-CONDUCTOR-CVE-2026-109402-001": ["IVS-04", "STA-08"],
     "AAK-MCP-REMOTE-CVE-2026-108716-001": ["CEK-08", "IVS-04", "STA-08"],
+    "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001": ["IAM-05", "STA-08"],
+    "AAK-MCP-ODOOMCP-CVE-2026-108861-001": ["IAM-05", "STA-08"],
+    "AAK-MCP-NETWORKAI-CVE-2026-109332-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-NEZHA-CVE-2026-111385-001": ["IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -7712,44 +7716,51 @@ _r(
 
 _r(
     "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
-    "Anthropic Claude Code below 2.1.129: folder-trust bypass (CVE-2026-40068) and write-time symlink following (CVE-2026-103435)",
-    "Claude Code 2.1.63 → before 2.1.83 derives folder-trust from the "
+    "Anthropic Claude Code below 2.1.179: folder-trust bypass (CVE-2026-40068), write-time symlink following (CVE-2026-103435) and plugin commit-pin bypass (CVE-2026-86063)",
+    "Claude Code 2.1.63 → before 2.1.84 derives folder-trust from the "
     "git worktree `commondir` file without validating its contents. A "
     "malicious repo with a crafted `commondir` pointing to a previously-"
     "trusted path silently bypasses the trust prompt — every subsequent "
     "agent run executes inside that fake-trusted scope (CVE-2026-40068, "
-    "patched in 2.1.83, published to npm 2026-03-24). Before 2.1.129, "
+    "patched in 2.1.84, published to npm 2026-03-25). Before 2.1.129, "
     "Claude Code checked that a target file was inside the project when "
     "it asked for permission, then re-resolved the path at write time "
     "without checking again, so an attacker who can write to a shared "
     "workspace and wins the race swaps the file for a symlink and "
     "redirects the write to a file outside the project, such as a shell "
     "profile (CVE-2026-103435, CVSS 4.0 7.7, CWE-367, "
-    "GHSA-5j29-h97v-84ch). This pin-only rule fires on the scoped npm "
-    "package `@anthropic-ai/claude-code` < 2.1.129 in any consumer "
-    "manifest, and its evidence names the folder-trust bug only below "
-    "2.1.83. Rule name was pre-allocated in the v0.3.15 triage of issue "
+    "GHSA-5j29-h97v-84ch). From 2.1.14, which added commit pins for "
+    "marketplace plugins, and before 2.1.179, the plugin install flow ran "
+    "`git checkout` on the pinned commit without checking that HEAD then "
+    "equalled the pinned SHA, so a plugin repository on a Git host that "
+    "allows SHA-shaped branch names can name a branch after the reviewed "
+    "commit and have its tip installed instead (CVE-2026-86063, CVSS 4.0 "
+    "7.5, CWE-494, GHSA-pq7j-f95f-qfcv). This pin-only rule fires on the "
+    "scoped npm package `@anthropic-ai/claude-code` < 2.1.179 in any "
+    "consumer manifest, and its evidence names each bug only where it "
+    "applies. Rule name was pre-allocated in the v0.3.15 triage of issue "
     "#181 and shipped in v0.3.16; the floor rose from 2.1.83 on "
-    "2026-10-08.",
+    "2026-10-08 and from 2.1.129 on 2026-10-16.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Bump `@anthropic-ai/claude-code` to >=2.1.129 in any npm "
+    "Bump `@anthropic-ai/claude-code` to >=2.1.179 in any npm "
     "manifest pinning Claude Code. The rule fires only on the pin "
     "shape; an unpinned global install is in no file AAK reads, and "
-    "auto-update has delivered both fixes to installs that keep it on.",
+    "auto-update has delivered all three fixes to installs that keep it on.",
     sarif_name="ClaudeCodeFolderTrustBypass",
-    cve_references=["CVE-2026-40068", "CVE-2026-103435"],
+    cve_references=["CVE-2026-40068", "CVE-2026-103435", "CVE-2026-86063"],
     owasp_agentic_references=["ASI04", "ASI09"],
     incident_references=["ANTHROPIC-CLAUDECODE-2026-05-06"],
     limitations=(
         "Reads `@anthropic-ai/claude-code` in the root package.json, "
         "package-lock.json, yarn.lock and pnpm-lock.yaml and reports a version it "
-        "can parse below 2.1.129, so `latest` and other tags state no version and "
+        "can parse below 2.1.179, so `latest` and other tags state no version and "
         "are not reported. In package-lock.json it reads only a listed dependency "
         "(`\"@anthropic-ai/claude-code\": \"<version>\"`): an entry that only a "
         "transitive dependency adds under `node_modules/@anthropic-ai/claude-code` "
         "is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory "
-        "package.json or a versioned `npx` reference in .mcp.json."
+        "package.json or a versioned `npx` reference in .mcp.json. Claude "
+        "Desktop, which shares the plugin install flow, is in no file AAK reads."
     ),
 )
 
@@ -9010,30 +9021,47 @@ _r(
 
 _r(
     "AAK-MCP-N8N-CVE-2026-59207-001",
-    "n8n < 2.27.4 / 2.28.1 (MCP tool bypasses credential domain allow-list → SSRF/exfil)",
+    "n8n < 2.41.4 / 2.42.0 (webhook, form and MCP routes run any project's workflow without its identifier; MCP tool bypasses the credential domain allow-list)",
     "n8n before 2.27.4 (and the 2.28.x line before 2.28.1) did not enforce the "
     "\"Allowed HTTP Request Domains\" restriction on credentials when an AI-Agent "
     "MCP tool was pointed at an arbitrary URL, letting a member-level user with "
     "use-only access to a shared credential send its secret to an external server "
-    "they control (CVE-2026-59207, CVSS 6.5). A project pinning `n8n` below 2.27.4 "
-    "(or unpinned) is exposed; a 2.28.0 pin is also affected — move to 2.28.1.",
+    "they control (CVE-2026-59207, CVSS 6.5). On the 1.x line before 1.123.83, on "
+    "2.x before 2.41.4 and at 2.42.0, dynamic-path webhook resolution matches a "
+    "request on its path alone and ignores the server-generated identifier that is "
+    "the URL's only unguessable part, so an unauthenticated caller who leaves it out "
+    "reaches webhook, form and MCP routes and runs workflows in unrelated projects "
+    "under those projects' credentials (CVE-2026-110852, CVSS 4.0 6.3). That fix is above "
+    "the old 2.27.4 floor and the CVE is MEDIUM, as the rule is, so the floor rose "
+    "to 2.41.4, with a range for 2.42.0, which sorts above it and is still affected. "
+    "A project pinning `n8n` below 2.41.4, or on 2.42.0, or leaving it unpinned, is "
+    "exposed to at least one of these.",
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
-    "Upgrade `n8n` to >= 2.27.4 (or >= 2.28.1 on the 2.28 line) and pin it. Enforce "
-    "the credential domain allow-list on MCP/HTTP tool destinations so a "
-    "member-level user cannot redirect a shared credential to an external host.",
+    "Upgrade `n8n` to >= 2.41.4 and pin it, or to >= 2.42.1 on the 2.42.x line; a "
+    "1.x deployment needs 1.123.83 for the webhook bypass and 2.x for the "
+    "credential-domain one. Enforce the credential domain allow-list on MCP/HTTP "
+    "tool destinations so a member-level user cannot redirect a shared credential "
+    "to an external host.",
     sarif_name="N8nMcpCredentialDomainBypass",
-    cve_references=["CVE-2026-59207"],
-    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI02", "ASI04"],
-    adversa_references=["ADV-SSRF-01"],
+    cve_references=[
+        "CVE-2026-59207",
+        # Fixed in 2.41.4, 2.42.1 and 1.123.83, above the old 2.27.4 floor, and
+        # MEDIUM like the rule, so the floor rose.
+        "CVE-2026-110852",
+    ],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI02", "ASI03", "ASI04"],
+    adversa_references=["ADV-SSRF-01", "ADV-AUTH-01"],
     limitations=(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
         "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
         "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
         "lowest version a range allows and reporting a reference that states no "
-        "version. The dependency is not read when it is declared in a sub-directory "
+        "version. Every 1.x release is reported, because all of them are below the "
+        "2.27.4 fix for CVE-2026-59207, although 1.123.83 and later fix the webhook "
+        "bypass. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`) or in a lockfile format the reader "
         "does not parse (a Yarn 2+ `yarn.lock`). A compose file's `n8nio/n8n` image "
         "tag is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read."
@@ -10299,10 +10327,10 @@ _r(
 
 _r(
     "AAK-MCP-N8N-CVE-2026-72768-001",
-    "n8n < 2.35.4 / 2.36.x < 2.36.2 (MCP Client SSRF bypass, node-schema loader "
-    "RCE, cross-project credential reference, inline sub-workflow credential "
-    "exfiltration)",
-    "Three MCP-surface defects in `n8n`, carried by one pin because they share a "
+    "n8n < 2.41.4 / 2.42.0 (MCP workflow-validation prototype pollution, MCP Client "
+    "SSRF bypass, node-schema loader RCE, cross-project credential reference, inline "
+    "sub-workflow credential exfiltration)",
+    "Five MCP-surface defects in `n8n`, carried by one pin because they share a "
     "package and the highest fix version covers all of them. Before 2.32.1 the MCP "
     "Client node bypasses server-side-request-forgery protection: an authenticated "
     "user crafts a workflow whose MCP Client requests reach internal or blocked "
@@ -10321,29 +10349,39 @@ _r(
     "the author owns it; MCP is one of the named write paths, so a shared-workflow "
     "editor persists a node naming somebody else's credential and the secret is "
     "resolved and exfiltrated when the workflow later runs under an identity that "
-    "holds it (CVE-2026-85166). A project pinning `n8n` below 2.35.4, or on "
-    "2.36.0/2.36.1, or leaving it unpinned, is exposed to at least one of these — "
-    "note that 2.36.0 and 2.36.1 sort *above* the 2.35.4 floor and are still "
-    "affected, which is why this pin carries a second arm for the 2.36.x line. "
+    "holds it (CVE-2026-85166). Before 2.41.4, and at 2.42.0, the MCP "
+    "workflow-validation tool evaluates caller-supplied code in the main process "
+    "through an interpreter that reads inherited properties and allows assignment "
+    "onto shared prototypes, so a member holding only a `workflow:read` grant "
+    "replaces a built-in method with one that returns a truthy value, permission "
+    "checks then accept scopes it does not hold, and an owner account without MFA "
+    "can be taken over (CVE-2026-110842, CVSS 4.0 7.7). That fix is the highest, "
+    "so it sets the floor: 2.41.4, and 2.42.1 on the 2.42.x line, whose 2.42.0 "
+    "sorts above 2.41.4 and is still affected. A project pinning `n8n` below 2.41.4, "
+    "or on 2.42.0, or leaving it unpinned, is exposed to at least one of these. "
     "Distinct from the earlier n8n credential-domain-bypass and OAuth "
-    "two-branch-fix pins the scanner already carries; this is the highest of its "
-    "three n8n floors.",
+    "two-branch-fix pins the scanner already carries; the credential-domain pin's "
+    "floor rose to the same 2.41.4 for a MEDIUM webhook bypass.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `n8n` to >= 2.35.4 and pin it, or to >= 2.36.2 if you are on the "
-    "2.36.x line — 2.36.0 and 2.36.1 are newer than 2.35.4 and still affected, so "
-    "\"at least 2.35.4\" is not sufficient on that branch. Route the "
-    "MCP Client node's outbound requests through n8n's SSRF protection so a workflow "
-    "author cannot reach internal or blocked hosts, and segment the n8n runner from "
-    "sensitive internal services. Treat `global:member` as a privileged role until "
-    "you are past 2.33.4, since the node-schema loader reaches code execution from "
-    "it, and audit workflows for credential references that cross project "
-    "boundaries — including inside the inline workflow JSON of sub-workflow nodes, "
-    "which is where CVE-2026-85166 hides one.",
+    "Upgrade `n8n` to >= 2.41.4 and pin it, or to >= 2.42.1 if you are on the "
+    "2.42.x line: 2.42.0 is newer than 2.41.4 and still affected, so \"at least "
+    "2.41.4\" is not sufficient on that branch. Until then, give MCP access only to "
+    "trusted members and turn on MFA for owner accounts. Route the MCP Client "
+    "node's outbound requests through n8n's SSRF protection so a workflow author "
+    "cannot reach internal or blocked hosts, and segment the n8n runner from "
+    "sensitive internal services. Audit workflows for credential references that "
+    "cross project boundaries, including inside the inline workflow JSON of "
+    "sub-workflow nodes, which is where CVE-2026-85166 hides one.",
     sarif_name="N8nMcpClientNodeSsrfBypass",
-    cve_references=["CVE-2026-72768", "CVE-2026-77068", "CVE-2026-77073", "CVE-2026-85166"],
+    cve_references=[
+        "CVE-2026-72768", "CVE-2026-77068", "CVE-2026-77073", "CVE-2026-85166",
+        # Fixed in 2.41.4 and 2.42.1, above the old 2.35.4 floor, and HIGH like the
+        # rule, so the floor rose and the 2.42.x line replaced the 2.36.x arm.
+        "CVE-2026-110842",
+    ],
     owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP05:2025"],
-    owasp_agentic_references=["ASI04", "ASI05"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI05"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Reads `n8n` in requirements*.txt at any depth and, at the project root "
@@ -14893,6 +14931,144 @@ _r(
         "see the endpoints the server will "
         "advertise, so a server whose endpoints are https is reported too. A file over "
         "2 MB, or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001",
+    "Open Computer Use on macOS: a case-variant bundle id passes the password-manager denylist (no fixed release)",
+    "Open Computer Use (`open-computer-use` on npm, also published as "
+    "`open-computer-use-mcp` and `open-codex-computer-use-mcp`) is a computer-use MCP "
+    "server. Its macOS backend refuses to act on password managers by checking the "
+    "requested app's bundle identifier against a lowercase denylist, but the check is "
+    "case-sensitive while the app lookup ignores case, so a local MCP caller, "
+    "including a prompt-injected model turn, passes `com.1Password.1Password` to "
+    "`get_app_state` and the action tools, reads the app's accessibility tree, takes "
+    "screenshots and drives an unlocked password manager (CVE-2026-108721, CVSS 3.1 "
+    "5.3, CWE-178). Checked in the source: the denylist and its exact-match "
+    "`contains` check ship in 0.1.2, the first npm release, and are unchanged at "
+    "1.0.0, 1.1.0 and 1.1.1, the newest release, and on `main`. The record says "
+    "through 1.0.0, but the later releases make the same check, so there is no "
+    "fixed release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Quit password managers, or lock them, while an agent "
+    "drives the desktop through Open Computer Use, and do not let content the agent "
+    "reads choose which app it opens.",
+    sarif_name="OpenComputerUseDenylistCaseBypass",
+    cve_references=["CVE-2026-108721"],
+    owasp_mcp_references=["MCP02:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-VALID-01"],
+    limitations=(
+        "Reads `open-computer-use`, `open-computer-use-mcp` and "
+        "`open-codex-computer-use-mcp` at any version, or with none, since the newest "
+        "release is affected: a package.json or lockfile entry, an `npx` launch, or an "
+        "MCP config that runs the `open-computer-use` command, as the README's does. A "
+        "launch through the `ocu` alias is not read. The flaw is in the macOS backend, "
+        "and a project that runs the server only on Linux or Windows is reported too. "
+        "A file over 2 MB, or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-ODOOMCP-CVE-2026-108861-001",
+    "odoo-mcp from 1.0.0: execute_method returns fields the field-level ACL denies (no fixed release)",
+    "Odoo MCP (`odoo-mcp` on PyPI, erpipe-org/mcp-odoo) lets an operator deny fields "
+    "per model, and its read tools drop or redact them. Its `execute_method` tool "
+    "calls a model method and returns the result without that policy, so an MCP "
+    "client or a prompt-injected agent calls `read` or `search_read` through it, "
+    "names the denied fields and receives their values (CVE-2026-108861, CVSS 3.1 "
+    "4.3, CWE-200). `read` and `search_read` count as read-only, so neither the "
+    "side-effect review nor `ODOO_MCP_ENABLE_WRITES` stops the call. Checked in the "
+    "source: the field policy (`field_policy.py`) is absent at 0.9.0 and arrives in "
+    "1.0.0, and `execute_method` in `tools_write.py` does not apply it at 1.0.0 or "
+    "at v1.3.2, the newest tag. PyPI's newest release is 1.3.0, so there is no "
+    "fixed release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Enforce the fields that must stay hidden in Odoo "
+    "itself, with field groups or access rules on the user the server signs in as, "
+    "rather than in the server's field policy, which `execute_method` does not "
+    "apply.",
+    sarif_name="OdooMcpExecuteMethodFieldAclBypass",
+    cve_references=["CVE-2026-108861"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `odoo-mcp` from 1.0.0 at a stated version, or with none, since the "
+        "newest release is affected: requirements files, pyproject.toml, Pipfile, the "
+        "Python lockfiles, and a `uvx` launch in an MCP config. It reads the version, "
+        "not the server's field policy, so a deployment that denies no fields is "
+        "reported too. npm's `odoo-mcp` is another project and is not read. A file "
+        "over 2 MB, or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-NETWORKAI-CVE-2026-109332-001",
+    "network-ai 4.0.0 to 5.15.1: the MCP SSE server lets other origins read its unauthenticated endpoints",
+    "Network-AI's MCP SSE transport (`McpSseServer` in `lib/mcp-transport-sse`) "
+    "answers cross-origin requests. 4.0.0, where the transport first ships, to 5.1.0 "
+    "send `Access-Control-Allow-Origin: *`, and 5.13.4 and 5.15.1 reflect a "
+    "localhost Origin whatever interface the server binds, so when it binds a "
+    "non-loopback address, a page with a localhost Origin that the victim visits "
+    "reads unauthenticated endpoints such as `/health` (CVE-2026-109332, CVSS 3.1 "
+    "3.1, CWE-346, GHSA-4pvg-m42h-c3x2). Checked in the npm tarballs: the transport "
+    "is absent through 3.9.0, and 5.15.2 reflects an Origin only when the server "
+    "binds loopback. LOW, so its own rule beside the HIGH pin on the same package.",
+    Severity.LOW,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `network-ai` to 5.15.2 or later and pin it. Until then, bind the SSE "
+    "server to loopback, or put it behind a proxy that drops cross-origin requests.",
+    sarif_name="NetworkAiSseCorsOriginReflection",
+    cve_references=["CVE-2026-109332"],
+    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads `network-ai` from 4.0.0 below 5.15.2 where a project states the "
+        "version: a package.json or lockfile entry, or a versioned launch in .mcp.json, "
+        "mcp.json or claude_desktop_config.json. An unpinned reference resolves to "
+        "5.15.4, which is fixed, and is not reported. It reads the version, not "
+        "whether the project starts the SSE server or where it binds it, so a project "
+        "that uses the library or the stdio transport is reported too. A file over "
+        "2 MB, or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-NEZHA-CVE-2026-111385-001",
+    "Nezha dashboard image v2.1.0 to v2.3.14: MCP file-transfer URLs built from the Host header",
+    "Nezha, a self-hosted server monitoring dashboard, has an MCP endpoint from "
+    "v2.1.0 whose `fs.download_url` and `fs.upload_url` tools mint one-time transfer "
+    "URLs from the request's Host header without validating it. Whoever controls "
+    "the Host header on a victim's MCP request redirects file uploads to a host of "
+    "their choice, or captures the one-time download token and replays it to read "
+    "the file (CVE-2026-111385, CVSS 3.1 4.8, CWE-601, GHSA-rj3w-jrj7-x7c3). Checked "
+    "in the source: `cmd/dashboard/controller/mcp_transfer.go` is absent at v2.0.12 "
+    "and arrives in v2.1.0, where `mintTransferTool` takes `c.Request.Host`, as it "
+    "still does at v2.3.14; v2.3.15 (36b742a7, \"harden dashboard security "
+    "boundaries\") validates the host before building the URL.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade the `ghcr.io/nezhahq/nezha` image to v2.3.15 or later and pin the tag. "
+    "Until then, serve the dashboard behind a reverse proxy that sets the Host "
+    "header itself, and do not hand transfer URLs from the MCP tools to anyone.",
+    sarif_name="NezhaMcpTransferHostHeaderInjection",
+    cve_references=["CVE-2026-111385"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-INJECT-03"],
+    limitations=(
+        "Reads `ghcr.io/nezhahq/nezha` tags from v2.1.0 below v2.3.15 in compose "
+        "files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. The "
+        "install script writes the image untagged, and `latest` was the v2.3.18 "
+        "digest on 2026-10-16, fixed, so an untagged reference is not reported. A "
+        "dashboard installed from the release zip, which the install script also "
+        "offers, is not read, even where a Dockerfile downloads it, and neither is "
+        "the Go module."
     ),
 )
 

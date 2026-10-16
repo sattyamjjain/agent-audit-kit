@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001`: Open Computer Use, published as `open-computer-use`, `open-computer-use-mcp` and `open-codex-computer-use-mcp`, every release (CVE-2026-108721). On macOS its password-manager denylist was case-sensitive, so `com.1Password.1Password` reached 1Password. There is no fixed release.
+- `AAK-MCP-ODOOMCP-CVE-2026-108861-001`: `odoo-mcp` from 1.0.0 (CVE-2026-108861). Its `execute_method` tool returned fields the server's field policy denies. There is no fixed release.
+- `AAK-MCP-NETWORKAI-CVE-2026-109332-001` (LOW): `network-ai` from 4.0.0 below 5.15.2 (CVE-2026-109332). Its MCP SSE server let other origins read unauthenticated endpoints such as `/health`.
+- `AAK-MCP-NEZHA-CVE-2026-111385-001`: the `ghcr.io/nezhahq/nezha` image from v2.1.0 below v2.3.15 (CVE-2026-111385). Its MCP file-transfer tools built upload and download URLs from the request's Host header.
+
+### Changed
+
+- Disposed eight records the watcher had not filed yet, so it won't file them. Two n8n records and a Claude Code record raise existing floors, four get the new pins above, and the WSP MCP AI Agents Connector, a WordPress plugin (CVE-2026-109382), is out of scope. Each was measured with the scanner on a firing fixture and a negative one. The reasoning is in CHANGELOG.cves.md.
+- `AAK-MCP-N8N-CVE-2026-72768-001` (HIGH) reports `n8n` below 2.41.4, up from 2.35.4, and 2.42.0, for CVE-2026-110842: the MCP workflow-validation tool's interpreter let a member with `workflow:read` pollute shared prototypes. `AAK-MCP-N8N-CVE-2026-59207-001` (MEDIUM) reports the same versions, up from 2.27.4, for CVE-2026-110852: a webhook, form or MCP route ran another project's workflow when the request left out the webhook's id. The 2.36.x range is now below the floor, and an unversioned `n8n` gets one finding from the HIGH rule instead of two.
+- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` reports `@anthropic-ai/claude-code` below 2.1.179, up from 2.1.129, for CVE-2026-86063: a plugin install checked out its pinned commit without checking that HEAD matched it. Its evidence names each of its three bugs only where it applies.
+
+### Fixed
+
+- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83. GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
+
 ## [0.6.21] - 2026-10-16
 
 ### Added

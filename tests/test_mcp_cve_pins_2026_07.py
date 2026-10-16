@@ -129,6 +129,10 @@ PINS = {
     "AAK-MCP-SDK-CVE-2026-59951-001": "medium",
     "AAK-MCP-NETWORKAI-CVE-2026-109331-001": "high",
     "AAK-MCP-REMOTE-CVE-2026-108716-001": "medium",
+    # 2026-10-16 second batch (records the watcher had not filed)
+    "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001": "medium",
+    "AAK-MCP-ODOOMCP-CVE-2026-108861-001": "medium",
+    "AAK-MCP-NETWORKAI-CVE-2026-109332-001": "low",
 }
 
 
@@ -216,7 +220,8 @@ def test_ruflo_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_n8n_patched_passes(tmp_path: Path) -> None:
-    content = '{"dependencies": {"n8n": "2.29.0"}}'
+    # 2.41.4 since CVE-2026-110852 raised the floor from 2.27.4 (2026-10-16).
+    content = '{"dependencies": {"n8n": "2.41.4"}}'
     assert "AAK-MCP-N8N-CVE-2026-59207-001" not in _ids(tmp_path, "package.json", content)
 
 
@@ -903,15 +908,16 @@ def test_n8n_72768_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_n8n_72768_patched_passes(tmp_path: Path) -> None:
-    """2.35.4, not 2.34.1, and not 2.32.1.
+    """2.41.4, not 2.35.4, not 2.34.1, and not 2.32.1.
 
-    This floor has moved twice. CVE-2026-77068 / CVE-2026-77073 took it to 2.34.1;
-    CVE-2026-85166 took it to 2.35.4. Every earlier "fixed" version is now a
-    positive case, which is the point of keeping them below rather than deleting
-    them: a project that upgraded once and stopped is the population this pin is
-    for.
+    This floor has moved three times. CVE-2026-77068 / CVE-2026-77073 took it to
+    2.34.1; CVE-2026-85166 took it to 2.35.4; CVE-2026-110842 took it to 2.41.4.
+    Every earlier "fixed" version is now a positive case, which is the point of
+    keeping them below rather than deleting them: a project that upgraded once and
+    stopped is the population this pin is for.
     """
-    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.35.4"}}')
+    assert _N8N_72768 not in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.41.4"}}')
+    assert _N8N_72768 in _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.35.4"}}')
 
 
 def test_n8n_72768_prior_floor_is_now_exposed(tmp_path: Path) -> None:
@@ -932,13 +938,17 @@ def test_n8n_72768_unpinned_fires(tmp_path: Path) -> None:
     assert _N8N_72768 in _ids(tmp_path, "requirements.txt", "n8n\n")
 
 
-def test_n8n_72768_is_the_only_n8n_arm_at_2_32_0(tmp_path: Path) -> None:
-    # 2.32.0 is above the 59207 (2.27.4) and 65594 (2.29.8 / 2.30.1) floors, so this
-    # new arm is the sole n8n finding — proving it is a distinct pin, not a duplicate.
+def test_n8n_72768_and_59207_are_distinct_pins_at_2_32_0(tmp_path: Path) -> None:
+    # 2.32.0 is above the 65594 (2.29.8 / 2.30.1) floors. Until 2026-10-16 it was
+    # above the 59207 floor (2.27.4) too, and this pin was the sole n8n finding; since
+    # CVE-2026-110852 raised that floor to 2.41.4 both report it, each for its own
+    # CVEs and at its own severity.
     ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "2.32.0"}}')
     assert _N8N_72768 in ids
-    assert "AAK-MCP-N8N-CVE-2026-59207-001" not in ids
+    assert "AAK-MCP-N8N-CVE-2026-59207-001" in ids
     assert "AAK-MCP-N8N-CVE-2026-65594-001" not in ids
+    assert RULES[_N8N_72768].severity.value == "high"
+    assert RULES["AAK-MCP-N8N-CVE-2026-59207-001"].severity.value == "medium"
 
 
 def test_n8n_72768_does_not_trip_on_n8n_mcp(tmp_path: Path) -> None:
@@ -3032,3 +3042,124 @@ def test_mcp_remote_device_code_needs_a_launch(tmp_path: Path) -> None:
 def test_mcp_remote_device_code_in_a_package_json_script(tmp_path: Path) -> None:
     content = '{"scripts": {"sign-in": "npx -y mcp-remote@0.14.3 https://x.test/mcp --device-code"}}'
     assert _REMOTE_DEVICE in _ids(tmp_path, "package.json", content)
+
+
+# --- 2026-10-16 second batch (records the watcher had not filed) --------------------
+#
+# CVE-2026-110842 (HIGH) and CVE-2026-110852 (MEDIUM) raise both n8n floors to 2.41.4,
+# with the 2.42.0 release, which sorts above it, as a further range on the same row.
+_N8N_59207 = "AAK-MCP-N8N-CVE-2026-59207-001"
+
+
+def test_n8n_2_42_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-110842-n8n"
+    assert {_N8N_59207, _N8N_72768} <= {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert not {_N8N_59207, _N8N_72768} & {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("1.123.83", True),   # fixes the webhook bypass, but not CVE-2026-59207 (2.27.4)
+    ("2.0.0", True),      # the static lookup returns a dynamic row on 2.x from the start
+    ("2.27.4", True),     # the old 59207 floor
+    ("2.35.4", True),     # the old 72768 floor
+    ("2.36.2", True),     # the old 2.36.x branch fix
+    ("2.41.3", True),
+    ("2.41.4", False),
+    ("2.42.0", True),     # above 2.41.4 and still affected
+    ("2.42.1", False),
+    ("2.43.7", False),    # latest on 2026-10-16
+])
+def test_n8n_floors_are_2_41_4_and_2_42_1(tmp_path: Path, version: str, fires: bool) -> None:
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"n8n": "%s"}}' % version)
+    assert (_N8N_59207 in ids, _N8N_72768 in ids) == (fires, fires)
+
+
+def test_n8n_rules_cite_the_new_cves_and_report_unversioned_n8n_once(tmp_path: Path) -> None:
+    """One row each, with the 2.42.0 range on it: two rows, as the 72768 pin had for
+    the 2.36.x line, reported an unversioned `n8n` twice."""
+    assert "CVE-2026-110852" in RULES[_N8N_59207].cve_references
+    assert "CVE-2026-110842" in RULES[_N8N_72768].cve_references
+    for rule_id in (_N8N_59207, _N8N_72768):
+        [row] = [p for p in _PINS if p.rule_id == rule_id]
+        assert (row.floor, row.also) == ((2, 41, 4), (((2, 42, 0), (2, 42, 1)),))
+    (tmp_path / "requirements.txt").write_text("n8n\n", encoding="utf-8")
+    hits = [f.rule_id for f in scan(tmp_path)[0] if f.rule_id in (_N8N_59207, _N8N_72768)]
+    assert sorted(hits) == [_N8N_59207, _N8N_72768]
+
+
+# CVE-2026-108721: Open Computer Use's macOS denylist is case-sensitive. No fixed
+# release; the same build ships under three npm names.
+_OCU = "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001"
+
+
+def test_open_computer_use_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-108721-open-computer-use"
+    assert sorted(f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _OCU) == [
+        ".mcp.json", "package.json",
+    ]
+    assert _OCU not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("package.json", '{"dependencies": {"open-computer-use": "0.1.2"}}', True),   # first release
+    ("package.json", '{"dependencies": {"open-computer-use": "1.1.1"}}', True),   # the newest
+    ("package.json", '{"dependencies": {"open-codex-computer-use-mcp": "^1.0.0"}}', True),
+    (".mcp.json", '{"mcpServers": {"c": {"command": "npx", "args": ["-y", "open-computer-use-mcp"]}}}', True),
+    (".mcp.json", '{"mcpServers": {"c": {"command": "open-computer-use", "args": ["mcp"]}}}', True),
+    (".mcp.json", '{"mcpServers": {"c": {"command": "ocu", "args": ["mcp"]}}}', False),  # the alias
+])
+def test_open_computer_use_declarations(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_OCU in _ids(tmp_path, name, content)) is fires
+
+
+# CVE-2026-108861: odoo-mcp's execute_method skips the field policy, which arrives in
+# 1.0.0. No fixed release; npm's `odoo-mcp` is another project.
+_ODOO = "AAK-MCP-ODOOMCP-CVE-2026-108861-001"
+
+
+def test_odoo_mcp_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-108861-odoo-mcp"
+    assert sorted(f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _ODOO) == [
+        ".mcp.json", "requirements.txt",
+    ]
+    assert _ODOO not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("odoo-mcp==0.0.3\n", False),
+    ("odoo-mcp==0.9.0\n", False),   # no field policy yet
+    ("odoo-mcp==1.0.0\n", True),    # the policy arrives; execute_method skips it
+    ("odoo-mcp==1.3.0\n", True),    # the newest on PyPI
+    ("odoo-mcp\n", True),           # unversioned: the newest is affected
+    ("odoo_mcp>=1.2\n", True),
+])
+def test_odoo_mcp_versions(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_ODOO in _ids(tmp_path, "requirements.txt", line)) is fires
+
+
+# CVE-2026-109332 (LOW): Network-AI's SSE transport answers other origins, from 4.0.0
+# below 5.15.2. Its own rule beside the HIGH pin on the same package.
+_NETWORKAI_CORS = "AAK-MCP-NETWORKAI-CVE-2026-109332-001"
+
+
+def test_network_ai_cors_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-109332-network-ai"
+    fired = {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _NETWORKAI_CORS in fired and _NETWORKAI not in fired
+    assert _NETWORKAI_CORS not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("version", "cors", "hook"), [
+    ("3.9.0", False, False),    # no SSE transport yet
+    ("4.0.0", True, False),     # the transport arrives with Access-Control-Allow-Origin: *
+    ("5.1.0", True, False),
+    ("5.13.4", True, False),    # reflects a localhost Origin whatever the bind address
+    ("5.14.0", True, True),
+    ("5.15.1", True, True),
+    ("5.15.2", False, False),   # reflects only on a loopback bind
+    ("latest", False, False),   # 5.15.4 on 2026-10-16
+])
+def test_network_ai_cors_versions(tmp_path: Path, version: str, cors: bool, hook: bool) -> None:
+    ids = _ids(tmp_path, "package.json", '{"dependencies": {"network-ai": "%s"}}' % version)
+    assert (_NETWORKAI_CORS in ids, _NETWORKAI in ids) == (cors, hook)
+    assert RULES[_NETWORKAI_CORS].severity.value == "low"

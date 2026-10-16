@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T08:32:25Z",
+  "last_updated": "2026-10-16T09:08:25Z",
   "aak_version": "0.6.21",
-  "rule_count": 406,
+  "rule_count": 410,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -167,7 +167,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 98,
+      "rule_density": 99,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -782,6 +782,7 @@
           "id": "AAK-MCP-N8N-CVE-2026-59207-001",
           "severity": "medium",
           "cve_references": [
+            "CVE-2026-110852",
             "CVE-2026-59207"
           ],
           "aicm_references": [
@@ -797,6 +798,17 @@
           ],
           "aicm_references": [
             "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108721"
+          ],
+          "aicm_references": [
+            "IAM-05",
             "STA-08"
           ]
         },
@@ -1154,7 +1166,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 100,
+      "rule_density": 105,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1615,6 +1627,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-N8N-CVE-2026-59207-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-110852",
+            "CVE-2026-59207"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-N8N-CVE-2026-65594-001",
           "severity": "high",
           "cve_references": [
@@ -1623,6 +1647,21 @@
           "aicm_references": [
             "IAM-01",
             "IAM-16",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-N8N-CVE-2026-72768-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-110842",
+            "CVE-2026-72768",
+            "CVE-2026-77068",
+            "CVE-2026-77073",
+            "CVE-2026-85166"
+          ],
+          "aicm_references": [
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -1653,6 +1692,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-NETWORKAI-CVE-2026-109332-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-109332"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-NEXTCLOUD-CVE-2026-55640-001",
           "severity": "critical",
           "cve_references": [
@@ -1660,6 +1710,17 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NEZHA-CVE-2026-111385-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-111385"
+          ],
+          "aicm_references": [
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -1739,6 +1800,17 @@
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-ODOOMCP-CVE-2026-108861-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108861"
+          ],
+          "aicm_references": [
+            "IAM-05",
             "STA-08"
           ]
         },
@@ -2171,7 +2243,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 192,
+      "rule_density": 196,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2246,7 +2318,8 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-103435",
-            "CVE-2026-40068"
+            "CVE-2026-40068",
+            "CVE-2026-86063"
           ],
           "aicm_references": [
             "IAM-02",
@@ -3387,6 +3460,7 @@
           "id": "AAK-MCP-N8N-CVE-2026-59207-001",
           "severity": "medium",
           "cve_references": [
+            "CVE-2026-110852",
             "CVE-2026-59207"
           ],
           "aicm_references": [
@@ -3410,6 +3484,7 @@
           "id": "AAK-MCP-N8N-CVE-2026-72768-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-110842",
             "CVE-2026-72768",
             "CVE-2026-77068",
             "CVE-2026-77073",
@@ -3470,6 +3545,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-NETWORKAI-CVE-2026-109332-001",
+          "severity": "low",
+          "cve_references": [
+            "CVE-2026-109332"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-NEXTCLOUD-CVE-2026-55640-001",
           "severity": "critical",
           "cve_references": [
@@ -3485,6 +3571,17 @@
           "severity": "low",
           "cve_references": [
             "CVE-2026-94486"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NEZHA-CVE-2026-111385-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-111385"
           ],
           "aicm_references": [
             "IVS-04",
@@ -3562,6 +3659,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-ODOOMCP-CVE-2026-108861-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108861"
+          ],
+          "aicm_references": [
+            "IAM-05",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-OFFICEPPT-CVE-2025-71427-001",
           "severity": "medium",
           "cve_references": [
@@ -3606,6 +3714,17 @@
           ],
           "aicm_references": [
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108721"
+          ],
+          "aicm_references": [
+            "IAM-05",
             "STA-08"
           ]
         },
@@ -4821,6 +4940,7 @@
           "id": "AAK-MCP-N8N-CVE-2026-72768-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-110842",
             "CVE-2026-72768",
             "CVE-2026-77068",
             "CVE-2026-77073",
@@ -5642,7 +5762,8 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-103435",
-            "CVE-2026-40068"
+            "CVE-2026-40068",
+            "CVE-2026-86063"
           ],
           "aicm_references": [
             "IAM-02",

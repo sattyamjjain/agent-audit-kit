@@ -1677,12 +1677,13 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 
 
 # ---------------------------------------------------------------------------
-# AAK-CLAUDECODE-CVE-2026-40068-PIN-001 — Anthropic Claude Code <2.1.83
+# AAK-CLAUDECODE-CVE-2026-40068-PIN-001 — Anthropic Claude Code <2.1.84
 # (CVE-2026-40068, HIGH). Folder-trust determination uses the git
 # worktree `commondir` file without validating its contents — a
 # malicious repo with a crafted `commondir` pointing to a previously-
-# trusted path bypasses the trust prompt. Vendor patched in 2.1.83;
-# named pin row was pre-allocated in the v0.3.15 triage of #181.
+# trusted path bypasses the trust prompt. Vendor patched in 2.1.84
+# (GHSA-q5hj-mxqh-vv77, affected from 2.1.63; this pin said 2.1.83 until
+# 2026-10-16); named pin row was pre-allocated in the v0.3.15 triage of #181.
 # Pin-arm only — Claude Code is a binary product, not a source shape
 # we statically scan. Closes the v0.3.15 deferral.
 #
@@ -1690,12 +1691,22 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 # CVSS 4.0 7.7, GHSA-5j29-h97v-84ch): the write path re-resolved a file that
 # the permission check had placed inside the project, so a symlink swapped in
 # between redirected the write outside it. Same package and severity, a higher
-# fix, so the floor moves. The evidence names the folder-trust bug only below
-# 2.1.83, where it applies.
+# fix, so the floor moves.
+#
+# Floor raised 2.1.129 -> 2.1.179 on 2026-10-16 for CVE-2026-86063 (HIGH, CVSS
+# 4.0 7.5, GHSA-pq7j-f95f-qfcv): the plugin install flow checked out a
+# marketplace-pinned commit without checking that HEAD then equalled the pinned
+# SHA, so a branch named after that SHA installed its own tip. Commit pins
+# arrived in 2.1.14 (the CHANGELOG's "Added support for pinning plugins to
+# specific git commit SHAs"), so every release from the old floor up is
+# affected. The evidence names each bug only in the range it applies to.
 # ---------------------------------------------------------------------------
 
-_CLAUDECODE_PATCHED = (2, 1, 129)
-_CLAUDECODE_TRUST_PATCHED = (2, 1, 83)
+_CLAUDECODE_PATCHED = (2, 1, 179)
+_CLAUDECODE_SYMLINK_PATCHED = (2, 1, 129)
+_CLAUDECODE_TRUST_INTRODUCED = (2, 1, 63)
+_CLAUDECODE_TRUST_PATCHED = (2, 1, 84)
+_CLAUDECODE_PLUGIN_PIN_INTRODUCED = (2, 1, 14)
 # Scoped npm package name. Both the JSON-shape (package.json /
 # package-lock.json `packages` map keys) and the lockfile-line shape
 # (yarn.lock / pnpm-lock.yaml) handle the `@anthropic-ai/claude-code`
@@ -1719,16 +1730,29 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
         if rel in seen:
             return
         seen.add(rel)
-        defects = "CVE-2026-103435 write-time symlink following (fixed in 2.1.129)"
-        if version < _CLAUDECODE_TRUST_PATCHED:
-            defects = (
+        defects: list[str] = []
+        if _CLAUDECODE_TRUST_INTRODUCED <= version < _CLAUDECODE_TRUST_PATCHED:
+            defects.append(
                 "CVE-2026-40068 folder-trust bypass via git worktree commondir "
-                "(fixed in 2.1.83) and " + defects
+                "(fixed in 2.1.84)"
             )
+        if version < _CLAUDECODE_SYMLINK_PATCHED:
+            defects.append(
+                "CVE-2026-103435 write-time symlink following (fixed in 2.1.129)"
+            )
+        if version >= _CLAUDECODE_PLUGIN_PIN_INTRODUCED:
+            defects.append(
+                "CVE-2026-86063 plugin commit-pin bypass (fixed in 2.1.179)"
+            )
+        # Below the floor a release is either below 2.1.129 or has commit pins,
+        # so the list is never empty.
+        listed = defects[-1] if len(defects) == 1 else (
+            ", ".join(defects[:-1]) + " and " + defects[-1]
+        )
         findings.append(make_finding(
             "AAK-CLAUDECODE-CVE-2026-40068-PIN-001",
             rel,
-            f"@anthropic-ai/claude-code pinned at {raw!r} — {defects}.",
+            f"@anthropic-ai/claude-code pinned at {raw!r} — {listed}.",
         ))
 
     for name in ("package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml"):
