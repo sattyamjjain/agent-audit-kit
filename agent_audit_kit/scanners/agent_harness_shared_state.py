@@ -7,12 +7,14 @@ open challenge for harness engineering.
 
 The defensive code shape: a Python class whose name matches an
 Agent pattern (`*Agent`, `*Worker`, `*Harness`) accesses a
-module-level or class-level mutable shared object (dict / list /
-set) without using a lock primitive (`threading.Lock` /
+module-level mutable shared object (dict / list / set) without
+using a lock primitive (`threading.Lock` /
 `asyncio.Lock` / `multiprocessing.Lock` / contextmanager named
 `*lock*`). The detector fires when at least 2 distinct Agent
 classes write to the same shared symbol with no lock acquisition
-visible in either function scope.
+visible in either function scope. State held as a class attribute
+(`self.registry[key] = value`, `Registry.items.append(...)`) is not
+tracked, as the rule's limitation says.
 
 **Research-grade** (MEDIUM severity). The Code-as-Harness paper is
 a survey, not a code prescription — it identifies the open

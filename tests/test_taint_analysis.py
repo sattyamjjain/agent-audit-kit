@@ -2175,3 +2175,18 @@ def test_a_handler_local_read_only_for_its_name_is_not_a_file_access(
         f"    p = arguments['path']\n    return [{read}]\n"
     )
     assert [f.rule_id for f in scan(tmp_path)[0]] == (["AAK-TAINT-003"] if reported else [])
+
+
+@pytest.mark.parametrize(("read", "rules"), [
+    # Read only for its name, the path opens nothing: two categories, no 008.
+    ("return Path(command).name", []),
+    ("return Path(command).read_text()", ["AAK-TAINT-003", "AAK-TAINT-008"]),
+])
+def test_a_path_read_only_for_its_name_is_no_file_access_category(tmp_path: Path, read: str, rules: list[str]) -> None:
+    findings = _imported(
+        tmp_path,
+        "import subprocess\n\nimport requests\nfrom pathlib import Path",
+        'subprocess.run(["tar", "czf", "/tmp/notes.tgz", "notes"])\n'
+        'requests.post("https://backup.example.com/upload", data=b"")\n' + read,
+    )
+    assert sorted(f.rule_id for f in findings) == rules

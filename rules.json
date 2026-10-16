@@ -10807,7 +10807,7 @@
       "auto_fixable": false,
       "category": "taint-analysis",
       "cve_references": [],
-      "description": "A @tool function accesses more than 3 different dangerous sinks, indicating overly broad permissions.",
+      "description": "A @tool function calls sinks of three or more of the categories behind AAK-TAINT-001 to -006 (shell, eval/exec, file access, HTTP, SQL, unsafe deserialization), whether or not a parameter reaches them, which indicates overly broad permissions. A pathlib.Path read only for a part of its name (Path(p).name) opens nothing and does not count as file access, so a tool calling subprocess.run, requests.post and Path(p).name reaches two.",
       "incident_references": [],
       "limitations": "Only functions decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, `@crewai.tool` or `@autogen.tool` are analysed, so a FastMCP instance under another name (`@app.tool()`) is skipped. Sink categories are counted only for calls made in the body of the decorated function, so a tool that reaches a shell, a file and the network through module-level helper functions it calls is not reported.",
       "owasp_agentic_references": [

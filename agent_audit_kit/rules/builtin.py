@@ -2764,8 +2764,12 @@ _r(
 _r(
     "AAK-TAINT-008",
     "Tool function with excessive dangerous sinks",
-    "A @tool function accesses more than 3 different dangerous sinks, indicating "
-    "overly broad permissions.",
+    "A @tool function calls sinks of three or more of the categories behind "
+    "AAK-TAINT-001 to -006 (shell, eval/exec, file access, HTTP, SQL, unsafe "
+    "deserialization), whether or not a parameter reaches them, which indicates "
+    "overly broad permissions. A pathlib.Path read only for a part of its name "
+    "(Path(p).name) opens nothing and does not count as file access, so a tool "
+    "calling subprocess.run, requests.post and Path(p).name reaches two.",
     Severity.MEDIUM,
     Category.TAINT_ANALYSIS,
     "Split the tool so that each function reaches at most two of the sink categories "
