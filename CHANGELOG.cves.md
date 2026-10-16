@@ -16,6 +16,70 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.23): the Claude Agent SDK passes a session id to the Claude CLI as its own argument, one new rule on two registries
+
+The watcher opened one `cve-response` issue at 21:08Z on 2026-10-16 (#1026), `sev/unknown`.
+NVD has not analysed the record (vulnStatus Received), but the record carries GitHub's
+CVSS 4.0 score, 9.2, which the watcher does not read: it parses only a CVSS 3.1 metric.
+It gets a new rule with two pins, measured on fixtures that fire and on negative ones.
+NVD text below is quoted from the API record, read on 2026-10-16 at 21:37Z.
+
+**The Claude Agent SDK (CVE-2026-96620) gets `AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001`,
+CRITICAL, on `claude-agent-sdk` below 0.2.121 and `@anthropic-ai/claude-agent-sdk` below
+0.3.208.** NVD: "Prior to 0.2.121, the resume option is passed to the Claude CLI as a
+separate token without validation, so a dash-leading value is parsed as an independent CLI
+flag. An attacker can inject the --mcp-config flag to define a stdio MCP server, causing
+arbitrary command execution at CLI startup outside the SDK permission controls. The issue
+is exploitable when an application passes untrusted input as the session ID to resume."
+GHSA-h4mw-j7qp-8mwm, published in the repository on 2026-09-12 and in the GitHub Advisory
+Database on 2026-10-16, names PyPI `claude-agent-sdk` below 0.2.121 and rates it critical,
+CVSS 4.0 9.2. The fix, 347a1cb ("Pass --resume and --session-id as a single argv token",
+anthropics/claude-agent-sdk-python#1123, 2026-07-16), says why: the CLI declares
+`-r, --resume [value]` with an optional value, so `claude --resume --version -p hi` ran
+`--version`, while `--resume=--version` is rejected as a value that names no session.
+PyPI published 0.2.120 on 2026-07-15 and 0.2.121 on 2026-07-17. Checked in the sdists:
+0.0.23, the first release, 0.1.0 and 0.2.120 build `["--resume", value]`, and 0.2.121 and
+0.2.168, the newest, pass `--resume=<value>`. The same commit moved `--session-id` to one
+token, though the CLI declares that option with a required value, which already took the
+next token whatever it was.
+
+The TypeScript SDK is in the rule too, though the CVE record names only the Python SDK.
+The fix commit says "the TypeScript SDK shipped the same fix in 0.3.208", and the npm
+tarballs agree: `@anthropic-ai/claude-agent-sdk` 0.0.4, the first release, 0.1.0, 0.2.120,
+0.2.121 and 0.3.207 push `"--resume"` and the value as two tokens, and 0.3.208
+(2026-07-13) and 0.3.302, the newest, push one. No advisory names the npm package, and
+anthropics/claude-agent-sdk-typescript has published none. npm's own 0.2.121, from
+2026-04-27, is not the PyPI fix: it still builds the two tokens.
+
+`latest` is fixed on both registries (0.2.168 on PyPI, 0.3.302 on npm), so a reference has
+to state a version to be reported, as for the MCP SDK pins, and a range that admits an
+affected version is reported. npm's unscoped `claude-agent-sdk` is a 0.0.1 name reservation
+by another publisher, created 2026-06-14, so the PyPI row reads PyPI only. The rule reads
+versions, not code, so an application that resumes only sessions it created itself is
+reported too. Before this change a project pinned to 0.2.120, with a FastAPI endpoint that
+resumes the session its client names, scanned with zero findings.
+
+No code rule ships beside the pin. On a fixed release the shape the advisory describes, a
+session id taken from a request, is safe, because the CLI rejects a value that names no
+session; and it is also how an ordinary chat backend resumes the session its client
+names. A rule reading the code would report working, patched applications. The version is
+what separates the two, and the pin reads it. Two gaps remain. `claude-code-sdk`, the
+Python SDK's name before the rename, builds the same two tokens at 0.0.10 and at 0.0.25, its
+last release, and has no fixed release, but no advisory names it, so it is not read; a
+limitations fixture records that. And the fix left `extra_args`, the SDK's pass-through for
+CLI flags, building two tokens, as its commit message says; 0.2.124 (2026-07-20) binds a
+value starting with `-` there as well. Upgrade to 0.2.121 or later, or 0.3.208 on npm, and
+never resume a session id a client supplies.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-96620 | 9.2 (4.0) | `claude-agent-sdk` (PyPI), `@anthropic-ai/claude-agent-sdk` (npm) | **New pin** `AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001` (CRITICAL): below 0.2.121 on PyPI, and below 0.3.208 on npm. | #1026 |
+
+CVSS is the CVSS 4.0 score that NVD's record carries from GitHub's advisory, marked (4.0);
+NVD has not scored the record itself.
+
+Dispositioned at 2026-10-16T21:37:45Z.
+
 ## 2026-10-16 (v0.6.23): ZCode starts a cloned repository's MCP servers on open, a new rule and a new platform
 
 The watcher opened one `cve-response` issue at 16:39Z on 2026-10-16 (#1018),
