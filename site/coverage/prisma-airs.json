@@ -70,7 +70,10 @@
       "category": "rce",
       "status": "covered",
       "aak_rule_ids": [
-        "AAK-MCP-STDIO-PARAMS-001",
+        "AAK-MCP-STDIO-CMD-INJ-001",
+        "AAK-MCP-STDIO-CMD-INJ-002",
+        "AAK-MCP-STDIO-CMD-INJ-003",
+        "AAK-MCP-STDIO-CMD-INJ-004",
         "AAK-STDIO-001"
       ]
     },
@@ -91,7 +94,7 @@
       "status": "covered",
       "aak_rule_ids": [
         "AAK-SPLUNK-TOKLOG-001",
-        "AAK-LOG-TOKEN-LEAK-001"
+        "AAK-SPLUNK-MCP-TOKEN-LEAK-001"
       ]
     },
     {
@@ -128,7 +131,7 @@
       "status": "covered",
       "aak_rule_ids": [
         "AAK-LANGCHAIN-SSRF-REDIR-001",
-        "AAK-LANGCHAIN-SSRF-TOCTOU-001"
+        "AAK-SSRF-TOCTOU-001"
       ]
     },
     {
@@ -165,7 +168,7 @@
       "status": "covered",
       "aak_rule_ids": [
         "AAK-OAUTH-3P-001",
-        "AAK-OAUTH-3P-BROAD-001"
+        "AAK-OAUTH-SCOPE-001"
       ]
     },
     {
@@ -174,7 +177,7 @@
       "category": "supply-chain",
       "status": "covered",
       "aak_rule_ids": [
-        "AAK-MCP-MARKETPLACE-FETCH-001"
+        "AAK-MCP-MARKETPLACE-CONFIG-FETCH-001"
       ]
     },
     {

@@ -35,7 +35,7 @@
       "covered": true,
       "rules": [
         "AAK-SPLUNK-TOKLOG-001",
-        "AAK-LOG-TOKEN-LEAK-001"
+        "AAK-SPLUNK-MCP-TOKEN-LEAK-001"
       ]
     },
     {
@@ -59,7 +59,7 @@
       "title": "Azure MCP server-author missing auth",
       "covered": true,
       "rules": [
-        "AAK-MCP-SERVER-AUTH-001"
+        "AAK-AZURE-MCP-NOAUTH-001"
       ]
     },
     {
@@ -133,7 +133,7 @@
       "title": "validate-then-fetch DNS-rebind / TOCTOU SSRF",
       "covered": true,
       "rules": [
-        "AAK-LANGCHAIN-SSRF-TOCTOU-001"
+        "AAK-SSRF-TOCTOU-001"
       ]
     },
     {
@@ -159,8 +159,11 @@
       "title": "MCP StdioServerParameters config-to-spawn taint",
       "covered": true,
       "rules": [
-        "AAK-MCP-STDIO-PARAMS-001",
-        "AAK-MCP-MARKETPLACE-FETCH-001"
+        "AAK-MCP-STDIO-CMD-INJ-001",
+        "AAK-MCP-STDIO-CMD-INJ-002",
+        "AAK-MCP-STDIO-CMD-INJ-003",
+        "AAK-MCP-STDIO-CMD-INJ-004",
+        "AAK-MCP-MARKETPLACE-CONFIG-FETCH-001"
       ]
     }
   ]
