@@ -1777,19 +1777,27 @@ _POETRY_SOURCE_RE = re.compile(
     r'reference[ \t]*=[ \t]*"([^"\n]{1,256})"',
     re.MULTILINE,
 )
-# A quoted string or a `#`, so a `#` inside quotes is not read as a comment. A
-# quote with no partner runs to the end of its line, so every character is read
+# Where a comment starts depends on the format.
+#
+# TOML: a `#` outside a quoted string, anywhere on the line (a string or a `#`
+# is matched, so a `#` inside quotes is not read as a comment).
+# requirements and yarn.lock: pip's rule, a `#` at the start of a line or after a
+# space; quotes mean nothing there, and `#egg=` inside a URL is not a comment.
+# YAML: a `#` at the start of a line or after a space, outside a quoted scalar;
+# a quote opens a scalar only where one starts (after `: `, `- `, `[`, `{` or
+# `,`), so the apostrophe in a plain `note: it's pinned` opens nothing.
+#
+# A quote with no partner runs to the end of its line, so every character is read
 # once: had the closing quote been required, a line of escaped quotes (`"\` over
 # and over) would be searched to its end again from every quote in it.
 _HASH_COMMENT_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"?|\'[^\'\n]*\'?|#')
+_PIP_COMMENT_RE = re.compile(r"(?:^|(?<=[ \t]))#[^\n]*", re.MULTILINE)
+_YAML_MARK_RE = re.compile(r"[\"'#]")
+_YAML_DOUBLE_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"?')
+_YAML_SINGLE_RE = re.compile(r"'(?:[^'\n]|'')*'?")
 
 
-def _comment_spans(text: str) -> list[tuple[int, int]]:
-    """(start, end) of every `#` comment, outside quoted strings, in one pass.
-
-    A comment runs to the end of its line however long the line is, which a
-    look-back of fixed length did not see past.
-    """
+def _toml_comment_spans(text: str) -> list[tuple[int, int]]:
     spans: list[tuple[int, int]] = []
     at, n = 0, len(text)
     while True:
@@ -1803,6 +1811,49 @@ def _comment_spans(text: str) -> list[tuple[int, int]]:
             at = end
         else:
             at = m.end()
+
+
+def _yaml_comment_spans(text: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    at, n = 0, len(text)
+    while True:
+        m = _YAML_MARK_RE.search(text, at)
+        if m is None:
+            return spans
+        i, mark = m.start(), m.group()
+        before = text[i - 1] if i else "\n"
+        if mark == "#":
+            if before in " \t\n":
+                end = text.find("\n", i)
+                end = n if end < 0 else end
+                spans.append((i, end))
+                at = end
+            else:
+                at = i + 1
+            continue
+        # The last character before the quote that is not a space; each run of
+        # spaces is passed once, by the one quote that follows it.
+        j = i - 1
+        while j >= 0 and text[j] in " \t":
+            j -= 1
+        lead = text[j] if j >= 0 else "\n"
+        if before in "\n[{," or (before in " \t" and lead in "\n:-?[{,"):
+            quoted = (_YAML_DOUBLE_RE if mark == '"' else _YAML_SINGLE_RE).match(text, i)
+            at = quoted.end() if quoted else i + 1
+        else:
+            at = i + 1
+
+
+def _comment_spans(text: str, file_name: str) -> list[tuple[int, int]]:
+    """(start, end) of every comment in a candidate file, in one pass, by the
+    rules of its format (see `_HASH_COMMENT_RE`). A comment runs to the end of
+    its line however long the line is, which a look-back of fixed length did not
+    see past."""
+    if file_name.endswith((".yaml", ".yml")):
+        return _yaml_comment_spans(text)
+    if file_name.endswith(".txt") or file_name == "yarn.lock":
+        return [(m.start(), m.end()) for m in _PIP_COMMENT_RE.finditer(text)]
+    return _toml_comment_spans(text)
 
 
 def _in_spans(spans: list[tuple[int, int]], starts: list[int], offset: int) -> bool:
@@ -1855,7 +1906,7 @@ def _first_repo_reference(pin: _RepoPin, file_name: str, text: str) -> tuple[int
         except ValueError:
             pass
     else:
-        spans = _comment_spans(text)
+        spans = _comment_spans(text, file_name)
         starts = [start for start, _ in spans]
         in_comment = lambda offset: _in_spans(spans, starts, offset)  # noqa: E731
     for m in _REPO_REF_RES[pin.repository].finditer(searched):

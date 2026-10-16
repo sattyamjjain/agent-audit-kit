@@ -640,16 +640,18 @@ def test_whatsapp_a_patched_or_unversioned_reference_is_quiet(
     assert WHATSAPP not in _ids(tmp_path, name, content)
 
 
-def test_whatsapp_comment_scan_is_linear_on_unbalanced_quotes(tmp_path: Path) -> None:
+@pytest.mark.parametrize("name", ["requirements.txt", "pyproject.toml", "team.mcp.yaml"])
+def test_whatsapp_comment_scan_is_linear_on_unbalanced_quotes(tmp_path: Path, name: str) -> None:
     """Comments are found in one pass over the file. Escaped quotes (`"\\` over
     and over) leave a string with no closing quote, and a search that needs one
     runs to the end of the line again from every later quote (20,000 pairs took
     9 s that way)."""
     import time
 
-    crafted = "# github.com/verygoodplugins/whatsapp-mcp\n" + '"\\' * 200_000 + "\n"
+    crafted = ("# github.com/verygoodplugins/whatsapp-mcp\n" + '"\\' * 100_000 + "\n"
+               + "- '" * 100_000 + "\n" + " " * 100_000 + "'#'\n")
     start = time.perf_counter()
-    assert WHATSAPP not in _ids(tmp_path, "requirements.txt", crafted)
+    assert WHATSAPP not in _ids(tmp_path, name, crafted)
     assert time.perf_counter() - start < 3.0
 
 
@@ -662,6 +664,29 @@ def test_whatsapp_poetry_lock_scan_is_linear_on_a_crafted_file(tmp_path: Path) -
     start = time.perf_counter()
     assert WHATSAPP not in _ids(tmp_path, "poetry.lock", line * 3_000)
     assert time.perf_counter() - start < 3.0
+
+
+_WA_REF = "git+https://github.com/verygoodplugins/whatsapp-mcp@v0.2.0"
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    # A YAML plain scalar is not quoted: the apostrophe in `it's` opens nothing,
+    # so the `#` after it still starts a comment.
+    ("team.mcp.yaml", f"servers:\n  wa:\n    command: uvx\n    note: it's pinned  # was {_WA_REF}\n", False),
+    ("team.mcp.yaml", f"servers:\n  wa:\n    command: uvx\n    note: pinned  # was {_WA_REF}\n", False),
+    # A quote at the start of a scalar does open one, and a `#` inside it is text.
+    ("team.mcp.yaml", f"servers:\n  wa:\n    command: uvx\n    args: ['--from', '{_WA_REF}#x', 'y']\n", True),
+    ("team.mcp.yaml", f'servers:\n  wa:\n    command: uvx\n    args: ["--from", "{_WA_REF}"]\n', True),
+    # A `#` with no space before it is part of a plain scalar.
+    ("team.mcp.yaml", f"servers:\n  wa:\n    command: uvx\n    args: [--from, {_WA_REF}#sub=x]\n", True),
+    # pip's rule: a `#` at the start of a line or after a space, quotes or not.
+    ("requirements.txt", f"requests==2.32.0  # it's not {_WA_REF}\n", False),
+    ("requirements.txt", f"x @ {_WA_REF}#egg=x\n", True),
+])
+def test_whatsapp_comments_follow_each_format(
+    tmp_path: Path, name: str, content: str, fires: bool
+) -> None:
+    assert (WHATSAPP in _ids(tmp_path, name, content)) is fires
 
 
 def test_whatsapp_limitation_names_every_file_it_reads() -> None:
