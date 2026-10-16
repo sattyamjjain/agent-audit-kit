@@ -1828,7 +1828,9 @@ _r(
 _r(
     "AAK-SECRET-006",
     ".env file not in .gitignore",
-    "A .env file exists but .gitignore does not contain a .env exclusion pattern.",
+    "A .env file exists in the project root and the root .gitignore does not ignore it. "
+    "Env templates meant to be committed (`.env.example`, `.env.sample`, "
+    "`.env.template`, `.env.dist`) are not reported.",
     Severity.MEDIUM,
     Category.SECRET_EXPOSURE,
     "Add .env* to .gitignore.",
@@ -1838,9 +1840,9 @@ _r(
     adversa_references=["ADV-TOKEN-08"],
     auto_fixable=True,
     limitations=(
-        "Looks for `.env` and `.env.*` files in the project root only. An env file in "
-        "a subdirectory, such as `services/api/.env.example` in a monorepo, is not "
-        "examined, even when the project has no `.gitignore` at all."
+        "Looks for `.env` and `.env.*` files in the project root only, and reads only the "
+        "root `.gitignore`. An env file in a subdirectory, such as `services/api/.env.test` "
+        "in a monorepo, is not examined, even when the project has no `.gitignore` at all."
     ),
 )
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 import math
 import re
@@ -593,9 +594,48 @@ def _check_private_key_files(project_root: Path) -> list[Finding]:
     return findings
 
 
+# Env files a project is meant to commit: a template that lists the variables, with no
+# values, for each developer to copy (`.env.example`, `.env.sample`, `.env.template`
+# and Symfony's `.env.dist`).
+_ENV_TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
+
+
+def _gitignore_ignores(patterns: list[str], name: str) -> bool:
+    """Whether a root `.gitignore` ignores the root file ``name``, read as git reads it.
+
+    Each pattern is tried in order and the last one that matches decides, so `!` takes
+    a file back out. A comment, a pattern ending in `/` (directories only) and one
+    anchored below the root (`config/.env`) never match a root file; `/.env` and
+    `**/.env` do. This replaced a substring test, under which `!.env.example`,
+    `# .env` and `.envrc` each counted as ignoring `.env`.
+    """
+    ignored = False
+    for raw in patterns:
+        pattern = raw.strip()
+        if not pattern or pattern.startswith("#"):
+            continue
+        negated = pattern.startswith("!")
+        if negated:
+            pattern = pattern[1:]
+        if pattern.endswith("/"):
+            continue
+        if pattern.startswith("**/"):
+            pattern = pattern[3:]
+        elif pattern.startswith("/"):
+            pattern = pattern[1:]
+        if "/" in pattern:
+            continue
+        if fnmatch.fnmatchcase(name, pattern):
+            ignored = not negated
+    return ignored
+
+
 def _check_env_gitignore(project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
-    env_files = list(project_root.glob(".env")) + list(project_root.glob(".env.*"))
+    env_files = [
+        path for path in sorted(list(project_root.glob(".env")) + list(project_root.glob(".env.*")))
+        if path.is_file() and not path.name.lower().endswith(_ENV_TEMPLATE_SUFFIXES)
+    ]
     if not env_files:
         return findings
 
@@ -610,24 +650,18 @@ def _check_env_gitignore(project_root: Path) -> list[Finding]:
         return findings
 
     try:
-        gitignore_content = gitignore.read_text(encoding="utf-8")
+        patterns = gitignore.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
         return findings
 
-    # Check if .env is covered by gitignore patterns
-    env_patterns = [".env", ".env*", ".env.*", "*.env"]
-    has_env_pattern = any(
-        pattern in gitignore_content
-        for pattern in env_patterns
-    )
-
-    if not has_env_pattern:
-        for env_file in env_files:
-            rel_path = str(env_file.relative_to(project_root))
-            findings.append(_make_finding(
-                "AAK-SECRET-006", rel_path,
-                f"{env_file.name} exists but .gitignore lacks .env exclusion",
-            ))
+    for env_file in env_files:
+        if _gitignore_ignores(patterns, env_file.name):
+            continue
+        rel_path = str(env_file.relative_to(project_root))
+        findings.append(_make_finding(
+            "AAK-SECRET-006", rel_path,
+            f"{env_file.name} exists but .gitignore does not ignore it",
+        ))
 
     return findings
 

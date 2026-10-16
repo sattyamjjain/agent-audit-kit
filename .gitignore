@@ -38,9 +38,6 @@ Thumbs.db
 # Environment
 .env
 .env.*
-# ...but AAK-SECRET-006 only fires on a file named .env or .env.*, so its limitation
-# fixtures need one. `.env.example` is the name that is safe to commit: no secret in it.
-!tests/fixtures/limitations/**/.env.example
 
 # Claude Code auto-memory
 .claude/auto-memory/dirty-files

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners._helpers import find_line_number
 from agent_audit_kit.scanners.secret_exposure import (
     GITHUB_TOKEN,
@@ -750,6 +751,82 @@ def test_the_yaml_reader_takes_a_200_kb_line_in_linear_time(line: str) -> None:
     _secret_assignments("KEY:" + " " * 200_000 + "x" * 20, yaml=True)
     _secret_assignments("KEY: " * 40_000, yaml=True)
     assert time.perf_counter() - started < 10.0
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-006 skips the env templates a project is meant to commit
+#
+# `.env.example` (and `.env.sample`, `.env.template`, `.env.dist`) lists the
+# variables with no values, so reporting it asked users to stop committing the one
+# env file that belongs in the repository. The `.gitignore` test was a substring
+# test as well: a file whose only mention was `!.env.example` counted as ignoring
+# `.env`. It now reads each pattern as git does, the last one that matches deciding.
+# ---------------------------------------------------------------------------
+
+
+def _secret_006(root: Path) -> list[str]:
+    return sorted(f.file_path for f in scan(root)[0] if f.rule_id == "AAK-SECRET-006")
+
+
+@pytest.mark.parametrize("name", [".env.example", ".env.sample", ".env.template", ".env.dist", ".env.local.example"])
+@pytest.mark.parametrize("gitignore", [None, "node_modules/\n"])
+def test_secret_006_does_not_report_an_env_template(tmp_path: Path, name: str, gitignore: str | None) -> None:
+    (tmp_path / name).write_text("DATABASE_URL=postgres://localhost/app\nAPI_TOKEN=\n", encoding="utf-8")
+    if gitignore is not None:
+        (tmp_path / ".gitignore").write_text(gitignore, encoding="utf-8")
+
+    assert _secret_006(tmp_path) == []
+
+
+@pytest.mark.parametrize(
+    "gitignore, reported",
+    [
+        (None, [".env", ".env.local"]),
+        ("node_modules/\n", [".env", ".env.local"]),
+        ("!.env.example\n", [".env", ".env.local"]),  # a negation ignores nothing
+        ("# .env\n", [".env", ".env.local"]),  # a comment is not a pattern
+        (".envrc\n", [".env", ".env.local"]),  # another file's name
+        (".env/\n", [".env", ".env.local"]),  # a trailing slash matches directories only
+        ("config/.env\n", [".env", ".env.local"]),  # anchored below the root
+        (".env\n", [".env.local"]),  # matches .env exactly
+        (".env\n!.env\n", [".env", ".env.local"]),  # the last match decides
+        (".env*\n", []),
+        (".env.*\n.env\n", []),
+        ("*.env\n.env.local\n", []),
+        ("/.env\n/.env.local\n", []),
+        ("**/.env*\n", []),
+        ("  .env*  \n", []),
+    ],
+)
+def test_secret_006_reads_gitignore_patterns_as_git_does(
+    tmp_path: Path, gitignore: str | None, reported: list[str]
+) -> None:
+    (tmp_path / ".env").write_text("DATABASE_URL=postgres://localhost/app\n", encoding="utf-8")
+    (tmp_path / ".env.local").write_text("DATABASE_URL=postgres://localhost/dev\n", encoding="utf-8")
+    (tmp_path / ".env.example").write_text("DATABASE_URL=\n", encoding="utf-8")
+    if gitignore is not None:
+        (tmp_path / ".gitignore").write_text(gitignore, encoding="utf-8")
+
+    assert _secret_006(tmp_path) == reported
+
+
+def test_secret_006_reads_the_project_root_only(tmp_path: Path) -> None:
+    """The stated limitation, proven here rather than by a fixture pair under
+    tests/fixtures/limitations: the pair would be committed env files, which this
+    repository's safety hook refuses to stage, so it is built at run time."""
+    (tmp_path / ".env.test").write_text("APP_ENV=test\n", encoding="utf-8")
+    (tmp_path / "services" / "api").mkdir(parents=True)
+    (tmp_path / "services" / "api" / ".env.test").write_text("APP_ENV=test\n", encoding="utf-8")
+
+    assert _secret_006(tmp_path) == [".env.test"]
+    assert RULES["AAK-SECRET-006"].limitations.count("services/api/.env.test") == 1
+
+
+def test_secret_006_reads_a_gitignore_that_is_not_utf8(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("A=1\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_bytes(b"\xff\xfe# caf\xe9\n.env\n")
+
+    assert _secret_006(tmp_path) == []
 
 
 # ---------------------------------------------------------------------------
