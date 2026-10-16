@@ -61,7 +61,7 @@ from agent_audit_kit.scanners._manifest_deps import (
     package_json_declarations,
     requirements_declarations,
 )
-from agent_audit_kit.scanners._versions import Ver, parse_range
+from agent_audit_kit.scanners._versions import Ver, exact_version, parse_range
 from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _deciding_declaration, _Pin
 
 
@@ -89,13 +89,25 @@ class PinnedDependency:
 
     declaration: Declaration
     line: int | None
+    fixed: Ver
 
     @property
     def quoted(self) -> str:
-        """The declaration as written, and whether it states a version, for evidence."""
+        """The declaration as written, and what it admits, for evidence.
+
+        An exact pin needs no gloss. A range says that it admits releases below
+        the fix: a lower bound such as `mcp>=1.2.0` pins nothing, and is reported
+        because a resolver may still pick an affected release. A declaration
+        whose version AAK cannot read says so.
+        """
         declaration = self.declaration
-        stated = parse_range(declaration.version, declaration.dialect) is not None
-        how = "" if stated else ", which states no version AAK can read"
+        spans = parse_range(declaration.version, declaration.dialect)
+        if spans is None:
+            how = ", which states no version AAK can read"
+        elif exact_version(spans) is not None:
+            how = ""
+        else:
+            how = f", which admits releases below {'.'.join(str(n) for n in self.fixed)}"
         return f"{declaration.text!r}{how}"
 
 
@@ -147,4 +159,4 @@ def pinned_dependency(
     declaration = _deciding_declaration(pin.as_table_pin(), found)
     if declaration is None:
         return None
-    return PinnedDependency(declaration, declaration_line(text, declaration, path.name))
+    return PinnedDependency(declaration, declaration_line(text, declaration, path.name), pin.fixed)

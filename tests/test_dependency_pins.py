@@ -212,18 +212,25 @@ def test_poetry_line_is_the_key_line(tmp_path: Path, pin: _Pin) -> None:
 
 
 @pytest.mark.parametrize("pin", _PY_PINS + _NPM_PINS, ids=str)
-def test_evidence_quotes_the_declaration(tmp_path: Path, pin: _Pin) -> None:
+@pytest.mark.parametrize(("spec", "gloss"), [
+    # A range says what it admits; it is not a pin. An exact pin needs no gloss.
+    (">={a}", ", which admits releases below {f}"),
+    ("<{f}", ", which admits releases below {f}"),
+    ("=={a}", ""),
+])
+def test_evidence_quotes_the_declaration(tmp_path: Path, pin: _Pin, spec: str, gloss: str) -> None:
     if pin in _PY_PINS:
-        (tmp_path / "requirements.txt").write_text(pin.fill("{p}<{f}\n"), encoding="utf-8")
-        written = pin.fill("{p}<{f}")
+        (tmp_path / "requirements.txt").write_text(pin.fill("{p}" + spec + "\n"), encoding="utf-8")
+        written, where = pin.fill("{p}" + spec), ""
     else:
+        npm_spec = pin.fill(spec.lstrip("="))
         (tmp_path / "package.json").write_text(
-            json.dumps({"dependencies": {pin.package: "<" + pin.fixed}}), encoding="utf-8")
-        written = pin.fill('"{p}": "<{f}"')
+            json.dumps({"dependencies": {pin.package: npm_spec}}), encoding="utf-8")
+        written, where = f'"{pin.package}": "{npm_spec}"', " in dependencies"
     findings, _ = pin.module.scan(tmp_path)
     [finding] = [f for f in findings if f.rule_id == pin.rule_id]
-    assert repr(written) in finding.evidence
-    assert pin.fixed in finding.evidence
+    assert repr(written) + pin.fill(gloss) + where + " — " in finding.evidence
+    assert "pinned at" not in finding.evidence
 
 
 @pytest.mark.parametrize("pin", tuple(p for p in _PY_PINS + _NPM_PINS if p.unversioned), ids=str)
