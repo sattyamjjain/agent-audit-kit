@@ -47,6 +47,93 @@ def test_prtitle_ipi_ts_fires(tmp_path: Path) -> None:
     assert any(f.rule_id == "AAK-PRTITLE-IPI-001" for f in findings)
 
 
+# A script that loads the event JSON reads the title as a subscript or a
+# `.get()`, not an attribute path, so the usual form was no source at all.
+
+_REVIEW = '''import json
+import os
+
+import anthropic
+
+client = anthropic.Anthropic()
+
+
+def review():
+    with open(os.environ["GITHUB_EVENT_PATH"]) as fh:
+        event = json.load(fh)
+    title = @@TITLE@@
+    return client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=200,
+        messages=[{"role": "user", "content": "Review this change: " + title}],
+    )
+'''
+
+
+@pytest.mark.parametrize("expr", [
+    "event.pull_request.title",
+    'event["pull_request"]["title"]',
+    "event['pull_request']['title']",
+    'event[ "pull_request" ] [ "title" ]',
+    'event.get("pull_request", {}).get("title", "")',
+    'event.get("pull_request").get("title")',
+    'event["pull_request"].get("title")',
+    'event.get("pull_request", {})["title"]',
+    'event["issue"]["title"]',
+    'event.get("issue", {}).get("title")',
+    'event["pull_request"]["head"]["ref"]',
+])
+def test_prtitle_ipi_reads_the_title_however_the_event_is_read(tmp_path: Path, expr: str) -> None:
+    (tmp_path / "review.py").write_text(_REVIEW.replace("@@TITLE@@", expr), encoding="utf-8")
+    findings, scanned = prtitle_scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-PRTITLE-IPI-001", 12)]
+    assert scanned == {"review.py"}
+
+
+@pytest.mark.parametrize("expr", [
+    'event["pull_request"]["body"]',
+    'event.get("pull_request", {}).get("body")',
+    'event["title"]',
+    'event["pull_request"]["head"]["sha"]',
+    'html.escape(event["pull_request"]["title"])',
+])
+def test_prtitle_ipi_other_fields_and_an_escaped_title_stay_silent(tmp_path: Path, expr: str) -> None:
+    (tmp_path / "review.py").write_text(
+        "import html\n" + _REVIEW.replace("@@TITLE@@", expr), encoding="utf-8"
+    )
+    assert prtitle_scan(tmp_path) == ([], set())
+
+
+def test_prtitle_ipi_ts_reads_a_subscripted_title(tmp_path: Path) -> None:
+    (tmp_path / "review.ts").write_text(
+        'import Anthropic from "@anthropic-ai/sdk";\n'
+        "const client = new Anthropic();\n"
+        'const payload = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH!, "utf8"));\n'
+        'const title = payload["pull_request"]["title"];\n'
+        "await client.messages.create({ messages: [{ role: \"user\", content: title }] });\n",
+        encoding="utf-8",
+    )
+    findings, _ = prtitle_scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-PRTITLE-IPI-001", 4)]
+
+
+@pytest.mark.parametrize("text", [
+    'x["pull_request"]' + " " * 1_000_000 + "y",
+    'x.get("pull_request"' + "a" * 1_000_000,
+    'x.get("pull_request", {})' * 100_000,
+    '["pull_request"]["head"]' * 100_000,
+])
+def test_prtitle_ipi_reads_a_crafted_event_read_in_linear_time(tmp_path: Path, text: str) -> None:
+    """The subscript and `.get()` forms: a key followed by 1 MB without the next
+    key, and 100,000 keys in a row, in a TS file, which is matched whole."""
+    import time
+
+    (tmp_path / "review.ts").write_text(text + "\nclient.messages.create({})\n", encoding="utf-8")
+    started = time.perf_counter()
+    prtitle_scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
 # -------------------- AAK-MCP-FHI-001 --------------------
 
 def test_fhi_imperative_description_fires(tmp_path: Path) -> None:

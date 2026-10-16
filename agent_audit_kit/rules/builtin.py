@@ -7326,9 +7326,12 @@ _r(
     incident_references=["COMMENT-AND-CONTROL-2026-04-25"],
     limitations=(
         "Needs, in one Python function (or one TS/JS file), a title source, an LLM "
-        "client call and no sanitiser. A source is an attribute path "
-        "(`pull_request.title`, `issue.title`), so `event[\"pull_request\"][\"title\"]` "
-        "and `pull_request.body` are not sources; a sink is one of the listed "
+        "client call and no sanitiser. An event read is a source when it reads the PR "
+        "or issue title or the PR head ref as an attribute, a subscript or a `.get()` "
+        "(`pull_request.title`, `event[\"pull_request\"][\"title\"]`, "
+        "`event.get(\"issue\", {}).get(\"title\")`), so `pull_request.body` is not a "
+        "source, and neither is TypeScript's optional chaining "
+        "(`payload.pull_request?.title`); a sink is one of the listed "
         "spellings (`client.messages.create`, `openai.chat.completions.create`), so "
         "`client.chat.completions.create` is not one. Any `json.dumps(`, "
         "`re.escape(`, `hashlib.*(` or `html.escape(` in the function counts as a "

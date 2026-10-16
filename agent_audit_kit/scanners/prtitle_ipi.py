@@ -29,9 +29,35 @@ from agent_audit_kit.models import Finding
 from ._helpers import in_skip_dir, make_finding
 
 
+def _subscript(name: str) -> str:
+    return rf"""\[\s*['"]{name}['"]\s*\]"""
+
+
+def _get(name: str) -> str:
+    # The default stops at the first parenthesis, which keeps the match linear
+    # and leaves out a default that is itself a call, `.get("title", str())`.
+    return rf"""\.\s*get\s*\(\s*['"]{name}['"][^()]*\)"""
+
+
+def _key(name: str) -> str:
+    """One step of an event read: `.name`, `["name"]` or `.get("name", <default>)`.
+
+    A script that loads the event JSON (`json.load` on `GITHUB_EVENT_PATH`)
+    holds dicts, so it reads `event["pull_request"]["title"]` or
+    `event.get("pull_request", {}).get("title")`. Only the attribute path
+    used to count, so the usual way to read the title was no source.
+    """
+    return rf"(?:\.\s*{name}\b|{_subscript(name)}|{_get(name)})"
+
+
+def _head(name: str) -> str:
+    """The first step of a chain: the bare word, or a subscript or `.get()` of it."""
+    return rf"(?:{name}\b|{_subscript(name)}|{_get(name)})"
+
+
 # Title-shape sources from GitHub event payloads, env vars, gh CLI.
 _TITLE_SOURCE_RE = re.compile(
-    r"""
+    rf"""
     (?:
         pull_request\s*\.\s*title
       | pull_request\s*\.\s*head\s*\.\s*ref
@@ -45,6 +71,9 @@ _TITLE_SOURCE_RE = re.compile(
       | os\.getenv\(\s*['"]PR_TITLE['"]
       | os\.getenv\(\s*['"]GITHUB_HEAD_REF['"]
       | gh\s+pr\s+view.*?title
+      | {_head('pull_request')}\s*{_key('title')}
+      | {_head('pull_request')}\s*{_key('head')}\s*{_key('ref')}
+      | {_head('issue')}\s*{_key('title')}
     )
     """,
     re.VERBOSE | re.DOTALL,
