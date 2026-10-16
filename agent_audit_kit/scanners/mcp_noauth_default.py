@@ -102,30 +102,34 @@ def _returns_truthy(body: list[ast.stmt]) -> bool:
     return False
 
 
+_STOP_CALLS = frozenset({"exit", "_exit", "abort", "quit"})
+
+
 def _call_stops(name: str) -> bool:
     """True if a call spelled `name` ends the process or the command.
 
-    A name containing lowercase exit or abort (`sys.exit`, `os._exit`,
-    `os.abort`, `ctx.exit`), a call named `quit` (the builtin raises SystemExit
-    like `exit()`), argparse's `<parser>.error(...)`, which prints usage and
-    exits with status 2, and click's `ctx.fail(...)`, which raises UsageError
-    and ends the command. Until the last three were read, a gate that warned
-    and then called `quit(1)` or `parser.error(...)` was reported as one that
+    A call named exit, _exit, abort or quit, as the whole name or its last
+    part (`sys.exit`, `os._exit`, `os.abort`, click's `ctx.exit` and
+    `ctx.abort`, the `exit()` and `quit()` builtins, which raise SystemExit),
+    argparse's `<parser>.error(...)`, which prints usage and exits with status
+    2, and click's `ctx.fail(...)`, which raises UsageError and ends the
+    command. Until the last two and `quit` were read, a gate that warned and
+    then called `quit(1)` or `parser.error(...)` was reported as one that
     carries on.
 
-    `quit` is matched as the whole name or its last part, not as a substring,
-    so `log_equity(...)` is not a stop. The receiver decides the other two:
-    `.error` stops only on a name containing parser (`parser`,
-    `self.arg_parser`), so `logger.error(...)` and `logging.error(...)` still
-    carry on, and `.fail` only on a name containing ctx or context (`ctx`,
-    `click.get_current_context()`).
+    The names are matched whole, not as substrings. A substring test read
+    `atexit.register(...)`, which registers an exit handler and carries on, as
+    a stop, so a gate that warned and then registered one went unreported;
+    `app.on_exit(...)` and `log_equity(...)` are not stops either. The
+    receiver decides the other two: `.error` stops only on a name containing
+    parser (`parser`, `self.arg_parser`), so `logger.error(...)` and
+    `logging.error(...)` still carry on, and `.fail` only on a name containing
+    ctx or context (`ctx`, `click.get_current_context()`).
     """
-    if "exit" in name or "abort" in name:
-        return True
     receiver, _, method = name.rpartition(".")
-    receiver = receiver.lower()
-    if method == "quit":
+    if method in _STOP_CALLS:
         return True
+    receiver = receiver.lower()
     if method == "error" and "parser" in receiver:
         return True
     return method == "fail" and ("ctx" in receiver or "context" in receiver)

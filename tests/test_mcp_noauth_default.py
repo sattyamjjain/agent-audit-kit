@@ -331,6 +331,10 @@ _WARN_THEN = (
     "    ctx.fail('--secret is required')",
     "    click.get_current_context().fail('--secret is required')",
     "    sys.exit(1)",
+    "    os._exit(1)",
+    "    os.abort()",
+    "    ctx.exit(1)",
+    "    exit(1)",
 ])
 def test_a_warning_followed_by_a_stop_passes(tmp_path: Path, stop: str) -> None:
     """quit(), argparse's parser.error() and click's ctx.fail() end the process
@@ -347,6 +351,11 @@ def test_a_warning_followed_by_a_stop_passes(tmp_path: Path, stop: str) -> None:
     "    log.error('still serving')",
     "    tracker.fail('MCP_SECRET')",
     "    print_error('MCP_SECRET is not set')",
+    # A substring test read these as stops: they register or name an exit
+    # handler, and the server carries on unauthenticated.
+    "    atexit.register(cleanup)",
+    "    app.on_exit(cleanup)",
+    "    abort_controller_factory()",
 ])
 def test_a_warning_that_carries_on_still_flags(tmp_path: Path, cont: str) -> None:
     _write(tmp_path, "server.py", _WARN_THEN.replace("{STOP}", cont))
