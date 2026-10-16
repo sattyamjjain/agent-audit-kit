@@ -23,9 +23,10 @@ surfaces four migration smells:
   `ip_hash`, K8s `sessionAffinity: ClientIP`, Traefik / ALB sticky
   cookies) or handler code reads a shared session store keyed on a
   per-connection id used across requests.
-* 004 (LOW) — client file calls `tools/list` / `list_tools` in a hot
-  path with no caching marker (`lru_cache`, `ttl`, `cache`, …) anywhere
-  in the file, and the same file participates in per-session state.
+* 004 (LOW) — client file calls `tools/list` / `list_tools` at least
+  twice with no caching marker (`lru_cache`, `TTLCache`, `ttlMs`, …)
+  anywhere in the file, and the same file names the session
+  (`session_id` / `Mcp-Session-Id`).
 
 Source-side rules (001, 002, 004) are gated on a declared MCP SDK in a
 root manifest (`_helpers.declares_mcp_sdk`, shared with
@@ -249,12 +250,14 @@ _CACHE_MARKERS_RE = re.compile(
 
 
 def _scan_004_no_cache(source_files: list[Path]) -> list[tuple[Path, int]]:
-    """A file fires when (a) it calls `tools/list` (or alias) at least
-    twice OR inside an `async`/`def` body that takes per-request inputs,
-    (b) it has no cache marker anywhere in the file, AND (c) it also
-    references session state (`session_id`, `Mcp-Session-Id`, or a
-    `session.` attribute access). The triple conjunction keeps the LOW-
-    severity advisory tight."""
+    """A file fires when (a) it calls `tools/list` (`"tools/list"`,
+    `list_tools(` or `.tools.list(`) at least twice, (b) it has no cache
+    marker anywhere in the file, AND (c) it names the session
+    (`session_id`, `MCP_SESSION_ID` or the `Mcp-Session-Id` header). The
+    triple conjunction keeps the LOW-severity advisory tight. A single call
+    inside a per-request handler is not counted, and neither is a
+    `session.` attribute access; this docstring used to promise both, and
+    the rule's stated limitation says "at least twice"."""
     hits: list[tuple[Path, int]] = []
     for path in source_files:
         try:

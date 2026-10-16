@@ -176,6 +176,18 @@ def test_prm_quiet_on_remote_config_without_auth(tmp_path: Path) -> None:
     assert PRM not in _rule_ids(tmp_path, "server.mcp.json", content)
 
 
+def test_prm_quiet_on_remote_config_with_oauth_flag(tmp_path: Path) -> None:
+    """A pin, not a fix: an `--oauth` argument asks the client to run OAuth and
+    is no static credential. The inline-credential pattern had a `\\b--oauth\\b`
+    alternative that could never match an argument; it is gone, and this says
+    which reading was meant."""
+    content = json.dumps({"mcpServers": {
+        "r": {"type": "http", "url": "https://mcp.example.com/mcp", "args": ["--oauth"]},
+        "bridge": {"command": "npx", "args": ["-y", "mcp-remote", "https://mcp.example.com/mcp", "--oauth"]},
+    }})
+    assert PRM not in _rule_ids(tmp_path, "server.mcp.json", content)
+
+
 def test_prm_fires_on_server_source_bearer_without_prm(tmp_path: Path) -> None:
     content = (
         "from fastmcp import FastMCP\n"

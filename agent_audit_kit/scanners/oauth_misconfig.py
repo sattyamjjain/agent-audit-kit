@@ -102,11 +102,15 @@ _MCP_REMOTE_RE = re.compile(
     r'|"url"\s*:\s*"https?://',
     re.IGNORECASE,
 )
+# A static credential carried by the config. An `--oauth` argument is not one:
+# it asks the client to run OAuth instead of sending a stored secret. The
+# `\b--oauth\b` alternative that stood here could never match an argument (the
+# `\b` needs a word character before the first hyphen, so it matched only glued
+# text such as `x--oauth`) and is gone.
 _MCP_INLINE_AUTH_RE = re.compile(
     r'"Authorization"\s*:'
     r"|\bBearer\b"
     r'|"auth"\s*:\s*\{'
-    r"|\b--oauth\b"
     r'|"(?:access_token|api_key|token)"\s*:\s*"',
     re.IGNORECASE,
 )
