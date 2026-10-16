@@ -1053,14 +1053,25 @@ _STAND_IN_BODIES = [
     "A" * 64,
     "MIIEowIBAAKCAQEA...",
     "PLACEHOLDER" + "0123456789" * 3,
+    "EXAMPLEKEY" + _varied(40),
+    "changeme" + _varied(40),
+    "MIIBOgIBAAJBAK",  # fewer than 16 base64 characters
 ]
 
 
 @pytest.mark.parametrize("body", _STAND_IN_BODIES, ids=lambda b: b[:16])
 def test_secret_005_leaves_a_stand_in_key_in_markdown_alone(tmp_path: Path, body: str) -> None:
+    """Each stand-in its limitation names, in a README's code block."""
     (tmp_path / "README.md").write_text("## Keys\n\n```\n" + _pem("PRIVATE KEY", body) + "```\n", encoding="utf-8")
 
     assert _secret_005(tmp_path) == []
+
+
+def test_secret_005_limitation_says_it_reads_markdown_and_skips_stand_ins() -> None:
+    text = RULES["AAK-SECRET-005"].limitations
+    assert "Markdown included" in text
+    for word in ("REPLACE", "YOUR", "EXAMPLE", "PLACEHOLDER", "CHANGEME"):
+        assert word in text
 
 
 def test_secret_005_reports_a_key_written_out_in_markdown(tmp_path: Path) -> None:
