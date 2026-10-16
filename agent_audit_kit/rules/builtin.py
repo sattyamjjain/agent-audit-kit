@@ -1905,7 +1905,7 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-11"],
     limitations=(
-        "Reports a file with a `.json` extension that contains `\"type\": "
+        "Reports a file with a `.json` extension, in any case, that contains `\"type\": "
         "\"service_account\"`. The same key saved under another extension, such as "
         "`.yml`, is not reported."
     ),

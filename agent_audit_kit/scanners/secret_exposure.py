@@ -263,6 +263,9 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # Each regex finding below takes its line from where its match sits, never from a
     # search for its own prefix, which is the first line holding it (#951).
     lines = LineIndex(content)
+    # The walker chose this file by its lower-cased suffix, so every rule below reads
+    # it the same way: `KEY.JSON` is a JSON file.
+    suffix = file_path.suffix.lower()
 
     # AAK-SECRET-001: Anthropic API key
     for match in ANTHROPIC_KEY.finditer(content):
@@ -314,7 +317,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
         ))
 
     # AAK-SECRET-009: Google Cloud service account key
-    if GCP_SERVICE_ACCOUNT.search(content) and file_path.suffix == ".json":
+    if GCP_SERVICE_ACCOUNT.search(content) and suffix == ".json":
         findings.append(_make_finding(
             "AAK-SECRET-009", rel_path,
             "Google Cloud service account key JSON file",
@@ -345,7 +348,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files).
     # Both server maps: VS Code keeps its servers under `servers` in
     # .vscode/mcp.json, and reading `mcpServers` alone passed every literal there.
-    if file_path.suffix == ".json" and file_path.name != ".mcp.json":
+    if suffix == ".json" and file_path.name != ".mcp.json":
         try:
             data = loads_jsonc(content)
         except json.JSONDecodeError:

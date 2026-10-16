@@ -652,3 +652,30 @@ def test_the_token_rules_do_not_read_markdown(tmp_path: Path) -> None:
     findings, scanned = scan(tmp_path)
 
     assert findings == [] and "README.md" not in scanned
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-009 and -007 read a `.JSON` suffix as `.json`
+#
+# The walker lowercased the suffix before it chose a file, the two rules compared it
+# exactly, so `KEY.JSON` was read and not reported.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["key.json", "KEY.JSON", "key.Json"])
+def test_a_service_account_key_is_reported_whatever_the_case_of_its_suffix(tmp_path: Path, name: str) -> None:
+    (tmp_path / name).write_text(
+        '{"type": "service_account", "project_id": "demo-proj",\n "client_email": "svc@demo-proj.iam.gserviceaccount.com"}\n',
+        encoding="utf-8",
+    )
+
+    findings, _ = scan(tmp_path)
+
+    assert [f.file_path for f in _hits(findings, "AAK-SECRET-009")] == [name]
+
+
+def test_secret_007_reads_a_config_whose_suffix_is_upper_case(tmp_path: Path) -> None:
+    config = {"mcpServers": {"x": {"command": "node", "args": ["a.js"], "env": {"API_TOKEN": "literal-value"}}}}
+    (tmp_path / "config.JSON").write_text(json.dumps(config, indent=2), encoding="utf-8")
+
+    assert _secret_007(tmp_path) == [("config.JSON", 9)]
