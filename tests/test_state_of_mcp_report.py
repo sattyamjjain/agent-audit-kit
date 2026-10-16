@@ -279,9 +279,12 @@ _SUPERSEDED_LITERALS = (
 #   - PREVALENCE corpus-provenance line: 664 is the crawl-source subtotal that
 #     *composes* the 2,303 corpus (664 crawled + 1,639 registry), not a headline N.
 #   - README readiness link: the dated 2026-07-18 748-config point-in-time scan.
+#   - README test count: a generated number, not a corpus figure. At 3,664 tests
+#     `\b664\b` matched the digits after its thousands comma.
 _SUPERSEDED_ALLOWLIST = (
     ("research/state-of-mcp-2026/PREVALENCE.md", "corpus-provenance"),
     ("README.md", "748-config readiness scan"),
+    ("README.md", "<!-- test-count:total -->"),
 )
 
 
