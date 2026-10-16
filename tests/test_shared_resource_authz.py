@@ -16,6 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.shared_resource_authz import scan
 
@@ -113,6 +115,52 @@ def test_various_mutating_verbs_fire(tmp_path: Path) -> None:
         }))
         findings, _ = scan(sub)
         assert _hits(findings), f"{verb} should fire ({tool})"
+
+
+def _team_tool(tmp_path: Path, name: str, description: str) -> list:
+    _write(tmp_path, "tools.json", {"tools": [{
+        "name": name,
+        "description": description,
+        "inputSchema": {"type": "object", "properties": {"file_id": {"type": "string"}}},
+    }]})
+    findings, _ = scan(tmp_path)
+    return _hits(findings)
+
+
+@pytest.mark.parametrize(("name", "description"), [
+    ("purge_file", "Removes a file from the shared workspace."),
+    ("save_note", "Updates a note in the shared team workspace."),
+    ("tidy", "Deletes files older than a week from the team workspace."),
+    ("relocate", "Moves the document to another folder in the shared workspace."),
+    ("fix_typos", "Edits each entry the team shares in place."),
+    ("replace", "Overwrites the record shared across agents."),
+])
+def test_a_third_person_description_is_flagged(tmp_path: Path, name: str, description: str) -> None:
+    """Tool descriptions are mostly written in the third person, and only the
+    bare verb was read, so `Deletes a file shared with the team` was silent."""
+    assert _team_tool(tmp_path, name, description), description
+
+
+@pytest.mark.parametrize("name", [
+    "delete_shared_file", "deleteSharedFile", "DeleteSharedFile", "DELETE_SHARED_FILE",
+])
+def test_a_snake_or_camel_case_name_with_a_leading_verb_is_flagged(tmp_path: Path, name: str) -> None:
+    """The underscore is a word character, so `\\bdelete\\b` never matched
+    inside `delete_shared_file`; only a hyphenated name gave up its verb."""
+    assert _team_tool(tmp_path, name, "Permanently erases the file for the whole team.")
+
+
+@pytest.mark.parametrize(("name", "description"), [
+    # A plural noun is not a verb: these read data and mutate nothing.
+    ("get_dataset", "Returns a dataset shared with the team. Note: item updates may lag."),
+    ("list_edits", "Lists recent edits to documents in the team workspace."),
+    ("game_state", "Returns the legal moves for a shared board record."),
+    # A verb inside a name, not leading it.
+    ("get_file_update_time", "Returns when a shared file last changed."),
+    ("file_delete_log", "Returns the deletion log of the team workspace files."),
+])
+def test_a_noun_or_a_verb_inside_a_name_passes(tmp_path: Path, name: str, description: str) -> None:
+    assert not _team_tool(tmp_path, name, description), (name, description)
 
 
 # ---------------------------------------------------------------------------

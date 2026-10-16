@@ -1,8 +1,8 @@
 {
   "tools": [
     {
-      "name": "delete_file",
-      "description": "Deletes a file shared with the team",
+      "name": "save_notes",
+      "description": "Updates notes in the shared team workspace.",
       "inputSchema": {
         "type": "object",
         "properties": {

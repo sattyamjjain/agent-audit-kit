@@ -35,9 +35,29 @@ from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in
 _RULE_ID = "AAK-AGENT-SHARED-RES-AUTHZ-001"
 
 # Mutating verbs (per the CVE-2026-44654 brief).
+_MUTATE_VERBS = frozenset({"delete", "remove", "edit", "update", "overwrite", "move"})
 _MUTATE_RE = re.compile(
     r"\b(?:delete|remove|edit|update|overwrite|move)\b", re.IGNORECASE
 )
+# The same verbs in the third person, the way most tool descriptions are
+# written ("Deletes a file shared with the team"), which `_MUTATE_RE` missed.
+# Updates, edits and moves are also everyday plural nouns ("progress updates",
+# "small focused edits", "the legal moves"; on MCPTox's 353 clean tools the
+# nouns outnumber the verbs), so those three count only when an article or a
+# quantifier follows, as a verb's object does; deletes, removes and overwrites
+# count anywhere.
+_MUTATE_THIRD_PERSON_RE = re.compile(
+    r"\b(?:deletes|removes|overwrites)\b"
+    r"|\b(?:updates|edits|moves)\s+(?:a|an|the|this|that|these|those|its|their|"
+    r"your|any|all|each|every|one|existing|specified|selected|given|multiple)\b",
+    re.IGNORECASE,
+)
+# The first word of a tool name. Names are written `<verb>_<object>`, and the
+# underscore is a word character, so `_MUTATE_RE` never found `delete` in
+# `delete_shared_file`, nor in `deleteSharedFile`; only a hyphenated name gave
+# up its verb. Only the leading word is read: a verb further in
+# (`get_file_update_time`) names what a read reports.
+_NAME_LEAD_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])")
 # Resource nouns the mutation acts on — required alongside a verb so a verb in
 # unrelated prose (e.g. "update the user on progress") does not match alone.
 _RESOURCE_RE = re.compile(
@@ -168,9 +188,19 @@ def _iter_tool_descriptors(
             _iter_tool_descriptors(item, depth + 1, acc)
 
 
+def _name_leads_with_verb(name: str) -> bool:
+    lead = _NAME_LEAD_RE.match(name.lstrip("_-"))
+    return lead is not None and lead.group(0).lower() in _MUTATE_VERBS
+
+
 def _is_mutating(name: str, description: str) -> bool:
     blob = f"{name} {description}"
-    return bool(_MUTATE_RE.search(blob) and _RESOURCE_RE.search(blob))
+    verb = (
+        _MUTATE_RE.search(blob)
+        or _MUTATE_THIRD_PERSON_RE.search(description)
+        or _name_leads_with_verb(name)
+    )
+    return bool(verb and _RESOURCE_RE.search(blob))
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

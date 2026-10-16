@@ -1,0 +1,16 @@
+{
+  "tools": [
+    {
+      "name": "file_delete",
+      "description": "Erases a file in the team workspace.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ]
+}
