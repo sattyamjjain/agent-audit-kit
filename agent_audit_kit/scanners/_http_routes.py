@@ -36,13 +36,18 @@ _OPENERS = {")": "(", "]": "[", "}": "{"}
 
 
 # Test files, Go test-helper packages (`mcptest/`, `ssetest/`, as `httptest/`) and
-# mock or fake servers (`mock_mcp_server.py`, `fakemcp/`) serve no real endpoint.
+# mock or fake servers (`mock_mcp_server.py`, `fakemcp/`, `ch21_fakemcp.go`)
+# serve no real endpoint.
 TEST_FILE_RE = re.compile(
     r"(?:^|/)(?!latest/)(?:[a-z0-9]*tests?|testdata|e2e|__tests__|testutils?|testhelpers?|testsupport)/"
-    r"|(?:^|/)(?:mock|fake)[^/]*(?:/|$)|[-_](?:mock|fake)s?(?:\.[a-z]+)?(?:/|$)"
+    r"|(?:^|/)(?:mock|fake)[^/]*(?:/|$)|[-_](?:mock|fake)[^/]*(?:/|$)"
     r"|_test\.go$|(?:^|/)test_[^/]*\.py$|_test\.py$|(?:^|/)conftest\.py$",
     re.IGNORECASE,
 )
+# A Go file that starts an `httptest` server is a test double wherever it lives
+# (a grading harness's fake MCP peer). `httptest.NewRecorder()` alone is not:
+# production code uses it to capture a handler's response.
+GO_TEST_SERVER_RE = re.compile(r"\bhttptest\.New(?:TLS|Unstarted)?Server\(")
 MCP_METHODS = frozenset({
     "tools/call", "tools/list", "initialize", "notifications/initialized", "resources/list",
     "resources/read", "prompts/list", "prompts/get",

@@ -26,6 +26,7 @@ from agent_audit_kit.models import Finding
 from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
 from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
 from ._http_routes import (
+    GO_TEST_SERVER_RE,
     MCP_METHODS,
     TEST_FILE_RE,
     CodeIndex,
@@ -244,6 +245,9 @@ _GO_HANDLER_CAP = r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(|\b{n}(?:\.Request(?
 _PY_PROJECT_CAP_RE = re.compile(r"\bMAX_CONTENT_LENGTH\b|\bmax_content_length\b")
 # A file that may hold a size-limiting middleware, before parsing it.
 _PY_MIDDLEWARE_HINT_RE = re.compile(r"middleware|before_request|__call__")
+# A middleware installed by class name, often from a library:
+# `app.add_middleware(LimitUploadSize, max_upload_size=...)`.
+_PY_ADD_MIDDLEWARE_RE = re.compile(r"\b(?:add_middleware|Middleware)\(\s*([A-Za-z_][\w.]*)")
 _PY_SIZE_HINT_RE = re.compile(r"\b413\b|content[-_]length|TOO_LARGE|too large", re.IGNORECASE)
 # `^[ \t]*`, not `^\s*`: `\s` crosses newlines, so from every line start of a run
 # of blank lines the pattern reread the rest of the run.
@@ -304,6 +308,8 @@ def _py_size_middleware(text: str) -> bool:
     a body size: `@app.middleware("http")`, a class with `dispatch(...,
     call_next)` or an ASGI `__call__(self, scope, receive, send)`, whose own
     code answers 413 or compares a Content-Length or a body length."""
+    if any(_names_body_limit(m.group(1).rsplit(".", 1)[-1]) for m in _PY_ADD_MIDDLEWARE_RE.finditer(text)):
+        return True
     if not (_PY_MIDDLEWARE_HINT_RE.search(text) and _PY_SIZE_HINT_RE.search(text)):
         return False
     try:
@@ -374,7 +380,7 @@ def _check_unbounded_go(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     for path, text in texts.items():
         rel = path.relative_to(project_root).as_posix()
-        if TEST_FILE_RE.search(rel) or not _GO_ANY_READ_RE.search(text):
+        if TEST_FILE_RE.search(rel) or GO_TEST_SERVER_RE.search(text) or not _GO_ANY_READ_RE.search(text):
             continue
         scanned.add(rel)
         index = CodeIndex(text, go=True)
