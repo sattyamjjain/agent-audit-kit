@@ -296,6 +296,11 @@ def _check_server(
     # guessing at a coercion, and let the malformed rule be the one that speaks.
     url = _as_str(server_cfg.get("url", ""))
     command = _as_str(server_cfg.get("command", ""))
+    # The program the command runs: its first word, or "" when it has none.
+    # `command.strip().split()[0]` raised IndexError on a command of only
+    # whitespace, and this is a core scanner, so one such server cost every
+    # finding it makes in every file.
+    cmd_bin = (command.split() or [""])[0]
     args = server_cfg.get("args", [])
     env = server_cfg.get("env", {})
     headers_helper = _as_str(server_cfg.get("headersHelper", ""))
@@ -342,7 +347,7 @@ def _check_server(
                     ), key))
 
     # AAK-MCP-005: npx/uvx package fetcher
-    if command and command.strip().split()[0] in PACKAGE_FETCHERS:
+    if cmd_bin in PACKAGE_FETCHERS:
         findings.append((_make_finding(
             "AAK-MCP-005", file_path,
             f"Server '{server_name}' command: {command}",
@@ -350,7 +355,6 @@ def _check_server(
 
     # AAK-MCP-006: Relative path command
     if command:
-        cmd_bin = command.strip().split()[0]
         is_absolute = cmd_bin.startswith("/")
         is_known = cmd_bin in KNOWN_BINARIES
         if not is_absolute and not is_known and cmd_bin:
@@ -362,7 +366,7 @@ def _check_server(
     # AAK-MCP-007: Unpinned package version in args. `engine.run_scan` drops a
     # finding here when AAK-SUPPLY-001 reports the same launch, which it
     # recognises by the evidence `launch_evidence` builds.
-    if command and command.strip().split()[0] in PACKAGE_FETCHERS and isinstance(args, list):
+    if cmd_bin in PACKAGE_FETCHERS and isinstance(args, list):
         for index, arg in enumerate(args):
             if isinstance(arg, str) and not arg.startswith("-"):
                 # Skip path-like arguments

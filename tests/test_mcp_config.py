@@ -286,6 +286,32 @@ def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:
     assert scan(tmp_path) == ([], {".mcp.json"})
 
 
+@pytest.mark.parametrize("command", [" ", "\t\n", "　"])
+def test_a_command_of_only_whitespace_names_no_program_and_is_not_a_crash(
+    tmp_path: Path, command: str
+) -> None:
+    """`command.strip().split()[0]` raised IndexError on a command with no word in
+    it, and this is a core scanner, so a 39-byte `.mcp.json` lost every finding
+    it makes, in that file and every other. Such a command runs no program, so
+    AAK-MCP-005, 006 and 007 have nothing to report on it; the server beside it
+    and the config in the next file are read as before."""
+    (tmp_path / ".mcp.json").write_text(json.dumps({"mcpServers": {
+        "blank": {"command": command},
+        "fetch": {"command": "npx", "args": ["some-package"]},
+    }}), encoding="utf-8")
+    (tmp_path / ".cursor").mkdir()
+    (tmp_path / ".cursor" / "mcp.json").write_text(json.dumps({"mcpServers": {
+        "relative": {"command": "./run-server"},
+    }}), encoding="utf-8")
+    findings, scanned = scan(tmp_path)
+    assert scanned == {".mcp.json", ".cursor/mcp.json"}
+    by_server = {(f.rule_id, f.file_path, f.evidence.split("'")[1]) for f in findings}
+    assert {("AAK-MCP-005", ".mcp.json", "fetch"), ("AAK-MCP-007", ".mcp.json", "fetch"),
+            ("AAK-MCP-006", ".cursor/mcp.json", "relative")} <= by_server
+    assert not [f for f in findings if "'blank'" in f.evidence and f.rule_id in {
+        "AAK-MCP-005", "AAK-MCP-006", "AAK-MCP-007"}]
+
+
 def test_mcp_server_maps_reads_both_keys_at_the_top_only() -> None:
     data = {
         "mcpServers": {"a": {}},
