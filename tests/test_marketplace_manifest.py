@@ -127,6 +127,9 @@ def _broad(tmp_path: Path, permissions: object) -> list[str]:
     (["Network:*"], "Network:*"),
     ({"fs": "*"}, "fs:*"),                 # the object form
     ({"shell": ["read", "exec"]}, "shell:exec"),
+    ({"shell": True}, "shell: true"),      # a boolean grants every action
+    ("shell:exec", "shell:exec"),          # one grant written as a string
+    ("*", "*"),
 ])
 def test_a_grant_covering_a_broad_one_fires(tmp_path: Path, permissions: object, shown: str) -> None:
     """Six exact strings were compared, so `shell:*` and a bare `*`, both
@@ -136,8 +139,10 @@ def test_a_grant_covering_a_broad_one_fires(tmp_path: Path, permissions: object,
 
 
 @pytest.mark.parametrize("permissions", [
-    ["fs:read"], ["fs:write"], ["shell:read"], ["credentials:read"], ["*:read"],
-    ["network"], ["files:*"], [], {"fs": "read"}, {"shell": True}, "shell:exec", [7, None],
+    ["fs:read"], ["fs:write"], ["shell:read"], ["credentials:read"],
+    ["*:read"],  # reads everything, but covers none of the six broad grants
+    ["network"], ["files:*"], [], {"fs": "read"}, {"shell": False}, {"fs": None},
+    "fs:read", "", [7, None], 7,
 ])
 def test_a_narrower_grant_is_quiet(tmp_path: Path, permissions: object) -> None:
     assert _broad(tmp_path, permissions) == []

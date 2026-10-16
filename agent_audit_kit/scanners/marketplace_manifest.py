@@ -89,31 +89,44 @@ def _edit_distance_le_1(a: str, b: str) -> bool:
     return True
 
 
+def _string_grant(item: str) -> tuple[str, str, str] | None:
+    """(as written, scope, action) of one `scope:action` string, a bare `*`
+    being every scope and action, or None for a string with no colon."""
+    if item.strip() == "*":
+        return item, "*", "*"
+    scope, colon, action = item.partition(":")
+    if not colon:
+        return None
+    return item, scope.strip().lower(), action.strip().lower()
+
+
 def _grants(permissions: object) -> list[tuple[str, str, str]]:
     """(as written, scope, action) for each grant a `permissions` value makes.
 
-    A list holds `scope:action` strings, and a bare `*` is every scope and
-    action. An object maps a scope to an action or a list of actions
-    (`{"fs": "*"}`), which was not read at all before. Scope and action are
-    compared without case or surrounding space. A string with no colon other
-    than `*`, and a value of any other type, grants nothing this reads.
+    A list holds `scope:action` strings, and one string alone is one grant. An
+    object maps a scope to an action, a list of actions, or `true`, which is
+    every action (`{"fs": "*"}`, `{"shell": true}`); `false` grants nothing.
+    Scope and action are compared without case or surrounding space. A string
+    with no colon other than `*`, and a value of any other type, grants nothing
+    this reads.
     """
     found: list[tuple[str, str, str]] = []
+    if isinstance(permissions, str):
+        permissions = [permissions]
     if isinstance(permissions, list):
         for item in permissions:
-            if not isinstance(item, str):
-                continue
-            if item.strip() == "*":
-                found.append((item, "*", "*"))
-                continue
-            scope, colon, action = item.partition(":")
-            if colon:
-                found.append((item, scope.strip().lower(), action.strip().lower()))
+            grant = _string_grant(item) if isinstance(item, str) else None
+            if grant is not None:
+                found.append(grant)
     elif isinstance(permissions, dict):
         for scope, value in permissions.items():
-            actions = value if isinstance(value, list) else [value]
-            for action in actions:
-                if isinstance(scope, str) and isinstance(action, str):
+            if not isinstance(scope, str):
+                continue
+            if value is True:
+                found.append((f"{scope}: true", scope.strip().lower(), "*"))
+                continue
+            for action in value if isinstance(value, list) else [value]:
+                if isinstance(action, str):
                     found.append((f"{scope}:{action}", scope.strip().lower(),
                                   action.strip().lower()))
     return found

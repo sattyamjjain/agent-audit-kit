@@ -4376,12 +4376,14 @@ _r(
     adversa_references=["ADV-SUPPLY-05"],
     limitations=(
         "Reads the `permissions` of each plugin entry in a marketplace.json, as a "
-        "list of `scope:action` strings or an object from scope to action, and "
-        "reports a grant that covers `fs:*`, `shell:exec`, `network:*`, "
-        "`credentials:*`, `env:*` or `*:*`: case is ignored, a `*` on either side "
-        "stands for every scope or action, and a bare `*` is `*:*`. A narrower grant "
-        "on one of those scopes (`fs:write`, `credentials:read`), a string with no "
-        "colon (`network`), and permissions declared in a plugin's own "
+        "list of `scope:action` strings, one such string, or an object from scope "
+        "to an action, a list of actions or `true` (every action), and reports a "
+        "grant that covers `fs:*`, `shell:exec`, `network:*`, `credentials:*`, "
+        "`env:*` or `*:*`: case is ignored, a `*` on either side stands for every "
+        "scope or action, and a bare `*` is `*:*`. A narrower grant on one of those "
+        "scopes (`fs:write`, `credentials:read`), a grant that covers none of the "
+        "six (`*:read` reads every scope but is not one), a string with no colon "
+        "(`network`), and permissions declared in a plugin's own "
         "`.claude-plugin/plugin.json` are not reported."
     ),
 )

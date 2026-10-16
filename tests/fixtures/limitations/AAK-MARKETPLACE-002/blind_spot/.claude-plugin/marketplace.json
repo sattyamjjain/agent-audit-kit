@@ -6,7 +6,8 @@
       "description": "A plugin",
       "permissions": [
         "fs:write",
-        "credentials:read"
+        "credentials:read",
+        "*:read"
       ]
     },
     {
