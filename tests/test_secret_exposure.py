@@ -816,6 +816,20 @@ _GITIGNORE_CASES = [
     b".env  \n", b".env\\ \n", b"\xef\xbb\xbf.env\n", b".env\r\n", b"/**/.env\n", b"**/**/.env\n", b"/**\n",
     b".env # secrets\n", b"\\#.env\n", b"\\.env\n", b"\\!.env\n", b".env\n  !.env\n", b"[.]env\n",
     b"[!a]env\n", b"[^a]env\n", b"*\n", b"**\n", b".e?v\n", b".env.l[a-z]cal\n", b".env[\n",
+    # The verification's shapes (gitignore_vs_git2.py), bracket classes first.
+    b".env.[]l]*\n", b".env.[!]]*\n", b".env.[[:alpha:]]*\n", b".env.[[:digit:]]*\n", b".env.[!p]*\n",
+    b".env.[^p]*\n", b".env.[a-l]*\n", b".env.[\n", b"***\n", b"**/\n", b"**/*\n", b"/*\n", b"*.env\n", b".env.?*\n",
+    b".ENV\n", b".env/**\n", b"**/.env/**\n", b"a/../.env\n", b"./.env\n", b".env\\\n", b"*\n!.env\n",
+    b".env\n!*\n", b".env\n/.env\n!/.env\n", b".env\r.env.local\r", b"\xff\xfe.\x00e\x00n\x00v\x00\n\x00",
+    b".e**v\n", b"?env\n", b".env.loc?l\n", b".env.*\n!.env.*\n", b"!.env.local\n.env*\n",
+    b".env*\n!.env.local\n", b"\\.env*\n", b".env\\*\n", b"**/.env*/\n", b"/**/.env.*\n", b"*/.env\n",
+    b"**/**\n", b".env.\\l*\n", b"!\n.env\n", b"\n\n   \n.env\n", b"\t\n.env.*\n",
+    b".env.*\n!.env.p*\n.env.production\n", b".env#\n", b".env #\n", b"\xef\xbb\xbf!.env\n.env\n",
+    # More bracket edges: an unknown POSIX class, `[:` with no `:]`, reversed and open
+    # ranges, `]` and `-` placed literally, escapes inside a class, an unclosed class.
+    b".env.[[:bogus:]]*\n", b".env.[[:alpha]*\n", b".env.[z-a]*\n", b".env.[a-]*\n", b".env.[]-z]*\n",
+    b".env.[\\]l]*\n", b".env.[l\\-n]*\n", b".env.[[:alpha:]\n", b".env.[[:lower:][:digit:]]*\n",
+    b".env.[!a-z]*\n", b".env.[*]*\n", b".env.[?]ocal\n", b".env.l[[]cal\n",
 ]
 
 
@@ -838,12 +852,13 @@ def test_secret_006_reads_gitignore_patterns_as_git_does(tmp_path: Path, gitigno
     root = tmp_path / "repo"
     root.mkdir()
     subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
-    for name in (".env", ".env.local"):
+    names = (".env", ".env.local", ".env.production")
+    for name in names:
         (root / name).write_text("DATABASE_URL=postgres://localhost/app\n", encoding="utf-8")
     (root / ".env.example").write_text("DATABASE_URL=\n", encoding="utf-8")
     (root / ".gitignore").write_bytes(gitignore)
 
-    expected = sorted(name for name in (".env", ".env.local") if not _git_ignores(root, name))
+    expected = sorted(name for name in names if not _git_ignores(root, name))
 
     assert _secret_006(root) == expected
 
@@ -868,6 +883,29 @@ def test_secret_006_reads_the_common_gitignore_shapes(
         (tmp_path / ".gitignore").write_text(gitignore, encoding="utf-8")
 
     assert _secret_006(tmp_path) == reported
+
+
+@pytest.mark.parametrize("stars", [6, 8, 12, 40])
+def test_a_star_heavy_gitignore_glob_matches_in_linear_time(tmp_path: Path, stars: int) -> None:
+    """Translated to a regex, `*a*a*a*a*a*a*a*b` against `.env.` and 60 `a` took 3.9 s, and one
+    more `a*` over 300 s: each `*` was a `.*` that fullmatch backtracked through. Globs are
+    now matched segment by segment, each star-free segment at its leftmost place."""
+    name = ".env." + "a" * 60
+    (tmp_path / name).write_text("A=1\n", encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("*" + "a*" * stars + "b\n", encoding="utf-8")
+    started = time.perf_counter()
+    assert _secret_006(tmp_path) == [name]
+    assert time.perf_counter() - started < 2.0
+
+
+def test_a_gitignore_full_of_star_heavy_globs_reads_in_linear_time(tmp_path: Path) -> None:
+    name = ".env." + "a" * 200
+    (tmp_path / name).write_text("A=1\n", encoding="utf-8")
+    lines = "".join("*" + "a*" * (k % 90 + 2) + "b\n" for k in range(6_000))
+    (tmp_path / ".gitignore").write_text(lines, encoding="utf-8")
+    started = time.perf_counter()
+    assert _secret_006(tmp_path) == [name]
+    assert time.perf_counter() - started < 5.0
 
 
 def test_a_gitignore_of_many_patterns_reads_in_linear_time(tmp_path: Path) -> None:

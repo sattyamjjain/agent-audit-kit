@@ -633,43 +633,137 @@ def _trim_trailing_spaces(line: str) -> str:
     return line[:end]
 
 
-def _glob_regex(glob: str) -> str:
-    """A regex for a gitignore glob matched against one name (no `/`): `*` and `**` are
-    any run, `?` one character, `[...]` a class (`!` or `^` negating it), and a
-    backslash makes the next character literal."""
-    out: list[str] = []
+# POSIX classes inside a bracket expression, as git's wildmatch reads them (C locale).
+_POSIX_CLASSES = {
+    "alnum": "a-zA-Z0-9", "alpha": "a-zA-Z", "blank": " \\t", "cntrl": "\\x00-\\x1f\\x7f",
+    "digit": "0-9", "graph": "!-~", "lower": "a-z", "print": " -~", "punct": "!-/:-@\\[-`{-~",
+    "space": " \\t\\n\\r\\x0b\\x0c", "upper": "A-Z", "xdigit": "0-9A-Fa-f",
+}
+
+
+def _bracket(glob: str, at: int) -> tuple[str, int] | None:
+    """The bracket expression opening at ``glob[at]`` as a regex class, and the index after
+    it, read as git's wildmatch reads one; None when the pattern can never match.
+
+    `!` or `^` first negates it; the first member, even `]`, is literal; `a-z` is a range
+    (a reversed one matches nothing more); `[:alpha:]` and the other POSIX names are
+    classes, and an unknown name, like a bracket that never closes, means the whole
+    pattern matches nothing. A backslash makes the next character literal.
+    """
+    i = at + 1
+    negated = glob[i : i + 1] in ("!", "^")
+    i += negated
+    members: list[str] = []
+    previous: str | None = None
+    first = True
+    while True:
+        if i >= len(glob):
+            return None
+        ch = glob[i]
+        if ch == "]" and not first:
+            break
+        first = False
+        if ch == "\\":
+            i += 1
+            if i >= len(glob):
+                return None
+            ch = glob[i]
+        elif ch == "-" and previous is not None and i + 1 < len(glob) and glob[i + 1] != "]":
+            high = glob[i + 1]
+            i += 2
+            if high == "\\":
+                if i >= len(glob):
+                    return None
+                high = glob[i]
+                i += 1
+            if previous <= high:
+                members.append(re.escape(previous) + "-" + re.escape(high))
+            previous = None
+            continue
+        elif ch == "[" and glob[i + 1 : i + 2] == ":":
+            close = glob.find("]", i + 2)
+            if close < 0:
+                return None
+            if close - 1 > i + 1 and glob[close - 1] == ":":
+                name = glob[i + 2 : close - 1]
+                if name not in _POSIX_CLASSES:
+                    return None
+                members.append(_POSIX_CLASSES[name])
+                previous = None
+                i = close + 1
+                continue
+            # No `:]`: the `[` is an ordinary member.
+        members.append(re.escape(ch))
+        previous = ch
+        i += 1
+    return ("[^" if negated else "[") + "".join(members) + "]" if members else ("." if negated else "(?!)"), i + 1
+
+
+def _glob_segments(glob: str) -> list[tuple[re.Pattern[str], int]] | None:
+    """A gitignore glob for one name (no `/`) cut at its `*` runs into star-free segments,
+    each compiled to a fixed-length regex with its width; None when it can never match.
+
+    A segment holds only literal characters, `?` and classes, each one character wide, so
+    no regex here has a quantifier to backtrack through. A glob translated whole, with
+    each `*` as `.*`, took 3.9 s for `*a*a*a*a*a*a*a*b` against a 65-character name and
+    over 300 s with one more `a*`.
+    """
+    segments: list[list[str]] = [[]]
     i = 0
     while i < len(glob):
         ch = glob[i]
-        if ch == "\\" and i + 1 < len(glob):
-            out.append(re.escape(glob[i + 1]))
-            i += 2
-        elif ch == "*":
+        if ch == "*":
             while i < len(glob) and glob[i] == "*":
                 i += 1
-            out.append(".*")
+            segments.append([])
+            continue
+        if ch == "\\":
+            if i + 1 >= len(glob):
+                return None  # a trailing backslash matches nothing, as in git
+            segments[-1].append(re.escape(glob[i + 1]))
+            i += 2
         elif ch == "?":
-            out.append(".")
+            segments[-1].append(".")
             i += 1
         elif ch == "[":
-            close = glob.find("]", i + 2 if glob[i + 1 : i + 2] in ("!", "^") else i + 1)
-            if close < 0:
-                out.append(re.escape(ch))
-                i += 1
-                continue
-            body = glob[i + 1 : close]
-            negated = body[:1] in ("!", "^")
-            body = body[1:] if negated else body
-            members = "".join(re.escape(c) if c != "-" else "-" for c in re.sub(r"\\(.)", r"\1", body))
-            out.append("[" + ("^" if negated else "") + members + "]")
-            i = close + 1
+            bracket = _bracket(glob, i)
+            if bracket is None:
+                return None
+            segments[-1].append(bracket[0])
+            i = bracket[1]
         else:
-            out.append(re.escape(ch))
+            segments[-1].append(re.escape(ch))
             i += 1
-    return "".join(out)
+    try:
+        return [(re.compile("".join(segment), re.DOTALL), len(segment)) for segment in segments]
+    except re.error:
+        return None
 
 
-def _gitignore_rules(text: str) -> list[tuple[bool, str | re.Pattern[str]]]:
+def _glob_matches(segments: list[tuple[re.Pattern[str], int]], name: str) -> bool:
+    """Whether ``name`` matches a glob cut into ``segments`` (`_glob_segments`).
+
+    The first segment is matched at the start and the last at the end; each one between
+    is placed at its leftmost match after the one before. Every segment is a fixed width
+    and a `*` takes any run, so the leftmost place never rules out a match a later one
+    would allow, and the whole test is one pass of C-level searches.
+    """
+    if len(segments) == 1:
+        return segments[0][0].fullmatch(name) is not None
+    first = segments[0][0].match(name)
+    if first is None:
+        return False
+    pos = first.end()
+    for segment, _width in segments[1:-1]:
+        found = segment.search(name, pos)
+        if found is None:
+            return False
+        pos = found.end()
+    last, width = segments[-1]
+    return len(name) - width >= pos and last.fullmatch(name, len(name) - width) is not None
+
+
+def _gitignore_rules(text: str) -> list[tuple[bool, str | list[tuple[re.Pattern[str], int]]]]:
     """The patterns of a root `.gitignore` that can match a root env file, each compiled
     once, in order: ``(negated, matcher)``.
 
@@ -682,7 +776,7 @@ def _gitignore_rules(text: str) -> list[tuple[bool, str | re.Pattern[str]]]:
     starting with `.` is kept, so a file of unrelated patterns costs one pass and no
     compile.
     """
-    rules: list[tuple[bool, str | re.Pattern[str]]] = []
+    rules: list[tuple[bool, str | list[tuple[re.Pattern[str], int]]]] = []
     for raw in text.split("\n"):
         line = _trim_trailing_spaces(raw[:-1] if raw.endswith("\r") else raw)
         if not line or line.startswith("#"):
@@ -700,19 +794,20 @@ def _gitignore_rules(text: str) -> list[tuple[bool, str | re.Pattern[str]]]:
         if not _GLOB_CHARS & set(line):
             rules.append((negated, line))
             continue
-        try:
-            rules.append((negated, re.compile(_glob_regex(line), re.DOTALL)))
-        except re.error:
-            continue
+        segments = _glob_segments(line)
+        if segments is not None:
+            rules.append((negated, segments))
     return rules
 
 
-def _gitignore_ignores(rules: list[tuple[bool, str | re.Pattern[str]]], name: str) -> bool:
+def _gitignore_ignores(
+    rules: list[tuple[bool, str | list[tuple[re.Pattern[str], int]]]], name: str
+) -> bool:
     """Whether the rules of a root `.gitignore` (`_gitignore_rules`) ignore the root file
     ``name``: the last rule that matches decides, so `!` takes a file back out."""
     ignored = False
     for negated, matcher in rules:
-        if matcher == name if isinstance(matcher, str) else matcher.fullmatch(name):
+        if matcher == name if isinstance(matcher, str) else _glob_matches(matcher, name):
             ignored = not negated
     return ignored
 
