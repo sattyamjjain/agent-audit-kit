@@ -16,6 +16,34 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.22): one disclosure, a WordPress plugin, out of scope
+
+The watcher opened one `cve-response` issue at 11:24Z on 2026-10-16 (#1013), `sev/high`.
+It is a WordPress plugin, out of scope like the WSP MCP AI Agents Connector in the
+section below and #915 and #916 before it. NVD's CVSS 3.1 score, 8.8, matches the title
+and `sev/` label the watcher filed, so nothing was corrected first. NVD text below is
+quoted from the API record, read on 2026-10-16.
+
+**DoubleScale CRM (CVE-2026-111311) is out of scope.** NVD: "The DoubleScale |
+All-in-One CRM – Sales, Multi-Channel Marketing, Newsletter, Booking, Helpdesk,
+Automation, MCP & More plugin for WordPress is vulnerable to Arbitrary File Upload in all
+versions up to, and including, 1.5.1 via the store_upload function." It is the
+wordpress.org plugin `doublescale`, installed into a WordPress site, and its version is in
+no file AAK reads. npm and PyPI have no `doublescale`, Docker Hub has no image by that
+name, and the two GitHub repositories with the name, vixgrow/doublescale-migrator and
+vixgrow/DoubleScale-Zapier-API-Docs, are neither the plugin nor a package. The upload
+endpoint is registered only when the plugin's Helpdesk module is on. The record covers
+every version up to and including 1.5.1, and wordpress.org lists 1.6.0 to 1.6.4 after
+it, so upgrade to the newest release.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-111311 | 8.8 | DoubleScale CRM (wordpress.org plugin `doublescale`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 1.5.1. | #1013 |
+
+CVSS is NVD's CVSS 3.1 score.
+
+Dispositioned at 2026-10-16T11:38:28Z.
+
 ## 2026-10-16 (v0.6.22): eight held-back records, four new pins, three floors raised, one out of scope
 
 The 2026-10-16 batch (#1001-#1005) left seven records for the watcher, and an eighth,

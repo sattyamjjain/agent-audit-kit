@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Disposed eight records the watcher had not filed yet, so it won't file them. Two n8n records and a Claude Code record raise existing floors, four get the new pins above, and the WSP MCP AI Agents Connector, a WordPress plugin (CVE-2026-109382), is out of scope. Each was measured with the scanner on a firing fixture and a negative one. The reasoning is in CHANGELOG.cves.md.
+- Disposed #1013, the DoubleScale CRM plugin for WordPress (CVE-2026-111311). It ships through wordpress.org, and no file AAK reads states its version, so it is out of scope. The reasoning is in CHANGELOG.cves.md.
 - `AAK-MCP-N8N-CVE-2026-72768-001` (HIGH) reports `n8n` below 2.41.4, up from 2.35.4, and 2.42.0, for CVE-2026-110842: the MCP workflow-validation tool's interpreter let a member with `workflow:read` pollute shared prototypes. `AAK-MCP-N8N-CVE-2026-59207-001` (MEDIUM) reports the same versions, up from 2.27.4, for CVE-2026-110852: a webhook, form or MCP route ran another project's workflow when the request left out the webhook's id. The 2.36.x range is now below the floor, and an unversioned `n8n` gets one finding from the HIGH rule instead of two.
 - `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` reports `@anthropic-ai/claude-code` below 2.1.179, up from 2.1.129, for CVE-2026-86063: a plugin install checked out its pinned commit without checking that HEAD matched it. Its evidence names each of its three bugs only where it applies.
 
