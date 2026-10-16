@@ -52,6 +52,15 @@ composition.md`` covers several rules in one page; those rules link to the
 heading that names them, found by reading the page's headings rather than by
 listing them here.
 
+Retired rules keep their address
+--------------------------------
+A code-scanning alert keeps the ``helpUri`` of the release that raised it, so a
+rule that left the registry and took its page with it would leave every alert it
+ever raised linking to a 404. ``RETIRED_RULE_IDS`` in the registry holds what that
+page needs (the title, the last release that shipped the rule, why it went and
+what covers it now), ``render_retired_page`` publishes it at the old address, and
+the index lists those pages under "Retired rules".
+
 Structure
 ---------
 A generated page has one ``h1`` (``AAK-MCP-003: <title>``, the words the browser
@@ -1056,6 +1065,88 @@ def render_index_listing(
 
 
 # --------------------------------------------------------------------------
+# Retired rules
+# --------------------------------------------------------------------------
+
+
+def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
+    """Link each registered rule id that ``text`` names outside a code span to its page.
+
+    An id inside a code span stays code, and an id with no page stays text: a link
+    to a page the build does not make is a dead link, which the strict build
+    refuses. The ids are found with the same token pattern the shared deep dives
+    use, which has no nested quantifier to backtrack on.
+    """
+    def link(match: re.Match[str]) -> str:
+        token = match.group(0)
+        return f"[{token}]({token}.md)" if token in rules else token
+
+    return "".join(
+        chunk if is_code else _RULE_ID_TOKEN_RE.sub(link, chunk)
+        for is_code, chunk in split_code_spans(text)
+    )
+
+
+def render_retired_page(rule_id: str, retired: Any, rules: Mapping[str, Any]) -> str:
+    """The page left at a retired rule's address.
+
+    A code-scanning alert keeps the ``helpUri`` of the release that raised it, and
+    that is this address, so the page outlives the rule: it says what the rule was,
+    that it is retired and after which release, why, and what covers it now, with
+    every rule it names linked. Rendered from ``RETIRED_RULE_IDS`` the way a rule's
+    page is rendered from the registry; the facts are a description list, as there.
+    """
+    heading = f"{rule_id}: {plain_text(retired.title)} (retired)"
+    last = retired.last_release
+    return "\n".join([
+        "---",
+        f"title: {_json_string(heading)}",
+        f"description: {_json_string('Retired rule: ' + plain_text(retired.title))}",
+        "---",
+        "",
+        f"# {rule_id}: {heading_text(retired.title)} (retired)",
+        "",
+        "Status",
+        f":   Retired in the release after {last}. {last} is the last release that ships it, "
+        "and later releases do not report it.",
+        "",
+        "## Why it was retired",
+        "",
+        link_rule_ids(markdown_text(retired.reason), rules),
+        "",
+        "## What covers it now",
+        "",
+        link_rule_ids(markdown_text(retired.replacement), rules),
+        "",
+        "---",
+        "",
+        f"[All rules]({_ALL_RULES_LINK}). This page stays so that the link in an alert raised "
+        "before the rule was retired still opens. It is generated from `RETIRED_RULE_IDS` in "
+        "`agent_audit_kit/rules/builtin.py` when the documentation is built.",
+    ]) + "\n"
+
+
+def render_retired_listing(retired: Mapping[str, Any]) -> str:
+    """The "Retired rules" section appended to the index, after "All rules"."""
+    out = [
+        "## Retired rules",
+        "",
+        "Rules that have left the registry. Each keeps its page, so the link in an alert "
+        "raised before it went still opens.",
+        "",
+        "| Rule | Last release | Title |",
+        "|---|---|---|",
+    ]
+    for rule_id in sorted(retired):
+        entry = retired[rule_id]
+        out.append(
+            f"| [{rule_id}]({rule_id}.md) | {entry.last_release} | "
+            f"{_table_cell(escape_markdown(entry.title))} |"
+        )
+    return "\n".join(out) + "\n"
+
+
+# --------------------------------------------------------------------------
 # The build
 # --------------------------------------------------------------------------
 
@@ -1079,22 +1170,35 @@ def default_registry() -> tuple[Mapping[str, Any], Path]:
     return RULES, Path(agent_audit_kit.__file__).resolve().parent
 
 
+def default_retired() -> Mapping[str, Any]:
+    """The live registry's retired ids, ``RETIRED_RULE_IDS``."""
+    from agent_audit_kit.rules.builtin import RETIRED_RULE_IDS
+
+    return RETIRED_RULE_IDS
+
+
 def build_pages(
     docs_dir: Path,
     rules: Mapping[str, Any] | None = None,
     package_dir: Path | None = None,
+    retired: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     """Markdown for every page this module owns, keyed by docs-relative path.
 
-    One entry per registered rule, plus ``rules/index.md`` (the hand-written
-    index with the full listing appended). For a rule with a hand-written page
-    the entry is that page plus the registry reference; the file on disk is only
-    ever read.
+    One entry per registered rule, one per retired id (``render_retired_page``),
+    plus ``rules/index.md`` (the hand-written index with the full listing
+    appended). For a rule with a hand-written page the entry is that page plus
+    the registry reference; the file on disk is only ever read. ``retired``
+    defaults to the live registry's retired ids when ``rules`` does, and to none
+    for a registry passed in.
     """
     if rules is None:
         rules = default_registry()[0]
+        if retired is None:
+            retired = default_retired()
     if package_dir is None:
         package_dir = default_registry()[1]
+    retired = retired or {}
 
     rules_dir = docs_dir / RULES_DIR
     mentions = named_in_code(package_dir, rules)
@@ -1115,10 +1219,14 @@ def build_pages(
             names=names,
         )
 
+    for rule_id in sorted(retired):
+        pages[page_uri(rule_id)] = render_retired_page(rule_id, retired[rule_id], rules)
+
     index = rules_dir / "index.md"
     intro = index.read_text(encoding="utf-8") if index.is_file() else "# Rule reference\n"
     pages[INDEX_URI] = (
         intro.rstrip("\n") + "\n\n" + render_index_listing(rules, display)
+        + ("\n" + render_retired_listing(retired) if retired else "")
     )
     return pages
 
@@ -1138,7 +1246,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sys.path.insert(0, str(REPO_ROOT))
     rules, package_dir = default_registry()
-    pages = build_pages(REPO_ROOT / "docs", rules, package_dir)
+    pages = build_pages(REPO_ROOT / "docs", rules, package_dir, default_retired())
 
     if args.rule_id:
         uri = page_uri(args.rule_id)
@@ -1158,6 +1266,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{len(silent)} rules are named in code by no module (nothing known to emit them):")
     for rule_id in silent:
         print(f"  {rule_id}")
+    print(f"{len(default_retired())} retired ids keep a page at their old address.")
     return 0
 
 

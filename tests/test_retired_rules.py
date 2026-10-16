@@ -6,13 +6,17 @@ written against an earlier release, so a new rule under an old id would be read
 as the old rule. `rules.builtin.RETIRED_RULE_IDS` records every id that has left
 the registry. `_r()` refuses to register one, and the tests below fail when
 anything shipped still names one: a scanner, a compliance table, a preset, the
-AIVSS defaults, a coverage map or the published `rules.json`.
+AIVSS defaults, a coverage map or the published `rules.json`. Each entry also
+feeds the help page left at the rule's old address (`tests/test_rule_pages.py`
+builds it), so it has to say what the rule was, when it went, why, and what
+covers it now.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +32,9 @@ PACKAGE = REPO_ROOT / "agent_audit_kit"
 #: Files shipped inside the package that are read as data rather than imported.
 _DATA_SUFFIXES = frozenset({".json", ".yaml", ".yml", ".txt"})
 
+_RULE_ID = re.compile(r"AAK-[A-Z0-9]+(?:-[A-Z0-9]+)*")
+_RELEASE_HEADING = re.compile(r"^## \[(\d+\.\d+\.\d+)\] - \d{4}-\d{2}-\d{2}$", re.M)
+
 
 def _rule_pages():
     """`scripts/rule_pages.py`, whose `named_in_code` reads ids from code, not prose."""
@@ -41,10 +48,27 @@ def _rule_pages():
     return module
 
 
-def test_every_retirement_says_why() -> None:
+def test_every_retirement_says_what_it_was_when_and_why() -> None:
     assert RETIRED_RULE_IDS
-    blank = [rule_id for rule_id, reason in RETIRED_RULE_IDS.items() if not reason.strip()]
-    assert not blank, f"retired with no reason: {blank}"
+    blank = [
+        rule_id
+        for rule_id, retired in RETIRED_RULE_IDS.items()
+        if not (retired.title.strip() and retired.reason.strip() and retired.replacement.strip())
+    ]
+    assert not blank, f"retired with a blank title, reason or replacement: {blank}"
+    released = set(_RELEASE_HEADING.findall((REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")))
+    unreleased = {rule_id: r.last_release for rule_id, r in RETIRED_RULE_IDS.items() if r.last_release not in released}
+    assert not unreleased, f"last_release is not a release in CHANGELOG.md: {unreleased}"
+
+
+def test_a_replacement_names_only_rules_that_exist() -> None:
+    """The help page links every id named here, so each must have a page of its own."""
+    dangling = {
+        rule_id: sorted(set(_RULE_ID.findall(retired.replacement)) - set(RULES))
+        for rule_id, retired in RETIRED_RULE_IDS.items()
+        if set(_RULE_ID.findall(retired.replacement)) - set(RULES)
+    }
+    assert not dangling, f"replacements naming ids that are not registered rules: {dangling}"
 
 
 def test_no_retired_id_is_registered() -> None:

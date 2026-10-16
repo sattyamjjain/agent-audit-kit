@@ -37,9 +37,12 @@ never written to and no generated page is committed, so there is nothing to
 drift and no ``--check`` to forget. The pages are marked ``NOT_IN_NAV`` (they are
 reached from the rules index and from SARIF, not from the sidebar), which also
 keeps them out of MkDocs' "pages not in nav" log, where there would be one line
-per rule.
-`tests/test_rule_pages.py` builds the site and fails unless every registered
-rule's page exists exactly where its ``helpUri`` points.
+per rule. A retired rule keeps a page too, generated from ``RETIRED_RULE_IDS``,
+because the alerts it raised keep linking to it: the page says when the rule
+went, why, and what covers it now.
+`tests/test_rule_pages.py` builds the site strictly and fails unless every
+registered and every retired rule has a page exactly where its ``helpUri``
+points.
 
 **The third job: refuse a build in which two files share one page.** With
 directory URLs ``docs/rules.md`` and ``docs/rules/index.md`` are both
@@ -184,7 +187,7 @@ def _rule_pages() -> Any:
 
 
 def _publish_rule_pages(files: Any, config: Any) -> None:
-    """Add one page per registered rule, and the full list to the rules index.
+    """Add one page per registered rule and per retired id, and the lists to the rules index.
 
     The repository root goes on ``sys.path`` first, so the registry rendered is
     the one in the checkout being built rather than whichever copy happens to be

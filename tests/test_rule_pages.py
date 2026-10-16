@@ -35,7 +35,7 @@ import yaml
 
 from agent_audit_kit.models import Category, Severity
 from agent_audit_kit.output.sarif import _HELP_URI_BASE, _help_uri
-from agent_audit_kit.rules.builtin import RULES, RuleDefinition
+from agent_audit_kit.rules.builtin import RETIRED_RULE_IDS, RULES, RuleDefinition
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS = REPO_ROOT / "docs"
@@ -93,7 +93,11 @@ def pages() -> dict[str, str]:
 
 
 def test_every_registered_rule_gets_a_page_and_the_index_lists_it(pages: dict[str, str]) -> None:
-    expected = {rp.page_uri(rule_id) for rule_id in RULES} | {rp.INDEX_URI}
+    expected = (
+        {rp.page_uri(rule_id) for rule_id in RULES}
+        | {rp.page_uri(rule_id) for rule_id in RETIRED_RULE_IDS}  # see the retired-rule test below
+        | {rp.INDEX_URI}
+    )
     assert set(pages) == expected
     index = pages[rp.INDEX_URI]
     unlisted = [rule_id for rule_id in RULES if f"[{rule_id}]({rule_id}.md)" not in index]
@@ -136,6 +140,62 @@ def test_a_known_page_reads_as_expected(pages: dict[str, str]) -> None:
     assert "## Deep dive" not in text  # nothing to dive into: no shared page covers this rule
     assert "[All rules](index.md#all-rules)" in text
     assert "agent-audit-kit scan . --rules AAK-MCP-003" in text
+
+
+class _Text(HTMLParser):
+    """The text of rendered HTML, entities decoded, read by the parser rather than a pattern."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.chunks: list[str] = []
+
+    def handle_data(self, data: str) -> None:
+        self.chunks.append(data)
+
+
+def _visible_text(html_text: str) -> str:
+    """What a reader sees of rendered HTML, spaces collapsed.
+
+    A tag adds no space of its own, so `(<code>x</code>)` reads `(x)`; blocks stay
+    apart because the renderer writes a newline between them.
+    """
+    parser = _Text()
+    parser.feed(html_text)
+    return " ".join("".join(parser.chunks).split())
+
+
+def test_every_retired_rule_keeps_a_page_where_its_helpuri_pointed(pages: dict[str, str]) -> None:
+    """A code-scanning alert raised before a rule was retired keeps that rule's helpUri.
+
+    So the address must keep answering: with what the rule was, that it is retired and
+    after which release, why, and what covers it now, every rule it names linked. The
+    index lists the retired rules under their own heading.
+    """
+    assert RETIRED_RULE_IDS
+    index = pages[rp.INDEX_URI]
+    assert "\n## Retired rules\n" in index
+    for rule_id, retired in RETIRED_RULE_IDS.items():
+        text = pages[rp.page_uri(rule_id)]
+        html_text, page, front = _render(text)
+        heading = f"{rule_id}: {rp.plain_text(retired.title)} (retired)"
+        assert page.titles("h1") == [heading] and front["title"] == heading, rule_id
+        assert page.titles("h2") == ["Why it was retired", "What covers it now"], rule_id
+        assert page.terms == ["Status"], rule_id
+        assert not page.tags - _PAGE_TAGS, (rule_id, sorted(page.tags - _PAGE_TAGS))
+        seen = _visible_text(html_text)
+        assert f"Retired in the release after {retired.last_release}." in seen, rule_id
+        for words in (retired.reason, retired.replacement):
+            assert rp.plain_text(words) in seen, (rule_id, words[:60])
+        for named in sorted(set(rp._RULE_ID_TOKEN_RE.findall(retired.replacement)) & set(RULES)):
+            assert f"[{named}]({named}.md)" in text, (rule_id, named)
+        assert f"[{rule_id}]({rule_id}.md)" in index, rule_id
+        assert "[All rules](index.md#all-rules)" in text
+
+
+def test_a_rule_id_is_linked_only_outside_code_and_only_when_registered() -> None:
+    rules = {"AAK-A-001": _rule(rule_id="AAK-A-001")}
+    linked = rp.link_rule_ids("AAK-A-001 and `AAK-A-001` and AAK-B-001.", rules)
+    assert linked == "[AAK-A-001](AAK-A-001.md) and `AAK-A-001` and AAK-B-001."
 
 
 def test_pages_are_deterministic(pages: dict[str, str]) -> None:
@@ -954,7 +1014,7 @@ def test_the_site_enables_the_extensions_the_pages_rely_on() -> None:
     assert set(_RENDER_EXTENSIONS) <= set(declared) | {"fenced_code", "toc"}
 
 
-def _mkdocs_config(site_dir: Path):
+def _mkdocs_config(site_dir: Path, **overrides: object):
     pytest.importorskip("mkdocs.config")
     from mkdocs.config import load_config
 
@@ -966,6 +1026,7 @@ def _mkdocs_config(site_dir: Path):
         theme="mkdocs",
         markdown_extensions=["tables", "admonition", "def_list"],
         validation={"anchors": "warn"},
+        **overrides,
     )
 
 
@@ -982,7 +1043,7 @@ def test_the_hook_adds_every_page_outside_the_nav_and_keeps_the_index_in_it(tmp_
     # context (`plugins._current_plugin`) that only `run_event` sets.
     files = config.plugins.on_files(files, config=config)
 
-    for rule_id in RULES:
+    for rule_id in [*RULES, *RETIRED_RULE_IDS]:
         page = files.get_file_from_path(rp.page_uri(rule_id))
         assert page is not None, rule_id
         assert page.dest_uri == f"rules/{rule_id}/index.html"
@@ -1116,12 +1177,17 @@ def test_a_link_text_never_leads_to_two_places_on_one_page(pages: dict[str, str]
 
 
 def test_building_the_site_puts_every_help_page_where_its_helpuri_points(tmp_path: Path) -> None:
-    """The check the whole design rests on: build the docs, then follow every helpUri."""
+    """The check the whole design rests on: build the docs, then follow every helpUri.
+
+    The build is strict, like CI's `docs-build` job, which builds the shipped Material
+    config the same way, so a warning from any page (a dead link, a missing anchor)
+    fails it. Retired rules are followed too: their alerts outlive them.
+    """
     pytest.importorskip("mkdocs.commands.build")
     from mkdocs.commands import build
 
     site_dir = tmp_path / "site"
-    config = _mkdocs_config(site_dir)
+    config = _mkdocs_config(site_dir, strict=True)
     records: list[logging.LogRecord] = []
 
     class _Grab(logging.Handler):
@@ -1138,12 +1204,15 @@ def test_building_the_site_puts_every_help_page_where_its_helpuri_points(tmp_pat
 
     site = _site_url()
     missing = []
-    for rule_id in RULES:
+    for rule_id in [*RULES, *RETIRED_RULE_IDS]:
         uri = _help_uri(rule_id)
         assert uri.startswith(site)
         if not (site_dir / uri[len(site):] / "index.html").is_file():
             missing.append(rule_id)
     assert not missing, f"helpUri targets with no built page: {missing[:5]} ({len(missing)})"
+    for rule_id in RETIRED_RULE_IDS:
+        built = (site_dir / "rules" / rule_id / "index.html").read_text(encoding="utf-8")
+        assert f"<title>{rule_id}: " in built and "(retired)" in built and "What covers it now" in built
 
     # A hand-written page, a generated one, a shared-deep-dive one and the index.
     toxic = (site_dir / "rules" / "AAK-TOXICFLOW-001" / "index.html").read_text(encoding="utf-8")
@@ -1158,7 +1227,11 @@ def test_building_the_site_puts_every_help_page_where_its_helpuri_points(tmp_pat
     # No generated page may add a MkDocs warning: a dead link or anchor in a page nobody
     # reads by hand is exactly what goes unnoticed. (Hand-written pages carry old ones.)
     own = set(_own_page_ids())
-    names = {rp.page_uri(rule_id) for rule_id in RULES if rule_id not in own} | {rp.INDEX_URI}
+    names = (
+        {rp.page_uri(rule_id) for rule_id in RULES if rule_id not in own}
+        | {rp.page_uri(rule_id) for rule_id in RETIRED_RULE_IDS}
+        | {rp.INDEX_URI}
+    )
     noisy = [
         record.getMessage()
         for record in records

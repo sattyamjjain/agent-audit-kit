@@ -35,32 +35,83 @@ class RuleDefinition:
 
 RULES: dict[str, RuleDefinition] = {}
 
+@dataclass(frozen=True)
+class RetiredRule:
+    """A rule id that has left the registry, and what its help page says about it."""
+
+    #: The title the rule carried, so a page reached from an old alert names the rule.
+    title: str
+    #: The last release that shipped the rule.
+    last_release: str
+    #: Why it went, in sentences.
+    reason: str
+    #: What covers it now, in sentences, or what to use instead. The docs link every
+    #: registered rule id named here.
+    replacement: str
+
+
 # Ids that were registered once and have left the registry. A rule id is a public
 # name: it sits in SARIF baselines and code-scanning alerts, in `--rules` and
 # `--exclude-rules` lists, in VEX statements and in suppressions written against an
 # earlier release, so a new rule under an old id would be read as the old rule.
 # `_r()` refuses every id here, and `tests/test_retired_rules.py` fails when the
-# package, its data files or `rules.json` still name one. The value says why the
-# rule went; the CHANGELOG entry says when.
-RETIRED_RULE_IDS: dict[str, str] = {
-    "AAK-WINDSURF-001": (
-        "read a project-level `.windsurf/mcp.json` with auto-approve keys that Windsurf "
-        "does not document; its documented MCP config is the user-level "
-        "`mcp_config.json`, which names no auto-approve key"
+# package, its data files or `rules.json` still name one. The alerts also keep
+# linking to the rule's help page, so `scripts/rule_pages.py` publishes a page for
+# each entry at the address its `helpUri` pointed at.
+RETIRED_RULE_IDS: dict[str, RetiredRule] = {
+    "AAK-WINDSURF-001": RetiredRule(
+        title="Windsurf .windsurf/mcp.json auto-approves server registrations",
+        last_release="0.6.22",
+        reason=(
+            "It read a project's `.windsurf/mcp.json` for `auto_approve` and `auto_execute` "
+            "keys, a group- or world-writable folder and server commands with no SHA-256 pin. "
+            "Windsurf documents neither that file nor those keys: its MCP documentation, now "
+            "at docs.devin.ai, names only the user-level `~/.config/devin/mcp_config.json` "
+            "(macOS and Linux) and `%APPDATA%\\devin\\mcp_config.json` (Windows), and its "
+            "only per-tool control is `disabledTools`."
+        ),
+        replacement=(
+            "CVE-2026-30615, in which a prompt injection rewrites Windsurf's MCP "
+            "configuration, is covered by AAK-STDIO-001, AAK-MCP-STDIO-CMD-INJ-001, "
+            "AAK-MCP-STDIO-CMD-INJ-002, AAK-MCP-STDIO-CMD-INJ-003 and "
+            "AAK-MCP-STDIO-CMD-INJ-004. Every other MCP server rule still reads "
+            "`.windsurf/mcp.json`."
+        ),
     ),
-    "AAK-OPENCLAW-PRIVESC-001": (
-        "matched `from openclaw import OpenClawAgent`, which no published package "
-        "provides: PyPI `openclaw` installs the cmdop CLI, `openclaw-sdk` imports as "
-        "`openclaw_sdk`, and OpenClaw itself ships on npm"
+    "AAK-OPENCLAW-PRIVESC-001": RetiredRule(
+        title="OpenClaw agent role missing or attacker-influenced",
+        last_release="0.6.22",
+        reason=(
+            "It looked for `from openclaw import OpenClawAgent`, and no published package "
+            "provides that class. On 2026-10-17 none of the twelve files of PyPI's six "
+            "`openclaw` and `openclaw-sdk` releases contained it: `openclaw` installs the "
+            "cmdop CLI, `openclaw-sdk` imports as `openclaw_sdk`, and OpenClaw itself ships "
+            "on npm. The rule was provisional from the start, and no CVE was assigned."
+        ),
+        replacement=(
+            "Nothing replaces the role check. OpenClaw's npm releases are pinned by "
+            "AAK-MCP-OPENCLAW-CVE-2026-62195-001 and AAK-MCP-OPENCLAW-CVE-2026-102807-001, "
+            "which report its vulnerable versions."
+        ),
     ),
-    "AAK-OX-COVERAGE-MANIFEST-001": (
-        "described the OX coverage manifest and never fired; `aak coverage --source ox` "
-        "reads `data/ox-cve-manifest.json` itself"
+    "AAK-OX-COVERAGE-MANIFEST-001": RetiredRule(
+        title="Project OX-disclosed CVE coverage manifest",
+        last_release="0.6.22",
+        reason="It described the OX coverage manifest and never fired: it was metadata, not a detection.",
+        replacement=(
+            "Nothing replaces it as a rule. `aak coverage --source ox` reads "
+            "`agent_audit_kit/data/ox-cve-manifest.json` and prints the coverage."
+        ),
     ),
-    "AAK-PRISMA-AIRS-COVERAGE-001": (
-        "described the Prisma AIRS coverage map and never fired; `aak coverage --source "
-        "prisma-airs` reads `data/prisma-airs-catalog.json` and "
-        "`data/prisma-airs-aak-map.json` itself"
+    "AAK-PRISMA-AIRS-COVERAGE-001": RetiredRule(
+        title="Prisma AIRS catalog coverage manifest",
+        last_release="0.6.22",
+        reason="It described the Prisma AIRS coverage map and never fired: it was metadata, not a detection.",
+        replacement=(
+            "Nothing replaces it as a rule. `aak coverage --source prisma-airs` reads "
+            "`agent_audit_kit/data/prisma-airs-catalog.json` and "
+            "`agent_audit_kit/data/prisma-airs-aak-map.json` and prints the coverage."
+        ),
     ),
 }
 
@@ -408,8 +459,10 @@ def _r(
     limitations: str = "",
 ) -> None:
     if rule_id in RETIRED_RULE_IDS:
+        retired = RETIRED_RULE_IDS[rule_id]
         raise ValueError(
-            f"{rule_id} is retired ({RETIRED_RULE_IDS[rule_id]}); give the new rule a new id"
+            f"{rule_id} was retired after {retired.last_release}: {retired.reason} "
+            "Give the new rule a new id."
         )
     RULES[rule_id] = RuleDefinition(
         rule_id=rule_id,
