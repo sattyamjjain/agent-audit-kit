@@ -24,10 +24,11 @@ KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, str]]] = {
             "affected": ">=1.7.0 <1.7.4",
             "description": "Claude Code supply chain compromise (March 31 2026)",
         },
-        "openclaw": {
-            "affected": "<2.1.0",
-            "description": "104 CVEs catalogued by Adversa AI",
-        },
+        # No `openclaw` entry. It listed `<2.1.0` as "104 CVEs catalogued by
+        # Adversa AI", but OpenClaw publishes calendar versions on npm (2026.1.29
+        # on), so the range matched only `openclaw@0.0.1`, an empty placeholder
+        # published the day before the first. OpenClaw's CVEs are pinned with
+        # the ranges NVD gives them, in mcp_cve_pins_2026_07.
     },
     # No PyPI entry. The table listed `openclaw` here too, but OpenClaw ships on
     # npm only, and the PyPI project of that name (2.0.1 and 2.0.2) is an

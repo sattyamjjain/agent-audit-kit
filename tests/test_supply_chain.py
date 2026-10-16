@@ -693,17 +693,32 @@ def test_a_crafted_lockfile_indexes_in_linear_time(filename: str) -> None:
 
 
 def test_a_pypi_launch_is_not_looked_up_in_the_npm_table(tmp_path: Path) -> None:
-    """uvx reads `openclaw@2.0.0` as the PyPI project (the cmdop CLI installer);
-    npx reads it as OpenClaw, which the npm table lists."""
+    """uvx reads `axios@1.7.2` as a PyPI project, which the npm table says
+    nothing about; npx reads it as the npm package the table lists. (This was
+    `openclaw@2.0.0`: uvx reads that as the cmdop CLI installer on PyPI.)"""
     def supply006(command: str) -> list[str]:
-        config = {"mcpServers": {"x": {"command": command, "args": ["openclaw@2.0.0"]}}}
+        config = {"mcpServers": {"x": {"command": command, "args": ["axios@1.7.2"]}}}
         (tmp_path / ".mcp.json").write_text(json.dumps(config))
         return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-006"]
 
     assert supply006("uvx") == []
     assert supply006("uv tool run") == []
     hits = supply006("npx")
-    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses openclaw@2.0.0"), hits
+    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses axios@1.7.2"), hits
+
+
+def test_the_npm_openclaw_placeholder_is_not_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both tables listed npm `openclaw` below 2.1.0, and the one release there is
+    `0.0.1`, an empty placeholder: OpenClaw publishes calendar versions, which its
+    CVE pins read with NVD's ranges. Neither rule reports the placeholder now. The
+    bundled database is read, not one an earlier `aak update` cached."""
+    monkeypatch.setattr("agent_audit_kit.vuln_db.CACHED_DB", tmp_path / "no-cache" / "vuln_db.json")
+    lock = {"lockfileVersion": 3, "packages": {"node_modules/openclaw": {"version": "0.0.1"}}}
+    (tmp_path / "package-lock.json").write_text(json.dumps(lock), encoding="utf-8")
+    config = {"mcpServers": {"claw": {"command": "npx", "args": ["-y", "openclaw@0.0.1"]}}}
+    (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id in ("AAK-SUPPLY-002", "AAK-SUPPLY-006")]
+    assert "openclaw" not in supply_chain.KNOWN_VULNERABLE_PACKAGES["npm"]
 
 
 # ---------------------------------------------------------------------------
@@ -927,7 +942,7 @@ def _supply_006(root: Path) -> list[tuple[str, str]]:
 def test_supply_006_reads_a_vscode_servers_map() -> None:
     [(path, evidence)] = _supply_006(_SUPPLY_006_VSCODE / "detecting")
     assert path == str(Path(".vscode") / "mcp.json")
-    assert evidence.startswith("Server 'claw' uses openclaw@2.0.0")
+    assert evidence.startswith("Server 'claw' uses axios@1.7.2")
 
 
 def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
@@ -936,9 +951,9 @@ def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
 
 def test_supply_006_reads_both_maps_of_the_root_config(tmp_path: Path) -> None:
     config = {
-        "mcpServers": {"a": {"command": "npx", "args": ["openclaw@2.0.0"]}},
+        "mcpServers": {"a": {"command": "npx", "args": ["axios@1.7.3"]}},
         "servers": {"b": {"command": "npx", "args": ["axios@1.7.2"]}},
     }
     (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
     hits = [evidence.split(" — ")[0] for _, evidence in _supply_006(tmp_path)]
-    assert hits == ["Server 'a' uses openclaw@2.0.0", "Server 'b' uses axios@1.7.2"]
+    assert hits == ["Server 'a' uses axios@1.7.3", "Server 'b' uses axios@1.7.2"]

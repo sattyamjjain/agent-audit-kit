@@ -204,8 +204,6 @@ CASES: list[Case] = [
     # ---- AAK-SUPPLY-002: the ranges the text quotes -------------------------
     Case("supply-002 axios 1.7.2", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.7.2"), True),
     Case("supply-002 axios 1.7.4", "AAK-SUPPLY-002", supply_chain, _npm_lock("axios", "1.7.4"), False),
-    Case("supply-002 openclaw 2.0.9", "AAK-SUPPLY-002", supply_chain, _npm_lock("openclaw", "2.0.9"), True),
-    Case("supply-002 openclaw 2.1.0", "AAK-SUPPLY-002", supply_chain, _npm_lock("openclaw", "2.1.0"), False),
     Case("supply-002 typosquat name", "AAK-SUPPLY-002", supply_chain, _npm_lock("modelcontextprotocal", "1.0.0"), True),
     Case("supply-002 the real package", "AAK-SUPPLY-002", supply_chain, _npm_lock("@modelcontextprotocol/sdk", "1.0.0"), False),
     # ---- AAK-SUPPLY-004: the lockfiles and the commands that write them -----
@@ -227,8 +225,6 @@ CASES: list[Case] = [
     # ---- AAK-SUPPLY-006 ------------------------------------------------------
     Case("supply-006 axios 1.7.2", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.7.2"]}}), True),
     Case("supply-006 axios 1.7.4", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["axios@1.7.4"]}}), False),
-    Case("supply-006 openclaw 2.0.0", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["openclaw@2.0.0"]}}), True),
-    Case("supply-006 openclaw 2.1.0", "AAK-SUPPLY-006", supply_chain, _mcp({"s": {"command": "npx", "args": ["openclaw@2.1.0"]}}), False),
     # ---- AAK-AGENT-005: the three kinds of hidden content --------------------
     Case("agent-005 html comment", "AAK-AGENT-005", agent_config, {"CLAUDE.md": "# Rules\n<!-- note to the agent -->\n"}, True),
     Case("agent-005 markdown comment", "AAK-AGENT-005", agent_config, {"CLAUDE.md": "# Rules\n[//]: # (note to the agent)\n"}, True),
