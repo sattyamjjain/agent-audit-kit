@@ -8,6 +8,14 @@
       "args": [
         "./scripts/setup.sh"
       ]
+    },
+    {
+      "label": "workspace",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "${workspaceFolder}/scripts/setup.sh"
+      ]
     }
   ]
 }

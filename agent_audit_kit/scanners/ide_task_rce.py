@@ -74,6 +74,27 @@ _INTERP_REPO_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 
+# The VS Code variables that stand for a workspace folder: `${workspaceFolder}`,
+# scoped `${workspaceFolder:api}` in a multi-root workspace, the deprecated
+# `${workspaceRoot}` and `${fileWorkspaceFolder}`. VS Code replaces each with
+# the folder's path before the task runs, so `bash ${workspaceFolder}/x.sh`
+# runs the repo's own `./x.sh`. The path class cannot start with `$` or `{`,
+# so the interpreter-on-a-repo-script shape never saw one, and the
+# preLaunchTask chain (AAK-IDE-TASK-003) went silent with it. Other variables
+# (`${userHome}`, `${env:HOME}`) point outside the workspace and are left as
+# they are. The scope class excludes both braces, so an unclosed
+# `${workspaceFolder:` reads only to the next brace and a crafted run of them
+# stays linear, as `_helpers._VSCODE_VARIABLE_RE` does.
+_WORKSPACE_FOLDER_RE = re.compile(
+    r"\$\{(?:workspaceFolder(?::[^{}]*)?|workspaceRoot|fileWorkspaceFolder)\}"
+)
+
+
+def _workspace_relative(command: str) -> str:
+    """``command`` with each workspace-folder variable written as ``.``, the
+    folder a task's relative path starts from, for the repo-script check."""
+    return _WORKSPACE_FOLDER_RE.sub(".", command)
+
 
 def _finding(
     rule_id: str,
@@ -206,7 +227,7 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
 
         if joined and (
             _PIPE_TO_SHELL_RE.search(joined)
-            or _INTERP_REPO_PATH_RE.search(joined)
+            or _INTERP_REPO_PATH_RE.search(_workspace_relative(joined))
             or INTERPOLATION_RE.search(joined)
         ):
             findings.append(

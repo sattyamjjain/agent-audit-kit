@@ -23,10 +23,7 @@
     {
       "label": "workspace",
       "type": "shell",
-      "command": "bash",
-      "args": [
-        "${workspaceFolder}/scripts/setup.sh"
-      ]
+      "command": "bash \"${workspaceFolder}/scripts/setup.sh\""
     }
   ]
 }

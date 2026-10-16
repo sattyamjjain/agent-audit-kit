@@ -132,3 +132,75 @@ def test_a_long_script_path_reads_in_linear_time() -> None:
     started = time.perf_counter()
     ide_task_rce._INTERP_REPO_PATH_RE.search("python " + "a" * 1_000_000)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# A script path written from `${workspaceFolder}` is a repo script too. VS Code
+# substitutes the variable with the workspace folder before it runs the task,
+# so `bash ${workspaceFolder}/scripts/setup.sh` runs the same file as
+# `bash ./scripts/setup.sh`, which already fired.
+# ---------------------------------------------------------------------------
+
+
+def _tasks(tmp_path: Path, *tasks: str) -> Path:
+    vsc = tmp_path / ".vscode"
+    vsc.mkdir(exist_ok=True)
+    (vsc / "tasks.json").write_text(
+        '{"version": "2.0.0", "tasks": [' + ", ".join(tasks) + "]}", encoding="utf-8"
+    )
+    return tmp_path
+
+
+@pytest.mark.parametrize("task", [
+    '{"label": "setup", "type": "shell", "command": "bash ${workspaceFolder}/scripts/setup.sh"}',
+    '{"label": "setup", "type": "shell", "command": "bash", "args": ["${workspaceFolder}/scripts/setup.sh"]}',
+    '{"label": "setup", "type": "shell", "command": "node ${workspaceFolder}/scripts/setup.js"}',
+    '{"label": "setup", "type": "shell", "command": "python3 ${workspaceFolder:api}/tools/seed.py"}',
+    '{"label": "setup", "type": "shell", "command": "sh ${workspaceRoot}/install.sh"}',
+    '{"label": "setup", "type": "shell", "command": "bash ${fileWorkspaceFolder}\\\\scripts\\\\setup.sh"}',
+])
+def test_a_workspace_folder_script_path_reaches_a_shell(tmp_path: Path, task: str) -> None:
+    assert "AAK-IDE-TASK-002" in _ids(_tasks(tmp_path, task))
+
+
+@pytest.mark.parametrize("task", [
+    # A script run directly, not through an interpreter, is still not followed.
+    '{"label": "setup", "type": "shell", "command": "${workspaceFolder}/scripts/setup.sh"}',
+    # A path under another variable is not in the workspace.
+    '{"label": "setup", "type": "shell", "command": "bash ${env:HOME}/scripts/setup.sh"}',
+    # The variable alone, with no script after it.
+    '{"label": "setup", "type": "shell", "command": "bash", "args": ["-c", "ls ${workspaceFolder}"]}',
+])
+def test_a_workspace_folder_path_that_is_no_interpreter_run_is_quiet(tmp_path: Path, task: str) -> None:
+    assert "AAK-IDE-TASK-002" not in _ids(_tasks(tmp_path, task))
+
+
+def test_a_prelaunchtask_reaches_a_workspace_folder_script(tmp_path: Path) -> None:
+    """The preLaunchTask chain followed TASK-002, so it went silent with it."""
+    root = _tasks(
+        tmp_path,
+        '{"label": "setup", "type": "shell", "command": "bash", "args": ["${workspaceFolder}/scripts/setup.sh"]}',
+    )
+    (root / ".vscode" / "launch.json").write_text(
+        '{"version": "0.2.0", "configurations": [{"name": "Run", "type": "node", '
+        '"request": "launch", "preLaunchTask": "setup"}]}',
+        encoding="utf-8",
+    )
+    hits = _by_id(root, "AAK-IDE-TASK-003")
+    assert hits and hits[0].file_path.endswith("launch.json")
+
+
+def test_the_evidence_keeps_the_command_as_written(tmp_path: Path) -> None:
+    task = '{"label": "setup", "type": "shell", "command": "bash ${workspaceFolder}/scripts/setup.sh"}'
+    [hit] = _by_id(_tasks(tmp_path, task), "AAK-IDE-TASK-002")
+    assert "${workspaceFolder}/scripts/setup.sh" in hit.evidence
+
+
+def test_a_crafted_run_of_workspace_variables_reads_in_linear_time() -> None:
+    """Unclosed `${workspaceFolder:` openers, about 1 MB. The scope class stops at
+    a brace, so each opener reads only to the next one. The bound is loose for
+    slow CI runners."""
+    started = time.perf_counter()
+    ide_task_rce._workspace_relative("bash " + "${workspaceFolder:" * 55_000)
+    ide_task_rce._workspace_relative("bash ${workspaceFolder:" + "a" * 1_000_000)
+    assert time.perf_counter() - started < 5.0

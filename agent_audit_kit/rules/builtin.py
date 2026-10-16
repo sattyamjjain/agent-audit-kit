@@ -3867,12 +3867,14 @@ _r(
         "zsh, dash, ksh, fish, pwsh or powershell; python, python2, python3, node, "
         "deno, bun, ruby, perl, php, bash, sh or zsh followed directly by a path of "
         "letters, digits, `_`, `-`, `.`, `/` and `\\` that ends .py, .js, .cjs, .mjs, "
-        ".ts, .rb, .pl, .php, .sh, .bash, .zsh or .ps1; or `${`, `%{`, `{{`, `$(`, a "
+        ".ts, .rb, .pl, .php, .sh, .bash, .zsh or .ps1, where the path may start with "
+        "the workspace folder as `${workspaceFolder}`, `${workspaceFolder:name}`, "
+        "`${workspaceRoot}` or `${fileWorkspaceFolder}`; or `${`, `%{`, `{{`, `$(`, a "
         "backtick or a string `+` directly before a name beginning input, args, event, "
         "payload, user, argv or request. A script run directly (`./scripts/setup.sh`), "
         "through a runner (`npm run setup`) or after a flag (`bash -x "
-        "./scripts/setup.sh`), and a path that starts with `${workspaceFolder}`, are "
-        "not followed."
+        "./scripts/setup.sh`), and a quoted path (`bash "
+        "\"${workspaceFolder}/scripts/setup.sh\"`), are not followed."
     ),
 )
 
