@@ -171,15 +171,28 @@ def test_deepseek_v4_a_substitution_aimed_at_routing_tokens_clears_it(tmp_path: 
 
 
 def test_deepseek_v4_reads_a_crafted_substitution_in_linear_time(tmp_path: Path) -> None:
-    """`re.sub("` and 1 MB of a string literal with no routing word and no
-    closing quote, then 100,000 more `re.sub(` calls, inside one function."""
-    crafted = (
-        '    x = re.sub("' + "a" * 1_000_000 + "\n"
-        + "    y = 1\n" + "    re.sub(\n" * 100_000
-    )
+    """`re.sub("` and 1 MB with no routing word and no closing quote, then
+    100,000 more `re.sub(`, inside one function. They sit in comments so the
+    file parses on every Python, and the finding still firing shows the
+    sanitiser pattern read them and did not count them."""
+    crafted = '    # re.sub("' + "a" * 1_000_000 + "\n" + "    # re.sub(\n" * 100_000
     (tmp_path / "app.py").write_text(_DEEPSEEK.replace("@@SUB@@", crafted), encoding="utf-8")
     started = time.perf_counter()
-    deepseek_scan(tmp_path)
+    findings, _ = deepseek_scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
+
+
+@pytest.mark.parametrize("text", [
+    're.sub("' + "a" * 1_000_000,
+    "re.sub(\n" * 100_000,
+    're.sub( r"' + " " * 1_000_000,
+])
+def test_deepseek_v4_sanitiser_pattern_reads_crafted_text_in_linear_time(text: str) -> None:
+    from agent_audit_kit.scanners.deepseek_v4_tool_injection import _SANITIZE_RE
+
+    started = time.perf_counter()
+    assert _SANITIZE_RE.search(text) is None
     assert time.perf_counter() - started < 5.0
 
 
