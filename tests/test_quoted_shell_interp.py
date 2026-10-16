@@ -442,6 +442,29 @@ _CROSS_FILE_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
         lambda k: {"lib.js": _SINK_LIB, "tool.js": _CALLER + "x = " + "run([" * k + "w" + ")" * k + ";\n"},
         1_500,
     ),
+    # The chains below come before the tainted call, so the lookup reads every
+    # level. Each level's `)` sits in a `[)]` pair that the level around it
+    # cuts, so no level read as a piece of the one around it and each was read
+    # whole: 70 KB took 21 seconds.
+    "nested-calls-straddling-brackets": (
+        lambda k: {"lib.js": _SINK_LIB, "tool.js": "x = " + "run(" * k + "w" + "[)]" * k + ";\n" + _CALLER},
+        2_000,
+    ),
+    # The same, inside brackets every level shares: 45 KB took 8 seconds.
+    "nested-calls-in-shared-brackets": (
+        lambda k: {
+            "lib.js": _SINK_LIB,
+            "tool.js": "x = " + "run(" * k + "[" * k + "w" + "[)]" * k + "]" * k + ";\n" + _CALLER,
+        },
+        1_000,
+    ),
+    # A `]` closes each call's `(` as a group, so splitting the arguments left
+    # the rest of the chain at depth zero for every level: 60 KB took 10.5
+    # seconds.
+    "nested-calls-closed-by-brackets": (
+        lambda k: {"lib.js": _SINK_LIB, "tool.js": "x = " + "run(]" * k + ")" * k + ";\n" + _CALLER},
+        2_000,
+    ),
 }
 
 
@@ -476,6 +499,24 @@ def test_crafted_projects_still_report_their_findings(tmp_path: Path) -> None:
     findings = [f for f in scan(chain)[0] if f.rule_id == INTERP_RULE]
     assert [(f.file_path, f.line_number) for f in findings] == [("lib.js", 2)]
     assert "tool.js:42 passes it to run()" in findings[0].evidence
+    straddling = tmp_path / "straddling"
+    straddling.mkdir()
+    for rel, text in _CROSS_FILE_SHAPES["nested-calls-straddling-brackets"][0](40).items():
+        (straddling / rel).write_text(text, encoding="utf-8")
+    findings = [f for f in scan(straddling)[0] if f.rule_id == INTERP_RULE]
+    assert [(f.file_path, f.line_number) for f in findings] == [("lib.js", 2)]
+    assert "tool.js:3 passes it to run()" in findings[0].evidence
+
+
+def test_an_argument_cut_short_inside_a_pair_keeps_what_the_pair_holds(tmp_path: Path) -> None:
+    """The outer call's argument holds all of `[v)]` and strips it, so it reads
+    clean; the inner call's ends at the `)` inside the pair, so its strip keeps
+    `[v` and the tool value. The inner call is the one reported."""
+    _write(tmp_path, "lib.js", _SINK_LIB)
+    _write(tmp_path, "tool.js", "const v = args.path;\nx = run(\n  y = run(w[v)]);\n")
+    findings = _interp(tmp_path)
+    assert [(f.file_path, f.line_number) for f in findings] == [("lib.js", 2)]
+    assert "tool.js:3 passes it to run()" in findings[0].evidence
 
 
 def test_a_sink_inside_a_methods_object_literal_return_type_is_owned_by_the_method(tmp_path: Path) -> None:
@@ -611,3 +652,44 @@ def test_the_file_indexes_agree_with_the_per_sink_code_they_replace() -> None:
             assert reader.tool_arg_call("run", index) == _old_tool_arg_call(handler, "run", index), (handler, index)
         brackets = "".join(rng.choice("[]a ,()") for _ in range(rng.randint(0, 24)))
         assert qsi._strip_subscripts(brackets) == _old_strip_subscripts(brackets), brackets
+
+
+_CHAIN_OPENERS = ["run(", "run([", "run(]", "run( ", "run(v,", "run(args.", "run(a", "[run("]
+_CHAIN_MIDDLES = ["w", "v", "args", "args ", "", "[", "]", "args.p", "input.", "a[v]", "params.arguments"]
+_CHAIN_CLOSERS = ["[)]", ")]", ")", "])", "[)", ")]]", "[[)]]", "a[)]", "[)]v", ",v)", ", w)", "[v)]", "[ args)]"]
+_SPAN_TAINTED = {"v", "w", "a", "args", "run", "ab", "vw"}
+
+
+def _straddling_chain(rng: random.Random) -> str:
+    """Calls nested up to ten deep, their closing parens in brackets."""
+    depth = rng.randint(1, 10)
+    return (
+        rng.choice(["", "const v = args.path;\n"])
+        + "x = "
+        + "".join(rng.choice(_CHAIN_OPENERS) for _ in range(depth))
+        + rng.choice(_CHAIN_MIDDLES)
+        + "".join(rng.choice(_CHAIN_CLOSERS) for _ in range(depth))
+        + rng.choice(["", ";\nx = run(v);\n"])
+    )
+
+
+def test_straddling_chains_agree_with_the_per_sink_code() -> None:
+    """The call lookup against the code it replaced on nested chains whose
+    brackets straddle the arguments, and the stripped-argument reader against
+    stripping and searching the span itself, on spans of generated sources."""
+    rng = random.Random(23)
+    for _ in range(400):
+        handler = _straddling_chain(rng)
+        reader = qsi._JsHandler(handler)
+        for index in (0, 1):
+            assert reader.tool_arg_call("run", index) == _old_tool_arg_call(handler, "run", index), (handler, index)
+    for _ in range(150):
+        text = _generated(rng, _HANDLER_FRAGMENTS + _CHAIN_OPENERS + _CHAIN_CLOSERS, 8)
+        reader = qsi._JsHandler(text)
+        reader._index()
+        bare = qsi._BareSpans(text, _SPAN_TAINTED, reader._bracket_close)
+        for _ in range(40):
+            a = rng.randrange(len(text))
+            b = rng.randrange(a + 1, len(text) + 1)
+            want = qsi._js_derived(_old_strip_subscripts(text[a:b]), _SPAN_TAINTED)
+            assert bare.derived(a, b) == want, (text, a, b)
