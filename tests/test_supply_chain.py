@@ -419,6 +419,34 @@ def test_npm_lockfile_typosquat_detection(tmp_path: Path) -> None:
     assert any("typosquat" in f.evidence.lower() for f in supply002)
 
 
+def _typosquats(tmp_path: Path, name: str) -> list[str]:
+    lock = {"lockfileVersion": 3, "packages": {f"node_modules/{name}": {"version": "1.0.0"}}}
+    (tmp_path / "package-lock.json").write_text(json.dumps(lock))
+    return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-002"]
+
+
+@pytest.mark.parametrize("name", [
+    "modelcontextprotocal", "@modelcontextprotocal/sdk", "@modlecontextprotocol/server-filesystem",
+])
+def test_a_misspelled_mcp_scope_is_a_potential_typosquat(tmp_path: Path, name: str) -> None:
+    assert _typosquats(tmp_path, name) == [f"Potential typosquat: {name}"]
+
+
+@pytest.mark.parametrize("name", [
+    # Published npm packages (checked 2026-10-17) the `mcp-server-<a>-<b>` name
+    # shape reported as typosquats: it matched 37 of the first 1,000 packages
+    # npm's search returns for "mcp-server".
+    "mcp-server-code-runner",
+    "@transcend-io/mcp-server-custom-functions",
+    "@baidumap/mcp-server-baidu-map",
+    "@aashari/mcp-server-atlassian-jira",
+    "kubernetes-mcp-server-linux-amd64",
+    "@modelcontextprotocol/server-sequential-thinking",
+])
+def test_a_real_server_name_is_not_a_typosquat(tmp_path: Path, name: str) -> None:
+    assert _typosquats(tmp_path, name) == []
+
+
 # ---------------------------------------------------------------------------
 # Pipfile.lock scanning
 # ---------------------------------------------------------------------------

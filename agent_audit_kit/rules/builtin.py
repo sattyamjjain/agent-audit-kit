@@ -1956,9 +1956,15 @@ _r(
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
         "Reads the root package-lock.json against a fixed table of one npm package, "
-        "`axios` 1.7.0 to 1.7.3, plus three typosquat name patterns, so a vulnerable "
-        "version of any other package (`lodash` 4.17.15 in a lockfile) is not "
-        "reported. OpenClaw is not in it: it publishes calendar versions, which its "
+        "`axios` 1.7.0 to 1.7.3, and two misspellings of the MCP scope "
+        "(`@modlecontextprotocol`, `modelcontextprotocal`), so a vulnerable version of "
+        "any other package (`lodash` 4.17.15 in a lockfile) is not reported, and "
+        "neither is any other lookalike name, such as an unscoped copy of an official "
+        "server's (`mcp-server-sequential-thinking` for "
+        "`@modelcontextprotocol/server-sequential-thinking`, which npm has since "
+        "replaced with a security holding package). The rule used to report every "
+        "`mcp-server-<word>-<word>` name, a shape real servers share. "
+        "OpenClaw is not in it: it publishes calendar versions, which its "
         "own CVE pins read, and the only `openclaw` below 2.1.0, where the table used "
         "to place it, is the empty placeholder 0.0.1. The table lists no PyPI package or "
         "crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so "

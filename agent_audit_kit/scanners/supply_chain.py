@@ -38,10 +38,15 @@ KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, str]]] = {
     "rust": {},
 }
 
-# Typosquat patterns for popular MCP server packages
+# Typosquat patterns for popular MCP server packages: misspellings of the
+# official scope, each one edit from `modelcontextprotocol`. Neither matches a
+# package on npm (checked 2026-10-17). A third pattern, the name shape
+# `mcp-server-<word>-<word>`, matched real servers (`mcp-server-code-runner`,
+# `@baidumap/mcp-server-baidu-map`: 37 of the first 1,000 packages npm's search
+# returns for "mcp-server"), so it reported published packages at HIGH as
+# potential typosquats and was dropped.
 TYPOSQUAT_PATTERNS = [
     re.compile(r"modelcontextprotocal", re.IGNORECASE),  # typo of "protocol"
-    re.compile(r"mcp-server-[a-z]+-[a-z]+", re.IGNORECASE),  # suspicious double-hyphen patterns
     re.compile(r"@modlecontextprotocol", re.IGNORECASE),  # typo of "model"
 ]
 
