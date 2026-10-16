@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, url_readings
 
 # Reuse the tool-poisoning detectors — do NOT duplicate the regexes.
 from agent_audit_kit.scanners.tool_poisoning import (
@@ -64,6 +64,18 @@ _CARD_NAME_RE = re.compile(
 )
 _STDIO_TRANSPORTS = {"stdio", "local"}
 _REMOTE_TRANSPORTS = {"http", "https", "sse", "streamable-http", "streamable_http", "ws", "wss"}
+
+
+def _is_remote_endpoint(endpoint: str) -> bool:
+    """True when a card's advertised endpoint is a network URL.
+
+    A case-sensitive prefix test alone missed `HTTPS://mcp.example/` and
+    ` https://mcp.example/`, both of which a client's `new URL()` opens over the
+    network, so a card advertising one with `authentication.required: false`
+    and no transport `type` passed. `url_readings` reads them; the prefix test
+    still answers first.
+    """
+    return endpoint.startswith(("http://", "https://", "ws")) or bool(url_readings(endpoint))
 _PROVENANCE_FIELDS = ("signature", "signatures", "provenance", "attestation",
                       "publisher", "publisherId", "publisher_id", "verified")
 _PLACEHOLDER = {"", "todo", "changeme", "none", "null", "unsigned", "n/a",
@@ -136,7 +148,7 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
         ttype = transport.lower()
     auth = data.get("authentication")
     auth_required = auth.get("required") if isinstance(auth, dict) else None
-    is_remote = ttype in _REMOTE_TRANSPORTS or endpoint.startswith(("http://", "https://", "ws"))
+    is_remote = ttype in _REMOTE_TRANSPORTS or _is_remote_endpoint(endpoint)
     if is_remote and auth_required is False:
         findings.append(make_finding(
             _CARD_MISMATCH,
@@ -148,7 +160,7 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
             ),
             find_line_number(raw_text, "authentication") or find_line_number(raw_text, "transport"),
         ))
-    if ttype in _STDIO_TRANSPORTS and endpoint.startswith(("http://", "https://", "ws")):
+    if ttype in _STDIO_TRANSPORTS and _is_remote_endpoint(endpoint):
         findings.append(make_finding(
             _CARD_MISMATCH,
             rel_path,

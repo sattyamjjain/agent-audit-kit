@@ -349,6 +349,38 @@ def test_the_loopback_exemption_is_the_shared_one(tmp_path: Path, url: str, fire
     assert bool(hits) is fires
 
 
+@pytest.mark.parametrize(("url", "scheme"), [
+    (" http://mcp.example.com/mcp", "http"),        # Node strips leading spaces and C0 controls
+    ("\x00http://mcp.example.com/mcp", "http"),
+    ("h\tttp://mcp.example.com/mcp", "http"),       # and removes every tab and newline
+    ("http\n://mcp.example.com/mcp", "http"),
+    ("http:/mcp.example.com/mcp", "http"),           # and skips any run of slashes and backslashes
+    ("http:mcp.example.com/mcp", "http"),
+    ("HTTP:\\\\mcp.example.com\\mcp", "http"),
+    ("ws:/mcp.example.com/mcp", "ws"),
+])
+def test_every_spelling_a_client_opens_as_cleartext_fires(tmp_path: Path, url: str, scheme: str) -> None:
+    """`^(?:http|ws)://` read the text, not the URL. Each of these is a cleartext
+    URL to Node's `new URL()`, which Claude Code and VS Code connect with, and
+    none of them fired."""
+    _write_mcp_config(tmp_path, {"x": {"url": url}})
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-001"]
+    assert len(hits) == 1
+    assert f"cleartext {scheme}://" in hits[0].evidence
+
+
+@pytest.mark.parametrize("url", [" https://mcp.example.com/mcp", "HTTPS:/mcp.example.com/mcp", "wss:mcp.example.com"])
+def test_an_encrypted_url_in_another_spelling_does_not_fire(tmp_path: Path, url: str) -> None:
+    _write_mcp_config(tmp_path, {"x": {"url": url}})
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-001"]
+
+
+def test_a_backslash_url_is_loopback_only_when_every_reader_agrees(tmp_path: Path) -> None:
+    """localhost to Node, mcp.example.com to curl and httpx: not exempt."""
+    _write_mcp_config(tmp_path, {"x": {"url": "http://localhost\\@mcp.example.com/mcp"}})
+    assert [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-TRANSPORT-001"]
+
+
 def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:
     """`data.get` on a JSON array raised AttributeError and failed the scanner."""
     (tmp_path / ".mcp.json").write_text("[1, 2]", encoding="utf-8")

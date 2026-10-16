@@ -13,6 +13,7 @@ from agent_audit_kit.scanners._helpers import (
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
+    url_readings,
 )
 
 # ---- MCP config file discovery (mirrors mcp_config.py) ----
@@ -42,7 +43,25 @@ _MCP_CONFIG_FILES: list[str] = [
 # host is exempt through `_helpers.is_loopback_url`, the definition AAK-MCP-001
 # and AAK-MCP-009 share; it replaced an anchored regex that knew 127.0.0.1 alone
 # of the 127.0.0.0/8 block.
-_CLEARTEXT_URL_RE = re.compile(r"^(?:http|ws)://", re.IGNORECASE)
+_CLEARTEXT_URL_RE = re.compile(r"^(http|ws)://", re.IGNORECASE)
+
+
+def _cleartext_scheme(url: str) -> str | None:
+    """`http` or `ws` when a client would reach `url` in cleartext, else None.
+
+    The anchored regex alone missed every spelling a client accepts that does
+    not open with `http://`: a leading space, `http:/host`, `http:\\\\host`, a
+    tab inside the scheme. Node strips, removes and skips those as
+    `url_readings` describes, so such a server was reached in cleartext with no
+    finding. The regex stays as the first test, so a URL it matched still fires.
+    """
+    match = _CLEARTEXT_URL_RE.match(url)
+    if match:
+        return match.group(1).lower()
+    for reading in url_readings(url):
+        if reading.scheme in ("http", "ws"):
+            return reading.scheme
+    return None
 
 # ---- AAK-TRANSPORT-002: TLS validation disabling ----
 _TLS_DISABLE_KEYS = {
@@ -98,8 +117,8 @@ def _check_server(
     env: dict[str, Any] = server_cfg.get("env", {})
 
     # AAK-TRANSPORT-001: cleartext http:// or ws://, excluding loopback
-    if url and _CLEARTEXT_URL_RE.match(url) and not is_loopback_url(url):
-        scheme = url.split("://", 1)[0].lower()
+    scheme = _cleartext_scheme(url) if url else None
+    if scheme and not is_loopback_url(url):
         secure = "wss" if scheme == "ws" else "https"
         findings.append(make_finding(
             "AAK-TRANSPORT-001",

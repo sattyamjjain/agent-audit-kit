@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.models import ScanResult
 from agent_audit_kit.output.sarif import format_results
 from agent_audit_kit.rules.builtin import RULES
@@ -90,6 +92,28 @@ def test_stdio_with_remote_endpoint_mismatch(tmp_path: Path) -> None:
         "serverInfo": {"name": "x"},
         "transport": {"type": "stdio", "endpoint": "https://remote.example/mcp"},
         "authentication": {"required": True, "schemes": ["oauth2"]},
+        "capabilities": {"tools": True},
+        "signature": "realsig==",
+        "tools": [{"name": "t", "description": "ok"}],
+    }), encoding="utf-8")
+    findings, _ = scan(tmp_path)
+    assert "AAK-MCP-CARD-002" in _rule_ids(findings)
+
+
+@pytest.mark.parametrize("endpoint", [
+    "HTTPS://remote.example/mcp",
+    "WSS://remote.example/mcp",
+    " https://remote.example/mcp",
+    "https:/remote.example/mcp",
+])
+def test_an_endpoint_a_client_opens_over_the_network_is_remote(tmp_path: Path, endpoint: str) -> None:
+    """A case-sensitive `startswith` read these as not remote, so a card with no
+    transport `type` and `authentication.required: false` passed, though a
+    client's `new URL()` opens each one over the network."""
+    (tmp_path / "srv.server-card.json").write_text(json.dumps({
+        "serverInfo": {"name": "x"},
+        "transport": {"endpoint": endpoint},
+        "authentication": {"required": False},
         "capabilities": {"tools": True},
         "signature": "realsig==",
         "tools": [{"name": "t", "description": "ok"}],

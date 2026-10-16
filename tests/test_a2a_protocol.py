@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners.a2a_protocol import scan
 
 
@@ -271,6 +273,25 @@ def test_a2a_004_https_not_flagged(tmp_path: Path) -> None:
     findings, _ = scan(tmp_path)
     a2a_004 = [f for f in findings if f.rule_id == "AAK-A2A-004"]
     assert len(a2a_004) == 0, "HTTPS endpoints should not be flagged"
+
+
+@pytest.mark.parametrize("url", [
+    " http://insecure-agent.example/api",
+    "h\tttp://insecure-agent.example/api",
+    "http:/insecure-agent.example/api",
+    "HTTP:\\\\insecure-agent.example\\api",
+])
+def test_a2a_004_every_spelling_a_client_opens_as_http_fires(tmp_path: Path, url: str) -> None:
+    """`^http://` read the text; Node's `fetch` strips the space, drops the tab
+    and skips the odd slashes, and connects in cleartext to each of these."""
+    _write_agent_card(tmp_path, {"name": "A", "url": url, "authentication": {"type": "bearer"}})
+    assert [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-A2A-004"]
+
+
+def test_a2a_004_an_https_url_in_another_spelling_is_not_flagged(tmp_path: Path) -> None:
+    _write_agent_card(tmp_path, {"name": "A", "url": " HTTPS:/secure-agent.example/api",
+                                 "authentication": {"type": "bearer"}})
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-A2A-004"]
 
 
 def test_a2a_004_skill_level_http_endpoint(tmp_path: Path) -> None:

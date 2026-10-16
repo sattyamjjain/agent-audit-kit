@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, url_readings
 
 # ---- Known file names and patterns for A2A Agent Cards ----
 _AGENT_CARD_FILES: list[str] = [
@@ -22,6 +22,18 @@ _INTERNAL_CAPABILITIES = re.compile(
 
 # ---- AAK-A2A-004: HTTP (not HTTPS) endpoint ----
 _HTTP_URL_RE = re.compile(r"^http://", re.IGNORECASE)
+
+
+def _is_http(value: str) -> bool:
+    """True when a client would reach `value` over cleartext http.
+
+    `^http://` alone missed what a WHATWG client (Node's `fetch`, a browser)
+    still reads as http: a leading space, `http:/host`, `http:\\\\host`, a tab
+    in the scheme. `url_readings` reads those; the regex still answers first.
+    """
+    return bool(_HTTP_URL_RE.match(value)) or any(
+        reading.scheme == "http" for reading in url_readings(value)
+    )
 
 
 def _find_agent_cards(project_root: Path) -> list[Path]:
@@ -155,7 +167,7 @@ def _check_endpoints(
     # Check top-level url/endpoint fields
     for key in ("url", "endpoint", "baseUrl", "base_url"):
         val = data.get(key, "")
-        if isinstance(val, str) and _HTTP_URL_RE.match(val):
+        if isinstance(val, str) and _is_http(val):
             findings.append(make_finding(
                 "AAK-A2A-004",
                 rel_path,
@@ -172,7 +184,7 @@ def _check_endpoints(
             skill_name = skill.get("name", skill.get("id", "<unnamed>"))
             for key in ("url", "endpoint"):
                 val = skill.get(key, "")
-                if isinstance(val, str) and _HTTP_URL_RE.match(val):
+                if isinstance(val, str) and _is_http(val):
                     findings.append(make_finding(
                         "AAK-A2A-004",
                         rel_path,
@@ -311,7 +323,7 @@ def _check_impersonation(
 
     for key in ("url", "endpoint", "baseUrl", "base_url"):
         val = data.get(key, "")
-        if isinstance(val, str) and _HTTP_URL_RE.match(val):
+        if isinstance(val, str) and _is_http(val):
             findings.append(make_finding(
                 "AAK-A2A-007",
                 rel_path,
