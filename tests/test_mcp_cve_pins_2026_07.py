@@ -697,6 +697,24 @@ def test_a_launch_reached_through_a_yaml_alias_names_its_line(tmp_path: Path) ->
     assert _lines(tmp_path, "team.mcp.yaml", content, N8NMCP) == [3]
 
 
+def test_many_findings_in_one_large_package_json_read_it_once(tmp_path: Path) -> None:
+    """A 1.8 MiB package.json with 95,000 dependencies, under the 2 MB limit. Every
+    pin filtered every declaration, so this took about 4 s before declarations
+    were indexed by name (a 1.6 MiB one measured 7.0 s on a loaded machine)."""
+    import time
+
+    deps = {f"p{i:05d}": f"^1.{i % 7}.{i % 5}" for i in range(95_000)}
+    deps.update(dict(_js_pins_at_an_affected_version()))
+    text = json.dumps({"name": "app", "dependencies": deps}, separators=(",", ":"))
+    (tmp_path / "package.json").write_text(text, encoding="utf-8")
+    start = time.perf_counter()
+    findings = scan(tmp_path)[0]
+    elapsed = time.perf_counter() - start
+    assert len(findings) > 80
+    assert all(f.line_number == 1 for f in findings)   # one line of JSON
+    assert elapsed < 3.0, f"{len(findings)} findings took {elapsed:.1f}s"
+
+
 def test_whatsapp_limitation_names_every_file_it_reads() -> None:
     """The files the pin table reads at any depth include the `*.mcp.yaml`
     configs, and the key forms beside a URL are read too."""

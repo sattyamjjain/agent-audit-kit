@@ -79,6 +79,7 @@ CVSS is the CVSS 4.0 score that NVD's record carries from GitHub's advisory, mar
 NVD has not scored the record itself.
 
 Dispositioned at 2026-10-17T00:43:34Z.
+
 ## 2026-10-17 (v0.6.23): a correction, the WhatsApp MCP pin read other projects' packages
 
 **`AAK-MCP-WHATSAPP-CVE-2026-46555-001` matched packages the advisory does not name.**
