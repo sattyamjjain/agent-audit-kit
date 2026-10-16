@@ -16,6 +16,143 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.21): five more disclosures and two held-back records, four new pins, two floors raised, one out of scope
+
+The watcher opened five `cve-response` issues at 21:23Z on 2026-10-15 (#1001-#1005),
+one `sev/critical`, two `sev/high` and two `sev/medium`. Two existing pins move their
+floors, NetLicensing and the MCP Python SDK, and three records get new pins: Network-AI
+on npm, Conductor on its image, and mcp-remote on a launch that passes `--device-code`.
+A dry run of the watcher found nine more records in its 7-day window that it had not
+filed yet. Two are triaged here, so it does not file them: CVE-2026-59951, a second MCP
+Python SDK record, gets its own pin, and Wheels CLI is out of scope. The other seven
+are left for the watcher. Every pin was measured with the scanner on a firing fixture
+and a negative one. NVD's CVSS 3.1 scores match the titles and `sev/` labels the
+watcher filed, so nothing was corrected first. NVD text below is quoted from the API
+record, read on 2026-10-16.
+
+**NetLicensing MCP (CVE-2026-57496) raises `AAK-MCP-NETLICENSING-CVE-2026-54446-001`
+from 0.1.6 to 0.1.8, and the rule to CRITICAL.** NVD: "Prior to 0.1.8,
+netlicensing_get_product passes the caller-controlled product_number to
+src/netlicensing_mcp/tools/products.py, which interpolates it into a REST path consumed
+by nl_get() in src/netlicensing_mcp/client.py without path-segment validation." Checked
+in the wheels: 0.0.6, the first release, and 0.1.7 build the path as
+`f"/product/{product_number}"` with no check, and 0.1.8 (`b8fd0ea`) validates every
+segment before the request is built. GHSA-hxpf-9xvq-wph8 stops its range at 0.1.5, but
+0.1.6 and 0.1.7 build the path the same way, and 0.1.7 is where the token redaction the
+record says the traversal skips first appears; earlier releases redact nothing, so the
+same request reads the tokens there too. The fix is above the pin's 0.1.6 floor and the
+CVE (CVSS 9.6) is more severe than the rule, but the old range sits inside the new one,
+so, as with obsidian-tc and ContextForge, one rule carries both at the higher severity
+instead of two rules reporting the same line. The rule now also reads the images the
+README runs, `ghcr.io/labs64/netlicensing-mcp` and Docker Hub's `labs64/netlicensing-mcp`,
+both tagged by release; on 2026-10-16 both registries' `latest` was the 0.1.10 digest,
+and so was Docker Hub's floating `0.1`. PyPI's
+newest release is 0.1.10 too, and the README launches an unpinned `uvx netlicensing-mcp`,
+so the pin now needs a stated version. Upgrade to 0.1.8 or later and rotate the
+NetLicensing API keys the server could reach.
+
+**The MCP Python SDK (CVE-2026-109527) raises `AAK-MCP-SDK-CVE-2026-52869-001` from
+1.28.1 to 1.29.1 and adds the 2.0 line.** NVD: "In mcp versions before 1.29.1 and from
+2.0.0a1 through 2.0.1, the Streamable HTTP session manager, SSE message endpoint, and
+OAuth authorization-server routes buffer complete HTTP request bodies without enforcing
+a maximum size." GHSA-fmmv-w9g8-j3gc gives `mcp` below 1.29.1 and from 2.0.0 below
+2.1.0. Checked in the source and the wheels: 0.9.1 and 1.0.0 already read the SSE body
+whole (`await request.json()`); 1.29.1 carries the limit (`5f0b6af9`, `4dc224fa`) and
+2.1.0 its 2.x twin (`03aaebd3`, `57394b05`); 2.0.1, published to PyPI two days after
+2.1.0, has none. The CVE is HIGH, as the rule is, so the floor rises. The 2.0 line sits
+above any 1.x floor, so a pin row now takes further affected ranges (`also`), and one
+declaration still reports once. npm also has an unrelated package named `mcp` (1.4.2),
+which this pin compared against the PyPI floor; both `mcp` pins now read PyPI only.
+Upgrade to 1.29.1, or to 2.1.0 on the 2.x line.
+
+**CVE-2026-59951, not yet filed, gets `AAK-MCP-SDK-CVE-2026-59951-001`, `mcp` from
+1.8.0 up to 1.30.0 and from 2.0.0 up to 2.2.0.** NVD: "From 1.8.0 until 1.30.0 and
+2.2.0, stateful Streamable HTTP servers, including FastMCP, MCPServer,
+Server.streamable_http_app(), and StreamableHTTPSessionManager, retain session entries
+without an idle expiration or aggregate session-count limit." GHSA-84m7-p3x7-pcfv gives
+the same ranges and labels it high, but the record's own score is CVSS 4.0 6.9, MEDIUM,
+so it is its own rule beside the HIGH pin rather than a floor change on it. Checked in
+the source: `streamable_http_manager.py` is absent at 1.7.1 and present at 1.8.0; 1.29.1
+and 2.1.1 have only an optional idle timeout, off by default; 1.30.0 and 2.2.0 add a
+30-minute default and a 10,000-session cap. Upgrade to 1.30.0, or to 2.2.0 on the 2.x
+line.
+
+**Network-AI (CVE-2026-109331) gets `AAK-MCP-NETWORKAI-CVE-2026-109331-001`,
+`network-ai` from 5.14.0 up to 5.15.2, and CVE-2026-73614 joins it.** NVD: "Network-AI
+from 5.14.0 before 5.15.2 contains a security control bypass vulnerability in the
+ClaudeHookBridge PreToolUse hook, which matches deny patterns only against the first
+present candidate field." Both records name `pkg:npm/network-ai`, from
+Jovancoding/Network-AI. Checked in the npm tarballs: ClaudeHookBridge is absent at
+5.13.4 and present from 5.14.0, where `extractTarget` returns the first candidate field
+cut to 500 characters; 5.15.1 drops the cut (`extractFullTarget`, GHSA-743h-jr5x-mpcr)
+but still reads one field; 5.15.2 matches the patterns against every field. The
+2026-08-14 entry called CVE-2026-73614, the 500-character cut, unpinnable, because no
+package carried the bridge's name. It ships in `network-ai`, inside this pin's range,
+so it joins the pin. `AAK-POLICY-TRUNCATION-001`, the class rule, has listed it since
+#592 (2026-08-15), which this ledger never recorded, so it gets no row in the table
+below: its coverage did not start today. The README's hook command and plugin launch are unpinned
+(`npx -y -p network-ai ...`) and install 5.15.4, which is fixed, and the hook command in
+`.claude/settings.json` is not read at all; a limitations fixture proves that gap.
+Upgrade to 5.15.2 or later.
+
+**Conductor (CVE-2026-109402) gets `AAK-MCP-CONDUCTOR-CVE-2026-109402-001` on its image,
+from 3.22.0, with no fixed release.** NVD: "Affected is the function
+MCPService.listTools of the file
+ai/src/main/java/org/conductoross/conductor/ai/mcp/MCPService.java of the component MCP
+Service. Performing a manipulation of the argument mcpServer results in server-side
+request forgery." VulDB names 3.22.0 alone. Checked in the source: MCPService arrives in
+`0c723f7a` (2026-02-03), so 3.22.0-beta is the first build with it; the
+`LIST_MCP_TOOLS` worker passes the workflow's `mcpServer` straight to `listTools`, which
+connects with no destination check, on `main` as at 3.22.0. Upstream closed SSRF guards
+for the HTTP task as not planned on 2026-10-04 (conductor-oss/conductor#1018, "an enterprise feature"), so no
+fix is coming. The image `conductoross/conductor`, which the README runs, bundles the AI
+module, but its workers run only when `conductor.integrations.ai.enabled` is true, and
+the image's configuration does not set it. A version pin cannot see that setting, as
+with the obsidian-tc and Kotlin SDK pins, so every Conductor image from 3.22.0 is
+reported, `latest` (pushed 2026-10-14) included, and the rule says so. 3.22.0-rc1
+predates MCPService but reads as 3.22.0, and the README's `next` tag states no version.
+Leave the AI workers off unless you use them, limit who can define workflows, and block
+the server's egress to internal ranges.
+
+**mcp-remote (CVE-2026-108716) gets `AAK-MCP-REMOTE-CVE-2026-108716-001`, from 0.8.0,
+on a launch that passes `--device-code`.** NVD: "mcp-remote 0.8.0 through 0.14.3
+contains a cleartext transmission vulnerability in authorizeWithDeviceCode that sends
+client secrets and receives tokens without enforcing HTTPS endpoints." The npm package
+moved from geelen/mcp-remote to punkpeye/mcp-remote at 0.3.0, under the same name.
+Checked in the tarballs and the source: `authorizeWithDeviceCode` is absent at 0.7.0 and
+present from 0.8.0, it runs only when the arguments include `--device-code`, and it
+fetches both endpoints with no scheme check. `src/lib/device-authorization.ts` is
+unchanged from 0.14.3 to 0.15.1, the newest release (2026-10-14), so 0.14.3 is only the
+newest release at disclosure, and there is no fixed release. A pin on the version alone
+would report every mcp-remote launch, so a pin row can now require a launch option
+(`requires_arg`), and launch declarations keep their command line. An unpinned launch
+with the flag is reported, since the newest release is affected; a dependency entry and
+a lockfile record no arguments and are not. The CRITICAL pin for 0.1.16 to 0.1.38 is
+unchanged. Sign in without `--device-code`, or check that the server's OAuth endpoints
+are https.
+
+**Wheels CLI (CVE-2026-111451), not yet filed, is out of scope.** NVD: "Inputs may
+originate from CI variables, branch names, packages or an AI agent using the CLI's MCP
+tools." Wheels CLI ships through Homebrew, Scoop, apt and yum, and Chocolatey, and
+GHSA-cghp-86c6-6fjc lists its ecosystem as "other". None of these is a file AAK reads,
+and npm's `wheels` is an unrelated static-site generator last published in 2022.
+Upgrade to 4.1.2 or later.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-57496 | 9.6 | `netlicensing-mcp` (PyPI), `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp` (images) | **Floor raised** on `AAK-MCP-NETLICENSING-CVE-2026-54446-001`: 0.1.6 to 0.1.8, and the rule to CRITICAL. | #1001 |
+| CVE-2026-109527 | 7.5 | `mcp` (PyPI) | **Floor raised** on `AAK-MCP-SDK-CVE-2026-52869-001`: 1.28.1 to 1.29.1, plus 2.0.0 up to 2.1.0. | #1002 |
+| CVE-2026-109331 | 7.4 | `network-ai` (npm) | **New pin** `AAK-MCP-NETWORKAI-CVE-2026-109331-001`: from 5.14.0 up to 5.15.2. | #1003 |
+| CVE-2026-109402 | 6.3 | `conductoross/conductor` (image) | **New pin** `AAK-MCP-CONDUCTOR-CVE-2026-109402-001`: from 3.22.0, and `latest`. No fixed release yet. | #1004 |
+| CVE-2026-108716 | 5.3 | `mcp-remote` (npm, launched with `--device-code`) | **New pin** `AAK-MCP-REMOTE-CVE-2026-108716-001`: from 0.8.0. No fixed release yet. | #1005 |
+| CVE-2026-111451 | 7.8 | Wheels CLI (Homebrew, Scoop, apt, yum, Chocolatey) | **Out of scope**, non-pinnable: no artifact AAK reads. Fixed in 4.1.2. | not filed |
+| CVE-2026-59951 | 6.9 (4.0) | `mcp` (PyPI) | **New pin** `AAK-MCP-SDK-CVE-2026-59951-001`: from 1.8.0 up to 1.30.0, and from 2.0.0 up to 2.2.0. | not filed |
+
+CVSS is NVD's CVSS 3.1 score, or its CVSS 4.0 score where NVD has only that, marked
+(4.0).
+
+Dispositioned at 2026-10-16T08:03:29Z.
+
 ## 2026-10-16 (v0.6.21): five disclosures, four new pins, the first on the MCP Java SDK
 
 The watcher opened five `cve-response` issues at 17:01Z on 2026-10-15 (#995-#999),

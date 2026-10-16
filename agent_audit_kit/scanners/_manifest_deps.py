@@ -107,6 +107,9 @@ class Declaration:
     section: str = ""
     # The environment marker it applies under (`python_version < "3.9"`), or "".
     marker: str = ""
+    # For a launch, the whole command line it came from, so a pin whose flaw sits
+    # behind an option (mcp-remote's `--device-code`) can ask whether it was passed.
+    argv: tuple[str, ...] = ()
 
 
 _PIPFILE_NON_PACKAGES = frozenset({"source", "requires", "scripts", "pipenv"})
@@ -370,19 +373,22 @@ def _npm_overrides(value: object, parent: str = "") -> list[Declaration]:
     return found
 
 
-def _launch_declarations(packages: list[Launched]) -> list[Declaration]:
+def _launch_declarations(packages: list[Launched], argv: list[str]) -> list[Declaration]:
     found: list[Declaration] = []
+    line = tuple(argv)
     for launched in packages:
         text = f"{launched.launcher} {launched.spec}"
         if launched.ecosystem == "js":
             parts = npm_spec(launched.spec)
             if parts.kind == "registry" and parts.name:
-                found.append(Declaration(parts.name, parts.version, "npm", "js", "launch", text))
+                found.append(Declaration(parts.name, parts.version, "npm", "js", "launch", text,
+                                         argv=line))
         else:
             parts = py_spec(launched.spec)
             if parts.kind != "local" and parts.name:
                 version = "" if parts.kind == "vcs" else parts.version
-                found.append(Declaration(parts.name, version, "pep440", "py", "launch", text))
+                found.append(Declaration(parts.name, version, "pep440", "py", "launch", text,
+                                         argv=line))
     return found
 
 
@@ -405,7 +411,8 @@ def package_json_declarations(data: dict) -> list[Declaration]:
     if isinstance(scripts, dict):
         for line in scripts.values():
             if isinstance(line, str):
-                found.extend(_launch_declarations(launched_packages(shell_tokens(line))))
+                tokens = shell_tokens(line)
+                found.extend(_launch_declarations(launched_packages(tokens), tokens))
     return found
 
 
@@ -447,12 +454,13 @@ def mcp_config_declarations(data: object) -> list[Declaration]:
         argv = _argv(entry)
         if not argv:
             continue
-        found.extend(_launch_declarations(launched_packages(argv)))
+        found.extend(_launch_declarations(launched_packages(argv), argv))
         head = basename(argv[0])
         if head and not starts_with_launcher(argv):
             # A program run by name: the installed package of that name, at an
             # unknown version (`"command": "ruflo"`). Its registry is unknown.
-            found.append(Declaration(head, "", "npm", None, "launch", f"command {head}"))
+            found.append(Declaration(head, "", "npm", None, "launch", f"command {head}",
+                                     argv=tuple(argv)))
     return found
 
 

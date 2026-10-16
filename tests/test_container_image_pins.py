@@ -618,3 +618,69 @@ def test_nullhub_fixtures_positive_and_negative() -> None:
 def test_nullhub_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yml", f"services:\n  hub:\n    image: {ref}\n")
     assert (NULLHUB in ids) is fires
+
+
+# --- 2026-10-16 batch (#1001, #1004): NetLicensing's images and Conductor's ---
+
+NETLICENSING = "AAK-MCP-NETLICENSING-CVE-2026-54446-001"
+CONDUCTOR = "AAK-MCP-CONDUCTOR-CVE-2026-109402-001"
+
+
+def test_netlicensing_image_fixtures_positive_and_negative() -> None:
+    """The README's container on 0.1.7 fires on its image line; the Docker Hub image
+    on 0.1.8 does not."""
+    root = FIXTURES / "cve-2026-57496-netlicensing"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.file_path, f.line_number) for f in findings] == [
+        (NETLICENSING, "docker-compose.yml", 5),
+    ]
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/labs64/netlicensing-mcp:0.1.3", True),   # the oldest GHCR tag
+    ("ghcr.io/labs64/netlicensing-mcp:0.1.7", True),
+    ("ghcr.io/labs64/netlicensing-mcp:0.1.8", False),  # b8fd0ea
+    ("labs64/netlicensing-mcp:0.1.2", True),           # the oldest Docker Hub tag
+    ("labs64/netlicensing-mcp:0.1.6", True),
+    ("labs64/netlicensing-mcp:0.1.8", False),
+    ("labs64/netlicensing-mcp:0.1.10", False),         # the newest release
+    ("labs64/netlicensing-mcp:latest", False),         # the 0.1.10 digest on 2026-10-16
+    ("ghcr.io/labs64/netlicensing-mcp", False),        # untagged is latest
+    ("labs64/netlicensing-mcp:0.1", False),            # the two-part tag floats to 0.1.10
+    ("labs64/netlicensing-mcp-proxy:0.1.7", False),    # another image name
+])
+def test_netlicensing_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  nl:\n    image: {ref}\n")
+    assert (NETLICENSING in ids) is fires
+
+
+def test_conductor_pin_carries_its_cve_and_severity() -> None:
+    assert RULES[CONDUCTOR].cve_references == ["CVE-2026-109402"]
+    assert RULES[CONDUCTOR].severity.value == "medium"
+
+
+def test_conductor_fixtures_positive_and_negative() -> None:
+    root = FIXTURES / "cve-2026-109402-conductor"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(CONDUCTOR, 5)]
+    assert CONDUCTOR in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("conductoross/conductor:3.21.24", False),       # before MCPService
+    ("conductoross/conductor:3.22.0-beta", True),    # MCPService is in it (2026-02-19)
+    ("conductoross/conductor:3.22.0", True),         # the release the record names
+    ("conductoross/conductor:3.32.5", True),
+    ("conductoross/conductor:3.33.0-rc13", True),    # no fixed release
+    ("conductoross/conductor:4.0.0-alpha.1", True),  # the newest tag
+    ("conductoross/conductor:latest", True),         # pushed 2026-10-14
+    ("conductoross/conductor", True),                # untagged is latest
+    ("conductoross/conductor:next", False),          # the README's tag states no version
+    ("conductoross/conductor-standalone:3.22.0", False),  # another image name
+    ("orkesio/orkes-conductor-community:3.22.0", False),  # another repository
+])
+def test_conductor_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  conductor:\n    image: {ref}\n")
+    assert (CONDUCTOR in ids) is fires

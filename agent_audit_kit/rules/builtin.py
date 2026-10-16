@@ -170,7 +170,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-OPENCLAW-CVE-2026-62195-001": ["IAM-01", "STA-08"],
     "AAK-MCP-REPOMIX-CVE-2026-49988-001": ["DSP-17", "STA-08"],
     "AAK-MCP-BETTERAUTH-CVE-2026-53512-001": ["IAM-01", "IAM-16", "STA-08"],
-    "AAK-MCP-SDK-CVE-2026-52869-001": ["IAM-01", "AIS-08"],
+    "AAK-MCP-SDK-CVE-2026-52869-001": ["IAM-01", "AIS-08", "BCR-01"],
     "AAK-MCP-9ROUTER-CVE-2026-46339-001": ["IAM-01", "AIS-07", "STA-08"],
     "AAK-MCP-N8NMCP-CVE-2026-54052-001": ["IAM-01", "DSP-07", "STA-08"],
     "AAK-MCP-DBTMCP-CVE-2026-44968-001": ["AIS-07", "DSP-17", "STA-08"],
@@ -236,6 +236,10 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-NULLHUB-CVE-2026-110616-001": ["IAM-01", "IVS-04", "STA-08"],
     "AAK-MCP-JUNIE-CVE-2026-111091-001": ["IAM-16", "STA-08"],
     "AAK-MCP-JAVASDK-CVE-2026-108395-001": ["STA-08", "IVS-04", "BCR-01"],
+    "AAK-MCP-SDK-CVE-2026-59951-001": ["STA-08", "IVS-04", "BCR-01"],
+    "AAK-MCP-NETWORKAI-CVE-2026-109331-001": ["IAM-05", "STA-08"],
+    "AAK-MCP-CONDUCTOR-CVE-2026-109402-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-REMOTE-CVE-2026-108716-001": ["CEK-08", "IVS-04", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -9457,7 +9461,7 @@ _r(
 
 _r(
     "AAK-MCP-SDK-CVE-2026-52869-001",
-    "MCP Python SDK session/task cross-client access (`mcp` < 1.28.1)",
+    "MCP Python SDK session/task cross-client access and unbounded request bodies (`mcp` < 1.29.1, and 2.0.x)",
     "The official MCP Python SDK (`mcp` on PyPI) before 1.28.1 has three "
     "session-isolation flaws reachable over its HTTP transports: the SSE and "
     "stateful Streamable HTTP transports route requests by `session_id` / "
@@ -9467,26 +9471,44 @@ _r(
     "default handlers key tasks only by id, letting any client enumerate / read / "
     "cancel other clients' tasks (CVE-2026-52870, from 1.23.0); and the deprecated "
     "`websocket_server` transport accepts handshakes with no Host/Origin validation "
-    "(CVE-2026-59950). Treat < 1.28.1 (and unpinned) as exposed.",
+    "(CVE-2026-59950). Before 1.29.1, and on the 2.0 line from 2.0.0a1 to 2.0.1, "
+    "the SSE message endpoint, the Streamable HTTP session manager and the OAuth "
+    "authorization-server routes also buffer a whole request body with no size "
+    "limit, so an unauthenticated client can send a large or streamed body and "
+    "exhaust the server's memory (CVE-2026-109527, CVSS 3.1 7.5, CWE-770). Checked "
+    "in the source: 0.9.1 and 1.0.0 already read the SSE body whole "
+    "(`request.json()`), and 1.29.1 and 2.1.0 add the limit; 2.0.1, released after "
+    "2.1.0, does not have it. Stdio-only servers are not exposed to that one.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade `mcp` to >= 1.28.1 and pin it. Bind every session to the principal "
-    "that created it and validate Host/Origin on WebSocket handshakes.",
+    "Upgrade `mcp` to 1.29.1 or later, or to 2.1.0 or later on the 2.x line, and pin "
+    "it. Bind every session to the principal that created it and validate "
+    "Host/Origin on WebSocket handshakes. Until you upgrade, cap the request body "
+    "size at a reverse proxy in front of any HTTP transport.",
     sarif_name="McpPythonSdkSessionIsolation",
-    cve_references=["CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"],
+    cve_references=[
+        "CVE-2026-52869",
+        "CVE-2026-52870",
+        "CVE-2026-59950",
+        # Fixed in 1.29.1, above the old 1.28.1 floor, and as severe as the rule,
+        # so the floor rose; the 2.0 line is the pin's second range.
+        "CVE-2026-109527",
+    ],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025", "MCP10:2025"],
-    owasp_agentic_references=["ASI03", "ASI04"],
-    adversa_references=["ADV-AUTH-11"],
+    owasp_agentic_references=["ASI03", "ASI04", "ASI08"],
+    adversa_references=["ADV-AUTH-11", "ADV-DOS-01"],
     limitations=(
-        "Reads `mcp` in requirements*.txt at any depth and, at the project root "
-        "only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
-        "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
-        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
-        "lowest version a range allows. A reference must state a version to be "
-        "reported, so a bare `mcp` is not. The dependency is not read when it is "
-        "declared in a sub-directory manifest (`services/api/pyproject.toml`) or in "
-        "a lockfile format the reader does not parse (`pdm.lock`). A file over 2 MB, "
-        "or a lockfile over 32 MiB, is not read."
+        "Reads `mcp` below 1.29.1, and from 2.0.0 below 2.1.0, in requirements*.txt "
+        "at any depth and, at the project root only, in pyproject.toml, Pipfile, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
+        "poetry.lock and uv.lock lockfiles, taking the lowest version a range "
+        "allows. npm's unrelated `mcp` package, in package.json or an npm lockfile, "
+        "is not read as the SDK. A reference must state a version to be "
+        "reported, so a bare `mcp` is not. It reads versions, not code, so a "
+        "stdio-only server, or one behind a body-size limit, is reported too. The "
+        "dependency is not read when it is declared in a sub-directory manifest "
+        "(`services/api/pyproject.toml`) or in a lockfile format the reader does not "
+        "parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -12884,42 +12906,55 @@ _r(
 
 _r(
     "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
-    "netlicensing-mcp < 0.1.6 (unauthenticated /mcp falls back to the operator's API key)",
-    "NetLicensing MCP Server before 0.1.6 lets an HTTP request to `/mcp` that "
-    "carries none of `x-netlicensing-api-key`, `Authorization: Bearer` or the "
-    "`apikey` query parameter pass straight through `ApiKeyMiddleware` in "
-    "`src/netlicensing_mcp/server.py`. `api_key_ctx` in `client.py` then falls "
-    "back to the operator's `NETLICENSING_API_KEY`, so the upstream REST calls "
-    "authenticate as the operator. The absence of a credential is treated as a "
-    "reason to supply the server's own, which inverts the check: an "
-    "unauthenticated caller enumerates products, licenses, licensees and "
-    "transactions, creates and modifies licensing objects, runs validations, "
-    "and performs deletes. Affects HTTP deployments configured with a "
-    "server-side key; no user interaction (CVE-2026-54446, CVSS 8.1, CWE-306). "
-    "Fixed in 0.1.6.",
-    Severity.HIGH,
+    "netlicensing-mcp < 0.1.8 (a path-traversed product number reads API tokens in plaintext; unauthenticated /mcp falls back to the operator's API key below 0.1.6)",
+    "NetLicensing MCP Server (`netlicensing-mcp` on PyPI, and the images "
+    "`ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`) has two "
+    "authorization flaws. Before 0.1.8, `netlicensing_get_product` puts the "
+    "caller's `product_number` into the REST path that `nl_get()` requests with "
+    "no path-segment check, so a value such as `../token` reaches the token "
+    "endpoint. That response is serialized without the token redaction the token "
+    "tools apply (0.1.7 added it; earlier releases redact nothing), so an MCP "
+    "client holding a non-administrative API key reads API keys and shop URLs in "
+    "plaintext, and an administrative key recovered this way gives read, write and "
+    "delete access to the NetLicensing account (CVE-2026-57496, CVSS 9.6, CWE-22). "
+    "Checked in the wheels: every release from 0.0.6 builds the path unchecked, and "
+    "0.1.8 (`b8fd0ea`) validates each path segment before the request is built. "
+    "Before 0.1.6, a `/mcp` request that carries none "
+    "of `x-netlicensing-api-key`, `Authorization: Bearer` or the `apikey` query "
+    "parameter passes straight through `ApiKeyMiddleware`, and `api_key_ctx` then "
+    "falls back to the operator's `NETLICENSING_API_KEY`, so an unauthenticated "
+    "caller runs every licensing tool, the destructive ones included, as the "
+    "operator (CVE-2026-54446, CVSS 8.1, CWE-306).",
+    Severity.CRITICAL,
     Category.SUPPLY_CHAIN,
-    "Upgrade `netlicensing-mcp` to >= 0.1.6 and pin it. Fail closed on a "
-    "missing credential rather than substituting the server's own — an "
-    "operator key is the identity the request should be checked against, never "
-    "the default it falls back to. Treat licensing objects touched while an "
-    "affected version was network-reachable as suspect, since the destructive "
-    "tools were reachable too.",
+    "Upgrade `netlicensing-mcp`, or the image, to 0.1.8 or later and pin it. Then "
+    "rotate the NetLicensing API keys the server could reach, since any token was "
+    "readable through the traversal, and treat licensing objects changed while an "
+    "affected version was reachable as suspect. Fail closed on a missing "
+    "credential rather than substituting the server's own.",
     sarif_name="NetlicensingMcpAuthFallback",
-    cve_references=["CVE-2026-54446"],
-    owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
+    cve_references=[
+        "CVE-2026-54446",
+        # Fixed in 0.1.8, above the old 0.1.6 floor and more severe, so the floor
+        # rose and the rule became CRITICAL: one dependency, one finding.
+        "CVE-2026-57496",
+    ],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI03", "ASI04"],
-    adversa_references=["ADV-AGENT-02"],
+    adversa_references=["ADV-AGENT-02", "ADV-INJECT-06"],
     limitations=(
-        "Reads `netlicensing-mcp` in requirements*.txt at any depth and, at the "
-        "project root only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
+        "Reads `netlicensing-mcp` below 0.1.8 in requirements*.txt at any depth and, "
+        "at the project root only, in pyproject.toml, Pipfile, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock and uv.lock "
-        "lockfiles, taking the lowest version a range allows and reporting a "
-        "reference that states no version. The dependency is not read when it is "
+        "lockfiles, taking the lowest version a range allows, and the two images "
+        "below 0.1.8 in compose files, Kubernetes manifests, Helm values, Dockerfiles "
+        "and MCP configs. A reference must state a version to be reported: `latest`, "
+        "the two-part image tag `0.1` and the README's unpinned `uvx netlicensing-mcp` "
+        "all resolve to 0.1.10, which is fixed. The dependency is not read when it is "
         "declared in a sub-directory manifest (`services/api/pyproject.toml`), in "
-        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the "
-        "reader does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 "
-        "MiB, is not read."
+        "`.cursor/mcp.json` or `.vscode/mcp.json`, or in a lockfile format the reader "
+        "does not parse (`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is "
+        "not read."
     ),
 )
 
@@ -14703,6 +14738,161 @@ _r(
         "`version.ref` to a catalog outside the scanned tree. 0.7.0's older "
         "`HttpServletSseServerTransport` reads the body the same way, but the CVE "
         "record starts at 0.8.0, so 0.7.0 is not reported."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-16 batch (#1001-#1005), with CVE-2026-59951, which the watcher had not
+# filed yet. Four new rules; the NetLicensing and MCP Python SDK pins move their
+# floors (see those rules).
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-SDK-CVE-2026-59951-001",
+    "MCP Python SDK 1.8.0 to 1.29.x and 2.0.x/2.1.x: stateful Streamable HTTP sessions never expire",
+    "The MCP Python SDK (`mcp` on PyPI) keeps a stateful Streamable HTTP session "
+    "(FastMCP, `Server.streamable_http_app()`, `StreamableHTTPSessionManager`) with "
+    "no idle expiry and no limit on how many are open. DELETE, refused opening "
+    "requests and completed sessions do not reliably discard their entries, and "
+    "each entry can keep its parsed initialize parameters, so a client that can "
+    "reach the endpoint grows the server's memory with short ordinary requests "
+    "until it restarts (CVE-2026-59951, CVSS 4.0 6.9, CWE-770). Checked in the "
+    "source: the session manager arrives in 1.8.0, 1.29.1 still has only an "
+    "optional idle timeout that is off by default, and 1.30.0 and 2.2.0 add a "
+    "30-minute default idle timeout and a 10,000-session cap. Stateless HTTP, "
+    "stdio and SSE are not affected.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `mcp` to 1.30.0 or later, or to 2.2.0 or later on the 2.x line, and pin "
+    "it. Until then, pass `session_idle_timeout` to the session manager, or run the "
+    "server stateless.",
+    sarif_name="McpPythonSdkUnboundedSessions",
+    cve_references=["CVE-2026-59951"],
+    owasp_mcp_references=["MCP04:2025"],
+    owasp_agentic_references=["ASI04", "ASI08"],
+    adversa_references=["ADV-DOS-01"],
+    limitations=(
+        "Reads `mcp` from 1.8.0 below 1.30.0, and from 2.0.0 below 2.2.0, where a "
+        "version is stated, in the same files as the HIGH `mcp` pin: requirements*.txt "
+        "at any depth and, at the project root only, pyproject.toml, Pipfile, "
+        ".mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, "
+        "poetry.lock and uv.lock lockfiles. A bare `mcp` is not reported. It reads "
+        "versions, not code, so a stateless, stdio-only or SSE-only server, or one "
+        "that already sets `session_idle_timeout`, is reported too. A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-NETWORKAI-CVE-2026-109331-001",
+    "network-ai 5.14.0 to 5.15.1: ClaudeHookBridge checks deny patterns against one truncated field",
+    "Network-AI (`network-ai` on npm) ships ClaudeHookBridge, a Claude Code PreToolUse "
+    "hook that blocks tool calls matching an operator's `denyPatterns`. It checks the "
+    "patterns against the first candidate field present in the tool input only, so "
+    "an agent steered by prompt injection puts the payload in another field, such as "
+    "a Write tool's `content` or an MCP tool's script parameter, beside a harmless "
+    "`file_path` or `command`, and writes a web shell or runs a script "
+    "(CVE-2026-109331, CVSS 3.1 7.4, CWE-436). Before 5.15.1 it also checks only "
+    "the first 500 characters of that field, while Claude Code runs all of it "
+    "(CVE-2026-73614, CVSS 3.1 8.8). Checked in the npm tarballs: the bridge is "
+    "absent in 5.13.4 and present from 5.14.0, 5.15.1 drops the truncation, and "
+    "5.15.2 matches the patterns against every field.",
+    Severity.HIGH,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `network-ai` to 5.15.2 or later and pin it, in the hook command too "
+    "(`npx -y -p network-ai@5.15.2 ...`). Until then, do not rely on `denyPatterns` "
+    "alone: run the hook in enforce mode with grants, and keep Claude Code's own "
+    "permission deny rules for the commands that matter.",
+    sarif_name="NetworkAiHookDenyBypass",
+    cve_references=[
+        "CVE-2026-109331",
+        # The 2026-08-14 ledger called this one unpinnable: no package carried the
+        # bridge's name. It ships in `network-ai`, fixed in 5.15.1.
+        "CVE-2026-73614",
+    ],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-TRUST-02"],
+    limitations=(
+        "Reads `network-ai` from 5.14.0 below 5.15.2 where a project states the "
+        "version: a package.json or lockfile entry, or a versioned launch in .mcp.json, "
+        "mcp.json or claude_desktop_config.json. The README's hook command and plugin "
+        "launch are unpinned (`npx -y -p network-ai ...`) and resolve to 5.15.4, which "
+        "is fixed, so they are not reported, and the hook command in "
+        "`.claude/settings.json` is not read at all, pinned or not. A file over 2 MB, "
+        "or a lockfile over 32 MiB, is not read."
+    ),
+)
+
+_r(
+    "AAK-MCP-CONDUCTOR-CVE-2026-109402-001",
+    "Conductor image from 3.22.0: the LIST_MCP_TOOLS task connects to any mcpServer URL (SSRF, no fixed release)",
+    "Conductor OSS, the workflow orchestration server, has AI workers that include "
+    "an MCP client. Its `LIST_MCP_TOOLS` task passes the workflow's `mcpServer` input "
+    "to `MCPService.listTools`, which connects to that URL with no check on where it "
+    "points, so whoever can define or run a workflow can make the server request "
+    "internal hosts or a cloud metadata endpoint and read the answer "
+    "(CVE-2026-109402, CVSS 3.1 6.3, CWE-918). Checked in the source: MCPService "
+    "arrives in 3.22.0 and has no destination check on `main`, and the image "
+    "`conductoross/conductor` bundles the AI module. The AI workers run only when "
+    "`conductor.integrations.ai.enabled` is true, which the published image's "
+    "configuration does not set. There is no fixed release, and upstream closed "
+    "SSRF guards for the HTTP task as an enterprise feature.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Leave `conductor.integrations.ai.enabled` off unless "
+    "you use the AI workers, let only trusted users define and run workflows, and "
+    "block the server's egress to internal ranges and metadata addresses.",
+    sarif_name="ConductorMcpListToolsSsrf",
+    cve_references=["CVE-2026-109402"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI02", "ASI04"],
+    adversa_references=["ADV-SSRF-01"],
+    limitations=(
+        "Reads `conductoross/conductor` references from 3.22.0 up to and including "
+        "4.0.0-alpha.1, the newest tag, and `latest`, pushed on 2026-10-14, in "
+        "compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP "
+        "configs. It reads the tag, not the configuration, so a server with the AI "
+        "workers off, the image's default, is reported too. 3.22.0-rc1, which "
+        "predates the task, also reads as 3.22.0 and is reported. The README's "
+        "`:next` tag states no version and is not read, and neither is the "
+        "`orkesio/orkes-conductor-community` image or a locally built `conductor:server`."
+    ),
+)
+
+_r(
+    "AAK-MCP-REMOTE-CVE-2026-108716-001",
+    "mcp-remote from 0.8.0 launched with --device-code: client secret and tokens over plain HTTP (no fixed release)",
+    "mcp-remote's device-code sign-in (`--device-code`, from 0.8.0) posts the OAuth "
+    "client secret to the device-authorization and token endpoints the server's "
+    "metadata names, and takes the access and refresh tokens back, without requiring "
+    "https. When a discovered endpoint is a non-loopback `http://` URL, an on-path "
+    "attacker captures the secret and the tokens (CVE-2026-108716, CVSS 3.1 5.3, "
+    "CWE-319). Checked in the source: `authorizeWithDeviceCode` arrives in 0.8.0, "
+    "runs only when the launch passes `--device-code`, and calls `fetch` on both "
+    "endpoints with no scheme check; `src/lib/device-authorization.ts` is unchanged "
+    "from 0.14.3 to 0.15.1, the newest release, so there is no fixed release.",
+    Severity.MEDIUM,
+    Category.SUPPLY_CHAIN,
+    "There is no fixed release. Sign in without `--device-code`, or check that the "
+    "server's OAuth metadata names https device-authorization and token endpoints "
+    "before you use it, and rotate a client secret that may have crossed plain "
+    "HTTP.",
+    sarif_name="McpRemoteDeviceCodeCleartext",
+    cve_references=["CVE-2026-108716"],
+    owasp_mcp_references=["MCP01:2025", "MCP04:2025"],
+    owasp_agentic_references=["ASI03", "ASI04"],
+    adversa_references=["ADV-TOKEN-06"],
+    limitations=(
+        "Reports an MCP config or package.json script that launches `mcp-remote` with "
+        "`--device-code`, at a stated version from 0.8.0 or with none, since the newest "
+        "release is affected. A launch without the flag is not reported, and neither "
+        "is a dependency entry or a lockfile, which record no arguments. A launch in "
+        "`.cursor/mcp.json` or `.vscode/mcp.json` is not read. It cannot "
+        "see the endpoints the server will "
+        "advertise, so a server whose endpoints are https is reported too. A file over "
+        "2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 

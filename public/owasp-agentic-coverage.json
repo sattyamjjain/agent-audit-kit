@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T04:07:54Z",
+  "last_updated": "2026-10-16T04:49:11Z",
   "aak_version": "0.6.20",
-  "rule_count": 402,
+  "rule_count": 406,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -167,7 +167,7 @@
     {
       "asi_id": "ASI02",
       "title": "Tool Misuse and Exploitation",
-      "rule_density": 97,
+      "rule_density": 98,
       "rules": [
         {
           "id": "AAK-AGENT-COMPOSE-001",
@@ -522,6 +522,17 @@
             "CVE-2026-73846"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-CONDUCTOR-CVE-2026-109402-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-109402"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-CONTEXTFORGE-CVE-2026-77822-001",
@@ -1143,7 +1154,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 99,
+      "rule_density": 100,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1630,9 +1641,10 @@
         },
         {
           "id": "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
-          "severity": "high",
+          "severity": "critical",
           "cve_references": [
-            "CVE-2026-54446"
+            "CVE-2026-54446",
+            "CVE-2026-57496"
           ],
           "aicm_references": [
             "IAM-01",
@@ -1809,6 +1821,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-REMOTE-CVE-2026-108716-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108716"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-ROUTING-DESYNC-001",
           "severity": "high",
           "cve_references": [],
@@ -1821,12 +1845,14 @@
           "id": "AAK-MCP-SDK-CVE-2026-52869-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-109527",
             "CVE-2026-52869",
             "CVE-2026-52870",
             "CVE-2026-59950"
           ],
           "aicm_references": [
             "AIS-08",
+            "BCR-01",
             "IAM-01"
           ]
         },
@@ -2145,7 +2171,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 188,
+      "rule_density": 192,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2719,6 +2745,17 @@
           "cve_references": [
             "CVE-2026-75857",
             "CVE-2026-75858"
+          ],
+          "aicm_references": [
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-CONDUCTOR-CVE-2026-109402-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-109402"
           ],
           "aicm_references": [
             "IVS-04",
@@ -3409,13 +3446,26 @@
         },
         {
           "id": "AAK-MCP-NETLICENSING-CVE-2026-54446-001",
-          "severity": "high",
+          "severity": "critical",
           "cve_references": [
-            "CVE-2026-54446"
+            "CVE-2026-54446",
+            "CVE-2026-57496"
           ],
           "aicm_references": [
             "IAM-01",
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NETWORKAI-CVE-2026-109331-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-109331",
+            "CVE-2026-73614"
+          ],
+          "aicm_references": [
+            "IAM-05",
             "STA-08"
           ]
         },
@@ -3656,6 +3706,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-REMOTE-CVE-2026-108716-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-108716"
+          ],
+          "aicm_references": [
+            "CEK-08",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-REMOTE-CVE-2026-51994-001",
           "severity": "critical",
           "cve_references": [
@@ -3696,13 +3758,27 @@
           "id": "AAK-MCP-SDK-CVE-2026-52869-001",
           "severity": "high",
           "cve_references": [
+            "CVE-2026-109527",
             "CVE-2026-52869",
             "CVE-2026-52870",
             "CVE-2026-59950"
           ],
           "aicm_references": [
             "AIS-08",
+            "BCR-01",
             "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SDK-CVE-2026-59951-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-59951"
+          ],
+          "aicm_references": [
+            "BCR-01",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {
@@ -4186,7 +4262,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 89,
+      "rule_density": 90,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -4763,6 +4839,18 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NETWORKAI-CVE-2026-109331-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-109331",
+            "CVE-2026-73614"
+          ],
+          "aicm_references": [
+            "IAM-05",
             "STA-08"
           ]
         },
@@ -5420,7 +5508,7 @@
     {
       "asi_id": "ASI08",
       "title": "Cascading Failures",
-      "rule_density": 7,
+      "rule_density": 9,
       "rules": [
         {
           "id": "AAK-A2A-009",
@@ -5464,6 +5552,33 @@
           "severity": "high",
           "cve_references": [
             "CVE-2026-108714"
+          ],
+          "aicm_references": [
+            "BCR-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SDK-CVE-2026-52869-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-109527",
+            "CVE-2026-52869",
+            "CVE-2026-52870",
+            "CVE-2026-59950"
+          ],
+          "aicm_references": [
+            "AIS-08",
+            "BCR-01",
+            "IAM-01"
+          ]
+        },
+        {
+          "id": "AAK-MCP-SDK-CVE-2026-59951-001",
+          "severity": "medium",
+          "cve_references": [
+            "CVE-2026-59951"
           ],
           "aicm_references": [
             "BCR-01",

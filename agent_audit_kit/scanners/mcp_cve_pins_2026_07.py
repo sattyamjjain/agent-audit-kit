@@ -26,7 +26,9 @@ available) before shipping:
     CVE-2026-100587 and CVE-2026-100596 sit at the same floor)
   - repomix                        >= 1.14.1  (CVE-2026-49988)
   - better-auth / @better-auth/oauth-provider >= 1.6.13 (CVE-2026-53512, CVE-2026-53518, CVE-2026-67333, CVE-2026-67336)
-  - mcp (MCP Python SDK)            >= 1.28.1  (CVE-2026-52869, CVE-2026-52870, CVE-2026-59950)
+  - mcp (MCP Python SDK)            >= 1.29.1, and 2.0.x below 2.1.0  (CVE-2026-52869,
+    CVE-2026-52870, CVE-2026-59950; CVE-2026-109527 raised the floor from 1.28.1 and
+    added the 2.0 line. ecosystem="py": npm's `mcp` is another package)
   - 9router                        >= 0.5.2   (CVE-2026-46339, CVE-2026-49353, CVE-2026-62312, CVE-2026-63732)
   - awslabs.aws-api-mcp-server     >= 1.3.47  (CVE-2026-16584; affected 0.2.13–1.3.46)
   - n8n-mcp                        >= 2.57.4  (CVE-2026-54052, CVE-2026-55608)
@@ -118,8 +120,10 @@ available) before shipping:
     bypasses the read cap and the whole body is consumed)
   - atomic-agents-stack            >= 1.1.0   (CVE-2026-91988; cleartext registry
     catalog -> injected argv spawned by MCPClientPool)
-  - netlicensing-mcp               >= 0.1.6   (CVE-2026-54446; unauthenticated /mcp
-    falls back to the operator's API key)
+  - netlicensing-mcp               >= 0.1.8   (CVE-2026-54446; unauthenticated /mcp
+    falls back to the operator's API key. CVE-2026-57496 raised the floor from 0.1.6
+    and the rule to CRITICAL: a product number with `../` reads the token endpoint
+    unredacted. `container_image_pins` reads the GHCR and Docker Hub images)
   - mcp-remote                     0.1.16–0.1.38 (CVE-2026-51994 and CVE-2026-51995,
     OAuth discovery SSRF from 0.1.32; CVE-2026-51997, internal URLs reach the
     browser launch from 0.1.16; CVE-2026-51996, MD5-derived token-file names,
@@ -187,6 +191,16 @@ available) before shipping:
     @jetbrains/junie-cli           888.0.0 <= v < 2548.5.0  (CVE-2026-111091; Junie CLI
     before 26.8.3 runs an untrusted project's MCP server configuration. The npm
     version is the Junie build, and 2548.5 is 26.8.3. A stated version is required)
+  - mcp (MCP Python SDK)            1.8.0 <= v < 1.30.0, and 2.0.x/2.1.x below 2.2.0
+    (CVE-2026-59951; stateful Streamable HTTP sessions never expire. MEDIUM, its own
+    rule beside the HIGH pin on the same name)
+  - network-ai                     5.14.0 <= v < 5.15.2  (CVE-2026-109331 and
+    CVE-2026-73614; ClaudeHookBridge matches deny patterns against one truncated
+    field. A stated version is required)
+  - mcp-remote                     >= 0.8.0, launched with --device-code
+    (CVE-2026-108716; the device-code grant posts the client secret to http
+    endpoints. No fixed release, so an unpinned launch is reported, and a launch
+    without the flag, a dependency entry and a lockfile are not)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -302,6 +316,16 @@ class _Pin:
     # (`npx` is npm, `uvx` is PyPI); a program run by name has none and still
     # matches every pin.
     ecosystem: str | None = None
+    # Further affected [introduced, fixed) ranges on a release line the main range
+    # does not reach. `mcp` 2.0.0a1 to 2.0.1 is affected by CVE-2026-109527 although
+    # 2.0.0 sits above the 1.29.1 floor; a second row for the same name would
+    # report one declaration twice.
+    also: tuple[tuple[_Ver, _Ver], ...] = ()
+    # Report only a launch that passes this option. mcp-remote's device-code grant
+    # runs only with `--device-code`, so a dependency or a launch without the flag
+    # never reaches the flaw, and a lockfile, which records no arguments, is not
+    # judged at all.
+    requires_arg: str | None = None
 
 
 _PINS: tuple[_Pin, ...] = (
@@ -362,8 +386,14 @@ _PINS: tuple[_Pin, ...] = (
          ("better-auth", "@better-auth/oauth-provider"), (1, 6, 13),
          fix_label="1.6.13"),
     # --- 2026-07-15..17 wave ---
-    _Pin("AAK-MCP-SDK-CVE-2026-52869-001", "mcp (MCP Python SDK)", ("mcp",), (1, 28, 1),
-         fix_label="1.28.1", requires_version=True),
+    # Floor raised 1.28.1 -> 1.29.1 for CVE-2026-109527 (HIGH, as the session CVEs
+    # are): the SSE, Streamable HTTP and OAuth endpoints buffer a request body of
+    # any size before 1.29.1, and on the 2.0 line (2.0.0a1 to 2.0.1) before 2.1.0.
+    # ecosystem="py": npm's `mcp` (1.4.2) is another package.
+    _Pin("AAK-MCP-SDK-CVE-2026-52869-001", "mcp (MCP Python SDK)", ("mcp",), (1, 29, 1),
+         also=(((2, 0, 0), (2, 1, 0)),),
+         fix_label="1.29.1, or 2.1.0 on the 2.x line (the session CVEs were fixed in 1.28.1)",
+         requires_version=True, ecosystem="py"),
     _Pin("AAK-MCP-9ROUTER-CVE-2026-46339-001", "9router", ("9router",), (0, 5, 2),
          fix_label="0.5.2"),
     _Pin("AAK-MCP-N8NMCP-CVE-2026-54052-001", "n8n-mcp", ("n8n-mcp",), (2, 57, 4),
@@ -989,8 +1019,18 @@ _PINS: tuple[_Pin, ...] = (
     # operator's NETLICENSING_API_KEY — so an unauthenticated caller drives
     # every licensing tool, including the destructive ones, as the operator
     # (CVE-2026-54446, CVSS 8.1, CWE-306).
+    # Floor raised 0.1.6 -> 0.1.8, and the rule to CRITICAL, for CVE-2026-57496
+    # (CVSS 9.6): netlicensing_get_product puts the caller's product_number into
+    # the REST path unchecked, so `../token` reaches the token endpoint and returns
+    # API keys and shop URLs in plaintext. Every release before 0.1.8 has the
+    # unchecked path; 0.1.8 (b8fd0ea) validates each segment. The ghcr.io and
+    # Docker Hub images are rows in `container_image_pins`. `latest` is 0.1.10 and
+    # the README runs an unpinned `uvx netlicensing-mcp`, so a stated version is now
+    # required.
     _Pin("AAK-MCP-NETLICENSING-CVE-2026-54446-001", "netlicensing-mcp",
-         ("netlicensing-mcp",), (0, 1, 6), fix_label="0.1.6", ecosystem="py"),
+         ("netlicensing-mcp",), (0, 1, 8),
+         fix_label="0.1.8 (CVE-2026-57496; CVE-2026-54446 was fixed in 0.1.6)",
+         requires_version=True, ecosystem="py"),
     # --- 2026-09-26 wave ---
     # mcp-remote 0.1.32-0.1.38 fetches the `resource_metadata` URL a remote
     # server puts in its WWW-Authenticate header with no destination policy
@@ -1267,6 +1307,34 @@ _PINS: tuple[_Pin, ...] = (
          introduced=(888, 0, 0),
          fix_label="2548.5.0, which is Junie 26.8.3 (affected from 888.0.0)",
          requires_version=True, ecosystem="js"),
+    # --- 2026-10-16 batch (#1001-#1005) ---
+    # The MCP Python SDK's stateful Streamable HTTP session manager keeps every
+    # session with no idle expiry or count limit (CVE-2026-59951, CVSS 4.0 6.9). The
+    # manager arrives in 1.8.0; 1.30.0 and 2.2.0 add a 30-minute default idle timeout
+    # and a 10,000-session cap. MEDIUM, so its own rule beside the HIGH pin above.
+    _Pin("AAK-MCP-SDK-CVE-2026-59951-001", "mcp (MCP Python SDK)", ("mcp",), (1, 30, 0),
+         introduced=(1, 8, 0), also=(((2, 0, 0), (2, 2, 0)),),
+         fix_label="1.30.0, or 2.2.0 on the 2.x line (affected from 1.8.0)",
+         requires_version=True, ecosystem="py"),
+    # Network-AI's ClaudeHookBridge, a Claude Code PreToolUse hook, matches deny
+    # patterns against the first candidate field only (CVE-2026-109331), and before
+    # 5.15.1 against its first 500 characters only (CVE-2026-73614). The bridge first
+    # ships in 5.14.0; 5.15.1 drops the truncation and 5.15.2 checks every field.
+    # `latest` (5.15.4) is fixed and the README launches it unpinned.
+    _Pin("AAK-MCP-NETWORKAI-CVE-2026-109331-001", "network-ai", ("network-ai",), (5, 15, 2),
+         introduced=(5, 14, 0), fix_label="5.15.2 (affected from 5.14.0)",
+         requires_version=True, ecosystem="js"),
+    # mcp-remote's device-code sign-in (`--device-code`, from 0.8.0) sends the client
+    # secret to, and takes tokens from, whatever device-authorization and token
+    # endpoints the server's metadata names, http included (CVE-2026-108716). It
+    # runs only with the flag, so only a launch that passes it is judged. Unchanged
+    # through 0.15.1, the newest release: no fixed release, so an unpinned launch
+    # is reported too.
+    _Pin("AAK-MCP-REMOTE-CVE-2026-108716-001", "mcp-remote", ("mcp-remote",), None,
+         introduced=(0, 8, 0),
+         fix_label="no fixed release (0.15.1 is the newest); sign in without --device-code "
+                   "or check that the server's OAuth endpoints are https",
+         requires_arg="--device-code", ecosystem="js"),
 )
 
 _CANDIDATE_NAMES = (
@@ -1325,6 +1393,8 @@ def _fires(pin: _Pin, version: _Ver | None) -> bool:
     # No behaviour changes for the pins that have a floor: `introduced` is always
     # below `floor`, so a version at or above the floor is also at or above
     # `introduced`, and the early return yields what the old order did.
+    if version is not None and any(lo <= version < hi for lo, hi in pin.also):
+        return True
     if version is not None and pin.introduced is not None and version < pin.introduced:
         return False
     if pin.floor is None:
@@ -1332,6 +1402,15 @@ def _fires(pin: _Pin, version: _Ver | None) -> bool:
     if version is None:
         return True
     return version < pin.floor
+
+
+def _passes(argv: tuple[str, ...], option: str) -> bool:
+    """Does a command line pass `option`, as its own token, as `option=value`, or
+    inside a quoted shell line (`supergateway --stdio "npx -y pkg ... --flag"`)?"""
+    return any(
+        token == option or token.startswith(option + "=") or option in token.split()
+        for token in argv
+    )
 
 
 def _candidate_files(project_root: Path) -> list[Path]:
@@ -1408,7 +1487,7 @@ def _spans_admit_affected(pin: _Pin, spans: Spans | None) -> bool:
     if spans is None:
         return not pin.requires_version
     lo, hi = _affected(pin)
-    return admits(spans, lo, hi)
+    return admits(spans, lo, hi) or any(admits(spans, a_lo, a_hi) for a_lo, a_hi in pin.also)
 
 
 def _deciding_declaration(pin: _Pin, found: list[Declaration]) -> Declaration | None:
@@ -1447,6 +1526,9 @@ def _deciding_declaration(pin: _Pin, found: list[Declaration]) -> Declaration | 
     constraints on one another.
     """
     matching = [d for d in found if _pin_applies(pin, d.ecosystem) and _names_match(pin, d)]
+    if pin.requires_arg is not None:
+        # Only a launch can show the option, so nothing else is judged.
+        matching = [d for d in matching if d.kind == "launch" and _passes(d.argv, pin.requires_arg)]
     for declaration in matching:
         if declaration.kind == "launch" and _admits_affected(pin, declaration):
             return declaration
@@ -1540,7 +1622,7 @@ def _lockfile_findings(path: Path, rel: str, text: str) -> list[Finding]:
     # hundred times.
     index = _lockfile_index(text, filename)
     for pin in _PINS:
-        if not _pin_applies(pin, file_ecosystem):
+        if not _pin_applies(pin, file_ecosystem) or pin.requires_arg is not None:
             continue
         resolved = _lockfile_lookup(index, filename, pin.names)
         affected = [v for v in resolved if _fires(pin, v)]

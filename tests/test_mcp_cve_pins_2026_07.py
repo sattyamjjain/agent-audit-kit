@@ -124,6 +124,11 @@ PINS = {
     "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001": "critical",
     # 2026-10-15 second batch (#995-#999)
     "AAK-MCP-JUNIE-CVE-2026-111091-001": "high",
+    # 2026-10-16 batch (#1001-#1005)
+    "AAK-MCP-NETLICENSING-CVE-2026-54446-001": "critical",
+    "AAK-MCP-SDK-CVE-2026-59951-001": "medium",
+    "AAK-MCP-NETWORKAI-CVE-2026-109331-001": "high",
+    "AAK-MCP-REMOTE-CVE-2026-108716-001": "medium",
 }
 
 
@@ -340,7 +345,9 @@ def test_mcp_sdk_below_floor_fires(tmp_path: Path) -> None:
 
 
 def test_mcp_sdk_patched_passes(tmp_path: Path) -> None:
-    assert "AAK-MCP-SDK-CVE-2026-52869-001" not in _ids(tmp_path, "requirements.txt", "mcp==1.28.1\n")
+    """1.28.1 fixed the session CVEs; CVE-2026-109527 moved the floor to 1.29.1."""
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" not in _ids(tmp_path, "requirements.txt", "mcp==1.29.1\n")
+    assert "AAK-MCP-SDK-CVE-2026-52869-001" in _ids(tmp_path, "requirements.txt", "mcp==1.28.1\n")
 
 
 def test_mcp_sdk_with_extras_fires(tmp_path: Path) -> None:
@@ -466,9 +473,11 @@ def test_openclaw_below_the_floor_lists_the_two_new_cves(tmp_path: Path) -> None
     )
 
 
-def test_mcp_sdk_rule_cites_three_cves() -> None:
+def test_mcp_sdk_rule_cites_four_cves() -> None:
     rule = RULES["AAK-MCP-SDK-CVE-2026-52869-001"]
-    assert set(rule.cve_references) == {"CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950"}
+    assert set(rule.cve_references) == {
+        "CVE-2026-52869", "CVE-2026-52870", "CVE-2026-59950", "CVE-2026-109527",
+    }
 
 
 # --- Lockfiles resolve the actual version (no false-positive after a fix) ------
@@ -1404,9 +1413,17 @@ def test_every_pin_matches_whole_names_only(tmp_path: Path, pin: object) -> None
                                  f"{name}-remote": {"url": f"https://example.test/{name}"}}}
         assert rule_id not in _ids(tmp_path, ".mcp.json", json.dumps(config))
         (tmp_path / ".mcp.json").unlink()
-        real = {"dependencies": {name: version}}
-        assert rule_id in _ids(tmp_path, "package.json", json.dumps(real))
-        (tmp_path / "package.json").unlink()
+        requires_arg = pin.requires_arg  # type: ignore[attr-defined]
+        if requires_arg is None:
+            real = {"dependencies": {name: version}}
+            assert rule_id in _ids(tmp_path, "package.json", json.dumps(real))
+            (tmp_path / "package.json").unlink()
+        else:
+            # Only a launch that passes the option can show the flaw.
+            launch = {"mcpServers": {"x": {"command": "npx",
+                                           "args": ["-y", f"{name}@{version}", requires_arg]}}}
+            assert rule_id in _ids(tmp_path, ".mcp.json", json.dumps(launch))
+            (tmp_path / ".mcp.json").unlink()
     if ecosystem in (None, "py") and not name.startswith("@"):
         quiet_lines = [f"# see {name} {version} for details"]
         quiet_lines += [f"{other}=={version}" for other in sorted(lookalikes) if not other.startswith("@")]
@@ -2846,3 +2863,172 @@ def test_junie_evidence_names_the_build_and_the_release(tmp_path: Path) -> None:
         '{"devDependencies": {"@jetbrains/junie": "2470.4.0"}}', encoding="utf-8")
     [finding] = [f for f in scan(tmp_path)[0] if f.rule_id == _JUNIE]
     assert "fixed in 2548.5.0, which is Junie 26.8.3" in finding.evidence
+
+
+# --- 2026-10-16 batch (#1001-#1005) ------------------------------------------------
+#
+# #1001: CVE-2026-57496 joins the NetLicensing pin, whose floor rises from 0.1.6 to
+# 0.1.8 and whose severity rises to CRITICAL: every release before 0.1.8 builds the
+# product path unchecked, so the old range is inside the new one.
+_NETLICENSING = "AAK-MCP-NETLICENSING-CVE-2026-54446-001"
+
+
+def test_netlicensing_rule_is_critical_and_cites_both_cves() -> None:
+    rule = RULES[_NETLICENSING]
+    assert rule.severity.value == "critical"
+    assert rule.cve_references == ["CVE-2026-54446", "CVE-2026-57496"]
+
+
+def test_netlicensing_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-57496-netlicensing"
+    assert [f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _NETLICENSING] == [
+        ".mcp.json",
+    ]
+    assert _NETLICENSING not in {f.rule_id for f in scan(root / "negative")[0]}
+    # The README's unpinned `uvx netlicensing-mcp` installs 0.1.10, which is fixed.
+    assert _NETLICENSING not in {f.rule_id for f in scan(root / "negative-unpinned")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.0.6", True),     # the first release; the product path is already unchecked
+    ("0.1.5", True),     # also below the old 0.1.6 floor (CVE-2026-54446)
+    ("0.1.6", True),     # newly reported: above the old floor, below the new one
+    ("0.1.7", True),     # adds token redaction, which the traversal skips
+    ("0.1.8", False),    # b8fd0ea validates each path segment
+    ("0.1.10", False),   # the newest release on 2026-10-16
+])
+def test_netlicensing_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    assert (_NETLICENSING in _ids(tmp_path, "requirements.txt", f"netlicensing-mcp=={version}\n")) is fires
+
+
+# #1002: CVE-2026-109527 raises the HIGH `mcp` pin from 1.28.1 to 1.29.1 and adds the
+# 2.0 line, which 2.0.1 (released after 2.1.0) still carries. CVE-2026-59951, not yet
+# filed, is MEDIUM, so it is its own rule: 1.8.0 to 1.29.x, and 2.0.x and 2.1.x.
+_SDK = "AAK-MCP-SDK-CVE-2026-52869-001"
+_SDK_SESSIONS = "AAK-MCP-SDK-CVE-2026-59951-001"
+
+
+def test_mcp_sdk_fixtures() -> None:
+    root = _CVE_FIXTURES / "cve-2026-109527-mcp-python-sdk"
+    assert {f.rule_id for f in scan(root / "vulnerable")[0]} >= {_SDK, _SDK_SESSIONS}
+    assert {f.rule_id for f in scan(root / "vulnerable-2x")[0]} >= {_SDK, _SDK_SESSIONS}
+    assert not {_SDK, _SDK_SESSIONS} & {f.rule_id for f in scan(root / "negative")[0]}
+    # npm's `mcp` (1.4.2 on 2026-10-16) is another package, not the Python SDK.
+    assert not {_SDK, _SDK_SESSIONS} & {f.rule_id for f in scan(root / "negative-npm")[0]}
+    sessions = _CVE_FIXTURES / "cve-2026-59951-mcp-python-sdk-sessions"
+    assert {f.rule_id for f in scan(sessions / "vulnerable")[0]} & {_SDK, _SDK_SESSIONS} == {_SDK_SESSIONS}
+    assert not {_SDK, _SDK_SESSIONS} & {f.rule_id for f in scan(sessions / "negative")[0]}
+
+
+@pytest.mark.parametrize(("version", "body_limit", "sessions"), [
+    ("0.9.1", True, False),      # SSE reads the body whole; no session manager yet
+    ("1.7.1", True, False),
+    ("1.8.0", True, True),       # StreamableHTTPSessionManager arrives
+    ("1.28.1", True, True),      # the session CVEs' fix; the body limit is not there yet
+    ("1.29.0", True, True),
+    ("1.29.1", False, True),     # body limit (5f0b6af9, 4dc224fa); sessions still unbounded
+    ("1.30.0", False, False),    # default idle timeout and session cap
+    ("2.0.0a1", True, True),     # the 2.0 line, pre-releases included
+    ("2.0.0", True, True),
+    ("2.0.1", True, True),       # released after 2.1.0, still without the limit
+    ("2.1.0", False, True),
+    ("2.1.1", False, True),
+    ("2.2.0", False, False),
+    ("2.3.0", False, False),     # the newest release on 2026-10-16
+])
+def test_mcp_sdk_version_lines(tmp_path: Path, version: str, body_limit: bool, sessions: bool) -> None:
+    ids = _ids(tmp_path, "requirements.txt", f"mcp=={version}\n")
+    assert (_SDK in ids, _SDK_SESSIONS in ids) == (body_limit, sessions)
+
+
+def test_mcp_sdk_open_range_reaching_the_2_0_line_is_reported(tmp_path: Path) -> None:
+    """`>=1.29.1` admits 2.0.1, so the second range reports it."""
+    assert _SDK in _ids(tmp_path, "requirements.txt", "mcp>=1.29.1,<2.1\n")
+    assert _SDK not in _ids(tmp_path, "requirements.txt", "mcp>=1.29.1,<2.0\n")
+
+
+def test_mcp_sdk_rules_read_the_uv_lock(tmp_path: Path) -> None:
+    (tmp_path / "uv.lock").write_text('[[package]]\nname = "mcp"\nversion = "2.0.1"\n', encoding="utf-8")
+    assert {_SDK, _SDK_SESSIONS} <= {f.rule_id for f in scan(tmp_path)[0]}
+
+
+# #1003: Network-AI's ClaudeHookBridge, 5.14.0 to 5.15.1, carrying CVE-2026-109331 and
+# CVE-2026-73614, which the 2026-08-14 ledger had called unpinnable.
+_NETWORKAI = "AAK-MCP-NETWORKAI-CVE-2026-109331-001"
+
+
+def test_network_ai_rule_carries_both_cves() -> None:
+    assert RULES[_NETWORKAI].cve_references == ["CVE-2026-109331", "CVE-2026-73614"]
+
+
+def test_network_ai_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2026-109331-network-ai"
+    assert sorted(f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _NETWORKAI) == [
+        ".mcp.json", "package.json",
+    ]
+    assert _NETWORKAI not in {f.rule_id for f in scan(root / "negative")[0]}
+    assert _NETWORKAI not in {f.rule_id for f in scan(root / "negative-unpinned")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("5.13.4", False),   # no ClaudeHookBridge yet
+    ("5.14.0", True),    # the bridge arrives: first field only, cut at 500 characters
+    ("5.15.0", True),
+    ("5.15.1", True),    # truncation gone (CVE-2026-73614); still the first field only
+    ("5.15.2", False),   # every field is checked
+    ("5.15.4", False),   # latest on 2026-10-16
+])
+def test_network_ai_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"network-ai": "%s"}}' % version
+    assert (_NETWORKAI in _ids(tmp_path, "package.json", content)) is fires
+
+
+# #1005: mcp-remote's device-code grant, from 0.8.0, with no fixed release. It runs
+# only with `--device-code`, so only a launch that passes the flag is judged.
+_REMOTE_DEVICE = "AAK-MCP-REMOTE-CVE-2026-108716-001"
+
+
+def _device_config(args: list[str], command: str = "npx") -> str:
+    return json.dumps({"mcpServers": {"x": {"command": command, "args": args}}})
+
+
+def test_mcp_remote_device_code_fixtures() -> None:
+    root = _CVE_FIXTURES / "cve-2026-108716-mcp-remote"
+    assert [f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _REMOTE_DEVICE] == [".mcp.json"]
+    assert _REMOTE_DEVICE not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("args", "fires"), [
+    (["mcp-remote", "https://x.test/mcp", "--device-code"], True),             # the README's form
+    (["-y", "mcp-remote@0.15.1", "https://x.test/mcp", "--device-code"], True),  # the newest release
+    (["-y", "mcp-remote@0.8.0", "https://x.test/mcp", "--device-code"], True),
+    (["-y", "mcp-remote@0.7.0", "https://x.test/mcp", "--device-code"], False),  # no device grant yet
+    (["-y", "mcp-remote@0.1.38", "https://x.test/mcp", "--device-code"], False),
+    (["mcp-remote", "https://x.test/mcp"], False),                              # browser sign-in
+    (["mcp-remote", "https://x.test/mcp", "--device-code-timeout", "60"], False),
+])
+def test_mcp_remote_device_code_launches(tmp_path: Path, args: list[str], fires: bool) -> None:
+    assert (_REMOTE_DEVICE in _ids(tmp_path, ".mcp.json", _device_config(args))) is fires
+
+
+def test_mcp_remote_device_code_run_by_name_and_behind_a_shell(tmp_path: Path) -> None:
+    """A global install run by name states no version, and every release is affected;
+    a launch inside a quoted shell line passes the flag too."""
+    by_name = _device_config(["https://x.test/mcp", "--device-code"], command="mcp-remote")
+    assert _REMOTE_DEVICE in _ids(tmp_path, ".mcp.json", by_name)
+    shell = _device_config(["--stdio", "npx -y mcp-remote https://x.test/mcp --device-code"],
+                           command="supergateway")
+    assert _REMOTE_DEVICE in _ids(tmp_path, ".mcp.json", shell)
+
+
+def test_mcp_remote_device_code_needs_a_launch(tmp_path: Path) -> None:
+    """A dependency entry or a lockfile records no arguments, so neither is judged."""
+    assert _REMOTE_DEVICE not in _ids(tmp_path, "package.json", '{"dependencies": {"mcp-remote": "0.14.3"}}')
+    (tmp_path / "package.json").unlink()
+    lock = '{"lockfileVersion": 3, "packages": {"node_modules/mcp-remote": {"version": "0.14.3"}}}'
+    assert _REMOTE_DEVICE not in _ids(tmp_path, "package-lock.json", lock)
+
+
+def test_mcp_remote_device_code_in_a_package_json_script(tmp_path: Path) -> None:
+    content = '{"scripts": {"sign-in": "npx -y mcp-remote@0.14.3 https://x.test/mcp --device-code"}}'
+    assert _REMOTE_DEVICE in _ids(tmp_path, "package.json", content)

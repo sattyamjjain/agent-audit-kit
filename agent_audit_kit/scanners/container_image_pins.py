@@ -22,7 +22,11 @@ PyPI's `trinity-cli` is its command-line client on its own 0.2.x line, and PyPI'
 registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. EdgeEver is
 on neither registry either; its self-hosted server is `ghcr.io/tianma-if/edgeever`.
 NullHub is a Zig binary shipped as release binaries and `ghcr.io/nullclaw/nullhub`,
-and npm and PyPI have no `nullhub`. Docker Hub
+and npm and PyPI have no `nullhub`. Conductor is a Java server whose README runs
+the image `conductoross/conductor`, tagged by release. NetLicensing MCP is on PyPI
+too, and like obsidian-tc it has rows in both
+readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
+Docker Hub
 images are matched by the bare name their docs use, so `docker.io/grafana/mcp-k6`
 is not read. Nothing `mcp_cve_pins_2026_07` reads carries their version, and a pin
 on a look-alike package name would report somebody else's project. The image tag is
@@ -269,6 +273,38 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-NULLHUB-CVE-2026-110616-001", "NullHub", "ghcr.io/nullclaw/nullhub",
         (2026, 5, 30), "up to and including v2026.5.29", "No fixed release yet.",
         ("CVE-2026-110616",), floating_affected=True,
+    ),
+    # CVE-2026-57496 (every release below 0.1.8: `netlicensing_get_product` puts the
+    # caller's product number into the REST path unchecked) and CVE-2026-54446
+    # (below 0.1.6). The PyPI package is the pin table's row for the same rule; the
+    # README also runs the image (`docker run ... ghcr.io/labs64/netlicensing-mcp`),
+    # tagged by release on GHCR (0.1.3 to 0.1.10) and Docker Hub (0.1.2 to 0.1.10).
+    # On 2026-10-16 `latest` and the two-part `0.1` were the 0.1.10 digest, fixed.
+    _ImagePin(
+        "AAK-MCP-NETLICENSING-CVE-2026-54446-001", "NetLicensing MCP",
+        "ghcr.io/labs64/netlicensing-mcp",
+        (0, 1, 8), "below 0.1.8", "Fixed in 0.1.8; CVE-2026-54446 alone was fixed in 0.1.6.",
+        ("CVE-2026-57496", "CVE-2026-54446"),
+    ),
+    _ImagePin(
+        "AAK-MCP-NETLICENSING-CVE-2026-54446-001", "NetLicensing MCP",
+        "labs64/netlicensing-mcp",
+        (0, 1, 8), "below 0.1.8", "Fixed in 0.1.8; CVE-2026-54446 alone was fixed in 0.1.6.",
+        ("CVE-2026-57496", "CVE-2026-54446"),
+    ),
+    # CVE-2026-109402: the LIST_MCP_TOOLS task's `mcpServer` input is any URL, and
+    # MCPService.listTools connects to it with no destination check. MCPService
+    # arrives in 3.22.0 (0c723f7a, 2026-02-03) and is unchanged in that respect on
+    # `main`; upstream closed task SSRF guards as an enterprise feature
+    # (conductor-oss/conductor#1018), so no fixed release is planned. 3.22.0-rc1
+    # predates the task but reads as 3.22.0.
+    # The newest tag is 4.0.0-alpha.1, and `latest` was pushed on 2026-10-14. The
+    # AI workers are off unless conductor.integrations.ai.enabled is true, which
+    # the tag does not show.
+    _ImagePin(
+        "AAK-MCP-CONDUCTOR-CVE-2026-109402-001", "Conductor", "conductoross/conductor",
+        (4, 0, 1), "from 3.22.0, up to and including 4.0.0-alpha.1", "No fixed release yet.",
+        ("CVE-2026-109402",), floating_affected=True, introduced=(3, 22, 0),
     ),
 )
 
