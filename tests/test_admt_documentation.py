@@ -310,3 +310,18 @@ def test_report_cli_renders_the_colorado_pack(tmp_path: Path) -> None:
     assert "Colorado SB 26-189" in text
     for word in _CONCLUSION_WORDS:
         assert word not in text.lower()
+
+
+# ---------------------------------------------------------------------------
+# VS Code's `servers` map
+# ---------------------------------------------------------------------------
+
+
+def test_admt_001_fires_on_a_declaration_in_a_vscode_servers_map() -> None:
+    """`.vscode/mcp.json` keeps its servers under `servers`, which the declaration
+    reader did not read."""
+    assert _ids(FIXTURES / "vscode_no_documentation") == ["AAK-ADMT-001"]
+
+
+def test_a_vscode_servers_map_without_a_declaration_emits_nothing() -> None:
+    assert _ids(FIXTURES / "vscode_no_declaration") == []

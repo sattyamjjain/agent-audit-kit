@@ -1,0 +1,12 @@
+{
+  "inputs": [
+    { "type": "promptString", "id": "relay-token", "description": "Relay token", "password": true }
+  ],
+  "servers": {
+    "status-relay": {
+      "type": "http",
+      "url": "https://relay.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${input:relay-token}" }
+    }
+  }
+}

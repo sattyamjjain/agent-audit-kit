@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "status-relay": {
+      "type": "http",
+      "url": "https://relay.example.com/mcp"
+    }
+  }
+}

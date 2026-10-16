@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AAK-SUPPLY-006 reads `.vscode/mcp.json` as well as the root `.mcp.json`, and both server maps in each, so a vulnerable package launched from VS Code is looked up. It read only `mcpServers` in `.mcp.json`.
 - `aak sbom` lists the servers of VS Code's `servers` map, which it skipped, and no longer fails on an MCP config whose top level is a JSON array.
 - The container image pins no longer report an image that a JSON MCP config names only inside a `//` or `/* */` comment. Those configs are JSONC, and the comment is not a deployment.
+- The composition rules (AAK-COMPOSE-001 to -003) read VS Code's `servers` map, so a server in `.vscode/mcp.json` is part of the capability graph. A server's block now starts at its own key in its map: an `inputs` entry whose `id` named the server moved the block onto the `inputs` line, so a finding on that server no longer stood its chain down and the chain was reported twice.
+- The Colorado ADMT rules (AAK-ADMT-001 to -004) read the server names and descriptions under VS Code's `servers` map, so a covered-domain declaration in `.vscode/mcp.json` is found.
 
 ## [0.6.21] - 2026-10-16
 

@@ -65,7 +65,14 @@ from pathlib import Path
 from typing import Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    loads_jsonc,
+    make_finding,
+    mcp_server_maps,
+    strip_jsonc,
+)
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
 from agent_audit_kit.scanners.secret_exposure import MCP_ENV_SECRET_KEYS
 from agent_audit_kit.scanners.skill_composition import (
@@ -294,6 +301,30 @@ def _skill_nodes(project_root: Path) -> list[_Node]:
     return nodes
 
 
+def _server_key_lines(raw: str, maps: list[tuple[str, dict[str, object]]]) -> dict[str, int]:
+    """The line of each server's own key, `"name":`, inside its map.
+
+    The node's block, and so the suppression keys a finding on that server must
+    hit, starts here. The first quoted occurrence of the name is not enough: VS
+    Code's `inputs` array often sits above `servers`, and an input whose `id` is a
+    server's name put that server's block on the `inputs` line, so a finding on
+    the server's `url` line no longer covered it and its chain was reported twice.
+    The search runs in comment-stripped text, from the map's own key, and falls
+    back to the first quoted occurrence when no key form is found, as before.
+    """
+    text = strip_jsonc(raw)
+    lines: dict[str, int] = {}
+    for map_key, servers in maps:
+        anchor = re.search(r'"' + re.escape(map_key) + r'"\s*:', text)
+        start = anchor.end() if anchor else 0
+        for n in servers:
+            name = str(n)
+            key = re.compile(r'"' + re.escape(name) + r'"\s*:').search(text, start)
+            line = text.count("\n", 0, key.start()) + 1 if key else find_line_number(raw, f'"{name}"')
+            lines.setdefault(name, line or 0)
+    return lines
+
+
 def _mcp_nodes(project_root: Path) -> list[_Node]:
     nodes: list[_Node] = []
     for config_path in _find_mcp_configs(project_root):
@@ -304,10 +335,11 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
             data = loads_jsonc(raw)
         except (OSError, json.JSONDecodeError):
             continue
-        if not isinstance(data, dict):
-            continue
-        servers = data.get("mcpServers")
-        if not isinstance(servers, dict):
+        # Both server maps: VS Code keeps its servers under `servers` in
+        # .vscode/mcp.json, and reading `mcpServers` alone left every VS Code
+        # server out of the graph.
+        maps = mcp_server_maps(data)
+        if not maps:
             continue
         try:
             rel = config_path.relative_to(project_root).as_posix()
@@ -317,9 +349,9 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
         # Where each server's block starts, so a finding anywhere inside it can be
         # matched to that server. Line-exact matching does not work: AAK-MCP-001
         # reports on the `url` line, one below the name line this node is keyed to.
-        name_lines = {
-            str(n): (find_line_number(raw, f'"{n}"') or 0) for n in servers
-        }
+        # Every entry of every map bounds a block, a non-object one included, as
+        # when only `mcpServers` was read.
+        name_lines = _server_key_lines(raw, maps)
         ordered = sorted(name_lines.items(), key=lambda kv: kv[1])
         total_lines = raw.count("\n") + 1
         spans: dict[str, tuple[int, int]] = {}
@@ -327,9 +359,15 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
             end = ordered[idx + 1][1] - 1 if idx + 1 < len(ordered) else total_lines
             spans[n] = (start, max(start, end))
 
-        for name, cfg in servers.items():
-            if not isinstance(cfg, dict):
+        # A name in both maps of one file is one node, from the first map: a
+        # client loads one of the maps, and two nodes with one (file, name) key
+        # would be one component counted twice.
+        entries = [(name, cfg) for _key, servers in maps for name, cfg in servers.items()]
+        seen: set[str] = set()
+        for name, cfg in entries:
+            if not isinstance(cfg, dict) or str(name) in seen:
                 continue
+            seen.add(str(name))
             url = cfg.get("url") or cfg.get("serverUrl") or ""
             command = cfg.get("command") or ""
             # A non-list `args` (e.g. `"args": 42`) used to raise TypeError here

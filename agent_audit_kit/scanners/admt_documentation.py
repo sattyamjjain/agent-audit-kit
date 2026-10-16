@@ -64,10 +64,10 @@ import ast
 import json
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, loads_jsonc, make_finding, mcp_server_maps
 
 _DECL_EXTS = {".py"}
 _DOC_EXTS = {".md", ".txt", ".rst", ".html"}
@@ -266,6 +266,25 @@ def _mcp_config_paths(project_root: Path) -> list[Path]:
     return out
 
 
+def _server_declarations(cfg: dict[str, Any]) -> list[str]:
+    """The text one server object declares about itself: its description fields
+    and the name and description of each tool it lists."""
+    parts: list[str] = []
+    for key in ("description", "displayName", "title", "instructions"):
+        value = cfg.get(key)
+        if isinstance(value, str):
+            parts.append(value)
+    tools = cfg.get("tools")
+    if isinstance(tools, list):
+        for tool in tools:
+            if isinstance(tool, dict):
+                for key in ("name", "description"):
+                    value = tool.get(key)
+                    if isinstance(value, str):
+                        parts.append(value)
+    return parts
+
+
 def _mcp_descriptions(project_root: Path) -> list[tuple[str, str]]:
     """(relative path, declaration text) for MCP server names + descriptions."""
     out: list[tuple[str, str]] = []
@@ -275,27 +294,16 @@ def _mcp_descriptions(project_root: Path) -> list[tuple[str, str]]:
             data = loads_jsonc(_read(path))
         except (json.JSONDecodeError, ValueError):
             continue
-        if not isinstance(data, dict):
-            continue
-        servers = data.get("mcpServers")
-        if not isinstance(servers, dict):
-            continue
         parts: list[str] = []
-        for server_name, cfg in servers.items():
-            parts.append(str(server_name))
-            if isinstance(cfg, dict):
-                for key in ("description", "displayName", "title", "instructions"):
-                    value = cfg.get(key)
-                    if isinstance(value, str):
-                        parts.append(value)
-                tools = cfg.get("tools")
-                if isinstance(tools, list):
-                    for tool in tools:
-                        if isinstance(tool, dict):
-                            for key in ("name", "description"):
-                                value = tool.get(key)
-                                if isinstance(value, str):
-                                    parts.append(value)
+        # Both server maps: VS Code keeps its servers under `servers` in
+        # .vscode/mcp.json, and reading `mcpServers` alone never read a
+        # declaration there. Every entry's name counts, as before, an entry that
+        # is not an object included.
+        for _key, servers in mcp_server_maps(data):
+            for server_name, cfg in servers.items():
+                parts.append(str(server_name))
+                if isinstance(cfg, dict):
+                    parts.extend(_server_declarations(cfg))
         if parts:
             out.append((name, "\n".join(parts)))
     return out

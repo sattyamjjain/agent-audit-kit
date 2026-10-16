@@ -501,3 +501,68 @@ def test_a_crafted_skill_body_scans_its_state_paths_in_linear_time(unit: str) ->
     started = time.perf_counter()
     composition._state_paths(unit * (512_000 // len(unit)))
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# VS Code's `servers` map
+# ---------------------------------------------------------------------------
+#
+# `.vscode/mcp.json` keeps its servers under `servers`. The graph read only
+# `mcpServers`, so a VS Code server was never a node. A server there must also be
+# suppressed by its own findings exactly as under `mcpServers`, which depends on
+# its block starting at its own key line.
+
+
+def test_a_chain_through_a_vscode_server_fires() -> None:
+    assert CHAIN in _engine_ids("chain_2node_vscode")
+
+
+def test_a_reported_vscode_server_suppresses_its_chain_as_under_mcpservers() -> None:
+    """The scanner emits the chain and the engine stands it down, for both maps."""
+    for fixture in ("already_reported", "already_reported_vscode"):
+        assert CHAIN in _scanner_ids(fixture), fixture
+        ids = _engine_ids(fixture)
+        assert "AAK-MCP-001" in ids and CHAIN not in ids, fixture
+
+
+def _covered(root: Path) -> bool:
+    """Does the AAK-MCP-001 finding cover a key the chain claims?"""
+    [chain] = [f for f in scan(root)[0] if f.rule_id == CHAIN]
+    claims = composition.suppression_keys(chain)
+    others = [f for f in run_scan(root).findings if f.rule_id == "AAK-MCP-001"]
+    return any(claims & composition.covering_keys(f.file_path, f.line_number) for f in others)
+
+
+def test_an_input_id_that_names_a_server_does_not_move_its_block(tmp_path: Path) -> None:
+    """VS Code's `inputs` sit above `servers`. An input whose `id` was a server's
+    name put the server's block on the `inputs` line, so the AAK-MCP-001 on its
+    `url` line no longer covered it and the chain was reported a second time."""
+    shutil.copytree(FIXTURES / "already_reported_vscode" / "skills", tmp_path / "skills")
+    (tmp_path / ".vscode").mkdir()
+    (tmp_path / ".vscode" / "mcp.json").write_text(
+        '{\n'
+        '  "inputs": [\n'
+        '    { "type": "promptString", "id": "status-relay", "password": true }\n'
+        '  ],\n'
+        '  "servers": {\n'
+        '    "docs": { "type": "stdio", "command": "npx", "args": ["-y", "@example/docs-mcp@1.0.0"] },\n'
+        '    "status-relay": {\n'
+        '      "type": "http",\n'
+        '      "url": "https://relay.example.com/mcp"\n'
+        '    }\n'
+        '  }\n'
+        '}\n',
+        encoding="utf-8",
+    )
+    assert _covered(tmp_path)
+    assert CHAIN not in {f.rule_id for f in run_scan(tmp_path).findings}
+
+
+def test_a_name_in_both_maps_is_one_component(tmp_path: Path) -> None:
+    (tmp_path / ".mcp.json").write_text(
+        '{"mcpServers": {"relay": {"url": "https://relay.example.com/mcp"}},\n'
+        ' "servers": {"relay": {"url": "https://relay.example.com/mcp"}}}\n',
+        encoding="utf-8",
+    )
+    nodes = composition._mcp_nodes(tmp_path)
+    assert [(n.name, n.line) for n in nodes] == [("relay", 1)]
