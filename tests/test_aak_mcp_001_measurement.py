@@ -31,6 +31,7 @@ import socket
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -705,12 +706,42 @@ def test_probe_summaries(tmp_path: Path) -> None:
     assert summary["retried_requests"] == 1
 
 
+class _GrantClock:
+    """The gate's clock, remembering each thread's last reading on the
+    monotonic clock the gate uses and on the wall clock the log uses. The gate
+    reads its clock last when it grants a slot, so a transport call made inside
+    the slot sees the grant it runs under."""
+
+    def __init__(self) -> None:
+        self._local = threading.local()
+
+    def __call__(self) -> float:
+        self._local.wall = time.time()
+        self._local.at = time.monotonic()
+        return float(self._local.at)
+
+    def last(self) -> tuple[float, float]:
+        return self._local.at, self._local.wall
+
+
 def test_probe_respects_concurrency_and_pacing(tmp_path: Path) -> None:
+    """At most four requests in flight, one per host, and starts to one host
+    spaced by the gate's interval.
+
+    The spacing is read through the gate's own clock. Timing the transport
+    calls measured something the gate does not promise: a worker can be
+    descheduled between its grant and the call, so two calls can start closer
+    together than the grants behind them (a loaded machine measured 18 ms
+    against a 19 ms floor). The log is held to the slots instead: each start is
+    stamped after its grant and before its transport call, and the summary's
+    audit reports the gaps those stamps show.
+    """
     probe = _load("probe")
     lock = threading.Lock()
     in_flight: dict[str, int] = {}
     peak = {"all": 0, "host": 0}
-    starts: dict[str, list[float]] = {}
+    clock = _GrantClock()
+    slots: dict[str, list[tuple[float, float, float]]] = {}
 
     many = {"endpoints": [
         {"endpoint": f"https://h{i % 5}.example-real.com/p{i}", "host": f"h{i % 5}.example-real.com",
@@ -719,8 +750,10 @@ def test_probe_respects_concurrency_and_pacing(tmp_path: Path) -> None:
 
     def transport(method: str, url: str, ip: str, headers: dict[str, str], body: bytes | None) -> dict[str, Any]:
         host = url.split("/")[2]
+        granted, granted_wall = clock.last()
+        entered = time.time()
         with lock:
-            starts.setdefault(host, []).append(time.monotonic())
+            slots.setdefault(host, []).append((granted, granted_wall, entered))
             in_flight[host] = in_flight.get(host, 0) + 1
             peak["host"] = max(peak["host"], in_flight[host])
             peak["all"] = max(peak["all"], sum(in_flight.values()))
@@ -731,17 +764,34 @@ def test_probe_respects_concurrency_and_pacing(tmp_path: Path) -> None:
                 "body_truncated": False, "headers_ms": 1, "elapsed_ms": 1}
 
     gai = _gai({f"h{i}.example-real.com": [_PUBLIC] for i in range(5)})
-    gate = probe.HostGate(interval=0.02)
+    gate = probe.HostGate(interval=0.02, clock=clock)
     probe.run_probe(many, tmp_path / "raw.jsonl", transport=transport, getaddrinfo=gai, gate=gate, workers=4)
     assert peak["all"] <= 4
     assert peak["host"] == 1
-    for times in starts.values():
-        gaps = [b - a for a, b in zip(times, times[1:])]
-        assert min(gaps) >= 0.02 - 1e-3
-    # The summary's own audit of the log agrees (millisecond stamps).
-    seen = probe.build_summary(probe.read_raw(tmp_path / "raw.jsonl"))["observed_limits"]
+    assert sorted(slots) == [f"h{i}.example-real.com" for i in range(5)]
+    for host_slots in slots.values():
+        grants = [granted for granted, _, _ in host_slots]
+        assert len(set(grants)) == len(grants), "every request runs under a grant of its own"
+        # The gate's clock, so no delay after a grant can shorten a gap; the
+        # slack is float rounding, not time.
+        assert min(b - a for a, b in zip(grants, grants[1:])) >= gate.interval - 1e-6
+
+    raw = probe.read_raw(tmp_path / "raw.jsonl")
+    stamps: dict[str, list[float]] = {}
+    for r in raw:
+        if r["event"] == "request":
+            stamps.setdefault(r["host"], []).append(datetime.fromisoformat(r["ts"].replace("Z", "+00:00")).timestamp())
+    assert sorted(stamps) == sorted(slots)
+    for host, host_stamps in stamps.items():
+        assert len(host_stamps) == len(slots[host])
+        for stamp, (_, granted_wall, entered) in zip(sorted(host_stamps), slots[host]):
+            # Stamped in the slot: after the grant, less the stamp's truncation
+            # to milliseconds, and before the transport call.
+            assert granted_wall - 0.0015 <= stamp <= entered + 1e-6
+    seen = probe.build_summary(raw)["observed_limits"]
+    gaps = [b - a for t in stamps.values() for a, b in zip(sorted(t), sorted(t)[1:])]
+    assert seen["min_same_host_start_gap_s"] == round(min(gaps), 3)
     assert seen["peak_requests_in_flight"] <= 4
-    assert seen["min_same_host_start_gap_s"] >= 0.015
     assert seen["non_https_requests"] == 0 and seen["requests_with_userinfo"] == 0
 
 
