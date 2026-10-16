@@ -3515,9 +3515,10 @@ _r(
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-01"],
     limitations=(
-        "Examines only files that contain createServer, McpServer, createMcpHandler, "
-        "mcp.ServeHTTP, FastMCP or Server.run_streamable_http. In them it looks for a "
-        "call to listen, bind or serve whose first argument is an `http://` URL that "
+        "Examines only files that contain `@tool`, createServer, McpServer, "
+        "createMcpHandler, mcp.ServeHTTP, FastMCP or Server.run_streamable_http. In "
+        "them it looks for a call to listen, bind or serve whose first argument is an "
+        "`http://` URL that "
         "contains a digit or a dot. A server started the usual way, without a URL "
         "string (`uvicorn.run(app, host=\"0.0.0.0\", port=8080)`, `app.listen(8080)`), "
         "and the same call in a file that names none of those, are not matched."
@@ -3682,7 +3683,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`; in Python a fetch's URL counts as "
         "caller input only when it is, or is assigned somewhere in the file from, an "
         "expression rooted at input, args, params, kwargs, request, req, event, "
@@ -3720,7 +3721,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-02"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It looks for the text 127.0.0.1, "
         "localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a "
         "string that reaches a recognised fetch call. Other spellings of loopback and "
@@ -3747,7 +3748,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-03"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254` "
         "and `metadata.google.internal` only. Other cloud credential endpoints "
         "(`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one "
@@ -3772,7 +3773,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-04"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It fires on an explicit "
         "`follow_redirects=True`, `allow_redirects=True` or `redirect: \"follow\"` in "
         "a file with a recognised fetch call. A client left at its default, which "
@@ -3797,7 +3798,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-05"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It fires on a recognised fetch "
         "call whose URL derives from caller input, in a file that never writes "
         "ALLOW_HOST, ALLOW_HOSTS, ALLOWED_HOST, ALLOWED_HOSTS or URL_ALLOW_LIST (upper "
@@ -8289,7 +8290,7 @@ _r(
     limitations=(
         "Reads `.ts`, `.tsx`, `.mts` and `.cts` files that carry a tool-call marker "
         "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
-        "`server.tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
+        "`server.tool`, `@tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
         "that call `setRequestHandler(CallToolRequestSchema, ...)` or carry "
         "`handleToolCall`, `server.tool` or `@tool`: in JavaScript a client sends "
         "`tools/call`, registers handlers of its own with `setRequestHandler` and "

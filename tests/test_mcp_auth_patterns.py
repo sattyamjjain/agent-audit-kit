@@ -9,10 +9,11 @@ with the square. `_first_fastapi_mcp_handler` reads each `)` once.
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import pytest
 
-from agent_audit_kit.scanners.mcp_auth_patterns import _first_fastapi_mcp_handler
+from agent_audit_kit.scanners.mcp_auth_patterns import _first_fastapi_mcp_handler, scan
 
 
 @pytest.mark.parametrize(("source", "span"), [
@@ -36,3 +37,27 @@ def test_a_crafted_route_file_reads_in_linear_time(source: str) -> None:
     started = time.perf_counter()
     _first_fastapi_mcp_handler(source)
     assert time.perf_counter() - started < 5.0
+
+
+# A file whose only MCP marker is a `@tool` decorator was never read: the gate
+# wrote `\b(...|@tool|...)\b`, and a word boundary before `@` needs a word
+# character in front of it.
+_CORS_WITH_CREDENTIALS = (
+    "CORS = {\n"
+    '    "Access-Control-Allow-Origin": "*",\n'
+    '    "Access-Control-Allow-Credentials": "true",\n'
+    "}\n"
+)
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool", True),
+    ("@tool()", True),
+    ("@toolbox", False),
+])
+def test_a_tool_decorator_alone_marks_the_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    (tmp_path / "server.py").write_text(
+        _CORS_WITH_CREDENTIALS + f"\n\n{decorator}\ndef read_note(note_id: str) -> str:\n    return note_id\n",
+        encoding="utf-8",
+    )
+    assert ("AAK-MCP-013" in {f.rule_id for f in scan(tmp_path)[0]}) is read

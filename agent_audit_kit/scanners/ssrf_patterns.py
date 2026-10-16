@@ -17,8 +17,12 @@ from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in
 _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go", ".rs"}
 _MAX_FILE_BYTES = 512_000
 
+# `@tool` sits outside the leading `\b`. Inside it, the boundary before `@`
+# needed a word character in front, so the alternative matched only glued to a
+# word (`x@tool`), never a decorator at the start of a line, and a file whose
+# only marker was `@tool` was never read.
 _MCP_TOOL_HINT = re.compile(
-    r"\b(@tool|createTool|McpServer|FastMCP|mcp\.tool|Server\.run_streamable_http)\b"
+    r"(?:\b(?:createTool|McpServer|FastMCP|mcp\.tool|Server\.run_streamable_http)|@tool)\b"
 )
 
 # The outbound-call, user-input and private-address patterns that used to live

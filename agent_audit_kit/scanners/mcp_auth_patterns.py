@@ -21,9 +21,12 @@ from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in
 _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go"}
 _MAX_FILE_BYTES = 512_000
 
+# `@tool` sits outside the leading `\b`: a boundary before `@` needs a word
+# character in front, so inside it a `@tool` decorator at the start of a line
+# never matched, and a file whose only marker it was went unread.
 _MCP_SERVER_HINT = re.compile(
-    r"\b(createServer|McpServer|createMcpHandler|@tool|mcp\.ServeHTTP|FastMCP|"
-    r"Server\.run_streamable_http)\b"
+    r"(?:\b(?:createServer|McpServer|createMcpHandler|mcp\.ServeHTTP|FastMCP|"
+    r"Server\.run_streamable_http)|@tool)\b"
 )
 
 # AAK-MCP-013: CORS wildcard combined with credentials

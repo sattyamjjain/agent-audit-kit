@@ -26,8 +26,12 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
 
 # ---- Patterns that indicate an MCP server implementation ----
+# `@tool` sits outside the leading `\b` here and in `_TOOL_HANDLER_RE`: a
+# boundary before `@` needs a word character in front, so inside it a `@tool`
+# decorator at the start of a line never matched, and a file whose only marker
+# it was went unread.
 _MCP_SERVER_RE = re.compile(
-    r"\b(createServer|McpServer|@tool)\b",
+    r"(?:\b(?:createServer|McpServer)|@tool)\b",
     re.IGNORECASE,
 )
 
@@ -118,8 +122,8 @@ _DANGEROUS_SINKS: list[tuple[re.Pattern[str], str, str]] = [
 # reached it from the arguments object. The rule text says so.
 
 _TOOL_HANDLER_RE = re.compile(
-    r"\b(?:handleToolCall|CallToolRequestSchema|setRequestHandler"
-    r"|server\s*\.\s*tool|@tool)\b"
+    r"(?:\b(?:handleToolCall|CallToolRequestSchema|setRequestHandler"
+    r"|server\s*\.\s*tool)|@tool)\b"
     r"|['\"]tools/call['\"]"
 )
 

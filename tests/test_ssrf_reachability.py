@@ -142,6 +142,45 @@ def test_allowlist_guard_clears_the_tainted_finding(tmp_path: Path) -> None:
     assert "AAK-SSRF-005" not in _ids(tmp_path, "tool.py", body)
 
 
+# --- a `@tool` decorator alone marks the file -------------------------------
+#
+# The gate wrote `\b(@tool|...)\b`. A word boundary before `@` needs a word
+# character in front of it, so a file whose only marker was a `@tool` decorator
+# (LangChain's, or a framework's that re-exports it) was never read.
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool", True),
+    ("@tool()", True),
+    ('@tool("identity")', True),
+    ("@toolbox", False),
+    ("@tools.register", False),
+])
+def test_a_tool_decorator_alone_marks_the_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    (tmp_path / "tools.py").write_text(
+        "import requests\n\n\n"
+        f"{decorator}\n"
+        "def identity() -> str:\n"
+        '    return requests.get("http://169.254.169.254/latest/meta-data/").text\n',
+        encoding="utf-8",
+    )
+    assert ("AAK-SSRF-003" in {f.rule_id for f in scan(tmp_path)[0]}) is read
+
+
+def test_a_tool_file_with_no_other_marker_reports_its_caller_url(tmp_path: Path) -> None:
+    (tmp_path / "tools.py").write_text(
+        "import requests\n"
+        "from langchain_core.tools import tool\n\n\n"
+        "@tool\n"
+        "def fetch(tool_input):\n"
+        '    url = tool_input["url"]\n'
+        "    return requests.get(url).text\n",
+        encoding="utf-8",
+    )
+    ids = {f.rule_id for f in scan(tmp_path)[0]}
+    assert {"AAK-SSRF-001", "AAK-SSRF-005"} <= ids
+
+
 # --- backend units ----------------------------------------------------------
 
 
