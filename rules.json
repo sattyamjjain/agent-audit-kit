@@ -85,7 +85,7 @@
       "cve_references": [],
       "description": "An A2A agent endpoint uses HTTP instead of HTTPS.",
       "incident_references": [],
-      "limitations": "Reads `url`, `endpoint`, `baseUrl` and `base_url` on the card and `url` and `endpoint` on each skill, and matches a value that starts with `http://`. A plain-HTTP address under `additionalInterfaces`, an OAuth `tokenUrl`, or a `ws://` endpoint is not read or not matched.",
+      "limitations": "Reads `url`, `endpoint`, `baseUrl` and `base_url` on the card and `url` and `endpoint` on each skill, and matches a value that starts with `http://` or that a URL parser reads as http (a leading space, `HTTP:/host`, a tab in the scheme). A plain-HTTP address under `additionalInterfaces`, an OAuth `tokenUrl`, or a `ws://` endpoint is not read or not matched.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -2721,7 +2721,7 @@
       "cve_references": [],
       "description": "An MCP server uses HTTP transport (url field) without a recognized authentication or access-control header. Recognized schemes are Authorization / Bearer, X-API-Key / Api-Key, the custom credential-header family (X-*-Key, *-API-Key, *_API_KEY, *-Subscription-Key and similar), and the x402 X-PAYMENT gate, declared via an env/template reference (e.g. ${API_KEY}). A custom auth header carrying a hardcoded literal secret still fires \u2014 the credential is exposed in the config, so the endpoint is effectively unprotected. A server on a loopback host (localhost, 127.0.0.0/8, ::1, 0.0.0.0) is not reported. Unauthenticated remote servers can be MITM'd or spoofed.",
       "incident_references": [],
-      "limitations": "Reads the `url` field of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and looks for an `Authorization`, `Bearer`, `X-API-Key` or `API-Key` header, or for one of a fixed family of custom credential headers (`X-*-Key`, `X-*-Token` but not `X-CSRF-Token` or `X-XSRF-Token`, `X-*-Secret`, a name ending in `-API-Key`, `_API_KEY` or `ApiKey`, `*-API-Token`, `*-Access-Key`, `*-Client-Secret`, `*-Subscription-Key`, `X-Auth-Token`, `X-Access-Token`, `X-Payment`) whose value is empty or blank, or contains a `${VAR}`, `$VAR`, `{{VAR}}`, `<VAR>` or `%VAR%` reference, your, change-me (also change_me and change me), changeme, placeholder, redacted, dummy or four x's anywhere, `_here` at the end of a word, or example or sample as a whole word (an underscore joins words, so `example_key` does not count); `\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared scheme. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`. A server on a loopback host (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported, though one that checks no `Origin` header can still be reached from a web page through DNS rebinding.",
+      "limitations": "Reads the `url` field of each server in `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and looks for an `Authorization`, `Bearer`, `X-API-Key` or `API-Key` header, or for one of a fixed family of custom credential headers (`X-*-Key`, `X-*-Token` but not `X-CSRF-Token` or `X-XSRF-Token`, `X-*-Secret`, a name ending in `-API-Key`, `_API_KEY` or `ApiKey`, `*-API-Token`, `*-Access-Key`, `*-Client-Secret`, `*-Subscription-Key`, `X-Auth-Token`, `X-Access-Token`, `X-Payment`) whose value is empty or blank, or contains a `${VAR}`, `$VAR`, `{{VAR}}`, `<VAR>` or `%VAR%` reference, your, change-me (also change_me and change me), changeme, placeholder, redacted, dummy or four x's anywhere, `_here` at the end of a word, or example or sample as a whole word (an underscore joins words, so `example_key` does not count); `\"X-Foo-Key\": \"\"` and `\"k9f2-example-77a1\"` both count as a declared scheme. A remote URL given any other way is not examined: as an argument to a bridge (`npx mcp-remote https://...`) or under another key such as `serverUrl`. A server on a loopback host (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported, though one that checks no `Origin` header can still be reached from a web page through DNS rebinding. The host has to be loopback both as Node reads the URL and as urlsplit, httpx and curl read it, so `http://localhost\\@evil.example/`, which those send to evil.example, is reported.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -2915,7 +2915,7 @@
       "cve_references": [],
       "description": "The MCP server URL contains a private-range address (10.x, 172.16-31.x, 192.168.x), a `.local` name, or a loopback address (localhost, 127.0.0.1, 0.0.0.0, ::1) somewhere other than its own host, such as a proxy target in the query, which may expose internal services (SSRF pattern). A server whose own host is loopback is not reported.",
       "incident_references": [],
-      "limitations": "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a `.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1; a URL whose own host is loopback (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10.",
+      "limitations": "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a `.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1, and reads its host as a client does, so `http://10.1/`, `http://0xa.0.0.5/` and `http://%31%30.0.0.5/` are 10.x too; a URL whose own host is loopback (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. Other internal addresses are not matched: a name such as `mcp.corp.internal` or the shared range 100.64.0.0/10.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [
@@ -11017,7 +11017,7 @@
       ],
       "description": "An MCP server URL uses a cleartext scheme, exposing all traffic including credentials to interception. **Applies to: `http://` and `ws://`.** A `ws://` handshake is an unencrypted HTTP upgrade, so it is the same defect and not a milder one -- the handshake headers and every frame after them are on the wire in clear. **Does not apply to: `https://`, `wss://` (encrypted), or `stdio` (no URL, no network hop).** Loopback URLs (`localhost`, `127.0.0.0/8`, `::1`, `0.0.0.0`) are excluded on either scheme, since the traffic does not leave the host.",
       "incident_references": [],
-      "limitations": "Reads the `url` field of each server under `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read.",
+      "limitations": "Reads the `url` field of each server under `mcpServers`, or `servers` in VS Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. Scheme and host are read as a client reads them, so ` http://host` and `http:/host` are cleartext too, and the host has to be loopback to every URL parser. A cleartext URL passed as an argument to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is not read.",
       "owasp_agentic_references": [
         "ASI07"
       ],
@@ -11150,7 +11150,7 @@
       ],
       "description": "Redirects all API traffic (including API keys) to attacker-controlled endpoint BEFORE trust prompt displays. This is the exact attack vector of CVE-2026-21852.",
       "incident_references": [],
-      "limitations": "Parses `env.ANTHROPIC_BASE_URL` in `.claude/settings.json` and `.claude/settings.local.json` at the root of the scanned directory and accepts it when the host is `anthropic.com` or a subdomain of it, whatever the scheme, so a cleartext `http://api.anthropic.com/v1` passes. The same override in the settings file of a subdirectory (`packages/web/.claude/settings.json`) is not read.",
+      "limitations": "Parses `env.ANTHROPIC_BASE_URL` in `.claude/settings.json` and `.claude/settings.local.json` at the root of the scanned directory and accepts it when the host is `anthropic.com` or a subdomain of it, whatever the scheme, so a cleartext `http://api.anthropic.com/v1` passes. The host has to be the same to Node and to httpx: `https://api.anthropic.com\\@evil.example/v1` is Anthropic to Claude Code and evil.example to the Python SDK, and is reported. The same override in the settings file of a subdirectory (`packages/web/.claude/settings.json`) is not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],

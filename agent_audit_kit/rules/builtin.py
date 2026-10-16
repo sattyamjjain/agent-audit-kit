@@ -444,7 +444,10 @@ _r(
         "bridge (`npx mcp-remote https://...`) or under another key such as "
         "`serverUrl`. A server on a loopback host (localhost, 127.0.0.0/8, ::1 or "
         "0.0.0.0) is not reported, though one that checks no `Origin` header can still "
-        "be reached from a web page through DNS rebinding."
+        "be reached from a web page through DNS rebinding. The host has to be loopback "
+        "both as Node reads the URL and as urlsplit, httpx and curl read it, so "
+        "`http://localhost\\@evil.example/`, which those send to evil.example, is "
+        "reported."
     ),
 )
 
@@ -633,9 +636,11 @@ _r(
     adversa_references=["ADV-SSRF-01"],
     limitations=(
         "Looks in the server `url` for the 10.x, 172.16-31.x and 192.168.x ranges, a "
-        "`.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1; a URL whose "
-        "own host is loopback (localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not "
-        "reported. Other internal addresses are not matched: a name such as "
+        "`.local` name, or the text localhost, 127.0.0.1, 0.0.0.0 or ::1, and reads "
+        "its host as a client does, so `http://10.1/`, `http://0xa.0.0.5/` and "
+        "`http://%31%30.0.0.5/` are 10.x too; a URL whose own host is loopback "
+        "(localhost, 127.0.0.0/8, ::1 or 0.0.0.0) is not reported. Other internal "
+        "addresses are not matched: a name such as "
         "`mcp.corp.internal` or the shared range 100.64.0.0/10."
     ),
 )
@@ -1399,7 +1404,10 @@ _r(
         "Parses `env.ANTHROPIC_BASE_URL` in `.claude/settings.json` and "
         "`.claude/settings.local.json` at the root of the scanned directory and accepts "
         "it when the host is `anthropic.com` or a subdomain of it, whatever the "
-        "scheme, so a cleartext `http://api.anthropic.com/v1` passes. The same "
+        "scheme, so a cleartext `http://api.anthropic.com/v1` passes. The host has to "
+        "be the same to Node and to httpx: `https://api.anthropic.com\\@evil.example/v1` "
+        "is Anthropic to Claude Code and evil.example to the Python SDK, and is "
+        "reported. The same "
         "override in the settings file of a subdirectory "
         "(`packages/web/.claude/settings.json`) is not read."
     ),
@@ -2484,7 +2492,9 @@ _r(
     limitations=(
         "Reads the `url` field of each server under `mcpServers`, or `servers` in VS "
         "Code's `.vscode/mcp.json`, and flags `http://` and `ws://` unless the host is "
-        "loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. A cleartext URL passed as an argument "
+        "loopback (localhost, 127.0.0.0/8, ::1) or 0.0.0.0. Scheme and host are read as "
+        "a client reads them, so ` http://host` and `http:/host` are cleartext too, and "
+        "the host has to be loopback to every URL parser. A cleartext URL passed as an argument "
         "to a bridge command (`npx mcp-remote http://...`) is not a `url` field and is "
         "not read."
     ),
@@ -2654,7 +2664,8 @@ _r(
     limitations=(
         "Reads `url`, `endpoint`, `baseUrl` and `base_url` on the card and `url` "
         "and `endpoint` on each skill, and matches a value that starts with "
-        "`http://`. A plain-HTTP address under `additionalInterfaces`, an OAuth "
+        "`http://` or that a URL parser reads as http (a leading space, `HTTP:/host`, "
+        "a tab in the scheme). A plain-HTTP address under `additionalInterfaces`, an OAuth "
         "`tokenUrl`, or a `ws://` endpoint is not read or not matched."
     ),
 )
