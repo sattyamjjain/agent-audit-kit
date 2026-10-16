@@ -304,13 +304,27 @@ def _colon_value(line: str, at: int) -> tuple[str, int] | None:
     return line[start:end], end
 
 
+# Unquoted YAML values that are not secrets though they sit under a secret-looking name:
+# an ARN (CloudFormation's `KmsKeyId: arn:aws:kms:...`, `SecretArn:`), a public key in
+# SSH, SubjectPublicKeyInfo or PKCS#1 form, and a key fingerprint. Their DER and SSH
+# encodings open with fixed bytes for each algorithm, so the base64 prefix says which.
+_PUBLIC_VALUE_RE = re.compile(
+    r"arn:|SHA256:|MD5:|ssh-|ecdsa-sha2-|sk-ssh-|sk-ecdsa-"
+    r"|AAAAB3NzaC1|AAAAC3NzaC1|AAAAE2VjZHNh|AAAAGnNrLXNzaC1|AAAAInNrLWVjZHNh"
+    r"|MCowBQYDK2V|MEMwBQYDK2V|MFkwEwYHKoZIzj0CAQ|MHYwEAYHKoZIzj0CAQ|MIGbMBAGByqGSM49AgE"
+    r"|MII[A-Za-z0-9+/]{3}ANBgkqhkiG9w0BAQEFAAOC|MII[BC]CgKCA[QgB]EA"
+)
+_PUBLIC_NAME_RE = re.compile(r"public|fingerprint", re.IGNORECASE)
+
+
 def _secret_assignments(line: str, yaml: bool = False) -> list[tuple[str, str]]:
     """``(name, value)`` for each secret-looking assignment on one line.
 
     The quoted shape comes first, then the bare one, each in line order: the order the
     two patterns this replaces were applied in. A line can yield the same assignment
     in both shapes (``SECRET_KEY="..."`` is quoted and also runs to the next space).
-    With ``yaml``, YAML's unquoted ``NAME: value`` follows, read the same way.
+    With ``yaml``, YAML's unquoted ``NAME: value`` follows, read the same way, less an
+    ARN, a public key or a fingerprint (`_PUBLIC_VALUE_RE`, `_PUBLIC_NAME_RE`).
     """
     quoted: list[tuple[str, str]] = []
     bare: list[tuple[str, str]] = []
@@ -333,8 +347,9 @@ def _secret_assignments(line: str, yaml: bool = False) -> list[tuple[str, str]]:
         if yaml and start >= plain_from:
             found = _colon_value(line, end)
             if found is not None:
-                plain.append((word.group(), found[0]))
                 plain_from = found[1]
+                if not (_PUBLIC_VALUE_RE.match(found[0]) or _PUBLIC_NAME_RE.search(word.group())):
+                    plain.append((word.group(), found[0]))
     return quoted + bare + plain
 
 

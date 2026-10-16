@@ -1178,3 +1178,32 @@ def test_secret_005_accepts_every_freshly_generated_key_body() -> None:
     keys += [ec.generate_private_key(ec.SECP256R1()) for _ in range(300)]
     keys += [rsa.generate_private_key(public_exponent=65537, key_size=2048) for _ in range(6)]
     assert [k for k in keys if not _is_key_body(body(k))] == []
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        # CloudFormation and IAM name resources by ARN; an ARN is an address, not a secret.
+        "      KmsKeyId: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab",
+        "    SecretArn: arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf",
+        # Public keys and their fingerprints, under a public name or in a public key's shape.
+        "  publicKey: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqvLtNW8h4JQhMqW2rg1Y9b8yFiA7",
+        "  signing_key: MCowBQYDK2VwAyEAvLtNW8h4JQhMqW2rg1Y9b8yFiA7qvLtNW8h4JQhMq",
+        "  host_key: AAAAC3NzaC1lZDI1NTE5AAAAIvLtNW8h4JQhMqW2rg1Y9b8yFiA7qvLtN",
+        "  rsa_key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvLtNW8h4JQhMqW2rg1Y9",
+        "  ssh_host_key_fingerprint: SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8",
+        "  deploy_key_public: Zk8Q2mPx7LwR4vN9bT1yU6hJ3dAeF5gC",
+    ],
+    ids=lambda line: line.split(":", 1)[0].strip(),
+)
+def test_secret_004_skips_arns_and_public_keys_in_yaml(tmp_path: Path, line: str) -> None:
+    (tmp_path / "template.yaml").write_text("Resources:\n" + line + "\n", encoding="utf-8")
+
+    assert _hits(scan(tmp_path)[0], "AAK-SECRET-004") == []
+
+
+def test_secret_004_still_reads_a_private_value_beside_them(tmp_path: Path) -> None:
+    text = "auth:\n  public_key: MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqvLtNW8h4\n  private_key_password: Zk8Q2mPx7LwR4vN9bT1yU6hJ3dAeF5gC\n"
+    (tmp_path / "values.yaml").write_text(text, encoding="utf-8")
+
+    assert [f.line_number for f in _hits(scan(tmp_path)[0], "AAK-SECRET-004")] == [3]
