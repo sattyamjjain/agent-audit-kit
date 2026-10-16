@@ -1,22 +1,23 @@
 from __future__ import annotations
 
-import ipaddress
 import json
 import re
 import shlex
 from pathlib import Path
 from typing import Any, Iterator
-from urllib.parse import SplitResult, parse_qsl, urlsplit
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.redaction import is_secret_name
+from agent_audit_kit.redaction import redact_evidence
 from agent_audit_kit.scanners._helpers import (
+    _is_loopback_host,
     find_line_number,
     hook_command,
+    host_ip,
     in_skip_dir,
     is_loopback_url,
     iter_hook_handlers,
     make_finding,
+    url_readings,
 )
 from agent_audit_kit.scanners.skill_composition import _parse_frontmatter
 
@@ -245,48 +246,28 @@ _make_finding = make_finding
 # ---------------------------------------------------------------------------
 
 _HEADER_VAR = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
-_C0_OR_SPACE = "".join(chr(c) for c in range(0x21))
-
-
-def _split_url(url: str) -> SplitResult | None:
-    """``url`` split the way a WHATWG parser (Node, so Claude Code) reads it:
-    outer C0 controls and spaces stripped, tab, CR and LF removed, and `\\`
-    read as `/`, so `https://evil.example\\@host/` has no userinfo."""
-    text = url.strip(_C0_OR_SPACE)
-    for ch in "\t\r\n":
-        text = text.replace(ch, "")
-    try:
-        return urlsplit(text.replace("\\", "/"))
-    except ValueError:
-        return None
-
-
 def _http_url_risks(url: str) -> list[str]:
-    """Why AAK-HOOK-001 reports an `http` hook's URL; empty when it does not."""
-    parts = _split_url(url)
-    if parts is None:
-        return []
-    local = is_loopback_url(url)
+    """Why AAK-HOOK-001 reports an `http` hook's URL; empty when it does not.
+
+    The URL is judged on each of `url_readings`, the way Node (Claude Code) and
+    the urlsplit, httpx and curl family read it, so a backslash cannot hide
+    either host: `http://localhost\\@evil.example/` is cleartext to
+    evil.example for curl, and `https://hooks.example.com\\@203.0.113.7/` is a
+    bare IP for httpx. The loopback exemption holds only when every reading is
+    local (`is_loopback_url`), and an address is read as clients read it, so
+    `https://0xcb.0.113.7/` is 203.0.113.7 and `http://127.1/` is loopback. A
+    credential is anything evidence redaction masks in the URL: a password or
+    token in the userinfo, a credential-named query parameter, or a known token
+    format.
+    """
+    readings = url_readings(url)
     risks: list[str] = []
-    if parts.scheme.lower() == "http" and not local:
+    if any(reading.scheme in ("http", "ws") for reading in readings) and not is_loopback_url(url):
         risks.append("plain http to another machine")
-    try:
-        host = parts.hostname
-    except ValueError:
-        host = None
-    if host and not local:
-        try:
-            ipaddress.ip_address(host.rstrip("."))
-        except ValueError:
-            pass
-        else:
-            risks.append("an IP address, not a name")
-    try:
-        userinfo = parts.username is not None or parts.password is not None
-    except ValueError:
-        userinfo = False
-    query_secret = any(is_secret_name(name) and value for name, value in parse_qsl(parts.query))
-    if userinfo or query_secret:
+    if any(host_ip(reading.host) is not None and not _is_loopback_host(reading.host)
+           for reading in readings):
+        risks.append("an IP address, not a name")
+    if redact_evidence(url) != url:
         risks.append("a credential in the URL")
     return risks
 

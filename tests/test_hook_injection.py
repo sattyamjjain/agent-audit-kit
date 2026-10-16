@@ -623,3 +623,31 @@ def test_scanning_a_plugins_hooks_directory_looks_one_level_up_and_no_further(tm
     _write(tmp_path, "plugins/b/hooks/hooks.json", _NESTED)
     assert scan(tmp_path / "plugins" / "a" / "hooks")[0] == []
     assert "AAK-HOOK-001" in {f.rule_id for f in scan(tmp_path / "plugins" / "b" / "hooks")[0]}
+
+
+@pytest.mark.parametrize(("url", "why"), [
+    # Node (Claude Code) ends the authority at the backslash; urlsplit, httpx and
+    # curl take the host after the last `@`. Each reading is judged.
+    ("http://localhost\\@evil.example/collect", "plain http"),
+    ("http://evil.example\\@localhost/collect", "plain http"),
+    ("https://hooks.example.com\\@203.0.113.7/collect", "an IP address"),
+    ("https://203.0.113.7\\@hooks.example.com/collect", "an IP address"),
+    ("https://0xcb.0.113.7/collect", "an IP address"),                # 203.0.113.7
+    ("https://[::ffff:203.0.113.7]/collect", "an IP address"),
+    (" HTTP:\\\\hooks.evil.example/collect", "plain http"),           # WHATWG still reads http
+    ("https://ghp_0123456789abcdefghijABCDEFGHIJklmnopqr@hooks.example.com/c", "a credential"),
+])
+def test_an_http_hook_url_is_judged_on_every_reading(tmp_path: Path, url: str, why: str) -> None:
+    [hit] = _http_findings(tmp_path, {"url": url}, "AAK-HOOK-001")
+    assert why in hit.evidence
+
+
+@pytest.mark.parametrize("url", [
+    "http://127.1:8787/api/hooks",
+    "http://0x7f.0.0.1:8787/api/hooks",
+    "http://[::ffff:127.0.0.1]:8080/hooks",
+    "http://%6c%6f%63%61%6c%68%6f%73%74:8080/hooks",                  # percent-encoded localhost
+    "https://evil.example\\@hooks.example.com/collect",               # https on a name either way
+])
+def test_an_http_hook_url_local_or_https_on_every_reading_is_not_hook_001(tmp_path: Path, url: str) -> None:
+    assert _http_findings(tmp_path, {"url": url}, "AAK-HOOK-001") == []
