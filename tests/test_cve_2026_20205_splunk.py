@@ -294,3 +294,31 @@ def test_a_file_of_closed_calls_with_quote_heavy_arguments_reads_in_linear_time(
     started = time.perf_counter()
     scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+def test_calls_that_open_replace_repeatedly_read_in_linear_time(tmp_path: Path) -> None:
+    """The redaction hint read `.replace(` with two unbounded `[^)]*` runs around a token
+    word, so each closed call of `.replace(token,` repeated cost about 110 ms and 80 of
+    them (0.31 MB) 8.9 s. Both runs are bounded now."""
+    import time
+
+    unit = ".replace(token,"
+    k = 3_900 // (len(unit) + 1)
+    call = "logger.info(" + unit * k + ")" * k + ")\n"
+    (tmp_path / "blob.py").write_text(call * 80, encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 3.0
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        'logger.info("auth %s", masked.replace(token, "***"))',
+        'logger.info("auth %s", header.replace(self.api_key, "[REDACTED]"))',
+        'logger.info("auth %s", url.replace(bearer_token, "<redacted>"))',
+    ],
+)
+def test_a_replace_that_masks_the_credential_still_reads_as_redacted(tmp_path: Path, call: str) -> None:
+    source = f"import logging\n\n\ndef login(masked, header, url, token, bearer_token):\n    {call}\n"
+    assert _leaks(tmp_path, "auth.py", source) == []

@@ -137,11 +137,15 @@ _STRING_PREFIX_RE = re.compile(r"(?<![\w$])[A-Za-z]{1,2}\Z")
 # cannot make one file cost more than a pass over it and this budget.
 _FILE_ARGS_BUDGET = 2_000_000
 
+# `.replace(<a token word>, "***")` reads as a redaction. Both runs around the token
+# word are bounded: unbounded `[^)]*`, read from every `.replace(` of a closed call that
+# opens `.replace(token,` over and over, cost about 110 ms a call, so 80 such calls
+# (0.31 MB) took 8.9 s. A real call's first argument is a name, far shorter than 80.
 _REDACT_HINTS_RE = re.compile(
     r"""
     (?:
         redact\b | mask\b | anonymi[sz]e\b | \*{3,} | <redacted> | \[redacted\]
-      | \.replace\s*\([^)]*(?:token|auth|bearer|key)[^)]*,\s*['"](\*{3,}|[\[\]<>]*redacted[\[\]<>]*)
+      | \.replace\s*\([^)]{0,80}(?:token|auth|bearer|key)[^)]{0,80},\s*['"](\*{3,}|[\[\]<>]*redacted[\[\]<>]*)
     )
     """,
     re.VERBOSE | re.IGNORECASE,
