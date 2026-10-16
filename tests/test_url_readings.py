@@ -126,3 +126,25 @@ def test_a_crafted_url_reads_in_linear_time(value: str) -> None:
     url_readings(value)
     is_loopback_url(value)
     assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize(
+    "written, serialized",
+    [
+        ("::ffff:127.0.0.1", "::ffff:7f00:1"),  # never an embedded IPv4 address
+        ("0:0:0:0:0:0:0:1", "::1"),
+        ("::", "::"),
+        ("2001:0DB8:0000:0000:0000:FF00:0042:8329", "2001:db8::ff00:42:8329"),
+        ("1:0:0:2:0:0:0:3", "1:0:0:2::3"),  # the longest run of zeros
+        ("1:0:0:2:0:0:3:4", "1::2:0:0:3:4"),  # the first of two equal runs
+        ("1:0:2:3:4:5:6:7", "1:0:2:3:4:5:6:7"),  # a single zero piece is kept
+    ],
+)
+def test_an_ipv6_host_is_written_the_way_the_url_standard_writes_it(written: str, serialized: str) -> None:
+    """The same on every Python: 3.13 and later 3.12 releases changed what
+    `IPv6Address.compressed` gives an IPv4-mapped address, and CI failed on it."""
+    import ipaddress
+
+    from agent_audit_kit.scanners._helpers import _ipv6_serialized
+
+    assert _ipv6_serialized(ipaddress.IPv6Address(written)) == serialized

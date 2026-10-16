@@ -427,7 +427,7 @@ def _read_host(text: str, rfc3986: bool) -> str | None:
         if not inner or "%" in inner:
             return None
         try:
-            return ipaddress.IPv6Address(inner).compressed
+            return _ipv6_serialized(ipaddress.IPv6Address(inner))
         except ValueError:
             return None
     host = _map_domain(unquote(text, errors="replace"))
@@ -440,6 +440,42 @@ def _read_host(text: str, rfc3986: bool) -> str | None:
         quad = _decimal_dotted_quad(labels) if rfc3986 else None
         return quad or _read_ipv4(labels)
     return host
+
+
+def _ipv6_serialized(address: ipaddress.IPv6Address) -> str:
+    """The URL Standard's IPv6 serializer: lower-case hex, the first longest run
+    of two or more zero pieces written `::`, and never an embedded IPv4 address.
+
+    `IPv6Address.compressed` is not that, and not stable either: Python 3.13
+    (and later 3.12 releases) write an IPv4-mapped address as
+    `::ffff:127.0.0.1` where 3.12.7 wrote `::ffff:7f00:1`, so the same URL got
+    a different host on different interpreters. This writes the pieces itself.
+    """
+    pieces = [int.from_bytes(address.packed[i:i + 2], "big") for i in range(0, 16, 2)]
+    compress, longest, run_start, run = None, 1, 0, 0
+    for i, piece in enumerate(pieces + [1]):  # the sentinel ends a trailing run
+        if piece == 0:
+            if run == 0:
+                run_start = i
+            run += 1
+            continue
+        if run > longest:
+            compress, longest = run_start, run
+        run = 0
+    out: list[str] = []
+    ignore_zero = False
+    for i, piece in enumerate(pieces):
+        if ignore_zero and piece == 0:
+            continue
+        ignore_zero = False
+        if compress == i:
+            out.append("::" if i == 0 else ":")
+            ignore_zero = True
+            continue
+        out.append(format(piece, "x"))
+        if i != 7:
+            out.append(":")
+    return "".join(out)
 
 
 def _map_domain(text: str) -> str:
