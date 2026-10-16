@@ -870,19 +870,22 @@ def _yaml_positions(text: str) -> dict[tuple[str | int, ...], int]:
     except (yaml.YAMLError, RecursionError):
         return {}
     positions: dict[tuple[str | int, ...], int] = {}
-    stack: list[tuple[yaml.Node, tuple[str | int, ...]]] = [(root, ())] if root is not None else []
+    # Breadth first in document order, as `_command_entries` walks the loaded
+    # document, so a node an alias shares gets the path that walk records for it.
+    queue: deque[tuple[yaml.Node, tuple[str | int, ...]]] = deque(
+        [(root, ())] if root is not None else [])
     seen: set[int] = set()
-    while stack:
-        node, where = stack.pop()
+    while queue:
+        node, where = queue.popleft()
         if id(node) in seen:  # an alias can point back at its own ancestor
             continue
         seen.add(id(node))
         positions[where] = node.start_mark.line + 1
         if isinstance(node, yaml.MappingNode):
-            stack.extend((value, where + (key.value,)) for key, value in node.value
+            queue.extend((value, where + (key.value,)) for key, value in node.value
                          if isinstance(key, yaml.ScalarNode))
         elif isinstance(node, yaml.SequenceNode):
-            stack.extend((item, where + (index,)) for index, item in enumerate(node.value))
+            queue.extend((item, where + (index,)) for index, item in enumerate(node.value))
     return positions
 
 

@@ -689,6 +689,14 @@ def test_whatsapp_comments_follow_each_format(
     assert (WHATSAPP in _ids(tmp_path, name, content)) is fires
 
 
+def test_a_launch_reached_through_a_yaml_alias_names_its_line(tmp_path: Path) -> None:
+    """Positions and command entries are both walked in document order, so the
+    path a launch records through an alias is one the positions know."""
+    content = ('x-base: &base\n  command: npx\n  args: ["-y", "n8n-mcp@2.40.0"]\n'
+               "servers:\n  a: *base\n")
+    assert _lines(tmp_path, "team.mcp.yaml", content, N8NMCP) == [3]
+
+
 def test_whatsapp_limitation_names_every_file_it_reads() -> None:
     """The files the pin table reads at any depth include the `*.mcp.yaml`
     configs, and the key forms beside a URL are read too."""
