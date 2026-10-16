@@ -63,7 +63,7 @@ def _fixed(root: Path, name: str, rule_id: str) -> tuple[fix.FixAction | None, s
      _POETRY + 'langchain-core = { version = ">=1.2.22", extras = ["all"] }\n'),
 ])
 def test_langchain_core_fix_clears_the_rule(tmp_path: Path, name: str, before: str, after: str) -> None:
-    (tmp_path / name).write_text(before, encoding="utf-8", newline="")
+    (tmp_path / name).write_bytes(before.encode("utf-8"))  # as written: CRLF stays CRLF
     assert _fires(tmp_path, "AAK-LANGCHAIN-001")
     action, text = _fixed(tmp_path, name, "AAK-LANGCHAIN-001")
     assert action is not None and action.applied, action
