@@ -40,6 +40,8 @@ class RetiredRule:
     """A rule id that has left the registry, and what its help page says about it."""
 
     #: The title the rule carried, so a page reached from an old alert names the rule.
+    #: Reworded only where a screen reader would misread it: `< 1.0.0` is heard as
+    #: "less 1.0.0", so the page says "below 1.0.0".
     title: str
     #: The last release that shipped the rule.
     last_release: str
@@ -48,6 +50,9 @@ class RetiredRule:
     #: What covers it now, in sentences, or what to use instead. The docs link every
     #: registered rule id named here.
     replacement: str
+    #: The registered rules the replacement points to, listed on the page as links that
+    #: say each rule's id and title, so a links list tells them apart.
+    covered_by: tuple[str, ...] = ()
 
 
 # Ids that were registered once and have left the registry. A rule id is a public
@@ -66,16 +71,22 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
             "It read a project's `.windsurf/mcp.json` for `auto_approve` and `auto_execute` "
             "keys, a group- or world-writable folder and server commands with no SHA-256 pin. "
             "Windsurf documents neither that file nor those keys: its MCP documentation, now "
-            "at docs.devin.ai, names only the user-level `~/.config/devin/mcp_config.json` "
-            "(macOS and Linux) and `%APPDATA%\\devin\\mcp_config.json` (Windows), and its "
-            "only per-tool control is `disabledTools`."
+            "at docs.devin.ai, names only an `mcp_config.json` in your home folder, at "
+            "`~/.config/devin/mcp_config.json` on macOS and Linux and at "
+            "`%APPDATA%\\devin\\mcp_config.json` on Windows, and its only per-tool control "
+            "is `disabledTools`."
         ),
         replacement=(
-            "CVE-2026-30615, in which a prompt injection rewrites Windsurf's MCP "
-            "configuration, is covered by AAK-STDIO-001, AAK-MCP-STDIO-CMD-INJ-001, "
-            "AAK-MCP-STDIO-CMD-INJ-002, AAK-MCP-STDIO-CMD-INJ-003 and "
-            "AAK-MCP-STDIO-CMD-INJ-004. Every other MCP server rule still reads "
-            "`.windsurf/mcp.json`."
+            "Every other MCP server rule still reads `.windsurf/mcp.json`. CVE-2026-30615, in "
+            "which a prompt injection rewrites Windsurf's MCP configuration, is covered by "
+            "these five rules:"
+        ),
+        covered_by=(
+            "AAK-STDIO-001",
+            "AAK-MCP-STDIO-CMD-INJ-001",
+            "AAK-MCP-STDIO-CMD-INJ-002",
+            "AAK-MCP-STDIO-CMD-INJ-003",
+            "AAK-MCP-STDIO-CMD-INJ-004",
         ),
     ),
     "AAK-OPENCLAW-PRIVESC-001": RetiredRule(
@@ -89,9 +100,12 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
             "on npm. The rule was provisional from the start, and no CVE was assigned."
         ),
         replacement=(
-            "Nothing replaces the role check. OpenClaw's npm releases are pinned by "
-            "AAK-MCP-OPENCLAW-CVE-2026-62195-001 and AAK-MCP-OPENCLAW-CVE-2026-102807-001, "
-            "which report its vulnerable versions."
+            "Nothing replaces the role check. OpenClaw's npm releases are pinned by these two "
+            "rules, which report its vulnerable versions:"
+        ),
+        covered_by=(
+            "AAK-MCP-OPENCLAW-CVE-2026-62195-001",
+            "AAK-MCP-OPENCLAW-CVE-2026-102807-001",
         ),
     ),
     "AAK-OX-COVERAGE-MANIFEST-001": RetiredRule(
@@ -114,7 +128,7 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
         ),
     ),
     "AAK-MCP-KONG-CVE-2026-13341-001": RetiredRule(
-        title="Kong Konnect MCP server < 1.0.0 (indirect prompt injection)",
+        title="Kong Konnect MCP server below 1.0.0 (indirect prompt injection)",
         last_release="0.6.22",
         reason=(
             "It reported the Kong Konnect MCP server below 1.0.0 (CVE-2026-13341) by a "

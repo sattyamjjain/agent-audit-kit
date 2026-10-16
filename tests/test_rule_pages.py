@@ -168,8 +168,11 @@ def test_every_retired_rule_keeps_a_page_where_its_helpuri_pointed(pages: dict[s
     """A code-scanning alert raised before a rule was retired keeps that rule's helpUri.
 
     So the address must keep answering: with what the rule was, that it is retired and
-    after which release, why, and what covers it now, every rule it names linked. The
-    index lists the retired rules under their own heading.
+    after which release, why, and what covers it now, every rule it names linked by its
+    id and title. The status leads the title and the h1 ("Retired rule <ID>: <title>"): a
+    trailing "(retired)" was read as part of the rule's own name, since live titles end
+    in parentheticals too. The index lists the retired rules under their own heading,
+    and the footer leads to both lists.
     """
     assert RETIRED_RULE_IDS
     index = pages[rp.INDEX_URI]
@@ -177,7 +180,7 @@ def test_every_retired_rule_keeps_a_page_where_its_helpuri_pointed(pages: dict[s
     for rule_id, retired in RETIRED_RULE_IDS.items():
         text = pages[rp.page_uri(rule_id)]
         html_text, page, front = _render(text)
-        heading = f"{rule_id}: {rp.plain_text(retired.title)} (retired)"
+        heading = f"Retired rule {rule_id}: {rp.plain_text(retired.title)}"
         assert page.titles("h1") == [heading] and front["title"] == heading, rule_id
         assert page.titles("h2") == ["Why it was retired", "What covers it now"], rule_id
         assert page.terms == ["Status"], rule_id
@@ -185,17 +188,46 @@ def test_every_retired_rule_keeps_a_page_where_its_helpuri_pointed(pages: dict[s
         seen = _visible_text(html_text)
         assert f"Retired in the release after {retired.last_release}." in seen, rule_id
         for words in (retired.reason, retired.replacement):
-            assert rp.plain_text(words) in seen, (rule_id, words[:60])
-        for named in sorted(set(rp._RULE_ID_TOKEN_RE.findall(retired.replacement)) & set(RULES)):
-            assert f"[{named}]({named}.md)" in text, (rule_id, named)
+            assert words.strip(), (rule_id, "a blank field would pass the check below vacuously")
+            assert rp.plain_text(rp.link_rule_ids(words, RULES)) in seen, (rule_id, words[:60])
+        for named in retired.covered_by:
+            assert f"[{named}: " in text and f"]({named}.md)" in text, (rule_id, named)
+            assert f"{named}: {rp.plain_text(RULES[named].title)}" in seen, (rule_id, named)
         assert f"[{rule_id}]({rule_id}.md)" in index, rule_id
         assert "[All rules](index.md#all-rules)" in text
+        assert "[Retired rules](index.md#retired-rules)" in text
+
+
+def test_the_retired_rules_table_names_itself_and_says_last_shipped_in(pages: dict[str, str]) -> None:
+    """Every table on the index starts with "Rule", so this one says which table it is,
+    and "Last release, 0.6.22" sounded like the release that removed the rule."""
+    index = pages[rp.INDEX_URI]
+    assert "| Retired rule | Last shipped in | Title |" in index
+    assert "| Rule | Last release | Title |" not in index
+
+
+def test_the_rules_index_leads_to_both_lists_without_saying_where_they_sit(pages: dict[str, str]) -> None:
+    """The intro said the full list "closes this page", which stopped being true when the
+    retired list followed it, and a position means nothing to a screen reader or search."""
+    intro = pages[rp.INDEX_URI].split("\n## ", 1)[0]
+    assert "[All rules](#all-rules)" in intro and "[Retired rules](#retired-rules)" in intro
+    positional = [word for word in ("above", "below", "closes this page", "at the end") if word in intro.lower()]
+    assert not positional, positional
 
 
 def test_a_rule_id_is_linked_only_outside_code_and_only_when_registered() -> None:
     rules = {"AAK-A-001": _rule(rule_id="AAK-A-001")}
     linked = rp.link_rule_ids("AAK-A-001 and `AAK-A-001` and AAK-B-001.", rules)
-    assert linked == "[AAK-A-001](AAK-A-001.md) and `AAK-A-001` and AAK-B-001."
+    assert linked == "[AAK-A-001: A test rule](AAK-A-001.md) and `AAK-A-001` and AAK-B-001."
+
+
+def test_a_linked_rule_id_says_its_title_with_the_markup_kept_safe() -> None:
+    """Four ids that differ only in the last digit are four identical links out of
+    context (WCAG 2.4.9), so the link text carries the title, escaped as titles are."""
+    rules = {"AAK-A-001": _rule(rule_id="AAK-A-001", title="Uses `x` < 2 [beta]")}
+    assert rp.link_rule_ids("See AAK-A-001.", rules) == (
+        "See [AAK-A-001: Uses `x` &lt; 2 \\[beta\\]](AAK-A-001.md)."
+    )
 
 
 @pytest.mark.parametrize(
@@ -212,6 +244,20 @@ def test_a_rule_id_already_in_a_link_or_a_url_is_left_alone(text: str) -> None:
     in a URL broke the URL: neither MkDocs nor lychee would have noticed."""
     rules = {"AAK-A-001": _rule(rule_id="AAK-A-001")}
     assert rp.link_rule_ids(text, rules) == text
+
+
+@pytest.mark.parametrize("field", ["title", "last_release", "reason", "replacement"])
+def test_a_retired_page_with_a_blank_field_is_refused(field: str) -> None:
+    sample = next(iter(RETIRED_RULE_IDS.values()))
+    blank = dataclasses.replace(sample, **{field: "  "})
+    with pytest.raises(ValueError, match=field):
+        rp.render_retired_page("AAK-X-001", blank, RULES)
+
+
+def test_a_retired_page_naming_an_unregistered_rule_is_refused() -> None:
+    sample = next(iter(RETIRED_RULE_IDS.values()))
+    with pytest.raises(ValueError, match="AAK-NOT-A-RULE-001"):
+        rp.render_retired_page("AAK-X-001", dataclasses.replace(sample, covered_by=("AAK-NOT-A-RULE-001",)), RULES)
 
 
 def test_pages_are_deterministic(pages: dict[str, str]) -> None:
@@ -1228,7 +1274,7 @@ def test_building_the_site_puts_every_help_page_where_its_helpuri_points(tmp_pat
     assert not missing, f"helpUri targets with no built page: {missing[:5]} ({len(missing)})"
     for rule_id in RETIRED_RULE_IDS:
         built = (site_dir / "rules" / rule_id / "index.html").read_text(encoding="utf-8")
-        assert f"<title>{rule_id}: " in built and "(retired)" in built and "What covers it now" in built
+        assert f"<title>Retired rule {rule_id}: " in built and "What covers it now" in built
 
     # A hand-written page, a generated one, a shared-deep-dive one and the index.
     toxic = (site_dir / "rules" / "AAK-TOXICFLOW-001" / "index.html").read_text(encoding="utf-8")

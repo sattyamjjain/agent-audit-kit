@@ -4,14 +4,17 @@ Every rule in the AAK registry has a page: what it detects, how to fix it, what
 it does not catch, which scanner implements it, and which CVEs and standards it
 maps to. The canonical source of truth is `agent_audit_kit/rules/builtin.py`.
 The "more info" link on a finding in GitHub code scanning (the SARIF `helpUri`)
-opens the page for that rule. The full list, grouped by category, closes this
-page on the published site (it is added when the site is built, so it is not in
-this file).
+opens the page for that rule. On the published site this page also carries two
+lists, which are added when the site is built and so are not in this file:
+[All rules](#all-rules), every rule in the registry grouped by category, and
+[Retired rules](#retired-rules), the rules that have left the registry, whose
+pages stay so that the link in an alert raised before they went still opens.
 
 Most pages are generated from the registry when this site is built, so they
 cannot say something the scanner does not. The CVE-driven and high-traffic rules
-also have a hand-written deep dive, listed below. That text is shown on the
-rule's page exactly as written, with the registry reference appended under it.
+also have a hand-written deep dive, listed in the release tables on this page.
+That text is shown on the rule's page exactly as written, with the registry
+reference appended to it.
 
 ## v0.3.84 (2026-08-19) — net-new
 

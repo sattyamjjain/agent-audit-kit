@@ -57,9 +57,10 @@ Retired rules keep their address
 A code-scanning alert keeps the ``helpUri`` of the release that raised it, so a
 rule that left the registry and took its page with it would leave every alert it
 ever raised linking to a 404. ``RETIRED_RULE_IDS`` in the registry holds what that
-page needs (the title, the last release that shipped the rule, why it went and
-what covers it now), ``render_retired_page`` publishes it at the old address, and
-the index lists those pages under "Retired rules".
+page needs (the title, the last release that shipped the rule, why it went, what
+covers it now and the rules that do), ``render_retired_page`` publishes it at the
+old address as ``Retired rule <ID>: <title>``, and the index lists those pages
+under "Retired rules".
 
 Structure
 ---------
@@ -929,6 +930,8 @@ def render_deep_dive(sources: Sources) -> str:
 
 #: Where "All rules" leads: the generated listing's heading, whose id is its slug.
 _ALL_RULES_LINK = "index.md#all-rules"
+#: Where "Retired rules" leads, the same way.
+_RETIRED_RULES_LINK = "index.md#retired-rules"
 
 
 def _footer(rule_id: str) -> str:
@@ -1086,20 +1089,38 @@ def _link_spans(text: str) -> list[tuple[int, int]]:
     return merged
 
 
-def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
-    """Link each registered rule id that ``text`` names to its page.
+def _link_text(text: str) -> str:
+    """Registry text made safe as the text of a Markdown link.
 
-    An id inside a code span stays code, an id with no page stays text (a link to a
-    page the build does not make is a dead link, which the strict build refuses), and
-    an id that is already inside a Markdown link or a bare URL is left alone: wrapping
-    it again built a link target such as ``[AAK-STDIO-001](AAK-STDIO-001.md).md``, and
-    an id in an address broke the address, which neither MkDocs nor lychee would
-    report. The ids are found with the same token pattern the shared deep dives use,
-    which has no nested quantifier to backtrack on.
+    Escaped as page text is (``escape_markdown``), on one line, with square brackets
+    outside code escaped as well, so a bracket in a title cannot end the link early.
+    """
+    safe = escape_markdown(" ".join(text.split()))
+    return "".join(
+        chunk if is_code else chunk.replace("[", "\\[").replace("]", "\\]")
+        for is_code, chunk in split_code_spans(safe)
+    )
+
+
+def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
+    """Link each registered rule id that ``text`` names to its page, as ``ID: Title``.
+
+    The link text carries the title because ids that differ in one digit are identical
+    links out of context, in a screen reader's links list (WCAG 2.4.9). An id inside a
+    code span stays code, an id with no page stays text (a link to a page the build does
+    not make is a dead link, which the strict build refuses), and an id that is already
+    inside a Markdown link or a bare URL is left alone: wrapping it again built a link
+    target such as ``[AAK-STDIO-001](AAK-STDIO-001.md).md``, and an id in an address broke
+    the address, which neither MkDocs nor lychee would report. The ids are found with
+    the same token pattern the shared deep dives use, which has no nested quantifier to
+    backtrack on.
     """
     def link(match: re.Match[str]) -> str:
         token = match.group(0)
-        return f"[{token}]({token}.md)" if token in rules else token
+        rule = rules.get(token)
+        if rule is None:
+            return token
+        return f"[{token}: {_link_text(rule.title)}]({token}.md)"
 
     def prose(chunk: str) -> str:
         out: list[str] = []
@@ -1113,24 +1134,46 @@ def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
     return "".join(chunk if is_code else prose(chunk) for is_code, chunk in split_code_spans(text))
 
 
+#: The fields a retired rule's page is made of. A blank one would leave a heading over nothing.
+_RETIRED_FIELDS = ("title", "last_release", "reason", "replacement")
+
+
 def render_retired_page(rule_id: str, retired: Any, rules: Mapping[str, Any]) -> str:
     """The page left at a retired rule's address.
 
     A code-scanning alert keeps the ``helpUri`` of the release that raised it, and
     that is this address, so the page outlives the rule: it says what the rule was,
     that it is retired and after which release, why, and what covers it now, with
-    every rule it names linked. Rendered from ``RETIRED_RULE_IDS`` the way a rule's
-    page is rendered from the registry; the facts are a description list, as there.
+    every rule it names linked by id and title. Rendered from ``RETIRED_RULE_IDS`` the
+    way a rule's page is rendered from the registry; the facts are a description list,
+    as there.
+
+    The status leads the title and the ``h1``, "Retired rule <ID>: <title>": a trailing
+    "(retired)" was heard as part of the rule's own name, because live titles end in
+    parentheticals too and a screen reader at default punctuation drops the brackets.
+    The footer leads to both lists on the rules index, since "All rules" alone lands on
+    a list this rule is not in.
+
+    Raises:
+        ValueError: when a field is blank, or ``covered_by`` names an id the registry
+            does not hold, so that a page saying nothing cannot be published.
     """
-    heading = f"{rule_id}: {plain_text(retired.title)} (retired)"
+    blank = [name for name in _RETIRED_FIELDS if not str(getattr(retired, name, "") or "").strip()]
+    if blank:
+        raise ValueError(f"{rule_id}: RETIRED_RULE_IDS entry has a blank {', '.join(blank)}")
+    covered_by = tuple(getattr(retired, "covered_by", ()) or ())
+    unknown = [named for named in covered_by if named not in rules]
+    if unknown:
+        raise ValueError(f"{rule_id}: covered_by names {', '.join(unknown)}, not a registered rule")
+    heading = f"Retired rule {rule_id}: {plain_text(retired.title)}"
     last = retired.last_release
-    return "\n".join([
+    lines = [
         "---",
         f"title: {_json_string(heading)}",
         f"description: {_json_string('Retired rule: ' + plain_text(retired.title))}",
         "---",
         "",
-        f"# {rule_id}: {heading_text(retired.title)} (retired)",
+        f"# Retired rule {rule_id}: {heading_text(retired.title)}",
         "",
         "Status",
         f":   Retired in the release after {last}. {last} is the last release that ships it, "
@@ -1143,24 +1186,37 @@ def render_retired_page(rule_id: str, retired: Any, rules: Mapping[str, Any]) ->
         "## What covers it now",
         "",
         link_rule_ids(markdown_text(retired.replacement), rules),
+    ]
+    if covered_by:
+        lines += [""] + [f"- {link_rule_ids(named, rules)}" for named in covered_by]
+    lines += [
         "",
         "---",
         "",
-        f"[All rules]({_ALL_RULES_LINK}). This page stays so that the link in an alert raised "
-        "before the rule was retired still opens. It is generated from `RETIRED_RULE_IDS` in "
-        "`agent_audit_kit/rules/builtin.py` when the documentation is built.",
-    ]) + "\n"
+        f"[All rules]({_ALL_RULES_LINK}) and [Retired rules]({_RETIRED_RULES_LINK}). This page "
+        "stays so that the link in an alert raised before the rule was retired still opens. It "
+        "is generated from `RETIRED_RULE_IDS` in `agent_audit_kit/rules/builtin.py` when the "
+        "documentation is built.",
+    ]
+    return "\n".join(lines) + "\n"
 
 
 def render_retired_listing(retired: Mapping[str, Any]) -> str:
-    """The "Retired rules" section appended to the index, after "All rules"."""
+    """The "Retired rules" section appended to the index, after "All rules".
+
+    Its first column is "Retired rule", not "Rule": every table on the index starts with
+    "Rule", and table navigation announces the column header, so this says which table
+    it is. "Last shipped in" because "Last release, 0.6.22" sounded like the release
+    that removed the rule. ``scripts/mkdocs_hooks.py`` makes the first cell of each row
+    its row header, as it does for the "All rules" tables.
+    """
     out = [
         "## Retired rules",
         "",
         "Rules that have left the registry. Each keeps its page, so the link in an alert "
         "raised before it went still opens.",
         "",
-        "| Rule | Last release | Title |",
+        "| Retired rule | Last shipped in | Title |",
         "|---|---|---|",
     ]
     for rule_id in sorted(retired):

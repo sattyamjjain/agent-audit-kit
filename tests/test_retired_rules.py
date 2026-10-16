@@ -62,14 +62,61 @@ def test_every_retirement_says_what_it_was_when_and_why() -> None:
 
 
 def test_every_rule_a_retired_page_names_exists() -> None:
-    """The help page links every id the reason or the replacement names, so every one
-    must be a registered rule with a page of its own."""
+    """The help page links every id the reason or the replacement names, and lists each
+    id in `covered_by`, so every one must be a registered rule with a page of its own."""
     dangling: dict[str, list[str]] = {}
     for rule_id, retired in RETIRED_RULE_IDS.items():
-        named = set(_RULE_ID.findall(retired.reason)) | set(_RULE_ID.findall(retired.replacement))
+        named = (
+            set(_RULE_ID.findall(retired.reason))
+            | set(_RULE_ID.findall(retired.replacement))
+            | set(retired.covered_by)
+        )
         if named - set(RULES):
             dangling[rule_id] = sorted(named - set(RULES))
     assert not dangling, f"retired pages naming ids that are not registered rules: {dangling}"
+    repeated = [rule_id for rule_id, r in RETIRED_RULE_IDS.items() if len(set(r.covered_by)) != len(r.covered_by)]
+    assert not repeated, f"covered_by lists a rule twice: {repeated}"
+
+
+def test_a_replacement_that_introduces_a_list_has_one() -> None:
+    """The page puts `covered_by` straight after the replacement, so a replacement ending
+    in a colon needs that list, and a list needs the sentence that introduces it."""
+    mismatched = [
+        rule_id
+        for rule_id, retired in RETIRED_RULE_IDS.items()
+        if retired.replacement.rstrip().endswith(":") != bool(retired.covered_by)
+    ]
+    assert not mismatched, mismatched
+
+
+#: A comparison sign before a number, as in `< 1.0.0`. One optional sign, then a class
+#: and a digit that cannot overlap: linear.
+_VERSION_BOUND = re.compile(r"[<>]=?\s*\d")
+
+
+def test_a_retired_page_says_a_version_bound_in_words() -> None:
+    """A screen reader reads `server < 1.0.0` as "server less 1.0.0", heard as
+    "serverless", or drops the sign and makes 1.0.0 sound affected. The title is the
+    page's `h1` and `<title>`, the first thing announced."""
+    signs = [
+        (rule_id, text)
+        for rule_id, retired in RETIRED_RULE_IDS.items()
+        for text in (retired.title, retired.reason, retired.replacement)
+        if _VERSION_BOUND.search(text)
+    ]
+    assert not signs, f"write 'below 1.0.0', not '< 1.0.0': {signs}"
+
+
+def test_a_home_folder_path_is_introduced_in_words() -> None:
+    """The tilde in `~/.config/...` is silent when read aloud, so the path sounds as if
+    it starts at the root. A sentence giving one says "home folder" too."""
+    bare = [
+        (rule_id, sentence)
+        for rule_id, retired in RETIRED_RULE_IDS.items()
+        for sentence in re.split(r"(?<=\.)\s+", f"{retired.reason} {retired.replacement}")
+        if "~/" in sentence and "home folder" not in sentence
+    ]
+    assert not bare, bare
 
 
 def test_no_retired_id_is_registered() -> None:
