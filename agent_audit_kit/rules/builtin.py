@@ -1732,8 +1732,8 @@ _r(
         "Looks for `sk-ant-` followed by 20 or more key characters in files whose "
         "extension is on a fixed list (`.json`, `.yml`, `.toml`, `.py`, `.ts`, `.sh` "
         "and similar, plus `.env` files and Dockerfiles). A key in any other kind of "
-        "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) is "
-        "missed, although the same content in a `.json` file is found."
+        "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) or a "
+        "README (`.md`) is missed, although the same content in a `.json` file is found."
     ),
 )
 

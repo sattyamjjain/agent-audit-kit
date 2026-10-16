@@ -611,3 +611,44 @@ def test_secret_007_reads_both_maps_and_skips_a_config_that_is_a_list(tmp_path: 
     ]
     (tmp_path / "mcp.json").write_text('[{"servers": {}}]', encoding="utf-8")
     assert _secret_007(tmp_path) == []
+
+
+# ---------------------------------------------------------------------------
+# The secret rules read the JavaScript and TypeScript module and JSX extensions
+#
+# `SCANNABLE_EXTENSIONS` had `.js` and `.ts` and none of `.mjs`, `.cjs`, `.tsx` or
+# `.jsx`, so a token in `src/config.mjs` or `app/page.tsx` reported nothing while the
+# same line in `config.js` fired AAK-SECRET-008.
+# ---------------------------------------------------------------------------
+
+
+def _varied(length: int) -> str:
+    """A body no placeholder test matches: varied, with no repeated run and no word."""
+    return ("Zq7Wm2Rt5Yp8Kd3N" * length)[:length]
+
+
+@pytest.mark.parametrize("name", ["src/config.mjs", "src/config.cjs", "app/page.tsx", "src/widget.jsx"])
+def test_the_secret_rules_read_javascript_module_and_jsx_files(tmp_path: Path, name: str) -> None:
+    token = "gh" + "p_" + _varied(36)
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    path.write_text(f'// config\nexport const GITHUB_TOKEN = "{token}";\n', encoding="utf-8")
+
+    findings, scanned = scan(tmp_path)
+
+    (hit,) = _hits(findings, "AAK-SECRET-008")
+    assert (hit.file_path, hit.line_number) == (name, 2)
+    assert name in scanned
+    assert token not in hit.evidence
+
+
+def test_the_token_rules_do_not_read_markdown(tmp_path: Path) -> None:
+    """Measured, not assumed: behind a stand-in filter these rules found 16 values in
+    1,909 README and docs files of public MCP repositories, at most 9 of them shaped
+    like a credential, so Markdown stays unread (see ``SCANNABLE_EXTENSIONS``)."""
+    token = "gh" + "p_" + _varied(36)
+    (tmp_path / "README.md").write_text(f"## Setup\n\nexport GITHUB_TOKEN={token}\n", encoding="utf-8")
+
+    findings, scanned = scan(tmp_path)
+
+    assert findings == [] and "README.md" not in scanned

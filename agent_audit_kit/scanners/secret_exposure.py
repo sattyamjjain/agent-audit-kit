@@ -74,12 +74,21 @@ MCP_ENV_SECRET_KEYS = re.compile(
 # project root by `in_skip_dir`. This module used to keep a private copy of
 # the same set, which only invited the two to drift.
 
-# File extensions to scan for secrets
+# File extensions to scan for secrets. `.mjs`, `.cjs`, `.jsx` and `.tsx` were missing
+# beside `.js` and `.ts`, so a token in `src/config.mjs` or `app/page.tsx` was never
+# read while the same line in `config.js` was reported.
+#
+# Markdown is left out on a measurement. With a stand-in filter (a body of one repeated
+# character, REPLACE, YOUR, EXAMPLE, PLACEHOLDER, CHANGEME or a run of `x` in the value,
+# AWS's documented example key), these rules found 16 values in 1,909 README and docs
+# files from 1,883 public MCP repositories (2026-10-17), all AAK-SECRET-004, and at most
+# 9 of them had a credential's shape; the rest were URLs and prose. The prefix rules
+# (001, 002, 003, 008) found nothing there.
 SCANNABLE_EXTENSIONS = frozenset({
     ".env", ".json", ".yml", ".yaml", ".toml", ".cfg",
     ".ini", ".conf", ".xml", ".properties", ".sh", ".bash",
-    ".zsh", ".py", ".js", ".ts", ".rb", ".go", ".rs",
-    ".java", ".kt", ".swift", ".dockerfile", ".tf", ".hcl",
+    ".zsh", ".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
+    ".rb", ".go", ".rs", ".java", ".kt", ".swift", ".dockerfile", ".tf", ".hcl",
 })
 
 def _shannon_entropy(s: str) -> float:
