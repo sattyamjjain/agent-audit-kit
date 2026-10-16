@@ -245,6 +245,7 @@ from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
     Declaration,
+    declaration_line,
     declarations,
 )
 from agent_audit_kit.scanners._versions import TOP, ZERO, Spans, admits, intersect, parse_range
@@ -1702,7 +1703,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         for pin in _PINS:
             declaration = _deciding_declaration(pin, found)
             if declaration is not None:  # one finding per pin per file
-                findings.append(make_finding(pin.rule_id, rel, _evidence(pin, declaration)))
+                findings.append(make_finding(
+                    pin.rule_id, rel, _evidence(pin, declaration),
+                    declaration_line(text, declaration, path.name),
+                ))
 
     return findings, scanned
 
@@ -1734,5 +1738,48 @@ def _lockfile_findings(path: Path, rel: str, text: str) -> list[Finding]:
                 rel,
                 f"{pin.display} resolves to {shown} in {path.name} — fixed "
                 f"in {pin.fix_label}; upgrade and re-lock.",
+                _lockfile_line(text, filename, pin.names, shown),
             ))
     return findings
+
+
+# Where a lockfile writes a package's own entry, as against the dependency lists
+# of other packages, which name it too: package-lock.json keys the entry
+# `node_modules/<name>` (an object in lockfileVersion 1's `dependencies`), yarn
+# v1 starts it at column 0 with `<name>@`, pnpm keys it `/<name>@<version>` or
+# `<name>@<version>`, uv.lock and poetry.lock give it a `name = "<name>"` line of
+# its own, and Pipfile.lock keys it `"<name>": {`. `{}` is the name pattern.
+_LOCK_ENTRY = {
+    "package-lock.json": (r'node_modules/{}"', r'"{}"[ \t]{{0,16}}:[ \t]{{0,16}}\{{'),
+    "yarn.lock": (r'(?m)^"?{}@',),
+    "pnpm-lock.yaml": (r"(?m)^[ \t]*['\"]?/?{}[@/]",),
+    "uv.lock": (r'(?m)^name[ \t]*=[ \t]*"{}"',),
+    "poetry.lock": (r'(?m)^name[ \t]*=[ \t]*"{}"',),
+    "pipfile.lock": (r'"{}"[ \t]{{0,16}}:[ \t]{{0,16}}\{{',),
+}
+# How far past an entry's name its version is looked for: the entries above
+# state it within a few lines, and a bound keeps a crafted file linear.
+_LOCK_VERSION_WINDOW = 400
+
+
+def _lockfile_line(text: str, filename: str, names: tuple[str, ...], version: str) -> int | None:
+    """The line of the lockfile entry that resolves one of `names` to `version`.
+
+    The first entry of the package whose next few hundred characters state that
+    version, else its first entry, else None. Python lockfiles may spell a name
+    with `-`, `_` or `.` where the pin has another (PEP 503), so any run of the
+    three matches any other.
+    """
+    first: int | None = None
+    for name in names:
+        if filename in ("uv.lock", "poetry.lock", "pipfile.lock"):
+            name_re = "[-_.]+".join(re.escape(part) for part in re.split(r"[-_.]+", name))
+        else:
+            name_re = re.escape(name)
+        for shape in _LOCK_ENTRY.get(filename, ()):
+            for m in re.finditer(shape.format(name_re), text, re.IGNORECASE):
+                if first is None or m.start() < first:
+                    first = m.start()
+                if version in text[m.end():m.end() + _LOCK_VERSION_WINDOW]:
+                    return text.count("\n", 0, m.start()) + 1
+    return None if first is None else text.count("\n", 0, first) + 1

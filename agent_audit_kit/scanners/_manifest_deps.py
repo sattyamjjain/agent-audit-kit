@@ -53,8 +53,9 @@ read installs nothing, so there is no version in it to report.
 from __future__ import annotations
 
 import json
+import re
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 try:
@@ -64,7 +65,7 @@ except ImportError:  # Python < 3.11
 
 import yaml
 
-from agent_audit_kit.scanners._helpers import loads_jsonc
+from agent_audit_kit.scanners._helpers import loads_jsonc, strip_jsonc
 from agent_audit_kit.scanners._launchers import (
     Launched,
     basename,
@@ -110,6 +111,10 @@ class Declaration:
     # For a launch, the whole command line it came from, so a pin whose flaw sits
     # behind an option (mcp-remote's `--device-code`) can ask whether it was passed.
     argv: tuple[str, ...] = ()
+    # The 1-based line the declaration starts on, where the parser knows it (a
+    # requirements file is read line by line), else 0 and `declaration_line`
+    # finds it in the text.
+    line: int = 0
 
 
 _PIPFILE_NON_PACKAGES = frozenset({"source", "requires", "scripts", "pipenv"})
@@ -129,20 +134,31 @@ def _strip_comment(line: str) -> str:
     return line
 
 
-def _logical_lines(text: str) -> list[str]:
-    out: list[str] = []
+def _logical_lines(text: str) -> list[tuple[int, str]]:
+    """(first physical line, text) of each logical line, continuations joined.
+
+    The line is counted in `\\n`s, as an editor and SARIF count it, though
+    `splitlines` also breaks on rarer separators.
+    """
+    out: list[tuple[int, str]] = []
     pending = ""
-    for raw in text.splitlines():
-        line = _strip_comment(raw).rstrip()
+    newlines = 0
+    start = 1
+    for raw in text.splitlines(keepends=True):
+        number = newlines + 1
+        newlines += raw.count("\n")
+        line = _strip_comment(raw.rstrip("\r\n")).rstrip()
+        if not pending:
+            start = number
         if line.endswith("\\"):
             pending += line[:-1] + " "
             continue
         joined = (pending + line).strip()
         pending = ""
         if joined:
-            out.append(joined)
+            out.append((start, joined))
     if pending.strip():
-        out.append(pending.strip())
+        out.append((start, pending.strip()))
     return out
 
 
@@ -174,7 +190,7 @@ def _pep508(requirement: str, kind: str = "dependency", section: str = "") -> De
 def requirements_declarations(text: str) -> list[Declaration]:
     """Every line of one requirements file is one install, so one section."""
     found: list[Declaration] = []
-    for line in _logical_lines(text):
+    for number, line in _logical_lines(text):
         if line.startswith("-"):
             head, _, rest = line.partition(" ")
             option, equals, inline = head.partition("=")
@@ -182,7 +198,7 @@ def requirements_declarations(text: str) -> list[Declaration]:
                 name = _egg_name((inline if equals else rest).strip())
                 if name:
                     found.append(Declaration(name, "", "pep440", "py", "dependency", line,
-                                             "requirements"))
+                                             "requirements", line=number))
             continue
         # Per-requirement options (`--hash=...`) follow the requirement.
         requirement = line.split(" --", 1)[0].split("\t--", 1)[0].strip()
@@ -190,11 +206,11 @@ def requirements_declarations(text: str) -> list[Declaration]:
             name = _egg_name(requirement)
             if name:
                 found.append(Declaration(name, "", "pep440", "py", "dependency", requirement,
-                                         "requirements", _marker(requirement)))
+                                         "requirements", _marker(requirement), line=number))
             continue
         declaration = _pep508(requirement, section="requirements")
         if declaration is not None:
-            found.append(declaration)
+            found.append(replace(declaration, line=number))
     return found
 
 
@@ -495,3 +511,106 @@ def declarations(path: Path, text: str) -> list[Declaration]:
     except (ValueError, tomllib.TOMLDecodeError, yaml.YAMLError, RecursionError):
         return []
     return []
+
+
+# --- where a declaration is written ------------------------------------------
+#
+# A finding that names no line has no SARIF region, so code scanning and the
+# VS Code extension put it on the first line of the file. A requirements file
+# is read line by line and its declarations carry their line. The other formats
+# are parsed whole (JSON, TOML, YAML), which loses positions, so the line is
+# found again in the text, from the offset of the first place that spells the
+# declaration: the text as written where the format keeps it verbatim (a PEP
+# 508 string, a package.json entry), a `name =` key or table header in TOML,
+# and for a launch its package argument, never the server key that often
+# repeats the name. A match inside a comment does not count, which is the
+# reason a plain text search (`find_line_number`) would not do: a comment that
+# names the package above its declaration took the line, as it took the
+# version before #987. JSON comments are blanked first (`strip_jsonc` keeps
+# offsets); `#` before the match on its line marks a comment in the other
+# formats. Every pattern is a literal with fixed-width context, and each look
+# back and ahead is bounded, so a file that repeats the name on one long line
+# costs one pass.
+
+_LOOK_BACK = 1024
+# What may not touch a launch's package argument on either side, so that
+# `pkg@1.0.0` is not read inside `other-pkg@1.0.0` or `pkg@1.0.0-beta`.
+_TOKEN_CHARS = r"\w@./:+-"
+_NOT_A_KEY = r"""(?!["']?[ \t]{0,16}:)"""
+
+
+def _launch_spec(declaration: Declaration) -> str:
+    """The package argument a launch declaration was read from, as written."""
+    return declaration.text.rsplit(" ", 1)[-1]
+
+
+def _patterns(declaration: Declaration, file_name: str) -> list[re.Pattern[str]]:
+    """The spellings of `declaration` to look for, most exact first."""
+    name = re.escape(declaration.name)
+    word = rf"(?<![\w.-]){name}(?![\w.-])"
+    if declaration.kind == "launch":
+        spec = re.escape(_launch_spec(declaration))
+        token = rf"(?<![{_TOKEN_CHARS}]){spec}(?![{_TOKEN_CHARS}])"
+        # The server is often keyed by its package name, and a key is not the launch.
+        return [re.compile(token + _NOT_A_KEY, re.IGNORECASE),
+                re.compile(word + _NOT_A_KEY, re.IGNORECASE)]
+    key, sep, value = declaration.text.partition('": "')
+    if file_name == "package.json" and sep:
+        exact = re.compile(re.escape(key + '"') + r"[ \t]{0,16}:[ \t]{0,16}"
+                           + re.escape('"' + value))
+    else:
+        exact = re.compile(re.escape(declaration.text))
+    return [
+        exact,
+        # A TOML key (`name = ...`) or table header (`[tool.poetry.dependencies.name]`).
+        re.compile(rf"""(?m)^[ \t]*["']?{name}["']?[ \t]*=""", re.IGNORECASE),
+        re.compile(rf"""(?m)^[ \t]*\[[^\]\n]{{0,256}}\.["']?{name}["']?[ \t]*\]""",
+                   re.IGNORECASE),
+        # A JSON key that ends in the name (`"**/name": ...`, an npm override).
+        re.compile(word + r"""["'][ \t]{0,16}:""", re.IGNORECASE),
+        re.compile(word, re.IGNORECASE),
+    ]
+
+
+def _in_comment(text: str, at: int) -> bool:
+    """Does a `#` outside a string come before `at` on its line?
+
+    Looks back a bounded distance, and reads a `#` as inside a string when an
+    odd number of quotes precedes it, which is enough for one-line TOML and
+    YAML values (`"pkg @ git+https://host/repo#egg=pkg"`).
+    """
+    line_start = text.rfind("\n", max(0, at - _LOOK_BACK), at) + 1
+    prefix = text[max(line_start, at - _LOOK_BACK):at]
+    hash_at = prefix.find("#")
+    if hash_at == -1:
+        return False
+    return prefix.count('"', 0, hash_at) % 2 == 0 and prefix.count("'", 0, hash_at) % 2 == 0
+
+
+def declaration_line(text: str, declaration: Declaration, file_name: str) -> int | None:
+    """The 1-based line `declaration` is written on in `text`, or None.
+
+    Args:
+        text: The contents of the file the declaration was read from.
+        declaration: One of the declarations `declarations()` returned for it.
+        file_name: That file's name; it selects the comment syntax.
+
+    Returns:
+        The line the parser recorded, else the line of the first match outside
+        a comment of the patterns that spell the declaration, else None.
+    """
+    if declaration.line:
+        return declaration.line
+    name = file_name.lower()
+    hash_comments = not name.endswith(".json")
+    if not hash_comments:
+        try:
+            text = strip_jsonc(text)
+        except ValueError:
+            pass
+    for pattern in _patterns(declaration, name):
+        for m in pattern.finditer(text):
+            if hash_comments and _in_comment(text, m.start()):
+                continue
+            return text.count("\n", 0, m.start()) + 1
+    return None

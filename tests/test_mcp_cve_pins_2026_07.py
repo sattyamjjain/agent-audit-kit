@@ -3451,3 +3451,120 @@ def test_claude_agent_sdk_evidence_names_each_fix(tmp_path: Path) -> None:
     assert set(hits) == {"requirements.txt", "package.json"}
     assert "fixed in 0.2.121" in hits["requirements.txt"]
     assert "fixed in 0.3.208" in hits["package.json"]
+
+
+# ---------------------------------------------------------------------------
+# A pin finding carries the declaration's line (item 52)
+# ---------------------------------------------------------------------------
+#
+# The table called make_finding with no line, for declarations and lockfiles
+# alike, so SARIF had no region and the VS Code extension put every pin on the
+# first line. The line now comes from where the declaration is written: the
+# physical line a requirement starts on, or the offset of the first place the
+# file spells the declaration, never a comment that names the package.
+
+LITELLM = "AAK-MCP-LITELLM-CVE-2026-59822-001"
+N8NMCP = "AAK-MCP-N8NMCP-CVE-2026-54052-001"
+
+
+def _lines(tmp_path: Path, name: str, content: str, rule: str = LITELLM) -> list[int | None]:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return [f.line_number for f in scan(tmp_path)[0] if f.rule_id == rule]
+
+
+@pytest.mark.parametrize(("name", "content", "line"), [
+    ("requirements.txt", "# deps\nrequests==2.31.0\nlitellm==1.0.0\n", 3),
+    # A comment that names the package with a number is not the declaration.
+    ("requirements.txt", "# gateway needs litellm 1.90 or newer\nlitellm==1.0.0\n", 2),
+    ("requirements.txt", "requests==2.31.0\nlitellm \\\n    ==1.0.0\n", 2),
+    ("requirements.txt", "requests==2.31.0\r\nlitellm==1.0.0\r\n", 2),
+    ("pyproject.toml",
+     '[project]\nname = "app"\n# litellm 1.90 is too new\ndependencies = [\n'
+     '    "requests>=2",\n    "litellm==1.0.0",\n]\n', 6),
+    ("pyproject.toml",
+     '[tool.poetry.dependencies]\npython = "^3.11"\nlitellm = "^1.0.0"\n', 3),
+    ("pyproject.toml",
+     '[tool.poetry.dependencies]\npython = "^3.11"\n\n'
+     '[tool.poetry.dependencies.litellm]\nversion = "1.0.0"\n', 4),
+    ("Pipfile", '[packages]\nrequests = "*"\nlitellm = "==1.0.0"\n', 3),
+    ("package.json",
+     json.dumps({"name": "app", "dependencies": {"left-pad": "1.0.0", "litellm": "1.0.0"}},
+                indent=2) + "\n", 5),
+    ("package.json", '{"dependencies":{"litellm":"1.0.0"}}', 1),
+])
+def test_a_declaration_finding_names_its_line(
+    tmp_path: Path, name: str, content: str, line: int
+) -> None:
+    assert _lines(tmp_path, name, content) == [line]
+
+
+def test_a_launch_finding_names_the_argument_not_the_server_key(tmp_path: Path) -> None:
+    """The server is usually keyed by its package name, which is not the launch."""
+    config = {"mcpServers": {"n8n-mcp": {
+        "command": "npx", "args": ["-y", "n8n-mcp@2.40.0"], "env": {"MCP_MODE": "stdio"},
+    }}}
+    content = json.dumps(config, indent=2) + "\n"
+    expected = content.splitlines().index('        "n8n-mcp@2.40.0"') + 1
+    assert _lines(tmp_path, ".mcp.json", content, N8NMCP) == [expected]
+
+
+def test_a_launch_named_in_a_jsonc_comment_is_not_its_line(tmp_path: Path) -> None:
+    content = (
+        "{\n"
+        "  // was npx -y n8n-mcp@2.40.0, see below\n"
+        '  "mcpServers": {"n8n": {"command": "npx",\n'
+        '    "args": ["-y", "n8n-mcp@2.40.0"]}}\n'
+        "}\n"
+    )
+    assert _lines(tmp_path, ".mcp.json", content, N8NMCP) == [4]
+
+
+def test_a_command_line_launch_names_its_line(tmp_path: Path) -> None:
+    content = '{"mcpServers": {\n  "n8n": {\n    "command": "npx -y n8n-mcp@2.40.0"\n  }\n}}\n'
+    assert _lines(tmp_path, "claude_desktop_config.json", content, N8NMCP) == [3]
+
+
+def test_a_yaml_launch_names_its_line(tmp_path: Path) -> None:
+    content = "servers:\n  n8n-mcp:\n    command: npx\n    args:\n      - -y\n      - n8n-mcp@2.40.0\n"
+    assert _lines(tmp_path, "agent.mcp.yaml", content, N8NMCP) == [6]
+
+
+@pytest.mark.parametrize(("name", "content", "line"), [
+    ("package-lock.json",
+     json.dumps({"lockfileVersion": 3, "packages": {
+         "": {"dependencies": {"litellm": "^1.0.0"}},
+         "node_modules/litellm": {"version": "1.0.0"}}}, indent=2) + "\n", 9),
+    ("yarn.lock",
+     '# yarn lockfile v1\n\n\nleft-pad@^1.0.0:\n  version "1.3.0"\n\n'
+     'litellm@^1.0.0:\n  version "1.0.0"\n', 7),
+    ("uv.lock",
+     'version = 1\n\n[[package]]\nname = "app"\nversion = "0.1.0"\n'
+     'dependencies = [\n    { name = "litellm" },\n]\n\n'
+     '[[package]]\nname = "litellm"\nversion = "1.0.0"\n', 11),
+    ("poetry.lock",
+     '[[package]]\nname = "litellm"\nversion = "1.0.0"\ndescription = "x"\n', 2),
+    ("Pipfile.lock",
+     json.dumps({"_meta": {}, "default": {"litellm": {"version": "==1.0.0"}}}, indent=4) + "\n", 4),
+    ("pnpm-lock.yaml",
+     "lockfileVersion: '6.0'\n\npackages:\n\n  /litellm@1.0.0:\n    resolution: {integrity: sha512-x}\n", 5),
+])
+def test_a_lockfile_finding_names_the_package_entry(
+    tmp_path: Path, name: str, content: str, line: int
+) -> None:
+    assert _lines(tmp_path, name, content) == [line]
+
+
+def test_the_line_lookup_reads_a_crafted_config_in_linear_time(tmp_path: Path) -> None:
+    """A finding's line is found by searching the file for the declaration, so a
+    config that names the package a few hundred thousand times on one line must
+    not cost more than reading it."""
+    import time
+
+    filler = "n8n-mcp " * 200_000
+    content = json.dumps({"mcpServers": {"n8n-mcp": {
+        "description": filler, "command": "npx", "args": ["-y", "n8n-mcp@2.40.0"]}}})
+    start = time.perf_counter()
+    assert _lines(tmp_path, ".mcp.json", content, N8NMCP) == [1]
+    assert time.perf_counter() - start < 3.0
