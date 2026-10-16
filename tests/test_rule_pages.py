@@ -198,6 +198,22 @@ def test_a_rule_id_is_linked_only_outside_code_and_only_when_registered() -> Non
     assert linked == "[AAK-A-001](AAK-A-001.md) and `AAK-A-001` and AAK-B-001."
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("See [AAK-A-001](AAK-A-001.md).", id="already a link"),
+        pytest.param("See [the rule](https://example.test/rules/AAK-A-001/).", id="inside a link target"),
+        pytest.param("See https://example.test/rules/AAK-A-001/ for more.", id="inside a bare URL"),
+        pytest.param("See <https://example.test/AAK-A-001>.", id="inside an autolink"),
+    ],
+)
+def test_a_rule_id_already_in_a_link_or_a_url_is_left_alone(text: str) -> None:
+    """Wrapping it again built `[AAK-A-001](AAK-A-001.md).md` as a link target, and an id
+    in a URL broke the URL: neither MkDocs nor lychee would have noticed."""
+    rules = {"AAK-A-001": _rule(rule_id="AAK-A-001")}
+    assert rp.link_rule_ids(text, rules) == text
+
+
 def test_pages_are_deterministic(pages: dict[str, str]) -> None:
     """No clock, no dict-order accident: a docs build is byte-stable."""
     assert rp.build_pages(DOCS) == pages

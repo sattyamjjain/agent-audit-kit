@@ -1069,22 +1069,48 @@ def render_index_listing(
 # --------------------------------------------------------------------------
 
 
-def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
-    """Link each registered rule id that ``text`` names outside a code span to its page.
+#: A bare web address in prose, autolinked or not. An id inside one is part of the
+#: address, not a mention of the rule. One quantifier over a class: linear.
+_BARE_URL_RE = re.compile(r"https?://\S+")
 
-    An id inside a code span stays code, and an id with no page stays text: a link
-    to a page the build does not make is a dead link, which the strict build
-    refuses. The ids are found with the same token pattern the shared deep dives
-    use, which has no nested quantifier to backtrack on.
+
+def _link_spans(text: str) -> list[tuple[int, int]]:
+    """Where ``text`` holds a Markdown link or a bare URL, as sorted, merged (start, end) pairs."""
+    spans = sorted(match.span() for pattern in (_LINK_RE, _BARE_URL_RE) for match in pattern.finditer(text))
+    merged: list[tuple[int, int]] = []
+    for start, end in spans:
+        if merged and start < merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(end, merged[-1][1]))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def link_rule_ids(text: str, rules: Mapping[str, Any]) -> str:
+    """Link each registered rule id that ``text`` names to its page.
+
+    An id inside a code span stays code, an id with no page stays text (a link to a
+    page the build does not make is a dead link, which the strict build refuses), and
+    an id that is already inside a Markdown link or a bare URL is left alone: wrapping
+    it again built a link target such as ``[AAK-STDIO-001](AAK-STDIO-001.md).md``, and
+    an id in an address broke the address, which neither MkDocs nor lychee would
+    report. The ids are found with the same token pattern the shared deep dives use,
+    which has no nested quantifier to backtrack on.
     """
     def link(match: re.Match[str]) -> str:
         token = match.group(0)
         return f"[{token}]({token}.md)" if token in rules else token
 
-    return "".join(
-        chunk if is_code else _RULE_ID_TOKEN_RE.sub(link, chunk)
-        for is_code, chunk in split_code_spans(text)
-    )
+    def prose(chunk: str) -> str:
+        out: list[str] = []
+        last = 0
+        for start, end in _link_spans(chunk):
+            out += [_RULE_ID_TOKEN_RE.sub(link, chunk[last:start]), chunk[start:end]]
+            last = end
+        out.append(_RULE_ID_TOKEN_RE.sub(link, chunk[last:]))
+        return "".join(out)
+
+    return "".join(chunk if is_code else prose(chunk) for is_code, chunk in split_code_spans(text))
 
 
 def render_retired_page(rule_id: str, retired: Any, rules: Mapping[str, Any]) -> str:

@@ -61,14 +61,15 @@ def test_every_retirement_says_what_it_was_when_and_why() -> None:
     assert not unreleased, f"last_release is not a release in CHANGELOG.md: {unreleased}"
 
 
-def test_a_replacement_names_only_rules_that_exist() -> None:
-    """The help page links every id named here, so each must have a page of its own."""
-    dangling = {
-        rule_id: sorted(set(_RULE_ID.findall(retired.replacement)) - set(RULES))
-        for rule_id, retired in RETIRED_RULE_IDS.items()
-        if set(_RULE_ID.findall(retired.replacement)) - set(RULES)
-    }
-    assert not dangling, f"replacements naming ids that are not registered rules: {dangling}"
+def test_every_rule_a_retired_page_names_exists() -> None:
+    """The help page links every id the reason or the replacement names, so every one
+    must be a registered rule with a page of its own."""
+    dangling: dict[str, list[str]] = {}
+    for rule_id, retired in RETIRED_RULE_IDS.items():
+        named = set(_RULE_ID.findall(retired.reason)) | set(_RULE_ID.findall(retired.replacement))
+        if named - set(RULES):
+            dangling[rule_id] = sorted(named - set(RULES))
+    assert not dangling, f"retired pages naming ids that are not registered rules: {dangling}"
 
 
 def test_no_retired_id_is_registered() -> None:
