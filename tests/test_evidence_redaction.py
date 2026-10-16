@@ -379,7 +379,36 @@ def canary_project(tmp_path: Path) -> Path:
         f'api_key = "{CANARY}p1"\nclient = Client(token="{CANARY}p2")\n'
         f'requests.get("https://api.example.com/?key={CANARY}p3")\n', encoding="utf-8")
     (root / "CLAUDE.md").write_text(f"Use the token {CANARY}m1 to call the API.\n", encoding="utf-8")
+    # The file types and shapes the secret rules began to read in the batch that
+    # added them: each must be reported (see NEWLY_READ) and carry no credential.
+    (root / "app").mkdir()
+    (root / "deploy").mkdir()
+    (root / "keys").mkdir()
+    (root / "src" / "config.mjs").write_text(f'export const OPENAI_API_KEY = "{SK_PROJ}";\n', encoding="utf-8")
+    (root / "src" / "legacy.cjs").write_text(f'module.exports = {{ token: "{GHP}" }};\n', encoding="utf-8")
+    (root / "app" / "page.tsx").write_text(f'const key = "{SK_ANT}";\n', encoding="utf-8")
+    (root / "src" / "widget.jsx").write_text(f'const gitlab = "{GLPAT}";\n', encoding="utf-8")
+    (root / "deploy" / "docker-compose.yml").write_text(
+        f"services:\n  app:\n    environment:\n      SECRET_KEY: {CANARY}dE5fG7hI4jK8lM1nO6pS2tU\n", encoding="utf-8")
+    (root / "keys" / "deploy_key").write_text(
+        "-----BEGIN " + "OPENSSH PRIVATE KEY-----\n" + (CANARY + _body(48)) * 2 + "\n"
+        "-----END " + "OPENSSH PRIVATE KEY-----\n", encoding="utf-8")
+    (root / "src" / "auth.py").write_text(
+        f'import logging\n_logger = logging.getLogger(__name__)\n_logger.info("auth %s", "{GHP}")\n'
+        f'_logger.info("auth %s", github_token)\n', encoding="utf-8")
     return root
+
+
+# Each newly read file type, and the rule that must report it from the canary project.
+NEWLY_READ = {
+    ("src/config.mjs", "AAK-SECRET-002"),
+    ("src/legacy.cjs", "AAK-SECRET-008"),
+    ("app/page.tsx", "AAK-SECRET-001"),
+    ("src/widget.jsx", "AAK-SECRET-008"),
+    ("deploy/docker-compose.yml", "AAK-SECRET-004"),
+    ("keys/deploy_key", "AAK-SECRET-005"),
+    ("src/auth.py", "AAK-SPLUNK-TOKLOG-001"),
+}
 
 
 def _finding_text(finding: Finding) -> str:
@@ -391,6 +420,8 @@ def _finding_text(finding: Finding) -> str:
 def test_no_finding_carries_the_canary(canary_project: Path) -> None:
     findings = run_scan(canary_project).findings
     assert LEAKING_RULES <= {f.rule_id for f in findings}, "a rule this test guards stopped firing"
+    missing = NEWLY_READ - {(f.file_path, f.rule_id) for f in findings}
+    assert not missing, f"a newly read file type stopped being reported: {sorted(missing)}"
     leaks = sorted({f.rule_id for f in findings if CANARY in _finding_text(f)})
     assert not leaks, f"credential copied into the findings of {leaks}"
 
