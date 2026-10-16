@@ -4,7 +4,13 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agent_audit_kit.scanners._helpers import iter_hook_handlers, loads_jsonc, mcp_server_maps
+from agent_audit_kit.scanners._helpers import (
+    ZCODE_WORKSPACE_CONFIG_NAMES,
+    is_zcode_workspace_config,
+    iter_hook_handlers,
+    loads_jsonc,
+    mcp_server_maps,
+)
 
 
 @dataclass
@@ -45,6 +51,7 @@ AGENT_CONFIGS: dict[str, list[str]] = {
     "Continue": [".continue/config.json"],
     "Roo Code": [".roo/mcp.json", ".roo/rules"],
     "Kiro": [".kiro/mcp.json", ".kiro/rules"],
+    "ZCode": list(ZCODE_WORKSPACE_CONFIG_NAMES),
 }
 
 USER_AGENT_CONFIGS: dict[str, list[str]] = {
@@ -123,7 +130,9 @@ def discover_agents(
                     # `.vscode/mcp.json`, comments and trailing commas allowed.
                     # Claude Code's settings files stay strict JSON: Claude Code
                     # rejects a comment or a trailing comma in them, and skips
-                    # the file, hooks included.
+                    # the file, hooks included. So does ZCode, whose workspace
+                    # files hold MCP servers under names without "mcp" in them.
+                    zcode = is_zcode_workspace_config(fp)
                     is_mcp_config = "mcp" in fp.name.lower()
                     try:
                         text = fp.read_text()
@@ -134,9 +143,9 @@ def discover_agents(
                     # Count MCP servers from mcp config files, under either key:
                     # VS Code's `.vscode/mcp.json` uses `servers`, so reading
                     # only `mcpServers` reported every VS Code workspace as 0.
-                    if is_mcp_config:
+                    if is_mcp_config or zcode:
                         agent.mcp_server_count += sum(
-                            len(servers) for _, servers in mcp_server_maps(data)
+                            len(servers) for _, servers in mcp_server_maps(data, fp)
                         )
 
                     # Count hooks from known hook config files

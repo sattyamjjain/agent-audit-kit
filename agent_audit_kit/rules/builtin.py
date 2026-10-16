@@ -244,6 +244,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-ODOOMCP-CVE-2026-108861-001": ["IAM-05", "STA-08"],
     "AAK-MCP-NETWORKAI-CVE-2026-109332-001": ["IVS-04", "STA-08"],
     "AAK-MCP-NEZHA-CVE-2026-111385-001": ["IVS-04", "STA-08"],
+    "AAK-MCP-ZCODE-CVE-2026-88755-001": ["IAM-16", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -15143,6 +15144,53 @@ _r(
         "dashboard installed from the release zip, which the install script also "
         "offers, is not read, even where a Dockerfile downloads it, and neither is "
         "the Go module."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-17 (#1018). ZCode connects a workspace's MCP servers on open. ZCode
+# ships no artifact AAK reads, so the rule reads the workspace file it trusts.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-ZCODE-CVE-2026-88755-001",
+    "ZCode connects the MCP servers a workspace's config declares when the folder is opened, without approval",
+    "ZCode, Z.ai's coding agent (a desktop client and a `zcode` CLI built from one "
+    "source tree), reads MCP servers from a workspace's `zcode.json` and "
+    "`.zcode/config.json`, under `mcp.servers`, in every directory from the git root "
+    "down to the folder it opens, and connects every one at session start without "
+    "asking. A stdio server's `command` runs as the user the moment the repository "
+    "is opened, and each server's tool descriptions enter the agent's context "
+    "(CVE-2026-88755, CWE-284/CWE-863). ZCode's own configuration guide says "
+    "workspace servers \"were previously untrusted and required manual "
+    "authorization; they now connect by default like any other scope\". NVD names "
+    "3.11.2.6792. Checked in the source: 3.14.0 (2026-09-20), 3.14.3 and 3.15.1 "
+    "(2026-10-10), every published release, keep the set of untrusted project "
+    "servers empty in `runtime-config.ts`, under a comment that project-scoped MCP "
+    "is trusted by default and connects automatically, so there is no fixed release.",
+    Severity.HIGH,
+    Category.TRUST_BOUNDARY,
+    "Read a repository's `zcode.json` and `.zcode/config.json` before opening it in "
+    "ZCode: its guide offers no way to have it ask first. In your own project, keep "
+    "personal servers in `~/.zcode/cli/config.json` rather than the workspace file, "
+    "or set `\"enabled\": false` on a workspace server so ZCode skips it.",
+    sarif_name="ZCodeWorkspaceMcpAutoConnect",
+    cve_references=["CVE-2026-88755"],
+    owasp_mcp_references=["MCP05:2025", "MCP09:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-TRUST-01"],
+    limitations=(
+        "Reports each ZCode workspace file once, naming every server ZCode would "
+        "start; whether a server is hostile is for the MCP config rules, which read "
+        "the same servers. ZCode ships as desktop installers and an install script, "
+        "so its version is in no file AAK reads, and every such file with an enabled "
+        "server is reported, whatever release opens it. A server is not re-checked "
+        "against ZCode's schema, which drops an entry with an unknown key, so that "
+        "entry is still named. A file that is not strict JSON is skipped, as ZCode "
+        "skips it. The desktop client falls back to `.agents/mcp.json` at the "
+        "workspace root when `.zcode/config.json` declares no server; other agents "
+        "read that file too, and it is not reported here."
     ),
 )
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import os
 import re
 import unicodedata
 from pathlib import Path
@@ -712,8 +713,16 @@ def loads_jsonc(text: str) -> Any:
 #: Code's `.vscode/mcp.json` keeps the same map under `servers`.
 MCP_SERVER_KEYS: tuple[str, ...] = ("mcpServers", "servers")
 
+#: The map key ZCode's config files use: the server map sits one level down,
+#: under `mcp.servers`, which is how ZCode's own source names it.
+ZCODE_SERVER_KEY = "mcp.servers"
 
-def mcp_server_maps(data: object) -> list[tuple[str, dict[str, Any]]]:
+#: The workspace config files ZCode reads, in every directory from the git root
+#: down to the folder it opens (`workspace-hook-config.ts`, v3.15.1).
+ZCODE_WORKSPACE_CONFIG_NAMES: tuple[str, ...] = ("zcode.json", ".zcode/config.json")
+
+
+def mcp_server_maps(data: object, path: Path | None = None) -> list[tuple[str, dict[str, Any]]]:
     """Return ``(key, servers)`` for each server map at the top of an MCP config.
 
     A scanner that read only ``mcpServers`` passed every server in a VS Code
@@ -727,10 +736,51 @@ def mcp_server_maps(data: object) -> list[tuple[str, dict[str, Any]]]:
     (``test_utcp_call_template_is_not_seen_by_the_cleartext_class_rule`` pins
     that). When a file has both keys each map comes back on its own, because a
     client loads one of them, not both.
+
+    ZCode's own files are the exception, so a caller that has the file's `path`
+    passes it. ZCode keeps the map of ``zcode.json`` and ``.zcode/config.json``
+    under ``mcp.servers`` and reads nothing else there, and it connects every
+    server in it when a workspace is opened (CVE-2026-88755). That map alone
+    comes back, under `ZCODE_SERVER_KEY`, which no file spells literally, so a
+    caller that looks the key up in the text looks for ``"servers"``. Anywhere
+    else the nesting is no client's map: in a ``.vscode/mcp.json`` VS Code reads
+    the top-level ``servers`` only, and ``test_supply_chain`` pins that it stays
+    unread.
     """
     if not isinstance(data, dict):
         return []
+    if path is not None and is_zcode_workspace_config(path):
+        nested = data.get("mcp")
+        servers = nested.get("servers") if isinstance(nested, dict) else None
+        return [(ZCODE_SERVER_KEY, servers)] if isinstance(servers, dict) else []
     return [(key, data[key]) for key in MCP_SERVER_KEYS if isinstance(data.get(key), dict)]
+
+
+def is_zcode_workspace_config(path: Path) -> bool:
+    """Whether `path` is one of the workspace config files ZCode reads."""
+    if path.name == "zcode.json":
+        return True
+    return path.name == "config.json" and path.parent.name == ".zcode"
+
+
+def zcode_workspace_configs(project_root: Path) -> list[Path]:
+    """Every ZCode workspace config file below `project_root`, sorted.
+
+    ZCode reads both names in every directory from the git root down to the
+    folder it is opened in, so a nested one loads when a subdirectory is opened,
+    and every level is returned. Neither name matches the ``*mcp*.json`` glob the
+    MCP config readers use. The user's own ``~/.zcode/cli/config.json`` sits in a
+    ``cli`` directory and is not a workspace file.
+    """
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(project_root):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        here = Path(dirpath)
+        if "zcode.json" in filenames:
+            found.append(here / "zcode.json")
+        if here.name == ".zcode" and "config.json" in filenames:
+            found.append(here / "config.json")
+    return sorted(found)
 
 
 def iter_mcp_servers(data: object) -> Iterator[tuple[str, dict[str, Any]]]:

@@ -338,7 +338,7 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
         # Both server maps: VS Code keeps its servers under `servers` in
         # .vscode/mcp.json, and reading `mcpServers` alone left every VS Code
         # server out of the graph.
-        maps = mcp_server_maps(data)
+        maps = mcp_server_maps(data, config_path)
         if not maps:
             continue
         try:

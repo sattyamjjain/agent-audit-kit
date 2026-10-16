@@ -9,7 +9,7 @@ Hi,
 
 I built AgentAuditKit — an open-source security scanner (Apache-2.0 licensed) that maps detection rules to all 10 risks in the OWASP Top 10 for Agentic Applications (Version 2026).
 
-410 rules across 104 scanners cover:
+411 rules across 104 scanners cover:
 - ASI01 (Agent Goal Hijack) → injection and download-and-run directives in AGENTS.md / CLAUDE.md / .cursorrules, known indirect-injection payloads, PR titles fed straight to an LLM
 - ASI02 (Tool Misuse and Exploitation) → poisoned tool descriptions, SSRF and path traversal through tool arguments, over-broad tool permissions, source-plus-sink tool chains
 - ASI03 (Identity and Privilege Abuse) → hardcoded keys and tokens, missing or fail-open auth on MCP servers, OAuth flaws, token passthrough
@@ -41,7 +41,7 @@ https://github.com/sattyamjjain
 
 Hi,
 
-I built AgentAuditKit, an open-source (Apache-2.0) security scanner for MCP-connected AI agent pipelines. Its 410 detection rules map to all 10 risks in the OWASP MCP Top 10 (v0.1), some much more thinly than others:
+I built AgentAuditKit, an open-source (Apache-2.0) security scanner for MCP-connected AI agent pipelines. Its 411 detection rules map to all 10 risks in the OWASP MCP Top 10 (v0.1), some much more thinly than others:
 
 - MCP01 (Token Mismanagement & Secret Exposure) → hardcoded keys in MCP configs and env blocks, tokens in URLs and in logs
 - MCP02 (Privilege Escalation via Scope Creep) → filesystem-root servers, wildcard tool permissions, command tools on by default, read-only-mode bypasses
@@ -54,7 +54,7 @@ I built AgentAuditKit, an open-source (Apache-2.0) security scanner for MCP-conn
 - MCP09 (Shadow MCP Servers) → auto-approved project servers, no server allowlist, workspace servers that start before the trust prompt
 - MCP10 (Context Injection & Over-Sharing) → cross-session and cross-tenant data access, task state with no expiry
 
-It scans 10 agent platforms (Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Continue, Roo Code, Kiro) and outputs SARIF 2.1.0 for GitHub Code Scanning integration.
+It scans 11 agent platforms (Claude Code, Cursor, VS Code Copilot, Windsurf, Amazon Q, Gemini CLI, Goose, Continue, Roo Code, Kiro, ZCode) and outputs SARIF 2.1.0 for GitHub Code Scanning integration.
 
 GitHub: https://github.com/sattyamjjain/agent-audit-kit
 
@@ -72,7 +72,7 @@ https://github.com/sattyamjjain
 
 ### LangChain Discord (#general or #showcase)
 
-Hey everyone — I built an open-source security scanner for MCP agent configs. 410 detection rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
+Hey everyone — I built an open-source security scanner for MCP agent configs. 411 detection rules that catch hardcoded secrets, shell injection, tool poisoning (invisible Unicode in tool descriptions), and rug pull attacks.
 
 If you're using MCP tools with LangChain/LangGraph, it also does Python AST taint analysis on `@tool` functions — tracks parameter flow to dangerous sinks like eval, subprocess, SQL.
 

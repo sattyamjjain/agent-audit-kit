@@ -16,6 +16,78 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.23): ZCode starts a cloned repository's MCP servers on open, a new rule and a new platform
+
+The watcher opened one `cve-response` issue at 16:39Z on 2026-10-16 (#1018),
+`sev/unknown`, because NVD has not scored the record (vulnStatus Received, source
+cve@mitre.org). It gets a new rule, measured on fixtures of the researcher's
+repositories and on a negative one, and ZCode becomes a discovery platform. NVD
+text below is quoted from the API record, read on 2026-10-16 at 19:26Z.
+
+**ZCode (CVE-2026-88755) gets `AAK-MCP-ZCODE-CVE-2026-88755-001`, HIGH, on every
+ZCode workspace config that declares a server ZCode would start.** NVD: "Z.ai ZCode
+v3.11.2.6792 was discovered to automatically establish connections with MCP servers
+declared inside a repository's workspace configuration, possibly allowing attackers
+to execute arbitrary code via opening a crafted repository." The researcher's gist
+names the file: ZCode "merges the repo-local .zcode/config.json into its mcp.servers
+table and immediately connects to every declared server without any user approval",
+and in the researcher's run on Windows 11 the demo repositories (lkloliver/poc)
+spawned calc.exe from a stdio server's `command` the moment the folder was opened.
+ZCode has been open source since
+2026-09-20 (zai-org/ZCode, Apache-2.0), so this was checked in the source. The
+loader reads `zcode.json` and `.zcode/config.json` in every directory from the git
+root down to the folder it opens (`workspace-hook-config.ts`), keeps the server map
+under `mcp.servers` (`schema.ts`), and parses with `JSON.parse`. `runtime-config.ts`
+keeps its set of untrusted project servers empty, under a comment that workspace MCP
+is trusted by default and connects automatically, while hooks from the same file are
+held for workspace trust. ZCode's configuration guide says workspace servers "were
+previously untrusted and required manual authorization; they now connect by default
+like any other scope". That line is the same at 3.14.0 (the 2026-09-20 snapshot),
+3.14.3 and 3.15.1 (2026-10-10, the newest tag and `main`), so there is no fixed
+release.
+
+Before this change no AAK reader opened either file. Both of the researcher's
+repositories, and a `cmd /c start calc.exe` variant, scanned with zero findings:
+`.zcode/config.json` matches no listed path and not the `*mcp*.json` glob, and the
+map sits one level down. Now `mcp_config` reads both files at every level, as strict
+JSON, the way ZCode does, and `_helpers.mcp_server_maps`, given one of them, returns
+its `mcp.servers` map, the only map ZCode reads there; in any other file that nesting
+stays unread, as no client reads it. The MCP config rules judge ZCode's servers as
+they judge a `.mcp.json`'s, so a shell wrapper is AAK-MCP-002, a relative command
+AAK-MCP-006, a literal secret AAK-MCP-003, an unpinned package AAK-MCP-007 and an
+unauthenticated remote URL AAK-MCP-001; composition, which shares the discovery,
+reads them too. The new rule
+reports each file once, naming every server ZCode would start, and leaves out a
+server with `enabled: false`, which ZCode skips at connect time, or the legacy
+`enable: false`. `aak discover` lists ZCode as an eleventh platform, with its server
+count. The AAK-SECRET-007 autofix skips ZCode's map, because ZCode expands no
+`${...}` in a config-file server; AAK-SECRET-007 itself does not read ZCode's files
+yet.
+
+There is nothing to pin. ZCode ships as desktop installers for macOS, Windows and
+Linux and as an install script that unpacks the CLI into `~/.zcode/runtime`, and none
+of them leaves a file AAK reads; every `package.json` in the source tree is private.
+npm's `zcode` is an unrelated 0.0.1 from 2020, npm's `zcode-cli` 0.0.1 is a name
+reservation by an individual whose README points at a `glm-cli` npm does not have, and
+PyPI's `zcode` is a file-compression library. So the rule reads the workspace file and
+reports it whichever ZCode release opens it.
+
+Two gaps remain. The desktop client falls back to `.agents/mcp.json` at the workspace
+root when `.zcode/config.json` declares no server; other agents read that file too, so
+the rule does not report it, as its limitations say, though the MCP config rules read
+its servers. And the other MCP readers (`supply_chain` and the CVE version pins,
+`tool_poisoning`, `transport_security`, `secret_exposure`, `mcp_stdio_launcher`,
+`pinning` and the SBOM) do not read ZCode's files yet. Until ZCode asks first, read a
+repository's `zcode.json` and `.zcode/config.json` before opening it in ZCode.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-88755 | n/a | ZCode (desktop client and `zcode` CLI): workspace `zcode.json` and `.zcode/config.json` | **New rule** `AAK-MCP-ZCODE-CVE-2026-88755-001` (HIGH): every workspace config that declares a server ZCode starts, at any release. No fixed release yet. | #1018 |
+
+NVD has not scored the record.
+
+Dispositioned at 2026-10-16T19:27:52Z.
+
 ## 2026-10-16 (v0.6.22): one disclosure, a WordPress plugin, out of scope
 
 The watcher opened one `cve-response` issue at 11:24Z on 2026-10-16 (#1013), `sev/high`.

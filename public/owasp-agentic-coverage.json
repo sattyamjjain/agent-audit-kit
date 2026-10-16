@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T12:26:38Z",
+  "last_updated": "2026-10-16T19:26:02Z",
   "aak_version": "0.6.22",
-  "rule_count": 410,
+  "rule_count": 411,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2243,7 +2243,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 196,
+      "rule_density": 197,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4087,6 +4087,17 @@
           ]
         },
         {
+          "id": "AAK-MCP-ZCODE-CVE-2026-88755-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-88755"
+          ],
+          "aicm_references": [
+            "IAM-16",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-ZSCALER-CVE-2026-59563-001",
           "severity": "medium",
           "cve_references": [
@@ -4381,7 +4392,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 90,
+      "rule_density": 91,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -5216,6 +5227,17 @@
           ],
           "aicm_references": [
             "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-ZCODE-CVE-2026-88755-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-88755"
+          ],
+          "aicm_references": [
+            "IAM-16",
             "STA-08"
           ]
         },

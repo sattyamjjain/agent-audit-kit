@@ -12,15 +12,15 @@
 | Agent Config | 19 |
 | Legal Compliance | 19 |
 | Secret Exposure | 18 |
+| Trust Boundaries | 18 |
 | Hook Injection | 17 |
-| Trust Boundaries | 17 |
 | Transport Security | 15 |
 | Taint Analysis | 14 |
 | A2A Protocol | 13 |
 | MCP Server Card | 4 |
 | Agentic Skills (AST10) | 3 |
 | Composition | 3 |
-| **Total** | **410** |
+| **Total** | **411** |
 
 <!-- END rules-summary -->
 

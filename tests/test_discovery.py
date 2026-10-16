@@ -38,7 +38,7 @@ class TestDiscoverAgents:
         # Filter out user-level agents -- only check project-level
         project_names = {
             "Claude Code", "Cursor", "VS Code Copilot", "Windsurf",
-            "Amazon Q", "Goose", "Continue", "Roo Code", "Kiro",
+            "Amazon Q", "Goose", "Continue", "Roo Code", "Kiro", "ZCode",
         }
         project_agents = [a for a in agents if a.name in project_names]
         assert len(project_agents) == 0
@@ -135,7 +135,7 @@ class TestDiscoverAgents:
         agents = discover_agents(project_root=None)
         project_names = {
             "Claude Code", "Cursor", "VS Code Copilot", "Windsurf",
-            "Amazon Q", "Goose", "Continue", "Roo Code", "Kiro",
+            "Amazon Q", "Goose", "Continue", "Roo Code", "Kiro", "ZCode",
         }
         project_agents = [a for a in agents if a.name in project_names]
         assert len(project_agents) == 0

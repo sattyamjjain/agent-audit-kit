@@ -8,7 +8,7 @@ from pathlib import Path
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.rules.builtin import RULES
-from agent_audit_kit.scanners._helpers import mcp_server_maps
+from agent_audit_kit.scanners._helpers import ZCODE_SERVER_KEY, mcp_server_maps
 
 
 @dataclass
@@ -500,7 +500,11 @@ def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
     # dump below writes that map back under its own key. The reference takes the
     # form that map's client expands: VS Code reads `servers` and substitutes
     # `${env:KEY}`, and would pass a bare `${KEY}` to the server as written.
-    for map_key, servers in mcp_server_maps(data):
+    # ZCode expands no reference in a config-file server at all, so its map is
+    # left as it is rather than rewritten into a literal the server cannot use.
+    for map_key, servers in mcp_server_maps(data, path):
+        if map_key == ZCODE_SERVER_KEY:
+            continue
         form = "${env:%s}" if map_key == "servers" else "${%s}"
         for server_cfg in servers.values():
             if not isinstance(server_cfg, dict):

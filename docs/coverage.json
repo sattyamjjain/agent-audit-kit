@@ -7742,6 +7742,38 @@
       "title": "whatsapp-mcp < 0.2.1 (unauthenticated loopback bridge + media_path traversal \u2192 file exfil)"
     },
     {
+      "category": "trust-boundary",
+      "cve_references": [
+        "CVE-2026-88755"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP05:2025 Command Injection & Execution",
+        "MCP09:2025 Shadow MCP Servers"
+      ],
+      "rule_id": "AAK-MCP-ZCODE-CVE-2026-88755-001",
+      "severity": "high",
+      "title": "ZCode connects the MCP servers a workspace's config declares when the folder is opened, without approval"
+    },
+    {
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-59563"
@@ -10074,32 +10106,32 @@
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
-      "trust-boundary": 17
+      "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 198,
+      "Art. 10 - Data Governance": 199,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 302,
-      "Art. 9 - Risk Management": 205
+      "Art. 15 - Robustness & Security": 303,
+      "Art. 9 - Risk Management": 206
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 198,
-      "Constrain and sandbox tool execution (p.11)": 187,
-      "Design for boundaries (p.10)": 290,
-      "Filter and monitor output pipelines and chained execution (p.12)": 110,
+      "Choose supported MCP projects when possible (p.10)": 199,
+      "Constrain and sandbox tool execution (p.11)": 188,
+      "Design for boundaries (p.10)": 291,
+      "Filter and monitor output pipelines and chained execution (p.12)": 111,
       "Instrument for logging and detection (p.13)": 22,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 258,
-      "Sign and verify MCP messages (p.12)": 268,
-      "Track and patch MCP related vulnerabilities (p.13)": 203,
-      "Validate parameters (p.11)": 191
+      "Scan local network for open or vulnerable MCP servers (p.14)": 259,
+      "Sign and verify MCP messages (p.12)": 269,
+      "Track and patch MCP related vulnerabilities (p.13)": 204,
+      "Validate parameters (p.11)": 192
     },
     "by_owasp_agentic": {
       "ASI01": 18,
       "ASI02": 99,
       "ASI03": 105,
-      "ASI04": 196,
-      "ASI05": 90,
+      "ASI04": 197,
+      "ASI05": 91,
       "ASI06": 5,
       "ASI07": 23,
       "ASI08": 9,
@@ -10111,22 +10143,22 @@
       "MCP02:2025": 16,
       "MCP03:2025": 12,
       "MCP04:2025": 149,
-      "MCP05:2025": 113,
+      "MCP05:2025": 114,
       "MCP06:2025": 5,
       "MCP07:2025": 80,
       "MCP08:2025": 1,
-      "MCP09:2025": 5,
+      "MCP09:2025": 6,
       "MCP10:2025": 15
     },
     "by_severity": {
       "critical": 91,
-      "high": 178,
+      "high": 179,
       "info": 5,
       "low": 17,
       "medium": 119
     },
-    "total_cves_covered": 345,
-    "total_rules": 410
+    "total_cves_covered": 346,
+    "total_rules": 411
   },
   "tool": "agent-audit-kit"
 }

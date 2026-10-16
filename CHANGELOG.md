@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `AAK-MCP-ZCODE-CVE-2026-88755-001` (HIGH): a ZCode workspace config, `zcode.json` or `.zcode/config.json`, that declares an MCP server ZCode starts (CVE-2026-88755, #1018). ZCode connects every server in it when the folder is opened, without asking, so a cloned repository's stdio server runs its command at once. Every published release does this, and ZCode ships nothing AAK can read a version from, so the file is reported whichever release opens it.
+- `aak discover` lists ZCode, an eleventh platform, with the servers its workspace files declare.
+
 ### Security
 
 - Rules that exempt or allowlist a URL's host now read it both ways clients do (#1019). Node (Claude Code, VS Code, Cursor, the MCP TypeScript SDK), requests and Rust's `url` crate end an http(s) authority at a backslash; curl, httpx and urlsplit keep the backslash and take the host after the last `@`. AAK read the host one way or the other, never both, so a URL written for the other family got past. `http://localhost\@evil.example/` was exempt as loopback from AAK-MCP-001, AAK-MCP-009 and AAK-TRANSPORT-001, though curl and a Python MCP client (httpx) connect to evil.example. `https://api.anthropic.com\@evil.example/v1` passed AAK-TRUST-002 as Anthropic's endpoint, while an httpx-based SDK reading the same variable, the Anthropic Python SDK among them, sends the API key to evil.example. A URL the readings disagree on is now judged by the less safe one, through one shared reader, `_helpers.url_readings`, behind every rule below.
@@ -26,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Eighteen older per-CVE pin rules read a lockfile whole, however large, where the pin table skips one over 32 MiB unread: AAK-DORIS-001, AAK-MCP-SERENA-CVE-2026-49471-001, AAK-ASTROMCP-SQLI-CVE-2026-7591-001 and the other pins in `supply_chain`, the two mcp-atlassian pins and the langchain SSRF pins (AAK-LANGCHAIN-SSRF-REDIR-001, AAK-SSRF-TOCTOU-001) (#1020). They now skip it too, and their limitations say so.
 - AAK-SUPPLY-002 and AAK-SUPPLY-006 no longer report npm `openclaw` below 2.1.0 (#1020). Both tables listed it as "104 CVEs catalogued by Adversa AI", but OpenClaw publishes calendar versions on npm (2026.1.29 on), so the range matched only `openclaw@0.0.1`, an empty placeholder. OpenClaw's CVEs are reported by their own pins, with the ranges NVD gives them. A vulnerability database cached by an earlier `aak update` keeps the row for AAK-SUPPLY-006 until the next `aak update`.
 - Removed an AAK-SUPPLY-004 check at the end of the Cargo.lock reader that could not run: it fired when there was no Cargo.lock, and the reader returns before it in that case (#1020). A Cargo.toml without a Cargo.lock is still reported, once, by the lockfile-existence check.
+- The MCP config rules and the composition rules read ZCode's workspace files, at every directory level, and the server map ZCode keeps under `mcp.servers` (#1018). No reader opened either file before, so a shell wrapper, a literal secret or an unpinned package in one scanned clean. The AAK-SECRET-007 autofix skips that map, since ZCode expands no `${...}` reference in it; AAK-SECRET-007 itself does not read ZCode's files yet.
 
 ## [0.6.22] - 2026-10-16
 

@@ -9,15 +9,18 @@ from typing import Any
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
+    ZCODE_SERVER_KEY,
     find_line_number,
     host_ip,
     in_skip_dir,
     is_loopback_url,
+    is_zcode_workspace_config,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
     strip_vscode_variables,
     url_hosts,
+    zcode_workspace_configs,
 )
 from agent_audit_kit.scanners._launchers import launch_evidence
 
@@ -263,6 +266,11 @@ def _find_mcp_configs(project_root: Path, include_user_config: bool = False) -> 
             continue
         if p.is_file() and p not in found:
             found.append(p)
+    # ZCode's workspace configs, `zcode.json` and `.zcode/config.json` at every
+    # level, which ZCode connects on open (CVE-2026-88755); the glob misses both.
+    for p in zcode_workspace_configs(project_root):
+        if p.is_file() and p not in found:
+            found.append(p)
     if include_user_config:
         user_claude = Path.home() / ".claude.json"
         if user_claude.is_file():
@@ -466,11 +474,14 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
     configs = _find_mcp_configs(project_root, include_user_config)
 
     for config_path in configs:
+        zcode = is_zcode_workspace_config(config_path)
         try:
             raw_text = config_path.read_text(encoding="utf-8")
             if len(raw_text) > 1_000_000:
                 continue
-            data = loads_jsonc(raw_text)
+            # ZCode parses its config with JSON.parse and skips a file with a
+            # comment in it, servers and all, so such a file is not read here.
+            data = json.loads(raw_text) if zcode else loads_jsonc(raw_text)
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -481,14 +492,15 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
 
         # Every server map in the file: `mcpServers`, and VS Code's `servers`,
         # which went unread until mcp_server_maps (see its docstring).
-        for container, servers in mcp_server_maps(data):
+        for container, servers in mcp_server_maps(data, config_path):
             # AAK-MCP-004: Excessive server count, per map, since a client loads
             # one map of a file and not both.
             if len(servers) > 10:
+                key = "servers" if container == ZCODE_SERVER_KEY else container
                 findings.append(_make_finding(
                     "AAK-MCP-004", rel_path,
                     f"{len(servers)} MCP servers declared (threshold: 10)",
-                    _find_line_number(raw_text, f'"{container}"'),
+                    _find_line_number(raw_text, f'"{key}"'),
                 ))
 
             for server_name, server_cfg in servers.items():
@@ -509,7 +521,73 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
         if _is_windsurf_config(config_path) and isinstance(windsurf_servers, dict):
             findings.extend(_check_windsurf_registration(data, windsurf_servers, config_path, rel_path, raw_text))
 
+        # AAK-MCP-ZCODE-CVE-2026-88755-001: ZCode connects every server its
+        # workspace config declares when the folder is opened, asking no one.
+        if zcode:
+            zcode_finding = _check_zcode_autoconnect(data, rel_path, raw_text)
+            if zcode_finding is not None:
+                findings.append(zcode_finding)
+
     return findings, scanned_files
+
+
+# The `"servers"` key inside the `"mcp"` object, where a ZCode finding points.
+_ZCODE_MCP_KEY_RE = re.compile(r'"mcp"\s*:\s*\{')
+_ZCODE_SERVERS_KEY_RE = re.compile(r'"servers"\s*:')
+
+
+def _zcode_started(name: str, cfg: object) -> str | None:
+    """What ZCode does with one server when the workspace opens, or None.
+
+    Mirrors ZCode 3.15.1's own reading (`schema.ts`, `adapters/src/mcp`):
+    `enabled: false`, or the legacy `enable: false`, skips the connection; a
+    missing or non-string `type` is inferred from `command`, then `url`; an
+    entry with neither is dropped by the schema, so it starts nothing.
+    """
+    if not isinstance(cfg, dict) or cfg.get("enabled") is False or cfg.get("enable") is False:
+        return None
+    kind = cfg.get("type") if isinstance(cfg.get("type"), str) else None
+    command, url = cfg.get("command"), cfg.get("url")
+    if kind in (None, "stdio") and isinstance(command, str) and command.strip():
+        raw_args = cfg.get("args")
+        args: list[Any] = raw_args if isinstance(raw_args, list) else []
+        shown = (str(shown_arg(args, i)) for i in range(len(args)))
+        argv = " ".join([command, *(a if a else '""' for a in shown)])
+        return f"'{name}' runs `{argv}`"
+    if kind in (None, "http", "sse", "remote") and isinstance(url, str) and url.strip():
+        return f"'{name}' connects to {url}"
+    return None
+
+
+def _check_zcode_autoconnect(data: dict, rel_path: str, raw_text: str) -> Finding | None:
+    """AAK-MCP-ZCODE-CVE-2026-88755-001, once per ZCode workspace config file.
+
+    ZCode merges `zcode.json` and `.zcode/config.json` into its MCP server table
+    and connects every server at session start without a prompt: `runtime-config.ts`
+    keeps its set of untrusted project servers empty, under the comment that
+    workspace MCP is trusted by default and connects automatically. A stdio
+    server's command therefore runs the moment the repository is opened, and the
+    other servers' tool descriptions enter the agent's context. The file is what
+    a hostile repository or pull request plants, so the file is what is reported,
+    once, naming each server it starts. Whether a server is benign is not judged
+    here; the class rules above judge its command and URL.
+    """
+    mcp = data.get("mcp")
+    servers = mcp.get("servers") if isinstance(mcp, dict) else None
+    if not isinstance(servers, dict):
+        return None
+    started = [s for name, cfg in servers.items() if (s := _zcode_started(str(name), cfg))]
+    if not started:
+        return None
+    anchor = _ZCODE_MCP_KEY_RE.search(raw_text)
+    key = _ZCODE_SERVERS_KEY_RE.search(raw_text, anchor.end()) if anchor else None
+    line = raw_text.count("\n", 0, key.start()) + 1 if key else None
+    return _make_finding(
+        "AAK-MCP-ZCODE-CVE-2026-88755-001", rel_path,
+        f"ZCode starts {len(started)} workspace MCP server(s) when this folder is "
+        f"opened, without asking: {'; '.join(started)}",
+        line,
+    )
 
 
 def _is_windsurf_config(config_path: Path) -> bool:
