@@ -239,7 +239,7 @@ _make_finding = make_finding
 # the URL. AAK-HOOK-002 reports a header that sends one of the provider keys
 # the command arm reads. On the 109 `http` handlers in 1,347 public settings
 # and plugin hook files (code search, 2026-10-17), every token sent was the
-# endpoint's own (`$HOOK_SECRET`, `$SHIELD_TOKEN`, a bearer token for the
+# endpoint's own (`$VIBEMAN_HOOK_SECRET`, `$SHIELD_TOKEN`, a bearer token for the
 # service the hook reports to), and every cleartext URL was 127.0.0.1 or
 # localhost, as in the reference's own example.
 # ---------------------------------------------------------------------------
