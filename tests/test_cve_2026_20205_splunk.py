@@ -242,3 +242,55 @@ def test_deeply_nested_arguments_neither_crash_nor_stall(tmp_path: Path) -> None
     findings, _ = scan(tmp_path)
     assert time.perf_counter() - started < 10.0
     assert not [f for f in findings if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
+
+
+# ---------------------------------------------------------------------------
+# Review follow-ups: a value-keeping wrapper is still the value, and a file of
+# closed calls with quote-heavy arguments reads in linear time
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        'logger.info("auth %s", str(access_token))',
+        'logger.info("auth %s", repr(access_token))',
+        'logger.info("auth %s", format(access_token))',
+        'logger.info("using %s", access_token.strip())',
+        'logger.info("auth %s", token.decode())',
+        'logger.info("auth %s", token.decode("utf-8"))',
+        'logger.info("auth %s", str(headers.get("Authorization")).strip())',
+    ],
+)
+def test_a_wrapper_that_keeps_the_value_is_still_the_credential(tmp_path: Path, call: str) -> None:
+    source = f"import logging\n\n\ndef login(access_token, token, headers):\n    {call}\n"
+    assert _leaks(tmp_path, "auth.py", source) == [5]
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        'logger.info("auth %s", len(access_token))',
+        'logger.info("auth %s", access_token[:8])',
+        'logger.info("auth %s", hash(access_token))',
+        'logger.info("auth %s", str(len(access_token)))',
+        'logger.debug("%s", token)',  # only `token`, and no credential word in the message
+        'logger.info("value=%s", token)',
+    ],
+)
+def test_a_value_computed_from_a_credential_is_not_reported(tmp_path: Path, call: str) -> None:
+    source = f"import logging\n\n\ndef login(access_token, token):\n    {call}\n"
+    assert _leaks(tmp_path, "auth.py", source) == []
+
+
+@pytest.mark.parametrize("unit", ['"\\', "`\\", "'\\", '"""', '"', "f'{"])
+def test_a_file_of_closed_calls_with_quote_heavy_arguments_reads_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """Each argument is 3,990 characters of one unit, inside a call that closes. Retrying
+    the literal pattern at every quote cost a scan per quote: 200 such calls took 14 s."""
+    import time
+
+    args = (unit * (3_990 // len(unit) + 1))[:3_990]
+    (tmp_path / "blob.py").write_text(("logger.info(" + args + ")\n") * 200, encoding="utf-8")
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0

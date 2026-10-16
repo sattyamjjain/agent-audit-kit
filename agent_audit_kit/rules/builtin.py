@@ -6343,7 +6343,9 @@ _r(
         "`client_secret`, `password`, `headers[\"Authorization\"]`). It judges the name, "
         "not where the value came from: `value = access_token` and then "
         "`logger.info(\"auth %s\", value)` is not reported, while the same call with "
-        "`access_token` is."
+        "`access_token` is. A value named only `token` counts when the message also names a "
+        "credential (`\"auth %s\"`, `\"token=%s\"`), so `logger.debug(\"%s\", token)` is "
+        "not reported."
     ),
 )
 

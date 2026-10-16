@@ -250,6 +250,32 @@ _STRING_LITERAL_RE = re.compile(
 _FORMAT_CALL_RE = re.compile(r"\.\s*format\s*\(")
 
 
+_QUOTE_RE = re.compile(r"[\"'`]")
+_STRUCTURE_RE = re.compile(r"[()\[\]{},+%]")
+
+
+def _literal_spans(text: str) -> list[tuple[int, int, bool]]:
+    """Each string literal in ``text``, read once left to right: ``(start, end, closed)``.
+
+    A quote that opens no complete literal opens one that runs to the end of the text,
+    and the read stops there. Retrying `_STRING_LITERAL_RE` at every later quote, as a
+    `finditer` does, re-scanned the rest of the argument once per quote: on arguments of
+    `"\\` pairs, 200 closed calls of 4 KB took 14 s (0.16 s on main).
+    """
+    spans: list[tuple[int, int, bool]] = []
+    pos = 0
+    while True:
+        quote = _QUOTE_RE.search(text, pos)
+        if quote is None:
+            return spans
+        literal = _STRING_LITERAL_RE.match(text, quote.start())
+        if literal is None:
+            spans.append((quote.start(), len(text), False))
+            return spans
+        spans.append((quote.start(), literal.end(), True))
+        pos = literal.end()
+
+
 def _operands(code: str, depth_left: int = 4) -> list[str]:
     """``code`` cut at each `,`, `+` and `%` outside brackets and string literals.
 
@@ -258,22 +284,23 @@ def _operands(code: str, depth_left: int = 4) -> list[str]:
     ``depth_left`` bounds how many are opened inside one another.
     """
     pieces: list[str] = []
-    depth = start = i = 0
-    while i < len(code):
-        ch = code[i]
-        if ch in "\"'`":
-            literal = _STRING_LITERAL_RE.match(code, i)
-            if literal is not None:
-                i = literal.end()
-                continue
+    spans = _literal_spans(code)
+    depth = start = 0
+    span_at = 0
+    for mark in _STRUCTURE_RE.finditer(code):
+        at = mark.start()
+        while span_at < len(spans) and spans[span_at][1] <= at:
+            span_at += 1
+        if span_at < len(spans) and spans[span_at][0] <= at:
+            continue  # inside a string literal
+        ch = mark.group()
         if ch in "([{":
             depth += 1
         elif ch in ")]}":
             depth = max(0, depth - 1)
-        elif depth == 0 and ch in ",+%":
-            pieces.append(code[start:i])
-            start = i + 1
-        i += 1
+        elif depth == 0:
+            pieces.append(code[start:at])
+            start = at + 1
     pieces.append(code[start:])
     out: list[str] = []
     for piece in pieces:
@@ -290,12 +317,52 @@ def _operands(code: str, depth_left: int = 4) -> list[str]:
     return out
 
 
+# Calls and methods that write the value they are given: `str(token)`, `repr(token)`,
+# `format(token)`, `token.strip()`, `token.decode()`. Anything else computes a value
+# from it (`len(token)`, `token[:8]`, `hash(token)`), which is not the credential.
+_VALUE_FUNCTIONS = frozenset({"str", "repr", "format"})
+_VALUE_METHODS = frozenset({"strip", "lstrip", "rstrip", "decode", "encode"})
+
+
+def _first_argument(arguments: str) -> str:
+    """The text before the first comma outside brackets in a call's arguments."""
+    depth = 0
+    for mark in _STRUCTURE_RE.finditer(arguments):
+        ch = mark.group()
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            return arguments[: mark.start()]
+    return arguments
+
+
+def _value_of(expression: str) -> str:
+    """``expression`` with its value-keeping wrappers taken off, at most four."""
+    value = expression.strip()
+    for _ in range(4):
+        if not value.endswith(")"):
+            return value
+        head, dot, call = value.rpartition(".")
+        method, paren, rest = call.partition("(")
+        if dot and paren and method.strip() in _VALUE_METHODS and "(" not in rest and rest.count(")") == 1:
+            value = head.strip()
+            continue
+        name, paren, _rest = value.partition("(")
+        if paren and name.strip() in _VALUE_FUNCTIONS:
+            value = _first_argument(value[len(name) + 1 : -1]).strip()
+            continue
+        return value
+    return value
+
+
 def _referenced_name(expression: str) -> str | None:
     """The name a reference ends in (`self.token` -> `token`, `headers["Authorization"]`
     -> `Authorization`), or None when ``expression`` computes a value from one."""
     if len(expression) > 200:
         return None
-    reference = _REFERENCE_RE.fullmatch(expression.strip())
+    reference = _REFERENCE_RE.fullmatch(_value_of(expression))
     if reference is None:
         return None
     last = reference.group("env") or _LAST_PART_RE.findall(reference.group())[-1]
@@ -310,11 +377,11 @@ def _written_names(arg_str: str) -> tuple[list[str], str]:
     """
     names: list[str] = []
     message: list[str] = []
-    for literal in _STRING_LITERAL_RE.finditer(arg_str):
-        text = literal.group()
+    for start, end, closed in _literal_spans(arg_str):
+        text = arg_str[start:end]
         quotes = 3 if text.startswith(('"""', "'''")) else 1
-        body = text[quotes:-quotes]
-        prefix = _STRING_PREFIX_RE.search(arg_str, max(0, literal.start() - 2), literal.start())
+        body = text[quotes : len(text) - quotes] if closed else text[quotes:]
+        prefix = _STRING_PREFIX_RE.search(arg_str, max(0, start - 2), start)
         if text[0] == "`":
             holes, hole_re = _TEMPLATE_HOLE_RE.findall(body), _TEMPLATE_HOLE_RE
         elif prefix is not None and "f" in prefix.group().lower():
