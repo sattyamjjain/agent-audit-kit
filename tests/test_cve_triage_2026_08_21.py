@@ -223,12 +223,14 @@ def test_n8n_floor_moved_rather_than_gaining_a_fifth_pin(tmp_path: Path) -> None
 
     Updated 2026-09-04: the claim under test is "no new *rule id* for n8n", not "no
     second arm". CVE-2026-85166 fixes on two lines (< 2.35.4, and 2.36.x < 2.36.2),
-    so this rule now carries two arms the way AAK-MCP-N8N-CVE-2026-65594-001
-    already did. That is still one finding per dependency, which is what the test
-    was defending; asserting the arm *count* conflated the two.
+    so this rule carried two arms then, the way AAK-MCP-N8N-CVE-2026-65594-001
+    did. That is still one finding per versioned dependency, which is what the
+    test was defending; asserting the arm *count* conflated the two.
 
     Updated 2026-10-16: CVE-2026-110842 moved the floor again, to 2.41.4, with the
-    2.42.0 release as a further range on the same row instead of a second row.
+    2.42.0 release as a further range on the same row instead of a second row, and
+    AAK-MCP-N8N-CVE-2026-65594-001 folded its two rows the same way, so an
+    unversioned n8n is no longer reported twice by either rule.
     """
     n8n_rule_ids = {p.rule_id for p in _PINS if p.display == "n8n"}
     assert n8n_rule_ids == {

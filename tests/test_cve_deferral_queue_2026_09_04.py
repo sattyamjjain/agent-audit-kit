@@ -5,7 +5,7 @@ a version floor gets wrong if nobody writes it down:
 
 * **n8n CVE-2026-85166** is "before 2.35.4 **and** 2.36.x before 2.36.2". A lone
   2.35.4 floor clears 2.36.0 and 2.36.1 — versions that sort above it and are
-  still vulnerable. Two arms, one rule id, exactly as CVE-2026-65594 already does.
+  still vulnerable. Two arms, one rule id, exactly as CVE-2026-65594 then did.
   Since 2026-10-16 CVE-2026-110842 sets the floor at 2.41.4, which covers the 2.36.x
   line, and the branch range is 2.42.0, carried on the same row (`also`).
 * **MCPHub** publishes as npm ``@samanhappy/mcphub``. PyPI ``mcphub`` is a

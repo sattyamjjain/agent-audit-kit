@@ -14,7 +14,15 @@ from pathlib import Path
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
-from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _PINS, scan
+from agent_audit_kit.scanners import mcp_cve_pins_2026_07
+from agent_audit_kit.scanners._versions import parse_range
+from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
+    _PINS,
+    _Pin,
+    _fires,
+    _spans_admit_affected,
+    scan,
+)
 
 PINS = {
     "AAK-MCP-LITELLM-CVE-2026-59822-001": "high",
@@ -645,6 +653,120 @@ def test_n8n_65594_230_branch_fires(tmp_path: Path) -> None:
 
 def test_n8n_65594_230_branch_patched_passes(tmp_path: Path) -> None:
     assert "AAK-MCP-N8N-CVE-2026-65594-001" not in _n8n(tmp_path, "2.30.1")
+
+
+# One row since 2026-10-16: the mainline range, and 2.30.0 as an `also` range. The
+# two rows it replaced, one per fix line, reported an unversioned n8n twice. These
+# tests hold the one row to exactly what the pair reported: version by version,
+# range by range, and on every n8n fixture.
+_N8N_OAUTH = "AAK-MCP-N8N-CVE-2026-65594-001"
+_LEGACY_N8N_OAUTH = (
+    _Pin(_N8N_OAUTH, "n8n", ("n8n",), (2, 29, 8), introduced=(2, 27, 0), fix_label="2.29.8"),
+    _Pin(_N8N_OAUTH, "n8n", ("n8n",), (2, 30, 1), introduced=(2, 30, 0), fix_label="2.30.1"),
+)
+
+
+def _n8n_oauth_row() -> _Pin:
+    [row] = [p for p in _PINS if p.rule_id == _N8N_OAUTH]
+    return row
+
+
+def _legacy_table() -> tuple[_Pin, ...]:
+    """The pin table with the one row swapped back for the two it replaced."""
+    rows: list[_Pin] = []
+    for pin in _PINS:
+        rows.extend(_LEGACY_N8N_OAUTH if pin.rule_id == _N8N_OAUTH else (pin,))
+    return tuple(rows)
+
+
+def test_n8n_65594_is_one_row() -> None:
+    row = _n8n_oauth_row()
+    assert (row.introduced, row.floor, row.also) == (
+        (2, 27, 0), (2, 29, 8), (((2, 30, 0), (2, 30, 1)),)
+    )
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "n8n\n"),
+    ("package.json", '{"dependencies": {"n8n": "latest"}}'),
+    (".mcp.json", '{"mcpServers": {"n8n": {"command": "npx", "args": ["-y", "n8n"]}}}'),
+])
+def test_an_unversioned_n8n_reports_65594_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str, content: str
+) -> None:
+    (tmp_path / name).write_text(content, encoding="utf-8")
+
+    def reported() -> int:
+        return [f.rule_id for f in scan(tmp_path)[0]].count(_N8N_OAUTH)
+
+    assert reported() == 1
+    monkeypatch.setattr(mcp_cve_pins_2026_07, "_PINS", _legacy_table())
+    assert reported() == 2, "the two rows this replaced each reported it"
+
+
+def test_the_one_row_fires_on_every_version_the_two_rows_did() -> None:
+    """Patches 0 to 15 of every minor from 2.0 to 2.44, a spread of 1.x, and no version."""
+    row = _n8n_oauth_row()
+    versions = [(1, minor, patch) for minor in (0, 88, 122, 123) for patch in range(0, 90, 7)]
+    versions += [(2, minor, patch) for minor in range(0, 45) for patch in range(0, 16)]
+    fired = 0
+    for version in [*versions, None]:
+        before = any(_fires(pin, version) for pin in _LEGACY_N8N_OAUTH)
+        assert _fires(row, version) is before, version
+        fired += before
+    assert fired == 16 + 16 + 8 + 1 + 1  # 2.27.x, 2.28.x, 2.29.0-2.29.7, 2.30.0, no version
+
+
+@pytest.mark.parametrize(("dialect", "spec"), [
+    ("npm", "^2.29.8"), ("npm", "~2.29.8"), ("npm", "^2.30.1"), ("npm", "~2.30.0"),
+    ("npm", "^2.27.0"), ("npm", "~2.26.0"), ("npm", ">=2.29.8 <2.30.0"), ("npm", ">=2.29.8"),
+    ("npm", "2.30.x"), ("npm", "2.30.0"), ("npm", "<2.27.0"), ("npm", ">=2.30.1"),
+    ("npm", "2.29.x || 2.31.x"), ("npm", "^1.123.0"), ("npm", "*"), ("npm", "latest"),
+    ("pep440", "==2.30.0"), ("pep440", ">=2.29.8,<2.30"), ("pep440", "~=2.29.0"),
+    ("pep440", ">=2.30.1"), ("pep440", "<2.27"), ("poetry", "^2.29"),
+])
+def test_the_one_row_admits_every_range_the_two_rows_did(dialect: str, spec: str) -> None:
+    spans = parse_range(spec, dialect)
+    before = any(_spans_admit_affected(pin, spans) for pin in _LEGACY_N8N_OAUTH)
+    assert _spans_admit_affected(_n8n_oauth_row(), spans) is before
+
+
+def test_every_n8n_fixture_reports_65594_where_the_two_rows_did(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Run over every n8n fixture project with the one row and with the two rows. The
+    same files report the rule, and no file reports it twice any more. The
+    cve-2026-65594-n8n fixtures are negative only for this rule: the other n8n pins
+    still report those versions."""
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    projects = sorted(
+        project
+        for base in (fixtures / "cves", fixtures / "limitations")
+        for case in base.iterdir() if case.is_dir() and "n8n" in case.name.lower()
+        for project in case.iterdir() if project.is_dir()
+    )
+
+    def reporting(root: Path) -> list[str]:
+        return sorted(f.file_path for f in scan(root)[0] if f.rule_id == _N8N_OAUTH)
+
+    after = {project: reporting(project) for project in projects}
+    monkeypatch.setattr(mcp_cve_pins_2026_07, "_PINS", _legacy_table())
+    before = {project: reporting(project) for project in projects}
+    for project in projects:
+        assert sorted(set(after[project])) == sorted(set(before[project])), project
+        assert len(after[project]) == len(set(after[project])), project
+    reported = {p.relative_to(fixtures).as_posix() for p in projects if after[p]}
+    assert reported == {
+        "cves/cve-2026-65594-n8n/branch-lockfile",
+        "cves/cve-2026-65594-n8n/branch-range",
+        "cves/cve-2026-65594-n8n/mainline",
+        "cves/cve-2026-65594-n8n/unversioned",
+        "limitations/AAK-MCP-N8N-CVE-2026-59207-001/positive",   # n8n 2.27.3
+        "limitations/AAK-MCP-N8N-CVE-2026-65594-001/positive",   # n8n 2.28.0
+    }
+    assert before[fixtures / "cves" / "cve-2026-65594-n8n" / "unversioned"] == [
+        "requirements.txt", "requirements.txt",
+    ]
 
 
 # ---------------------------------------------------------------------------

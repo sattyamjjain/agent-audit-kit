@@ -9924,8 +9924,9 @@ _r(
     "client, self-approve consent for another user's workflow, and obtain a valid "
     "token; the workflow then runs in the owner's project with the owner's stored "
     "credentials, breaking user/project isolation (CVE-2026-65594). This is a "
-    "distinct fix line from n8n's earlier 2.27.4 / 2.28.1 MCP auth-bypass pin, so "
-    "it has its own rule. Treat 2.27.0–2.29.7 and 2.30.0 as exposed.",
+    "distinct fix line from n8n's 2.27.4 / 2.28.1 fix for an earlier MCP "
+    "credential-domain bypass, so it has its own rule. Treat 2.27.0–2.29.7 and "
+    "2.30.0 as exposed.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade `n8n` to >= 2.29.8 (or >= 2.30.1 on the 2.30.x line) and pin it. "

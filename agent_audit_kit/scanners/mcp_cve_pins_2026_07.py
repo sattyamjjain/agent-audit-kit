@@ -458,12 +458,13 @@ _PINS: tuple[_Pin, ...] = (
          (1, 19, 0), fix_label="1.19.0"),
     # --- 2026-07-22 wave ---
     # n8n CVE-2026-65594 is fixed on two branches (2.29.8 mainline, 2.30.1 on the
-    # 2.30.x line) and affects only from 2.27.0 — two pin arms, one rule_id, each
-    # bounded by `introduced` so patched releases on either branch clear.
+    # 2.30.x line) and affects only from 2.27.0. One row: the mainline range is
+    # bounded by `introduced`, and 2.30.0, which sorts above the 2.29.8 floor, is an
+    # `also` range, so patched releases on either branch clear. It was two rows, one
+    # per branch, until 2026-10-16, and an unversioned n8n was reported twice.
     _Pin("AAK-MCP-N8N-CVE-2026-65594-001", "n8n", ("n8n",), (2, 29, 8),
-         introduced=(2, 27, 0), fix_label="2.29.8"),
-    _Pin("AAK-MCP-N8N-CVE-2026-65594-001", "n8n", ("n8n",), (2, 30, 1),
-         introduced=(2, 30, 0), fix_label="2.30.1"),
+         introduced=(2, 27, 0), also=(((2, 30, 0), (2, 30, 1)),),
+         fix_label="2.29.8 / 2.30.1"),
     # --- 2026-07-23..24 wave ---
     # AWS API MCP Server: security-policy enforcement is skipped for the process
     # lifetime if policy-data init fails at startup — affected 0.2.13–1.3.46,
@@ -647,9 +648,9 @@ _PINS: tuple[_Pin, ...] = (
     #
     # Two arms, not one, and the second is the whole point. NVD reads "before
     # 2.35.4 and 2.36.x before 2.36.2" -- a lone 2.35.4 floor clears 2.36.0 and
-    # 2.36.1, which are *vulnerable*, because they sort above it. That is the shape
-    # already used for CVE-2026-65594 above: same rule_id, one arm per fix line,
-    # the second bounded by `introduced` so 2.36.2+ clears and nothing below 2.36.0
+    # 2.36.1, which are *vulnerable*, because they sort above it. That was the shape
+    # then used for CVE-2026-65594 above: same rule_id, one arm per fix line, the
+    # second bounded by `introduced` so 2.36.2+ clears and nothing below 2.36.0
     # ever reaches it. Both fix versions are published on npm (latest 2.37.10).
     #
     # Floor moved again, 2.35.4 -> 2.41.4, for CVE-2026-110842 (HIGH, CVSS 4.0 7.7,

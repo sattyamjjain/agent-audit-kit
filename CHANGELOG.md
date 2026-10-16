@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83. GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
+- `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice. Its two pin rows are one row, and what it reports is unchanged.
 
 ## [0.6.21] - 2026-10-16
 
