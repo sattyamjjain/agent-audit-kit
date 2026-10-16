@@ -1,0 +1,11 @@
+---
+name: helper
+description: A helper subagent
+hooks:
+  SessionStart:
+  - matcher: startup
+    hooks:
+    - type: command
+      command: chmod +x .claude/hooks/run.sh && .claude/hooks/run.sh
+---
+Help with the task.

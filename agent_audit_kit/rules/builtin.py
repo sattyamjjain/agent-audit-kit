@@ -1249,11 +1249,16 @@ _r(
 _r(
     "AAK-HOOK-001",
     "Hook executes network-capable command",
-    "A hook command contains network-capable tools (curl, wget, nc, etc.). "
-    "Hooks run automatically and can exfiltrate code, API keys, or session data.",
+    "A hook command contains network-capable tools (curl, wget, nc, etc.), or an "
+    "`http` hook posts each event to a URL that is cleartext to another machine, a "
+    "bare IP address or carries a credential. Hooks run automatically and can "
+    "exfiltrate code, API keys, or session data.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
-    "Remove network calls from hooks. Use file-based logging if audit trail is needed.",
+    "Remove network calls from hooks. Use file-based logging if audit trail is needed. "
+    "An `http` hook that must report somewhere should post to an https URL on a host "
+    "name you control, with any credential in a header taken from `allowedEnvVars` "
+    "rather than in the URL.",
     sarif_name="HookNetworkCapableCommand",
     cve_references=["CVE-2025-59536"],
     owasp_agentic_references=["ASI05"],
@@ -1262,37 +1267,52 @@ _r(
         "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name, and the "
         "one-liners `python -c ... import requests` (not `python3 -c`) and `node -e "
         "... fetch(`, in the command line of each hook (its `command`, followed by "
-        "`args` when set) in `.claude/settings.json` and `.claude/settings.local.json`. "
-        "What a script file does is not followed, so `bash .claude/hooks/report.sh` "
-        "passes even when the script runs curl. An `http` hook, which posts the event "
-        "to its `url` without running a command, is not read, and neither are the "
-        "hooks a plugin ships in `hooks/hooks.json`."
+        "`args` when set). An `http` hook, which posts the event to its `url`, is "
+        "reported when the URL is plain http to a host other than this machine, a bare "
+        "IP address other than loopback, or carries a credential (userinfo, or a "
+        "credential-named query parameter such as `token`); one to an https URL on a "
+        "DNS name is not reported, wherever it points. What a script file does is not "
+        "followed, so `bash .claude/hooks/report.sh` passes even when the script runs "
+        "curl. Hooks are read from `.claude/settings.json`, `.claude/settings.local.json`, "
+        "a plugin's `hooks/hooks.json` (where the plugin's directory holds "
+        "`.claude-plugin/` or sits under a marketplace's "
+        "`.claude-plugin/marketplace.json`) and the frontmatter of a `SKILL.md`. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
 _r(
     "AAK-HOOK-002",
     "Hook command contains environment variable exfiltration",
-    "A hook command accesses credential environment variables. "
-    "This enables direct credential theft via hook execution.",
+    "A hook command accesses credential environment variables, or an `http` hook "
+    "sends one in a header. This enables direct credential theft via hook execution.",
     Severity.CRITICAL,
     Category.HOOK_INJECTION,
     "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, "
     "`$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY` and `$AWS_ACCESS_KEY_ID`, and the "
     "pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. Let the program "
-    "the hook runs read its own credentials from its environment.",
+    "the hook runs read its own credentials from its environment. For an `http` hook, "
+    "take the key out of `headers` and `allowedEnvVars`; a hook endpoint needs a token "
+    "of its own, not your provider key.",
     sarif_name="HookCredentialExfiltration",
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-02"],
     limitations=(
         "Matches four names written as a bare `$NAME` (ANTHROPIC_API_KEY, "
         "OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID) and three "
-        "exfiltration pipelines; `$HOME` and `$PATH` are not credentials and are not "
-        "reported. The braced form `${ANTHROPIC_API_KEY}` and any "
-        "other credential variable on its own (`$GITHUB_TOKEN`) are not matched. An "
-        "`http` hook that sends `$ANTHROPIC_API_KEY` in a header it lists in "
-        "`allowedEnvVars` is not read, and neither are the hooks a plugin ships in "
-        "`hooks/hooks.json`."
+        "exfiltration pipelines in a hook's command line, and an `http` hook that sends "
+        "one of the four: a `headers` value that interpolates it (`$NAME` or `${NAME}`) "
+        "while `allowedEnvVars` lists it. `$HOME` and `$PATH` are not credentials and "
+        "are not reported. In a command line the braced form `${ANTHROPIC_API_KEY}` is "
+        "not matched, and in a command or a header neither is any other credential "
+        "variable (`$GITHUB_TOKEN`): an `http` hook that sends a token of its own "
+        "(`$HOOK_TOKEN`) is authenticating to the endpoint it reports to. A header that "
+        "names a variable `allowedEnvVars` does not list sends an empty string and is "
+        "not reported, and `httpHookAllowedEnvVars`, which another settings file can set "
+        "to stop a variable being sent, is not read. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1321,8 +1341,9 @@ _r(
         "names such a path (`cd /tmp/build`, reading `~/.config`) is not reported, "
         "and neither is deleting one. A path reached through `$HOME` or a relative "
         "climb (`../../shared/out.json`) is not matched, nor is a write made by a "
-        "script the hook runs. Hooks a plugin ships in `hooks/hooks.json` are not "
-        "read."
+        "script the hook runs. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1347,8 +1368,9 @@ _r(
         "command on any other event, such as Stop, is not reported, and a command that "
         "merely contains a formatter name anywhere, even in a trailing comment (`# "
         "prettier`), counts as a formatter. A hook that runs no command (`http`, "
-        "`prompt`, `agent`, `mcp_tool`) is not reported on any event, and the hooks a "
-        "plugin ships in `hooks/hooks.json` are not read."
+        "`prompt`, `agent`, `mcp_tool`) is not reported on any event. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1366,8 +1388,9 @@ _r(
     limitations=(
         "Matches the words base64, btoa, atob, b64encode and b64decode in a hook "
         "command. Other encodings that hide a payload the same way, hex through `xxd "
-        "-r -p` or `base32 -d`, are not matched. Hooks a plugin ships in "
-        "`hooks/hooks.json` are not read."
+        "-r -p` or `base32 -d`, are not matched. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1387,8 +1410,9 @@ _r(
     limitations=(
         "Matches sudo, doas, pkexec and `chmod` followed by whitespace and `+x`. "
         "`chmod 755`, `chmod a+x` and `su root -c`, which grant the same execute or "
-        "root rights, are not matched. Hooks a plugin ships in `hooks/hooks.json` are "
-        "not read."
+        "root rights, are not matched. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1400,16 +1424,18 @@ _r(
     Severity.MEDIUM,
     Category.HOOK_INJECTION,
     "Remove hooks that are not essential, or fold related ones into one script, until "
-    "each settings file has 15 or fewer hooks. The rule counts every hook, each one in "
-    "a matcher group's `hooks` array on its own, in `.claude/settings.json` and "
-    "`.claude/settings.local.json` separately, and fires above 15.",
+    "each file has 15 or fewer hooks. The rule counts every hook, each one in a "
+    "matcher group's `hooks` array on its own, in each settings file, plugin "
+    "`hooks/hooks.json` and `SKILL.md` separately, and fires above 15.",
     sarif_name="ExcessiveHookCount",
     adversa_references=["ADV-SCOPE-03"],
     limitations=(
-        "Counts the hooks of all events in one settings file, each hook in a "
-        "`matcher` group's `hooks` array separately, and fires above 15. Hooks split "
-        "between `.claude/settings.json` and `.claude/settings.local.json` are not "
-        "added up, and the hooks a plugin ships in `hooks/hooks.json` are not counted."
+        "Counts the hooks of all events in one file (a settings file, a plugin's "
+        "`hooks/hooks.json` or a `SKILL.md`), each hook in a `matcher` group's `hooks` "
+        "array separately, and fires above 15. Hooks split between files, such as "
+        "`.claude/settings.json` and `.claude/settings.local.json`, are not added up, "
+        "and hooks a plugin declares in `.claude-plugin/plugin.json` or a subagent in "
+        "its frontmatter are not counted."
     ),
 )
 
@@ -1437,8 +1463,9 @@ _r(
         "hex digest (an image pinned `@sha256:`) and a long readable command are not "
         "reported, and a base64 blob whose `/` characters split it into runs shorter "
         "than 64 is missed. The same text written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from "
-        "shell variables (`$a$b`) is not matched. Hooks a plugin ships in "
-        "`hooks/hooks.json` are not read."
+        "shell variables (`$a$b`) is not matched. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
@@ -1464,7 +1491,9 @@ _r(
         ".rb, .c, .cpp or .h, also inside `sh -c`. A pattern that names an extension "
         "(`grep '\\.py$'`) is not a read. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py "
         "out/`) and reading a file of another type (`cat src/App.tsx`) are not "
-        "matched. Hooks a plugin ships in `hooks/hooks.json` are not read."
+        "matched. "
+        "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
+        "subagent's frontmatter are not read."
     ),
 )
 
