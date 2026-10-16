@@ -57,6 +57,7 @@ import re
 from collections import deque
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Callable
 
 try:
     import tomllib
@@ -112,9 +113,13 @@ class Declaration:
     # behind an option (mcp-remote's `--device-code`) can ask whether it was passed.
     argv: tuple[str, ...] = ()
     # The 1-based line the declaration starts on, where the parser knows it (a
-    # requirements file is read line by line), else 0 and `declaration_line`
-    # finds it in the text.
+    # requirements file is read line by line), else 0.
     line: int = 0
+    # Where the declaration sits in the parsed document, as keys and indices
+    # (`("devDependencies", "pkg")`, `("mcpServers", "x", "args", 1)`), so that
+    # `declaration_lines` can find its line without searching the text; () for a
+    # requirements line, which carries `line` instead.
+    path: tuple[str | int, ...] = ()
 
 
 _PIPFILE_NON_PACKAGES = frozenset({"source", "requires", "scripts", "pipenv"})
@@ -227,24 +232,26 @@ def _table(data: object, *keys: str) -> object:
 
 
 def _requirement_list(
-    value: object, section: str, kind: str = "dependency"
+    value: object, section: str, path: tuple[str | int, ...], kind: str = "dependency"
 ) -> list[Declaration]:
     found: list[Declaration] = []
     if isinstance(value, list):
-        for item in value:
+        for index, item in enumerate(value):
             if isinstance(item, str):
                 declaration = _pep508(item, kind, section)
                 if declaration is not None:
-                    found.append(declaration)
+                    found.append(replace(declaration, path=path + (index,)))
     return found
 
 
-def _requirement_groups(value: object, prefix: str) -> list[Declaration]:
+def _requirement_groups(
+    value: object, prefix: str, path: tuple[str | int, ...]
+) -> list[Declaration]:
     """Each group or extra is its own install, so its own section."""
     found: list[Declaration] = []
     if isinstance(value, dict):
         for group, items in value.items():
-            found.extend(_requirement_list(items, f"{prefix}.{group}"))
+            found.extend(_requirement_list(items, f"{prefix}.{group}", path + (group,)))
     return found
 
 
@@ -254,7 +261,9 @@ def _poetry_marker(value: dict) -> str:
     return " and ".join(p for p in parts if p)
 
 
-def _poetry_value(name: str, value: object, section: str) -> list[Declaration]:
+def _poetry_value(
+    name: str, value: object, section: str, path: tuple[str | int, ...]
+) -> list[Declaration]:
     """`name = "^1.2"`, `name = {version = "^1.2", extras = [...]}`, or a list.
 
     A list holds alternatives for different environments (one per `python` or
@@ -263,30 +272,30 @@ def _poetry_value(name: str, value: object, section: str) -> list[Declaration]:
     """
     if isinstance(value, str):
         return [Declaration(name, value, "poetry", "py", "dependency", f"{name} = {value!r}",
-                            section)]
+                            section, path=path)]
     if isinstance(value, dict):
         version = value.get("version")
         if isinstance(version, str):
             return [Declaration(name, version, "poetry", "py", "dependency",
                                 f"{name} = {{version = {version!r}}}", section,
-                                _poetry_marker(value))]
+                                _poetry_marker(value), path=path)]
         # A git, path or url source states no registry version.
         return [Declaration(name, "", "poetry", "py", "dependency", f"{name} = {{...}}",
-                            section, _poetry_marker(value))]
+                            section, _poetry_marker(value), path=path)]
     if isinstance(value, list):
         found: list[Declaration] = []
         for index, item in enumerate(value):
-            found.extend(_poetry_value(name, item, f"{section}#{index}"))
+            found.extend(_poetry_value(name, item, f"{section}#{index}", path + (index,)))
         return found
     return []
 
 
-def _poetry_table(value: object, section: str) -> list[Declaration]:
+def _poetry_table(value: object, section: str, path: tuple[str | int, ...]) -> list[Declaration]:
     found: list[Declaration] = []
     if isinstance(value, dict):
         for name, spec in value.items():
             if str(name).lower() != "python":
-                found.extend(_poetry_value(str(name), spec, section))
+                found.extend(_poetry_value(str(name), spec, section, path + (name,)))
     return found
 
 
@@ -295,40 +304,51 @@ def pyproject_declarations(data: dict) -> list[Declaration]:
     every install and its `override-dependencies` (and PDM's resolution
     overrides) replace the regular entries, so those two carry their own kinds."""
     found: list[Declaration] = []
-    found.extend(_requirement_list(_table(data, "project", "dependencies"), "project.dependencies"))
+    found.extend(_requirement_list(_table(data, "project", "dependencies"), "project.dependencies",
+                                   ("project", "dependencies")))
     found.extend(_requirement_groups(_table(data, "project", "optional-dependencies"),
-                                     "project.optional-dependencies"))
-    found.extend(_requirement_groups(_table(data, "dependency-groups"), "dependency-groups"))
-    found.extend(_requirement_list(_table(data, "build-system", "requires"), "build-system.requires"))
+                                     "project.optional-dependencies",
+                                     ("project", "optional-dependencies")))
+    found.extend(_requirement_groups(_table(data, "dependency-groups"), "dependency-groups",
+                                     ("dependency-groups",)))
+    found.extend(_requirement_list(_table(data, "build-system", "requires"), "build-system.requires",
+                                   ("build-system", "requires")))
     poetry = _table(data, "tool", "poetry")
-    found.extend(_poetry_table(_table(poetry, "dependencies"), "tool.poetry.dependencies"))
-    found.extend(_poetry_table(_table(poetry, "dev-dependencies"), "tool.poetry.dev-dependencies"))
+    found.extend(_poetry_table(_table(poetry, "dependencies"), "tool.poetry.dependencies",
+                               ("tool", "poetry", "dependencies")))
+    found.extend(_poetry_table(_table(poetry, "dev-dependencies"), "tool.poetry.dev-dependencies",
+                               ("tool", "poetry", "dev-dependencies")))
     groups = _table(poetry, "group")
     if isinstance(groups, dict):
         for group, table in groups.items():
-            found.extend(_poetry_table(_table(table, "dependencies"), f"tool.poetry.group.{group}"))
+            found.extend(_poetry_table(_table(table, "dependencies"), f"tool.poetry.group.{group}",
+                                       ("tool", "poetry", "group", group, "dependencies")))
     uv = _table(data, "tool", "uv")
-    found.extend(_requirement_list(_table(uv, "dev-dependencies"), "tool.uv.dev-dependencies"))
+    found.extend(_requirement_list(_table(uv, "dev-dependencies"), "tool.uv.dev-dependencies",
+                                   ("tool", "uv", "dev-dependencies")))
     found.extend(_requirement_list(_table(uv, "constraint-dependencies"),
-                                   "tool.uv.constraint-dependencies", kind="constraint"))
+                                   "tool.uv.constraint-dependencies",
+                                   ("tool", "uv", "constraint-dependencies"), kind="constraint"))
     found.extend(_requirement_list(_table(uv, "override-dependencies"),
-                                   "tool.uv.override-dependencies", kind="override"))
+                                   "tool.uv.override-dependencies",
+                                   ("tool", "uv", "override-dependencies"), kind="override"))
     found.extend(_requirement_groups(_table(data, "tool", "pdm", "dev-dependencies"),
-                                     "tool.pdm.dev-dependencies"))
+                                     "tool.pdm.dev-dependencies", ("tool", "pdm", "dev-dependencies")))
     overrides = _table(data, "tool", "pdm", "resolution", "overrides")
     if isinstance(overrides, dict):
         for name, spec in overrides.items():
             if isinstance(spec, str):
                 found.append(Declaration(str(name), spec, "pep440", "py", "override",
-                                         f"{name} = {spec!r}", "tool.pdm.resolution.overrides"))
+                                         f"{name} = {spec!r}", "tool.pdm.resolution.overrides",
+                                         path=("tool", "pdm", "resolution", "overrides", name)))
     envs = _table(data, "tool", "hatch", "envs")
     if isinstance(envs, dict):
         for env_name, env in envs.items():
-            found.extend(_requirement_list(_table(env, "dependencies"), f"tool.hatch.envs.{env_name}"))
-            found.extend(_requirement_list(_table(env, "extra-dependencies"),
-                                           f"tool.hatch.envs.{env_name}"))
+            for key in ("dependencies", "extra-dependencies"):
+                found.extend(_requirement_list(_table(env, key), f"tool.hatch.envs.{env_name}",
+                                               ("tool", "hatch", "envs", env_name, key)))
     found.extend(_requirement_list(_table(data, "tool", "rye", "dev-dependencies"),
-                                   "tool.rye.dev-dependencies"))
+                                   "tool.rye.dev-dependencies", ("tool", "rye", "dev-dependencies")))
     return found
 
 
@@ -345,21 +365,25 @@ def pipfile_declarations(data: dict) -> list[Declaration]:
             markers = _table(value, "markers")
             found.append(Declaration(str(name), spec, "pep440", "py", "dependency",
                                      f"{name} = {shown}", str(section),
-                                     " ".join(markers.split()) if isinstance(markers, str) else ""))
+                                     " ".join(markers.split()) if isinstance(markers, str) else "",
+                                     path=(section, name)))
     return found
 
 
 # --- package.json -----------------------------------------------------------
 
 
-def _npm_dependency(name: str, spec: str, kind: str, section: str) -> Declaration:
+def _npm_dependency(
+    name: str, spec: str, kind: str, section: str, path: tuple[str | int, ...]
+) -> Declaration:
     """A `"name": "spec"` entry. A git, file or URL spec reads as no version."""
     text = f'"{name}": "{spec}"'
     if spec.startswith("npm:"):
         alias = npm_spec(spec)
         if alias.kind == "registry" and alias.name:
-            return Declaration(alias.name, alias.version, "npm", "js", kind, text, section)
-    return Declaration(name, spec, "npm", "js", kind, text, section)
+            return Declaration(alias.name, alias.version, "npm", "js", kind, text, section,
+                               path=path)
+    return Declaration(name, spec, "npm", "js", kind, text, section, path=path)
 
 
 def _override_name(key: str) -> str:
@@ -374,7 +398,9 @@ def _override_name(key: str) -> str:
     return name[:at] if at != -1 else name
 
 
-def _npm_overrides(value: object, parent: str = "") -> list[Declaration]:
+def _npm_overrides(
+    value: object, parent: str = "", path: tuple[str | int, ...] = ("overrides",)
+) -> list[Declaration]:
     """npm `overrides` nest (`{"a": {".": "1.0.0", "b": "2.0.0"}}`)."""
     found: list[Declaration] = []
     if not isinstance(value, dict):
@@ -383,28 +409,45 @@ def _npm_overrides(value: object, parent: str = "") -> list[Declaration]:
         name = parent if key == "." else _override_name(str(key))
         if isinstance(spec, str):
             if name and not spec.startswith("$"):
-                found.append(_npm_dependency(name, spec, "override", "overrides"))
+                found.append(_npm_dependency(name, spec, "override", "overrides", path + (key,)))
         elif isinstance(spec, dict):
-            found.extend(_npm_overrides(spec, name))
+            found.extend(_npm_overrides(spec, name, path + (key,)))
     return found
 
 
-def _launch_declarations(packages: list[Launched], argv: list[str]) -> list[Declaration]:
+def _token_path(
+    argv: list[str], paths: list[tuple[str | int, ...]], spec: str
+) -> tuple[str | int, ...]:
+    """Where in the document the argument a launched package came from sits:
+    the token itself, else the token whose shell line holds it."""
+    for token, where in zip(argv, paths):
+        if token == spec:
+            return where
+    for token, where in zip(argv, paths):
+        if spec in token:
+            return where
+    return ()
+
+
+def _launch_declarations(
+    packages: list[Launched], argv: list[str], paths: list[tuple[str | int, ...]]
+) -> list[Declaration]:
     found: list[Declaration] = []
     line = tuple(argv)
     for launched in packages:
         text = f"{launched.launcher} {launched.spec}"
+        where = _token_path(argv, paths, launched.spec)
         if launched.ecosystem == "js":
             parts = npm_spec(launched.spec)
             if parts.kind == "registry" and parts.name:
                 found.append(Declaration(parts.name, parts.version, "npm", "js", "launch", text,
-                                         argv=line))
+                                         argv=line, path=where))
         else:
             parts = py_spec(launched.spec)
             if parts.kind != "local" and parts.name:
                 version = "" if parts.kind == "vcs" else parts.version
                 found.append(Declaration(parts.name, version, "pep440", "py", "launch", text,
-                                         argv=line))
+                                         argv=line, path=where))
     return found
 
 
@@ -415,68 +458,97 @@ def package_json_declarations(data: dict) -> list[Declaration]:
         if isinstance(deps, dict):
             for name, spec in deps.items():
                 if isinstance(spec, str):
-                    found.append(_npm_dependency(str(name), spec, "dependency", section))
+                    found.append(_npm_dependency(str(name), spec, "dependency", section,
+                                                 (section, name)))
     found.extend(_npm_overrides(data.get("overrides")))
-    for key, overrides in (("resolutions", data.get("resolutions")),
-                           ("pnpm.overrides", _table(data, "pnpm", "overrides"))):
+    for key, path, overrides in (
+        ("resolutions", ("resolutions",), data.get("resolutions")),
+        ("pnpm.overrides", ("pnpm", "overrides"), _table(data, "pnpm", "overrides")),
+    ):
         if isinstance(overrides, dict):
             for target, spec in overrides.items():
                 if isinstance(spec, str) and not spec.startswith("$"):
-                    found.append(_npm_dependency(_override_name(str(target)), spec, "override", key))
+                    found.append(_npm_dependency(_override_name(str(target)), spec, "override", key,
+                                                 path + (target,)))
     scripts = data.get("scripts")
     if isinstance(scripts, dict):
-        for line in scripts.values():
+        for script, line in scripts.items():
             if isinstance(line, str):
                 tokens = shell_tokens(line)
-                found.extend(_launch_declarations(launched_packages(tokens), tokens))
+                found.extend(_launch_declarations(launched_packages(tokens), tokens,
+                                                  [("scripts", script)] * len(tokens)))
     return found
 
 
 # --- MCP configs ------------------------------------------------------------
 
 
-def _argv(entry: dict) -> list[str]:
+def _is_argument(value: object) -> bool:
+    return isinstance(value, (str, int, float)) and not isinstance(value, bool)
+
+
+def _argv(
+    entry: dict, path: tuple[str | int, ...] = ()
+) -> tuple[list[str], list[tuple[str | int, ...]]]:
+    """The command line an entry runs, and where each word of it sits."""
     command = entry.get("command")
+    tokens: list[str] = []
+    paths: list[tuple[str | int, ...]] = []
     if isinstance(command, str):
-        tokens = command.split()
+        words = command.split()
+        tokens.extend(words)
+        paths.extend([path + ("command",)] * len(words))
     elif isinstance(command, list):
-        tokens = [str(t) for t in command if isinstance(t, (str, int, float)) and not isinstance(t, bool)]
+        for index, word in enumerate(command):
+            if _is_argument(word):
+                tokens.append(str(word))
+                paths.append(path + ("command", index))
     else:
-        return []
+        return [], []
     args = entry.get("args")
     if isinstance(args, list):
-        tokens.extend(str(a) for a in args if isinstance(a, (str, int, float)) and not isinstance(a, bool))
-    return tokens
+        for index, arg in enumerate(args):
+            if _is_argument(arg):
+                tokens.append(str(arg))
+                paths.append(path + ("args", index))
+    return tokens, paths
 
 
-def _command_entries(data: object) -> list[dict]:
-    """Every object holding a `command`, at any depth, in document order."""
-    entries: list[dict] = []
-    queue: deque[object] = deque([data])
+def _command_entries(data: object) -> list[tuple[dict, tuple[str | int, ...]]]:
+    """Every object holding a `command`, at any depth, in document order, with
+    its path. A container met twice, which only a YAML alias can make, is read
+    once, so a document that contains itself (`&a [*a]`) ends."""
+    entries: list[tuple[dict, tuple[str | int, ...]]] = []
+    queue: deque[tuple[object, tuple[str | int, ...]]] = deque([(data, ())])
+    seen: set[int] = set()
     while queue:
-        node = queue.popleft()
+        node, where = queue.popleft()
+        if isinstance(node, (dict, list)):
+            if id(node) in seen:
+                continue
+            seen.add(id(node))
         if isinstance(node, dict):
             if isinstance(node.get("command"), (str, list)):
-                entries.append(node)
-            queue.extend(node.values())
+                entries.append((node, where))
+            queue.extend((value, where + (key,)) for key, value in node.items())
         elif isinstance(node, list):
-            queue.extend(node)
+            queue.extend((value, where + (index,)) for index, value in enumerate(node))
     return entries
 
 
 def mcp_config_declarations(data: object) -> list[Declaration]:
     found: list[Declaration] = []
-    for entry in _command_entries(data):
-        argv = _argv(entry)
+    for entry, where in _command_entries(data):
+        argv, paths = _argv(entry, where)
         if not argv:
             continue
-        found.extend(_launch_declarations(launched_packages(argv), argv))
+        found.extend(_launch_declarations(launched_packages(argv), argv, paths))
         head = basename(argv[0])
         if head and not starts_with_launcher(argv):
             # A program run by name: the installed package of that name, at an
             # unknown version (`"command": "ruflo"`). Its registry is unknown.
             found.append(Declaration(head, "", "npm", None, "launch", f"command {head}",
-                                     argv=tuple(argv)))
+                                     argv=tuple(argv), path=paths[0]))
     return found
 
 
@@ -518,99 +590,348 @@ def declarations(path: Path, text: str) -> list[Declaration]:
 # A finding that names no line has no SARIF region, so code scanning and the
 # VS Code extension put it on the first line of the file. A requirements file
 # is read line by line and its declarations carry their line. The other formats
-# are parsed whole (JSON, TOML, YAML), which loses positions, so the line is
-# found again in the text, from the offset of the first place that spells the
-# declaration: the text as written where the format keeps it verbatim (a PEP
-# 508 string, a package.json entry), a `name =` key or table header in TOML,
-# and for a launch its package argument, never the server key that often
-# repeats the name. A match inside a comment does not count, which is the
-# reason a plain text search (`find_line_number`) would not do: a comment that
-# names the package above its declaration took the line, as it took the
-# version before #987. JSON comments are blanked first (`strip_jsonc` keeps
-# offsets); `#` before the match on its line marks a comment in the other
-# formats. Every pattern is a literal with fixed-width context, and each look
-# back and ahead is bounded, so a file that repeats the name on one long line
-# costs one pass.
+# are parsed whole (JSON, TOML, YAML), which loses positions, so each
+# declaration records its path in the parsed document instead, and the line of
+# every path is read off the text in one pass, the first time a file has a
+# finding. The positions come from the document's own structure, not from a
+# search for the declaration's words: a search took the first place that spelt
+# them, which was a comment, another package whose key ended in the same name
+# (`"@acme/n8n-mcp"` for an override of `n8n-mcp`), or the same package in an
+# earlier table at a fixed version, and it re-read the whole file for each
+# finding (96 findings in a 31 MiB lockfile took 76 s against 3 s). A path the
+# pass did not reach gives no line rather than a guessed one.
 
-_LOOK_BACK = 1024
-# What may not touch a launch's package argument on either side, so that
-# `pkg@1.0.0` is not read inside `other-pkg@1.0.0` or `pkg@1.0.0-beta`.
-_TOKEN_CHARS = r"\w@./:+-"
-_NOT_A_KEY = r"""(?!["']?[ \t]{0,16}:)"""
+# A JSON string, or one structural character. Scalars are skipped: no
+# declaration is a number or a literal, and the commas around them keep count.
+# The closing quote is optional, so text that is not JSON still costs one pass.
+_JSON_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"?|[{}\[\]:,]')
 
 
-def _launch_spec(declaration: Declaration) -> str:
-    """The package argument a launch declaration was read from, as written."""
-    return declaration.text.rsplit(" ", 1)[-1]
+def _json_key(token: str) -> str:
+    try:
+        key = json.loads(token)
+    except ValueError:
+        return token[1:-1]
+    return key if isinstance(key, str) else token[1:-1]
 
 
-def _patterns(declaration: Declaration, file_name: str) -> list[re.Pattern[str]]:
-    """The spellings of `declaration` to look for, most exact first."""
-    name = re.escape(declaration.name)
-    word = rf"(?<![\w.-]){name}(?![\w.-])"
-    if declaration.kind == "launch":
-        spec = re.escape(_launch_spec(declaration))
-        token = rf"(?<![{_TOKEN_CHARS}]){spec}(?![{_TOKEN_CHARS}])"
-        # The server is often keyed by its package name, and a key is not the launch.
-        return [re.compile(token + _NOT_A_KEY, re.IGNORECASE),
-                re.compile(word + _NOT_A_KEY, re.IGNORECASE)]
-    key, sep, value = declaration.text.partition('": "')
-    if file_name == "package.json" and sep:
-        exact = re.compile(re.escape(key + '"') + r"[ \t]{0,16}:[ \t]{0,16}"
-                           + re.escape('"' + value))
-    else:
-        exact = re.compile(re.escape(declaration.text))
-    return [
-        exact,
-        # A TOML key (`name = ...`) or table header (`[tool.poetry.dependencies.name]`).
-        re.compile(rf"""(?m)^[ \t]*["']?{name}["']?[ \t]*=""", re.IGNORECASE),
-        re.compile(rf"""(?m)^[ \t]*\[[^\]\n]{{0,256}}\.["']?{name}["']?[ \t]*\]""",
-                   re.IGNORECASE),
-        # A JSON key that ends in the name (`"**/name": ...`, an npm override).
-        re.compile(word + r"""["'][ \t]{0,16}:""", re.IGNORECASE),
-        re.compile(word, re.IGNORECASE),
-    ]
+def _json_positions(text: str) -> dict[tuple[str | int, ...], int]:
+    """The line of every string, object and array in a JSON or JSONC document,
+    by path. A duplicated key keeps its last position, as `json.loads` keeps
+    the last value."""
+    try:
+        text = strip_jsonc(text)
+    except ValueError:
+        return {}
+    positions: dict[tuple[str | int, ...], int] = {}
+    # One frame per open container: [is_object, path, key or index, state],
+    # where an object's state is "key", "colon" or "value" and an array's
+    # "value" until its element is read.
+    stack: list[list] = []
+    line, last = 1, 0
+    for m in _JSON_TOKEN_RE.finditer(text):
+        token, start = m.group(), m.start()
+        line += text.count("\n", last, start)
+        last = start
+        frame = stack[-1] if stack else None
+        if token[0] == '"':
+            if frame is None:
+                positions[()] = line
+            elif frame[0] and frame[3] == "key":
+                frame[2], frame[3] = _json_key(token), "colon"
+            elif frame[3] == "value":
+                positions[frame[1] + (frame[2],)] = line
+                frame[3] = "done"
+        elif token in "{[":
+            if frame is None:
+                child: tuple[str | int, ...] = ()
+            elif frame[3] == "value":
+                child = frame[1] + (frame[2],)
+                frame[3] = "done"
+            else:
+                break  # not a document `json.loads` accepted; keep what was read
+            positions[child] = line
+            if token == "{":
+                stack.append([True, child, "", "key"])
+            else:
+                stack.append([False, child, 0, "value"])
+        elif token in "}]":
+            if stack:
+                stack.pop()
+        elif token == ":":
+            if frame is not None and frame[0] and frame[3] == "colon":
+                frame[3] = "value"
+        elif frame is not None:  # ","
+            if frame[0]:
+                frame[3] = "key"
+            else:
+                frame[2] += 1
+                frame[3] = "value"
+    return positions
 
 
-def _in_comment(text: str, at: int) -> bool:
-    """Does a `#` outside a string come before `at` on its line?
+_TOML_SPACE_RE = re.compile(r"[ \t]*")
+_TOML_BARE_KEY_RE = re.compile(r"[A-Za-z0-9_-]+")
+_TOML_BASIC_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+_TOML_LITERAL_RE = re.compile(r"'[^'\n]*'")
+# A number, boolean or date: everything up to what may follow a value. A date
+# may hold a space (`1979-05-27 07:32:00Z`).
+_TOML_BARE_VALUE_RE = re.compile(r"[^,\]\}\n#]*")
 
-    Looks back a bounded distance, and reads a `#` as inside a string when an
-    odd number of quotes precedes it, which is enough for one-line TOML and
-    YAML values (`"pkg @ git+https://host/repo#egg=pkg"`).
+
+class _TomlPositions:
+    """The line of every key, table and array item of a TOML document, by path.
+
+    tomllib keeps no positions, so this walks a document tomllib has already
+    accepted: table headers, with each array of tables (`[[package]]`) counted so
+    that `[package.source]` resolves to the last one, dotted and quoted keys,
+    inline tables, arrays across lines, every string form and comments. It
+    reads, it does not validate: on anything it does not expect it stops and
+    returns what it has.
     """
-    line_start = text.rfind("\n", max(0, at - _LOOK_BACK), at) + 1
-    prefix = text[max(line_start, at - _LOOK_BACK):at]
-    hash_at = prefix.find("#")
-    if hash_at == -1:
-        return False
-    return prefix.count('"', 0, hash_at) % 2 == 0 and prefix.count("'", 0, hash_at) % 2 == 0
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self.i = 0
+        self.line = 1
+        self.positions: dict[tuple[str | int, ...], int] = {}
+        self.arrays: dict[tuple[str | int, ...], int] = {}
+
+    def run(self) -> dict[tuple[str | int, ...], int]:
+        try:
+            self._document()
+        except (IndexError, ValueError, RecursionError):
+            pass
+        return self.positions
+
+    def _space(self) -> None:
+        self._match(_TOML_SPACE_RE)
+
+    def _blank(self) -> None:
+        """Spaces, line breaks and comments."""
+        text, n = self.text, len(self.text)
+        while True:
+            self._space()
+            if self.i >= n:
+                return
+            c = text[self.i]
+            if c == "\n":
+                self.line += 1
+                self.i += 1
+            elif c == "\r":
+                self.i += 1
+            elif c == "#":
+                end = text.find("\n", self.i)
+                self.i = n if end < 0 else end
+            else:
+                return
+
+    def _expect(self, token: str) -> None:
+        if not self.text.startswith(token, self.i):
+            raise ValueError(token)
+        self.i += len(token)
+
+    def _match(self, pattern: re.Pattern[str]) -> str:
+        m = pattern.match(self.text, self.i)
+        if m is None:
+            raise ValueError(pattern.pattern)
+        self.i = m.end()
+        return m.group()
+
+    def _key(self) -> tuple[str, ...]:
+        parts: list[str] = []
+        while True:
+            self._space()
+            c = self.text[self.i]
+            if c == '"':
+                parts.append(_json_key(self._match(_TOML_BASIC_RE)))
+            elif c == "'":
+                parts.append(self._match(_TOML_LITERAL_RE)[1:-1])
+            else:
+                parts.append(self._match(_TOML_BARE_KEY_RE))
+            self._space()
+            if self.text.startswith(".", self.i):
+                self.i += 1
+                continue
+            return tuple(parts)
+
+    def _resolve(self, parts: tuple[str, ...]) -> tuple[str | int, ...]:
+        """A header's path, with the current index of each array of tables in it."""
+        out: tuple[str | int, ...] = ()
+        for part in parts:
+            out = out + (part,)
+            if out in self.arrays:
+                out = out + (self.arrays[out],)
+        return out
+
+    def _document(self) -> None:
+        text, n = self.text, len(self.text)
+        table: tuple[str | int, ...] = ()
+        while True:
+            self._blank()
+            if self.i >= n:
+                return
+            if text.startswith("[[", self.i):
+                self.i += 2
+                parts = self._key()
+                self._expect("]]")
+                full = self._resolve(parts[:-1]) + (parts[-1],)
+                self.arrays[full] = self.arrays.get(full, -1) + 1
+                table = full + (self.arrays[full],)
+                self.positions[table] = self.line
+            elif text[self.i] == "[":
+                self.i += 1
+                parts = self._key()
+                self._expect("]")
+                table = self._resolve(parts)
+                self.positions[table] = self.line
+            else:
+                full = table + self._key()
+                self.positions[full] = self.line
+                self._expect("=")
+                self._space()
+                self._value(full)
+
+    def _value(self, path: tuple[str | int, ...]) -> None:
+        text = self.text
+        c = text[self.i]
+        if c == "[":
+            self.i += 1
+            index = 0
+            while True:
+                self._blank()
+                if text[self.i] == "]":
+                    self.i += 1
+                    return
+                self.positions[path + (index,)] = self.line
+                self._value(path + (index,))
+                self._blank()
+                if text[self.i] == ",":
+                    self.i += 1
+                    index += 1
+                    continue
+                self._expect("]")
+                return
+        elif c == "{":
+            self.i += 1
+            while True:
+                self._blank()
+                if text[self.i] == "}":
+                    self.i += 1
+                    return
+                full = path + self._key()
+                self.positions[full] = self.line
+                self._expect("=")
+                self._space()
+                self._value(full)
+                self._blank()
+                if text[self.i] == ",":
+                    self.i += 1
+                    continue
+                self._expect("}")
+                return
+        elif text.startswith('"""', self.i) or text.startswith("'''", self.i):
+            self._multiline(text[self.i:self.i + 3])
+        elif c == '"':
+            self._match(_TOML_BASIC_RE)
+        elif c == "'":
+            self._match(_TOML_LITERAL_RE)
+        else:
+            self._match(_TOML_BARE_VALUE_RE)
+
+    def _multiline(self, quote: str) -> None:
+        text, start = self.text, self.i
+        at = start + 3
+        while True:
+            close = text.find(quote, at)
+            if close < 0:
+                raise ValueError(quote)
+            backslashes = 0
+            while quote == '"""' and text[close - 1 - backslashes] == "\\":
+                backslashes += 1
+            if backslashes % 2 == 0:
+                break
+            at = close + 1
+        end = close + 3
+        while end < len(text) and text[end] == quote[0] and end - close < 5:
+            end += 1  # up to two quotes may end the content
+        self.line += text.count("\n", start, end)
+        self.i = end
+
+
+def _toml_positions(text: str) -> dict[tuple[str | int, ...], int]:
+    return _TomlPositions(text).run()
+
+
+def _yaml_positions(text: str) -> dict[tuple[str | int, ...], int]:
+    """The line of every node of a YAML document, by path (scalar keys only)."""
+    try:
+        root = yaml.compose(text, Loader=yaml.SafeLoader)
+    except (yaml.YAMLError, RecursionError):
+        return {}
+    positions: dict[tuple[str | int, ...], int] = {}
+    stack: list[tuple[yaml.Node, tuple[str | int, ...]]] = [(root, ())] if root is not None else []
+    seen: set[int] = set()
+    while stack:
+        node, where = stack.pop()
+        if id(node) in seen:  # an alias can point back at its own ancestor
+            continue
+        seen.add(id(node))
+        positions[where] = node.start_mark.line + 1
+        if isinstance(node, yaml.MappingNode):
+            stack.extend((value, where + (key.value,)) for key, value in node.value
+                         if isinstance(key, yaml.ScalarNode))
+        elif isinstance(node, yaml.SequenceNode):
+            stack.extend((item, where + (index,)) for index, item in enumerate(node.value))
+    return positions
+
+
+def declaration_lines(path: Path, text: str) -> Callable[[Declaration], int | None]:
+    """A lookup of the line each declaration `declarations(path, text)` returned
+    is written on.
+
+    The file's positions are read once, when this is called, so a caller with
+    several findings in one file calls it once and asks it for each.
+
+    Args:
+        path: The file the declarations were read from; its name selects the format.
+        text: The file's contents.
+
+    Returns:
+        A function from a declaration to its 1-based line, or None when its
+        position is unknown.
+    """
+    name = path.name.lower()
+    positions: dict[tuple[str | int, ...], int] = {}
+    if name in ("pyproject.toml", "pipfile"):
+        positions = _toml_positions(text)
+    elif name.endswith(".json"):
+        positions = _json_positions(text)
+    elif name.endswith((".yaml", ".yml")):
+        positions = _yaml_positions(text)
+
+    def line(declaration: Declaration) -> int | None:
+        if declaration.line:
+            return declaration.line
+        if not declaration.path:
+            return None
+        return positions.get(declaration.path)
+
+    return line
 
 
 def declaration_line(text: str, declaration: Declaration, file_name: str) -> int | None:
-    """The 1-based line `declaration` is written on in `text`, or None.
+    """The 1-based line one declaration is written on, or None.
+
+    Reads the whole file's positions; for more than one declaration of a file,
+    call `declaration_lines` once instead.
 
     Args:
         text: The contents of the file the declaration was read from.
         declaration: One of the declarations `declarations()` returned for it.
-        file_name: That file's name; it selects the comment syntax.
+        file_name: That file's name; it selects the format.
 
     Returns:
-        The line the parser recorded, else the line of the first match outside
-        a comment of the patterns that spell the declaration, else None.
+        The line, or None when its position is unknown.
     """
-    if declaration.line:
-        return declaration.line
-    name = file_name.lower()
-    hash_comments = not name.endswith(".json")
-    if not hash_comments:
-        try:
-            text = strip_jsonc(text)
-        except ValueError:
-            pass
-    for pattern in _patterns(declaration, name):
-        for m in pattern.finditer(text):
-            if hash_comments and _in_comment(text, m.start()):
-                continue
-            return text.count("\n", 0, m.start()) + 1
-    return None
+    return declaration_lines(Path(file_name), text)(declaration)

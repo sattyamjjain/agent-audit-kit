@@ -163,3 +163,70 @@ def test_declarations_record_their_section_and_marker() -> None:
     found = [(d.kind, d.section) for d in declarations(Path("package.json"), json.dumps(package))]
     assert found == [("dependency", "dependencies"), ("dependency", "devDependencies"),
                      ("override", "overrides")]
+
+
+# --- where each declaration is written ---------------------------------------
+
+def _lines(name: str, text: str) -> list[tuple[str, str, int | None]]:
+    from agent_audit_kit.scanners._manifest_deps import declaration_lines
+
+    found = declarations(Path(name), text)
+    line = declaration_lines(Path(name), text)
+    return [(d.name, d.version, line(d)) for d in found]
+
+
+def test_every_format_gives_each_declaration_its_own_line() -> None:
+    """Lines come from where each declaration sits in the parsed document, so
+    two declarations of one package get two lines and a comment gets none."""
+    pyproject = (
+        "# litellm==1.0.0 is not a declaration\n"   # 1
+        "[project]\n"                               # 2
+        'name = "x"\n'                              # 3
+        "dependencies = [\n"                        # 4
+        '    "requests",\n'                         # 5
+        '    "litellm==1.0.0",\n'                   # 6
+        "]\n"                                       # 7
+        "[project.optional-dependencies]\n"         # 8
+        'proxy = ["litellm==1.90.0"]\n'             # 9
+        "[tool.poetry.dependencies]\n"              # 10
+        'litellm = """\n1.2.0"""\n'                 # 11-12, a multi-line string
+        '"quoted.key" = "*"\n'                      # 13
+        "[tool.poetry.group.dev.dependencies]\n"    # 14
+        "litellm = { version = '^1.3', optional = true }\n"  # 15
+    )
+    assert _lines("pyproject.toml", pyproject) == [
+        ("requests", "", 5), ("litellm", "==1.0.0", 6), ("litellm", "==1.90.0", 9),
+        ("litellm", "1.2.0", 11), ("quoted.key", "*", 13), ("litellm", "^1.3", 15),
+    ]
+    package = json.dumps({"dependencies": {"a": "1.0.0"}, "overrides": {"b": {".": "2.0.0"}},
+                          "scripts": {"go": "npx -y c@3.0.0"}}, indent=2)
+    lines = package.splitlines()
+    assert _lines("package.json", package) == [
+        ("a", "1.0.0", lines.index('    "a": "1.0.0"') + 1),
+        ("b", "2.0.0", lines.index('      ".": "2.0.0"') + 1),
+        ("c", "3.0.0", lines.index('    "go": "npx -y c@3.0.0"') + 1),
+    ]
+    yaml_text = "servers:\n  c:\n    command: npx\n    args:\n      - -y\n      - c@3.0.0\n"
+    assert _lines("team.mcp.yaml", yaml_text) == [("c", "3.0.0", 6)]
+
+
+def test_a_requirements_line_is_its_physical_line() -> None:
+    text = "# deps\nrequests==2.0 \\\n    --hash=sha256:abc\nlitellm==1.0.0\n"
+    assert _lines("requirements.txt", text) == [("requests", "==2.0", 2), ("litellm", "==1.0.0", 4)]
+
+
+def test_a_lockfile_package_source_resolves_its_array_of_tables() -> None:
+    from agent_audit_kit.scanners._manifest_deps import _toml_positions
+
+    text = ('[[package]]\nname = "a"\n\n[[package]]\nname = "b"\n\n[package.source]\n'
+            'type = "git"\nurl = "https://example.test/b.git"\n')
+    positions = _toml_positions(text)
+    assert positions[("package", 1, "name")] == 5
+    assert positions[("package", 1, "source", "url")] == 9
+
+
+def test_a_self_referencing_yaml_document_ends() -> None:
+    """A YAML alias can make a document contain itself; the command walk read
+    such a document forever."""
+    text = "a: &x\n  - command: npx\n    args: [-y, c@3.0.0]\n  - *x\n"
+    assert [(d.name, d.version) for d in declarations(Path("x.mcp.yaml"), text)] == [("c", "3.0.0")]

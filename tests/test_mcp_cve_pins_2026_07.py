@@ -573,6 +573,27 @@ def test_whatsapp_registry_packages_are_other_projects(tmp_path: Path, name: str
      '{\n  "mcpServers": {\n    "whatsapp": {\n      "command": "uv",\n      "args": [\n'
      f'        "run", "--with",\n        "{_WA_GIT}@v0.2.0#subdirectory=whatsapp-mcp-server",\n'
      '        "python", "-m", "main"\n      ]\n    }\n  }\n}\n', 7),
+    ("requirements.txt", f"x @ {_WA_GIT}@refs/tags/v0.2.0\n", 1),
+    ("requirements.txt", "x @ git+https://www.github.com/verygoodplugins/whatsapp-mcp@v0.2.0\n", 1),
+    ("requirements.txt",
+     "https://github.com/verygoodplugins/whatsapp-mcp/archive/refs/tags/v0.2.0.tar.gz\n", 1),
+    # The tag in a key of its own, beside the URL: uv sources, Poetry, Pipfile,
+    # and poetry.lock's package source.
+    ("pyproject.toml",
+     '[project]\nname = "app"\ndependencies = ["whatsapp-mcp-server"]\n\n[tool.uv.sources]\n'
+     'whatsapp-mcp-server = { git = "https://github.com/verygoodplugins/whatsapp-mcp", '
+     'subdirectory = "whatsapp-mcp-server", tag = "v0.2.0" }\n', 6),
+    ("pyproject.toml",
+     '[tool.poetry.dependencies]\npython = "^3.11"\n'
+     'whatsapp-mcp-server = { git = "https://github.com/verygoodplugins/whatsapp-mcp.git", '
+     'tag = "v0.2.0", subdirectory = "whatsapp-mcp-server" }\n', 3),
+    ("poetry.lock",
+     '[[package]]\nname = "whatsapp-mcp-server"\nversion = "0.2.0"\n\n[package.source]\ntype = "git"\n'
+     'url = "https://github.com/verygoodplugins/whatsapp-mcp.git"\nreference = "v0.2.0"\n'
+     'resolved_reference = "2f7c99fcdb718edde19f96a0ff3137adcfcd325e"\n', 7),
+    ("Pipfile",
+     '[packages]\nwhatsapp-mcp-server = {git = "https://github.com/verygoodplugins/whatsapp-mcp.git", '
+     'ref = "v0.2.0", subdirectory = "whatsapp-mcp-server"}\n', 2),
 ])
 def test_whatsapp_a_reference_to_an_affected_release_fires(
     tmp_path: Path, name: str, content: str, line: int
@@ -595,11 +616,61 @@ def test_whatsapp_a_reference_to_an_affected_release_fires(
     ("requirements.txt", f"# was {_WA_GIT}@v0.2.0\nrequests==2.32.0\n"),
     ("requirements.txt", "git+https://github.com/lharries/whatsapp-mcp@v0.2.0#egg=x\n"),
     ("requirements.txt", "git+https://github.com/verygoodplugins/whatsapp-mcp-extra@v0.1.0#egg=x\n"),
+    # Another host whose name ends in github.com, and a browse URL, which installs nothing.
+    ("requirements.txt", "x @ git+https://notgithub.com/verygoodplugins/whatsapp-mcp@v0.1.0\n"),
+    ("package.json",
+     '{"name": "app", "homepage": "https://github.com/verygoodplugins/whatsapp-mcp/tree/v0.2.0#readme"}\n'),
+    # A tag key at a fixed release, a commit or a branch, and a tag beside another repository.
+    ("pyproject.toml",
+     '[tool.uv.sources]\nwhatsapp-mcp-server = { git = "https://github.com/verygoodplugins/whatsapp-mcp", '
+     'tag = "v0.2.1" }\n'),
+    ("pyproject.toml",
+     '[tool.uv.sources]\nwhatsapp-mcp-server = { git = "https://github.com/verygoodplugins/whatsapp-mcp", '
+     'rev = "2f7c99fcdb718edde19f96a0ff3137adcfcd325e" }\n'),
+    ("Pipfile",
+     '[packages]\nwhatsapp-mcp-server = {git = "https://github.com/verygoodplugins/whatsapp-mcp.git", '
+     'ref = "main"}\n'),
+    ("pyproject.toml",
+     '# https://github.com/verygoodplugins/whatsapp-mcp\n[tool.uv.sources]\n'
+     'other = { git = "https://github.com/acme/other", tag = "v0.1.0" }\n'),
 ])
 def test_whatsapp_a_patched_or_unversioned_reference_is_quiet(
     tmp_path: Path, name: str, content: str
 ) -> None:
     assert WHATSAPP not in _ids(tmp_path, name, content)
+
+
+def test_whatsapp_comment_scan_is_linear_on_unbalanced_quotes(tmp_path: Path) -> None:
+    """Comments are found in one pass over the file. Escaped quotes (`"\\` over
+    and over) leave a string with no closing quote, and a search that needs one
+    runs to the end of the line again from every later quote (20,000 pairs took
+    9 s that way)."""
+    import time
+
+    crafted = "# github.com/verygoodplugins/whatsapp-mcp\n" + '"\\' * 200_000 + "\n"
+    start = time.perf_counter()
+    assert WHATSAPP not in _ids(tmp_path, "requirements.txt", crafted)
+    assert time.perf_counter() - start < 3.0
+
+
+def test_whatsapp_poetry_lock_scan_is_linear_on_a_crafted_file(tmp_path: Path) -> None:
+    """A source `url` looks a few lines ahead for its `reference`, a bounded
+    number of lines, so a lockfile of url lines over long lines costs one pass."""
+    import time
+
+    line = 'url = "https://github.com/verygoodplugins/whatsapp-mcp.git"\n' + "x" * 2_000 + "\n"
+    start = time.perf_counter()
+    assert WHATSAPP not in _ids(tmp_path, "poetry.lock", line * 3_000)
+    assert time.perf_counter() - start < 3.0
+
+
+def test_whatsapp_limitation_names_every_file_it_reads() -> None:
+    """The files the pin table reads at any depth include the `*.mcp.yaml`
+    configs, and the key forms beside a URL are read too."""
+    text = RULES[WHATSAPP].limitations
+    for named in ("requirements*.txt", "`*.mcp.yaml`", "`*.mcp.yml`", "pyproject.toml",
+                  "poetry.lock", "`reference`", "`@refs/tags/v0.2.0`"):
+        assert named in text, named
 
 
 def test_whatsapp_reference_scan_is_linear_on_a_crafted_file(tmp_path: Path) -> None:
@@ -3615,9 +3686,8 @@ def test_a_lockfile_finding_names_the_package_entry(
 
 
 def test_the_line_lookup_reads_a_crafted_config_in_linear_time(tmp_path: Path) -> None:
-    """A finding's line is found by searching the file for the declaration, so a
-    config that names the package a few hundred thousand times on one line must
-    not cost more than reading it."""
+    """A config that names the package a few hundred thousand times on one line
+    must not cost more than reading it."""
     import time
 
     filler = "n8n-mcp " * 200_000
@@ -3626,3 +3696,145 @@ def test_the_line_lookup_reads_a_crafted_config_in_linear_time(tmp_path: Path) -
     start = time.perf_counter()
     assert _lines(tmp_path, ".mcp.json", content, N8NMCP) == [1]
     assert time.perf_counter() - start < 3.0
+
+
+ATLASSIAN_73498 = "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+
+
+def _line_of(content: str, marker: str) -> int:
+    """The 1-based line of the first line of `content` that contains `marker`."""
+    return next(i for i, line in enumerate(content.splitlines(), 1) if marker in line)
+
+
+@pytest.mark.parametrize(("name", "content", "line"), [
+    # An override names its package in the parent key (`"."`) or in a path
+    # (`**/name`), and an earlier key ending in the same name is another package.
+    ("package.json",
+     '{\n  "name": "app",\n  "dependencies": {\n    "@acme/n8n-mcp": "^3.0.0"\n  },\n'
+     '  "overrides": {\n    "n8n-mcp": {\n      ".": "2.50.0"\n    }\n  }\n}\n', 8),
+    ("package.json",
+     '{\n  "name": "app",\n  "dependencies": {\n    "@acme/n8n-mcp": "1.0.0"\n  },\n'
+     '  "resolutions": {\n    "**/n8n-mcp": "2.50.0"\n  }\n}\n', 7),
+])
+def test_an_override_finding_names_the_override(
+    tmp_path: Path, name: str, content: str, line: int
+) -> None:
+    assert _lines(tmp_path, name, content, N8NMCP) == [line]
+
+
+@pytest.mark.parametrize(("name", "content", "line"), [
+    # Two declarations of one package: the affected one, not the first, is the line.
+    ("pyproject.toml",
+     '[tool.poetry.group.dev.dependencies]\nmcp-atlassian = "^0.23.0"\n\n'
+     '[tool.poetry.dependencies]\npython = "^3.11"\nmcp-atlassian = "^0.21.0"\n', 6),
+    ("Pipfile",
+     '[packages]\nmcp-atlassian = "==0.23.0"\n\n[dev-packages]\nmcp-atlassian = "==0.21.0"\n', 5),
+    ("pyproject.toml",
+     '[project]\nname = "app"\ndependencies = ["mcp-atlassian==0.23.0"]\n\n'
+     '[project.optional-dependencies]\nconfluence = [\n    "requests",\n'
+     '    "mcp-atlassian==0.21.0",\n]\n', 8),
+    ("pyproject.toml",
+     '[tool.poetry.dependencies]\npython = "^3.11"\n\n'
+     '[tool.poetry.dependencies.mcp-atlassian]\nversion = "0.21.0"\n', 4),
+    # A comment that names the package is never the declaration, however long
+    # the comment, and a `#` inside a string does not start one.
+    ("pyproject.toml",
+     "# " + "x" * 1100 + ' was "mcp-atlassian==0.21.0"\n[project]\nname = "app"\n'
+     'dependencies = ["mcp-atlassian==0.21.0"]\n', 4),
+    ("pyproject.toml",
+     '[project]\nname = "app"\n'
+     'urls = { home = "https://example.com/#top" }  # was mcp-atlassian==0.21.0\n'
+     'dependencies = ["mcp-atlassian==0.21.0"]\n', 4),
+])
+def test_a_toml_finding_names_the_declaration_that_decides_it(
+    tmp_path: Path, name: str, content: str, line: int
+) -> None:
+    assert _lines(tmp_path, name, content, ATLASSIAN_73498) == [line]
+
+
+def test_a_package_json_finding_names_the_affected_section(tmp_path: Path) -> None:
+    content = json.dumps({"name": "app", "dependencies": {"n8n-mcp": "2.94.0"},
+                          "devDependencies": {"n8n-mcp": "2.50.0"}}, indent=2) + "\n"
+    assert _lines(tmp_path, "package.json", content, N8NMCP) == [_line_of(content, '"2.50.0"')]
+
+
+def test_a_launch_finding_names_the_affected_server(tmp_path: Path) -> None:
+    """Two servers run one package, the first at a fixed version."""
+    content = json.dumps({"mcpServers": {
+        "new": {"command": "npx", "args": ["-y", "n8n-mcp@2.94.0"]},
+        "old": {"command": "npx", "args": ["-y", "n8n-mcp@2.50.0"]},
+    }}, indent=2) + "\n"
+    assert _lines(tmp_path, ".mcp.json", content, N8NMCP) == [_line_of(content, "n8n-mcp@2.50.0")]
+
+
+def test_a_lockfile_finding_names_the_affected_copy(tmp_path: Path) -> None:
+    """A fixed top-level copy, then an affected one nested under a dependency."""
+    lock = {"name": "app", "lockfileVersion": 3, "requires": True, "packages": {
+        "": {"name": "app", "dependencies": {"n8n-mcp": "^2.94.0", "n8n-mcp-addon": "1.0.0"}},
+        "node_modules/n8n-mcp": {"version": "2.94.0",
+                                 "resolved": "https://registry.npmjs.org/n8n-mcp/-/n8n-mcp-2.94.0.tgz"},
+        "node_modules/n8n-mcp-addon": {"version": "1.0.0", "dependencies": {"n8n-mcp": "2.50.0"}},
+        "node_modules/n8n-mcp-addon/node_modules/n8n-mcp": {
+            "version": "2.50.0", "resolved": "https://registry.npmjs.org/n8n-mcp/-/n8n-mcp-2.50.0.tgz"},
+    }}
+    content = json.dumps(lock, indent=2)
+    want = _line_of(content, "n8n-mcp-addon/node_modules/n8n-mcp")
+    assert _lines(tmp_path, "package-lock.json", content, N8NMCP) == [want]
+
+
+def test_a_lockfile_version_is_compared_whole(tmp_path: Path) -> None:
+    """1.0.1 is not found inside 1.0.10."""
+    content = (
+        "lockfileVersion: '9.0'\n\npackages:\n\n"
+        "  litellm@1.0.10:\n    resolution: {integrity: sha512-x}\n\n"
+        "  litellm@1.0.1:\n    resolution: {integrity: sha512-y}\n"
+    )
+    assert _lines(tmp_path, "pnpm-lock.yaml", content) == [_line_of(content, "litellm@1.0.1:")]
+
+
+def _js_pins_at_an_affected_version() -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    for pin in _PINS:
+        if pin.ecosystem == "py" or pin.requires_arg is not None:
+            continue
+        version = pin.introduced or (0, 0, 0)
+        if _fires(pin, version):
+            out.extend((name, ".".join(map(str, version))) for name in pin.names)
+    return out
+
+
+def test_many_findings_in_one_large_lockfile_read_it_once(tmp_path: Path) -> None:
+    """Every js pin at an affected version after a few MiB of other entries. Each
+    finding's line used to be searched for from the top of the file, so the cost
+    grew with findings times size (96 findings in a 31 MiB pnpm lockfile took 76 s
+    where the scan without lines took 3 s)."""
+    import time
+
+    entries = "".join(f"  {name}@{version}:\n    resolution: {{integrity: sha512-x}}\n"
+                      for name, version in _js_pins_at_an_affected_version())
+    filler = "  pad-pkg@1.0.0:\n    resolution: {integrity: sha512-x}\n"
+    content = "lockfileVersion: '9.0'\n\npackages:\n\n" + filler * 80_000 + entries
+    (tmp_path / "pnpm-lock.yaml").write_text(content, encoding="utf-8")
+    start = time.perf_counter()
+    findings = scan(tmp_path)[0]
+    elapsed = time.perf_counter() - start
+    assert len(findings) > 80
+    assert all(f.line_number and f.line_number > 80_000 for f in findings)
+    assert elapsed < 5.0, f"{len(findings)} findings took {elapsed:.1f}s"
+
+
+def test_many_findings_in_one_large_manifest_read_it_once(tmp_path: Path) -> None:
+    """The same for a package.json whose overrides pin every js package, padded
+    to a megabyte (97 findings in 1.46 MB took 35 s where the scan without lines
+    took 7.5 s)."""
+    import time
+
+    overrides = {name: {".": version} for name, version in _js_pins_at_an_affected_version()}
+    data = {"name": "app", "description": "x" * 1_000_000, "overrides": overrides}
+    (tmp_path / "package.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+    start = time.perf_counter()
+    findings = scan(tmp_path)[0]
+    elapsed = time.perf_counter() - start
+    assert len(findings) > 80
+    assert all(f.line_number and f.line_number > 3 for f in findings)
+    assert elapsed < 5.0, f"{len(findings)} findings took {elapsed:.1f}s"
