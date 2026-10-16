@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.22] - 2026-10-16
+
 ### Added
 
 - `AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001`: Open Computer Use, published as `open-computer-use`, `open-computer-use-mcp` and `open-codex-computer-use-mcp`, every release (CVE-2026-108721). On macOS its password-manager denylist was case-sensitive, so `com.1Password.1Password` reached 1Password. There is no fixed release.
@@ -20,23 +22,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Disposed eight records the watcher had not filed yet, so it won't file them. Two n8n records and a Claude Code record raise existing floors, four get the new pins above, and the WSP MCP AI Agents Connector, a WordPress plugin (CVE-2026-109382), is out of scope. Each was measured with the scanner on a firing fixture and a negative one. The reasoning is in CHANGELOG.cves.md.
-- Disposed #1013, the DoubleScale CRM plugin for WordPress (CVE-2026-111311). It ships through wordpress.org, and no file AAK reads states its version, so it is out of scope. The reasoning is in CHANGELOG.cves.md.
-- `AAK-MCP-N8N-CVE-2026-72768-001` (HIGH) reports `n8n` below 2.41.4, up from 2.35.4, and 2.42.0, for CVE-2026-110842: the MCP workflow-validation tool's interpreter let a member with `workflow:read` pollute shared prototypes. `AAK-MCP-N8N-CVE-2026-59207-001` (MEDIUM) reports the same versions, up from 2.27.4, for CVE-2026-110852: a webhook, form or MCP route ran another project's workflow when the request left out the webhook's id. The 2.36.x range is now below the floor, and an unversioned `n8n` gets one finding from the HIGH rule instead of two.
-- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` reports `@anthropic-ai/claude-code` below 2.1.179, up from 2.1.129, for CVE-2026-86063: a plugin install checked out its pinned commit without checking that HEAD matched it. Its evidence names each of its three bugs only where it applies.
+- Disposed eight records the watcher had not filed yet, so it won't file them (#1009). Two n8n records and a Claude Code record raise existing floors, four get the new pins above, and the WSP MCP AI Agents Connector, a WordPress plugin (CVE-2026-109382), is out of scope. Each was measured with the scanner on a firing fixture and a negative one. The reasoning is in CHANGELOG.cves.md.
+- Disposed #1013, the DoubleScale CRM plugin for WordPress (CVE-2026-111311, #1015). It ships through wordpress.org, and no file AAK reads states its version, so it is out of scope. The reasoning is in CHANGELOG.cves.md.
+- `AAK-MCP-N8N-CVE-2026-72768-001` (HIGH) reports `n8n` below 2.41.4, up from 2.35.4, and 2.42.0, for CVE-2026-110842: the MCP workflow-validation tool's interpreter let a member with `workflow:read` pollute shared prototypes (#1009). `AAK-MCP-N8N-CVE-2026-59207-001` (MEDIUM) reports the same versions, up from 2.27.4, for CVE-2026-110852: a webhook, form or MCP route ran another project's workflow when the request left out the webhook's id. The 2.36.x range is now below the floor, and an unversioned `n8n` gets one finding from the HIGH rule instead of two.
+- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` reports `@anthropic-ai/claude-code` below 2.1.179, up from 2.1.129, for CVE-2026-86063: a plugin install checked out its pinned commit without checking that HEAD matched it (#1009). Its evidence names each of its three bugs only where it applies.
 
 ### Fixed
 
-- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83. GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
-- `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice. Its two pin rows are one row, and what it reports is unchanged.
+- `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83 (#1009). GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
+- `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice (#1010). Its two pin rows are one row, and what it reports is unchanged.
 - AAK-SHELL-QUOTED-INTERP-001 follows a local assigned before an `exec` in a TS/JS file that starts with a blank line (#1011). Its look-back window read the `-1` in `rfind("\n", 0, -1)` as the end of the file and skipped past the sink, so the local was never read.
 - Evidence shows the host a client contacts when a URL has a backslash before `@` (#1012). In `https://attacker.example\@api.anthropic.com`, browsers, Node and Claude Code connect to attacker.example, but redaction masked `attacker.example\` as userinfo, so a correct AAK-TRUST-002 finding read `https://***@api.anthropic.com`, an address that looks like Anthropic's. A host or login name before a backslash is now kept, a credential on either side of it is still masked, and a URL without a backslash is redacted as before.
-- AAK-SECRET-007 reads the `env` blocks of VS Code's `servers` map, so a literal token in `.vscode/mcp.json` is reported. It read only `mcpServers`. `aak fix` writes the reference back into the map the server came from, as `${env:KEY}` under `servers`, the form VS Code expands, and leaves a config with JSONC comments alone, since rewriting it would delete them.
-- AAK-SUPPLY-006 reads `.vscode/mcp.json` as well as the root `.mcp.json`, and both server maps in each, so a vulnerable package launched from VS Code is looked up. It read only `mcpServers` in `.mcp.json`.
-- `aak sbom` lists the servers of VS Code's `servers` map, which it skipped, and no longer fails on an MCP config whose top level is a JSON array.
-- The container image pins no longer report an image that a JSON MCP config names only inside a `//` or `/* */` comment. Those configs are JSONC, and the comment is not a deployment.
-- The composition rules (AAK-COMPOSE-001 to -003) read VS Code's `servers` map, so a server in `.vscode/mcp.json` is part of the capability graph. A server's block now starts at its own key in its map: an `inputs` entry whose `id` named the server moved the block onto the `inputs` line, so a finding on that server no longer stood its chain down and the chain was reported twice.
-- The Colorado ADMT rules (AAK-ADMT-001 to -004) read the server names and descriptions under VS Code's `servers` map, so a covered-domain declaration in `.vscode/mcp.json` is found.
+- AAK-SECRET-007 reads the `env` blocks of VS Code's `servers` map, so a literal token in `.vscode/mcp.json` is reported (#1014). It read only `mcpServers`. `aak fix` writes the reference back into the map the server came from, as `${env:KEY}` under `servers`, the form VS Code expands, and leaves a config with JSONC comments alone, since rewriting it would delete them.
+- AAK-SUPPLY-006 reads `.vscode/mcp.json` as well as the root `.mcp.json`, and both server maps in each, so a vulnerable package launched from VS Code is looked up (#1014). It read only `mcpServers` in `.mcp.json`.
+- `aak sbom` lists the servers of VS Code's `servers` map, which it skipped, and no longer fails on an MCP config whose top level is a JSON array (#1014).
+- The container image pins no longer report an image that a JSON MCP config names only inside a `//` or `/* */` comment (#1014). Those configs are JSONC, and the comment is not a deployment.
+- The composition rules (AAK-COMPOSE-001 to -003) read VS Code's `servers` map, so a server in `.vscode/mcp.json` is part of the capability graph (#1016). A server's block now starts at its own key in its map: an `inputs` entry whose `id` named the server moved the block onto the `inputs` line, so a finding on that server no longer stood its chain down and the chain was reported twice.
+- The Colorado ADMT rules (AAK-ADMT-001 to -004) read the server names and descriptions under VS Code's `servers` map, so a covered-domain declaration in `.vscode/mcp.json` is found (#1016).
 
 ## [0.6.21] - 2026-10-16
 
