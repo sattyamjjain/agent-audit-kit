@@ -553,6 +553,14 @@ def test_a_cargo_lock_over_1mb_is_counted(tmp_path: Path) -> None:
     assert supply005 == [f"{count} dependencies (threshold: 200)"]
 
 
+def test_a_cargo_toml_without_a_lock_is_reported_once(tmp_path: Path) -> None:
+    """`_check_lockfile_exists` reports it. `_scan_rust_deps` ended with the same
+    check, unreachable behind its return when there is no Cargo.lock."""
+    (tmp_path / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+    assert supply_chain._scan_rust_deps(tmp_path) == []
+    assert [f.file_path for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-004"] == ["Cargo.toml"]
+
+
 def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The stated limitation, at a size a test can write: the size is checked
     before the file is read, and a lockfile over it yields nothing."""
@@ -565,6 +573,54 @@ def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pyte
     assert {f.rule_id for f in scan(tmp_path)[0]} >= set(rules), "the file is reportable"
     monkeypatch.setattr(supply_chain, "MAX_LOCKFILE_BYTES", 50_000)
     assert not [f for f in scan(tmp_path)[0] if f.rule_id in rules]
+
+
+# A lockfile each older per-CVE pin check reports. Those checks read every
+# candidate whole, however large, where the pin table skips a lockfile over
+# MAX_LOCKFILE_BYTES unread; now they skip it too, and their rules say so.
+_PIN_CHECK_LOCKFILES = [
+    ("AAK-DORIS-001", "poetry.lock", "apache-doris-mcp-server==0.5.0\n"),
+    ("AAK-MCP-KONG-CVE-2026-13341-001", "package-lock.json",
+     '{"packages": {"node_modules/@kong/konnect-mcp": {"version": "0.9.0"}}}\n'),
+    ("AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001", "uv.lock",
+     '[[package]]\nname = "mcp-gateway-registry"\nversion = "1.0.0"\n'),
+    ("AAK-MCP-SERENA-CVE-2026-49471-001", "uv.lock", '[[package]]\nname = "serena-agent"\nversion = "1.5.0"\n'),
+    ("AAK-EXCEL-MCP-001", "poetry.lock", "excel-mcp-server==0.1.7\n"),
+    ("AAK-ASTROMCP-SQLI-CVE-2026-7591-001", "yarn.lock", 'astro-mcp-server@1.1.1:\n  version "1.1.1"\n'),
+    ("AAK-AGENT-ZERO-CVE-2026-30624-PIN-001", "uv.lock",
+     'agent-zero = { git = "https://github.com/frdel/agent-zero#v0.9.8" }\n'),
+    ("AAK-CHATGPT-MCP-CVE-2026-7061-PIN-001", "package-lock.json", '{"dependencies": {"chatgpt-mcp-server": "1.0.0"}}\n'),
+    ("AAK-DOCSGPT-MCP-STDIO-MITM-001", "uv.lock", "docsgpt==0.6.3\n"),
+    ("AAK-DOCSGPT-MCP-STDIO-MITM-001", "yarn.lock", "docsgpt@0.6.3:\n"),
+    ("AAK-MCPCALC-CVE-2026-44717-PIN-001", "uv.lock", "mcp-calculate-server==0.1.0\n"),
+    ("AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001", "poetry.lock", "semantic-kernel==1.39.0\n"),
+    ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "uv.lock", "gpt-researcher==0.14.8\n"),
+    ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "yarn.lock", "gpt-researcher@0.14.8:\n"),
+    ("AAK-LITELLM-CVE-2026-30623-PIN-001", "uv.lock", "litellm==1.83.0\n"),
+    ("AAK-CLAUDECODE-CVE-2026-40068-PIN-001", "yarn.lock", '"@anthropic-ai/claude-code@2.1.0":\n'),
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27825-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
+    ("AAK-MCP-ATLASSIAN-CVE-2026-27826-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
+    ("AAK-LANGCHAIN-SSRF-REDIR-001", "uv.lock", '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.0"\n'),
+    ("AAK-SSRF-TOCTOU-001", "uv.lock", '[[package]]\nname = "langchain-openai"\nversion = "1.1.0"\n'),
+]
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "name", "text"), _PIN_CHECK_LOCKFILES, ids=[f"{r}:{n}" for r, n, _ in _PIN_CHECK_LOCKFILES]
+)
+def test_a_pin_checks_lockfile_over_the_limit_is_not_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rule_id: str, name: str, text: str
+) -> None:
+    from agent_audit_kit.rules.builtin import get_rule
+    from agent_audit_kit.scanners import mcp_atlassian, ssrf_redirect, ssrf_toctou, supply_chain
+
+    limited = {"AAK-LANGCHAIN-SSRF-REDIR-001": ssrf_redirect, "AAK-SSRF-TOCTOU-001": ssrf_toctou}.get(rule_id, supply_chain)
+    scanner = mcp_atlassian if rule_id.startswith("AAK-MCP-ATLASSIAN-") else limited
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    assert rule_id in {f.rule_id for f in scanner.scan(tmp_path)[0]}, "the lockfile is reportable"
+    monkeypatch.setattr(limited, "MAX_LOCKFILE_BYTES", len(text.encode()) - 1)
+    assert rule_id not in {f.rule_id for f in scanner.scan(tmp_path)[0]}
+    assert get_rule(rule_id).limitations.endswith("A lockfile over 32 MiB is not read.")
 
 
 def test_the_lockfile_index_reads_each_format() -> None:
@@ -637,17 +693,32 @@ def test_a_crafted_lockfile_indexes_in_linear_time(filename: str) -> None:
 
 
 def test_a_pypi_launch_is_not_looked_up_in_the_npm_table(tmp_path: Path) -> None:
-    """uvx reads `openclaw@2.0.0` as the PyPI project (the cmdop CLI installer);
-    npx reads it as OpenClaw, which the npm table lists."""
+    """uvx reads `axios@1.7.2` as a PyPI project, which the npm table says
+    nothing about; npx reads it as the npm package the table lists. (This was
+    `openclaw@2.0.0`: uvx reads that as the cmdop CLI installer on PyPI.)"""
     def supply006(command: str) -> list[str]:
-        config = {"mcpServers": {"x": {"command": command, "args": ["openclaw@2.0.0"]}}}
+        config = {"mcpServers": {"x": {"command": command, "args": ["axios@1.7.2"]}}}
         (tmp_path / ".mcp.json").write_text(json.dumps(config))
         return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-006"]
 
     assert supply006("uvx") == []
     assert supply006("uv tool run") == []
     hits = supply006("npx")
-    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses openclaw@2.0.0"), hits
+    assert len(hits) == 1 and hits[0].startswith("Server 'x' uses axios@1.7.2"), hits
+
+
+def test_the_npm_openclaw_placeholder_is_not_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Both tables listed npm `openclaw` below 2.1.0, and the one release there is
+    `0.0.1`, an empty placeholder: OpenClaw publishes calendar versions, which its
+    CVE pins read with NVD's ranges. Neither rule reports the placeholder now. The
+    bundled database is read, not one an earlier `aak update` cached."""
+    monkeypatch.setattr("agent_audit_kit.vuln_db.CACHED_DB", tmp_path / "no-cache" / "vuln_db.json")
+    lock = {"lockfileVersion": 3, "packages": {"node_modules/openclaw": {"version": "0.0.1"}}}
+    (tmp_path / "package-lock.json").write_text(json.dumps(lock), encoding="utf-8")
+    config = {"mcpServers": {"claw": {"command": "npx", "args": ["-y", "openclaw@0.0.1"]}}}
+    (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id in ("AAK-SUPPLY-002", "AAK-SUPPLY-006")]
+    assert "openclaw" not in supply_chain.KNOWN_VULNERABLE_PACKAGES["npm"]
 
 
 # ---------------------------------------------------------------------------
@@ -871,7 +942,7 @@ def _supply_006(root: Path) -> list[tuple[str, str]]:
 def test_supply_006_reads_a_vscode_servers_map() -> None:
     [(path, evidence)] = _supply_006(_SUPPLY_006_VSCODE / "detecting")
     assert path == str(Path(".vscode") / "mcp.json")
-    assert evidence.startswith("Server 'claw' uses openclaw@2.0.0")
+    assert evidence.startswith("Server 'claw' uses axios@1.7.2")
 
 
 def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
@@ -880,9 +951,9 @@ def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
 
 def test_supply_006_reads_both_maps_of_the_root_config(tmp_path: Path) -> None:
     config = {
-        "mcpServers": {"a": {"command": "npx", "args": ["openclaw@2.0.0"]}},
+        "mcpServers": {"a": {"command": "npx", "args": ["axios@1.7.3"]}},
         "servers": {"b": {"command": "npx", "args": ["axios@1.7.2"]}},
     }
     (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
     hits = [evidence.split(" — ")[0] for _, evidence in _supply_006(tmp_path)]
-    assert hits == ["Server 'a' uses openclaw@2.0.0", "Server 'b' uses axios@1.7.2"]
+    assert hits == ["Server 'a' uses axios@1.7.3", "Server 'b' uses axios@1.7.2"]

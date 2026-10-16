@@ -733,7 +733,7 @@
         "NVD-CVE-2026-30624",
         "OX-MCP-2026-05-01"
       ],
-      "limitations": "Reads a git reference to `frdel/agent-zero` or `agent0ai/agent-zero` (a `git+https` URL or `github:` shorthand) in the root requirements*.txt, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and lockfiles, and reports one with no tag or a tag below 1.0. An `agent0ai/agent-zero` image tag in a compose file or Dockerfile, a `git clone` in a script and a reference in a sub-directory manifest are not read.",
+      "limitations": "Reads a git reference to `frdel/agent-zero` or `agent0ai/agent-zero` (a `git+https` URL or `github:` shorthand) in the root requirements*.txt, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and lockfiles, and reports one with no tag or a tag below 1.0. An `agent0ai/agent-zero` image tag in a compose file or Dockerfile, a `git clone` in a script and a reference in a sub-directory manifest are not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -948,7 +948,7 @@
         "NVD-CVE-2026-7591",
         "VULDB-360544"
       ],
-      "limitations": "Two arms. The pin reads `astro-mcp-server` in the root package.json, yarn.lock and pnpm-lock.yaml, and in package-lock.json only as a listed dependency (`\"astro-mcp-server\": \"1.1.1\"`), and reports every version because no fix exists. A `node_modules/astro-mcp-server` entry that only a transitive dependency adds to package-lock.json, a Yarn 2+ yarn.lock, a sub-directory package.json and an `npx` launcher in .mcp.json are not read. The source arm needs the SQL string concatenated or interpolated inside the call on `db`, `client`, `conn`, `connection`, `pool`, `cursor`, `database`, `sqlite` or `knex`, so a query built in a variable first (`const sql = \"SELECT ...\" + id; db.query(sql)`) is not reported.",
+      "limitations": "Two arms. The pin reads `astro-mcp-server` in the root package.json, yarn.lock and pnpm-lock.yaml, and in package-lock.json only as a listed dependency (`\"astro-mcp-server\": \"1.1.1\"`), and reports every version because no fix exists. A `node_modules/astro-mcp-server` entry that only a transitive dependency adds to package-lock.json, a Yarn 2+ yarn.lock, a sub-directory package.json and an `npx` launcher in .mcp.json are not read. The source arm needs the SQL string concatenated or interpolated inside the call on `db`, `client`, `conn`, `connection`, `pool`, `cursor`, `database`, `sqlite` or `knex`, so a query built in a variable first (`const sql = \"SELECT ...\" + id; db.query(sql)`) is not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1042,7 +1042,7 @@
       "incident_references": [
         "NVD-CVE-2026-7061"
       ],
-      "limitations": "Reads the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml for a key `\"chatgpt-mcp-server\"` with any value, or for the `Toowiredd/chatgpt-mcp-server` repository path, and reports every version because no fix exists. A reference in a sub-directory package.json, a fork or mirror under another GitHub organisation (`\"gpt\": \"github:acme/chatgpt-mcp-server\"`) and an `npx` launcher that fetches the repository from GitHub in .mcp.json are not read.",
+      "limitations": "Reads the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml for a key `\"chatgpt-mcp-server\"` with any value, or for the `Toowiredd/chatgpt-mcp-server` repository path, and reports every version because no fix exists. A reference in a sub-directory package.json, a fork or mirror under another GitHub organisation (`\"gpt\": \"github:acme/chatgpt-mcp-server\"`) and an `npx` launcher that fetches the repository from GitHub in .mcp.json are not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -1103,7 +1103,7 @@
       "incident_references": [
         "ANTHROPIC-CLAUDECODE-2026-05-06"
       ],
-      "limitations": "Reads `@anthropic-ai/claude-code` in the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml and reports a version it can parse below 2.1.179, so `latest` and other tags state no version and are not reported. In package-lock.json it reads only a listed dependency (`\"@anthropic-ai/claude-code\": \"<version>\"`): an entry that only a transitive dependency adds under `node_modules/@anthropic-ai/claude-code` is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory package.json or a versioned `npx` reference in .mcp.json. Claude Desktop, which shares the plugin install flow, is in no file AAK reads.",
+      "limitations": "Reads `@anthropic-ai/claude-code` in the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml and reports a version it can parse below 2.1.179, so `latest` and other tags state no version and are not reported. In package-lock.json it reads only a listed dependency (`\"@anthropic-ai/claude-code\": \"<version>\"`): an entry that only a transitive dependency adds under `node_modules/@anthropic-ai/claude-code` is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory package.json or a versioned `npx` reference in .mcp.json. Claude Desktop, which shares the plugin install flow, is in no file AAK reads. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI09"
@@ -1442,7 +1442,7 @@
       "incident_references": [
         "OX-MCP-2026-05-01"
       ],
-      "limitations": "Two arms. The pin reads npm `docsgpt` and `docsgpt-mcp` in the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml, and the name followed directly by a version in the root requirements*.txt and pyproject.toml, and reports a version below 0.6.4 or any `arc53/DocsGPT` git reference. A `node_modules/docsgpt` entry that only a transitive dependency adds to package-lock.json, a version recorded only in uv.lock (name and version sit on separate lines), a sub-directory package.json and an `arc53/docsgpt` image tag in a compose file are not read. The config arm reads JSON MCP configs (.mcp.json, mcp.json, `.cursor/mcp.json`, `.vscode/mcp.json`), DocsGPT's own config files at the root and in `.docsgpt/`, and the .json files of a top-level `configs/`, and reports one that names DocsGPT, declares an sse, http, https or streamable-http transport and enables stdio explicitly (`stdio_fallback`, `transport_override`, `permit_transport_override` or a `transports` list that includes stdio); the same settings in `deploy/docsgpt.config.json` are not reported.",
+      "limitations": "Two arms. The pin reads npm `docsgpt` and `docsgpt-mcp` in the root package.json, package-lock.json, yarn.lock and pnpm-lock.yaml, and the name followed directly by a version in the root requirements*.txt and pyproject.toml, and reports a version below 0.6.4 or any `arc53/DocsGPT` git reference. A `node_modules/docsgpt` entry that only a transitive dependency adds to package-lock.json, a version recorded only in uv.lock (name and version sit on separate lines), a sub-directory package.json and an `arc53/docsgpt` image tag in a compose file are not read. The config arm reads JSON MCP configs (.mcp.json, mcp.json, `.cursor/mcp.json`, `.vscode/mcp.json`), DocsGPT's own config files at the root and in `.docsgpt/`, and the .json files of a top-level `configs/`, and reports one that names DocsGPT, declares an sse, http, https or streamable-http transport and enables stdio explicitly (`stdio_fallback`, `transport_override`, `permit_transport_override` or a `transports` list that includes stdio); the same settings in `deploy/docsgpt.config.json` are not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI07"
@@ -1474,7 +1474,7 @@
       ],
       "description": "Project depends on `apache-doris-mcp-server` at a version < 0.6.1. CVE-2025-66335 is a query-context neutralization bypass in the MCP adapter's tool layer \u2014 crafted tool arguments are concatenated into Doris SQL without a parameterized boundary, letting an LLM-driven tool call reach into arbitrary reads/writes. CVE-2025-66336 is a sibling SQL injection in a metadata query path (a user-controlled database name interpolated without the caller's authz context), same < 0.6.1 fixed line. Fixed in 0.6.1.",
       "incident_references": [],
-      "limitations": "Matches `apache-doris-mcp-server` followed directly by a version (`apache-doris-mcp-server==0.5.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`apache-doris-mcp-server = \"^0.5.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported.",
+      "limitations": "Matches `apache-doris-mcp-server` followed directly by a version (`apache-doris-mcp-server==0.5.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`apache-doris-mcp-server = \"^0.5.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1523,7 +1523,7 @@
       ],
       "description": "Project depends on `excel-mcp-server` at a version <= 0.1.7. CVE-2026-40576 is a path-traversal in the server's `get_excel_path()` helper \u2014 absolute paths pass through unchecked, relative paths are joined without resolving-and-validating the result. Combined with the default 0.0.0.0 bind + zero authentication on SSE / Streamable-HTTP, any unauthenticated network peer can read, write or overwrite files anywhere on the host. Fixed in 0.1.8.",
       "incident_references": [],
-      "limitations": "Matches `excel-mcp-server` followed directly by a version (`excel-mcp-server==0.1.7`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`excel-mcp-server = \"^0.1.7\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported.",
+      "limitations": "Matches `excel-mcp-server` followed directly by a version (`excel-mcp-server==0.1.7`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`excel-mcp-server = \"^0.1.7\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -1619,7 +1619,7 @@
       "incident_references": [
         "OX-MCP-2026-05-01"
       ],
-      "limitations": "Two arms. The pin reads `gpt-researcher` and `gpt-researcher-mcp` followed directly by a version in the root requirements*.txt and pyproject.toml, and in the root npm manifests, and reports every version because no fix exists. A name with no version, a requirements file in a sub-directory, a version recorded only in uv.lock (name and version sit on separate lines) and a `gptresearcher/gpt-researcher` image tag in a compose file are not reported. The config arm reads JSON MCP configs (.mcp.json, mcp.json, `.cursor/mcp.json`, `.vscode/mcp.json`), gpt-researcher's own config files at the root and in `.gpt-researcher/`, and the .json files of a top-level `configs/`, and reports one that names gpt-researcher, declares an sse, http, https or streamable-http transport and enables stdio explicitly (`stdio_fallback`, `transport_override`, `permit_transport_override` or a `transports` list that includes stdio); the same settings in `deploy/gpt-researcher.config.json` are not reported.",
+      "limitations": "Two arms. The pin reads `gpt-researcher` and `gpt-researcher-mcp` followed directly by a version in the root requirements*.txt and pyproject.toml, and in the root npm manifests, and reports every version because no fix exists. A name with no version, a requirements file in a sub-directory, a version recorded only in uv.lock (name and version sit on separate lines) and a `gptresearcher/gpt-researcher` image tag in a compose file are not reported. The config arm reads JSON MCP configs (.mcp.json, mcp.json, `.cursor/mcp.json`, `.vscode/mcp.json`), gpt-researcher's own config files at the root and in `.gpt-researcher/`, and the .json files of a top-level `configs/`, and reports one that names gpt-researcher, declares an sse, http, https or streamable-http transport and enables stdio explicitly (`stdio_fallback`, `transport_override`, `permit_transport_override` or a `transports` list that includes stdio); the same settings in `deploy/gpt-researcher.config.json` are not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI07"
@@ -2391,7 +2391,7 @@
       "incident_references": [
         "GHSA-fv5p-p927-qmxr"
       ],
-      "limitations": "In Python it looks inside one function for a call to one of seven guard names (`validate_safe_url`, `validate_url`, `is_safe_url`, `ensure_safe_url`, `check_safe_url`, `ssrf_guard`, `is_url_safe`) followed by a fetch (`get`, `post`, `put`, `delete`, `request`, `urlopen`, `fetch` or `send`) that does not disable redirects. A guard under another name (`assert_public_url`), or a guard and a fetch in two separate, non-nested Python functions, is not matched.",
+      "limitations": "In Python it looks inside one function for a call to one of seven guard names (`validate_safe_url`, `validate_url`, `is_safe_url`, `ensure_safe_url`, `check_safe_url`, `ssrf_guard`, `is_url_safe`) followed by a fetch (`get`, `post`, `put`, `delete`, `request`, `urlopen`, `fetch` or `send`) that does not disable redirects. A guard under another name (`assert_public_url`), or a guard and a fetch in two separate, non-nested Python functions, is not matched. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -2497,7 +2497,7 @@
       "incident_references": [
         "BERRIAI-LITELLM-2026-04-30"
       ],
-      "limitations": "Matches `litellm` followed directly by a version (`litellm==1.83.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a name with extras (`litellm[all]==1.83.0`), a git URL, the table form that Poetry and Pipfile use (`litellm = \"^1.83.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A compose file's `ghcr.io/berriai/litellm` image tag is not read.",
+      "limitations": "Matches `litellm` followed directly by a version (`litellm==1.83.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a name with extras (`litellm[all]==1.83.0`), a git URL, the table form that Poetry and Pipfile use (`litellm = \"^1.83.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A compose file's `ghcr.io/berriai/litellm` image tag is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -3585,7 +3585,7 @@
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
-      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a sink, not data flow, and it never reads mcp-atlassian's own code.",
+      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a sink, not data flow, and it never reads mcp-atlassian's own code. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -3618,7 +3618,7 @@
       "incident_references": [
         "ANTHROPIC-MCP-2026-04-22"
       ],
-      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a write sink, not data flow.",
+      "limitations": "The pin reads requirements*.txt, pyproject.toml and Pipfile at the project root and judges only a version it can parse: an unpinned install and a lockfile's separate name and version lines are not reported. The source pattern is same-file co-occurrence of an Atlassian client, a Jira/Confluence field and a write sink, not data flow. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -4905,7 +4905,7 @@
       ],
       "description": "The Amazon `mcp-gateway-registry` before 1.0.13 improperly neutralizes a caller-supplied `table_name` in the metrics-service retention-policy component: the value is interpolated directly into an SQL statement in identifier position, so an authenticated remote user can execute arbitrary SQL against the gateway's metrics store (CVE-2026-14471, HIGH CVSS 8.1, CWE-89, published 2026-07-06). A project that depends on the gateway registry at a version below 1.0.13 (or unpinned) is exposed.",
       "incident_references": [],
-      "limitations": "Reads `mcp-gateway-registry` as text in the project root's requirements*.txt, pyproject.toml, Pipfile, Pipfile.lock, poetry.lock, uv.lock, package.json, package-lock.json, .mcp.json, mcp.json, claude_desktop_config.json and *.mcp.yaml/.yml files, and reports a file whose first mention has a version below 1.0.13 or none. It does not read a sub-directory, including a requirements file there, `.cursor/mcp.json` or `.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`.",
+      "limitations": "Reads `mcp-gateway-registry` as text in the project root's requirements*.txt, pyproject.toml, Pipfile, Pipfile.lock, poetry.lock, uv.lock, package.json, package-lock.json, .mcp.json, mcp.json, claude_desktop_config.json and *.mcp.yaml/.yml files, and reports a file whose first mention has a version below 1.0.13 or none. It does not read a sub-directory, including a requirements file there, `.cursor/mcp.json` or `.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -5476,7 +5476,7 @@
       ],
       "description": "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt injection: untrusted content returned to the server (e.g. an API response, spec, or resource body it relays to the agent) can carry attacker-authored instructions that the agent then acts on, causing it to issue unintended Kong Admin/Konnect API requests it was never asked to make \u2014 a confidentiality-impacting cross-boundary injection, not a generic prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published 2026-07-03). A config that dispatches the Konnect MCP server at a version below 1.0.0 (or unpinned) is exposed.",
       "incident_references": [],
-      "limitations": "Reads the `konnect-mcp` spelling (with an optional `kong-` or `@kong/` before it and `-server` after it) in manifests, `.mcp.json`, `mcp.json` and `claude_desktop_config.json` at the project root. The `mcp-konnect` order, as in `npx @kong/mcp-konnect@0.1.0`, is not matched, and a server configured in `.cursor/mcp.json` or `.vscode/mcp.json` is not read.",
+      "limitations": "Reads the `konnect-mcp` spelling (with an optional `kong-` or `@kong/` before it and `-server` after it) in manifests, `.mcp.json`, `mcp.json` and `claude_desktop_config.json` at the project root. The `mcp-konnect` order, as in `npx @kong/mcp-konnect@0.1.0`, is not matched, and a server configured in `.cursor/mcp.json` or `.vscode/mcp.json` is not read. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI01",
         "ASI04"
@@ -7546,7 +7546,7 @@
       ],
       "description": "The Serena MCP coding toolkit (`serena-agent`) before 1.5.2 ships a built-in web dashboard that \"exposes an unauthenticated Flask API on a fixed, predictable port, with no authentication, no CSRF protection, and no Host header validation. A DNS rebinding attack allows a malicious webpage to reach this API from any browser and write arbitrary content to the agent's persistent memory store, which the agent reads and acts on autonomously. Combined with execute_shell_command using shell=True, this creates a remote code execution chain requiring only that the victim visit a malicious webpage while Serena is running.\" (NVD, CVE-2026-49471, HIGH CVSS 8.3, CWE-306 + CWE-352, published 2026-07-07). A project depending on `serena-agent` below 1.5.2 (or unpinned, or launched from an unpinned `oraios/serena` / `serena-mcp-server` reference) is exposed. Fixed in 1.5.2.",
       "incident_references": [],
-      "limitations": "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or below 1.5.2, in the root dependency manifests and lockfiles and in the root `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or `*.mcp.yml` files. Only these root-level files are read, so the same server launched from `.cursor/mcp.json` is missed.",
+      "limitations": "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or below 1.5.2, in the root dependency manifests and lockfiles and in the root `.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or `*.mcp.yml` files. Only these root-level files are read, so the same server launched from `.cursor/mcp.json` is missed. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -8635,7 +8635,7 @@
       "incident_references": [
         "NVD-CVE-2026-44717"
       ],
-      "limitations": "Matches `mcp-calculate-server` followed directly by a version (`mcp-calculate-server==0.1.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`mcp-calculate-server = \"^0.1.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported.",
+      "limitations": "Matches `mcp-calculate-server` followed directly by a version (`mcp-calculate-server==0.1.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a git URL, the table form that Poetry and Pipfile use (`mcp-calculate-server = \"^0.1.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -9925,7 +9925,7 @@
       "incident_references": [
         "MSRC-2026-05-07"
       ],
-      "limitations": "Matches `semantic-kernel` followed directly by a version (`semantic-kernel==1.30.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a name with extras (`semantic-kernel[all]==1.30.0`), a git URL, the table form that Poetry and Pipfile use (`semantic-kernel = \"^1.30.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported.",
+      "limitations": "Matches `semantic-kernel` followed directly by a version (`semantic-kernel==1.30.0`) in requirements*.txt at the project root and in a dependency string of the root pyproject.toml. A name with no version, a name with extras (`semantic-kernel[all]==1.30.0`), a git URL, the table form that Poetry and Pipfile use (`semantic-kernel = \"^1.30.0\"`), a requirements file in a sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are opened but never match, because the name and the version sit on separate lines, so a version that reaches the project only through a lockfile is not reported. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI04",
         "ASI05"
@@ -10383,7 +10383,7 @@
       "incident_references": [
         "GHSA-r7w7-9xr2-qq2r"
       ],
-      "limitations": "The code check is Python only and looks at one function at a time. A guard is recognised by its name (leading underscores ignored) wherever it is defined, or by its body, a name lookup plus a private-range check, only when it is defined in the same file as the fetch. An IP pin is recognised by name (`pinned_ip`, `resolved_ip`, `HTTPAdapter`, `session.mount`, `socket.getaddrinfo` and a few more) anywhere in the calling function. The version check covers `langchain-openai` only, so on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's own source: that release resolves inside the guard, but the fetch resolves the name again.",
+      "limitations": "The code check is Python only and looks at one function at a time. A guard is recognised by its name (leading underscores ignored) wherever it is defined, or by its body, a name lookup plus a private-range check, only when it is defined in the same file as the fetch. An IP pin is recognised by name (`pinned_ip`, `resolved_ip`, `HTTPAdapter`, `session.mount`, `socket.getaddrinfo` and a few more) anywhere in the calling function. The version check covers `langchain-openai` only, so on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's own source: that release resolves inside the guard, but the fetch resolves the name again. A lockfile over 32 MiB is not read.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -10527,7 +10527,7 @@
       "cve_references": [],
       "description": "A package with known MCP/AI-agent-related vulnerabilities was found in the dependency tree.",
       "incident_references": [],
-      "limitations": "Reads the root package-lock.json against a fixed table of two npm packages, `axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0, plus three typosquat name patterns, so a vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) is not reported. The table lists no PyPI package or crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over 32 MiB are not read.",
+      "limitations": "Reads the root package-lock.json against a fixed table of one npm package, `axios` 1.7.0 to 1.7.3, plus three typosquat name patterns, so a vulnerable version of any other package (`lodash` 4.17.15 in a lockfile) is not reported. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the table used to place it, is the empty placeholder 0.0.1. The table lists no PyPI package or crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over 32 MiB are not read.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -10535,7 +10535,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Upgrade the package named in the finding to a release outside its affected range (currently axios 1.7.4 or later, openclaw 2.1.0 or later), or remove it. A 'Potential typosquat' finding is a name check: confirm the package is the one you meant to install, and replace it with the real package if it is not.",
+      "remediation": "Upgrade the package named in the finding to a release outside its affected range (currently axios 1.7.4 or later), or remove it. A 'Potential typosquat' finding is a name check: confirm the package is the one you meant to install, and replace it with the real package if it is not.",
       "rule_id": "AAK-SUPPLY-002",
       "sarif_name": "KnownVulnerablePackage",
       "severity": "high",
@@ -10632,7 +10632,7 @@
       "cve_references": [],
       "description": "A dependency has a known vulnerability specifically affecting MCP/agent tooling.",
       "incident_references": [],
-      "limitations": "Reads the `args` of the servers in the root .mcp.json and in .vscode/mcp.json, under `mcpServers` or VS Code's `servers`, and looks each `package@version` up in the npm section of the vulnerability database, which bundles two packages: `axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0. The same package in package.json or in an MCP config under `.cursor/` is not read, and neither is a package that states no version.",
+      "limitations": "Reads the `args` of the servers in the root .mcp.json and in .vscode/mcp.json, under `mcpServers` or VS Code's `servers`, and looks each `package@version` up in the npm section of the vulnerability database, which bundles one package, `axios` 1.7.0 to 1.7.3. OpenClaw is not in it: it publishes calendar versions, which its own CVE pins read, and the only `openclaw` below 2.1.0, where the database used to place it, is the empty placeholder 0.0.1. The same package in package.json or in an MCP config under `.cursor/` is not read, and neither is a package that states no version.",
       "owasp_agentic_references": [
         "ASI04"
       ],
@@ -10640,7 +10640,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Change the package version in the server's `args` to one outside the affected range recorded in the vulnerability database (currently axios 1.7.4 or later, openclaw 2.1.0 or later), and pin it exactly.",
+      "remediation": "Change the package version in the server's `args` to one outside the affected range recorded in the vulnerability database (currently axios 1.7.4 or later), and pin it exactly.",
       "rule_id": "AAK-SUPPLY-006",
       "sarif_name": "McpSpecificVulnDep",
       "severity": "high",

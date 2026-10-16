@@ -1751,7 +1751,7 @@ _r(
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade the package named in the finding to a release outside its affected range "
-    "(currently axios 1.7.4 or later, openclaw 2.1.0 or later), or remove it. A "
+    "(currently axios 1.7.4 or later), or remove it. A "
     "'Potential typosquat' finding is a name check: confirm the package is the one you "
     "meant to install, and replace it with the real package if it is not.",
     sarif_name="KnownVulnerablePackage",
@@ -1759,10 +1759,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-04"],
     limitations=(
-        "Reads the root package-lock.json against a fixed table of two npm packages, "
-        "`axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0, plus three typosquat "
-        "name patterns, so a vulnerable version of any other package (`lodash` "
-        "4.17.15 in a lockfile) is not reported. The table lists no PyPI package or "
+        "Reads the root package-lock.json against a fixed table of one npm package, "
+        "`axios` 1.7.0 to 1.7.3, plus three typosquat name patterns, so a vulnerable "
+        "version of any other package (`lodash` 4.17.15 in a lockfile) is not "
+        "reported. OpenClaw is not in it: it publishes calendar versions, which its "
+        "own CVE pins read, and the only `openclaw` below 2.1.0, where the table used "
+        "to place it, is the empty placeholder 0.0.1. The table lists no PyPI package or "
         "crate (the PyPI `openclaw` is an unrelated installer for the cmdop CLI), so "
         "requirements*.txt, Pipfile.lock and Cargo.lock report nothing. yarn.lock, "
         "pnpm-lock.yaml, a package-lock.json in a sub-directory and a lockfile over "
@@ -1850,8 +1852,8 @@ _r(
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Change the package version in the server's `args` to one outside the affected "
-    "range recorded in the vulnerability database (currently axios 1.7.4 or later, "
-    "openclaw 2.1.0 or later), and pin it exactly.",
+    "range recorded in the vulnerability database (currently axios 1.7.4 or later), "
+    "and pin it exactly.",
     sarif_name="McpSpecificVulnDep",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
@@ -1859,10 +1861,12 @@ _r(
     limitations=(
         "Reads the `args` of the servers in the root .mcp.json and in .vscode/mcp.json, "
         "under `mcpServers` or VS Code's `servers`, and looks each `package@version` "
-        "up in the npm section of the vulnerability database, which bundles two "
-        "packages: `axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0. The same "
-        "package in package.json or in an MCP config under `.cursor/` is not read, "
-        "and neither is a package that states no version."
+        "up in the npm section of the vulnerability database, which bundles one "
+        "package, `axios` 1.7.0 to 1.7.3. OpenClaw is not in it: it publishes "
+        "calendar versions, which its own CVE pins read, and the only `openclaw` "
+        "below 2.1.0, where the database used to place it, is the empty placeholder "
+        "0.0.1. The same package in package.json or in an MCP config under `.cursor/` "
+        "is not read, and neither is a package that states no version."
     ),
 )
 
@@ -5870,6 +5874,7 @@ _r(
         "poetry.lock and uv.lock are opened but never match, because the name and "
         "the version sit on separate lines, so a version that reaches the project "
         "only through a lockfile is not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6141,6 +6146,7 @@ _r(
         "opened but never match, because the name and the version sit on separate "
         "lines, so a version that reaches the project only through a lockfile is "
         "not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6227,6 +6233,7 @@ _r(
         "not disable redirects. A guard under another name (`assert_public_url`), or a "
         "guard and a fetch in two separate, non-nested Python functions, is not "
         "matched."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6280,6 +6287,7 @@ _r(
         "on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's "
         "own source: that release resolves inside the guard, but the fetch "
         "resolves the name again."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6813,6 +6821,7 @@ _r(
         "reported. The source pattern is same-file co-occurrence of an Atlassian "
         "client, a Jira/Confluence field and a sink, not data flow, and it never "
         "reads mcp-atlassian's own code."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6844,6 +6853,7 @@ _r(
         "install and a lockfile's separate name and version lines are not "
         "reported. The source pattern is same-file co-occurrence of an Atlassian "
         "client, a Jira/Confluence field and a write sink, not data flow."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7327,6 +7337,7 @@ _r(
         "inside the call on `db`, `client`, `conn`, `connection`, `pool`, `cursor`, "
         "`database`, `sqlite` or `knex`, so a query built in a variable first "
         "(`const sql = \"SELECT ...\" + id; db.query(sql)`) is not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7720,6 +7731,7 @@ _r(
         "poetry.lock and uv.lock are opened but never match, because the name and "
         "the version sit on separate lines, so a version that reaches the project "
         "only through a lockfile is not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7760,6 +7772,7 @@ _r(
         "reported. Pipfile.lock, poetry.lock and uv.lock are opened but never "
         "match, because the name and the version sit on separate lines, so a "
         "version that reaches the project only through a lockfile is not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7810,6 +7823,7 @@ _r(
         "is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory "
         "package.json or a versioned `npx` reference in .mcp.json. Claude "
         "Desktop, which shares the plugin install flow, is in no file AAK reads."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7868,6 +7882,7 @@ _r(
         "(`stdio_fallback`, `transport_override`, `permit_transport_override` or a "
         "`transports` list that includes stdio); the same settings in "
         "`deploy/gpt-researcher.config.json` are not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7926,6 +7941,7 @@ _r(
         "`transport_override`, `permit_transport_override` or a `transports` list "
         "that includes stdio); the same settings in `deploy/docsgpt.config.json` "
         "are not reported."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7962,6 +7978,7 @@ _r(
         "or mirror under another GitHub organisation (`\"gpt\": "
         "\"github:acme/chatgpt-mcp-server\"`) and an `npx` launcher that fetches the "
         "repository from GitHub in .mcp.json are not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8003,6 +8020,7 @@ _r(
         "tag below 1.0. An `agent0ai/agent-zero` image tag in a compose file or "
         "Dockerfile, a `git clone` in a script and a reference in a sub-directory "
         "manifest are not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8048,6 +8066,7 @@ _r(
         "the version sit on separate lines, so a version that reaches the project "
         "only through a lockfile is not reported. A compose file's "
         "`ghcr.io/berriai/litellm` image tag is not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8822,6 +8841,7 @@ _r(
         "and `claude_desktop_config.json` at the project root. The `mcp-konnect` "
         "order, as in `npx @kong/mcp-konnect@0.1.0`, is not matched, and a server "
         "configured in `.cursor/mcp.json` or `.vscode/mcp.json` is not read."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8855,6 +8875,7 @@ _r(
         "whose first mention has a version below 1.0.13 or none. It does not read a "
         "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8956,6 +8977,7 @@ _r(
         "`.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or "
         "`*.mcp.yml` files. Only these root-level files are read, so the same server "
         "launched from `.cursor/mcp.json` is missed."
+        " A lockfile over 32 MiB is not read."
     ),
 )
 

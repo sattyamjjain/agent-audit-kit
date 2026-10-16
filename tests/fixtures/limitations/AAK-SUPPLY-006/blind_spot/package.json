@@ -2,6 +2,6 @@
   "name": "app",
   "version": "1.0.0",
   "dependencies": {
-    "openclaw": "2.0.0"
+    "axios": "1.7.2"
   }
 }

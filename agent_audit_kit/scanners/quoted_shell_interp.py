@@ -55,6 +55,7 @@ import re
 from bisect import bisect_left, bisect_right
 from functools import lru_cache
 from pathlib import Path
+from typing import Callable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
@@ -898,6 +899,7 @@ def _js_param_names(params: str) -> list[str | None]:
 
 _BLANKS_RE = re.compile(r"\s*")
 _SPACE_RE = re.compile(r"\s")
+_NON_SPACE_RE = re.compile(r"\S")
 _NAME_TAIL_RE = re.compile(r"[\w$]*")
 _NAME_START_RE = re.compile(r"[A-Za-z_$]")
 _WORD_CHAR_RE = re.compile(r"\w")
@@ -1435,7 +1437,9 @@ class _JsHandler:
     the whole file for the function's call sites, and for each one read its
     line back to the start and its arguments forward to the closing paren, so
     nested calls read their arguments once per level: 20 KB of nested `run(`
-    took 4.2 seconds, growing with the square.
+    took 4.2 seconds, growing with the square. A nested chain whose brackets
+    straddle the arguments still read each level whole, both to split the
+    arguments and to strip and search one (see `_argument` and `_BareSpans`).
     """
 
     def __init__(self, text: str) -> None:
@@ -1444,11 +1448,12 @@ class _JsHandler:
         self._calls: dict[str, list[tuple[int, int]]] | None = None
         self._answers: dict[tuple[str, int], int | None] = {}
         self._newlines: list[int] = []
-        self._specials: list[int] = []
         self._paren_close: dict[int, int] = {}
-        self._group_close: dict[int, int] = {}
-        self._brackets: list[int] = []
         self._bracket_close: dict[int, int] = {}
+        self._commas: list[int] = []
+        self._separators: _LeftmostBelow | None = None
+        self._first_non_blank: dict[int, int] = {}
+        self._bare: _BareSpans | None = None
         self._indexed = False
         self._chains: dict[int, set[int]] = {}
 
@@ -1460,7 +1465,7 @@ class _JsHandler:
         return self._answers[key]
 
     def _index(self) -> None:
-        """Paren, bracket and argument-separator positions, matched once."""
+        """Paren and bracket pairs and the argument separators, found once."""
         if self._indexed:
             return
         self._indexed = True
@@ -1469,24 +1474,26 @@ class _JsHandler:
         parens: list[int] = []
         groups: list[int] = []
         brackets: list[int] = []
+        around: list[int] = []
         for m in _JS_ARG_SPECIAL_RE.finditer(text):
             at, ch = m.start(), m.group()
-            self._specials.append(at)
             if ch == ",":
+                self._commas.append(at)
+                around.append(groups[-1] if groups else -1)
                 continue
             if ch in "([{":
                 groups.append(at)
             elif groups:
-                self._group_close[groups.pop()] = at
+                groups.pop()
             if ch == "(":
                 parens.append(at)
             elif ch == ")" and parens:
                 self._paren_close[parens.pop()] = at
             elif ch == "[":
-                self._brackets.append(at)
                 brackets.append(at)
             elif ch == "]" and brackets:
                 self._bracket_close[brackets.pop()] = at
+        self._separators = _LeftmostBelow(around)
 
     def _first_call(self, func: str, index: int) -> int | None:
         if self._tainted is None:
@@ -1499,10 +1506,8 @@ class _JsHandler:
         if not calls:
             return None
         self._index()
-        # Arguments already read and found clean, with the subscripts cut from
-        # them: an argument inside one, clear of those cuts, reads as part of
-        # it and is clean too (see `_clean_inside`).
-        clean: list[tuple[int, int, list[tuple[int, int]]]] = []
+        if self._bare is None:
+            self._bare = _BareSpans(self.text, self._tainted, self._bracket_close)
         for start, paren in calls:
             if self._is_definition(start):
                 continue
@@ -1510,16 +1515,8 @@ class _JsHandler:
             if close is None:
                 continue
             span = self._argument(paren + 1, close, index)
-            if span is None:
-                continue
-            while clean and clean[-1][1] <= start:
-                clean.pop()
-            if clean and _clean_inside(clean[-1], span):
-                continue
-            bare, cuts = self._strip(*span)
-            if _js_derived(bare, self._tainted):
+            if span is not None and self._bare.derived(*span):
                 return bisect_left(self._newlines, start) + 1
-            clean.append((span[0], span[1], cuts))
         return None
 
     def _is_definition(self, start: int) -> bool:
@@ -1553,79 +1550,346 @@ class _JsHandler:
     def _argument(self, begin: int, close: int, index: int) -> tuple[int, int] | None:
         """The span of `_split_top_level(text[begin:close], "([{")[index]`.
 
-        Only separators at depth zero matter, and an opener's group, matched
-        across all three kinds as `_split_top_level` counts them, is stepped
-        over whole; a closer at depth zero changes nothing.
+        A comma separates arguments when every opener after ``begin`` is closed
+        by then, counting closers of any kind as `_split_top_level` does: when
+        the innermost group still open at it, matched across all three kinds,
+        opened before ``begin``. (A closer at depth zero changes nothing there
+        and pops a group opened before ``begin`` here, which agrees.) The
+        separators used to be walked from ``begin``, stepping over each group,
+        so a `]` that closed a call's `(` left the rest of the chain at depth
+        zero for it: `run(]` nested 10,000 deep took 10.5 seconds, growing with
+        the square. Each separator is now a lookup in a tree over the commas.
         """
-        text, specials = self.text, self._specials
-        k = bisect_left(specials, begin)
-        part, commas = begin, 0
-        while k < len(specials) and specials[k] < close:
-            at = specials[k]
-            ch = text[at]
-            if ch == ",":
-                if commas == index:
-                    return part, at
-                commas += 1
-                part = at + 1
-                k += 1
-            elif ch in "([{":
-                end = self._group_close.get(at)
-                if end is None or end >= close:
-                    break
-                k = bisect_left(specials, end + 1)
-            else:
-                k += 1
-        if commas == index and text[part:close].strip():
-            return part, close
-        return None
+        commas, separators = self._commas, self._separators
+        assert separators is not None  # built by `_index`
+        lo, hi = bisect_left(commas, begin), bisect_left(commas, close)
+        part = begin
+        for _ in range(index):
+            i = separators.find(lo, hi, begin)
+            if i < 0:
+                return None
+            part, lo = commas[i] + 1, i + 1
+        i = separators.find(lo, hi, begin)
+        if i >= 0:
+            return part, commas[i]
+        return (part, close) if self._non_blank(part, close) else None
 
-    def _strip(self, begin: int, end: int) -> tuple[str, list[tuple[int, int]]]:
-        """`_strip_subscripts(text[begin:end])`, and the pairs it cut.
-
-        Within a span, the brackets that match are the file's matching pairs
-        that lie wholly inside it, so the file's pairs are found once and the
-        outermost of those inside are cut.
-        """
-        text, brackets = self.text, self._brackets
-        pieces: list[str] = []
-        cuts: list[tuple[int, int]] = []
-        last = begin
-        k = bisect_left(brackets, begin)
-        while k < len(brackets) and brackets[k] < end:
-            at = brackets[k]
-            pair_end = self._bracket_close.get(at)
-            if pair_end is not None and pair_end < end:
-                pieces.append(text[last:at])
-                cuts.append((at, pair_end))
-                last = pair_end + 1
-                k = bisect_left(brackets, last)
-            else:
-                k += 1
-        pieces.append(text[last:end])
-        return "".join(pieces), cuts
+    def _non_blank(self, begin: int, end: int) -> bool:
+        """`text[begin:end].strip()`, each blank run read once: the same long
+        run can open the last argument of every level of a chain."""
+        first = self._first_non_blank.get(begin)
+        if first is None:
+            m = _NON_SPACE_RE.search(self.text, begin)
+            first = self._first_non_blank[begin] = m.start() if m else len(self.text)
+        return first < end
 
 
-def _clean_inside(outer: tuple[int, int, list[tuple[int, int]]], span: tuple[int, int]) -> bool:
-    """Is an argument at ``span`` clean because it reads as part of ``outer``?
+class _LeftmostBelow:
+    """Over a fixed list of numbers: the leftmost index in ``[lo, hi)`` whose
+    value is below ``ceiling``, in logarithmic time (a min segment tree)."""
 
-    ``outer`` was read and found clean. When ``span`` lies inside it and no cut
-    of it starts before ``span`` and reaches into it, or ends after ``span``
-    and starts inside it, ``span`` read alone is a piece of ``outer``'s read,
-    with the call's own parens or commas around it, which no tool-argument
-    pattern or name can join.
+    def __init__(self, values: list[int]) -> None:
+        size = 1
+        while size < len(values):
+            size *= 2
+        tree: list[float] = [math.inf] * (2 * size)
+        tree[size : size + len(values)] = values
+        for i in range(size - 1, 0, -1):
+            left, right = tree[2 * i], tree[2 * i + 1]
+            tree[i] = left if left < right else right
+        self._size = size
+        self._tree = tree
+
+    def find(self, lo: int, hi: int, ceiling: int) -> int:
+        tree, size = self._tree, self._size
+        lo, hi = lo + size, hi + size
+        left: list[int] = []
+        right: list[int] = []
+        while lo < hi:
+            if lo & 1:
+                left.append(lo)
+                lo += 1
+            if hi & 1:
+                hi -= 1
+                right.append(hi)
+            lo >>= 1
+            hi >>= 1
+        for node in left + right[::-1]:
+            if tree[node] < ceiling:
+                while node < size:
+                    node = 2 * node if tree[2 * node] < ceiling else 2 * node + 1
+                return node - size
+        return -1
+
+
+# What a stripped argument is searched for, split so a match at any place can be
+# looked up: `_JS_TOOL_ARG_RE`'s literals (its `request.params.arguments` holds
+# `params.arguments`), its keyword forms with the `\b` before them and without,
+# and an `args` that a following `[` would complete.
+_JS_TOOL_LITERAL_RE = re.compile(r"params\.arguments|destructur")
+_JS_TOOL_WORD_RE = re.compile(r"\bargs\b\s*[.\[]|\binput\b\s*\.")
+_JS_TOOL_WORD_TAIL_RE = re.compile(r"args\b\s*[.\[]|input\b\s*\.")
+_JS_ARGS_BLANKS_RE = re.compile(r"args\s*")
+_JS_TOKEN_RUN_RE = re.compile(r"[\w$]+")
+_JS_TOKEN_TAIL_RE = re.compile(r"[\w$]*\Z")
+_JS_TOKEN_CHAR_RE = re.compile(r"[\w$]")
+
+
+class _BareSpans:
+    """`_js_derived(_strip_subscripts(text[a:b]), tainted)` for any span of one
+    handler file, in logarithmic time, without cutting the span out.
+
+    `_first_call` used to cut each call's argument out, strip its subscripts
+    and search what was left. An argument that read as part of one already
+    found clean was skipped, unless a pair the outer one cut reached into it, so
+    a nested chain whose brackets straddle the arguments was read whole at every
+    level: 70 KB of `run(` nested in `[)]` pairs took 21 seconds, growing with
+    the square.
+
+    The strip keeps a character exactly when the innermost bracket pair around
+    it, its own brackets included, is not wholly inside the span. So what is
+    left is, in order, the direct content (the pair less the pairs inside it) of
+    the pairs that hold the start and end inside the span, from the innermost
+    out; of the one around the whole span, or the file; and of the pairs that
+    start inside the span and hold its end, from the outermost in. Each part is
+    a run of one pair's direct content, and every pair's is laid out once, in
+    one string. No match crosses from one part to the next: none holds the `]`
+    that ends a part on the start side, and only `args\\s*\\[` ends in the `[`
+    that opens one on the end side. Inside a part, a match is one in the laid-
+    out content unless it touches an end of the part, where its neighbours
+    differ, so only the ends are read. A pair between the two ends of a chain
+    has the same part whichever span it straddles, so its answer is kept, and
+    a chain asks only for the nearest pair below its top that matched.
     """
-    begin, end, cuts = outer
-    a, b = span
-    if a < begin or b > end:
+
+    def __init__(self, text: str, tainted: set[str], bracket_close: dict[int, int]) -> None:
+        self._tainted = tainted
+        self._lengths = {len(name) for name in tainted}
+        self._longest = max(self._lengths, default=0)
+        # Node 0 is the file, around everything; the pairs follow in order.
+        self._starts = [-1]
+        self._ends = [len(text) + 1]
+        self._parent = [0]
+        self._depth = [0]
+        self._jump = [0]  # skip pointers, for a logarithmic climb
+        self._brackets: list[int] = []
+        self._owner: list[int] = []  # the node each bracket is a character of
+        self._after: list[int] = []  # the node open after each bracket
+        stretches: list[list[tuple[int, int]]] = [[]]
+        node, last = 0, 0
+        for m in _BRACKET_RE.finditer(text):
+            at = m.start()
+            if m.group() == "[" and at in bracket_close:
+                if at > last:
+                    stretches[node].append((last, at))
+                parent, node, last = node, len(self._starts), at
+                self._add(at, bracket_close[at], parent)
+                stretches.append([])
+                owner = node
+            elif m.group() == "]" and node:
+                # The open pair's own: `bracket_close` gave each `]` the
+                # innermost `[` still open, and an unmatched one would have
+                # taken it, so the innermost open `[` is that of a pair.
+                stretches[node].append((last, at + 1))
+                owner, node, last = node, self._parent[node], at + 1
+            else:
+                owner = node  # unmatched: a character of the open pair
+            self._brackets.append(at)
+            self._owner.append(owner)
+            self._after.append(node)
+        if len(text) > last:
+            stretches[node].append((last, len(text)))
+        self._lay_out(text, stretches)
+        self._left: dict[int, int] = {}
+        self._right: dict[int, int] = {}
+
+    def _add(self, start: int, end: int, parent: int) -> None:
+        depth, jump = self._depth, self._jump
+        self._starts.append(start)
+        self._ends.append(end)
+        self._parent.append(parent)
+        depth.append(depth[parent] + 1)
+        j = jump[parent]
+        even = depth[parent] - depth[j] == depth[j] - depth[jump[j]]
+        jump.append(jump[j] if even else parent)
+
+    def _lay_out(self, text: str, stretches: list[list[tuple[int, int]]]) -> None:
+        """Every node's direct content, each followed by a NUL, which no match
+        holds, so none runs from one node's into the next."""
+        parts: list[str] = []
+        self._g: list[int] = []  # where each stretch is laid out
+        self._raw: list[int] = []  # where it is in the file
+        self._len: list[int] = []
+        self._first: list[int] = []  # each node's first stretch
+        self._g0: list[int] = []  # each node's direct content, laid out
+        self._g1: list[int] = []
+        g = 0
+        for pieces in stretches:
+            self._first.append(len(self._g))
+            self._g0.append(g)
+            for begin, end in pieces:
+                self._g.append(g)
+                self._raw.append(begin)
+                self._len.append(end - begin)
+                parts.append(text[begin:end])
+                g += end - begin
+            self._g1.append(g)
+            parts.append("\0")
+            g += 1
+        self._first.append(len(self._g))
+        laid = self._laid = "".join(parts)
+        self._tok_t: list[int] = []
+        self._tok_e: list[int] = []
+        if self._tainted:
+            for m in _JS_TAINT_TOKEN_RE.finditer(laid):
+                if m.group() in self._tainted:
+                    self._tok_t.append(m.start())
+                    self._tok_e.append(m.end())
+        self._lit_t, self._lit_e = _spans(_JS_TOOL_LITERAL_RE, laid)
+        self._word_t, self._word_e = _spans(_JS_TOOL_WORD_RE, laid)
+        self._word_at = dict(zip(*_spans(_JS_TOOL_WORD_TAIL_RE, laid)))
+        args_t, self._args_w = _spans(_JS_ARGS_BLANKS_RE, laid)
+        self._args_t4 = [t + 4 for t in args_t]
+        self._args_bounded = [t == 0 or not _WORD_CHAR_RE.match(laid, t - 1) for t in args_t]
+
+    def derived(self, a: int, b: int) -> bool:
+        """Is `_strip_subscripts(text[a:b])` tool-derived?"""
+        starts, ends, parent, jump, depth = self._starts, self._ends, self._parent, self._jump, self._depth
+        x = self._enclosing(a)
+        if x and ends[x] < b:
+            # The pairs that hold `a` and end inside the span, innermost first.
+            top = x
+            while parent[top] and ends[parent[top]] < b:
+                top = jump[top] if jump[top] and ends[jump[top]] < b else parent[top]
+            if self._part(self._g_at(x, a), self._g1[x], False):
+                return True
+            if top != x:
+                hit = self._nearest(x, self._left, self._after_child)
+                if hit and depth[hit] > depth[top]:
+                    return True
+            around = parent[top]
+            u = self._g_at(around, ends[top] + 1)
+        else:
+            around, u = x, self._g_at(x, a)
+        y = self._enclosing(b)
+        if not (y and starts[y] >= a):
+            return self._part(u, self._g_at(around, b), False)
+        # The pairs that start inside the span and hold `b`, outermost first.
+        top = y
+        while parent[top] and starts[parent[top]] >= a:
+            top = jump[top] if jump[top] and starts[jump[top]] >= a else parent[top]
+        if self._part(u, self._g_at(around, starts[top]), True):
+            return True
+        if top != y:
+            hit = self._nearest(y, self._right, self._before_child)
+            if hit and depth[hit] > depth[top]:
+                return True
+        return self._part(self._g0[y], self._g_at(y, b), False)
+
+    def _enclosing(self, p: int) -> int:
+        """The innermost pair that starts before ``p`` and ends at or after it."""
+        i = bisect_left(self._brackets, p)
+        if i < len(self._brackets) and self._brackets[i] == p:
+            node = self._owner[i]
+            return self._parent[node] if self._starts[node] == p else node
+        return self._after[i - 1] if i else 0
+
+    def _g_at(self, node: int, p: int) -> int:
+        """Where the node's direct content resumes at or after ``p``, laid out."""
+        lo, hi = self._first[node], self._first[node + 1]
+        i = bisect_right(self._raw, p, lo, hi) - 1
+        if i >= lo and p < self._raw[i] + self._len[i]:
+            return self._g[i] + p - self._raw[i]
+        return self._g[i + 1] if i + 1 < hi else self._g1[node]
+
+    def _after_child(self, child: int) -> bool:
+        """Does the part after ``child`` in its parent match, as a span that
+        starts inside ``child`` and ends past the parent's `]` leaves it?"""
+        up = self._parent[child]
+        return self._part(self._g_at(up, self._ends[child] + 1), self._g1[up], False)
+
+    def _before_child(self, child: int) -> bool:
+        """Does the part before ``child`` in its parent match, as a span that
+        starts before the parent's `[` and ends inside ``child`` leaves it?"""
+        up = self._parent[child]
+        return self._part(self._g0[up], self._g_at(up, self._starts[child]), True)
+
+    def _nearest(self, node: int, known: dict[int, int], matches: Callable[[int], bool]) -> int:
+        """The nearest pair from ``node`` up whose part matches, or 0. Each pair
+        is asked once."""
+        path: list[int] = []
+        while node and node not in known:
+            path.append(node)
+            node = self._parent[node]
+        found = known[node] if node else 0
+        for pair in reversed(path):
+            if matches(pair):
+                found = pair
+            known[pair] = found
+        return found
+
+    def _part(self, u: int, v: int, bracket_after: bool) -> bool:
+        """Does ``laid[u:v]`` match, with a `[` after it when ``bracket_after``?
+
+        A match that does not touch an end of the part is one in the laid-out
+        content, whose first is found by a bisection. At the start, a word or a
+        keyword has the start of the part before it; at the end, a word is cut
+        where the part ends, and an `args` is completed by the `[` after it.
+        """
+        if u >= v:
+            return False
+        i = bisect_right(self._tok_t, u)
+        if i < len(self._tok_t) and self._tok_e[i] <= v:
+            return True
+        i = bisect_left(self._lit_t, u)
+        if i < len(self._lit_t) and self._lit_e[i] <= v:
+            return True
+        i = bisect_right(self._word_t, u)
+        if i < len(self._word_t) and self._word_e[i] <= v:
+            return True
+        end = self._word_at.get(u)
+        if end is not None and end <= v:
+            return True
+        if self._tainted and self._cut_word(u, v):
+            return True
+        if bracket_after:
+            i = bisect_right(self._args_t4, v) - 1
+            if i >= 0:
+                t = self._args_t4[i] - 4
+                if t >= u and self._args_w[i] >= v and (t == u or self._args_bounded[i]):
+                    return True
         return False
-    i = bisect_right(cuts, (a, math.inf)) - 1
-    if i >= 0 and cuts[i][0] < a <= cuts[i][1]:
-        return False
-    i = bisect_right(cuts, (b - 1, math.inf)) - 1
-    if i >= 0 and cuts[i][0] <= b - 1 < cuts[i][1]:
-        return False
-    return True
+
+    def _cut_word(self, u: int, v: int) -> bool:
+        """Is the word at either end of ``laid[u:v]``, cut there, tainted?
+
+        A name is no longer than the longest tainted one, so neither read goes
+        further than that.
+        """
+        laid, longest = self._laid, self._longest
+        word = _JS_TOKEN_RUN_RE.match(laid, u, min(v, u + longest + 1))
+        if word and self._is_tainted(u, word.end()):
+            return True
+        if not _JS_TOKEN_CHAR_RE.match(laid, v):
+            return False  # the word ends with the part, which a match inside it already covers
+        lo = max(u + 1, v - longest)
+        tail = _JS_TOKEN_TAIL_RE.search(laid, lo, v)
+        start = tail.start() if tail else v
+        if start == v or (start == lo and _JS_TOKEN_CHAR_RE.match(laid, lo - 1)):
+            return False  # no word, or one that starts at ``u`` or is too long
+        return laid[start - 1] != "." and self._is_tainted(start, v)
+
+    def _is_tainted(self, begin: int, end: int) -> bool:
+        return end - begin in self._lengths and self._laid[begin:end] in self._tainted
+
+
+def _spans(pattern: re.Pattern[str], text: str) -> tuple[list[int], list[int]]:
+    starts: list[int] = []
+    ends: list[int] = []
+    for m in pattern.finditer(text):
+        starts.append(m.start())
+        ends.append(m.end())
+    return starts, ends
 
 
 def _cross_file_js(texts: dict[str, str]) -> list[Finding]:

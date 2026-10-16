@@ -24,10 +24,11 @@ KNOWN_VULNERABLE_PACKAGES: dict[str, dict[str, dict[str, str]]] = {
             "affected": ">=1.7.0 <1.7.4",
             "description": "Claude Code supply chain compromise (March 31 2026)",
         },
-        "openclaw": {
-            "affected": "<2.1.0",
-            "description": "104 CVEs catalogued by Adversa AI",
-        },
+        # No `openclaw` entry. It listed `<2.1.0` as "104 CVEs catalogued by
+        # Adversa AI", but OpenClaw publishes calendar versions on npm (2026.1.29
+        # on), so the range matched only `openclaw@0.0.1`, an empty placeholder
+        # published the day before the first. OpenClaw's CVEs are pinned with
+        # the ranges NVD gives them, in mcp_cve_pins_2026_07.
     },
     # No PyPI entry. The table listed `openclaw` here too, but OpenClaw ships on
     # npm only, and the PyPI project of that name (2.0.1 and 2.0.2) is an
@@ -375,7 +376,13 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
 
 
 def _scan_rust_deps(project_root: Path) -> list[Finding]:
-    """Check Cargo.lock for known vulnerable packages (AAK-SUPPLY-002)."""
+    """Check Cargo.lock for known vulnerable packages (AAK-SUPPLY-002) and
+    count them (AAK-SUPPLY-005).
+
+    A Cargo.toml without a Cargo.lock is `_check_lockfile_exists`'s to report
+    (AAK-SUPPLY-004). This ended with that check too, but it returns early when
+    there is no Cargo.lock, so the check could never fire here.
+    """
     findings: list[Finding] = []
     rust_vulns = KNOWN_VULNERABLE_PACKAGES.get("rust", {})
 
@@ -431,15 +438,6 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
         findings.append(_make_finding(
             "AAK-SUPPLY-005", rel_path,
             f"{dep_count} dependencies (threshold: 200)",
-        ))
-
-    # Also check Cargo.toml lockfile existence
-    cargo_toml = project_root / "Cargo.toml"
-    if cargo_toml.is_file() and not cargo_lock.is_file():
-        findings.append(_make_finding(
-            "AAK-SUPPLY-004",
-            str(cargo_toml.relative_to(project_root)),
-            "Cargo.toml exists but no Cargo.lock found",
         ))
 
     return findings
@@ -528,6 +526,17 @@ _LOCKFILES = frozenset({
     "uv.lock", "poetry.lock", "pipfile.lock",
     "package-lock.json", "pnpm-lock.yaml", "yarn.lock",
 })
+
+
+def _lockfile_over_limit(path: Path) -> bool:
+    """Is ``path`` a lockfile over MAX_LOCKFILE_BYTES?
+
+    The older per-CVE checks read lockfiles among the manifests, and read them
+    whole, however large: a crafted one costs the scan what it likes. The pin
+    table skips a lockfile over the limit unread, and so do they, stating it in
+    their limitations. ``stat`` raises OSError, as the read it guards does.
+    """
+    return path.name.lower() in _LOCKFILES and path.stat().st_size > MAX_LOCKFILE_BYTES
 
 
 def _resolve_lockfile_version(
@@ -697,6 +706,8 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -756,6 +767,8 @@ def _check_kong_konnect_mcp_pin(project_root: Path, scanned_files: set[str]) -> 
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -817,6 +830,8 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -875,6 +890,8 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -932,6 +949,8 @@ def _check_excel_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1152,6 +1171,8 @@ def _check_astro_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1364,6 +1385,8 @@ def _check_agent_zero_pin(project_root: Path, scanned_files: set[str]) -> list[F
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1416,6 +1439,8 @@ def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1502,6 +1527,8 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1545,6 +1572,8 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
             candidates.append(p)
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1606,6 +1635,8 @@ def _check_mcp_calculate_server_pin(project_root: Path, scanned_files: set[str])
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1671,6 +1702,8 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1772,6 +1805,8 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1858,6 +1893,8 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
             candidates.append(p)
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1879,6 +1916,8 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
         if not p.is_file():
             continue
         try:
+            if _lockfile_over_limit(p):
+                continue
             text = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
@@ -1930,6 +1969,8 @@ def _check_litellm_pin(project_root: Path, scanned_files: set[str]) -> list[Find
 
     for path in candidates:
         try:
+            if _lockfile_over_limit(path):
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue

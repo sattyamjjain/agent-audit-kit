@@ -45,6 +45,7 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 
 from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._manifest_deps import MAX_LOCKFILE_BYTES
 
 
 _PY_PATCHED = (1, 1, 14)
@@ -309,6 +310,8 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
         if not lock.is_file():
             continue
         try:
+            if lock.stat().st_size > MAX_LOCKFILE_BYTES:
+                continue  # unread, as the pin table skips one (see MAX_LOCKFILE_BYTES)
             text = lock.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue

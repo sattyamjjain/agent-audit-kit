@@ -3,10 +3,6 @@
     "axios": {
       "affected": ">=1.7.0 <1.7.4",
       "description": "Claude Code supply chain compromise (March 31 2026)"
-    },
-    "openclaw": {
-      "affected": "<2.1.0",
-      "description": "104 CVEs catalogued by Adversa AI"
     }
   },
   "python": {},

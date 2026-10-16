@@ -3,7 +3,7 @@
     "claw": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "openclaw@2.0.0"]
+      "args": ["-y", "axios@1.7.2"]
     }
   }
 }
