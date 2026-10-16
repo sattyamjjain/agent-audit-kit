@@ -302,16 +302,14 @@ def test_gap_closure_rule_is_mapped(rule_id: str, control_substr: str) -> None:
 
 def test_deliberate_exclusions_stay_out_of_scope() -> None:
     """These rules are intentionally NOT mapped to the NSA MCP CSI: they are
-    either internal sentinels, info-only coverage manifests, or controls
-    outside MCP security scope (privacy-policy docs, frontend DoS, pricing,
-    EU-locale eval). Mapping them would fabricate coverage. This test
-    documents the decision and guards against an over-broad future edit.
+    either internal sentinels or controls outside MCP security scope
+    (privacy-policy docs, frontend DoS, pricing, EU-locale eval). Mapping
+    them would fabricate coverage. This test documents the decision and
+    guards against an over-broad future edit.
     """
     out_of_scope = {
         "AAK-INTERNAL-SCANNER-FAIL",
         "AAK-EU-AI-ACT-ART15-LOCALE-001",
-        "AAK-OX-COVERAGE-MANIFEST-001",
-        "AAK-PRISMA-AIRS-COVERAGE-001",
         "AAK-STATE-PRIVACY-001",
         "AAK-STATE-PRIVACY-002",
         "AAK-STATE-PRIVACY-003",

@@ -53,6 +53,15 @@ RETIRED_RULE_IDS: dict[str, str] = {
         "provides: PyPI `openclaw` installs the cmdop CLI, `openclaw-sdk` imports as "
         "`openclaw_sdk`, and OpenClaw itself ships on npm"
     ),
+    "AAK-OX-COVERAGE-MANIFEST-001": (
+        "described the OX coverage manifest and never fired; `aak coverage --source ox` "
+        "reads `data/ox-cve-manifest.json` itself"
+    ),
+    "AAK-PRISMA-AIRS-COVERAGE-001": (
+        "described the Prisma AIRS coverage map and never fired; `aak coverage --source "
+        "prisma-airs` reads `data/prisma-airs-catalog.json` and "
+        "`data/prisma-airs-aak-map.json` itself"
+    ),
 }
 
 
@@ -370,7 +379,6 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001": ["AIS-07"],
     "AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001": ["AIS-07"],
     "AAK-TIKTOK-AGENT-HIJACK-001": ["IAM-02", "CCC-08"],
-    "AAK-OX-COVERAGE-MANIFEST-001": ["STA-08"],
     # ---- v0.3.10 (2026-04-29) -------------------------------------------
     "AAK-CREWAI-CHAIN-2026-04-001": ["AIS-07", "STA-08"],
     "AAK-CREWAI-CVE-2026-2275-001": ["AIS-07", "IVS-04"],
@@ -378,7 +386,6 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CREWAI-CVE-2026-2286-001": ["IVS-04"],
     "AAK-CREWAI-CVE-2026-2287-001": ["AIS-07", "IVS-04"],
     "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001": ["AIS-07"],
-    "AAK-PRISMA-AIRS-COVERAGE-001": ["STA-08"],
 }
 
 
@@ -6949,7 +6956,7 @@ _r(
 
 # ---------------------------------------------------------------------------
 # v0.3.9 (2026-04-28) — economic-drift, ToolNode regression, DeepSeek V4
-# MoE injection, TikTok-class auto-reply hijack, OX coverage meta-rule.
+# MoE injection, TikTok-class auto-reply hijack.
 # ---------------------------------------------------------------------------
 
 _r(
@@ -7084,26 +7091,10 @@ _r(
     ),
 )
 
-_r(
-    "AAK-OX-COVERAGE-MANIFEST-001",
-    "Project OX-disclosed CVE coverage manifest",
-    "Meta / informational rule that surfaces the project's static CVE "
-    "coverage map (`agent_audit_kit/data/ox-cve-manifest.json`). Drives "
-    "the OX-coverage badge endpoint and the `aak coverage --source ox` "
-    "CLI; never fires findings on user code.",
-    Severity.INFO,
-    Category.SUPPLY_CHAIN,
-    "Run `aak coverage --source ox` to see which OX-disclosed CVEs are "
-    "covered by AAK rules. The manifest is regenerated on every release "
-    "and powers the `OX coverage` badge in README.",
-    sarif_name="OxCoverageManifest",
-)
-
 
 # ---------------------------------------------------------------------------
 # v0.3.10 (2026-04-29) — CrewAI four-CVE chain (CERT/CC VU#221883),
-# LangChain prompt-loader path traversal (CVE-2026-34070), Prisma AIRS
-# coverage manifest.
+# LangChain prompt-loader path traversal (CVE-2026-34070).
 # ---------------------------------------------------------------------------
 
 _r(
@@ -7290,23 +7281,6 @@ _r(
         "directory. A file that imports `from langchain_core.prompts.loading import "
         "load_prompt` is skipped."
     ),
-)
-
-_r(
-    "AAK-PRISMA-AIRS-COVERAGE-001",
-    "Prisma AIRS catalog coverage manifest",
-    "Meta / informational rule that surfaces AAK's static coverage of "
-    "the public Prisma AIRS 3.0 attack catalog. Drives "
-    "`aak coverage --source prisma-airs` and the published coverage "
-    "matrix. Never fires findings on user code.",
-    Severity.INFO,
-    Category.SUPPLY_CHAIN,
-    "Run `aak coverage --source prisma-airs` to see how AAK's static "
-    "ruleset maps onto Palo Alto's published Prisma AIRS attack "
-    "catalog. The map is hand-curated; entries flagged "
-    "`status: catalog-private` are not publicly disclosed and "
-    "intentionally absent from AAK coverage.",
-    sarif_name="PrismaAirsCoverageManifest",
 )
 
 _r(

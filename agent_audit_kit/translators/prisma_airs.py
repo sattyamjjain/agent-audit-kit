@@ -1,4 +1,4 @@
-"""AAK-PRISMA-AIRS-COVERAGE-001 — Prisma AIRS catalog coverage mapper.
+"""Prisma AIRS catalog coverage mapper, behind `aak coverage --source prisma-airs`.
 
 Reads the curated catalog + AAK map from `agent_audit_kit/data/` and
 produces a coverage summary similar to `aak coverage --source ox`.

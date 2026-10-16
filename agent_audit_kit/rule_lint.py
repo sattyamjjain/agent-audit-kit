@@ -6,8 +6,8 @@ Invariants (v0.3.10 baseline; tighten over future releases):
     2. Every rule has a non-empty `description`.
     3. If the rule's title or description names a CVE
        (`CVE-NNNN-NNNNN`), `cve_references` must include that CVE.
-    4. INFO-severity meta-rules (`AAK-*-COVERAGE-*`, `AAK-OX-*`) are
-       exempt from CVE-presence checks.
+    4. Internal sentinels (`AAK-INTERNAL-*`) are exempt from the
+       CVE-presence check.
     5. Every rule has at least one of `owasp_mcp_references`,
        `owasp_agentic_references`, `incident_references`, or
        `aicm_references` (so the rule maps to at least one external
@@ -30,9 +30,9 @@ from agent_audit_kit.rules.builtin import RULES
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}")
 
 
+# The OX and Prisma AIRS coverage-manifest entries were exempt here too until
+# they left the registry: they described a data file and never fired.
 _EXEMPT_PREFIXES_FOR_CVE: tuple[str, ...] = (
-    "AAK-OX-COVERAGE-",
-    "AAK-PRISMA-AIRS-COVERAGE-",
     "AAK-INTERNAL-",
 )
 

@@ -9148,26 +9148,6 @@
       "title": "Third-party OAuth client granted broad Workspace scopes"
     },
     {
-      "adversa_references": [],
-      "aicm_references": [
-        "STA-08"
-      ],
-      "auto_fixable": false,
-      "category": "supply-chain",
-      "cve_references": [],
-      "description": "Meta / informational rule that surfaces the project's static CVE coverage map (`agent_audit_kit/data/ox-cve-manifest.json`). Drives the OX-coverage badge endpoint and the `aak coverage --source ox` CLI; never fires findings on user code.",
-      "incident_references": [],
-      "limitations": "",
-      "owasp_agentic_references": [],
-      "owasp_ast_references": [],
-      "owasp_mcp_references": [],
-      "remediation": "Run `aak coverage --source ox` to see which OX-disclosed CVEs are covered by AAK rules. The manifest is regenerated on every release and powers the `OX coverage` badge in README.",
-      "rule_id": "AAK-OX-COVERAGE-MANIFEST-001",
-      "sarif_name": "OxCoverageManifest",
-      "severity": "info",
-      "title": "Project OX-disclosed CVE coverage manifest"
-    },
-    {
       "adversa_references": [
         "ADV-POISON-01"
       ],
@@ -9352,26 +9332,6 @@
       "sarif_name": "DenyPolicyTruncationBypass",
       "severity": "high",
       "title": "Deny policy evaluated on a truncated copy of the value the executor receives"
-    },
-    {
-      "adversa_references": [],
-      "aicm_references": [
-        "STA-08"
-      ],
-      "auto_fixable": false,
-      "category": "supply-chain",
-      "cve_references": [],
-      "description": "Meta / informational rule that surfaces AAK's static coverage of the public Prisma AIRS 3.0 attack catalog. Drives `aak coverage --source prisma-airs` and the published coverage matrix. Never fires findings on user code.",
-      "incident_references": [],
-      "limitations": "",
-      "owasp_agentic_references": [],
-      "owasp_ast_references": [],
-      "owasp_mcp_references": [],
-      "remediation": "Run `aak coverage --source prisma-airs` to see how AAK's static ruleset maps onto Palo Alto's published Prisma AIRS attack catalog. The map is hand-curated; entries flagged `status: catalog-private` are not publicly disclosed and intentionally absent from AAK coverage.",
-      "rule_id": "AAK-PRISMA-AIRS-COVERAGE-001",
-      "sarif_name": "PrismaAirsCoverageManifest",
-      "severity": "info",
-      "title": "Prisma AIRS catalog coverage manifest"
     },
     {
       "adversa_references": [],
