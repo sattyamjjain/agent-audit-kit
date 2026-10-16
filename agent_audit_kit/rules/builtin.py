@@ -35,6 +35,21 @@ class RuleDefinition:
 
 RULES: dict[str, RuleDefinition] = {}
 
+# Ids that were registered once and have left the registry. A rule id is a public
+# name: it sits in SARIF baselines and code-scanning alerts, in `--rules` and
+# `--exclude-rules` lists, in VEX statements and in suppressions written against an
+# earlier release, so a new rule under an old id would be read as the old rule.
+# `_r()` refuses every id here, and `tests/test_retired_rules.py` fails when the
+# package, its data files or `rules.json` still name one. The value says why the
+# rule went; the CHANGELOG entry says when.
+RETIRED_RULE_IDS: dict[str, str] = {
+    "AAK-WINDSURF-001": (
+        "read a project-level `.windsurf/mcp.json` with auto-approve keys that Windsurf "
+        "does not document; its documented MCP config is the user-level "
+        "`mcp_config.json`, which names no auto-approve key"
+    ),
+}
+
 
 # ---------------------------------------------------------------------------
 # AICM tag overlay
@@ -342,7 +357,6 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-ANTHROPIC-SDK-001": ["AIS-07", "STA-08"],
     "AAK-FLOWISE-001": ["STA-08"],
     "AAK-STDIO-001": ["AIS-07"],
-    "AAK-WINDSURF-001": ["AIS-07"],
     "AAK-NEO4J-001": ["IAM-02"],
     "AAK-CLAUDE-WIN-001": ["CCC-08"],
     "AAK-SEC-MD-001": ["STA-10"],
@@ -382,6 +396,10 @@ def _r(
     owasp_ast_references: list[str] | None = None,
     limitations: str = "",
 ) -> None:
+    if rule_id in RETIRED_RULE_IDS:
+        raise ValueError(
+            f"{rule_id} is retired ({RETIRED_RULE_IDS[rule_id]}); give the new rule a new id"
+        )
     RULES[rule_id] = RuleDefinition(
         rule_id=rule_id,
         title=title,
@@ -5468,30 +5486,6 @@ _r(
         "event, stdin or tool_input, so a destructured tool argument (`exec(`git log "
         "${branch}`)`) is not."
     ),
-)
-
-# ---------------------------------------------------------------------------
-# Windsurf MCP auto-registration hardening (AAK-WINDSURF-001)
-# ---------------------------------------------------------------------------
-
-_r(
-    "AAK-WINDSURF-001",
-    "Windsurf .windsurf/mcp.json auto-approves server registrations",
-    "A `.windsurf/mcp.json` file declares auto_approve:true or "
-    "auto_execute:true, or contains server `command:` entries with no "
-    "SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows "
-    "attackers can inject malicious MCP registrations via HTML prompt "
-    "injection when auto-approval is enabled.",
-    Severity.HIGH,
-    Category.MCP_CONFIG,
-    "Set auto_approve and auto_execute to false. Pin every server "
-    "command to a SHA-256 digest. Upgrade Windsurf to a version with "
-    "the registration confirmation flow enabled.",
-    sarif_name="WindsurfAutoApprove",
-    cve_references=["CVE-2026-30615"],
-    owasp_mcp_references=["MCP04:2025", "MCP09:2025"],
-    owasp_agentic_references=["ASI04", "ASI09"],
-    adversa_references=["ADV-RCE-05"],
 )
 
 # ---------------------------------------------------------------------------

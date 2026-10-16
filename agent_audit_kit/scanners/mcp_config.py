@@ -513,14 +513,6 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
             # Reference: Metere 2026, arXiv:2605.24248 — Attested Tool-Server Admission.
             findings.extend(_check_attestation(data, servers, rel_path, raw_text))
 
-        # AAK-WINDSURF-001: Windsurf-specific hardening (CVE-2026-30615). Windsurf
-        # reads `mcpServers` and nothing else, so this check keeps that key, and
-        # its old gate: an absent map still checks the file-level flags, a
-        # non-object one skips the file.
-        windsurf_servers = data.get("mcpServers", {})
-        if _is_windsurf_config(config_path) and isinstance(windsurf_servers, dict):
-            findings.extend(_check_windsurf_registration(data, windsurf_servers, config_path, rel_path, raw_text))
-
         # AAK-MCP-ZCODE-CVE-2026-88755-001: ZCode connects every server its
         # workspace config declares when the folder is opened, asking no one.
         if zcode:
@@ -588,79 +580,6 @@ def _check_zcode_autoconnect(data: dict, rel_path: str, raw_text: str) -> Findin
         f"opened, without asking: {'; '.join(started)}",
         line,
     )
-
-
-def _is_windsurf_config(config_path: Path) -> bool:
-    parts = tuple(p.lower() for p in config_path.parts)
-    return ".windsurf" in parts and config_path.name.lower() == "mcp.json"
-
-
-def _check_windsurf_registration(
-    data: dict,
-    servers: dict,
-    config_path: Path,
-    rel_path: str,
-    raw_text: str,
-) -> list[Finding]:
-    """Fire AAK-WINDSURF-001 for the CVE-2026-30615 attack shape."""
-    findings: list[Finding] = []
-
-    # 1. auto-approval flags at top level OR per-server.
-    flagged_keys: list[str] = []
-    for key in ("auto_approve", "auto_execute", "autoApprove", "autoExecute"):
-        if data.get(key) is True:
-            flagged_keys.append(key)
-    for name, cfg in servers.items():
-        if not isinstance(cfg, dict):
-            continue
-        for key in ("auto_approve", "auto_execute", "autoApprove", "autoExecute"):
-            if cfg.get(key) is True:
-                flagged_keys.append(f"{name}.{key}")
-    if flagged_keys:
-        findings.append(_make_finding(
-            "AAK-WINDSURF-001", rel_path,
-            f"Windsurf .windsurf/mcp.json auto-approves registrations ({', '.join(flagged_keys)})",
-            _find_line_number(raw_text, flagged_keys[0].split(".")[-1]),
-        ))
-
-    # 2. Parent directory group/world-writable (best-effort; tmp fixtures
-    #    often have 0755 so this is advisory, not hard-failing).
-    try:
-        parent = config_path.parent
-        if parent.exists():
-            mode = parent.stat().st_mode
-            if mode & 0o020 or mode & 0o002:  # group- or world-writable
-                findings.append(_make_finding(
-                    "AAK-WINDSURF-001", rel_path,
-                    f"Parent dir {parent} is group- or world-writable (mode {oct(mode & 0o777)})",
-                ))
-    except OSError:
-        pass
-
-    # 3. Server command without a SHA-256 pin. We accept either
-    #    server.sha256 / server.integrity fields OR an @sha256: suffix in
-    #    args, matching what pin_drift.py already uses for tool-surface
-    #    pins.
-    for name, cfg in servers.items():
-        if not isinstance(cfg, dict):
-            continue
-        command = cfg.get("command")
-        if not command:
-            continue
-        has_sha = any(k in cfg for k in ("sha256", "integrity", "digest"))
-        args = cfg.get("args") or []
-        if isinstance(args, list):
-            has_sha = has_sha or any(
-                isinstance(a, str) and "sha256:" in a for a in args
-            )
-        if not has_sha:
-            findings.append(_make_finding(
-                "AAK-WINDSURF-001", rel_path,
-                f"Windsurf server {name!r} has no SHA-256 pin on command {command!r}",
-                _find_line_number(raw_text, f'"{name}"'),
-            ))
-
-    return findings
 
 
 # ---------------------------------------------------------------------------

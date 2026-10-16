@@ -39,13 +39,13 @@ def test_findings_render_markdown_table() -> None:
     r = ScanResult(rules_evaluated=138, files_scanned=1, scan_duration_ms=1.0)
     r.findings.extend([
         _finding("AAK-STDIO-001", Severity.CRITICAL, line=42),
-        _finding("AAK-WINDSURF-001", Severity.HIGH, line=7),
+        _finding("AAK-MCP-003", Severity.HIGH, line=7),
         _finding("AAK-MCP-018", Severity.MEDIUM, line=15),
     ])
     body = render_markdown(r)
     assert "| Rule | Severity | Location | Suggestion |" in body
     # Sorted by severity ranking: critical first, then high, then medium.
-    assert body.index("AAK-STDIO-001") < body.index("AAK-WINDSURF-001") < body.index("AAK-MCP-018")
+    assert body.index("AAK-STDIO-001") < body.index("AAK-MCP-003") < body.index("AAK-MCP-018")
     # Pipe characters in remediation are escaped.
     assert r"fix it \| pipe" in body
 

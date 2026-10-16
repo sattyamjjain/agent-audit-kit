@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T19:26:02Z",
+  "last_updated": "2026-10-16T20:10:53Z",
   "aak_version": "0.6.22",
-  "rule_count": 411,
+  "rule_count": 410,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -2243,7 +2243,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 197,
+      "rule_density": 196,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -4376,16 +4376,6 @@
           "aicm_references": [
             "IAM-02"
           ]
-        },
-        {
-          "id": "AAK-WINDSURF-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-30615"
-          ],
-          "aicm_references": [
-            "AIS-07"
-          ]
         }
       ]
     },
@@ -5750,7 +5740,7 @@
     {
       "asi_id": "ASI09",
       "title": "Human-Agent Trust Exploitation",
-      "rule_density": 14,
+      "rule_density": 13,
       "rules": [
         {
           "id": "AAK-AGENT-TRUST-001",
@@ -5877,16 +5867,6 @@
           ],
           "aicm_references": [
             "IAM-16"
-          ]
-        },
-        {
-          "id": "AAK-WINDSURF-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-30615"
-          ],
-          "aicm_references": [
-            "AIS-07"
           ]
         }
       ]

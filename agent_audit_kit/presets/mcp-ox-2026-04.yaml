@@ -12,7 +12,6 @@ description: >-
   every AAK rule that maps to the OX Apr-2026 disclosure.
 rules:
   - AAK-STDIO-001
-  - AAK-WINDSURF-001
   - AAK-FLOWISE-001
   - AAK-ANTHROPIC-SDK-001
   - AAK-MCP-STDIO-CMD-INJ-001

@@ -2,7 +2,6 @@
 
 Covers:
 - AAK-STDIO-001     CVE-2026-30615 + Ox architectural class (see also test_stdio_injection.py)
-- AAK-WINDSURF-001  CVE-2026-30615 Windsurf auto-registration
 - AAK-NEO4J-001     CVE-2026-35402
 - AAK-CLAUDE-WIN-001 CVE-2026-35603
 - AAK-LOGINJ-001    CVE-2026-6494
@@ -11,7 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
@@ -20,78 +18,9 @@ import pytest
 from agent_audit_kit.scanners import (
     agent_config,
     log_injection,
-    mcp_config,
     marketplace_manifest,
     neo4j_cve,
 )
-
-
-# ---------------------------------------------------------------------------
-# AAK-WINDSURF-001
-# ---------------------------------------------------------------------------
-
-
-def test_windsurf_auto_approve_fires(tmp_path: Path) -> None:
-    windsurf_dir = tmp_path / ".windsurf"
-    windsurf_dir.mkdir()
-    (windsurf_dir / "mcp.json").write_text(
-        json.dumps({
-            "auto_approve": True,
-            "mcpServers": {
-                "bad": {"command": "node", "args": ["server.js"]},
-            },
-        })
-    )
-    findings, _ = mcp_config.scan(tmp_path)
-    ids = [f.rule_id for f in findings]
-    windsurf_hits = [f for f in findings if f.rule_id == "AAK-WINDSURF-001"]
-    assert windsurf_hits, f"expected AAK-WINDSURF-001; got {ids}"
-    assert any("auto_approve" in f.evidence for f in windsurf_hits)
-
-
-def test_windsurf_unpinned_command_fires(tmp_path: Path) -> None:
-    windsurf_dir = tmp_path / ".windsurf"
-    windsurf_dir.mkdir()
-    (windsurf_dir / "mcp.json").write_text(
-        json.dumps({
-            "auto_approve": False,
-            "mcpServers": {
-                "srv": {"command": "npx", "args": ["some-mcp-server"]},
-            },
-        })
-    )
-    findings, _ = mcp_config.scan(tmp_path)
-    assert any(
-        f.rule_id == "AAK-WINDSURF-001" and "no SHA-256 pin" in f.evidence
-        for f in findings
-    )
-
-
-def test_windsurf_pinned_command_is_quiet(tmp_path: Path) -> None:
-    windsurf_dir = tmp_path / ".windsurf"
-    windsurf_dir.mkdir()
-    (windsurf_dir / "mcp.json").write_text(
-        json.dumps({
-            "auto_approve": False,
-            "auto_execute": False,
-            "mcpServers": {
-                "srv": {
-                    "command": "npx",
-                    "args": ["some-mcp-server@1.2.3"],
-                    "sha256": "f" * 64,
-                },
-            },
-        })
-    )
-    findings, _ = mcp_config.scan(tmp_path)
-    assert not any(f.rule_id == "AAK-WINDSURF-001" for f in findings)
-
-
-def test_windsurf_rule_maps_cve_2026_30615() -> None:
-    from agent_audit_kit.rules.builtin import RULES
-
-    rule = RULES["AAK-WINDSURF-001"]
-    assert "CVE-2026-30615" in rule.cve_references
 
 
 # ---------------------------------------------------------------------------

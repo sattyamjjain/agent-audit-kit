@@ -263,14 +263,21 @@ def test_a_nested_server_map_is_not_read(tmp_path: Path) -> None:
     assert scan(tmp_path)[0] == []
 
 
-def test_windsurf_check_keeps_windsurfs_own_key(tmp_path: Path) -> None:
-    """Windsurf reads `mcpServers` only, so a `servers` map there is not its server."""
+def test_a_windsurf_config_is_still_read_by_the_server_rules(tmp_path: Path) -> None:
+    """AAK-WINDSURF-001 is retired, and with it the auto-approve and SHA-256 checks
+    that only ran on `.windsurf/mcp.json`. The file itself stays on the list every
+    server rule reads, so an unpinned package there is still reported, and an
+    auto-approve key there is not."""
     windsurf = tmp_path / ".windsurf"
     windsurf.mkdir(mode=0o700)
-    (windsurf / "mcp.json").write_text(
-        json.dumps({"servers": {"x": {"command": "/usr/local/bin/srv"}}}), encoding="utf-8"
-    )
-    assert "AAK-WINDSURF-001" not in {f.rule_id for f in scan(tmp_path)[0]}
+    (windsurf / "mcp.json").write_text(json.dumps({
+        "auto_approve": True,
+        "mcpServers": {"fs": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"]}},
+    }), encoding="utf-8")
+    findings, scanned = scan(tmp_path)
+    assert scanned == {".windsurf/mcp.json"}
+    assert {"AAK-MCP-005", "AAK-MCP-007"} <= {f.rule_id for f in findings}
+    assert not [f for f in findings if "auto" in f.evidence.lower() or "sha-256" in f.evidence.lower()]
 
 
 def test_a_top_level_array_is_skipped_not_a_crash(tmp_path: Path) -> None:

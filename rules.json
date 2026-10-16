@@ -11322,36 +11322,6 @@
       "sarif_name": "NoMcpServerAllowlist",
       "severity": "medium",
       "title": "No MCP server allowlist configured"
-    },
-    {
-      "adversa_references": [
-        "ADV-RCE-05"
-      ],
-      "aicm_references": [
-        "AIS-07"
-      ],
-      "auto_fixable": false,
-      "category": "mcp-config",
-      "cve_references": [
-        "CVE-2026-30615"
-      ],
-      "description": "A `.windsurf/mcp.json` file declares auto_approve:true or auto_execute:true, or contains server `command:` entries with no SHA-256 pin. CVE-2026-30615 (Windsurf 1.9544.26, CVSS 8.0) shows attackers can inject malicious MCP registrations via HTML prompt injection when auto-approval is enabled.",
-      "incident_references": [],
-      "limitations": "",
-      "owasp_agentic_references": [
-        "ASI04",
-        "ASI09"
-      ],
-      "owasp_ast_references": [],
-      "owasp_mcp_references": [
-        "MCP04:2025",
-        "MCP09:2025"
-      ],
-      "remediation": "Set auto_approve and auto_execute to false. Pin every server command to a SHA-256 digest. Upgrade Windsurf to a version with the registration confirmation flow enabled.",
-      "rule_id": "AAK-WINDSURF-001",
-      "sarif_name": "WindsurfAutoApprove",
-      "severity": "high",
-      "title": "Windsurf .windsurf/mcp.json auto-approves server registrations"
     }
   ],
   "schema": "agent-audit-kit/rule-bundle/3"

@@ -173,7 +173,7 @@ FRAMEWORKS = {
                 "rule_ids": [
                     "AAK-MCP-ATTEST-001",
                     "AAK-A2A-004", "AAK-A2A-005", "AAK-A2A-006", "AAK-A2A-011",
-                    "AAK-WINDSURF-001", "AAK-MCP-LINEAGE-STAINLESS-001",
+                    "AAK-MCP-LINEAGE-STAINLESS-001",
                     "AAK-MCP-TUNNEL-003",
                 ],
                 # ASI07 is where message integrity (TLS, replay, signing) now lives.
@@ -206,7 +206,6 @@ FRAMEWORKS = {
                     "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
                     "AAK-AGENT-001", "AAK-AGENT-002", "AAK-AGENT-003",
                     "AAK-AGENT-004",
-                    "AAK-WINDSURF-001",
                 ],
                 "also_covers_asi": ["ASI08", "ASI10"],
             },

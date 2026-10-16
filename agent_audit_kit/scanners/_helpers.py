@@ -120,9 +120,8 @@ def in_skip_dir(
     one directory still counts as under the root.
 
     This is for skip lists only. A check that classifies a file by an enclosing
-    directory (`hook_rce`'s `.claude/hooks`, `mcp_config`'s `.windsurf`) may
-    look above the root on purpose: `aak scan ~/.claude` depends on the root's
-    own name. `tests/test_skip_dirs.py` fails on a scanner that tests a skip set
+    directory (`hook_rce`'s `.claude/hooks`) may look above the root on
+    purpose: `aak scan ~/.claude` depends on the root's own name. `tests/test_skip_dirs.py` fails on a scanner that tests a skip set
     against `.parts` by hand instead of calling this.
     """
     return any(part in skip_dirs for part in _parts_below(path, root))
