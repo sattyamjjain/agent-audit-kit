@@ -1731,9 +1731,12 @@ _r(
     limitations=(
         "Looks for `sk-ant-` followed by 20 or more key characters in files whose "
         "extension is on a fixed list (`.json`, `.yml`, `.toml`, `.py`, `.ts`, `.sh` "
-        "and similar, plus `.env` files and Dockerfiles). A key in any other kind of "
-        "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) or a "
-        "README (`.md`) is missed, although the same content in a `.json` file is found."
+        "and similar, plus `.env` files, Dockerfiles and Markdown). In Markdown, a key "
+        "shaped like a documentation stand-in (one repeated character after the prefix, a "
+        "run of `x`, or REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME in it) is skipped. "
+        "A key in any other kind of "
+        "file is not reported: one pasted into a Jupyter notebook (`.ipynb`) is "
+        "missed, although the same content in a `.json` file is found."
     ),
 )
 
@@ -1753,7 +1756,8 @@ _r(
         "Looks for the `sk-` shapes OpenAI issues: legacy user keys and the "
         "`sk-proj-`, `sk-svcacct-` and `sk-admin-` families. A key with no such prefix "
         "is not recognised, so an Azure OpenAI key, which is 32 hexadecimal "
-        "characters, is not reported, although an `sk-proj-` key in the same place is."
+        "characters, is not reported, although an `sk-proj-` key in the same place is. "
+        "In Markdown, a key shaped like a documentation stand-in (one repeated character after the prefix, a run of `x`, or REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME in it) is skipped."
     ),
 )
 
@@ -1775,7 +1779,9 @@ _r(
         "lower-case assignment `aws_secret_access_key = <40 characters>`. The same "
         "secret as the upper-case environment variable, `AWS_SECRET_ACCESS_KEY=<40 "
         "characters>`, is not reported, so a file that holds the secret without its "
-        "key ID is missed."
+        "key ID is missed. In Markdown, a key shaped like a documentation stand-in (one "
+        "repeated character after the prefix, a run of `x`, REPLACE, YOUR, EXAMPLE, "
+        "PLACEHOLDER or CHANGEME in it, or the AWS IAM User Guide's example key) is skipped."
     ),
 )
 
@@ -1798,7 +1804,9 @@ _r(
         "16 or more characters whose Shannon entropy exceeds 4.5 bits per character. A "
         "secret drawn from a small alphabet cannot reach that: a 64-digit hexadecimal "
         "secret, such as the output of `openssl rand -hex 32`, tops out at 4 bits per "
-        "character and is never reported."
+        "character and is never reported. Markdown is not read, since at most 56% of its "
+        "findings on 1,909 README and docs files from public MCP repositories had a "
+        "credential's shape."
     ),
 )
 
@@ -1896,7 +1904,7 @@ _r(
         "Reads GitHub personal access tokens (`ghp_` classic, `github_pat_` "
         "fine-grained) and GitLab `glpat-` tokens. GitHub's other token types are not "
         "reported: OAuth (`gho_`), GitHub App user (`ghu_`) and installation (`ghs_`), "
-        "and refresh (`ghr_`) tokens."
+        "and refresh (`ghr_`) tokens. " + "In Markdown, a key shaped like a documentation stand-in (one repeated character after the prefix, a run of `x`, or REPLACE, YOUR, EXAMPLE, PLACEHOLDER or CHANGEME in it) is skipped."
     ),
 )
 

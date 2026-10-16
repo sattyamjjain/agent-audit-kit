@@ -643,16 +643,90 @@ def test_the_secret_rules_read_javascript_module_and_jsx_files(tmp_path: Path, n
     assert token not in hit.evidence
 
 
-def test_the_token_rules_do_not_read_markdown(tmp_path: Path) -> None:
-    """Measured, not assumed: behind a stand-in filter these rules found 16 values in
-    1,909 README and docs files of public MCP repositories, at most 9 of them shaped
-    like a credential, so Markdown stays unread (see ``SCANNABLE_EXTENSIONS``)."""
-    token = "gh" + "p_" + _varied(36)
-    (tmp_path / "README.md").write_text(f"## Setup\n\nexport GITHUB_TOKEN={token}\n", encoding="utf-8")
+# ---------------------------------------------------------------------------
+# The prefix rules read Markdown, behind a stand-in filter
+#
+# A README shows a provider's key format with a stand-in: `ghp_` and 36 `x`,
+# `sk-proj-REPLACE_ME_...`, AWS's own example key. AAK-SECRET-001, -002, -003 and
+# -008 read `.md` and skip a value that is one repeated character after its
+# prefix, holds REPLACE, YOUR, EXAMPLE, PLACEHOLDER, CHANGEME or a run of `x`, or
+# is the documented AWS example. On 1,909 README and docs files from 1,883 public
+# MCP repositories they found nothing. AAK-SECRET-004 stays off Markdown: it
+# found 16 values there, at most 56% of them shaped like a credential.
+# ---------------------------------------------------------------------------
+
+_MD_KEYS = [
+    ("AAK-SECRET-001", "sk-" + "ant-" + "api03-" + _varied(40)),
+    ("AAK-SECRET-002", "sk-" + "proj-" + _varied(40)),
+    ("AAK-SECRET-002", "sk-" + _varied(40)),
+    ("AAK-SECRET-003", "AK" + "IA" + "Q7ZWM2RT5YP8KD3N"),
+    ("AAK-SECRET-003", "aws_secret_access_key = " + _varied(40)),
+    ("AAK-SECRET-008", "gh" + "p_" + _varied(36)),
+    ("AAK-SECRET-008", "github" + "_pat_" + _varied(22) + "_" + _varied(59)),
+    ("AAK-SECRET-008", "gl" + "pat-" + _varied(24)),
+]
+
+
+@pytest.mark.parametrize(("rule_id", "key"), _MD_KEYS, ids=[f"{r}-{k[:7]}" for r, k in _MD_KEYS])
+def test_the_prefix_rules_read_a_key_pasted_into_markdown(tmp_path: Path, rule_id: str, key: str) -> None:
+    (tmp_path / "README.md").write_text(f"## Setup\n\n```sh\nexport SERVICE={key}\n```\n", encoding="utf-8")
 
     findings, scanned = scan(tmp_path)
 
-    assert findings == [] and "README.md" not in scanned
+    (hit,) = _hits(findings, rule_id)
+    assert hit.line_number == 4
+    assert key not in hit.evidence
+    assert "README.md" in scanned
+
+
+_MD_STAND_INS = [
+    # One repeated character after the prefix, in any case and across `-` and `_`.
+    "gh" + "p_" + "x" * 36,
+    "gh" + "p_" + "A" * 36,
+    "github" + "_pat_" + "A" * 22 + "_" + "a" * 59,
+    "sk-" + "proj-" + "a" * 40,
+    "sk-" + "ant-" + "api03-" + "A" * 40,
+    "sk-" + "Q" * 40,
+    "gl" + "pat-" + "Z" * 24,
+    "AK" + "IA" + "A" * 16,
+    # A placeholder word, in any case.
+    "sk-" + "proj-" + "REPLACE_ME_" + _varied(30),
+    "sk-" + "ant-" + "api03-" + "your-key-" + _varied(30),
+    "gh" + "p_" + "EXAMPLE" + _varied(29),
+    "sk-" + "PLACEHOLDER" + _varied(20),
+    "gl" + "pat-" + "ChangeMe" + _varied(14),
+    # A run of x.
+    "sk-" + "proj-" + _varied(12) + "xxxx" + _varied(12),
+    "gh" + "p_" + _varied(16) + "XXXX" + _varied(16),
+    "AK" + "IA" + "XXXX" + "Q7ZWM2RT5YP8",
+    # The example key the AWS IAM User Guide documents ("Manage access keys for IAM users").
+    "AK" + "IA" + "IOSFODNN7" + "EXAMPLE",
+    "aws_secret_access_key = " + "wJalrXUtnFEMI/K7MDENG/bPxRfiCY" + "EXAMPLEKEY",
+]
+
+
+@pytest.mark.parametrize("stand_in", _MD_STAND_INS, ids=lambda v: v[:14])
+def test_a_stand_in_key_in_markdown_is_not_reported(tmp_path: Path, stand_in: str) -> None:
+    (tmp_path / "README.md").write_text(f"## Setup\n\n```sh\nexport SERVICE={stand_in}\n```\n", encoding="utf-8")
+
+    assert scan(tmp_path)[0] == []
+
+
+@pytest.mark.parametrize("stand_in", [_MD_STAND_INS[0], _MD_STAND_INS[8], _MD_STAND_INS[16]], ids=lambda v: v[:14])
+def test_the_stand_in_filter_is_for_markdown_only(tmp_path: Path, stand_in: str) -> None:
+    """In an env file, a config or a script a stand-in is still reported: it is where
+    the real key will be pasted."""
+    (tmp_path / "deploy.sh").write_text(f"export SERVICE={stand_in}\n", encoding="utf-8")
+
+    assert [f.rule_id for f in scan(tmp_path)[0]] != []
+
+
+def test_secret_004_does_not_read_markdown(tmp_path: Path) -> None:
+    text = "## Config\n\n```\nSESSION_SECRET=aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5zA7b\n```\n"
+    (tmp_path / "README.md").write_text(text, encoding="utf-8")
+    (tmp_path / "app.cfg").write_text(text, encoding="utf-8")
+
+    assert [f.file_path for f in scan(tmp_path)[0] if f.rule_id == "AAK-SECRET-004"] == ["app.cfg"]
 
 
 # ---------------------------------------------------------------------------

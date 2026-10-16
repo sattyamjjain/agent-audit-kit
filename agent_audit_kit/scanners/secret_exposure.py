@@ -113,23 +113,47 @@ MCP_ENV_SECRET_KEYS = re.compile(
 # beside `.js` and `.ts`, so a token in `src/config.mjs` or `app/page.tsx` was never
 # read while the same line in `config.js` was reported.
 #
-# Markdown is left out on a measurement. With a stand-in filter (a body of one repeated
-# character, REPLACE, YOUR, EXAMPLE, PLACEHOLDER, CHANGEME or a run of `x` in the value,
-# AWS's documented example key), these rules found 16 values in 1,909 README and docs
-# files from 1,883 public MCP repositories (2026-10-17), all AAK-SECRET-004, and at most
-# 9 of them had a credential's shape; the rest were URLs and prose. The prefix rules
-# (001, 002, 003, 008) found nothing there. AAK-SECRET-005 does read Markdown, for a
+# Markdown is read by the prefix rules alone (AAK-SECRET-001, -002, -003 and -008),
+# behind a stand-in filter (`_is_placeholder`), on a measurement: on 1,909 README and
+# docs files from 1,883 public MCP repositories (2026-10-17) they found nothing, and
+# the filter removed one stand-in, AWS's example key. AAK-SECRET-004 does not read
+# Markdown: it found 16 values there, and at most 9 of them (56%) had a credential's
+# shape; the rest were URLs and prose. AAK-SECRET-005 reads Markdown too, for a
 # private key written out whole (`_check_private_key_files`).
 SCANNABLE_EXTENSIONS = frozenset({
     ".env", ".json", ".yml", ".yaml", ".toml", ".cfg",
     ".ini", ".conf", ".xml", ".properties", ".sh", ".bash",
     ".zsh", ".py", ".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx",
     ".rb", ".go", ".rs", ".java", ".kt", ".swift", ".dockerfile", ".tf", ".hcl",
+    ".md",
 })
 
 # What documentation writes where a key goes: REPLACE, YOUR, EXAMPLE, PLACEHOLDER,
 # CHANGEME or a run of four `x`, in any case.
 _PLACEHOLDER_WORDS = re.compile(r"replace|your|example|placeholder|changeme|x{4}", re.IGNORECASE)
+# The full example values a provider documents for the keys these rules read: the
+# access key ID and secret access key in the AWS IAM User Guide ("Manage access keys
+# for IAM users"). They hold EXAMPLE as well; listing them says where they come from.
+# Anthropic, OpenAI, GitHub and GitLab document a prefix, never a whole value.
+_DOCUMENTED_EXAMPLES = frozenset({
+    "AKIAIOSFODNN7EXAMPLE",
+    "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+})
+_KEY_PREFIX = re.compile(
+    r"sk-ant-(?:api|admin)\d\d-|sk-ant-|sk-(?:proj|svcacct|admin)-|sk-|github_pat_|ghp_|glpat-|AKIA"
+)
+
+
+def _is_placeholder(value: str) -> bool:
+    """Whether a key-shaped value is a documentation stand-in: a documented example, a
+    placeholder word or a run of `x` in it, or one repeated character after its
+    provider's prefix (case and `-`/`_` separators ignored, so `github_pat_AAAA_aaaa`
+    counts)."""
+    if value in _DOCUMENTED_EXAMPLES or _PLACEHOLDER_WORDS.search(value):
+        return True
+    prefix = _KEY_PREFIX.match(value)
+    body = value[prefix.end():] if prefix else value
+    return len({c for c in body.lower() if c not in "-_"}) <= 1
 
 def _shannon_entropy(s: str) -> float:
     if not s:
@@ -343,9 +367,16 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # The walker chose this file by its lower-cased suffix, so every rule below reads
     # it the same way: `KEY.JSON` is a JSON file.
     suffix = file_path.suffix.lower()
+    docs = suffix == ".md"
+
+    def stand_in(value: str) -> bool:
+        """A documentation stand-in in Markdown, which the prefix rules skip."""
+        return docs and _is_placeholder(value)
 
     # AAK-SECRET-001: Anthropic API key
     for match in ANTHROPIC_KEY.finditer(content):
+        if stand_in(match.group()):
+            continue
         findings.append(_make_finding(
             "AAK-SECRET-001", rel_path,
             f"Found Anthropic API key: {match.group()[:12]}...",
@@ -354,7 +385,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
 
     # AAK-SECRET-002: OpenAI API key (exclude Anthropic keys)
     for match in OPENAI_KEY.finditer(content):
-        if not match.group().startswith("sk-ant-"):
+        if not match.group().startswith("sk-ant-") and not stand_in(match.group()):
             findings.append(_make_finding(
                 "AAK-SECRET-002", rel_path,
                 f"Found OpenAI API key: {match.group()[:12]}...",
@@ -363,12 +394,16 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
 
     # AAK-SECRET-003: AWS credentials
     for match in AWS_ACCESS_KEY.finditer(content):
+        if stand_in(match.group()):
+            continue
         findings.append(_make_finding(
             "AAK-SECRET-003", rel_path,
             f"Found AWS access key: {match.group()[:8]}...",
             lines.at(match.start()),
         ))
     for match in AWS_SECRET_KEY.finditer(content):
+        if stand_in(match.group()[-40:]):  # the 40-character key after the `=`
+            continue
         findings.append(_make_finding(
             "AAK-SECRET-003", rel_path,
             "Found AWS secret access key assignment",
@@ -378,6 +413,8 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # AAK-SECRET-008: GitHub/GitLab personal access tokens
     for match in GITHUB_TOKEN.finditer(content):
         token = match.group()
+        if stand_in(token):
+            continue
         # The evidence shows the prefix and 4 characters after it: 8 for ``ghp_``, 15
         # for ``github_pat_``. `--verify-secrets` reads the prefix back from it.
         shown = token[:15] if token.startswith("github_pat_") else token[:8]
@@ -387,6 +424,8 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
             lines.at(match.start()),
         ))
     for match in GITLAB_TOKEN.finditer(content):
+        if stand_in(match.group()):
+            continue
         findings.append(_make_finding(
             "AAK-SECRET-008", rel_path,
             f"Found GitLab token: {match.group()[:10]}...",
@@ -401,9 +440,10 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
             _find_line_number(content, "service_account"),
         ))
 
-    # AAK-SECRET-004: Generic high-entropy secrets
+    # AAK-SECRET-004: Generic high-entropy secrets. Not in Markdown, where it measured
+    # at most 56% precision (see SCANNABLE_EXTENSIONS).
     yaml = suffix in (".yml", ".yaml")
-    for line_num, line in enumerate(content.splitlines(), 1):
+    for line_num, line in enumerate([] if docs else content.splitlines(), 1):
         # Most lines name nothing secret-looking; one pass tells them apart
         if not SECRET_KEY_NAMES.search(line):
             continue

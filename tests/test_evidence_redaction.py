@@ -393,6 +393,9 @@ def canary_project(tmp_path: Path) -> Path:
     (root / "keys" / "deploy_key").write_text(
         "-----BEGIN " + "OPENSSH PRIVATE KEY-----\n" + (CANARY + _body(48)) * 2 + "\n"
         "-----END " + "OPENSSH PRIVATE KEY-----\n", encoding="utf-8")
+    (root / "docs").mkdir()
+    (root / "docs" / "setup.md").write_text(
+        f"## Setup\n\n```sh\nexport GITHUB_TOKEN={GHP}\nexport OPENAI_API_KEY={SK_PROJ}\n```\n", encoding="utf-8")
     (root / "src" / "auth.py").write_text(
         f'import logging\n_logger = logging.getLogger(__name__)\n_logger.info("auth %s", "{GHP}")\n'
         f'_logger.info("auth %s", github_token)\n', encoding="utf-8")
@@ -408,6 +411,8 @@ NEWLY_READ = {
     ("deploy/docker-compose.yml", "AAK-SECRET-004"),
     ("keys/deploy_key", "AAK-SECRET-005"),
     ("src/auth.py", "AAK-SPLUNK-TOKLOG-001"),
+    ("docs/setup.md", "AAK-SECRET-008"),
+    ("docs/setup.md", "AAK-SECRET-002"),
 }
 
 
