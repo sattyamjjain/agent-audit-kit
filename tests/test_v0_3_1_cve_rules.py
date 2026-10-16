@@ -62,6 +62,34 @@ def test_neo4j_patched_pin_is_quiet(tmp_path: Path) -> None:
     assert not any(f.rule_id == "AAK-NEO4J-001" for f in findings)
 
 
+@pytest.mark.parametrize(("name", "text", "line"), [
+    # The pin took the first number after the name, had no place for extras, and
+    # never opened the pyproject.toml its docstring promised.
+    ("requirements.txt", "mcp-neo4j-cypher<0.6.0\n", 1),
+    ("requirements.txt", "mcp-neo4j-cypher[all]==0.5.0\n", 1),
+    ("requirements-dev.txt", "pytest\nmcp-neo4j-cypher>=0.4,<0.7  # upper bound only\n", 2),
+    ("dev-requirements.txt", "mcp-neo4j-cypher~=0.5.0\n", 1),
+    ("pyproject.toml", '[project]\nname = "d"\nversion = "0.1.0"\ndependencies = ["mcp-neo4j-cypher==0.5.0"]\n', 4),
+    ("pyproject.toml", '[tool.poetry.dependencies]\npython = "^3.11"\nmcp-neo4j-cypher = "^0.5.0"\n', 3),
+])
+def test_neo4j_pin_reads_ranges_extras_and_pyproject(tmp_path: Path, name: str, text: str, line: int) -> None:
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    findings, _ = neo4j_cve.scan(tmp_path)
+    assert [f.line_number for f in findings if f.rule_id == "AAK-NEO4J-001"] == [line]
+
+
+@pytest.mark.parametrize(("name", "text"), [
+    ("requirements.txt", "mcp-neo4j-cypher\n"),                     # no version stated
+    ("requirements.txt", "mcp-neo4j-cypher[all]>=0.6.0\n"),
+    ("pyproject.toml", '[project]\nname = "d"\ndependencies = ["mcp-neo4j-cypher>=0.6.0,<1"]\n'),
+    ("package.json", '{"dependencies": {"mcp-neo4j-cypher": "0.5.0"}}'),  # a PyPI package; npm has none
+])
+def test_neo4j_pin_stays_quiet(tmp_path: Path, name: str, text: str) -> None:
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    findings, _ = neo4j_cve.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-NEO4J-001" for f in findings)
+
+
 def test_neo4j_apoc_pattern_fires(tmp_path: Path) -> None:
     (tmp_path / "server.py").write_text(
         'q = "CALL apoc.load.json(\'https://attacker/\')"\n'

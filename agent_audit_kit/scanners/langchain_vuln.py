@@ -4,9 +4,16 @@ Fires AAK-LANGCHAIN-001..003. AAK-LANGCHAIN-001 and -003 are version pins on
 `langchain-core`, the PyPI distribution both advisories name: CVE-2026-34070
 (load_prompt path traversal, fixed in 1.2.22) and CVE-2025-68664
 (serialization injection). They read Python manifests only, the requirements
-files below and pyproject.toml, and match that one distribution name in any
-PEP 503 spelling. AAK-LANGCHAIN-002 pattern-matches load_prompt() calls with
+files below and every pyproject.toml, and match that one distribution name in
+any PEP 503 spelling. AAK-LANGCHAIN-002 pattern-matches load_prompt() calls with
 user-controlled paths in source code.
+
+The pins used to take the first number after the name from a pattern anchored
+at the start of a requirement line, so `langchain-core<1.2.22`, which admits
+only affected releases, read as the fix and was silent, and no pyproject.toml
+ever matched: a TOML string starts with a quote. A manifest is now read as the
+CVE pin table reads it (`_dependency_pins`), and a range is reported when it
+admits an affected release.
 
 Both pins used to read package.json as well, and compared any npm dependency
 whose name contained "langchain" against these Python floors. Neither advisory
@@ -28,6 +35,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._dependency_pins import DependencyPin, manifest_declarations, pinned_dependency
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
@@ -38,38 +46,10 @@ _REQUIREMENTS_NAMES = (
     "dev-requirements.txt",
 )
 
-_LANGCHAIN_PATH_TRAVERSAL_PATCHED = (1, 2, 22)
-_LANGCHAIN_DESERIALIZE_PATCHED = (0, 3, 14)
-
-
-def _parse_version(spec: str) -> tuple[int, int, int] | None:
-    m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", spec)
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
-
-
-def _version_lt(a: tuple[int, int, int], b: tuple[int, int, int]) -> bool:
-    return a < b
-
-
-# `langchain-core` as PEP 503 normalises it: any run of `-`, `_` or `.` between
-# the two words, in any case, and an optional extras bracket. Anchored at the
-# start of a requirement line, with the version straight after the name, so
-# `langchain-community` or a longer name that starts with `langchain-core` is
-# never read as it.
-#
-# Indentation is `[^\S\n]*` and each optional part takes its own trailing
-# blanks. `^\s*` read across a run of blank lines from every line start in it,
-# and the three `\s*` around the optional extras and operator split a blank run
-# every possible way, so a crafted requirements file grew with the cube of the
-# run. The match now starts on the requirement's own line, which also gives
-# `find_line_number` a key it can find: a match that opened with blank lines
-# contained a newline, so the finding had no line.
-_REQ_PIN_RE = re.compile(
-    r"""^[^\S\n]*(langchain[-_.]+core)\s*(?:\[[^\]\n]*\]\s*)?(?:(?:==|>=|<=|<|>|~=|!=)\s*)?([0-9][0-9a-zA-Z.\-_]*)""",
-    re.MULTILINE | re.IGNORECASE,
-)
+# Both read only a stated version: the old pattern needed one, and an unpinned
+# `langchain-core` installs a release above both floors.
+_PATH_TRAVERSAL = DependencyPin(("langchain-core",), (1, 2, 22), ecosystem="py")
+_DESERIALIZE = DependencyPin(("langchain-core",), (0, 3, 14), ecosystem="py")
 
 _LOAD_PROMPT_RE = re.compile(
     r"\bload_prompt(?:_from_config)?\s*\(\s*(?:f?['\"][^'\"]*\{[^}]*\}[^'\"]*['\"]|[a-zA-Z_][\w\.]*)\s*[,)]",
@@ -103,31 +83,18 @@ def _iter_python_sources(project_root: Path) -> list[Path]:
     return out
 
 
-def _check_requirements_text(text: str, rel: str) -> list[Finding]:
+def _check_manifest(path: Path, text: str, rel: str) -> list[Finding]:
     findings: list[Finding] = []
-    for match in _REQ_PIN_RE.finditer(text):
-        name = match.group(1).lower()
-        version = _parse_version(match.group(2))
-        if version is None:
-            continue
-        if _version_lt(version, _LANGCHAIN_PATH_TRAVERSAL_PATCHED):
-            findings.append(
-                make_finding(
-                    "AAK-LANGCHAIN-001",
-                    rel,
-                    f"{name} pinned at {match.group(2)} — CVE-2026-34070 patched in 1.2.22",
-                    line_number=find_line_number(text, match.group(0)),
-                )
-            )
-        if _version_lt(version, _LANGCHAIN_DESERIALIZE_PATCHED):
-            findings.append(
-                make_finding(
-                    "AAK-LANGCHAIN-003",
-                    rel,
-                    f"{name} pinned at {match.group(2)} — CVE-2025-68664 deserialization fix in 0.3.14+",
-                    line_number=find_line_number(text, match.group(0)),
-                )
-            )
+    found = manifest_declarations(path, text)
+    for rule_id, pin, tail in (
+        ("AAK-LANGCHAIN-001", _PATH_TRAVERSAL, "CVE-2026-34070 patched in 1.2.22"),
+        ("AAK-LANGCHAIN-003", _DESERIALIZE, "CVE-2025-68664 deserialization fix in 0.3.14+"),
+    ):
+        hit = pinned_dependency(path, text, pin, found)
+        if hit is not None:
+            findings.append(make_finding(
+                rule_id, rel, f"langchain-core referenced as {hit.quoted} — {tail}", line_number=hit.line,
+            ))
     return findings
 
 
@@ -156,7 +123,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             text = manifest.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        findings.extend(_check_requirements_text(text, rel))
+        findings.extend(_check_manifest(manifest, text, rel))
     for py in _iter_python_sources(project_root):
         rel = str(py.relative_to(project_root))
         scanned.add(rel)

@@ -26,7 +26,12 @@ Two detections:
    `validateUrl` allow-list helper without `redirect: 'manual'` or
    `redirect: 'error'`.
 2. AAK-LANGCHAIN-SSRF-REDIR-001 (HIGH) — pin check on
-   `langchain-text-splitters < 1.1.2`.
+   `langchain-text-splitters < 1.1.2`. It took the first number after the
+   name, so `langchain-text-splitters<1.1.2`, which admits only affected
+   releases, read as the fix and was silent, and the extras in
+   `langchain-text-splitters[x]==1.1.2` read as a name with no version and
+   fired. Manifests are now read as the CVE pin table reads them
+   (`_dependency_pins`).
 """
 
 from __future__ import annotations
@@ -37,15 +42,15 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
+from ._dependency_pins import DependencyPin, pinned_dependency
 from ._helpers import in_skip_dir, find_line_number, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
 
 _PY_PATCHED = (1, 1, 2)
 _SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
-_REQ_LINE_RE = re.compile(
-    r"^\s*(?P<name>[A-Za-z0-9_.\-]+)\s*(?P<op>==|>=|<=|~=|!=|>|<)?\s*(?P<ver>[0-9][0-9A-Za-z.\-+]*)?"
-)
+# A bare name is reported too, as the requirements reader always reported one.
+_PIN = DependencyPin(("langchain-text-splitters",), _PY_PATCHED, ecosystem="py", report_unversioned=True)
 
 # Names of allow-list/SSRF-guard helpers we recognise. Anything that
 # matches one of these followed by a fetch is a candidate.
@@ -254,51 +259,30 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
 def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
 
-    def _fire(rel: str, raw: str, line: int | None) -> None:
+    def _fire(rel: str, how: str, line: int | None) -> None:
         findings.append(make_finding(
             "AAK-LANGCHAIN-SSRF-REDIR-001",
             rel,
-            f"langchain-text-splitters pinned at {raw!r} — "
+            f"langchain-text-splitters {how} — "
             "CVE-2026-41481 SSRF redirect bypass is patched in 1.1.2.",
             line_number=line,
         ))
 
-    for req in project_root.glob("requirements*.txt"):
+    # The root requirements files and pyproject.toml, read as the CVE pin table
+    # reads them (`_dependency_pins`).
+    manifests = sorted(project_root.glob("requirements*.txt"))
+    if (project_root / "pyproject.toml").is_file():
+        manifests.append(project_root / "pyproject.toml")
+    for manifest in manifests:
         try:
-            text = req.read_text(encoding="utf-8", errors="replace")
+            text = manifest.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        rel = str(req.relative_to(project_root))
-        for lineno, line in enumerate(text.splitlines(), 1):
-            raw = line.split("#", 1)[0].strip()
-            if not raw:
-                continue
-            m = _REQ_LINE_RE.match(raw)
-            if not m:
-                continue
-            name = (m.group("name") or "").lower()
-            if name != "langchain-text-splitters":
-                continue
-            ver = m.group("ver")
-            parsed = _parse_semver(ver)
-            if parsed is None or parsed < _PY_PATCHED:
-                scanned.add(rel)
-                _fire(rel, ver or "<no-version>", lineno)
-
-    pyproject = project_root / "pyproject.toml"
-    if pyproject.is_file():
-        try:
-            text = pyproject.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            text = ""
-        for m in re.finditer(
-            r"""['"]langchain-text-splitters['"]?\s*[=<>~]=?\s*['"]?([0-9][0-9A-Za-z.\-+]*)['"]?""",
-            text,
-        ):
-            parsed = _parse_semver(m.group(1))
-            if parsed and parsed < _PY_PATCHED:
-                scanned.add("pyproject.toml")
-                _fire("pyproject.toml", m.group(1), find_line_number(text, m.group(0)))
+        hit = pinned_dependency(manifest, text, _PIN)
+        if hit is not None:
+            rel = str(manifest.relative_to(project_root))
+            scanned.add(rel)
+            _fire(rel, f"referenced as {hit.quoted}", hit.line)
 
     for lock_name in ("poetry.lock", "Pipfile.lock", "uv.lock"):
         lock = project_root / lock_name
@@ -319,7 +303,7 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
             if parsed and parsed < _PY_PATCHED:
                 rel = lock_name
                 scanned.add(rel)
-                _fire(rel, m.group(1), find_line_number(text, m.group(0)))
+                _fire(rel, f"pinned at {m.group(1)!r}", find_line_number(text, m.group(0)))
 
     return findings
 

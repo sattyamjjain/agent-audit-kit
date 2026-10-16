@@ -3,8 +3,11 @@
 Home of AAK-MCPFRAME-001 — mcp-framework < 0.2.22 HTTP body-size DoS
 (CVE-2026-39313). Two detections:
 
-1. Pin-check on `package.json` (dependencies / devDependencies /
-   peerDependencies) for `mcp-framework` at any version below 0.2.22.
+1. Pin-check on `package.json` for `mcp-framework` at any version below
+   0.2.22 (and `next-ai-draw-io` below 0.4.15, AAK-NEXT-AI-DRAW-001). It took
+   the first number of the range, so `"<0.2.22"`, which admits only affected
+   releases, read as the fix and was silent; it is now read as the CVE pin
+   table reads it (`_dependency_pins`).
 2. Pattern-check on `.ts` / `.js` / `.mjs` / `.tsx` files where a
    readRequestBody-style chunk-concat accumulates body bytes into a
    string without consulting a `Content-Length` guard or a
@@ -14,18 +17,22 @@ Home of AAK-MCPFRAME-001 — mcp-framework < 0.2.22 HTTP body-size DoS
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
+from ._dependency_pins import DependencyPin, manifest_declarations, pinned_dependency
 from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
 
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
 
-_SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
+# An unreadable spec (`latest`, `*`, a git or file reference) is reported, as the
+# first-number reader always reported one.
+_MCPFRAME_PIN = DependencyPin(("mcp-framework",), _MCPFRAME_PATCHED, ecosystem="js", report_unversioned=True)
+_NEXT_AI_DRAW_PIN = DependencyPin(("next-ai-draw-io",), _NEXT_AI_DRAW_PATCHED, ecosystem="js",
+                                  report_unversioned=True)
 
 _JS_EXTS = (".ts", ".tsx", ".js", ".mjs", ".cjs")
 
@@ -91,13 +98,6 @@ def _strip_comments(text: str) -> str:
     return sub_comments(_LINE_COMMENT_RE, _LINE_ONLY_COMMENT_RE, text)
 
 
-def _parse_semver(spec: str) -> tuple[int, int, int] | None:
-    m = _SEMVER_RE.match(str(spec))
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
-
-
 def _check_package_json(project_root: Path, scanned: set[str]) -> list[Finding]:
     findings: list[Finding] = []
     pkg = project_root / "package.json"
@@ -106,35 +106,23 @@ def _check_package_json(project_root: Path, scanned: set[str]) -> list[Finding]:
     rel = str(pkg.relative_to(project_root))
     scanned.add(rel)
     try:
-        data = json.loads(pkg.read_text(encoding="utf-8", errors="replace"))
-    except json.JSONDecodeError:
+        text = pkg.read_text(encoding="utf-8", errors="replace")
+    except OSError:
         return findings
-    if not isinstance(data, dict):
-        return findings
-    for section in ("dependencies", "devDependencies", "peerDependencies"):
-        deps = data.get(section) or {}
-        if not isinstance(deps, dict):
-            continue
-        spec = deps.get("mcp-framework")
-        if spec:
-            parsed = _parse_semver(str(spec))
-            if parsed is None or parsed < _MCPFRAME_PATCHED:
-                findings.append(make_finding(
-                    "AAK-MCPFRAME-001",
-                    rel,
-                    f"mcp-framework pinned at {spec!r} in {section} — "
-                    "CVE-2026-39313 HTTP-body DoS is patched in 0.2.22.",
-                ))
-        draw_spec = deps.get("next-ai-draw-io")
-        if draw_spec:
-            parsed = _parse_semver(str(draw_spec))
-            if parsed is None or parsed < _NEXT_AI_DRAW_PATCHED:
-                findings.append(make_finding(
-                    "AAK-NEXT-AI-DRAW-001",
-                    rel,
-                    f"next-ai-draw-io pinned at {draw_spec!r} in {section} — "
-                    "CVE-2026-40608 body-accumulation DoS is patched in 0.4.15.",
-                ))
+    found = manifest_declarations(pkg, text)
+    for rule_id, pin, name, tail in (
+        ("AAK-MCPFRAME-001", _MCPFRAME_PIN, "mcp-framework",
+         "CVE-2026-39313 HTTP-body DoS is patched in 0.2.22."),
+        ("AAK-NEXT-AI-DRAW-001", _NEXT_AI_DRAW_PIN, "next-ai-draw-io",
+         "CVE-2026-40608 body-accumulation DoS is patched in 0.4.15."),
+    ):
+        hit = pinned_dependency(pkg, text, pin, found)
+        if hit is not None:
+            # No line, as before: giving package.json findings one re-keys
+            # their code-scanning alerts.
+            findings.append(make_finding(
+                rule_id, rel, f"{name} referenced as {hit.quoted} in {hit.declaration.section} — {tail}",
+            ))
     return findings
 
 

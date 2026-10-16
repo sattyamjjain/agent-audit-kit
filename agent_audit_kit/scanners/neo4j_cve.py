@@ -1,10 +1,19 @@
 """Neo4j Cypher MCP read-only bypass scanner (AAK-NEO4J-001).
 
 Two detections:
-    1. Version-pin check — mcp-neo4j-cypher < 0.6.0 in requirements.txt
-       / pyproject.toml / package.json.
+    1. Version-pin check — mcp-neo4j-cypher < 0.6.0 in the root
+       requirements files and pyproject.toml. The server is a PyPI package,
+       so package.json is not read.
     2. Code pattern — `read_only=True` combined with any `CALL apoc.*`
        or `db.cypher.runWrite` reference in the same file.
+
+The pin used to take the first number after the name, from a pattern with no
+place for extras, and this docstring promised pyproject.toml while only four
+requirements files were opened, so `mcp-neo4j-cypher<0.6.0`, which admits only
+affected releases, `mcp-neo4j-cypher[all]==0.5.0` and any pyproject.toml were
+silent. A manifest is now read as the CVE pin table reads it
+(`_dependency_pins`), and a range is reported when it admits an affected
+release.
 
 References:
 - CVE-2026-35402: https://nvd.nist.gov/vuln/detail/CVE-2026-35402
@@ -17,50 +26,34 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
+from agent_audit_kit.scanners._dependency_pins import DependencyPin, pinned_dependency
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
-# Indentation is `[^\S\n]*` and the operator takes its own trailing blanks:
-# `^\s*` read across a run of blank lines from every line start in it, and the
-# two `\s*` around the optional operator split a blank run every possible way,
-# so a crafted requirements file grew with the square of the run. The match now
-# starts on the requirement's own line, so `find_line_number` can find it (a
-# match that opened with blank lines left the finding without a line).
-_REQ_PIN_RE = re.compile(
-    r"""^[^\S\n]*(mcp-neo4j-cypher)\s*(?:(?:==|>=|<=|<|>|~=|!=)\s*)?([0-9][0-9a-zA-Z.\-_]*)""",
-    re.MULTILINE,
-)
+# A stated version only: the old pattern needed one, so an unpinned line was
+# never reported.
+_PIN = DependencyPin(("mcp-neo4j-cypher",), (0, 6, 0), ecosystem="py")
 
-_PACKAGE_LOCKFILE_NAMES = ("requirements.txt", "requirements-dev.txt", "requirements-prod.txt", "dev-requirements.txt")
+_MANIFEST_NAMES = (
+    "requirements.txt", "requirements-dev.txt", "requirements-prod.txt", "dev-requirements.txt",
+    "pyproject.toml",
+)
 
 _APOC_CALL_RE = re.compile(r"CALL\s+apoc\.", re.IGNORECASE)
 _RUNWRITE_RE = re.compile(r"\bdb\.cypher\.runWrite\b|\brun_write\b")
 _READ_ONLY_RE = re.compile(r"read_only\s*=\s*True")
 
 
-def _parse_version(spec: str) -> tuple[int, int, int] | None:
-    m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", spec)
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
-
-
-def _check_requirements_file(path: Path, text: str, rel: str) -> list[Finding]:
-    findings: list[Finding] = []
-    for match in _REQ_PIN_RE.finditer(text):
-        version = _parse_version(match.group(2))
-        if version is None:
-            continue
-        if version < (0, 6, 0):
-            findings.append(
-                make_finding(
-                    "AAK-NEO4J-001",
-                    rel,
-                    f"mcp-neo4j-cypher pinned at {match.group(2)} — CVE-2026-35402 patched in 0.6.0",
-                    line_number=find_line_number(text, match.group(0)),
-                )
-            )
-    return findings
+def _check_manifest(path: Path, text: str, rel: str) -> list[Finding]:
+    hit = pinned_dependency(path, text, _PIN)
+    if hit is None:
+        return []
+    return [make_finding(
+        "AAK-NEO4J-001",
+        rel,
+        f"mcp-neo4j-cypher referenced as {hit.quoted} — CVE-2026-35402 patched in 0.6.0",
+        line_number=hit.line,
+    )]
 
 
 def _check_python_source(text: str, rel: str) -> list[Finding]:
@@ -82,8 +75,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned: set[str] = set()
 
-    # Requirements files + pyproject + package.json
-    for name in _PACKAGE_LOCKFILE_NAMES:
+    # The root requirements files and pyproject.toml
+    for name in _MANIFEST_NAMES:
         p = project_root / name
         if p.is_file():
             rel = str(p.relative_to(project_root))
@@ -92,7 +85,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 text = p.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            findings.extend(_check_requirements_file(p, text, rel))
+            findings.extend(_check_manifest(p, text, rel))
 
     # Python source: read_only=True + apoc. patterns
     for py in project_root.rglob("*.py"):

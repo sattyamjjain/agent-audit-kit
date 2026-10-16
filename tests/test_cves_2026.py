@@ -349,7 +349,7 @@ def test_langchain_python_fixture_reports_only_the_core_line(tmp_path: Path) -> 
     shutil.copy(FIX / "langchain" / "vulnerable_requirements.txt", tmp_path / "requirements.txt")
     findings = [f for f in langchain_vuln.scan(tmp_path)[0] if f.rule_id in _LANGCHAIN_CORE_PINS]
     assert sorted(f.rule_id for f in findings) == ["AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"]
-    assert all(f.evidence.startswith("langchain-core pinned at 0.3.10") for f in findings)
+    assert all(f.evidence.startswith("langchain-core referenced as 'langchain-core==0.3.10'") for f in findings)
 
 
 @pytest.mark.parametrize(("line", "expected"), [
@@ -357,6 +357,15 @@ def test_langchain_python_fixture_reports_only_the_core_line(tmp_path: Path) -> 
     ("langchain_core==1.2.21\n", {"AAK-LANGCHAIN-001"}),    # a PEP 503 spelling
     ("LangChain-Core>=1.0.0\n", {"AAK-LANGCHAIN-001"}),     # the lowest a range allows
     ("langchain-core[all]==0.3.13\n", {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"}),
+    # A range is judged by what it admits, wherever its bounds are written. The
+    # first number used to be read as the version, so `<1.2.22` read as the fix.
+    ("langchain-core<1.2.22\n", {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"}),
+    ("langchain-core<2.0.0,>=1.0.0\n", {"AAK-LANGCHAIN-001"}),
+    ("langchain-core>=1.0.0,<2.0.0\n", {"AAK-LANGCHAIN-001"}),
+    ("langchain-core>0.3.13\n", {"AAK-LANGCHAIN-001"}),   # read as 0.3.13, below -003's floor
+    ("langchain-core>=1.2.22,<2\n", set()),
+    ("langchain-core>=1.0\nlangchain-core==1.2.22\n", set()),  # one install, intersected
+    ("langchain-core\n", set()),                  # no version stated
     ("langchain-core==1.2.22\n", set()),
     ("langchain==1.1.5\n", set()),              # the umbrella, on its own version line
     ("langchain-community==0.1.0\n", set()),
@@ -368,6 +377,41 @@ def test_langchain_core_pins_read_the_exact_distribution(
     (tmp_path / "requirements.txt").write_text(line, encoding="utf-8")
     ids = {f.rule_id for f in langchain_vuln.scan(tmp_path)[0]}
     assert ids & _LANGCHAIN_CORE_PINS == expected
+
+
+_LANGCHAIN_PYPROJECTS = {
+    "PEP 621": '[project]\nname = "app"\ndependencies = [\n  "fastapi",\n  "langchain-core<1.2.22",\n]\n',
+    "extra": '[project]\nname = "app"\n\n[project.optional-dependencies]\nai = ["langchain-core[all]==1.2.21"]\n',
+    "Poetry": '[tool.poetry.dependencies]\npython = "^3.10"\nlangchain-core = "^1.2.0"\n',
+}
+
+
+@pytest.mark.parametrize("kind", sorted(_LANGCHAIN_PYPROJECTS))
+def test_langchain_core_pin_reads_pyproject(tmp_path: Path, kind: str) -> None:
+    """pyproject.toml was listed and never matched: the pattern was anchored at the
+    start of a requirement line, and a TOML string starts with a quote."""
+    (tmp_path / "pyproject.toml").write_text(_LANGCHAIN_PYPROJECTS[kind], encoding="utf-8")
+    findings = [f for f in langchain_vuln.scan(tmp_path)[0] if f.rule_id == "AAK-LANGCHAIN-001"]
+    assert [(f.file_path, f.line_number) for f in findings] == [
+        ("pyproject.toml", {"PEP 621": 5, "extra": 5, "Poetry": 3}[kind])]
+
+
+def test_langchain_core_pin_reads_every_pyproject(tmp_path: Path) -> None:
+    (tmp_path / "services" / "api").mkdir(parents=True)
+    (tmp_path / "services" / "api" / "pyproject.toml").write_text(
+        '[project]\nname = "api"\ndependencies = ["langchain-core==1.2.21"]\n', encoding="utf-8")
+    (tmp_path / "node_modules" / "x").mkdir(parents=True)
+    (tmp_path / "node_modules" / "x" / "pyproject.toml").write_text(
+        '[project]\nname = "x"\ndependencies = ["langchain-core==1.2.21"]\n', encoding="utf-8")
+    findings = [f for f in langchain_vuln.scan(tmp_path)[0] if f.rule_id == "AAK-LANGCHAIN-001"]
+    assert [f.file_path for f in findings] == [str(Path("services/api/pyproject.toml"))]
+
+
+def test_langchain_core_pyproject_description_is_not_a_pin(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "app"\ndescription = "works with langchain-core 1.0 and up"\n'
+        'dependencies = ["langchain-core>=1.2.22"]\n', encoding="utf-8")
+    assert langchain_vuln.scan(tmp_path)[0] == []
 
 
 @pytest.mark.parametrize("deps", [

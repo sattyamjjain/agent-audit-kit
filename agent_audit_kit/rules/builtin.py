@@ -4312,9 +4312,9 @@ _r(
     "AAK-LANGCHAIN-001",
     "Project depends on langchain-core < 1.2.22 (load_prompt path traversal)",
     "A Python manifest pins `langchain-core`, the PyPI distribution "
-    "CVE-2026-34070 names (GHSA-qh6h-p6c9-ff54), below 1.2.22. Before that "
-    "release, load_prompt() and load_prompt_from_config() accept absolute paths "
-    "and '..' traversal.",
+    "CVE-2026-34070 names (GHSA-qh6h-p6c9-ff54), below 1.2.22, or declares a "
+    "range that admits a release below it. Before that release, load_prompt() "
+    "and load_prompt_from_config() accept absolute paths and '..' traversal.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
     "Upgrade to langchain-core >= 1.2.22. If you must keep the legacy "
@@ -5808,11 +5808,11 @@ _r(
     auto_fixable=True,
     limitations=(
         "The pin reads requirements.txt, requirements-dev.txt, "
-        "requirements-prod.txt and dev-requirements.txt at the project root, on a "
-        "line that starts with `mcp-neo4j-cypher` and a version below 0.6.0. A name "
-        "with extras, an unpinned line, pyproject.toml, uv.lock, "
-        "`requirements/base.txt` and a `uvx mcp-neo4j-cypher==0.5.0 --read-only` "
-        "launcher in .mcp.json are not read. The source arm needs `read_only = "
+        "requirements-prod.txt, dev-requirements.txt and pyproject.toml at the "
+        "project root, taking the lowest version a range allows. An unpinned line is "
+        "not reported, and uv.lock, `requirements/base.txt` and a `uvx "
+        "mcp-neo4j-cypher==0.5.0 --read-only` launcher in .mcp.json are not read. "
+        "The source arm needs `read_only = "
         "True` and a `CALL apoc.` or `runWrite` reference in the same Python file, "
         "so a query kept in another module is not matched."
     ),
@@ -6320,7 +6320,8 @@ _r(
     "Vulnerable MCP SDK version pinned (DNS-rebinding fix missing)",
     "A project dependency manifest (requirements.txt, pyproject.toml, "
     "package.json, pom.xml, build.gradle) pins an MCP SDK at a version "
-    "below the DNS-rebinding fix. Patched versions: Python `mcp` >= "
+    "below the DNS-rebinding fix, or declares a range that admits one. "
+    "Patched versions: Python `mcp` >= "
     "1.23.0, TS `@modelcontextprotocol/sdk` >= 1.21.1, Java "
     "`io.modelcontextprotocol.sdk:mcp-core` >= 0.11.0, `@apollo/mcp-server` "
     ">= 1.7.0. Even if the project never serves over StreamableHTTP "
@@ -6342,13 +6343,13 @@ _r(
     adversa_references=["ADV-SUPPLY-01"],
     incident_references=["MCP-DNS-REBIND-2026-04"],
     limitations=(
-        "Reads `mcp` below 1.23.0 in the root requirements*.txt (pinned with `==`, "
-        "`<` or `<=`) and pyproject.toml, `@modelcontextprotocol/sdk` below 1.21.1 "
-        "and `@apollo/mcp-server` below 1.7.0 in the root package.json, and "
-        "`io.modelcontextprotocol.sdk:mcp-core` below 0.11.0 in the root pom.xml "
-        "and Gradle files. A name with extras (`mcp[cli]==1.22.0`), the Poetry "
-        "table form (`mcp = \"1.22.0\"`), a lockfile (uv.lock, package-lock.json) and "
-        "a requirements file in a sub-directory are not read."
+        "Reads `mcp` in the root requirements*.txt and pyproject.toml, and "
+        "`@modelcontextprotocol/sdk` and `@apollo/mcp-server` in the root package.json, "
+        "taking the lowest version a range allows, so a lower bound below the fix "
+        "(`mcp>=1.2.0`) is reported; a declaration that states no version "
+        "(`\"latest\"`) is not. `io.modelcontextprotocol.sdk:mcp-core` below 0.11.0 "
+        "is read as written in the root pom.xml and Gradle files. A lockfile "
+        "(uv.lock, package-lock.json) and a manifest in a sub-directory are not read."
     ),
 )
 
@@ -6506,10 +6507,11 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-DOS-02"],
     limitations=(
-        "Reads the dependencies, devDependencies and peerDependencies of the "
-        "`package.json` at the root of the scanned directory. The same dependency "
-        "declared in a workspace package's own `package.json` "
-        "(`apps/web/package.json`) is not read."
+        "Reads the dependency maps and overrides of the `package.json` at the root "
+        "of the scanned directory, taking the lowest version a range allows and "
+        "reporting a reference that states no version. The same dependency declared "
+        "in a workspace package's own `package.json` (`apps/web/package.json`) is "
+        "not read."
     ),
 )
 
