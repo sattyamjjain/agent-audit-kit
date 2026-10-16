@@ -118,6 +118,17 @@ def _iter_source(project_root: Path) -> list[Path]:
     return out
 
 
+def _masked(value: str) -> str:
+    """The first three characters and the last of a matched identifier, the rest masked.
+
+    The IFSC and vehicle-registration evidence used to quote the whole match. Since env
+    files are read, a match there can be a credential in the same shape (an 11-character
+    upper-case key with a 0 in the fifth place reads as an IFSC code), so every one of
+    these identifiers is shown the way PAN always was.
+    """
+    return f"{value[:3]}****{value[-1]}"
+
+
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     try:
@@ -153,7 +164,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             make_finding(
                 "AAK-INDIA-PII-002",
                 rel,
-                f"PAN detected: {m.group(0)[:3]}****{m.group(0)[-1]}",
+                f"PAN detected: {_masked(m.group(0))}",
                 line_number=find_line_number(text, m.group(0)),
             )
         )
@@ -173,7 +184,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             make_finding(
                 "AAK-INDIA-PII-004",
                 rel,
-                f"IFSC code detected: {m.group(0)}",
+                f"IFSC code detected: {_masked(m.group(0))}",
                 line_number=find_line_number(text, m.group(0)),
             )
         )
@@ -194,7 +205,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             make_finding(
                 "AAK-INDIA-PII-006",
                 rel,
-                f"Indian vehicle registration: {m.group(0)}",
+                f"Indian vehicle registration: {_masked(m.group(0))}",
                 line_number=find_line_number(text, m.group(0)),
             )
         )
