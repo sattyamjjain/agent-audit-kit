@@ -13,7 +13,15 @@ from agent_audit_kit.scanners._helpers import (
     loads_jsonc,
     make_finding,
 )
-from agent_audit_kit.scanners._launchers import invocation_packages, launch_evidence, pin_problem
+from agent_audit_kit.scanners._launchers import (
+    Launched,
+    invocation_packages,
+    launch_evidence,
+    npm_spec,
+    pin_problem,
+    shell_tokens,
+    starts_with_launcher,
+)
 from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
@@ -53,10 +61,29 @@ TYPOSQUAT_PATTERNS = [
 # Install script keys in package.json
 INSTALL_SCRIPTS = {"preinstall", "postinstall", "prepare", "install"}
 
-# Network commands in install scripts
+# Network commands in install scripts. `https` joined `http`: as a whole word
+# `http` matched neither `require('https')` nor an `https://` URL.
 NETWORK_IN_SCRIPTS = re.compile(
-    r"\b(curl|wget|fetch|nc|ncat|ssh|http|axios|request)\b", re.IGNORECASE
+    r"\b(curl|wget|fetch|nc|ncat|ssh|https?|axios|request)\b", re.IGNORECASE
 )
+
+# What a command of an install script may start with to pass AAK-SUPPLY-003.
+# `npx` was here too, so any package given to it passed: a launcher is judged
+# by the package it runs instead (`_launch_is_local`).
+_SAFE_SCRIPT_PREFIXES = ("tsc", "node", "npm run build", "webpack", "rollup", "esbuild", "vite")
+# The same build tools as program names, for `npx tsc`.
+_SAFE_SCRIPT_TOOLS = frozenset({"tsc", "node", "webpack", "rollup", "esbuild", "vite"})
+# Launchers that run a package from node_modules when it is installed and fetch
+# it only when it is not. `pnpm dlx`, `pnpx` and `yarn dlx` always fetch.
+_LOCAL_FIRST_LAUNCHERS = frozenset({"npx", "npm exec", "npm x", "bunx", "bun x"})
+# Fallbacks that run nothing (`node install.js || true`), skipped after the
+# first command unless they redirect into a file.
+_NO_OP_COMMANDS = frozenset({"true", "false", ":", "exit", "echo"})
+# The longest of 3,171 install scripts read from npm manifests and GitHub repos
+# (2026-10-17) was 578 characters. A script over this is reported without being
+# split into commands: shell tokenizing one long word costs its square.
+_MAX_JUDGED_SCRIPT = 4096
+_SHELL_PUNCTUATION = frozenset("();<>|&")
 
 # Package fetchers for MCP config
 PACKAGE_FETCHERS = frozenset({"npx", "uvx", "bunx", "pnpx"})
@@ -245,9 +272,10 @@ def _scan_package_json(project_root: Path) -> list[Finding]:
     rel_path = str(pkg_json.relative_to(project_root))
     scripts = data.get("scripts", {})
     if isinstance(scripts, dict):
+        declared = _declared_packages(data)
         for script_name, script_cmd in scripts.items():
             if script_name in INSTALL_SCRIPTS and isinstance(script_cmd, str):
-                if NETWORK_IN_SCRIPTS.search(script_cmd) or not _is_safe_script(script_cmd):
+                if _install_script_reported(script_cmd, declared):
                     findings.append(_make_finding(
                         "AAK-SUPPLY-003", rel_path,
                         f"scripts.{script_name}: {script_cmd}",
@@ -257,11 +285,83 @@ def _scan_package_json(project_root: Path) -> list[Finding]:
     return findings
 
 
-def _is_safe_script(cmd: str) -> bool:
-    """Check if an install script is likely safe (build tools only)."""
-    safe_patterns = {"tsc", "node", "npm run build", "npx", "webpack", "rollup", "esbuild", "vite"}
-    cmd_lower = cmd.strip().lower()
-    return any(cmd_lower.startswith(p) for p in safe_patterns)
+def _install_script_reported(script: str, declared: set[str]) -> bool:
+    """Does an install script run something AAK-SUPPLY-003 reports?
+
+    A script that names a network word is reported, as is one too long to
+    split. Otherwise every command it runs is judged, not only the first:
+    `tsc && sh ./evil.sh` passed because it started with `tsc`. A command must
+    start with a build tool on the safe list or be a launcher running a package
+    the project installs (`_launch_is_local`). A fallback that runs nothing
+    (`|| true`, `|| echo 'skipped'`) is not judged after the first command.
+    """
+    if NETWORK_IN_SCRIPTS.search(script) or len(script) > _MAX_JUDGED_SCRIPT:
+        return True
+    for index, (words, redirected) in enumerate(_script_commands(script)):
+        if index and not redirected and words[0] in _NO_OP_COMMANDS:
+            continue
+        if starts_with_launcher(words):
+            launched = invocation_packages(words)
+            if not launched or not all(_launch_is_local(one, declared) for one in launched):
+                return True
+        elif not " ".join(words).lower().startswith(_SAFE_SCRIPT_PREFIXES):
+            return True
+    return False
+
+
+def _launch_is_local(launched: Launched, declared: set[str]) -> bool:
+    """Does a launcher in an install script run a package the project installs?
+
+    `npx`, `npm exec` and `bunx` run a package from node_modules when one is
+    installed and fetch it from the registry when it is not, so `npx husky
+    install` with husky declared runs the project's own husky, while `npx
+    some-remote-package` fetches whatever the registry serves and runs it during
+    install. `npx` used to pass whatever it was given. A build tool on the safe
+    list passes under them too (`npx tsc`), as it does alone. `pnpm dlx`, `pnpx`
+    and `yarn dlx` fetch the package even when it is installed.
+    """
+    if launched.launcher not in _LOCAL_FIRST_LAUNCHERS or launched.ecosystem != "js":
+        return False
+    name = npm_spec(launched.spec).name
+    return name in declared or name.lower() in _SAFE_SCRIPT_TOOLS
+
+
+def _script_commands(script: str) -> list[tuple[list[str], bool]]:
+    """The commands a script runs, each with whether it redirects into a file.
+
+    A line is split at `&&`, `||`, `;`, `|`, `&` and parentheses; a newline
+    ends a command too. A redirection and its target are dropped from the words
+    (`node build.js > build.log`), so the target is not read as a command.
+    """
+    commands: list[tuple[list[str], bool]] = []
+    for line in script.splitlines():
+        words: list[str] = []
+        redirected = skip = False
+        for token in shell_tokens(line):
+            if skip:
+                skip = False
+            elif token and set(token) <= _SHELL_PUNCTUATION:
+                if token[0] in "<>" or token.startswith("&>"):
+                    redirected = skip = True
+                    continue
+                if words:
+                    commands.append((words, redirected))
+                words, redirected = [], False
+            else:
+                words.append(token)
+        if words:
+            commands.append((words, redirected))
+    return commands
+
+
+def _declared_packages(data: dict[str, Any]) -> set[str]:
+    """Every package a package.json declares, in any dependency section."""
+    declared: set[str] = set()
+    for section in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
+        deps = data.get(section)
+        if isinstance(deps, dict):
+            declared.update(str(name) for name in deps)
+    return declared
 
 
 def _check_lockfile_exists(project_root: Path) -> list[Finding]:

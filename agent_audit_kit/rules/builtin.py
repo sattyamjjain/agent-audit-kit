@@ -1989,14 +1989,20 @@ _r(
     limitations=(
         "Reads the `preinstall`, `install`, `postinstall` and `prepare` scripts of "
         "the root package.json only, and reports one that names the whole word "
-        "curl, wget, fetch, nc, ncat, ssh, http, axios or request, or that does not "
-        "start with a known build tool. A script that starts with `node`, `npx`, "
-        "`tsc`, `webpack`, `rollup`, `esbuild` or `vite` is treated as safe, so "
-        "`npx --yes some-unreviewed-package` passes, and so does `node -e "
-        "\"require('https').get(...)\"`, because `https` is not the word `http`. The "
-        "install scripts of dependencies (a lockfile entry marked "
-        "`hasInstallScript`) and of a workspace package.json in a sub-directory are "
-        "not read."
+        "curl, wget, fetch, nc, ncat, ssh, http, https, axios or request, or that "
+        "runs a command, anywhere in a chain, that does not start with `node`, "
+        "`tsc`, `npm run build`, `webpack`, `rollup`, `esbuild` or `vite`; a fallback "
+        "that runs nothing (`|| true`, `|| echo skipped`) is not judged. A launcher "
+        "is judged by the package it runs: `npx`, `npm exec` and `bunx` pass one the "
+        "package.json declares, or a build tool from that list, because they run it "
+        "from node_modules, and anything else is reported as fetched at install "
+        "time, including a declared package's command under another name (`npx "
+        "playwright` with only `@playwright/test` declared). The code a `node` "
+        "command runs is not looked into, so `node -e "
+        "\"require('child_process').execSync('sh ./scripts/setup.sh')\"` passes. A "
+        "script over 4,096 characters is reported without being split. The install "
+        "scripts of dependencies (a lockfile entry marked `hasInstallScript`) and of "
+        "a workspace package.json in a sub-directory are not read."
     ),
 )
 

