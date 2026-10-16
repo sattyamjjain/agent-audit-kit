@@ -5,7 +5,9 @@ pages and two preset pages. Markdown has no syntax for a row header, so the labe
 the first column were `<td>`, and a screen reader read "HIGH" without saying it was
 the severity. The sources cannot become definition lists, because GitHub renders those
 files too and does not render a definition list, so `scripts/mkdocs_hooks.py` fixes the
-built HTML instead (`on_page_content`).
+built HTML instead (`on_page_content`). The rule listings on the rules index get the
+same treatment (`Rule | Severity | Title`, `Retired rule | Last shipped in | Title`):
+their first cell names the rule each row is about.
 
 These tests hold three things: the rewrite is exact (everything else on the page, and
 every other table, comes out as it went in), it reaches every page that has such a
@@ -104,7 +106,8 @@ def test_the_rewrite_is_idempotent() -> None:
 @pytest.mark.parametrize(
     "page",
     [
-        pytest.param(_table("Rule", "Severity", "Title"), id="three columns"),
+        pytest.param(_table("Rule", "Severity", "Class"), id="three columns, not a rule listing"),
+        pytest.param(_table("Rule", "Title"), id="two columns of a rule listing"),
         pytest.param(_table("Rule", "Severity", "Class", "CVE / source"), id="four columns"),
         pytest.param(_table("Name", "Description"), id="two columns, other headings"),
         pytest.param(_table("Field", "Value", "Notes"), id="Field | Value | Notes"),
@@ -124,7 +127,7 @@ def test_an_ordinary_table_is_left_exactly_alone(page: str) -> None:
 
 
 def test_only_the_field_value_table_on_a_page_with_several_is_changed() -> None:
-    ordinary = _table("Rule", "Severity", "Title", rows=(("AAK-X-001", "HIGH", "A title"),))
+    ordinary = _table("Rule", "Severity", "Class", rows=(("AAK-X-001", "HIGH", "MCP_CONFIG"),))
     page = f"{ordinary}\n<p>between</p>\n{_TABLE}\n<p>between</p>\n{ordinary}"
     assert hooks.row_headers(page) == f"{ordinary}\n<p>between</p>\n{_CONVERTED}\n<p>between</p>\n{ordinary}"
 
@@ -138,6 +141,22 @@ def test_the_heading_match_ignores_case_and_spacing() -> None:
     page = _TABLE.replace("<th>Field</th>", "<th> field </th>").replace("<th>Value</th>", "<th><strong>VALUE</strong></th>")
     converted = hooks.row_headers(page)
     assert '<th scope="row">Severity</th>' in converted and '<th scope="col"> field </th>' in converted
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        pytest.param(("Rule", "Severity", "Title"), id="all rules"),
+        pytest.param(("Retired rule", "Last shipped in", "Title"), id="retired rules"),
+    ],
+)
+def test_the_rule_listings_get_row_headers_too(header: tuple[str, ...]) -> None:
+    """The rules index lists rules in tables whose first cell names the rule the row is about."""
+    page = _table(*header, rows=(('<a href="AAK-X-001/">AAK-X-001</a>', "HIGH", "A title"),))
+    converted = hooks.row_headers(page)
+    assert converted.count('scope="col"') == 3
+    assert '<th scope="row"><a href="AAK-X-001/">AAK-X-001</a></th>' in converted
+    assert "<td>HIGH</td>" in converted and "<td>A title</td>" in converted
 
 
 def test_a_label_cell_with_nothing_in_it_stays_a_td() -> None:
@@ -171,7 +190,7 @@ def test_a_cell_whose_end_tag_was_left_out_is_left_as_written() -> None:
 
 
 def test_a_table_inside_a_cell_is_judged_on_its_own() -> None:
-    inner = _table("Rule", "Severity", "Title", rows=(("AAK-X-001", "HIGH", "T"),))
+    inner = _table("Rule", "Severity", "Class", rows=(("AAK-X-001", "HIGH", "T"),))
     page = _TABLE.replace("<td>HIGH</td>", f"<td>{inner}</td>")
     converted = hooks.row_headers(page)
     assert inner in converted  # the nested ordinary table is untouched
@@ -332,6 +351,14 @@ def _is_fact_table(table: dict) -> bool:
     return [[text for _tag, _scope, text in row] for row in table["head"]] == [["Field", "Value"]]
 
 
+#: The header rows of the rule listings on the rules index, which get row headers too.
+_LISTING_HEADERS = (["Rule", "Severity", "Title"], ["Retired rule", "Last shipped in", "Title"])
+
+
+def _is_listing(table: dict) -> bool:
+    return [[text for _tag, _scope, text in row] for row in table["head"]] in ([h] for h in _LISTING_HEADERS)
+
+
 @pytest.fixture(scope="module")
 def site(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """The docs, built by MkDocs from the real mkdocs.yml, so the hook runs as it does on deploy."""
@@ -392,7 +419,8 @@ def test_every_fact_table_on_the_built_site_has_row_headers(site: Path) -> None:
 
 
 def test_nothing_else_on_the_built_site_gains_a_row_header(site: Path) -> None:
-    """Across every built page: only a `Field | Value` table has them, and every one of its rows does."""
+    """Across every built page: only a `Field | Value` table or a rule listing has them,
+    and every one of its rows does."""
     pages = sorted(site.rglob("*.html"))
     assert len(pages) > 300, f"only {len(pages)} pages built; the site did not build"
     stray: list[str] = []
@@ -400,21 +428,28 @@ def test_nothing_else_on_the_built_site_gains_a_row_header(site: Path) -> None:
     for page in pages:
         for table in _tables(page.read_text(encoding="utf-8")):
             cells = [cell for row in table["head"] + table["rows"] for cell in row]
-            if _is_fact_table(table):
-                fact_tables += 1
+            if _is_fact_table(table) or _is_listing(table):
+                fact_tables += _is_fact_table(table)
                 if not all(row[0][:2] == ("th", "row") for row in table["rows"]):
-                    stray.append(f"{page.relative_to(site)}: a fact table row without a row header")
+                    stray.append(f"{page.relative_to(site)}: a row-headed table row without a row header")
             elif any(scope in {"row", "col"} for _tag, scope, _text in cells):
-                stray.append(f"{page.relative_to(site)}: scope on a table that is not a fact table")
+                stray.append(f"{page.relative_to(site)}: scope on a table that is not row-headed")
     assert not stray, "\n".join(stray[:10])
     assert fact_tables >= 15
 
 
-def test_the_rules_index_tables_are_untouched_on_the_built_site(site: Path) -> None:
+def test_the_rules_index_listings_have_row_headers_and_its_other_tables_none(site: Path) -> None:
+    """Each category's listing and the retired list say which rule a row is about; the
+    hand-written tables in the intro (`Rule | Severity | Class | CVE / source`) stay plain."""
     index = _tables((site / "rules" / "index.html").read_text(encoding="utf-8"))
-    assert len(index) > 10
-    assert not [table for table in index if _is_fact_table(table)]
-    assert all(scope is None for table in index for row in table["head"] + table["rows"] for _t, scope, _x in row)
+    listings = [table for table in index if _is_listing(table)]
+    others = [table for table in index if not _is_listing(table)]
+    assert len(listings) > 10 and others
+    assert any(table["head"][0][0][2] == "Retired rule" for table in listings)
+    for table in listings:
+        assert [(tag, scope) for tag, scope, _text in table["head"][0]] == [("th", "col")] * 3
+        assert all([(tag, scope) for tag, scope, _text in row] == [("th", "row"), ("td", None), ("td", None)] for row in table["rows"])
+    assert all(scope is None for table in others for row in table["head"] + table["rows"] for _t, scope, _x in row)
 
 
 def test_the_sources_stay_plain_markdown_tables() -> None:

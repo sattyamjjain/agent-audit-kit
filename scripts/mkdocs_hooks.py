@@ -59,9 +59,12 @@ are ``<td>`` and a screen reader reads each value without saying which fact it i
 (WCAG 1.3.1). Rewriting the sources as definition lists would break them on GitHub,
 which does not render one, so ``on_page_content`` fixes the built HTML instead: the
 first cell of each row of a table headed exactly ``Field | Value`` becomes
-``<th scope="row">`` and its two header cells get ``scope="col"``. The HTML is read
-with ``html.parser`` and written back token by token, with no regular expression over
-markup, and a page without such a table is returned as it came.
+``<th scope="row">`` and its header cells get ``scope="col"``. The rule listings on the
+rules index (``Rule | Severity | Title`` for each category, ``Retired rule | Last
+shipped in | Title`` for the retired ones) get the same, because their first cell names
+the rule its row is about. The HTML is read with ``html.parser`` and written back token
+by token, with no regular expression over markup, and a page without such a table is
+returned as it came.
 """
 
 from __future__ import annotations
@@ -265,8 +268,17 @@ def on_files(files: Any, config: Any) -> Any:
     return files
 
 
-#: What the header row of a table must say, case aside, for its first column to be row headers.
-_FACT_TABLE_HEADER = ["field", "value"]
+#: What the header row of a table must say, case and spacing aside, for its first column to
+#: be row headers: a ``Field | Value`` table of facts, or one of the rule listings that
+#: ``scripts/rule_pages.py`` appends to the rules index, whose first cell names the rule.
+#: Matched whole, so ``Rule | Severity | Class`` and every other table stay as written.
+_ROW_HEADED_TABLES = frozenset(
+    {
+        ("field", "value"),
+        ("rule", "severity", "title"),
+        ("retired rule", "last shipped in", "title"),
+    }
+)
 
 
 @dataclasses.dataclass
@@ -278,7 +290,8 @@ class _Table:
     #: a ``scope``, and the text read from inside it.
     header: list[tuple[int, bool, list[str]]] = dataclasses.field(default_factory=list)
     reading_header: list[str] | None = None
-    #: Whether the first column holds row headers. Unknown until the header is read.
+    #: Whether the first column holds row headers (the header is in ``_ROW_HEADED_TABLES``).
+    #: Unknown until the header is read.
     facts: bool | None = None
     column: int = 0
     #: Where the start tag of the open first-column cell is in the output, if it may be converted.
@@ -287,13 +300,14 @@ class _Table:
 
 
 class _RowHeaders(HTMLParser):
-    """Writes a page's HTML back token by token, with a ``Field | Value`` table's labels as row headers.
+    """Writes a page's HTML back token by token, with a row-headed table's first column as row headers.
 
     A text node is copied as it was written (``convert_charrefs`` is off, so ``&lt;`` is
     never decoded and re-encoded), a start tag is copied from its source text, and only
-    two kinds of tag are ever edited: the first cell of each row of a ``Field | Value``
-    table, ``<td ...>`` to ``<th ... scope="row">``, and that table's two header cells,
-    which gain ``scope="col"``. Every other attribute is kept exactly as written.
+    two kinds of tag are ever edited: the first cell of each row of a table whose header
+    is in ``_ROW_HEADED_TABLES``, ``<td ...>`` to ``<th ... scope="row">``, and that
+    table's header cells, which gain ``scope="col"``. Every other attribute is kept
+    exactly as written.
 
     A first cell with nothing in it stays a ``<td>``: an empty header cell is an
     accessibility fault of its own. Tables nest, so the state is a stack.
@@ -310,12 +324,12 @@ class _RowHeaders(HTMLParser):
         return self._tables[-1] if self._tables else None
 
     def _decide(self, table: _Table) -> None:
-        """Once a table's header is read, work out whether it is a ``Field | Value`` one."""
+        """Once a table's header is read, work out whether its first column is row headers."""
         if table.facts is not None:
             return
-        table.facts = [
+        table.facts = tuple(
             " ".join("".join(text).split()).casefold() for _index, _scoped, text in table.header
-        ] == _FACT_TABLE_HEADER
+        ) in _ROW_HEADED_TABLES
         if not table.facts:
             return
         for index, scoped, _text in table.header:
@@ -417,7 +431,9 @@ class _RowHeaders(HTMLParser):
 
 
 def row_headers(html: str) -> str:
-    """``html`` with the first column of every ``Field | Value`` table made into row headers.
+    """``html`` with the first column of every row-headed table made into row headers.
+
+    Row-headed means a ``Field | Value`` table or a rule listing (``_ROW_HEADED_TABLES``).
 
     A page with no such table comes back as the very same string, not a re-serialised
     copy of it, so the hundred-odd pages that have none cannot be touched by a quirk of
@@ -432,5 +448,5 @@ def row_headers(html: str) -> str:
 
 
 def on_page_content(html: str, page: Any, config: Any, files: Any) -> str:
-    """Give every ``Field | Value`` table on the page row headers (WCAG 1.3.1)."""
+    """Give every ``Field | Value`` table and rule listing on the page row headers (WCAG 1.3.1)."""
     return row_headers(html)
