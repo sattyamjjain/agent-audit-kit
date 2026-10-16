@@ -141,6 +141,8 @@ PINS = {
     "AAK-MCP-OPENCOMPUTERUSE-CVE-2026-108721-001": "medium",
     "AAK-MCP-ODOOMCP-CVE-2026-108861-001": "medium",
     "AAK-MCP-NETWORKAI-CVE-2026-109332-001": "low",
+    # CVE-2025-59536, re-aimed 2026-10-17 from a settings.local.json check
+    "AAK-HOOK-RCE-003": "high",
 }
 
 
@@ -3285,3 +3287,60 @@ def test_network_ai_cors_versions(tmp_path: Path, version: str, cors: bool, hook
     ids = _ids(tmp_path, "package.json", '{"dependencies": {"network-ai": "%s"}}' % version)
     assert (_NETWORKAI_CORS in ids, _NETWORKAI in ids) == (cors, hook)
     assert RULES[_NETWORKAI_CORS].severity.value == "low"
+
+
+# CVE-2025-59536 (HIGH, GHSA-4fgq-fpq9-mr3g): Claude Code before 1.0.111 could run
+# code a project carried before the user accepted the startup trust dialog. The
+# rule id is the one that read hook commands in a committed settings.local.json,
+# which said nothing about whether those hooks run before trust: that depends on
+# the Claude Code version, so the rule now reads the version.
+_HOOK_TRUST = "AAK-HOOK-RCE-003"
+_CC = "@anthropic-ai/claude-code"
+
+
+def test_claude_code_trust_dialog_fixtures_positive_and_negative() -> None:
+    root = _CVE_FIXTURES / "cve-2025-59536-claude-code"
+    assert _HOOK_TRUST in {f.rule_id for f in scan(root / "vulnerable")[0]}
+    assert _HOOK_TRUST not in {f.rule_id for f in scan(root / "negative")[0]}
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("1.0.0", True),
+    ("1.0.110", True),       # the last release before the fix
+    ("1.0.111", False),      # GHSA-4fgq-fpq9-mr3g: first patched version
+    ("2.1.301", False),
+    ("^1.0.100", True),      # admits 1.0.100 to 1.0.110
+    ("^1.0.111", False),
+    ("latest", False),       # states no version; the CLI updates itself
+])
+def test_claude_code_trust_dialog_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"devDependencies": {"%s": "%s"}}' % (_CC, version)
+    assert (_HOOK_TRUST in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("args", "fires"), [
+    (["-y", f"{_CC}@1.0.100", "mcp", "serve"], True),
+    (["-y", f"{_CC}@1.0.111", "mcp", "serve"], False),
+    (["-y", _CC, "mcp", "serve"], False),  # unversioned: resolves to the newest release
+])
+def test_claude_code_trust_dialog_npx_launches(tmp_path: Path, args: list[str], fires: bool) -> None:
+    content = json.dumps({"mcpServers": {"claude": {"command": "npx", "args": args}}})
+    assert (_HOOK_TRUST in _ids(tmp_path, ".mcp.json", content)) is fires
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("package-lock.json", json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"name": "app"}, f"node_modules/{_CC}": {"version": "1.0.100"}}})),
+    ("pnpm-lock.yaml", f"packages:\n  /{_CC}@1.0.100:\n    resolution: {{integrity: a}}\n"),
+    ("yarn.lock", f'"{_CC}@^1.0.0":\n  version "1.0.100"\n'),
+])
+def test_claude_code_trust_dialog_lockfiles(tmp_path: Path, name: str, content: str) -> None:
+    assert _HOOK_TRUST in _ids(tmp_path, name, content)
+
+
+def test_claude_code_trust_dialog_evidence_names_the_fix(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        '{"devDependencies": {"%s": "1.0.100"}}' % _CC, encoding="utf-8")
+    [hit] = [f for f in scan(tmp_path)[0] if f.rule_id == _HOOK_TRUST]
+    assert "1.0.111" in hit.evidence and hit.file_path == "package.json"
+    assert RULES[_HOOK_TRUST].cve_references == ["CVE-2025-59536"]

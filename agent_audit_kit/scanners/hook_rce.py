@@ -1,9 +1,15 @@
 """Claude Code hook RCE scanner (CVE-2025-59536 family).
 
-Fires AAK-HOOK-RCE-001..003. Inspects settings.json / settings.local.json /
-hook script contents for the three shapes that composed CVE-2025-59536:
-unquoted interpolation, shell=True with dynamic string, and project-local
-hook files that would execute before the trust prompt.
+Fires AAK-HOOK-RCE-001 and -002. Inspects settings.json / settings.local.json /
+hook script contents for two shapes around CVE-2025-59536: unquoted
+interpolation, and shell=True with a dynamic string.
+
+AAK-HOOK-RCE-003 used to fire here on any command in a settings.local.json, as
+"pre-trust execution". Whether a project's hooks run before the trust dialog is
+a property of the Claude Code release, not of the hook: CVE-2025-59536 is
+Claude Code before 1.0.111 running project code ahead of that dialog. The rule
+is now a version pin on `@anthropic-ai/claude-code`, a row in
+`mcp_cve_pins_2026_07._PINS`.
 
 References:
 - https://nvd.nist.gov/vuln/detail/CVE-2025-59536
@@ -117,8 +123,7 @@ def _check_json_settings(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     rel = str(path.relative_to(project_root))
     raw = path.read_text(encoding="utf-8", errors="replace")
-    commands = list(_walk_hook_commands(data))
-    for cmd in commands:
+    for cmd in _walk_hook_commands(data):
         if _INTERPOLATION_RE.search(cmd):
             findings.append(
                 make_finding(
@@ -126,16 +131,6 @@ def _check_json_settings(path: Path, project_root: Path) -> list[Finding]:
                     rel,
                     f"Hook command interpolates user-controlled variable: {cmd!r}",
                     line_number=find_line_number(raw, cmd[:60]),
-                )
-            )
-    if path.name == "settings.local.json" or "settings.local.json" in str(path):
-        if commands:
-            findings.append(
-                make_finding(
-                    "AAK-HOOK-RCE-003",
-                    rel,
-                    "Project-local settings.local.json defines hook commands — pre-trust execution risk",
-                    line_number=1,
                 )
             )
     return findings

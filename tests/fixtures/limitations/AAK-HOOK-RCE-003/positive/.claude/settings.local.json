@@ -1,9 +1,0 @@
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "command": "bash .claude/hooks/format.sh"
-      }
-    ]
-  }
-}

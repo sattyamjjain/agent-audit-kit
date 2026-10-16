@@ -3725,10 +3725,12 @@ _r(
 )
 
 # ---------------------------------------------------------------------------
-# Claude Code Hook RCE (AAK-HOOK-RCE-001..003)
+# Claude Code Hook RCE (AAK-HOOK-RCE-001..003). 001 and 002 read hook commands
+# and scripts; 003 is a version pin on Claude Code itself, a row in
+# `scanners/mcp_cve_pins_2026_07._PINS`.
 #
 # References:
-#   - NVD: CVE-2025-59536 (Claude Code hooks RCE) —
+#   - NVD: CVE-2025-59536 (Claude Code startup trust dialog) —
 #     https://nvd.nist.gov/vuln/detail/CVE-2025-59536
 #   - OWASP Top 10 A03:2021 (Injection).
 #   - CWE-78 (OS Command Injection), CWE-94 (Code Injection).
@@ -3793,24 +3795,34 @@ _r(
 
 _r(
     "AAK-HOOK-RCE-003",
-    "Hook trust check is bypassable by project-local config",
-    "A settings.local.json or project-relative hook file executes before "
-    "the Claude Code trust prompt. This is the core CVE-2025-59536 regression "
-    "pattern; any project-contained hook must not run until trust is "
-    "confirmed.",
+    "Claude Code below 1.0.111 runs project code before the trust dialog (CVE-2025-59536)",
+    "Claude Code (`@anthropic-ai/claude-code`, npm) shows a startup trust dialog "
+    "before it acts on what a project carries, such as the hooks in its "
+    "`.claude/settings.json`. Before 1.0.111, a bug in that dialog meant Claude Code "
+    "\"could be tricked to execute code contained in a project before the user "
+    "accepted the startup trust dialog\", so starting it in a cloned repository was "
+    "enough (CVE-2025-59536, CVSS 4.0 8.7, CWE-94, GHSA-4fgq-fpq9-mr3g). This "
+    "pin-only rule fires on a declared `@anthropic-ai/claude-code` below 1.0.111. "
+    "Until 2026-10-17 it fired on any command in a `settings.local.json` instead, "
+    "which cannot show whether a hook runs before the dialog: the release decides "
+    "that. Auto-update has delivered the fix to installs that keep it on.",
     Severity.HIGH,
-    Category.HOOK_INJECTION,
-    "Require explicit trust confirmation before loading project-local hook "
-    "configuration. Upgrade to Claude Code 1.0.111 or later.",
+    Category.SUPPLY_CHAIN,
+    "Upgrade `@anthropic-ai/claude-code` to 1.0.111 or later and pin it, or leave "
+    "auto-update on.",
     sarif_name="HookTrustBypass",
     cve_references=["CVE-2025-59536"],
     owasp_agentic_references=["ASI05", "ASI09"],
     adversa_references=["ADV-RCE-03"],
     limitations=(
-        "Reports a `command`, `cmd`, `run` or `script` value only in "
-        "`settings.local.json` at the root or in `.claude/`. The same hook committed "
-        "in `.claude/settings.json`, which a repository ships to everyone who opens "
-        "it, and hook script files are not reported."
+        "Reports `@anthropic-ai/claude-code` below 1.0.111 where a project states its "
+        "version: a package.json or lockfile entry at the root, or a versioned `npx` "
+        "reference in an MCP config. An unpinned reference is not reported, as for the "
+        "other Claude Code pins: it resolves to the newest release, and the CLI updates "
+        "itself. A global install, the usual one, is in no file AAK reads, and neither "
+        "is a package.json in a sub-directory. A file over 2 MB, or a lockfile over 32 "
+        "MiB, is not read. Settings files and hook commands are not read: whether a "
+        "hook runs before the trust dialog depends on the release, not on the hook."
     ),
 )
 

@@ -106,7 +106,26 @@ def test_hook_rce_vulnerable_fires(tmp_path: Path) -> None:
     findings, _ = hook_rce.scan(tmp_path)
     ids = {f.rule_id for f in findings}
     assert "AAK-HOOK-RCE-001" in ids
-    assert "AAK-HOOK-RCE-003" in ids
+    assert "AAK-HOOK-RCE-003" not in ids  # a version pin now; see the next test
+
+
+@pytest.mark.parametrize("settings", [
+    {"statusLine": {"type": "command", "command": "bash .claude/statusline.sh"}},
+    {"hooks": {"PostToolUse": [{"matcher": "Write|Edit",
+                                "hooks": [{"type": "command", "command": "npx prettier --write ."}]}]}},
+])
+def test_hook_rce_003_no_longer_reads_settings_local_json(tmp_path: Path, settings: dict) -> None:
+    """AAK-HOOK-RCE-003 fired HIGH on any string under a `command`, `cmd`, `run` or
+    `script` key in a settings.local.json, a status line included, and on 14 of 159
+    real hook-bearing settings files, 14 of their 16 `--fail-on high` failures. A
+    hook in that file runs before the trust dialog only on Claude Code below 1.0.111
+    (CVE-2025-59536), which the file does not say, so the rule now reads the
+    Claude Code version a project declares instead."""
+    claude_dir = tmp_path / ".claude"
+    claude_dir.mkdir()
+    (claude_dir / "settings.local.json").write_text(json.dumps(settings), encoding="utf-8")
+    result = run_scan(project_root=tmp_path, rules=["AAK-HOOK-RCE-003"])
+    assert not any(f.rule_id == "AAK-HOOK-RCE-003" for f in result.findings)
 
 
 def test_hook_rce_safe_is_quiet(tmp_path: Path) -> None:

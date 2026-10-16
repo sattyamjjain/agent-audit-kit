@@ -174,6 +174,9 @@ available) before shipping:
     key was preferred over the Enterprise or Team sign-in for managed settings. LOW,
     a stated version is required, and its own rule beside the HIGH folder-trust pin
     in `supply_chain`, whose floor is 2.1.179)
+  - @anthropic-ai/claude-code      < 1.0.111  (CVE-2025-59536; project code ran before
+    the startup trust dialog. AAK-HOOK-RCE-003, which read settings.local.json
+    commands until 2026-10-17. A stated version is required)
   - langgraph-sdk                  0.1.45 <= v < 0.4.4  (CVE-2026-104873; the
     resource-scoped auth decorators register a handler for every action whatever
     `actions` says. Only a deployment that passes `actions` is exposed)
@@ -1208,6 +1211,16 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-CLAUDECODE-CVE-2026-103012-001", "@anthropic-ai/claude-code",
          ("@anthropic-ai/claude-code",), (2, 1, 260), introduced=(2, 0, 68),
          fix_label="2.1.260 (affected from 2.0.68)",
+         requires_version=True, ecosystem="js"),
+    # Claude Code before 1.0.111 could run code a project carried before the user
+    # accepted the startup trust dialog (CVE-2025-59536, CVSS 4.0 8.7, CWE-94,
+    # GHSA-4fgq-fpq9-mr3g; NVD's CPE range is `versionEndExcluding: 1.0.111`, and
+    # 1.0.111 reached npm on 2025-09-10). The rule id is the one that fired on any
+    # command in a committed settings.local.json, which cannot say whether a hook
+    # runs before trust: the release decides that. Re-aimed here on 2026-10-17.
+    _Pin("AAK-HOOK-RCE-003", "@anthropic-ai/claude-code",
+         ("@anthropic-ai/claude-code",), (1, 0, 111),
+         fix_label="1.0.111",
          requires_version=True, ecosystem="js"),
     # --- 2026-10-05 wave, second batch (#900-#901) ---
     # langgraph-sdk's resource-scoped auth decorators (`@auth.on.threads`,
