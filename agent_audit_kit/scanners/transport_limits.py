@@ -258,6 +258,13 @@ _PY_OTHER_FRAMEWORK_RE = re.compile(
 )
 
 
+# Every alternative of each project-limit pattern contains one of these words.
+_CAP_WORDS = {
+    _GO_PROJECT_CAP_RE.pattern: ("MaxBytes", "BodyLimit", "RequestSize", ".Body", "ContentLength"),
+    _PY_PROJECT_CAP_RE.pattern: ("MAX_CONTENT_LENGTH", "max_content_length"),
+}
+
+
 def _project_files(project_root: Path, suffix: str) -> list[Path]:
     out: list[Path] = []
     for path in project_root.rglob(f"*{suffix}"):
@@ -272,17 +279,19 @@ def _project_files(project_root: Path, suffix: str) -> list[Path]:
     return out
 
 
-def _read_texts(paths: list[Path]) -> dict[Path, str]:
-    texts: dict[Path, str] = {}
+def _read_texts(paths: list[Path], project_root: Path) -> list[tuple[Path, str, str]]:
+    """(path, path relative to the root, text) of each readable file."""
+    texts: list[tuple[Path, str, str]] = []
     for path in paths:
         try:
-            texts[path] = path.read_text(encoding="utf-8", errors="replace")
+            text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        texts.append((path, path.relative_to(project_root).as_posix(), text))
     return texts
 
 
-def _project_capped(texts: dict[Path, str], project_root: Path, cap_re: re.Pattern[str]) -> bool:
+def _project_capped(texts: list[tuple[Path, str, str]], cap_re: re.Pattern[str]) -> bool:
     """A body-size limit anywhere in the project's own (non-test) code.
 
     Project-wide on purpose: the limit is usually set where the server is
@@ -293,10 +302,12 @@ def _project_capped(texts: dict[Path, str], project_root: Path, cap_re: re.Patte
     line, or `io.LimitReader(r.Body, n)` in some other handler, said nothing
     about the MCP route and silenced 29 real findings in the design sample.
     """
-    for path, text in texts.items():
-        if TEST_FILE_RE.search(path.relative_to(project_root).as_posix()):
+    words = _CAP_WORDS[cap_re.pattern]
+    for path, rel, text in texts:
+        if TEST_FILE_RE.search(rel):
             continue
-        if cap_re.search(text):
+        # Each pattern needs one of its words: a file without any is not searched.
+        if any(w in text for w in words) and cap_re.search(text):
             return True
         if path.suffix == ".py" and _py_size_middleware(text):
             return True
@@ -308,7 +319,9 @@ def _py_size_middleware(text: str) -> bool:
     a body size: `@app.middleware("http")`, a class with `dispatch(...,
     call_next)` or an ASGI `__call__(self, scope, receive, send)`, whose own
     code answers 413 or compares a Content-Length or a body length."""
-    if any(_names_body_limit(m.group(1).rsplit(".", 1)[-1]) for m in _PY_ADD_MIDDLEWARE_RE.finditer(text)):
+    if "iddleware(" in text and any(
+        _names_body_limit(m.group(1).rsplit(".", 1)[-1]) for m in _PY_ADD_MIDDLEWARE_RE.finditer(text)
+    ):
         return True
     if not (_PY_MIDDLEWARE_HINT_RE.search(text) and _PY_SIZE_HINT_RE.search(text)):
         return False
@@ -374,16 +387,17 @@ def _checks_size(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
 
 
 def _check_unbounded_go(project_root: Path, scanned: set[str]) -> list[Finding]:
-    texts = _read_texts(_project_files(project_root, ".go"))
-    if _project_capped(texts, project_root, _GO_PROJECT_CAP_RE):
+    texts = _read_texts(_project_files(project_root, ".go"), project_root)
+    if _project_capped(texts, _GO_PROJECT_CAP_RE):
         return []
     findings: list[Finding] = []
-    for path, text in texts.items():
-        rel = path.relative_to(project_root).as_posix()
-        if TEST_FILE_RE.search(rel) or GO_TEST_SERVER_RE.search(text) or not _GO_ANY_READ_RE.search(text):
+    for _path, rel, text in texts:
+        if TEST_FILE_RE.search(rel) or not _GO_ANY_READ_RE.search(text):
+            continue
+        if "httptest" in text and GO_TEST_SERVER_RE.search(text):
             continue
         scanned.add(rel)
-        index = CodeIndex(text, go=True)
+        index = CodeIndex(text)
         handlers = go_handlers(index)
         if not handlers:
             continue
@@ -449,12 +463,11 @@ def _go_mcp_route(handler: GoHandler, routes: list[GoRoute], text: str) -> str |
 
 
 def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Finding]:
-    texts = _read_texts(_project_files(project_root, ".py"))
-    if _project_capped(texts, project_root, _PY_PROJECT_CAP_RE):
+    texts = _read_texts(_project_files(project_root, ".py"), project_root)
+    if _project_capped(texts, _PY_PROJECT_CAP_RE):
         return []
     findings: list[Finding] = []
-    for path, text in texts.items():
-        rel = path.relative_to(project_root).as_posix()
+    for _path, rel, text in texts:
         if TEST_FILE_RE.search(rel) or not _PY_ANY_READ_RE.search(text) or _PY_OTHER_FRAMEWORK_RE.search(text):
             continue
         starlette = bool(_PY_STARLETTE_RE.search(text))

@@ -1,21 +1,14 @@
-"""HTTP route registrations read out of TS/JS and Go source, for the route rules.
+"""HTTP handlers and route registrations read out of Go and Python source.
 
-AAK-MCP-020 (a handler shared by an authenticated and an unauthenticated route),
-AAK-MCP-016 (a body read with no size limit) and AAK-MCP-019 (an auth check after
-a side effect) all start from the same question: which routes does this file
-register, with what middleware, and which handler does each reach? A regex
-cannot answer it. A route's arguments hold arrow functions, nested calls and
-object literals, so where one argument ends depends on bracket nesting, and a
-`[^)]*` stops at the first `)` it meets: AAK-MCPWN-001's Gin pattern reads
-`r.Any("/mcp", middleware.IPWhiteList(), middleware.AuthRequired(), ...)` as far
-as `middleware.IPWhiteList(` and never sees `AuthRequired()`, so it is silent on
-the nginx-ui file CVE-2026-33032 was found in.
-
-`CodeIndex` reads a file once: every bracket's partner and the commas directly
-inside each `(`, skipping strings and comments, in time linear in the file. A
-closer whose kind is not open anywhere is ignored, and one that closes a deeper
-opener of its kind pops the openers above it, each opener once, so stray
-brackets (a regex literal, JSX text) cost one pass, not a rescan.
+AAK-MCP-016 asks which functions handle an HTTP request, which route each is
+registered on, and whether that route serves MCP. A Go route's arguments hold
+nested calls and func literals, so where one argument ends depends on bracket
+nesting, and a `[^)]*` stops at the first `)` it meets. `CodeIndex` reads a Go
+file once instead: every bracket's partner and the commas directly inside each
+`(`, skipping strings and comments, in time linear in the file. A closer whose
+kind is not open anywhere is ignored, and one that closes a deeper opener of its
+kind pops the openers above it, each opener once, so a stray bracket costs one
+pass, not a rescan. Python is read with `ast`.
 """
 
 from __future__ import annotations
@@ -26,10 +19,9 @@ from bisect import bisect_right
 from dataclasses import dataclass
 
 # Strings, comments and the characters that shape argument lists.
-_JS_TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|["'`]""")
+_TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|["'`]""")
 _DQ_RE = re.compile(r'"(?:[^"\\\n]|\\.)*"')
 _SQ_RE = re.compile(r"'(?:[^'\\\n]|\\.)*'")
-_JS_TEMPLATE_RE = re.compile(r"`(?:[^`\\]|\\.)*`", re.DOTALL)
 _GO_RAW_RE = re.compile(r"`[^`]*`")
 _NEWLINE_RE = re.compile(r"\n")
 _OPENERS = {")": "(", "]": "[", "}": "{"}
@@ -82,27 +74,22 @@ def is_mcp_endpoint_path(path: str) -> bool:
 
 
 class CodeIndex:
-    """Bracket partners, top-level commas and string spans of one TS/JS or Go file."""
+    """Bracket partners, top-level commas and string spans of one Go file."""
 
-    def __init__(self, text: str, go: bool = False) -> None:
+    def __init__(self, text: str) -> None:
         self.text = text
         self.close: dict[int, int] = {}
         self.commas: dict[int, list[int]] = {}
-        # The innermost `{` open at each `(`: two calls with the same entry sit
-        # in one block, so an `if` branch and its `else` are told apart.
-        self.block_of: dict[int, int] = {}
         self._mask_starts: list[int] = []
         self._mask_ends: list[int] = []
         self._strings: dict[int, int] = {}
         self._newlines = [m.start() for m in _NEWLINE_RE.finditer(text)]
-        template = _GO_RAW_RE if go else _JS_TEMPLATE_RE
         stack: list[tuple[str, int]] = []
-        braces: list[int] = []
         open_count = {"(": 0, "[": 0, "{": 0}
         pos = 0
         n = len(text)
         while pos < n:
-            m = _JS_TOKEN_RE.search(text, pos)
+            m = _TOKEN_RE.search(text, pos)
             if m is None:
                 break
             tok, at = m.group(), m.start()
@@ -119,7 +106,7 @@ class CodeIndex:
                 pos = end
                 continue
             if tok in "\"'`":
-                pattern = _DQ_RE if tok == '"' else _SQ_RE if tok == "'" else template
+                pattern = _DQ_RE if tok == '"' else _SQ_RE if tok == "'" else _GO_RAW_RE
                 s = pattern.match(text, at)
                 if s is None:
                     pos = at + 1
@@ -134,9 +121,6 @@ class CodeIndex:
                 open_count[tok] += 1
                 if tok == "(":
                     self.commas[at] = []
-                    self.block_of[at] = braces[-1] if braces else -1
-                elif tok == "{":
-                    braces.append(at)
             elif tok == ",":
                 if stack and stack[-1][0] == "(":
                     self.commas[stack[-1][1]].append(at)
@@ -147,8 +131,6 @@ class CodeIndex:
                 while stack:
                     kind, start = stack.pop()
                     open_count[kind] -= 1
-                    if kind == "{":
-                        braces.pop()
                     if kind == want:
                         self.close[start] = at
                         break
@@ -189,10 +171,7 @@ class CodeIndex:
         """The value of a plain string literal spanning exactly ``start:end``."""
         if self._strings.get(start) != end:
             return None
-        body = self.text[start + 1:end - 1]
-        if self.text[start] == "`" and "${" in body:
-            return None
-        return body
+        return self.text[start + 1:end - 1]
 
 
 @dataclass(frozen=True)
