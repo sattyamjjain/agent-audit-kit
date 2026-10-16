@@ -201,9 +201,15 @@ _TLS_CHECK_VAR = "NODE_TLS_REJECT_UNAUTHORIZED"
 
 
 def _is_user_settings(path: Path) -> bool:
+    """Whether `path` is the user's own `~/.claude/settings.json`.
+
+    False when the home directory is unknown: Path.home() raises KeyError on 3.9
+    when HOME is unset and the uid has no passwd entry, and RuntimeError on later
+    releases, and either one escaping here lost every TRUST-* finding of the scan.
+    """
     try:
         return path.resolve() == (Path.home() / ".claude" / "settings.json").resolve()
-    except (OSError, RuntimeError):
+    except (OSError, RuntimeError, KeyError):
         return False
 
 
