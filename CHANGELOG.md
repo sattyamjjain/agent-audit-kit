@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Eighteen older per-CVE pin rules read a lockfile whole, however large, where the pin table skips one over 32 MiB unread: AAK-DORIS-001, AAK-MCP-SERENA-CVE-2026-49471-001, AAK-ASTROMCP-SQLI-CVE-2026-7591-001 and the other pins in `supply_chain`, the two mcp-atlassian pins and the langchain SSRF pins (AAK-LANGCHAIN-SSRF-REDIR-001, AAK-SSRF-TOCTOU-001). They now skip it too, and their limitations say so.
+- Removed an AAK-SUPPLY-004 check at the end of the Cargo.lock reader that could not run: it fired when there was no Cargo.lock, and the reader returns before it in that case. A Cargo.toml without a Cargo.lock is still reported, once, by the lockfile-existence check.
 
 ## [0.6.22] - 2026-10-16
 

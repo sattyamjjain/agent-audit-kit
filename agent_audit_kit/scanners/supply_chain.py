@@ -375,7 +375,13 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
 
 
 def _scan_rust_deps(project_root: Path) -> list[Finding]:
-    """Check Cargo.lock for known vulnerable packages (AAK-SUPPLY-002)."""
+    """Check Cargo.lock for known vulnerable packages (AAK-SUPPLY-002) and
+    count them (AAK-SUPPLY-005).
+
+    A Cargo.toml without a Cargo.lock is `_check_lockfile_exists`'s to report
+    (AAK-SUPPLY-004). This ended with that check too, but it returns early when
+    there is no Cargo.lock, so the check could never fire here.
+    """
     findings: list[Finding] = []
     rust_vulns = KNOWN_VULNERABLE_PACKAGES.get("rust", {})
 
@@ -431,15 +437,6 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
         findings.append(_make_finding(
             "AAK-SUPPLY-005", rel_path,
             f"{dep_count} dependencies (threshold: 200)",
-        ))
-
-    # Also check Cargo.toml lockfile existence
-    cargo_toml = project_root / "Cargo.toml"
-    if cargo_toml.is_file() and not cargo_lock.is_file():
-        findings.append(_make_finding(
-            "AAK-SUPPLY-004",
-            str(cargo_toml.relative_to(project_root)),
-            "Cargo.toml exists but no Cargo.lock found",
         ))
 
     return findings

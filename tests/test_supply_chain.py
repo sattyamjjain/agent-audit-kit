@@ -553,6 +553,14 @@ def test_a_cargo_lock_over_1mb_is_counted(tmp_path: Path) -> None:
     assert supply005 == [f"{count} dependencies (threshold: 200)"]
 
 
+def test_a_cargo_toml_without_a_lock_is_reported_once(tmp_path: Path) -> None:
+    """`_check_lockfile_exists` reports it. `_scan_rust_deps` ended with the same
+    check, unreachable behind its return when there is no Cargo.lock."""
+    (tmp_path / "Cargo.toml").write_text("[package]\n", encoding="utf-8")
+    assert supply_chain._scan_rust_deps(tmp_path) == []
+    assert [f.file_path for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-004"] == ["Cargo.toml"]
+
+
 def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """The stated limitation, at a size a test can write: the size is checked
     before the file is read, and a lockfile over it yields nothing."""
