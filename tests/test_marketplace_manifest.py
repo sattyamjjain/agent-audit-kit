@@ -101,3 +101,43 @@ def test_aak_scan_shows_an_unreadable_manifest_at_default_settings(tmp_path: Pat
     result = CliRunner().invoke(cli, ["scan", str(tmp_path)])
     assert result.exit_code == 0, result.output
     assert "AAK-MARKETPLACE-005" in result.output
+
+
+# --- AAK-MARKETPLACE-002: a grant at least as broad as a listed one ---
+
+
+def _broad(tmp_path: Path, permissions: object) -> list[str]:
+    import json
+
+    manifest = {"name": "acme-market", "plugins": [
+        {"name": "acme-tool", "signature": "sig", "permissions": permissions},
+    ]}
+    project = _write_manifest(tmp_path, json.dumps(manifest, indent=2).encode())
+    findings, _ = marketplace_manifest.scan(project)
+    return [f.evidence for f in findings if f.rule_id == "AAK-MARKETPLACE-002"]
+
+
+@pytest.mark.parametrize("permissions,shown", [
+    (["shell:exec"], "shell:exec"),
+    (["shell:*"], "shell:*"),              # broader than shell:exec
+    (["*"], "*"),                          # every scope and action
+    (["*:exec"], "*:exec"),                # exec on every scope
+    (["SHELL:EXEC"], "SHELL:EXEC"),        # case is not a different grant
+    ([" fs : * "], " fs : * "),
+    (["Network:*"], "Network:*"),
+    ({"fs": "*"}, "fs:*"),                 # the object form
+    ({"shell": ["read", "exec"]}, "shell:exec"),
+])
+def test_a_grant_covering_a_broad_one_fires(tmp_path: Path, permissions: object, shown: str) -> None:
+    """Six exact strings were compared, so `shell:*` and a bare `*`, both
+    broader than `shell:exec`, passed while `shell:exec` was flagged."""
+    (evidence,) = _broad(tmp_path, permissions)
+    assert evidence.endswith(f"declares broad permissions: {shown}")
+
+
+@pytest.mark.parametrize("permissions", [
+    ["fs:read"], ["fs:write"], ["shell:read"], ["credentials:read"], ["*:read"],
+    ["network"], ["files:*"], [], {"fs": "read"}, {"shell": True}, "shell:exec", [7, None],
+])
+def test_a_narrower_grant_is_quiet(tmp_path: Path, permissions: object) -> None:
+    assert _broad(tmp_path, permissions) == []

@@ -36,13 +36,17 @@ _KNOWN_UPSTREAMS = frozenset(
         "google-adk",
     }
 )
-_BROAD_PERMISSIONS = (
-    "fs:*",
-    "shell:exec",
-    "network:*",
-    "credentials:*",
-    "env:*",
-    "*:*",
+# The grants AAK-MARKETPLACE-002 calls broad, as (scope, action). A permission is
+# reported when it covers one of them, not when it equals one: the six strings
+# were compared exactly, so `shell:*` and a bare `*`, both broader than
+# `shell:exec`, passed while `shell:exec` was flagged, and so did `SHELL:EXEC`.
+_BROAD_GRANTS: tuple[tuple[str, str], ...] = (
+    ("fs", "*"),
+    ("shell", "exec"),
+    ("network", "*"),
+    ("credentials", "*"),
+    ("env", "*"),
+    ("*", "*"),
 )
 _COMMIT_SHA_RE = re.compile(r"^[a-f0-9]{40}$|^[a-f0-9]{7,40}$")
 # Where GitHub reads a SECURITY.md from: `.github/`, the root, then `docs/`, the
@@ -85,6 +89,45 @@ def _edit_distance_le_1(a: str, b: str) -> bool:
     return True
 
 
+def _grants(permissions: object) -> list[tuple[str, str, str]]:
+    """(as written, scope, action) for each grant a `permissions` value makes.
+
+    A list holds `scope:action` strings, and a bare `*` is every scope and
+    action. An object maps a scope to an action or a list of actions
+    (`{"fs": "*"}`), which was not read at all before. Scope and action are
+    compared without case or surrounding space. A string with no colon other
+    than `*`, and a value of any other type, grants nothing this reads.
+    """
+    found: list[tuple[str, str, str]] = []
+    if isinstance(permissions, list):
+        for item in permissions:
+            if not isinstance(item, str):
+                continue
+            if item.strip() == "*":
+                found.append((item, "*", "*"))
+                continue
+            scope, colon, action = item.partition(":")
+            if colon:
+                found.append((item, scope.strip().lower(), action.strip().lower()))
+    elif isinstance(permissions, dict):
+        for scope, value in permissions.items():
+            actions = value if isinstance(value, list) else [value]
+            for action in actions:
+                if isinstance(scope, str) and isinstance(action, str):
+                    found.append((f"{scope}:{action}", scope.strip().lower(),
+                                  action.strip().lower()))
+    return found
+
+
+def _covers(scope: str, action: str) -> bool:
+    """Does a grant reach at least as far as one of the broad grants? A `*` on
+    either side stands for every scope or every action."""
+    return any(
+        scope in ("*", broad_scope) and action in ("*", broad_action)
+        for broad_scope, broad_action in _BROAD_GRANTS
+    )
+
+
 def _is_typosquat(name: str) -> bool:
     lowered = name.lower()
     if lowered in _KNOWN_UPSTREAMS:
@@ -119,18 +162,17 @@ def _check_plugin_entry(
             )
         )
 
-    permissions = entry.get("permissions") or []
-    if isinstance(permissions, list):
-        broad = [p for p in permissions if p in _BROAD_PERMISSIONS]
-        if broad:
-            findings.append(
-                make_finding(
-                    "AAK-MARKETPLACE-002",
-                    rel,
-                    f"Plugin {name!r} declares broad permissions: {', '.join(broad)}",
-                    line_number=find_line_number(raw_text, f'"name": "{name}"'),
-                )
+    broad = [shown for shown, scope, action in _grants(entry.get("permissions"))
+             if _covers(scope, action)]
+    if broad:
+        findings.append(
+            make_finding(
+                "AAK-MARKETPLACE-002",
+                rel,
+                f"Plugin {name!r} declares broad permissions: {', '.join(broad)}",
+                line_number=find_line_number(raw_text, f'"name": "{name}"'),
             )
+        )
 
     if name and _is_typosquat(name):
         findings.append(

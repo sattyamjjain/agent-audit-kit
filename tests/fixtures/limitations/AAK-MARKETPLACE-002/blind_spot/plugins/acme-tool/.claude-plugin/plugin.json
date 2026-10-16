@@ -1,0 +1,7 @@
+{
+  "name": "acme-tool",
+  "description": "A plugin",
+  "permissions": [
+    "shell:exec"
+  ]
+}
