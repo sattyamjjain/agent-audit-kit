@@ -7039,10 +7039,10 @@ _r(
         "reported. The source pattern is same-file co-occurrence of an Atlassian "
         "client, a Jira/Confluence field and a sink, not data flow, and it never "
         "reads mcp-atlassian's own code."
-        " A lockfile over 32 MiB is not read. The `ghcr.io/sooperset/mcp-atlassian` "
-        "image is read at a version tag (a `docker run` argument in an MCP config, "
-        "an `image:` value, a Dockerfile `FROM` or Helm values); an untagged, "
-        "`latest` or digest reference is not reported."
+        " The `ghcr.io/sooperset/mcp-atlassian` image is read at a version tag (a "
+        "`docker run` argument in an MCP config, an `image:` value, a Dockerfile "
+        "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
+        "reported. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -7074,10 +7074,10 @@ _r(
         "install and a lockfile's separate name and version lines are not "
         "reported. The source pattern is same-file co-occurrence of an Atlassian "
         "client, a Jira/Confluence field and a write sink, not data flow."
-        " A lockfile over 32 MiB is not read. The `ghcr.io/sooperset/mcp-atlassian` "
-        "image is read at a version tag (a `docker run` argument in an MCP config, "
-        "an `image:` value, a Dockerfile `FROM` or Helm values); an untagged, "
-        "`latest` or digest reference is not reported."
+        " The `ghcr.io/sooperset/mcp-atlassian` image is read at a version tag (a "
+        "`docker run` argument in an MCP config, an `image:` value, a Dockerfile "
+        "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
+        "reported. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -9823,12 +9823,12 @@ _r(
         "version. The dependency is not read when it is declared in a sub-directory "
         "manifest (`packages/app/package.json`), in `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or in a lockfile format the reader does not parse (a "
-        "Yarn 2+ `yarn.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not "
-        "read. The `ghcr.io/czlonkowski/n8n-mcp` and "
+        "Yarn 2+ `yarn.lock`). The `ghcr.io/czlonkowski/n8n-mcp` and "
         "`ghcr.io/czlonkowski/n8n-mcp-railway` images are read at a version tag (a "
         "`docker run` argument in an MCP config, an `image:` value, a Dockerfile "
         "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
-        "reported, whichever release it resolves to."
+        "reported, whichever release it resolves to. A file over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
