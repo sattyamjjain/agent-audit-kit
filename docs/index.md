@@ -13,7 +13,7 @@ agent-audit-kit scan .
 
 ## Features
 
-- **<!-- rule-count:total -->407<!-- /rule-count --> detection rules** across 14 categories
+- **<!-- rule-count:total -->408<!-- /rule-count --> detection rules** across 14 categories
 - **OWASP Top 10 for Agentic Applications** (Version 2026): rules for every entry, ASI01-ASI10, under OWASP's own ids and titles ([per-entry lists](coverage/owasp-agentic-top10.md))
 - **OWASP MCP Top 10** (v0.1, 2025 edition): at least one rule for every entry, MCP01-MCP10, unevenly spread ([per-entry lists](coverage/owasp-mcp-top10.md))
 - **Adversa AI Top 25** mapping

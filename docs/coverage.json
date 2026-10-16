@@ -3620,6 +3620,38 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-96620"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001",
+      "severity": "critical",
+      "title": "Claude Agent SDK below 0.2.121 (TypeScript below 0.3.208): a session id passed to `resume` can inject Claude CLI flags that run a command"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-103012"
       ],
       "eu_ai_act": [
@@ -10022,36 +10054,36 @@
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 168,
+      "supply-chain": 169,
       "taint-analysis": 14,
       "tool-poisoning": 30,
       "transport-security": 15,
       "trust-boundary": 18
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 197,
+      "Art. 10 - Data Governance": 198,
       "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 301,
-      "Art. 9 - Risk Management": 205
+      "Art. 15 - Robustness & Security": 302,
+      "Art. 9 - Risk Management": 206
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 197,
-      "Constrain and sandbox tool execution (p.11)": 188,
-      "Design for boundaries (p.10)": 291,
-      "Filter and monitor output pipelines and chained execution (p.12)": 111,
+      "Choose supported MCP projects when possible (p.10)": 198,
+      "Constrain and sandbox tool execution (p.11)": 189,
+      "Design for boundaries (p.10)": 292,
+      "Filter and monitor output pipelines and chained execution (p.12)": 112,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 257,
-      "Sign and verify MCP messages (p.12)": 267,
-      "Track and patch MCP related vulnerabilities (p.13)": 202,
-      "Validate parameters (p.11)": 192
+      "Scan local network for open or vulnerable MCP servers (p.14)": 258,
+      "Sign and verify MCP messages (p.12)": 268,
+      "Track and patch MCP related vulnerabilities (p.13)": 203,
+      "Validate parameters (p.11)": 193
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 99,
       "ASI03": 105,
-      "ASI04": 195,
-      "ASI05": 91,
+      "ASI04": 196,
+      "ASI05": 92,
       "ASI06": 5,
       "ASI07": 24,
       "ASI08": 9,
@@ -10062,8 +10094,8 @@
       "MCP01:2025": 32,
       "MCP02:2025": 16,
       "MCP03:2025": 12,
-      "MCP04:2025": 147,
-      "MCP05:2025": 114,
+      "MCP04:2025": 148,
+      "MCP05:2025": 115,
       "MCP06:2025": 4,
       "MCP07:2025": 80,
       "MCP08:2025": 1,
@@ -10071,14 +10103,14 @@
       "MCP10:2025": 15
     },
     "by_severity": {
-      "critical": 91,
+      "critical": 92,
       "high": 177,
       "info": 3,
       "low": 17,
       "medium": 119
     },
-    "total_cves_covered": 345,
-    "total_rules": 407
+    "total_cves_covered": 346,
+    "total_rules": 408
   },
   "tool": "agent-audit-kit"
 }
