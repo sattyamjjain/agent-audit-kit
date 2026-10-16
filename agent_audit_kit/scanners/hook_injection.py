@@ -97,8 +97,12 @@ SETTINGS_FILES = [
     ".claude/settings.json",
     ".claude/settings.local.json",
 ]
-# A file over this many characters is not read, a settings file or any other.
+# A settings file over this many characters is not read.
 _MAX_HOOK_FILE_CHARS = 1_000_000
+# A plugin `hooks/hooks.json` or a `SKILL.md` over this many bytes is not read.
+# It is sized before it is read, as agentic_skills and skill_composition size a
+# SKILL.md, so a huge file is never loaded only to be thrown away.
+_MAX_PLUGIN_OR_SKILL_BYTES = 512_000
 
 
 def _find_settings(project_root: Path, include_user_config: bool = False) -> list[Path]:
@@ -155,19 +159,27 @@ def _plugin_and_skill_files(project_root: Path) -> tuple[list[Path], list[Path]]
     Both come from one walk of the tree. A name-specific ``rglob`` still lists
     every directory, and on a large tree that listing is most of a scanner's
     time: over 51 checkouts of this repository, two took 6.8 s and one 3.6 s.
+
+    The directory names are read on the resolved directory: `aak scan .` passes
+    the root unresolved, and inside a plugin's `hooks/` the walk yields
+    `hooks.json`, whose parent's name is "". The file itself is not resolved, so
+    a `hooks.json` that is a symlink is still the plugin's.
     """
     plugins: list[Path] = []
     skills: list[Path] = []
+    resolved_root = project_root.resolve()
     for path in project_root.rglob("*"):
         if path.name == "SKILL.md":
             found = skills
-        elif path.name == "hooks.json" and path.parent.name == "hooks":
+        elif path.name == "hooks.json":
+            directory = path.parent.resolve()
+            if directory.name != "hooks" or not _is_plugin_root(directory.parent, resolved_root):
+                continue
             found = plugins
         else:
             continue
         if path.is_file() and not in_skip_dir(path, project_root):
             found.append(path)
-    plugins = [path for path in plugins if _is_plugin_root(path.parent.parent, project_root)]
     return sorted(plugins), sorted(skills)
 
 
@@ -201,12 +213,15 @@ def _hook_sources(
         yield rel_path, raw_text, data.get("hooks", {})
     plugin_files, skill_files = _plugin_and_skill_files(project_root)
     for path in plugin_files:
+        # RecursionError: json.loads recurses, so 20,000 nested `[` in 40 KB
+        # raised it, and it is no JSONDecodeError. One hostile plugin file took
+        # the whole scanner down, and the settings findings with it.
         try:
-            raw_text = path.read_text(encoding="utf-8")
-            if len(raw_text) > _MAX_HOOK_FILE_CHARS:
+            if path.stat().st_size > _MAX_PLUGIN_OR_SKILL_BYTES:
                 continue
+            raw_text = path.read_text(encoding="utf-8")
             data = json.loads(raw_text)
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError, RecursionError):
             continue
         rel_path = _relative(path, project_root)
         scanned_files.add(rel_path)
@@ -214,10 +229,10 @@ def _hook_sources(
             yield rel_path, raw_text, data.get("hooks", {})
     for path in skill_files:
         try:
+            if path.stat().st_size > _MAX_PLUGIN_OR_SKILL_BYTES:
+                continue
             raw_text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
-            continue
-        if len(raw_text) > _MAX_HOOK_FILE_CHARS:
             continue
         rel_path = _relative(path, project_root)
         scanned_files.add(rel_path)
@@ -290,6 +305,21 @@ def _http_sent_credentials(handler: dict[str, Any]) -> list[tuple[str, str]]:
     return sent
 
 
+def _value_line(raw_text: str, value: str, key: str) -> int | None:
+    """The line of a string value from a parsed file, found as the file writes it.
+
+    `find_line_number` looks for the decoded value, which JSON (and a quoted YAML
+    scalar) escapes: `\\` is written `\\\\`, and json.dumps writes a non-ASCII
+    character as `\\uXXXX`, so `http://localhost\\@evil.example/` had no line.
+    The escaped spellings are tried next, then the first line naming the key.
+    """
+    for spelling in (value, json.dumps(value, ensure_ascii=False)[1:-1], json.dumps(value)[1:-1]):
+        line = find_line_number(raw_text, spelling)
+        if line is not None:
+            return line
+    return find_line_number(raw_text, f'"{key}"') or find_line_number(raw_text, f"{key}:")
+
+
 def _http_findings(rel_path: str, raw_text: str, event_name: str, handler: dict[str, Any]) -> list[Finding]:
     url = handler.get("url")
     if not isinstance(url, str) or not url:
@@ -300,7 +330,7 @@ def _http_findings(rel_path: str, raw_text: str, event_name: str, handler: dict[
         findings.append(_make_finding(
             "AAK-HOOK-001", rel_path,
             f"Event '{event_name}': http hook posts the event to {url} ({'; '.join(risks)})",
-            _find_line_number(raw_text, url),
+            _value_line(raw_text, url, "url"),
         ))
     sent = _http_sent_credentials(handler)
     if sent:
@@ -308,7 +338,7 @@ def _http_findings(rel_path: str, raw_text: str, event_name: str, handler: dict[
         findings.append(_make_finding(
             "AAK-HOOK-002", rel_path,
             f"Event '{event_name}': http hook sends {named} to {url}",
-            _find_line_number(raw_text, sent[0][0]) or _find_line_number(raw_text, url),
+            _find_line_number(raw_text, sent[0][0]) or _value_line(raw_text, url, "url"),
         ))
     return findings
 
@@ -648,7 +678,9 @@ def _scan_hooks(rel_path: str, raw_text: str, hooks: Any) -> list[Finding]:
         command = hook_command(handler)
         if command:
             findings.extend(_command_findings(rel_path, raw_text, event_name, command))
-        elif handler.get("type") == "http":
+        # Not an `elif`: Claude Code runs an `http` handler as http whatever else
+        # it carries, so a decoy `"command": "true"` beside the `url` hid it.
+        if handler.get("type") == "http":
             findings.extend(_http_findings(rel_path, raw_text, event_name, handler))
     return findings
 
