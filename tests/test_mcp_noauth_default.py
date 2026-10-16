@@ -268,6 +268,48 @@ def test_an_auth_off_value_in_json(tmp_path: Path, src: str, fires: bool) -> Non
     assert bool(_hits(findings)) is fires
 
 
+_JSON_HOST = '{"mcpServers": {"docs": {"host": "0.0.0.0", %s}}}'
+
+
+@pytest.mark.parametrize("flag", [
+    '"disable_auth": true',
+    '"skip_auth": "yes"',
+    '"allow_anonymous": 1',
+    '"auth": {"enabled": false}',
+    '"auth": {"provider": "none-needed", "required": false}',
+    '"governance": {"auth_config": {"is_enabled": false}}',
+])
+def test_a_quoted_json_key_flags(tmp_path: Path, flag: str) -> None:
+    """JSON quotes every key, and the key's closing quote sat between the
+    keyword and its colon, so the `disable_*` flags and a nested `enabled` key
+    were read in YAML and env files only: Bifrost's own setting, written as
+    JSON, was silent."""
+    _write(tmp_path, "mcp.json", _JSON_HOST % flag)
+    findings, _ = scan(tmp_path)
+    assert _hits(findings), flag
+
+
+@pytest.mark.parametrize("flag", [
+    '"disable_auth_logging": true',
+    '"x_disable_auth": true',
+    '"disable_auth": false',
+    '"auth": {"enabled": true}',
+    '"auth": {"enabled_features": false}',
+    '"auth": {"required_scopes": false}',
+])
+def test_a_quoted_json_key_that_is_not_auth_off_passes(tmp_path: Path, flag: str) -> None:
+    _write(tmp_path, "mcp.json", _JSON_HOST % flag)
+    findings, _ = scan(tmp_path)
+    assert not _hits(findings), flag
+
+
+def test_a_quoted_json_flag_names_its_own_line(tmp_path: Path) -> None:
+    src = '{\n  "mcpServers": {\n    "docs": {\n      "host": "0.0.0.0",\n      "disable_auth": true\n    }\n  }\n}\n'
+    _write(tmp_path, "mcp.json", src)
+    findings, _ = scan(tmp_path)
+    assert [f.line_number for f in _hits(findings)] == [5]
+
+
 _WARN_THEN = (
     "import logging\n"
     "import os\n"
@@ -322,6 +364,10 @@ _CRAFTED_CONFIGS = {
     # in the run: 5,000 characters took 66 seconds.
     "secret-run": "secret" * 165_000,
     "word-run": "a" * 990_000,
+    # The quoted key forms: a keyword's closing quote, then no colon.
+    "quoted-flags": '"disable_auth"' * 70_000,
+    "quoted-enabled": '{"auth": {"enabled"' * 52_000,
+    "quoted-enabled-run": '{"auth": {' + '"enabled"' * 110_000,
 }
 
 

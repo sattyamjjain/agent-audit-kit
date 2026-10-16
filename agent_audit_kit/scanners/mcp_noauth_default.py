@@ -245,8 +245,17 @@ _CFG_SECRET_KV_RE = re.compile(
 # idea spelled differently, and until #731 the scanner only knew the first
 # spelling: CVE-2026-90898's Bifrost config reads
 # `governance.auth_config.is_enabled: false`, carries no secret at all, and so
-# matched nothing. Covers YAML/TOML (`enabled: false`), JSON
-# (`"enabled": false`) and env (`AUTH_ENABLED=false`).
+# matched nothing. Covers YAML (`auth:` then `enabled: false`, or a dotted
+# key), TOML keys and inline tables (`auth.enabled = false`,
+# `auth = { enabled = false }`), JSON (`"auth": {"enabled": false}`,
+# `"disable_auth": true`) and env flags (`DISABLE_AUTH=true`, `AUTH=off`).
+# JSON's quoted keys were missed until the keyword could be followed by its
+# closing quote: that quote sat between the keyword and the colon, so the
+# nested `"enabled"` and the `"disable_*"` flags matched only where keys go
+# unquoted (YAML, env). The keyword keeps its `\b` on both sides, so a longer name
+# (`"disable_auth_logging"`, `"enabled_features"`) is still not read as one.
+# Not read: a TOML table header (`[auth]`, then `enabled = false` on its own
+# line) and an env name that only contains a keyword (`AUTH_ENABLED=false`).
 #
 # This took 16 seconds on a 4 KB config of `auth:` and blank lines, four times
 # the 2 KB time, and 220 seconds on 8 KB of `auth.` repeated, seven times the
@@ -290,10 +299,10 @@ _CFG_AUTH_DISABLED_RE = re.compile(
         (?:(?!\b(?:{_AUTH_KEYWORDS})\b)[\w."'\-])*
         \s*[:=]\s*
         (?:\{{\s*)?
-        (?:(?:\S[\s\S]{{0,119}}?)?\b(?:is_enabled|enabled|required|require)\b\s*[:=]\s*)?
+        (?:(?:\S[\s\S]{{0,119}}?)?\b(?:is_enabled|enabled|required|require)\b["']?\s*[:=]\s*)?
         {_AUTH_OFF_VALUE}
       |
-        \b(?:disable_auth|no_auth|auth_disabled|skip_auth|allow_anonymous)\b
+        \b(?:disable_auth|no_auth|auth_disabled|skip_auth|allow_anonymous)\b["']?
         \s*[:=]\s*{_AUTH_OFF_FLAG_VALUE}
     )
     """,

@@ -1,0 +1,6 @@
+[server]
+name = "mcp"
+host = "0.0.0.0"
+
+[auth]
+enabled = false
