@@ -291,3 +291,29 @@ def test_json_array_root_skipped(tmp_path: Path) -> None:
     findings, scanned = scan(tmp_path)
     assert len(findings) == 0
     assert len(scanned) == 0
+
+
+def test_license_rules_say_they_read_the_projects_own_manifest() -> None:
+    """AAK-LEGAL-001 and -002 were titled "in dependency" and "Dependency with no
+    declared license", but they read the `license` field of the project's own
+    package.json files and skip `node_modules`, so no installed dependency is
+    ever judged. A private app with no `license` field was told a dependency
+    had none. The text now says what the rules read."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    for rule_id in ("AAK-LEGAL-001", "AAK-LEGAL-002"):
+        rule = RULES[rule_id]
+        assert "dependency" not in rule.title.lower(), rule.title
+        assert "package.json" in rule.title, rule.title
+        assert "package.json" in rule.description, rule.description
+        assert not rule.description.lower().startswith("a dependency"), rule.description
+        assert "maintainer" not in rule.remediation, rule.remediation
+        assert "node_modules" in rule.limitations, rule.limitations
+
+
+def test_missing_license_evidence_names_the_file(tmp_path: Path) -> None:
+    _write_package_json(tmp_path, {"name": "notes-app", "version": "1.0.0"})
+    findings, _ = scan(tmp_path)
+    (finding,) = [f for f in findings if f.rule_id == "AAK-LEGAL-002"]
+    assert finding.file_path == "package.json"
+    assert "package.json has no 'license' field" in finding.evidence

@@ -2431,17 +2431,17 @@
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
-      "description": "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations on your project.",
+      "description": "A package.json in the project declares a copyleft license (AGPL, SSPL, GPL-3 or EUPL) in its `license` field. The rule reads the project's own manifests, not the dependencies it installs. Distributing that package, or offering it as a network service under AGPL or SSPL, carries the license's obligations.",
       "incident_references": [],
       "limitations": "Reads the `license` field of each `package.json` in the scanned tree and matches a value that starts with `AGPL`, `SSPL`, `GPL-3` or `EUPL`. `node_modules` is skipped, so the license of an installed dependency is not checked, and the legacy `licenses` array is not read.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Review license obligations. Consider replacing with permissively-licensed alternatives.",
+      "remediation": "Confirm that the declared license is the one the package should ship under, and that its obligations suit how the project is distributed or hosted. Installed dependencies are not checked here: run a license checker over the resolved dependency tree for those.",
       "rule_id": "AAK-LEGAL-001",
       "sarif_name": "CopyleftLicenseDep",
       "severity": "high",
-      "title": "Copyleft license (AGPL/SSPL) in dependency"
+      "title": "Copyleft license (AGPL/SSPL) declared in package.json"
     },
     {
       "adversa_references": [],
@@ -2449,17 +2449,17 @@
       "auto_fixable": false,
       "category": "legal-compliance",
       "cve_references": [],
-      "description": "A dependency has no declared license, creating legal uncertainty about usage rights.",
+      "description": "A package.json in the project has no `license` field, so the package states no terms under which others may use it. The rule reads the project's own manifests, not the dependencies it installs.",
       "incident_references": [],
       "limitations": "Reads the `license` key of each `package.json` in the scanned tree and skips `node_modules`, so an installed dependency with no license is not checked. Any value counts as declared, an empty string and `UNLICENSED` included.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Contact the maintainer to clarify licensing or replace with a properly licensed alternative.",
+      "remediation": "Add a `license` field to the package.json: an SPDX identifier such as `MIT`, or `UNLICENSED` for a private package that grants no rights to others.",
       "rule_id": "AAK-LEGAL-002",
       "sarif_name": "NoLicenseDep",
       "severity": "medium",
-      "title": "Dependency with no declared license"
+      "title": "package.json declares no license"
     },
     {
       "adversa_references": [],

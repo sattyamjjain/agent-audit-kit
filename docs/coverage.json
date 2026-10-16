@@ -2068,7 +2068,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-LEGAL-001",
       "severity": "high",
-      "title": "Copyleft license (AGPL/SSPL) in dependency"
+      "title": "Copyleft license (AGPL/SSPL) declared in package.json"
     },
     {
       "category": "legal-compliance",
@@ -2079,7 +2079,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-LEGAL-002",
       "severity": "medium",
-      "title": "Dependency with no declared license"
+      "title": "package.json declares no license"
     },
     {
       "category": "legal-compliance",

@@ -2961,12 +2961,17 @@ _r(
 
 _r(
     "AAK-LEGAL-001",
-    "Copyleft license (AGPL/SSPL) in dependency",
-    "A dependency uses a copyleft license (AGPL, SSPL) that may impose obligations "
-    "on your project.",
+    "Copyleft license (AGPL/SSPL) declared in package.json",
+    "A package.json in the project declares a copyleft license (AGPL, SSPL, GPL-3 "
+    "or EUPL) in its `license` field. The rule reads the project's own manifests, "
+    "not the dependencies it installs. Distributing that package, or offering it "
+    "as a network service under AGPL or SSPL, carries the license's obligations.",
     Severity.HIGH,
     Category.LEGAL_COMPLIANCE,
-    "Review license obligations. Consider replacing with permissively-licensed alternatives.",
+    "Confirm that the declared license is the one the package should ship under, "
+    "and that its obligations suit how the project is distributed or hosted. "
+    "Installed dependencies are not checked here: run a license checker over the "
+    "resolved dependency tree for those.",
     sarif_name="CopyleftLicenseDep",
     limitations=(
         "Reads the `license` field of each `package.json` in the scanned tree and "
@@ -2978,11 +2983,14 @@ _r(
 
 _r(
     "AAK-LEGAL-002",
-    "Dependency with no declared license",
-    "A dependency has no declared license, creating legal uncertainty about usage rights.",
+    "package.json declares no license",
+    "A package.json in the project has no `license` field, so the package states no "
+    "terms under which others may use it. The rule reads the project's own "
+    "manifests, not the dependencies it installs.",
     Severity.MEDIUM,
     Category.LEGAL_COMPLIANCE,
-    "Contact the maintainer to clarify licensing or replace with a properly licensed alternative.",
+    "Add a `license` field to the package.json: an SPDX identifier such as `MIT`, "
+    "or `UNLICENSED` for a private package that grants no rights to others.",
     sarif_name="NoLicenseDep",
     limitations=(
         "Reads the `license` key of each `package.json` in the scanned tree and "
