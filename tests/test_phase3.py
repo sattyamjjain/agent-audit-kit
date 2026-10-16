@@ -142,3 +142,24 @@ def test_cve_watcher_script_is_importable() -> None:
     spec.loader.exec_module(module)
     assert callable(module.main)
     assert callable(module._already_tracked)
+
+
+def test_sbom_lists_the_servers_of_a_vscode_servers_map(tmp_path: Path) -> None:
+    """`.vscode/mcp.json` keeps its servers under `servers`; reading `mcpServers`
+    alone left every VS Code server out of the SBOM."""
+    (tmp_path / ".vscode").mkdir()
+    (tmp_path / ".vscode" / "mcp.json").write_text(
+        '{\n  // the workspace servers\n  "servers": {\n    "fs": {"command": "npx", '
+        '"args": ["-y", "@modelcontextprotocol/server-filesystem@2025.8.21", "."]},\n  }\n}\n',
+        encoding="utf-8",
+    )
+    components = json.loads(emit_cyclonedx(tmp_path))["components"]
+    assert [(c["name"], c["version"]) for c in components] == [
+        ("@modelcontextprotocol/server-filesystem", "2025.8.21"),
+    ]
+
+
+def test_sbom_skips_an_mcp_config_that_is_not_an_object(tmp_path: Path) -> None:
+    """`data.get` on a JSON array raised AttributeError and took `aak sbom` down."""
+    (tmp_path / "mcp.json").write_text('[{"mcpServers": {}}]', encoding="utf-8")
+    assert json.loads(emit_cyclonedx(tmp_path))["bomFormat"] == "CycloneDX"

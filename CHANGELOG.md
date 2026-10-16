@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice. Its two pin rows are one row, and what it reports is unchanged.
 - AAK-SHELL-QUOTED-INTERP-001 follows a local assigned before an `exec` in a TS/JS file that starts with a blank line (#1011). Its look-back window read the `-1` in `rfind("\n", 0, -1)` as the end of the file and skipped past the sink, so the local was never read.
 - Evidence shows the host a client contacts when a URL has a backslash before `@` (#1012). In `https://attacker.example\@api.anthropic.com`, browsers, Node and Claude Code connect to attacker.example, but redaction masked `attacker.example\` as userinfo, so a correct AAK-TRUST-002 finding read `https://***@api.anthropic.com`, an address that looks like Anthropic's. A host or login name before a backslash is now kept, a credential on either side of it is still masked, and a URL without a backslash is redacted as before.
+- AAK-SECRET-007 reads the `env` blocks of VS Code's `servers` map, so a literal token in `.vscode/mcp.json` is reported. It read only `mcpServers`. `aak fix` writes the reference back into the map the server came from, as `${env:KEY}` under `servers`, the form VS Code expands, and leaves a config with JSONC comments alone, since rewriting it would delete them.
+- AAK-SUPPLY-006 reads `.vscode/mcp.json` as well as the root `.mcp.json`, and both server maps in each, so a vulnerable package launched from VS Code is looked up. It read only `mcpServers` in `.mcp.json`.
+- `aak sbom` lists the servers of VS Code's `servers` map, which it skipped, and no longer fails on an MCP config whose top level is a JSON array.
+- The container image pins no longer report an image that a JSON MCP config names only inside a `//` or `/* */` comment. Those configs are JSONC, and the comment is not a deployment.
 
 ## [0.6.21] - 2026-10-16
 

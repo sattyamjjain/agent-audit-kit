@@ -572,3 +572,42 @@ def test_a_secret_at_the_end_of_a_200_kb_line_is_still_found(tmp_path: Path) -> 
     assert hit.line_number == 1
     assert hit.evidence.startswith("SESSION_SECRET = (high entropy value")
     assert time.perf_counter() - started < 10.0
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-007 reads VS Code's `servers` map too
+# ---------------------------------------------------------------------------
+#
+# `.vscode/mcp.json` keeps its servers under `servers`. Reading `mcpServers` alone
+# passed every literal there; the reader now goes through `iter_mcp_servers`.
+
+_VSCODE_SERVERS = Path(__file__).parent / "fixtures" / "vscode_servers" / "secret-007"
+
+
+def _secret_007(root: Path) -> list[tuple[str, int | None]]:
+    return [(f.file_path, f.line_number) for f in scan(root)[0] if f.rule_id == "AAK-SECRET-007"]
+
+
+def test_secret_007_reads_a_vscode_servers_map() -> None:
+    assert _secret_007(_VSCODE_SERVERS / "detecting") == [(".vscode/mcp.json", 8)]
+
+
+def test_secret_007_stays_quiet_on_vscode_input_and_env_references() -> None:
+    """`${input:...}` is VS Code's prompt for a secret, `${env:...}` its environment
+    reference; neither is a literal."""
+    assert _secret_007(_VSCODE_SERVERS / "clean") == []
+
+
+def test_secret_007_reads_both_maps_and_skips_a_config_that_is_a_list(tmp_path: Path) -> None:
+    config = {
+        "mcpServers": {"a": {"command": "node", "env": {"API_KEY": "literal-one"}}},
+        "servers": {"b": {"command": "node", "env": {"API_KEY": "literal-two"}}},
+    }
+    (tmp_path / "mcp.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+    evidence = [f.evidence for f in scan(tmp_path)[0] if f.rule_id == "AAK-SECRET-007"]
+    assert evidence == [
+        "Server 'a' env.API_KEY = (hardcoded value)",
+        "Server 'b' env.API_KEY = (hardcoded value)",
+    ]
+    (tmp_path / "mcp.json").write_text('[{"servers": {}}]', encoding="utf-8")
+    assert _secret_007(tmp_path) == []

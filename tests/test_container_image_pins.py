@@ -723,3 +723,29 @@ def test_nezha_fixtures_positive_and_negative() -> None:
 def test_nezha_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yml", f"services:\n  dashboard:\n    image: {ref}\n")
     assert (NEZHA in ids) is fires
+
+
+# --- A reference inside a JSONC comment is not a deployment ---
+#
+# MCP clients read their configs as JSONC, and the inline reader matched the raw
+# text, so an image named in a `//` or `/* */` comment of `.vscode/mcp.json` was
+# reported. Comments are blanked before matching; offsets and lines are kept.
+
+VSCODE_IMAGES = FIXTURES.parent / "vscode_servers" / "image-pins"
+
+
+def test_an_image_in_a_jsonc_comment_is_not_reported() -> None:
+    assert _ids(VSCODE_IMAGES / "commented") == []
+
+
+def test_an_image_in_a_vscode_servers_map_is_still_reported_on_its_line() -> None:
+    findings = scan(VSCODE_IMAGES / "detecting")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(NULLHUB, 7)]
+
+
+def test_a_config_that_does_not_parse_even_as_jsonc_is_skipped(tmp_path: Path) -> None:
+    (tmp_path / "mcp.json").write_text(
+        '{"servers": {"hub": {"args": ["ghcr.io/nullclaw/nullhub:v2026.5.29"]}}} /* never closed',
+        encoding="utf-8",
+    )
+    assert _ids(tmp_path) == []

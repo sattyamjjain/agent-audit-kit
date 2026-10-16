@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from agent_audit_kit import __version__
-from agent_audit_kit.scanners._helpers import loads_jsonc
+from agent_audit_kit.scanners._helpers import iter_mcp_servers, loads_jsonc
 
 
 _MCP_CONFIG_NAMES = (
@@ -42,9 +42,9 @@ def _discover_mcp_packages(project_root: Path) -> list[dict]:
             data = loads_jsonc(path.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
             continue
-        for server_name, server_cfg in (data.get("mcpServers") or {}).items():
-            if not isinstance(server_cfg, dict):
-                continue
+        # Both server maps: `.vscode/mcp.json` keeps its servers under `servers`,
+        # and reading `mcpServers` alone left every VS Code server out of the SBOM.
+        for server_name, server_cfg in iter_mcp_servers(data):
             args = server_cfg.get("args") or []
             if not isinstance(args, list):
                 continue

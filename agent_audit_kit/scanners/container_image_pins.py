@@ -72,11 +72,13 @@ floor. Everything else states no version this module can trust:
 
 The image name must match exactly. `ghcr.io/obot-platform/obot-enterprise` is a
 different image whose tags were not checked, and a mirror under another registry
-is not recognised. Commented-out YAML and Dockerfile lines are skipped.
+is not recognised. Commented-out YAML and Dockerfile lines are skipped, and so are
+`//` and `/* */` comments in a JSON MCP config, which clients read as JSONC.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -87,7 +89,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding
+from ._helpers import SKIP_DIRS, make_finding, strip_jsonc
 
 _Ver = tuple[int, int, int]
 
@@ -478,6 +480,15 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
+        if kind == "json":
+            # MCP clients read these as JSONC, so a reference inside a `//` or
+            # `/* */` comment is not a deployment. Comments become spaces, which
+            # keeps every offset and line number. A file that does not parse
+            # even as JSONC is one no client loads.
+            try:
+                text = strip_jsonc(text)
+            except json.JSONDecodeError:
+                continue
         lowered = text.lower()
         # Filter on the path without the registry: Helm values may split
         # `registry: ghcr.io` from `repository: obot-platform/obot`.

@@ -232,9 +232,9 @@ _PARSED_RULES = {
 
 
 @pytest.mark.parametrize(("config", "key", "extra"), [
-    (".vscode/mcp.json", "servers", set()),
+    # secret_exposure reads both server maps in any JSON file but `.mcp.json`.
+    (".vscode/mcp.json", "servers", {"AAK-SECRET-007"}),
     (".mcp.json", "mcpServers", set()),
-    # secret_exposure reads `mcpServers` in any JSON file but `.mcp.json`.
     (".cursor/mcp.json", "mcpServers", {"AAK-SECRET-007"}),
 ])
 def test_a_jsonc_config_reports_what_the_same_json_config_reports(

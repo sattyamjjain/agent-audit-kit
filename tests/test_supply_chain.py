@@ -855,3 +855,34 @@ def test_litellm_pin_keeps_its_version(tmp_path: Path, requirement: str, fires: 
     (tmp_path / "requirements.txt").write_text(requirement + "\n", encoding="utf-8")
     rule_ids = {f.rule_id for f in scan(tmp_path)[0]}
     assert any("LITELLM" in r for r in rule_ids) is fires
+
+
+# ---------------------------------------------------------------------------
+# AAK-SUPPLY-006 reads .vscode/mcp.json and VS Code's `servers` map
+# ---------------------------------------------------------------------------
+
+_SUPPLY_006_VSCODE = Path(__file__).parent / "fixtures" / "vscode_servers" / "supply-006"
+
+
+def _supply_006(root: Path) -> list[tuple[str, str]]:
+    return [(f.file_path, f.evidence) for f in scan(root)[0] if f.rule_id == "AAK-SUPPLY-006"]
+
+
+def test_supply_006_reads_a_vscode_servers_map() -> None:
+    [(path, evidence)] = _supply_006(_SUPPLY_006_VSCODE / "detecting")
+    assert path == str(Path(".vscode") / "mcp.json")
+    assert evidence.startswith("Server 'claw' uses openclaw@2.0.0")
+
+
+def test_supply_006_passes_a_fixed_release_in_a_vscode_servers_map() -> None:
+    assert _supply_006(_SUPPLY_006_VSCODE / "clean") == []
+
+
+def test_supply_006_reads_both_maps_of_the_root_config(tmp_path: Path) -> None:
+    config = {
+        "mcpServers": {"a": {"command": "npx", "args": ["openclaw@2.0.0"]}},
+        "servers": {"b": {"command": "npx", "args": ["axios@1.7.2"]}},
+    }
+    (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
+    hits = [evidence.split(" — ")[0] for _, evidence in _supply_006(tmp_path)]
+    assert hits == ["Server 'a' uses openclaw@2.0.0", "Server 'b' uses axios@1.7.2"]

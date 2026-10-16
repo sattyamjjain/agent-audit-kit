@@ -7,7 +7,13 @@ from bisect import bisect_right
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    iter_mcp_servers,
+    loads_jsonc,
+    make_finding,
+)
 
 # API key patterns
 ANTHROPIC_KEY = re.compile(r"sk-ant-[a-zA-Z0-9_-]{20,}")
@@ -327,26 +333,26 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
                     line_num,
                 ))
 
-    # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files)
+    # AAK-SECRET-007: Secret in MCP server environment block (for non-.mcp.json files).
+    # Both server maps: VS Code keeps its servers under `servers` in
+    # .vscode/mcp.json, and reading `mcpServers` alone passed every literal there.
     if file_path.suffix == ".json" and file_path.name != ".mcp.json":
         try:
             data = loads_jsonc(content)
-            servers = data.get("mcpServers", {})
-            if isinstance(servers, dict):
-                for server_name, server_cfg in servers.items():
-                    if isinstance(server_cfg, dict):
-                        env = server_cfg.get("env", {})
-                        if isinstance(env, dict):
-                            for key, value in env.items():
-                                if MCP_ENV_SECRET_KEYS.search(key) and isinstance(value, str):
-                                    if not re.match(r"^\$\{.+\}$", value) and value:
-                                        findings.append(_make_finding(
-                                            "AAK-SECRET-007", rel_path,
-                                            f"Server '{server_name}' env.{key} = (hardcoded value)",
-                                            _find_line_number(content, key),
-                                        ))
-        except (json.JSONDecodeError, AttributeError):
-            pass
+        except json.JSONDecodeError:
+            data = None
+        for server_name, server_cfg in iter_mcp_servers(data):
+            env = server_cfg.get("env", {})
+            if not isinstance(env, dict):
+                continue
+            for key, value in env.items():
+                if MCP_ENV_SECRET_KEYS.search(key) and isinstance(value, str):
+                    if not re.match(r"^\$\{.+\}$", value) and value:
+                        findings.append(_make_finding(
+                            "AAK-SECRET-007", rel_path,
+                            f"Server '{server_name}' env.{key} = (hardcoded value)",
+                            _find_line_number(content, key),
+                        ))
 
     return findings
 

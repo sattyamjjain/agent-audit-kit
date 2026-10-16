@@ -14,6 +14,7 @@ from agent_audit_kit.fix import (
     _fix_litellm_version,
     _fix_missing_allowlist,
     _fix_missing_deny,
+    _fix_secret_env_ref,
     _write_fix_log,
     run_fixes,
 )
@@ -452,3 +453,47 @@ class TestRequirementPinRewrite:
         started = time.perf_counter()
         _fix_litellm_version(req, dry_run=False)
         assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-007: the env reference goes back into the map the server came from
+# ---------------------------------------------------------------------------
+
+
+class TestFixSecretEnvRef:
+    def test_a_vscode_server_gets_an_env_reference_in_its_own_map(self, tmp_path: Path) -> None:
+        """VS Code substitutes `${env:KEY}`; a bare `${KEY}` would reach the server as
+        written. The server stays under `servers`, and no `mcpServers` key appears."""
+        path = tmp_path / ".vscode" / "mcp.json"
+        path.parent.mkdir()
+        path.write_text(json.dumps({
+            "servers": {"gh": {"command": "npx", "env": {"GITHUB_TOKEN": "literal-value"}}},
+        }))
+        action = _fix_secret_env_ref(path, dry_run=False)
+        assert action is not None and action.applied
+        data = json.loads(path.read_text())
+        assert data == {
+            "servers": {"gh": {"command": "npx", "env": {"GITHUB_TOKEN": "${env:GITHUB_TOKEN}"}}},
+        }
+        from agent_audit_kit.scanners.secret_exposure import scan as secret_scan
+        assert not [f for f in secret_scan(tmp_path)[0] if f.rule_id == "AAK-SECRET-007"]
+
+    def test_each_map_keeps_its_servers_and_its_own_form(self, tmp_path: Path) -> None:
+        path = tmp_path / "mcp.json"
+        path.write_text(json.dumps({
+            "mcpServers": {"a": {"env": {"API_KEY": "one"}}},
+            "servers": {"b": {"env": {"API_KEY": "two"}}},
+        }))
+        assert _fix_secret_env_ref(path, dry_run=False) is not None
+        assert json.loads(path.read_text()) == {
+            "mcpServers": {"a": {"env": {"API_KEY": "${API_KEY}"}}},
+            "servers": {"b": {"env": {"API_KEY": "${env:API_KEY}"}}},
+        }
+
+    def test_a_jsonc_config_is_left_alone(self, tmp_path: Path) -> None:
+        """Writing a JSONC file back through `json.dumps` would delete its comments."""
+        path = tmp_path / "mcp.json"
+        text = '{\n  // keep this\n  "servers": {"b": {"env": {"API_KEY": "two"}}}\n}\n'
+        path.write_text(text)
+        assert _fix_secret_env_ref(path, dry_run=False) is None
+        assert path.read_text() == text

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
@@ -1028,6 +1029,13 @@ def _check_azure_mcp_auth(
     return findings
 
 
+# The configs AAK-SUPPLY-006 reads: the root .mcp.json, and VS Code's
+# .vscode/mcp.json, which keeps its servers under `servers`. Until both maps were
+# read through `iter_mcp_servers` the rule saw only `mcpServers` in .mcp.json, so
+# a vulnerable package launched from VS Code was never looked up.
+_SUPPLY_006_CONFIGS = (".mcp.json", ".vscode/mcp.json")
+
+
 def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
     """AAK-SUPPLY-006: Check MCP server packages against vuln DB."""
     findings: list[Finding] = []
@@ -1037,54 +1045,58 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
     except ImportError:
         return findings
 
-    mcp_path = project_root / ".mcp.json"
-    if not mcp_path.is_file():
-        return findings
-    try:
-        data = loads_jsonc(mcp_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return findings
-
-    rel_path = str(mcp_path.relative_to(project_root))
     npm_vulns = db.get("npm", {})
-    servers = data.get("mcpServers", {})
-    if not isinstance(servers, dict):
-        return findings
+    for name in _SUPPLY_006_CONFIGS:
+        mcp_path = project_root / name
+        if not mcp_path.is_file():
+            continue
+        try:
+            data = loads_jsonc(mcp_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            continue
+        rel_path = str(mcp_path.relative_to(project_root))
+        for server_name, cfg in iter_mcp_servers(data):
+            findings.extend(_vulnerable_launches(rel_path, server_name, cfg, npm_vulns))
+    return findings
 
-    for server_name, cfg in servers.items():
-        if not isinstance(cfg, dict):
+
+def _vulnerable_launches(
+    rel_path: str, server_name: str, cfg: dict[str, Any], npm_vulns: dict[str, Any]
+) -> list[Finding]:
+    """AAK-SUPPLY-006 for one server: each `package@version` in its args that the
+    npm section of the vulnerability database lists as affected."""
+    findings: list[Finding] = []
+    args = cfg.get("args", [])
+    if not isinstance(args, list):
+        return findings
+    # The table is npm's, so a PyPI launch is not looked up in it: uvx reads
+    # `openclaw@2.0.2` as the PyPI `openclaw`, an unrelated installer for the
+    # cmdop CLI, not as OpenClaw.
+    command = cfg.get("command")
+    argv = command.split() if isinstance(command, str) else []
+    argv += [a for a in args if isinstance(a, str)]
+    launches = invocation_packages(argv)
+    if launches and all(launched.ecosystem == "py" for launched in launches):
+        return findings
+    for arg in args:
+        if not isinstance(arg, str) or arg.startswith("-"):
             continue
-        args = cfg.get("args", [])
-        if not isinstance(args, list):
-            continue
-        # The table is npm's, so a PyPI launch is not looked up in it: uvx reads
-        # `openclaw@2.0.2` as the PyPI `openclaw`, an unrelated installer for the
-        # cmdop CLI, not as OpenClaw.
-        command = cfg.get("command")
-        argv = command.split() if isinstance(command, str) else []
-        argv += [a for a in args if isinstance(a, str)]
-        launches = invocation_packages(argv)
-        if launches and all(launched.ecosystem == "py" for launched in launches):
-            continue
-        for arg in args:
-            if not isinstance(arg, str) or arg.startswith("-"):
-                continue
-            # Extract package name and version from arg like @org/pkg@1.2.3
-            pkg_name = arg
-            version = ""
-            if arg.startswith("@") and "@" in arg[1:]:
-                parts = arg.split("@")
-                pkg_name = f"@{parts[1]}"
-                version = parts[2] if len(parts) > 2 else ""
-            elif "@" in arg and not arg.startswith("@"):
-                pkg_name, version = arg.split("@", 1)
-            if pkg_name in npm_vulns and version:
-                vuln_info = npm_vulns[pkg_name]
-                if _version_in_range(version, vuln_info["affected"]):
-                    findings.append(_make_finding(
-                        "AAK-SUPPLY-006", rel_path,
-                        f"Server '{server_name}' uses {pkg_name}@{version} — {vuln_info['description']}",
-                    ))
+        # Extract package name and version from arg like @org/pkg@1.2.3
+        pkg_name = arg
+        version = ""
+        if arg.startswith("@") and "@" in arg[1:]:
+            parts = arg.split("@")
+            pkg_name = f"@{parts[1]}"
+            version = parts[2] if len(parts) > 2 else ""
+        elif "@" in arg and not arg.startswith("@"):
+            pkg_name, version = arg.split("@", 1)
+        if pkg_name in npm_vulns and version:
+            vuln_info = npm_vulns[pkg_name]
+            if _version_in_range(version, vuln_info["affected"]):
+                findings.append(_make_finding(
+                    "AAK-SUPPLY-006", rel_path,
+                    f"Server '{server_name}' uses {pkg_name}@{version} — {vuln_info['description']}",
+                ))
     return findings
 
 

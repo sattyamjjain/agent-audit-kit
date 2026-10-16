@@ -8,6 +8,7 @@ from pathlib import Path
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.rules.builtin import RULES
+from agent_audit_kit.scanners._helpers import mcp_server_maps
 
 
 @dataclass
@@ -454,7 +455,8 @@ def _fix_missing_allowlist(path: Path, dry_run: bool) -> FixAction:
 
 
 def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
-    """Replace a literal secret in an MCP server ``env`` block with ``${KEY}``.
+    """Replace a literal secret in an MCP server ``env`` block with ``${KEY}``, or
+    with ``${env:KEY}`` in VS Code's ``servers`` map, the form each client expands.
 
     Mechanical by this project's own bar (see ``autopr.AUTO_PR_ALLOWLIST``): the edit
     has exactly one correct form, because the variable name is already present as the
@@ -483,32 +485,38 @@ def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
     # dependency on any individual scanner module.
     from agent_audit_kit.scanners.secret_exposure import MCP_ENV_SECRET_KEYS
 
+    # Plain JSON only. A JSONC config (VS Code's `.vscode/mcp.json` allows comments
+    # and trailing commas) is left alone: writing it back through `json.dumps`
+    # would delete its comments.
     try:
         original = path.read_text()
         data = json.loads(original)
     except (json.JSONDecodeError, OSError):
         return None
 
-    servers = data.get("mcpServers") if isinstance(data, dict) else None
-    if not isinstance(servers, dict):
-        return None
-
     rewritten: list[str] = []
-    for server_cfg in servers.values():
-        if not isinstance(server_cfg, dict):
-            continue
-        env = server_cfg.get("env")
-        if not isinstance(env, dict):
-            continue
-        for key, value in list(env.items()):
-            if not isinstance(value, str) or not value:
+    # Both server maps, as the rule reads them. Each server object is the one
+    # inside `data`, so the edit lands in the map the server came from, and the
+    # dump below writes that map back under its own key. The reference takes the
+    # form that map's client expands: VS Code reads `servers` and substitutes
+    # `${env:KEY}`, and would pass a bare `${KEY}` to the server as written.
+    for map_key, servers in mcp_server_maps(data):
+        form = "${env:%s}" if map_key == "servers" else "${%s}"
+        for server_cfg in servers.values():
+            if not isinstance(server_cfg, dict):
                 continue
-            if not MCP_ENV_SECRET_KEYS.search(key):
+            env = server_cfg.get("env")
+            if not isinstance(env, dict):
                 continue
-            if re.match(r"^\$\{.+\}$", value):
-                continue  # already a reference
-            env[key] = "${" + key + "}"
-            rewritten.append(key)
+            for key, value in list(env.items()):
+                if not isinstance(value, str) or not value:
+                    continue
+                if not MCP_ENV_SECRET_KEYS.search(key):
+                    continue
+                if re.match(r"^\$\{.+\}$", value):
+                    continue  # already a reference
+                env[key] = form % key
+                rewritten.append(key)
 
     if not rewritten:
         return None

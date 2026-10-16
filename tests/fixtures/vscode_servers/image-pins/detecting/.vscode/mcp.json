@@ -1,0 +1,10 @@
+{
+  // NullHub on its newest release, run as a container.
+  "servers": {
+    "hub": {
+      "type": "stdio",
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/nullclaw/nullhub:v2026.5.29"]
+    },
+  }
+}

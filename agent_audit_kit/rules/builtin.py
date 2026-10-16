@@ -1631,17 +1631,21 @@ _r(
 _r(
     "AAK-SECRET-007",
     "Secret in MCP server environment block",
-    "Hardcoded secret values found in mcpServers env blocks in non-.mcp.json files.",
+    "Hardcoded secret values found in the env blocks of MCP servers, under "
+    "`mcpServers` or VS Code's `servers`, in JSON files other than .mcp.json.",
     Severity.MEDIUM,
     Category.SECRET_EXPOSURE,
     "Replace the literal with a host-resolved environment reference of the same name — "
-    'the `env` value becomes `"GITHUB_TOKEN": "${GITHUB_TOKEN}"` — then export the '
+    'the `env` value becomes `"GITHUB_TOKEN": "${GITHUB_TOKEN}"`, or '
+    '`"${env:GITHUB_TOKEN}"` in VS Code\'s `servers` map — then export the '
     "variable from your shell or secrets manager before starting the server. That form "
     "is what MCP hosts already resolve: 158 env values across the 748 public configs in "
     "this project's corpus use it. Rotate the exposed value as well: it was readable in "
     "a config file, so treat it as compromised regardless of what the file now says. "
     "`agent-audit-kit fix` performs the substitution (the variable name is already the "
-    "JSON key, so the edit has one correct form); it is deliberately excluded from "
+    "JSON key, so the edit has one correct form for each map) in a config that is plain "
+    "JSON, and leaves a JSONC config with comments for you to edit, since rewriting it "
+    "would drop them. It is deliberately excluded from "
     "`suggest --auto-pr`, because the server will not start until the variable is "
     "exported and AAK cannot see whether that is safe in your deployment.",
     sarif_name="SecretInMcpEnvBlock",
@@ -1650,8 +1654,9 @@ _r(
     adversa_references=["ADV-TOKEN-09"],
     auto_fixable=True,
     limitations=(
-        "Reads the `env` block of each server under a top-level `mcpServers` key in "
-        "JSON files other than `.mcp.json`, and reports a hard-coded value whose "
+        "Reads the `env` block of each server under a top-level `mcpServers` key, or "
+        "VS Code's `servers`, in JSON files other than `.mcp.json`, and reports a "
+        "hard-coded value whose "
         "variable name contains KEY, SECRET, TOKEN, PASSWORD, CREDENTIAL, ANTHROPIC, "
         "OPENAI or AWS_. The name alone decides: a credential under any other name, "
         "such as a `DATABASE_URL` that carries `user:password@host`, is not reported."
@@ -1837,12 +1842,12 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
-        "Reads the `args` of the `mcpServers` entries in the root .mcp.json only, "
-        "and looks each `package@version` up in the npm section of the vulnerability "
-        "database, which bundles two packages: `axios` 1.7.0 to 1.7.3 and `openclaw` "
-        "below 2.1.0. The same package in package.json or in an MCP config under "
-        "`.cursor/` or `.vscode/` is not read, and neither is a package that states "
-        "no version."
+        "Reads the `args` of the servers in the root .mcp.json and in .vscode/mcp.json, "
+        "under `mcpServers` or VS Code's `servers`, and looks each `package@version` "
+        "up in the npm section of the vulnerability database, which bundles two "
+        "packages: `axios` 1.7.0 to 1.7.3 and `openclaw` below 2.1.0. The same "
+        "package in package.json or in an MCP config under `.cursor/` is not read, "
+        "and neither is a package that states no version."
     ),
 )
 

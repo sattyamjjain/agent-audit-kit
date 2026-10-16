@@ -1,0 +1,12 @@
+{
+  // Retired: "args": ["run", "-i", "--rm", "ghcr.io/nullclaw/nullhub:v2026.5.29"]
+  /* The old gateway, kept for reference:
+     "command": "docker", "args": ["run", "ghcr.io/metatool-ai/metamcp:2.4.22"] */
+  "servers": {
+    "files": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem@2025.8.21", "."]
+    },
+  }
+}
