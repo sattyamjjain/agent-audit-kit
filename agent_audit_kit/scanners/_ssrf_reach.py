@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import ast
 import re
-from typing import Iterator, NamedTuple
+from typing import Callable, Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments
 
@@ -156,6 +156,99 @@ def _py_literal_strings(node: ast.AST) -> list[str]:
     ]
 
 
+# Both backends read four levels of assignments below a call's argument: a
+# Python expression at depth 4 is still checked, and a TS/JS piece at depth 3 is
+# still expanded (its right-hand sides, at depth 4, are read but not expanded).
+_PY_MAX_DEPTH = 4
+_JS_MAX_DEPTH = 3
+
+
+def _py_reach(
+    assigns: dict[str, list[ast.AST]],
+) -> tuple[Callable[[ast.AST], bool], Callable[[ast.AST], str | None]]:
+    """Whether an expression derives from caller input, and the first private
+    address that reaches it, through up to four levels of assignments.
+
+    Both used to walk the assignment graph afresh for every name at every
+    level: each step tried every name an expression mentions and every
+    expression that name was assigned, four levels down, with nothing
+    remembered. Names assigned from each other multiplied: twenty names that
+    each read all twenty took a second for one call, growing with the fifth
+    power of the fan-out, and every call site paid again. A depth bound stops a
+    cycle; it does not stop that.
+
+    The answer for an expression at a given depth never changes within a file,
+    so each (expression, depth) and each (name, depth) is worked out once. The
+    order is the old one (names in the set's order, a name's assignments in
+    source order), so the address reported is the one the old walk reached
+    first."""
+    expr_tainted: dict[tuple[int, int], bool] = {}
+    name_tainted: dict[tuple[str, int], bool] = {}
+    expr_addr: dict[tuple[int, int], str | None] = {}
+    name_addr: dict[tuple[str, int], str | None] = {}
+    names: dict[int, set[str]] = {}
+
+    def names_in(node: ast.AST) -> set[str]:
+        found = names.get(id(node))
+        if found is None:
+            found = names[id(node)] = _py_names_in(node)
+        return found
+
+    def tainted(node: ast.AST, depth: int = 0) -> bool:
+        if depth > _PY_MAX_DEPTH:
+            return False
+        key = (id(node), depth)
+        hit = expr_tainted.get(key)
+        if hit is None:
+            hit = expr_tainted[key] = _py_is_user_expr(node) or any(
+                assigned_tainted(name, depth + 1) for name in names_in(node)
+            )
+        return hit
+
+    def assigned_tainted(name: str, depth: int) -> bool:
+        key = (name, depth)
+        hit = name_tainted.get(key)
+        if hit is None:
+            hit = name_tainted[key] = any(tainted(rhs, depth) for rhs in assigns.get(name, []))
+        return hit
+
+    def addr_reaching(node: ast.AST, depth: int = 0) -> str | None:
+        if depth > _PY_MAX_DEPTH:
+            return None
+        key = (id(node), depth)
+        if key not in expr_addr:
+            found = _py_addr_here(node)
+            if found is None:
+                for name in names_in(node):
+                    found = assigned_addr(name, depth + 1)
+                    if found:
+                        break
+            expr_addr[key] = found
+        return expr_addr[key]
+
+    def assigned_addr(name: str, depth: int) -> str | None:
+        key = (name, depth)
+        if key not in name_addr:
+            found = None
+            for rhs in assigns.get(name, []):
+                found = addr_reaching(rhs, depth)
+                if found:
+                    break
+            name_addr[key] = found
+        return name_addr[key]
+
+    return tainted, addr_reaching
+
+
+def _py_addr_here(node: ast.AST) -> str | None:
+    """The first private address in the string literals of ``node`` itself."""
+    for lit in _py_literal_strings(node):
+        m = _PRIVATE_ADDR_RE.search(lit)
+        if m:
+            return m.group(0).lower()
+    return None
+
+
 def analyze_python(text: str) -> list[Reach]:
     """Outbound call sites in a Python source, with what each one reaches."""
     try:
@@ -173,30 +266,7 @@ def analyze_python(text: str) -> list[Reach]:
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value:
             assigns.setdefault(node.target.id, []).append(node.value)
 
-    def tainted(node: ast.AST, depth: int = 0) -> bool:
-        if depth > 4:
-            return False
-        if _py_is_user_expr(node):
-            return True
-        for name in _py_names_in(node):
-            for rhs in assigns.get(name, []):
-                if tainted(rhs, depth + 1):
-                    return True
-        return False
-
-    def addr_reaching(node: ast.AST, depth: int = 0) -> str | None:
-        if depth > 4:
-            return None
-        for lit in _py_literal_strings(node):
-            m = _PRIVATE_ADDR_RE.search(lit)
-            if m:
-                return m.group(0).lower()
-        for name in _py_names_in(node):
-            for rhs in assigns.get(name, []):
-                found = addr_reaching(rhs, depth + 1)
-                if found:
-                    return found
-        return None
+    tainted, addr_reaching = _py_reach(assigns)
 
     out: list[Reach] = []
     for node in ast.walk(tree):
@@ -235,28 +305,66 @@ def analyze_js(text: str) -> list[Reach]:
     for name, rhs in _js_assignments(code):
         assigns.setdefault(name, rhs)
 
-    def resolve(expr: str, depth: int = 0) -> str:
-        """Inline single-hop assignments of the identifiers in expr."""
-        if depth > 3:
-            return expr
-        out = expr
-        for name in set(re.findall(r"[A-Za-z_$][\w$]*", expr)):
-            rhs = assigns.get(name)
-            if rhs and rhs.strip() != name:
-                out += " " + resolve(rhs, depth + 1)
-        return out
-
+    reach = _js_reach(assigns)
     results: list[Reach] = []
+    # Lines are counted on from the previous call: counted from the top for
+    # every call, 450 KB of `fetch(a);` lines took 4 seconds.
+    line, counted = 1, 0
     for callee, arg, start in _js_fetch_calls(code):
-        expanded = resolve(arg)
-        addr = _PRIVATE_ADDR_RE.search(expanded)
-        results.append(Reach(
-            callee=callee,
-            line=code.count("\n", 0, start) + 1,
-            tainted=bool(_JS_USER_RE.search(expanded)),
-            private_addr=addr.group(0).lower() if addr else None,
-        ))
+        line += code.count("\n", counted, start)
+        counted = start
+        tainted, addr = reach(arg, 0)
+        results.append(Reach(callee=callee, line=line, tainted=tainted, private_addr=addr))
     return results
+
+
+_JS_IDENT_RE = re.compile(r"[A-Za-z_$][\w$]*")
+
+
+def _js_reach(assigns: dict[str, str]) -> Callable[[str, int], tuple[bool, str | None]]:
+    """Whether an argument derives from caller input, and the first private
+    address that reaches it, through up to four levels of assignments.
+
+    This used to build the text: the argument, then each name in it replaced
+    by its right-hand side, then each name in those, four levels down, all
+    joined with spaces, and then search it. Nothing was remembered, so names
+    assigned from each other multiplied: twenty-four names that each read all
+    twenty-four, and one `fetch` reading them all, built 1.4 seconds of text,
+    growing with the fourth power of the fan-out, and every call built it again
+    (ten calls in a 3 KB file took 11 seconds). The depth bound stops a cycle;
+    it does not stop that.
+
+    Neither pattern can match across the space between two pieces of that text,
+    so the joined text matches the user-input pattern exactly when one of its
+    pieces does, and its first private address is the first in the first piece,
+    in the old order, that has one. Each (piece, depth) is worked out once."""
+    memo: dict[tuple[str, int], tuple[bool, str | None]] = {}
+    names: dict[str, set[str]] = {}
+
+    def visit(expr: str, depth: int) -> tuple[bool, str | None]:
+        key = (expr, depth)
+        hit = memo.get(key)
+        if hit is not None:
+            return hit
+        tainted = bool(_JS_USER_RE.search(expr))
+        m = _PRIVATE_ADDR_RE.search(expr)
+        addr = m.group(0).lower() if m else None
+        if depth <= _JS_MAX_DEPTH:
+            idents = names.get(expr)
+            if idents is None:
+                # The old order: a set built from the names in source order.
+                idents = names[expr] = set(_JS_IDENT_RE.findall(expr))
+            for name in idents:
+                rhs = assigns.get(name)
+                if rhs and rhs.strip() != name:
+                    below_tainted, below_addr = visit(rhs, depth + 1)
+                    tainted = tainted or below_tainted
+                    if addr is None:
+                        addr = below_addr
+        memo[key] = (tainted, addr)
+        return tainted, addr
+
+    return visit
 
 
 def _js_assignments(code: str) -> Iterator[tuple[str, str]]:

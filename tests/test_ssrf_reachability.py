@@ -13,7 +13,9 @@ and genuine data flow must still fire.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -294,3 +296,90 @@ def test_a_crafted_js_file_scans_in_linear_time(tmp_path: Path, shape: str) -> N
     started = time.perf_counter()
     _ids(tmp_path, "server.ts", body)
     assert time.perf_counter() - started < 5.0
+
+
+# --- the assignment walk is linear ------------------------------------------
+#
+# Both backends follow a URL argument through assignments a few levels deep.
+# The walk remembered nothing, so names assigned from each other multiplied: the
+# work grew with the fourth (TS/JS) or fifth (Python) power of how many names
+# each right-hand side reads, and every call site paid again. Each test runs a
+# crafted file at two sizes, best of three, and allows the larger 40 times the
+# smaller's time for 10 times the work (the old walk needed 100 to 10,000 times)
+# plus a fixed slack, under an absolute bound that is loose for slow CI runners.
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+def _grows_linearly(small: Callable[[], object], large: Callable[[], object]) -> None:
+    """``large`` does ten times the work of ``small``."""
+    t_small, t_large = _seconds(small), _seconds(large)
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+def _fanout_js(names: int, calls: int) -> str:
+    """Every name assigned from every name, and calls that read all of them.
+    Twenty-four names and ten calls (3 KB) took 11 seconds."""
+    every = "+".join(f"n{i}" for i in range(names))
+    lines = [f"const n{i} = {every};\n" for i in range(names)]
+    return "".join(lines) + f"fetch({every});\n" * calls
+
+
+def _fanout_py(names: int, calls: int) -> str:
+    """The Python shape: twenty names and one call took a second."""
+    every = " + ".join(f"n{i}" for i in range(names))
+    lines = [f"n{i} = {every}\n" for i in range(names)]
+    return "import requests\n" + "".join(lines) + "requests.get(n0)\n" * calls
+
+
+def test_names_assigned_from_each_other_resolve_in_linear_time() -> None:
+    """Eight names to thirty (TS) or twenty-seven (Python) is ten times the
+    text. The old walk grew with the fourth or fifth power of the fan-out, a
+    few hundred times longer; on a real file (transformers' image_utils.py) it
+    took 6.9 seconds."""
+    assert 9.5 < len(_fanout_js(30, 4)) / len(_fanout_js(8, 4)) < 10.5
+    assert 9.5 < len(_fanout_py(27, 4)) / len(_fanout_py(8, 4)) < 10.5
+    _grows_linearly(lambda: analyze_js(_fanout_js(8, 4)), lambda: analyze_js(_fanout_js(30, 4)))
+    _grows_linearly(lambda: analyze_python(_fanout_py(8, 4)), lambda: analyze_python(_fanout_py(27, 4)))
+
+
+def test_a_deep_fanout_still_reaches_its_source() -> None:
+    """The memo must not cut the walk short. The request field and the address
+    sit four assignments below the call, the deepest the walk reads, behind
+    names that all read each other."""
+    js = (
+        _fanout_js(12, 0).replace("const n11 = ", "const n11 = src + ", 1)
+        + "const src = req.query.url + '169.254.169.254';\n"
+        + "const top = n0 + n5;\nfetch(top);\n"
+    )
+    assert [tuple(s)[2:] for s in analyze_js(js)] == [(True, "169.254.169.254")]
+    py = (
+        _fanout_py(12, 0).replace("n11 = ", "n11 = src + ", 1)
+        + "src = request.json['u'] + '169.254.169.254'\n"
+        + "top = n0 + n5\nrequests.get(top)\n"
+    )
+    assert [tuple(s)[2:] for s in analyze_python(py)] == [(True, "169.254.169.254")]
+
+
+def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
+    js = "let a = b + c;\nlet b = a;\nlet c = req.body.target;\nfetch(a);\n"
+    assert [tuple(s) for s in analyze_js(js)] == [("fetch", 4, True, None)]
+    py = "import requests\na = b + c\nb = a\nc = '127.0.0.1'\nrequests.get(a)\n"
+    assert [tuple(s) for s in analyze_python(py)] == [("requests.get", 5, False, "127.0.0.1")]
+
+
+def test_call_lines_are_counted_in_linear_time() -> None:
+    """Each call's line was counted from the top of the file: 450 KB of
+    `fetch(a);` lines took 4 seconds, growing with the square."""
+    sites = analyze_js("fetch(a);\n" * 3)
+    assert [s.line for s in sites] == [1, 2, 3]
+    _grows_linearly(lambda: analyze_js("fetch(a);\n" * 4_500), lambda: analyze_js("fetch(a);\n" * 45_000))
