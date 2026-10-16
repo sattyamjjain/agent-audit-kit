@@ -441,11 +441,17 @@ def _js_assigned_templates(text: str, ident: str, before: int) -> list[str]:
 
     Every branch counts: nexus-mcp assigns ``cmd`` a different template per
     platform and then runs whichever was taken.
+
+    The walk stops at the top of the file. It used to stop only when no newline
+    was left, so from the newline at offset 0 it asked for the last newline
+    before offset -1, which `rfind` counts from the end of the file: the window
+    jumped past the sink and the template was lost in any file whose first
+    line was blank.
     """
     start = before
     for _ in range(_JS_LOCAL_WINDOW_LINES):
         prev = text.rfind("\n", 0, start - 1)
-        if prev < 0:
+        if prev <= 0:
             start = 0
             break
         start = prev

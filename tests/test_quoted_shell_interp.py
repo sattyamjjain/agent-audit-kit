@@ -22,6 +22,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners.quoted_shell_interp import INTERP_RULE, PROFILE_RULE, scan
 
@@ -309,6 +311,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 def test_a_typed_local_template_is_followed(tmp_path: Path) -> None:
     _write(tmp_path, "tool.ts", _TYPED_LOCAL)
+    findings = _interp(tmp_path)
+    assert len(findings) == 1
+    assert "parameter 'host'" in findings[0].evidence
+
+
+@pytest.mark.parametrize("typed", [True, False], ids=["typed", "untyped"])
+def test_a_local_template_is_followed_in_a_file_that_starts_with_a_newline(
+    tmp_path: Path, typed: bool
+) -> None:
+    """The look-back for the local's assignment walks up to sixty lines. When it
+    reached the newline at offset 0 it asked for the last newline before offset
+    -1, which counts from the end of the file, so the window jumped past the
+    sink and the template was lost whenever a file's first line was blank."""
+    source = _TYPED_LOCAL if typed else _TYPED_LOCAL.replace("const cmd: Array<string> | string = ", "const cmd = ")
+    _write(tmp_path, "tool.ts", "\n" + source)
     findings = _interp(tmp_path)
     assert len(findings) == 1
     assert "parameter 'host'" in findings[0].evidence
