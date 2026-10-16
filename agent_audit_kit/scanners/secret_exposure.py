@@ -214,16 +214,13 @@ class LineIndex:
 #                                          may close it), the name optionally quoted
 #   NAME=value                             everything up to the next whitespace
 #
-# and, in a YAML file only, a third:
-#
-#   NAME: value                            an unquoted value after ":" and whitespace,
-#                                          up to the next whitespace
-#
 # where NAME is a run of word characters that contains SECRET, PASSWORD, TOKEN, KEY,
-# CREDENTIAL or API_KEY in any case (``SECRET_KEY_NAMES``). The third shape is YAML's
-# plain scalar, as in a compose file's `environment:` map (`SECRET_KEY: <value>`), which
-# the first two never matched. It is not read elsewhere: in code, `name: value` is a
-# TypeScript object property or a Python annotation, whose value is an expression.
+# CREDENTIAL or API_KEY in any case (``SECRET_KEY_NAMES``).
+#
+# YAML's unquoted `NAME: value` is not a shape, on a measurement: read as a third one,
+# it found 13 values in 1,527 YAML files with secret-named keys from 927 public MCP
+# repositories (2026-10-17), and 3 were credentials; most of the rest were SOPS-encrypted
+# values (`ENC[AES256_GCM,...]`) and lockfile entries.
 #
 # These were two ``re.findall`` patterns that opened ``\w*(?:SECRET|...)\w*``. Run from
 # every start position along a long stretch of word characters with no "=" after it,
@@ -282,54 +279,16 @@ def _quoted_value(line: str, at: int) -> tuple[str, int] | None:
     return line[i + 1 : close], close + 1
 
 
-# What cannot open a YAML plain scalar that holds a literal: a quote (the quoted shape
-# reads it), a block (`|`, `>`), an anchor or alias (`&`, `*`), a tag (`!`), a flow
-# collection, a comment and the reserved indicators.
-_NOT_PLAIN = frozenset("\"'|>&*!{[#%@`")
-
-
-def _colon_value(line: str, at: int) -> tuple[str, int] | None:
-    """YAML's ``["']?\\s*:\\s+(\\S+)`` read at ``at``: the value and where it ends, or None.
-
-    A mapping needs whitespace after the colon: ``key:value`` is one plain scalar.
-    """
-    i = at + 1 if line[at : at + 1] in _QUOTES else at
-    i = _run_end(_SPACE_RUN, line, i)
-    if line[i : i + 1] != ":":
-        return None
-    start = _run_end(_SPACE_RUN, line, i + 1)
-    if start == i + 1 or start >= len(line) or line[start] in _NOT_PLAIN:
-        return None
-    end = _run_end(_NON_SPACE_RUN, line, start)
-    return line[start:end], end
-
-
-# Unquoted YAML values that are not secrets though they sit under a secret-looking name:
-# an ARN (CloudFormation's `KmsKeyId: arn:aws:kms:...`, `SecretArn:`), a public key in
-# SSH, SubjectPublicKeyInfo or PKCS#1 form, and a key fingerprint. Their DER and SSH
-# encodings open with fixed bytes for each algorithm, so the base64 prefix says which.
-_PUBLIC_VALUE_RE = re.compile(
-    r"arn:|SHA256:|MD5:|ssh-|ecdsa-sha2-|sk-ssh-|sk-ecdsa-"
-    r"|AAAAB3NzaC1|AAAAC3NzaC1|AAAAE2VjZHNh|AAAAGnNrLXNzaC1|AAAAInNrLWVjZHNh"
-    r"|MCowBQYDK2V|MEMwBQYDK2V|MFkwEwYHKoZIzj0CAQ|MHYwEAYHKoZIzj0CAQ|MIGbMBAGByqGSM49AgE"
-    r"|MII[A-Za-z0-9+/]{3}ANBgkqhkiG9w0BAQEFAAOC|MII[BC]CgKCA[QgB]EA"
-)
-_PUBLIC_NAME_RE = re.compile(r"public|fingerprint", re.IGNORECASE)
-
-
-def _secret_assignments(line: str, yaml: bool = False) -> list[tuple[str, str]]:
+def _secret_assignments(line: str) -> list[tuple[str, str]]:
     """``(name, value)`` for each secret-looking assignment on one line.
 
     The quoted shape comes first, then the bare one, each in line order: the order the
     two patterns this replaces were applied in. A line can yield the same assignment
     in both shapes (``SECRET_KEY="..."`` is quoted and also runs to the next space).
-    With ``yaml``, YAML's unquoted ``NAME: value`` follows, read the same way, less an
-    ARN, a public key or a fingerprint (`_PUBLIC_VALUE_RE`, `_PUBLIC_NAME_RE`).
     """
     quoted: list[tuple[str, str]] = []
     bare: list[tuple[str, str]] = []
-    plain: list[tuple[str, str]] = []
-    quoted_from = bare_from = plain_from = 0
+    quoted_from = bare_from = 0
     for word in _WORD_RUN.finditer(line):
         start, end = word.span()
         if not SECRET_KEY_NAMES.search(line, start, end):
@@ -344,13 +303,7 @@ def _secret_assignments(line: str, yaml: bool = False) -> list[tuple[str, str]]:
             if found is not None:
                 bare.append((word.group(), found[0]))
                 bare_from = found[1]
-        if yaml and start >= plain_from:
-            found = _colon_value(line, end)
-            if found is not None:
-                plain_from = found[1]
-                if not (_PUBLIC_VALUE_RE.match(found[0]) or _PUBLIC_NAME_RE.search(word.group())):
-                    plain.append((word.group(), found[0]))
-    return quoted + bare + plain
+    return quoted + bare
 
 
 def _should_scan_file(path: Path) -> bool:
@@ -462,13 +415,12 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
 
     # AAK-SECRET-004: Generic high-entropy secrets. Not in Markdown, where it measured
     # at most 56% precision (see SCANNABLE_EXTENSIONS).
-    yaml = suffix in (".yml", ".yaml")
     for line_num, line in enumerate([] if docs else content.splitlines(), 1):
         # Most lines name nothing secret-looking; one pass tells them apart
         if not SECRET_KEY_NAMES.search(line):
             continue
-        # Look for KEY=VALUE or "KEY": "VALUE" patterns, and KEY: VALUE in YAML
-        for key, value in _secret_assignments(line, yaml):
+        # Look for KEY=VALUE or "KEY": "VALUE" patterns
+        for key, value in _secret_assignments(line):
             # Skip variable references and short values
             if value.startswith("${") or value.startswith("$") or len(value) < 16:
                 continue

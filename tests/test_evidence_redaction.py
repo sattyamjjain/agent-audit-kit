@@ -389,14 +389,11 @@ def canary_project(tmp_path: Path) -> Path:
     # The file types and shapes the secret rules began to read in the batch that
     # added them: each must be reported (see NEWLY_READ) and carry no credential.
     (root / "app").mkdir()
-    (root / "deploy").mkdir()
     (root / "keys").mkdir()
     (root / "src" / "config.mjs").write_text(f'export const OPENAI_API_KEY = "{SK_PROJ}";\n', encoding="utf-8")
     (root / "src" / "legacy.cjs").write_text(f'module.exports = {{ token: "{GHP}" }};\n', encoding="utf-8")
     (root / "app" / "page.tsx").write_text(f'const key = "{SK_ANT}";\n', encoding="utf-8")
     (root / "src" / "widget.jsx").write_text(f'const gitlab = "{GLPAT}";\n', encoding="utf-8")
-    (root / "deploy" / "docker-compose.yml").write_text(
-        f"services:\n  app:\n    environment:\n      SECRET_KEY: {CANARY}dE5fG7hI4jK8lM1nO6pS2tU\n", encoding="utf-8")
     (root / "keys" / "deploy_key").write_text(
         "-----BEGIN " + "OPENSSH PRIVATE KEY-----\n" + (CANARY + _body(48)) * 2 + "\n"
         "-----END " + "OPENSSH PRIVATE KEY-----\n", encoding="utf-8")
@@ -415,7 +412,6 @@ NEWLY_READ = {
     ("src/legacy.cjs", "AAK-SECRET-008"),
     ("app/page.tsx", "AAK-SECRET-001"),
     ("src/widget.jsx", "AAK-SECRET-008"),
-    ("deploy/docker-compose.yml", "AAK-SECRET-004"),
     ("keys/deploy_key", "AAK-SECRET-005"),
     ("src/auth.py", "AAK-SPLUNK-TOKLOG-001"),
     ("docs/setup.md", "AAK-SECRET-008"),

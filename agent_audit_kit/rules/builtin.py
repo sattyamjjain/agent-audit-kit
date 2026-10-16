@@ -1798,15 +1798,14 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-06"],
     limitations=(
-        "Reads `NAME=value` pairs, quoted values (`\"NAME\": \"value\"`) and, in YAML, "
-        "unquoted `NAME: value` pairs whose name "
+        "Reads `NAME=value` pairs and quoted values (`\"NAME\": \"value\"`) whose name "
         "contains SECRET, PASSWORD, TOKEN, KEY or CREDENTIAL, and reports a value of "
         "16 or more characters whose Shannon entropy exceeds 4.5 bits per character. A "
         "secret drawn from a small alphabet cannot reach that: a 64-digit hexadecimal "
         "secret, such as the output of `openssl rand -hex 32`, tops out at 4 bits per "
-        "character and is never reported. Markdown is not read, since at most 56% of its "
-        "findings on 1,909 README and docs files from public MCP repositories had a "
-        "credential's shape."
+        "character and is never reported. An unquoted YAML value (`SECRET_KEY: value` in a "
+        "compose file) is not read, and neither is Markdown: read, they gave 23% and at most "
+        "56% precision on 1,527 YAML and 1,909 Markdown files from public MCP repositories."
     ),
 )
 
