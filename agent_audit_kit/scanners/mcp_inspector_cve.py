@@ -16,7 +16,8 @@ Detection:
    reported, because nothing says which release it carries.
 2. Call-shape: `inspectorServer.handle(<arg>, <arg>)` regardless of
    import path, per file — catches forks where the vendor moved files but kept
-   the call shape.
+   the call shape. Outside a copy nothing else is read: a file named after
+   the inspector is not a copy.
 
 Why a copy is read as a whole, not file by file: the published package keeps
 its server in `dist/server/index.js` and only a `bin/` shim outside `dist/`
@@ -63,8 +64,7 @@ def _copy_root(parts: tuple[str, ...]) -> int | None:
     `node_modules/@mcpjam/inspector/...` is the npm package itself; another
     `@mcpjam/*` package such as `@mcpjam/inspector-v1` is not. A directory
     whose name contains `mcpjam-inspector` is a vendored copy. A file name that
-    contains it is not a directory, so it is no copy (the old substring test
-    reported such a file, and still does, per file).
+    contains it is not a directory, so it is no copy.
     """
     dirs = [p.lower() for p in parts[:-1]]
     for i, part in enumerate(dirs):
@@ -167,28 +167,22 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root, _INSPECTOR_SKIP_DIRS):
             continue
         rel = str(rel_path)
-        path_match = _FORK_DIR_HINT in rel.lower()
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        # Outside a copy only the call shape counts. A file whose own name holds
+        # `mcpjam-inspector` was reported for the name alone, at CRITICAL.
         call_m = _INSPECTOR_CALL_RE.search(text)
-
-        if not (path_match or call_m):
+        if not call_m:
             continue
         scanned.add(rel)
-        line = (text.count("\n", 0, call_m.start()) + 1) if call_m else 1
-        evidence = (
-            "Vendored mcpjam-inspector fork — CVE-2026-23744 (CVSS 9.8)."
-            if path_match
-            else "inspectorServer.handle(...) call shape from MCPJam "
-                 "Inspector — CVE-2026-23744 vulnerable code path."
-        )
         findings.append(make_finding(
             "AAK-MCP-INSPECTOR-CVE-2026-23744-001",
             rel,
-            evidence,
-            line_number=line,
+            "inspectorServer.handle(...) call shape from MCPJam "
+            "Inspector — CVE-2026-23744 vulnerable code path.",
+            line_number=text.count("\n", 0, call_m.start()) + 1,
         ))
     findings.extend(_copy_findings(project_root, copies, scanned))
     return findings, scanned

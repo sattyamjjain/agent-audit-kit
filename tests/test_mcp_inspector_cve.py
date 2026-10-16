@@ -130,3 +130,14 @@ def test_an_unversioned_copy_is_reported_on_its_call_site(tmp_path: Path) -> Non
         "vendor/mcpjam-inspector/server.ts": "import x from 'y';\n\ninspectorServer.handle(a, b);\n",
     })
     assert [(f.file_path, f.line_number) for f in findings] == [("vendor/mcpjam-inspector/server.ts", 3)]
+
+
+def test_a_file_named_after_the_inspector_is_not_a_copy(tmp_path: Path) -> None:
+    """Outside a copy only the call shape is read, as the limitation says: a file
+    whose name holds `mcpjam-inspector` was reported at CRITICAL for its name."""
+    assert _project(tmp_path / "named", {"src/mcpjam-inspector.ts": "export const x = 1;\n"}) == []
+    findings = _project(tmp_path / "calls", {
+        "src/mcpjam-inspector.ts": "export const x = 1;\ninspectorServer.handle(req, res);\n",
+    })
+    assert [(f.file_path, f.line_number) for f in findings] == [("src/mcpjam-inspector.ts", 2)]
+    assert "call shape" in findings[0].evidence
