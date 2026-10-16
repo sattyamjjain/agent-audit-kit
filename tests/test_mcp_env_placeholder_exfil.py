@@ -168,3 +168,85 @@ def test_a_crafted_source_scans_in_linear_time(tmp_path: Path, unit: str) -> Non
     started = time.perf_counter()
     scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# The resolver is read under its imported and aliased spellings
+#
+# Python needed the dotted `os.path.expandvars(` and `.format(**os.environ)`, and
+# the TypeScript arm the literal `process.env` inside `.replace(`. So
+# `from os.path import expandvars`, `import os.path as osp`, `string.Template(...)
+# .substitute(os.environ)`, `from os import environ`, `const env = process.env;`,
+# `const { env } = process;` and `.replaceAll(` were each silent.
+# ---------------------------------------------------------------------------
+
+_PY_HEAD = "# mcp server config handler\n"
+
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "from os.path import expandvars\n\ndef normalise(cfg):\n    return expandvars(cfg['serverUrl'])\n",
+        "from os.path import expandvars as ev\n\ndef normalise(cfg):\n    return ev(cfg['serverUrl'])\n",
+        "import os.path as osp\n\ndef normalise(cfg):\n    return osp.expandvars(cfg['serverUrl'])\n",
+        "from os import path\n\ndef normalise(cfg):\n    return path.expandvars(cfg['serverUrl'])\n",
+        "import posixpath\n\ndef normalise(cfg):\n    return posixpath.expandvars(cfg['serverUrl'])\n",
+        "import os\nimport string\n\ndef normalise(cfg):\n    return string.Template(cfg['serverUrl']).substitute(os.environ)\n",
+        "import os\nfrom string import Template\n\ndef normalise(cfg):\n    return Template(cfg['serverUrl']).safe_substitute(**os.environ)\n",
+        "from os import environ\n\ndef normalise(cfg):\n    return cfg['serverUrl'].format(**environ)\n",
+        "from os import environ as env\n\ndef normalise(cfg):\n    return cfg['serverUrl'].format_map(env)\n",
+    ],
+    ids=["from-import", "from-import-as", "module-alias", "from-os-import-path", "posixpath",
+         "template-substitute", "template-safe-substitute", "environ-imported", "environ-alias"],
+)
+def test_python_resolver_spellings_are_flagged(tmp_path: Path, src: str) -> None:
+    _write(tmp_path, "server.py", _PY_HEAD + src)
+    (hit,) = _hits(scan(tmp_path)[0])
+    assert hit.line_number == len((_PY_HEAD + src).splitlines())
+
+
+_TS_RESOLVE = 'export function normalise(url: string): string {\n  return url.REPLACE(/\\$\\{(\\w+)\\}/g, (_m, k) => ENV[k] ?? "");\n}\n'
+
+
+@pytest.mark.parametrize(
+    "binding, method, env",
+    [
+        ("const env = process.env;\n", "replace", "env"),
+        ("let vars = process.env\n", "replace", "vars"),
+        ("const { env } = process;\n", "replace", "env"),
+        ("const { env: e, argv } = process;\n", "replace", "e"),
+        ('import { env } from "node:process";\n', "replace", "env"),
+        ("", "replaceAll", "process.env"),
+    ],
+)
+def test_typescript_resolver_spellings_are_flagged(tmp_path: Path, binding: str, method: str, env: str) -> None:
+    src = "// mcp server url handling\n" + binding + _TS_RESOLVE.replace("REPLACE", method).replace("ENV", env)
+    _write(tmp_path, "mcp.ts", src)
+    assert _hits(scan(tmp_path)[0])
+
+
+@pytest.mark.parametrize(
+    "name, src",
+    [
+        ("server.py", _PY_HEAD + "def expandvars(value):\n    return value\n\nURL = expandvars('x')\n"),
+        ("server.py", _PY_HEAD + "import string\n\nURL = string.Template('$a').substitute({'a': 1})\n"),
+        ("server.py", _PY_HEAD + "from os import environ\n\nPORT = environ.get('PORT')\n"),
+        ("mcp.ts", "// mcp server\nconst mode = process.env.NODE_ENV;\n"
+                   'const u = url.replace(/\\$\\{(\\w+)\\}/g, (_m, k) => mode[k] ?? "");\n'),
+        ("mcp.ts", "// mcp server\nconst env = process.env;\nconst port = env.PORT;\n"),
+    ],
+    ids=["local-expandvars", "template-with-a-dict", "environ-read", "env-property-alias", "env-alias-no-resolver"],
+)
+def test_other_uses_of_the_names_are_not_flagged(tmp_path: Path, name: str, src: str) -> None:
+    _write(tmp_path, name, src)
+    assert not _hits(scan(tmp_path)[0])
+
+
+@pytest.mark.parametrize("unit", [".replaceAll(", ".replaceAll(${", "const env = process.env;\n.replace(${"])
+def test_a_crafted_aliased_source_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
+    import time
+
+    _write(tmp_path, "mcp.ts", 'import { McpServer } from "@modelcontextprotocol/sdk";\n' + unit * (990_000 // len(unit)))
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0

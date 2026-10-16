@@ -8547,9 +8547,12 @@ _r(
     owasp_agentic_references=["ASI03"],
     limitations=(
         "Reads Python and JavaScript/TypeScript files that mention MCP, and matches "
-        "three resolver shapes: `os.path.expandvars(...)` and `.format(**os.environ)` "
-        "or `.format_map(os.environ)` in Python, and a `.replace(...)` whose `${...}` "
-        "replacer reads `process.env` in JavaScript or TypeScript. A resolver written "
+        "these resolver shapes: `os.path.expandvars(...)`, `.format(**os.environ)`, "
+        "`.format_map(os.environ)` and `string.Template`'s `substitute(os.environ)` in "
+        "Python, each also under an imported name (`from os.path import expandvars`, "
+        "`from os import environ`), and a `.replace(...)` or `.replaceAll(...)` whose "
+        "`${...}` replacer reads `process.env`, or a local name bound to it, in "
+        "JavaScript or TypeScript. A resolver written "
         "another way is not reported: a Python `re.sub` that looks each `${NAME}` up "
         "in `os.environ` is missed."
     ),
