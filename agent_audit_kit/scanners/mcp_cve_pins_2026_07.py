@@ -216,6 +216,12 @@ available) before shipping:
   - network-ai                     4.0.0 <= v < 5.15.2  (CVE-2026-109332; the MCP SSE
     transport answers other origins. LOW, its own rule beside the HIGH pin, and a
     stated version is required)
+  - claude-agent-sdk               >= 0.2.121, and
+    @anthropic-ai/claude-agent-sdk >= 0.3.208  (CVE-2026-96620; `resume` reaches the
+    Claude CLI as its own argv token, so a session id starting with `-` injects a
+    flag such as --mcp-config. The CVE names the Python SDK, and its fix commit says
+    the TypeScript SDK shipped the same fix in 0.3.208. One rule, two pins, a stated
+    version required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -301,8 +307,8 @@ _Ver = tuple[int, int, int]
 # an unpinned reference resolves to a release the advisory does not cover:
 # mcp-remote (`npx mcp-remote` installs 0.14.x, and it sits in a large share of
 # all MCP configs), the MCP TypeScript SDKs, Payload's plugin, the two
-# LangChain.js integrations, obsidian-tc and Junie CLI (`latest` resolved to a
-# fixed release for each),
+# LangChain.js integrations, obsidian-tc, Junie CLI and both Claude Agent SDKs
+# (`latest` resolved to a fixed release for each),
 # Claude Code (the CLI updates itself), pi-llm-wiki (upstream registers it by a
 # node_modules path, which states none), bare `mcp` (a lone `mcp` names too much
 # to report unversioned), and `next`, where only a declared version says which
@@ -1402,6 +1408,27 @@ _PINS: tuple[_Pin, ...] = (
     # beside the HIGH pin above, and like it a stated version is required.
     _Pin("AAK-MCP-NETWORKAI-CVE-2026-109332-001", "network-ai", ("network-ai",), (5, 15, 2),
          introduced=(4, 0, 0), fix_label="5.15.2 (affected from 4.0.0)",
+         requires_version=True, ecosystem="js"),
+    # --- 2026-10-16 (#1026) ---
+    # The Claude Agent SDK passed `resume` to the Claude CLI as two argv tokens,
+    # `["--resume", value]`. The CLI declares `--resume` with an optional value, so a
+    # value starting with `-` is read as a flag of its own, and an injected
+    # `--mcp-config` defines a stdio MCP server whose command the CLI starts
+    # (CVE-2026-96620, CVSS 4.0 9.2, GHSA-h4mw-j7qp-8mwm). Checked in the sdists:
+    # 0.0.23, the first release, 0.1.0 and 0.2.120 build the two tokens, and 0.2.121
+    # (347a1cb) and 0.2.168, the newest, pass `--resume=<value>`. The fix commit says
+    # the TypeScript SDK shipped the same fix in 0.3.208, and the npm tarballs agree:
+    # 0.0.4, 0.2.120 and 0.3.207 push two tokens, 0.3.208 and 0.3.302 one. `latest`
+    # is fixed on both registries, so a stated version is required. npm's unscoped
+    # `claude-agent-sdk` is a 0.0.1 name reservation by another publisher, so the
+    # PyPI row reads PyPI only; npm's own 0.2.121 is not the PyPI fix.
+    _Pin("AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001", "Claude Agent SDK for Python",
+         ("claude-agent-sdk",), (0, 2, 121), fix_label="0.2.121",
+         requires_version=True, ecosystem="py"),
+    _Pin("AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001", "Claude Agent SDK for TypeScript",
+         ("@anthropic-ai/claude-agent-sdk",), (0, 3, 208),
+         fix_label="0.3.208 (the TypeScript SDK's fix; the CVE record names only the "
+                   "Python SDK)",
          requires_version=True, ecosystem="js"),
 )
 

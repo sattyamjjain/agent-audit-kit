@@ -357,6 +357,7 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-MCP-NETWORKAI-CVE-2026-109332-001": ["IVS-04", "STA-08"],
     "AAK-MCP-NEZHA-CVE-2026-111385-001": ["IVS-04", "STA-08"],
     "AAK-MCP-ZCODE-CVE-2026-88755-001": ["IAM-16", "STA-08"],
+    "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": ["AIS-07", "STA-08"],
     "AAK-MCP-GRAFANA-CVE-2026-19516-001": ["IVS-04", "STA-08"],
     "AAK-MCP-N8N-CVE-2026-72768-001": ["IVS-04", "STA-08"],
     "AAK-MCP-CCTEMPLATES-CVE-2026-73222-001": ["IAM-01", "STA-08"],
@@ -15308,6 +15309,64 @@ _r(
         "skips it. The desktop client falls back to `.agents/mcp.json` at the "
         "workspace root when `.zcode/config.json` declares no server; other agents "
         "read that file too, and it is not reported here."
+    ),
+)
+
+
+# ---------------------------------------------------------------------------
+# 2026-10-16 (#1026). The Claude Agent SDK passed `resume` to the Claude CLI as
+# its own argv token. One rule, a PyPI pin and an npm pin.
+# ---------------------------------------------------------------------------
+
+_r(
+    "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001",
+    "Claude Agent SDK below 0.2.121 (TypeScript below 0.3.208): a session id passed to `resume` can inject Claude CLI flags that run a command",
+    "The Claude Agent SDK (`claude-agent-sdk` on PyPI, `@anthropic-ai/claude-agent-sdk` "
+    "on npm) runs Claude Code by starting the Claude CLI with arguments built from "
+    "its options. Below 0.2.121 the Python SDK passed the `resume` option as two "
+    "tokens, `--resume` and the session id. The CLI declares `--resume` with an "
+    "optional value, so a session id that starts with `-` is not taken as its value "
+    "but parsed as a flag of its own. An application that resumes a session id it "
+    "takes from untrusted input, such as a chat endpoint that resumes the session "
+    "its client names, lets that client pass `--mcp-config` defining a stdio MCP "
+    "server, whose command the CLI runs at startup, outside the SDK's permission "
+    "controls (CVE-2026-96620, CVSS 4.0 9.2, CWE-20/CWE-78/CWE-88, "
+    "GHSA-h4mw-j7qp-8mwm). 0.2.121 passes `--resume=<id>`, which the CLI rejects when "
+    "the id names no session (347a1cb, anthropics/claude-agent-sdk-python#1123). The "
+    "CVE record names the Python SDK; its fix commit says the TypeScript SDK shipped "
+    "the same fix in 0.3.208. Checked in the published packages: Python 0.0.23, the "
+    "first release, to 0.2.120 and TypeScript 0.0.4 to 0.3.207 build the two tokens, "
+    "and Python 0.2.121 and TypeScript 0.3.208 bind the value. CRITICAL is the "
+    "advisory's own rating; NVD has not scored the record itself.",
+    Severity.CRITICAL,
+    Category.SUPPLY_CHAIN,
+    "Upgrade `claude-agent-sdk` to 0.2.121 or later, or `@anthropic-ai/claude-agent-sdk` "
+    "to 0.3.208 or later, and pin it. Until then, pass `resume` only a session id "
+    "your application got from the SDK and stored itself, never one a client sends, "
+    "and reject any value that starts with `-`. Keep untrusted input out of "
+    "`extra_args` (`extraArgs` in TypeScript) as well: it hands flags to the CLI by "
+    "design, and the Python SDK binds a value starting with `-` there only from "
+    "0.2.124.",
+    sarif_name="ClaudeAgentSdkResumeArgumentInjection",
+    cve_references=["CVE-2026-96620"],
+    owasp_mcp_references=["MCP04:2025", "MCP05:2025"],
+    owasp_agentic_references=["ASI04", "ASI05"],
+    adversa_references=["ADV-INJECT-01"],
+    limitations=(
+        "Reads `claude-agent-sdk` below 0.2.121 in requirements*.txt at any depth "
+        "and, at the project root only, in pyproject.toml, Pipfile and the "
+        "Pipfile.lock, poetry.lock and uv.lock lockfiles, and "
+        "`@anthropic-ai/claude-agent-sdk` below 0.3.208 in the root package.json and "
+        "its package-lock.json, pnpm-lock.yaml and yarn.lock. A range that admits an "
+        "affected version is reported. A reference must state a version to be "
+        "reported: an unpinned one installs the newest release, which is fixed. It "
+        "reads versions, not code, so an application that never passes untrusted "
+        "input to `resume` is reported too. The dependency is not read when it is "
+        "declared in a sub-directory manifest (`services/api/pyproject.toml`). "
+        "`claude-code-sdk`, the Python SDK's name before it became "
+        "`claude-agent-sdk`, builds the same two tokens at 0.0.25, its last release, "
+        "but no advisory names it, and it is not read. A file over 2 MB, or a "
+        "lockfile over 32 MiB, is not read."
     ),
 )
 

@@ -143,6 +143,8 @@ PINS = {
     "AAK-MCP-NETWORKAI-CVE-2026-109332-001": "low",
     # CVE-2025-59536, re-aimed 2026-10-17 from a settings.local.json check
     "AAK-HOOK-RCE-003": "high",
+    # 2026-10-16 (#1026)
+    "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001": "critical",
 }
 
 
@@ -3344,3 +3346,108 @@ def test_claude_code_trust_dialog_evidence_names_the_fix(tmp_path: Path) -> None
     [hit] = [f for f in scan(tmp_path)[0] if f.rule_id == _HOOK_TRUST]
     assert "1.0.111" in hit.evidence and hit.file_path == "package.json"
     assert RULES[_HOOK_TRUST].cve_references == ["CVE-2025-59536"]
+
+
+# --- 2026-10-16 (#1026) ------------------------------------------------------------
+#
+# CVE-2026-96620: the Claude Agent SDK for Python passed `resume` to the Claude CLI as
+# two argv tokens, `["--resume", value]`. The CLI declares `--resume` with an optional
+# value, so a value starting with `-` is parsed as a flag of its own, and an injected
+# `--mcp-config` starts a stdio MCP server's command. 0.2.121 passes
+# `--resume=<value>`. The TypeScript SDK built the same two tokens until 0.3.208,
+# which the fix commit states and the npm tarballs show, so one rule has two pins.
+_CLAUDE_AGENT_SDK = "AAK-MCP-CLAUDEAGENTSDK-CVE-2026-96620-001"
+_CLAUDE_AGENT_SDK_TS = "@anthropic-ai/claude-agent-sdk"
+
+
+def test_claude_agent_sdk_rule_is_critical_and_carries_its_cve() -> None:
+    rule = RULES[_CLAUDE_AGENT_SDK]
+    assert rule.severity.value == "critical"
+    assert rule.cve_references == ["CVE-2026-96620"]
+
+
+def test_claude_agent_sdk_fixtures_positive_and_negative() -> None:
+    """0.2.120 on PyPI and 0.3.207 on npm fire; 0.2.121 and 0.3.208, an unpinned
+    reference and npm's unscoped name reservation do not."""
+    root = _CVE_FIXTURES / "cve-2026-96620-claude-agent-sdk"
+    assert [f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _CLAUDE_AGENT_SDK] == [
+        "pyproject.toml",
+    ]
+    assert [f.file_path for f in scan(root / "vulnerable-ts")[0] if f.rule_id == _CLAUDE_AGENT_SDK] == [
+        "package.json",
+    ]
+    for negative in ("negative", "negative-unpinned", "negative-npm-placeholder"):
+        assert _CLAUDE_AGENT_SDK not in {f.rule_id for f in scan(root / negative)[0]}, negative
+
+
+@pytest.mark.parametrize(("line", "fires"), [
+    ("claude-agent-sdk==0.0.23", True),    # the first release; already two tokens
+    ("claude-agent-sdk==0.1.0", True),
+    ("claude-agent-sdk==0.2.120", True),   # the last release before the fix
+    ("claude_agent_sdk==0.2.120", True),   # the same project under PEP 503
+    ("claude-agent-sdk>=0.1.0", True),     # admits 0.2.120
+    ("claude-agent-sdk~=0.2.100", True),   # admits 0.2.100 to 0.2.120
+    ("claude-agent-sdk==0.2.121", False),  # 347a1cb passes --resume=<value>
+    ("claude-agent-sdk>=0.2.121", False),
+    ("claude-agent-sdk==0.2.168", False),  # the newest release on 2026-10-16
+])
+def test_claude_agent_sdk_python_versions(tmp_path: Path, line: str, fires: bool) -> None:
+    assert (_CLAUDE_AGENT_SDK in _ids(tmp_path, "requirements.txt", line + "\n")) is fires
+
+
+@pytest.mark.parametrize(("version", "fires"), [
+    ("0.0.4", True),      # the first npm release
+    ("0.2.121", True),    # npm's own 0.2.121 (2026-04-27) still builds two tokens
+    ("0.3.207", True),    # the last release before the fix
+    ("^0.3.200", True),   # admits 0.3.207
+    ("0.3.208", False),   # binds the value: `--resume=${value}`
+    ("^0.3.208", False),
+    ("0.3.302", False),   # the newest release on 2026-10-16
+])
+def test_claude_agent_sdk_typescript_versions(tmp_path: Path, version: str, fires: bool) -> None:
+    content = '{"dependencies": {"%s": "%s"}}' % (_CLAUDE_AGENT_SDK_TS, version)
+    assert (_CLAUDE_AGENT_SDK in _ids(tmp_path, "package.json", content)) is fires
+
+
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", "claude-agent-sdk\n"),
+    ("pyproject.toml", '[project]\nname = "app"\nversion = "0.1.0"\ndependencies = ["claude-agent-sdk"]\n'),
+    ("package.json", '{"dependencies": {"%s": "latest"}}' % _CLAUDE_AGENT_SDK_TS),
+])
+def test_claude_agent_sdk_unpinned_reference_is_not_reported(tmp_path: Path, name: str, content: str) -> None:
+    """`latest` is 0.2.168 on PyPI and 0.3.302 on npm, both fixed, so a stated
+    version is required, as for the MCP SDKs."""
+    assert _CLAUDE_AGENT_SDK not in _ids(tmp_path, name, content)
+
+
+def test_claude_agent_sdk_npm_name_reservation_is_another_package(tmp_path: Path) -> None:
+    """npm's unscoped `claude-agent-sdk` is a 0.0.1 name reservation by another
+    publisher. Below the PyPI floor, it would read as a vulnerable SDK if the PyPI
+    row read npm too."""
+    content = '{"dependencies": {"claude-agent-sdk": "0.0.1"}}'
+    assert _CLAUDE_AGENT_SDK not in _ids(tmp_path, "package.json", content)
+
+
+@pytest.mark.parametrize(("name", "content", "fires"), [
+    ("uv.lock", '[[package]]\nname = "claude-agent-sdk"\nversion = "0.2.120"\n', True),
+    ("uv.lock", '[[package]]\nname = "claude-agent-sdk"\nversion = "0.2.121"\n', False),
+    ("poetry.lock", '[[package]]\nname = "claude-agent-sdk"\nversion = "0.2.120"\n', True),
+    ("package-lock.json", json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"name": "app"}, f"node_modules/{_CLAUDE_AGENT_SDK_TS}": {"version": "0.3.207"}}}), True),
+    ("package-lock.json", json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"name": "app"}, f"node_modules/{_CLAUDE_AGENT_SDK_TS}": {"version": "0.3.208"}}}), False),
+    ("pnpm-lock.yaml", f"packages:\n  /{_CLAUDE_AGENT_SDK_TS}@0.3.207:\n    resolution: {{integrity: a}}\n", True),
+    ("yarn.lock", f'"{_CLAUDE_AGENT_SDK_TS}@^0.3.0":\n  version "0.3.207"\n', True),
+])
+def test_claude_agent_sdk_lockfiles(tmp_path: Path, name: str, content: str, fires: bool) -> None:
+    assert (_CLAUDE_AGENT_SDK in _ids(tmp_path, name, content)) is fires
+
+
+def test_claude_agent_sdk_evidence_names_each_fix(tmp_path: Path) -> None:
+    (tmp_path / "requirements.txt").write_text("claude-agent-sdk==0.2.120\n", encoding="utf-8")
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"%s": "0.3.207"}}' % _CLAUDE_AGENT_SDK_TS, encoding="utf-8")
+    hits = {f.file_path: f.evidence for f in scan(tmp_path)[0] if f.rule_id == _CLAUDE_AGENT_SDK}
+    assert set(hits) == {"requirements.txt", "package.json"}
+    assert "fixed in 0.2.121" in hits["requirements.txt"]
+    assert "fixed in 0.3.208" in hits["package.json"]
