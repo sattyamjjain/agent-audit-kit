@@ -2002,15 +2002,15 @@ _r(
     Severity.MEDIUM,
     Category.SUPPLY_CHAIN,
     "Generate the lockfile for the manifest named in the finding and commit it: `npm "
-    "install` (`package-lock.json`), `yarn` or `pnpm install`, `uv lock`, `poetry "
-    "lock`, `pdm lock`, `pipenv lock` or `cargo generate-lockfile`.",
+    "install` (`package-lock.json`), `yarn`, `pnpm install` or `bun install`, `uv "
+    "lock`, `poetry lock`, `pdm lock`, `pipenv lock` or `cargo generate-lockfile`.",
     sarif_name="NoLockfilePresent",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-06"],
     limitations=(
         "Checks the project root only: a package.json needs a package-lock.json, "
-        "yarn.lock, pnpm-lock.yaml or bun.lockb, a pyproject.toml needs a "
+        "yarn.lock, pnpm-lock.yaml, bun.lock or bun.lockb, a pyproject.toml needs a "
         "poetry.lock, uv.lock, Pipfile.lock or pdm.lock, a Pipfile needs a "
         "Pipfile.lock and a Cargo.toml needs a Cargo.lock. A lockfile only has to "
         "exist, so an empty one passes, a Python project that declares its "

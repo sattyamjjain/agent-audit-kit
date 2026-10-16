@@ -251,9 +251,12 @@ def _check_lockfile_exists(project_root: Path) -> list[Finding]:
 
     npm_manifest = project_root / "package.json"
     if npm_manifest.is_file():
+        # Bun 1.2 and later writes the text bun.lock; earlier releases wrote the
+        # binary bun.lockb. Only bun.lockb was accepted, so a current Bun project
+        # was reported as having no lockfile.
         has_lock = any(
             (project_root / lf).is_file()
-            for lf in ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb"]
+            for lf in ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb"]
         )
         if not has_lock:
             findings.append(_make_finding(

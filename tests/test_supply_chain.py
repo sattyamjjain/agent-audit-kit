@@ -82,6 +82,17 @@ def test_no_lockfile(tmp_path: Path) -> None:
     assert len(supply004) > 0, "Missing lockfile should be detected"
 
 
+@pytest.mark.parametrize("lockfile", [
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    # Bun 1.2 and later writes the text bun.lock; earlier releases wrote bun.lockb.
+    "bun.lock", "bun.lockb",
+])
+def test_each_npm_client_lockfile_satisfies_supply_004(tmp_path: Path, lockfile: str) -> None:
+    (tmp_path / "package.json").write_text('{"name":"test","version":"1.0.0"}')
+    (tmp_path / lockfile).write_text("{}\n" if lockfile.endswith(".json") else "")
+    assert not [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-004"]
+
+
 def test_excessive_dependencies(tmp_path: Path) -> None:
     """AAK-SUPPLY-005: Excessive dependency count."""
     packages = {f"node_modules/pkg-{i}": {"version": "1.0.0"} for i in range(250)}

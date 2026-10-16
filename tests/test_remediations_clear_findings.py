@@ -211,6 +211,7 @@ CASES: list[Case] = [
     Case("supply-004 package-lock.json", "AAK-SUPPLY-004", supply_chain, {"package.json": "{}", "package-lock.json": "{}"}, False),
     Case("supply-004 yarn.lock", "AAK-SUPPLY-004", supply_chain, {"package.json": "{}", "yarn.lock": ""}, False),
     Case("supply-004 pnpm-lock.yaml", "AAK-SUPPLY-004", supply_chain, {"package.json": "{}", "pnpm-lock.yaml": ""}, False),
+    Case("supply-004 bun.lock", "AAK-SUPPLY-004", supply_chain, {"package.json": "{}", "bun.lock": ""}, False),
     Case("supply-004 pyproject.toml alone", "AAK-SUPPLY-004", supply_chain, {"pyproject.toml": "[project]\n"}, True),
     Case("supply-004 uv.lock", "AAK-SUPPLY-004", supply_chain, {"pyproject.toml": "[project]\n", "uv.lock": ""}, False),
     Case("supply-004 poetry.lock", "AAK-SUPPLY-004", supply_chain, {"pyproject.toml": "[project]\n", "poetry.lock": ""}, False),
