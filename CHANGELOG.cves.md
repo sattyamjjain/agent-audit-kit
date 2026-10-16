@@ -79,6 +79,32 @@ CVSS is the CVSS 4.0 score that NVD's record carries from GitHub's advisory, mar
 NVD has not scored the record itself.
 
 Dispositioned at 2026-10-17T00:43:34Z.
+## 2026-10-17 (v0.6.23): a correction, the WhatsApp MCP pin read other projects' packages
+
+**`AAK-MCP-WHATSAPP-CVE-2026-46555-001` matched packages the advisory does not name.**
+It was pinned on 2026-07-21 on the name `whatsapp-mcp`. NVD and GHSA-7jj9-4qqq-4xc4
+name one project, the GitHub repository verygoodplugins/whatsapp-mcp: the advisory's
+package is `verygoodplugins/whatsapp-mcp` with no registry ecosystem, `<= 0.2.0`,
+patched 0.2.1, and NVD's CPE is `verygoodplugins:whatsapp_mcp_server` before 0.2.1. The
+project ships as a clone, release wheels (`whatsapp_mcp_server-<version>-py3-none-any.whl`)
+and a bridge binary. Re-checked on 2026-10-17: npm's `whatsapp-mcp` is
+Candombe/whatsapp-mcp (0.0.1 to 0.1.3, all published 2025-03-31), PyPI's `whatsapp-mcp`
+links no repository (0.1.0 and 0.1.1, October 2025), and PyPI's `whatsapp-mcp-server`,
+the name the project's wheels and its MCP Registry entry use, is
+msaelices/whatsapp-mcp-server (0.2.1 only, 2025-05-23). So the pin reported two other
+projects' packages, where no upgrade could clear it, and nothing the real project
+ships. Those registry packages are out of scope, as npm's `mcp` was in #1008. The rule
+now reads a reference to the repository that names a release below v0.2.1: a git URL
+with `@v0.2.0`, a lockfile's git source with `rev=` or `tag=`, a release asset or an
+archive tarball. Measured on a firing fixture (`@v0.2.0`, and the v0.2.0 release wheel)
+and negative ones (`@v0.2.1`, the v0.2.0 commit, the README's `uv --directory` clone, and
+npm's and PyPI's packages). The README's clone states no version, so most installs are
+not reported, and the rule's limitations say so. Update the checkout to v0.2.1 or later.
+
+There is no table row: coverage of CVE-2026-46555 dates from 2026-07-21, and a row here
+would re-date it on the latency page.
+
+Corrected at 2026-10-17.
 
 ## 2026-10-16 (v0.6.23): ZCode starts a cloned repository's MCP servers on open, a new rule and a new platform
 

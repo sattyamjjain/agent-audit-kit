@@ -533,24 +533,82 @@ def test_lockfile_absent_package_does_not_fire(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_whatsapp_below_floor_fires(tmp_path: Path) -> None:
-    content = '{"dependencies": {"whatsapp-mcp": "0.1.0"}}'
-    assert "AAK-MCP-WHATSAPP-CVE-2026-46555-001" in _ids(tmp_path, "package.json", content)
+# CVE-2026-46555 (GHSA-7jj9-4qqq-4xc4) names one project, the GitHub repository
+# verygoodplugins/whatsapp-mcp, which ships a clone, release wheels
+# (`whatsapp_mcp_server-<v>-py3-none-any.whl`) and a bridge binary, and no
+# registry package. npm's `whatsapp-mcp` is Candombe/whatsapp-mcp (0.0.1 to
+# 0.1.3), PyPI's links no repository (0.1.0, 0.1.1), and PyPI's
+# `whatsapp-mcp-server` is msaelices/whatsapp-mcp-server (0.2.1 only). The pin
+# matched the first two, where no upgrade could clear it. It now reads a
+# reference to the repository that names a release.
+WHATSAPP = "AAK-MCP-WHATSAPP-CVE-2026-46555-001"
+_WA_GIT = "git+https://github.com/verygoodplugins/whatsapp-mcp"
+_WA_ASSETS = "https://github.com/verygoodplugins/whatsapp-mcp/releases/download"
 
 
-def test_whatsapp_patched_passes(tmp_path: Path) -> None:
-    content = '{"dependencies": {"whatsapp-mcp": "0.2.1"}}'
-    assert "AAK-MCP-WHATSAPP-CVE-2026-46555-001" not in _ids(tmp_path, "package.json", content)
+@pytest.mark.parametrize(("name", "content"), [
+    ("package.json", '{"dependencies": {"whatsapp-mcp": "0.1.0"}}'),
+    ("requirements.txt", "whatsapp-mcp==0.1.1\n"),
+    ("requirements.txt", "whatsapp-mcp-server==0.2.1\n"),
+    ("uv.lock", '[[package]]\nname = "whatsapp-mcp"\nversion = "0.1.0"\n'),
+    (".mcp.json", '{"mcpServers": {"w": {"command": "npx", "args": ["-y", "whatsapp-mcp@0.1.3"]}}}'),
+])
+def test_whatsapp_registry_packages_are_other_projects(tmp_path: Path, name: str, content: str) -> None:
+    assert WHATSAPP not in _ids(tmp_path, name, content)
 
 
-def test_whatsapp_uv_lock_resolved_below_floor_fires(tmp_path: Path) -> None:
-    lock = '[[package]]\nname = "whatsapp-mcp"\nversion = "0.1.5"\n'
-    assert "AAK-MCP-WHATSAPP-CVE-2026-46555-001" in _ids(tmp_path, "uv.lock", lock)
+@pytest.mark.parametrize(("name", "content", "line"), [
+    ("requirements.txt",
+     f"httpx>=0.28\nwhatsapp-mcp-server @ {_WA_GIT}@v0.2.0#subdirectory=whatsapp-mcp-server\n", 2),
+    ("requirements.txt", f"{_WA_GIT}.git@v0.1.0#egg=whatsapp-mcp-server&subdirectory=whatsapp-mcp-server\n", 1),
+    ("requirements.txt", f"{_WA_ASSETS}/v0.2.0/whatsapp_mcp_server-0.2.0-py3-none-any.whl\n", 1),
+    ("pyproject.toml",
+     '[project]\nname = "app"\ndependencies = [\n'
+     f'    "whatsapp-mcp-server @ {_WA_GIT}@v0.2.0#subdirectory=whatsapp-mcp-server",\n]\n', 4),
+    ("uv.lock",
+     '[[package]]\nname = "whatsapp-mcp-server"\nversion = "0.2.0"\nsource = { git = '
+     '"https://github.com/verygoodplugins/whatsapp-mcp?subdirectory=whatsapp-mcp-server'
+     '&rev=v0.2.0#2f7c99fcdb718edde19f96a0ff3137adcfcd325e" }\n', 4),
+    (".mcp.json",
+     '{\n  "mcpServers": {\n    "whatsapp": {\n      "command": "uv",\n      "args": [\n'
+     f'        "run", "--with",\n        "{_WA_GIT}@v0.2.0#subdirectory=whatsapp-mcp-server",\n'
+     '        "python", "-m", "main"\n      ]\n    }\n  }\n}\n', 7),
+])
+def test_whatsapp_a_reference_to_an_affected_release_fires(
+    tmp_path: Path, name: str, content: str, line: int
+) -> None:
+    (tmp_path / name).write_text(content, encoding="utf-8")
+    findings = [f for f in scan(tmp_path)[0] if f.rule_id == WHATSAPP]
+    assert [f.line_number for f in findings] == [line]
+    assert "0.2.1" in findings[0].evidence
 
 
-def test_whatsapp_uv_lock_patched_clears(tmp_path: Path) -> None:
-    lock = '[[package]]\nname = "whatsapp-mcp"\nversion = "0.2.1"\n'
-    assert "AAK-MCP-WHATSAPP-CVE-2026-46555-001" not in _ids(tmp_path, "uv.lock", lock)
+@pytest.mark.parametrize(("name", "content"), [
+    ("requirements.txt", f"whatsapp-mcp-server @ {_WA_GIT}@v0.2.1#subdirectory=whatsapp-mcp-server\n"),
+    ("requirements.txt", f"{_WA_ASSETS}/v0.7.0/whatsapp_mcp_server-0.7.0-py3-none-any.whl\n"),
+    # A commit or a branch names no release, and the README's clone states none.
+    ("requirements.txt", f"{_WA_GIT}@2f7c99fcdb718edde19f96a0ff3137adcfcd325e#subdirectory=x\n"),
+    ("requirements.txt", f"{_WA_GIT}@main#subdirectory=whatsapp-mcp-server\n"),
+    (".mcp.json", '{"mcpServers": {"whatsapp": {"command": "uv", "args": ["--directory", '
+                  '"/path/to/whatsapp-mcp/whatsapp-mcp-server", "run", "main.py"]}}}'),
+    # A comment is not a reference, and neither is a fork with the same name.
+    ("requirements.txt", f"# was {_WA_GIT}@v0.2.0\nrequests==2.32.0\n"),
+    ("requirements.txt", "git+https://github.com/lharries/whatsapp-mcp@v0.2.0#egg=x\n"),
+    ("requirements.txt", "git+https://github.com/verygoodplugins/whatsapp-mcp-extra@v0.1.0#egg=x\n"),
+])
+def test_whatsapp_a_patched_or_unversioned_reference_is_quiet(
+    tmp_path: Path, name: str, content: str
+) -> None:
+    assert WHATSAPP not in _ids(tmp_path, name, content)
+
+
+def test_whatsapp_reference_scan_is_linear_on_a_crafted_file(tmp_path: Path) -> None:
+    import time
+
+    crafted = ("github.com/verygoodplugins/whatsapp-mcp?" + "a" * 300 + "&") * 2_000
+    start = time.perf_counter()
+    assert WHATSAPP not in _ids(tmp_path, "requirements.txt", crafted + "\n")
+    assert time.perf_counter() - start < 3.0
 
 
 def test_agenticmail_core_below_floor_fires(tmp_path: Path) -> None:

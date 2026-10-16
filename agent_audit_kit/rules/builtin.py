@@ -9998,7 +9998,8 @@ _r(
 
 _r(
     "AAK-MCP-WHATSAPP-CVE-2026-46555-001",
-    "whatsapp-mcp < 0.2.1 (unauthenticated loopback bridge + media_path traversal → file exfil)",
+    "WhatsApp MCP (verygoodplugins/whatsapp-mcp) below 0.2.1 (unauthenticated loopback bridge + "
+    "media_path traversal → file exfil)",
     "The WhatsApp MCP Server's `whatsapp-bridge` HTTP API before 0.2.1 listens on "
     "127.0.0.1:8080 with no authentication and no Host-header validation, and its "
     "`/api/send` endpoint accepts an absolute `media_path` with no directory "
@@ -10009,28 +10010,38 @@ _r(
     "dotfiles) as document attachments; the missing Host validation also enables "
     "DNS-rebinding from a visited webpage (CVE-2026-46555, CVSS 7.7). Fixed in "
     "0.2.1, which adds required bearer-token auth, a Host allow-list, and "
-    "media_path confinement. Treat < 0.2.1 (or unpinned) as exposed.",
+    "media_path confinement. The project is the GitHub repository "
+    "verygoodplugins/whatsapp-mcp, which ships as a clone and release assets and "
+    "on no registry; npm's and PyPI's `whatsapp-mcp` are other projects. A "
+    "reference to the repository that names an earlier release is reported.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "Upgrade whatsapp-mcp to >= 0.2.1 and pin it. Require the bridge bearer token on "
-    "all requests, enable Host-header allow-listing, and confine `media_path` to a "
-    "configured root (reject absolute paths and `..`). Do not run the bridge next to "
-    "untrusted local MCP servers, browser extensions, or other untrusted processes.",
+    "Update the verygoodplugins/whatsapp-mcp checkout or release to v0.2.1 or later "
+    "and pin that tag, then restart both the bridge and the MCP server so the server "
+    "reads the bridge token. Require the bridge bearer token on all requests, enable "
+    "Host-header allow-listing, and confine `media_path` to a configured root "
+    "(reject absolute paths and `..`). Do not run the bridge next to untrusted local "
+    "MCP servers, browser extensions, or other untrusted processes.",
     sarif_name="WhatsAppMcpUnauthBridgeTraversal",
     cve_references=["CVE-2026-46555"],
     owasp_mcp_references=["MCP04:2025", "MCP07:2025"],
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Reads `whatsapp-mcp` in requirements*.txt at any depth and, at the project "
-        "root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
+        "Reads a reference to `github.com/verygoodplugins/whatsapp-mcp` that names "
+        "a release below v0.2.1: a git URL with `@v0.2.0`, a lockfile's git source "
+        "with `rev=` or `tag=`, a `/releases/download/` asset or an `/archive/` "
+        "tarball, in requirements*.txt at any depth and, at the project root only, in "
+        "pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, "
         "claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, "
-        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles, taking the "
-        "lowest version a range allows and reporting a reference that states no "
-        "version. The dependency is not read when it is declared in a sub-directory "
-        "manifest (`services/api/pyproject.toml`), in `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or in a lockfile format the reader does not parse "
-        "(`pdm.lock`). A file over 2 MB, or a lockfile over 32 MiB, is not read."
+        "package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles. The install the "
+        "project's README documents, a clone run with `uv --directory <path> run "
+        "main.py`, states no version and is not reported, and neither is a reference "
+        "by commit or branch, or one in `.cursor/mcp.json`, `.vscode/mcp.json`, a "
+        "sub-directory manifest (`services/api/pyproject.toml`) or `pdm.lock`. "
+        "npm's and PyPI's `whatsapp-mcp`, and PyPI's `whatsapp-mcp-server`, are "
+        "other projects and are not read. A file over 2 MB, or a lockfile over "
+        "32 MiB, is not read."
     ),
 )
 

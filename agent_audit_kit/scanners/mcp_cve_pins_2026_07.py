@@ -44,7 +44,9 @@ available) before shipping:
   - frontmcp                        >= 1.5.7   (CVE-2026-67531)
   - langgraph-checkpoint-postgres/sqlite >= 3.1.1 (CVE-2026-71433)
   - meta-ads-mcp                    >= 1.0.109 (CVE-2026-48039)
-  - whatsapp-mcp                   >= 0.2.1   (CVE-2026-46555)
+  - verygoodplugins/whatsapp-mcp   >= 0.2.1   (CVE-2026-46555; read from a reference to
+    the GitHub repository that names a release, `_REPO_PINS`. npm's and PyPI's
+    `whatsapp-mcp` are other projects and out of scope)
   - @agenticmail/{claudecode,codex,core,openclaw} (CVE-2026-57495; fix floors
     0.2.39 / 0.1.33 / 0.9.43 / 0.5.71 respectively — one rule, four pins)
   - stata-mcp                      >= 1.19.0  (CVE-2026-47708, CVE-2026-55071 —
@@ -240,11 +242,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, strip_jsonc
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
     Declaration,
+    _in_comment,
     declaration_line,
     declarations,
 )
@@ -445,8 +448,9 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-HEALTHOMICS-CVE-2026-15415-001", "awslabs.aws-healthomics-mcp-server",
          ("awslabs.aws-healthomics-mcp-server",), (0, 0, 36), fix_label="0.0.36"),
     # --- 2026-07-19..20 wave ---
-    _Pin("AAK-MCP-WHATSAPP-CVE-2026-46555-001", "whatsapp-mcp", ("whatsapp-mcp",),
-         (0, 2, 1), fix_label="0.2.1"),
+    # AAK-MCP-WHATSAPP-CVE-2026-46555-001 was a row here on the name `whatsapp-mcp`,
+    # and it is a `_RepoPin` below since 2026-10-17: npm's and PyPI's packages of
+    # that name are other projects, so no upgrade of either could clear it.
     # AgenticMail ships four npm packages, each with its own fix floor for the same
     # CVE — one rule_id, four pins (whichever @agenticmail/* the project depends on
     # fires below its own floor). `@agenticmail/openclaw` is distinct from the bare
@@ -1657,6 +1661,86 @@ def _deciding_declaration(pin: _Pin, found: list[Declaration]) -> Declaration | 
     return None
 
 
+@dataclass(frozen=True)
+class _RepoPin:
+    """A project that ships from its GitHub repository and no registry.
+
+    CVE-2026-46555 (GHSA-7jj9-4qqq-4xc4) names verygoodplugins/whatsapp-mcp,
+    which publishes a clone, release wheels (`whatsapp_mcp_server-<v>-py3-none-
+    any.whl`) and a bridge binary, and nothing on npm or PyPI. The registries'
+    `whatsapp-mcp` packages are other projects: npm's is Candombe/whatsapp-mcp
+    (0.0.1 to 0.1.3), PyPI's links no repository (0.1.0, 0.1.1), and PyPI's
+    `whatsapp-mcp-server`, the wheels' own name, is msaelices's 0.2.1. A pin on
+    either name reported somebody else's package, and no upgrade cleared it.
+
+    What states a release of the project is a reference to its repository that
+    names a tag: a pip or uv git URL with `@v0.2.0`, a lockfile's git source with
+    `rev=` or `tag=`, a `/releases/download/v0.2.0/` asset or an `/archive/`
+    tarball. The README's own install, a clone run with `uv --directory <path>
+    run main.py`, names none, and neither does a commit or a branch, so those are
+    not reported.
+    """
+
+    rule_id: str
+    display: str
+    repository: str     # owner/name on github.com
+    floor: _Ver
+    fix_label: str
+
+
+_REPO_PINS: tuple[_RepoPin, ...] = (
+    _RepoPin("AAK-MCP-WHATSAPP-CVE-2026-46555-001", "WhatsApp MCP",
+             "verygoodplugins/whatsapp-mcp", (0, 2, 1), "v0.2.1"),
+)
+
+
+def _repo_ref_re(repository: str) -> re.Pattern[str]:
+    """A reference to `repository` on github.com that names a release tag.
+
+    Each part is a literal or bounded, so a crafted line costs one pass.
+    """
+    return re.compile(
+        r"github\.com[/:]" + re.escape(repository) + r"(?:\.git)?"
+        r"(?:@|/releases/download/|/archive/(?:refs/tags/)?|/tree/"
+        r"|\?(?:[^#\s\"'?]{0,256}&)?(?:rev|tag)=)"
+        r"v?(\d{1,6})\.(\d{1,6})\.(\d{1,6})(?!\d)",
+        re.IGNORECASE,
+    )
+
+
+_REPO_REF_RES = {pin.repository: _repo_ref_re(pin.repository) for pin in _REPO_PINS}
+
+
+def _repo_findings(rel: str, file_name: str, text: str) -> list[Finding]:
+    """One finding per repository pin per file, on its first affected reference
+    outside a comment (JSONC comments are blanked first, as clients read them)."""
+    findings: list[Finding] = []
+    hash_comments = not file_name.lower().endswith(".json")
+    if not hash_comments:
+        try:
+            text = strip_jsonc(text)
+        except ValueError:
+            pass
+    for pin in _REPO_PINS:
+        if pin.repository.lower() not in text.lower():
+            continue
+        for m in _REPO_REF_RES[pin.repository].finditer(text):
+            if hash_comments and _in_comment(text, m.start()):
+                continue
+            version = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            if version >= pin.floor:
+                continue
+            findings.append(make_finding(
+                pin.rule_id,
+                rel,
+                f"{pin.display} referenced at {m.group(1)}.{m.group(2)}.{m.group(3)} "
+                f"({m.group(0)!r}) — fixed in {pin.fix_label}; pin the patched release.",
+                text.count("\n", 0, m.start()) + 1,
+            ))
+            break
+    return findings
+
+
 def _evidence(pin: _Pin, declaration: Declaration) -> str:
     stated = parse_range(declaration.version, declaration.dialect) is not None
     how = "" if stated else ", which states no version AAK can read"
@@ -1696,6 +1780,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         # `len(all_scanned_files)` as files_scanned, so gating this on a match
         # under-reported the denominator and made a clean repo look unscanned.
         scanned.add(rel)
+        findings.extend(_repo_findings(rel, path.name, text))
         if lockfile:
             findings.extend(_lockfile_findings(path, rel, text))
             continue

@@ -7742,7 +7742,7 @@
       ],
       "rule_id": "AAK-MCP-WHATSAPP-CVE-2026-46555-001",
       "severity": "high",
-      "title": "whatsapp-mcp < 0.2.1 (unauthenticated loopback bridge + media_path traversal \u2192 file exfil)"
+      "title": "WhatsApp MCP (verygoodplugins/whatsapp-mcp) below 0.2.1 (unauthenticated loopback bridge + media_path traversal \u2192 file exfil)"
     },
     {
       "category": "trust-boundary",
