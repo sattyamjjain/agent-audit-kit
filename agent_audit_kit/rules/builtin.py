@@ -2961,7 +2961,7 @@ _r(
 
 _r(
     "AAK-LEGAL-001",
-    "Copyleft license (AGPL/SSPL) declared in package.json",
+    "Copyleft license (AGPL, SSPL, GPL-3 or EUPL) declared in package.json",
     "A package.json in the project declares a copyleft license (AGPL, SSPL, GPL-3 "
     "or EUPL) in its `license` field. The rule reads the project's own manifests, "
     "not the dependencies it installs. Distributing that package, or offering it "

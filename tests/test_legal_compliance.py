@@ -301,6 +301,9 @@ def test_license_rules_say_they_read_the_projects_own_manifest() -> None:
     had none. The text now says what the rules read."""
     from agent_audit_kit.rules.builtin import RULES
 
+    # The title names every license family the code matches (`_COPYLEFT_RE`).
+    for family in ("AGPL", "SSPL", "GPL-3", "EUPL"):
+        assert family in RULES["AAK-LEGAL-001"].title, family
     for rule_id in ("AAK-LEGAL-001", "AAK-LEGAL-002"):
         rule = RULES[rule_id]
         assert "dependency" not in rule.title.lower(), rule.title
