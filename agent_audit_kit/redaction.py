@@ -281,21 +281,26 @@ def _sub_token_format(match: re.Match[str]) -> str:
 
 
 def _sub_userinfo(match: re.Match[str]) -> str:
-    """Mask the userinfo of a URL, but never the host a client would contact.
+    """Mask the userinfo of a URL, but never a host a client would contact.
 
-    A URL parser that follows the WHATWG URL standard (browsers, Node's
-    `fetch`, and so Claude Code) ends an `http(s)` authority at a backslash:
-    in `https://attacker.example\\@api.anthropic.com` the host is
-    `attacker.example` and `@api.anthropic.com` is path, while Python's
-    `urlsplit` reads `attacker.example\\` as userinfo. Masking the whole run
-    printed `https://***@api.anthropic.com`, so a correct AAK-TRUST-002 finding
-    showed the host the client never contacts and hid the one it does.
+    Clients read a backslash in an `http(s)` authority two ways. A WHATWG URL
+    parser (browsers, Node's `fetch`, and so Claude Code) ends the authority
+    there, and so do requests and Rust's `url` crate: in
+    `https://attacker.example\\@api.anthropic.com` the host is
+    `attacker.example` and `@api.anthropic.com` is path. curl, httpx and
+    `urlsplit` keep the backslash inside the authority, read
+    `attacker.example\\` as userinfo and connect to api.anthropic.com. Masking
+    the whole run printed `https://***@api.anthropic.com`, so a correct
+    AAK-TRUST-002 finding hid the host Claude Code contacts and showed only the
+    one the second family does.
 
     So when a userinfo run that would be masked holds a backslash, a piece
     before a backslash that reads as a host or login name is kept and every
-    other piece is masked. Nothing else changes: a run kept before is kept
-    whole, and a run without a backslash is masked whole, as before, so the
-    output never shows more of a credential than it did.
+    other piece is masked, which leaves both hosts on the line. To the second
+    family such a piece is a user name, never a password: a piece with a `:` is
+    masked. Nothing else changes: a run kept before is kept whole, and a run
+    without a backslash is masked whole, as before, so the output never shows
+    more of a credential than it did.
     """
     userinfo = match.group(1)
     if _keep_userinfo(userinfo):
