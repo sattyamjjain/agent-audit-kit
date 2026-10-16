@@ -251,3 +251,28 @@ def test_a_crafted_pyproject_reads_in_linear_time(tmp_path: Path, pin: _Pin) -> 
     findings, _ = pin.module.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
     assert any(f.rule_id == pin.rule_id for f in findings)
+
+
+@pytest.mark.parametrize("pin", _NPM_PINS, ids=str)
+def test_a_crafted_package_json_script_reads_in_linear_time(tmp_path: Path, pin: _Pin) -> None:
+    """The launcher grammar tokenises a script with shlex, which is quadratic in the
+    length of one word (a 300 KB word took 3.5 s). These rules never read scripts,
+    so a package.json drops them before it is read. The bound is loose for slow CI
+    runners."""
+    body = {"dependencies": {pin.package: pin.affected}, "scripts": {"build": "a" * 1_000_000}}
+    (tmp_path / "package.json").write_text(json.dumps(body), encoding="utf-8")
+    started = time.perf_counter()
+    assert pin.fires(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize("text", [
+    "[1, 2]",
+    '{"dependencies": {',
+    '{"overrides": ' + '{"a": ' * 5_000 + '"1"' + "}" * 5_001,   # deeper than the stack
+])
+@pytest.mark.parametrize("pin", _NPM_PINS, ids=str)
+def test_an_unreadable_package_json_declares_nothing(tmp_path: Path, pin: _Pin, text: str) -> None:
+    (tmp_path / "package.json").write_text(text, encoding="utf-8")
+    assert not pin.fires(tmp_path)
+

@@ -50,6 +50,7 @@ One finding per rule per file, on the line of the declaration that decided it.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,6 +58,7 @@ from agent_audit_kit.scanners._manifest_deps import (
     Declaration,
     declaration_line,
     declarations,
+    package_json_declarations,
     requirements_declarations,
 )
 from agent_audit_kit.scanners._versions import Ver, parse_range
@@ -102,12 +104,26 @@ def manifest_declarations(path: Path, text: str) -> list[Declaration]:
 
     Every requirements file is read as one, whatever its name, so
     `dev-requirements.txt` counts though it does not start with "requirements".
+
+    A package.json loses its `scripts` before it is read, not after: the
+    launcher grammar tokenises each script with shlex, which is quadratic in
+    the length of one word, so a 300 KB script word took 3.5 s to read for
+    launches these rules then threw away.
     """
-    if path.name.lower().endswith(".txt"):
-        found = requirements_declarations(text)
-    else:
-        found = declarations(path, text)
-    return [d for d in found if d.kind != "launch"]
+    name = path.name.lower()
+    if name.endswith(".txt"):
+        return requirements_declarations(text)
+    if name == "package.json":
+        # The same failures `declarations` reads as "no declarations": invalid
+        # JSON, and nesting deep enough to exhaust the stack.
+        try:
+            data = json.loads(text)
+            if not isinstance(data, dict):
+                return []
+            return package_json_declarations({k: v for k, v in data.items() if k != "scripts"})
+        except (ValueError, RecursionError):
+            return []
+    return [d for d in declarations(path, text) if d.kind != "launch"]
 
 
 def pinned_dependency(
