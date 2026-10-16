@@ -812,8 +812,8 @@ def test_secret_006_reads_gitignore_patterns_as_git_does(
 
 def test_secret_006_reads_the_project_root_only(tmp_path: Path) -> None:
     """The stated limitation, proven here rather than by a fixture pair under
-    tests/fixtures/limitations: the pair would be committed env files, which this
-    repository's safety hook refuses to stage, so it is built at run time."""
+    tests/fixtures/limitations: the pair would be two committed env files, the thing
+    this rule exists to stop, so it is built at run time."""
     (tmp_path / ".env.test").write_text("APP_ENV=test\n", encoding="utf-8")
     (tmp_path / "services" / "api").mkdir(parents=True)
     (tmp_path / "services" / "api" / ".env.test").write_text("APP_ENV=test\n", encoding="utf-8")
