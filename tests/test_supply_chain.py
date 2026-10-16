@@ -1042,10 +1042,12 @@ def test_a_crafted_mention_run_scans_in_linear_time(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("rel", ["package.json", ".mcp.json"])
-def test_a_crafted_long_word_is_not_tokenized(tmp_path: Path, rel: str) -> None:
-    """The shell tokenizer behind `_manifest_deps` takes the square of a word's
-    length (a 1 MB one took 11 s), so a file holding a word over 16 KiB is not
-    read for declarations. The bound is loose for slow CI runners."""
+def test_a_crafted_long_word_is_read_in_linear_time(tmp_path: Path, rel: str) -> None:
+    """`_manifest_deps` splits each package.json script, and each MCP config
+    argument that holds a space, with `shell_tokens`, which took the square of a
+    word's length until it stopped using shlex. The launch is read, a version too
+    long to be one reads as none, and Serena reports an unpinned launch. The
+    bound is loose for slow CI runners."""
     import time
 
     word = "serena-agent==1.5.0" + "a" * 1_000_000
@@ -1056,7 +1058,7 @@ def test_a_crafted_long_word_is_not_tokenized(tmp_path: Path, rel: str) -> None:
     started = time.perf_counter()
     found = _pin_ids(tmp_path, rel, text)
     assert time.perf_counter() - started < 5.0
-    assert _SERENA not in found
+    assert _SERENA in found
 
 
 def test_a_manifest_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

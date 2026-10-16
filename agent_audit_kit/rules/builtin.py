@@ -6111,8 +6111,7 @@ _r(
         "below 0.6.1. A declaration that states no version, such as "
         "`apache-doris-mcp-server` alone or a git URL, is not reported, and neither is a "
         "requirements file in a sub-directory or an `.mcp.json` launcher. A "
-        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
-        "declarations. A lockfile over 32 MiB is not read."
+        "manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6382,8 +6381,7 @@ _r(
         "below 0.1.8. A declaration that states no version, such as "
         "`excel-mcp-server` alone or a git URL, is not reported, and neither is a "
         "requirements file in a sub-directory or an `.mcp.json` launcher. A "
-        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
-        "declarations. A lockfile over 32 MiB is not read."
+        "manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8278,8 +8276,7 @@ _r(
         "below 1.83.7. A declaration that states no version, such as "
         "`litellm` alone or a git URL, is not reported, and neither is a "
         "requirements file in a sub-directory or an `.mcp.json` launcher. A compose file's `ghcr.io/berriai/litellm` image tag is not read. A "
-        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
-        "declarations. A lockfile over 32 MiB is not read."
+        "manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -9039,8 +9036,7 @@ _r(
         "as a server's name, a URL or an image name, is not read. It does not read a "
         "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
         "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file "
-        "over 2 MB is not read, nor one holding a word over 16 KiB for declarations. "
-        "A lockfile over 32 MiB is not read."
+        "over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -9147,8 +9143,8 @@ _r(
         "fetching it (`uv run --directory ../serena serena-mcp-server`). A mention of "
         "the names that is none of these, such as a server's name, is not read. Only "
         "these root-level files are read, so the same server launched from "
-        "`.cursor/mcp.json` is missed. A file over 2 MB is not read, nor one holding a "
-        "word over 16 KiB for declarations. A lockfile over 32 MiB is not read."
+        "`.cursor/mcp.json` is missed. A file over 2 MB is not read. A "
+        "lockfile over 32 MiB is not read."
     ),
 )
 

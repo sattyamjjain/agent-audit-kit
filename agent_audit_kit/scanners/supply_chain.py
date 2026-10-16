@@ -91,7 +91,7 @@ _LOCAL_FIRST_LAUNCHERS = frozenset({"npx", "npm exec", "npm x", "bunx", "bun x"}
 _NO_OP_COMMANDS = frozenset({"true", "false", ":", "exit", "echo"})
 # The longest of 3,171 install scripts read from npm manifests and GitHub repos
 # (2026-10-17) was 578 characters. A script over this is reported without being
-# split into commands: shell tokenizing one long word costs its square.
+# split into commands, which bounds what one crafted script costs the scan.
 _MAX_JUDGED_SCRIPT = 4096
 _SHELL_PUNCTUATION = frozenset("();<>|&")
 
@@ -828,14 +828,6 @@ def _lockfile_index(text: str, filename: str) -> dict[str, list[tuple[int, int, 
 # (`_versions`) with the pin table's own judge.
 # ---------------------------------------------------------------------------
 
-# `_manifest_deps` splits each package.json script, and each MCP config argument
-# that holds a space, with the shell tokenizer, which takes the square of a
-# word's length: a script of one 1 MB word took 11 s. A file holding a longer
-# word than this is not read for declarations; no manifest or config word comes
-# near it (the longest install script of 3,171 measured was 578 characters).
-_MAX_DECLARATION_WORD = 16 * 1024
-
-
 def _read_pin_candidate(path: Path) -> str | None:
     """A candidate file's text, or None when it is unreadable or over its limit.
 
@@ -879,8 +871,6 @@ def _affected_pin(
     if filename in _LOCKFILES:
         affected = [v for v in _resolve_lockfile_versions(text, filename, names) if v < floor]
         return ".".join(str(x) for x in affected[0]) if affected else None
-    if any(len(word) > _MAX_DECLARATION_WORD for word in text.split()):
-        return None
     # Imported here: the pin table imports this module's lockfile readers.
     from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _Pin, _deciding_declaration
 
@@ -976,8 +966,6 @@ def _runs_unversioned(path: Path, text: str, names: tuple[str, ...]) -> bool:
     the name in the text, which would report the command of a patched
     `uvx --from x==1.0.13 x` as unpinned, and a server merely named `x`.
     """
-    if any(len(word) > _MAX_DECLARATION_WORD for word in text.split()):
-        return False
     wanted = {n.lower() for n in names}
     for argv in _command_lines(path, text):
         if launched_packages(argv):
