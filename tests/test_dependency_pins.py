@@ -262,10 +262,9 @@ def test_a_crafted_pyproject_reads_in_linear_time(tmp_path: Path, pin: _Pin) -> 
 
 @pytest.mark.parametrize("pin", _NPM_PINS, ids=str)
 def test_a_crafted_package_json_script_reads_in_linear_time(tmp_path: Path, pin: _Pin) -> None:
-    """The launcher grammar tokenises a script with shlex, which is quadratic in the
-    length of one word (a 300 KB word took 3.5 s). These rules never read scripts,
-    so a package.json drops them before it is read. The bound is loose for slow CI
-    runners."""
+    """These rules never read scripts, so a package.json drops them before it is
+    read. Tokenising them with shlex, quadratic in the length of one word, took
+    3.5 s for a 300 KB word. The bound is loose for slow CI runners."""
     body = {"dependencies": {pin.package: pin.affected}, "scripts": {"build": "a" * 1_000_000}}
     (tmp_path / "package.json").write_text(json.dumps(body), encoding="utf-8")
     started = time.perf_counter()

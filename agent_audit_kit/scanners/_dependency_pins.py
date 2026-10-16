@@ -122,10 +122,11 @@ def manifest_declarations(path: Path, text: str) -> list[Declaration]:
     Every requirements file is read as one, whatever its name, so
     `dev-requirements.txt` counts though it does not start with "requirements".
 
-    A package.json loses its `scripts` before it is read, not after: the
-    launcher grammar tokenises each script with shlex, which is quadratic in
-    the length of one word, so a 300 KB script word took 3.5 s to read for
-    launches these rules then threw away.
+    A package.json loses its `scripts` before it is read, not after. None of
+    these rules reads the commands a script runs, and tokenising them was the
+    costly part of reading the file: with shlex, quadratic in the length of one
+    word, a 300 KB script word took 3.5 s to read for launches that were then
+    thrown away.
     """
     name = path.name.lower()
     if name.endswith(".txt"):
