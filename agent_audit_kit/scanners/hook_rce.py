@@ -43,12 +43,17 @@ _INTERPOLATION_RE = INTERPOLATION_RE
 # characters took 1.9 seconds, and hook scripts are read whatever their size.
 # A call nested in the arguments before `shell=True` reads the rest itself, so
 # a script matches exactly when it did; the match then starts at that inner call.
+#
+# A Node options object may name `shell: true` after other options, so the key
+# is read after a `{` or a `,`. It was read only right after the `{`, and
+# `spawn(cmd, [], { cwd: dir, shell: true })` passed while `{ shell: true, cwd:
+# dir }` fired CRITICAL. The `{` or `,` keeps `myshell: true` out.
 _SHELL_CALL = (
     r"(?:subprocess\.(?:run|call|Popen|check_output)|os\.system|exec\s*\(|"
     r"child_process\.exec(?:Sync)?|spawnSync|spawn)\s*\("
 )
 _SHELL_TRUE_RE = re.compile(
-    _SHELL_CALL + r"(?:(?!" + _SHELL_CALL + r")[^)])*(?:shell\s*=\s*True|{\s*shell\s*:\s*true)",
+    _SHELL_CALL + r"(?:(?!" + _SHELL_CALL + r")[^)])*(?:shell\s*=\s*True|[{,]\s*shell\s*:\s*true)",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -145,12 +150,15 @@ def _check_hook_script(path: Path, project_root: Path) -> list[Finding]:
     rel = str(path.relative_to(project_root))
     m_shell = _SHELL_TRUE_RE.search(text)
     if m_shell:
+        # The line comes from the match offset: a match that runs over several
+        # lines (an options object written one key a line) is on no single line,
+        # and `find_line_number` gave it none.
         findings.append(
             make_finding(
                 "AAK-HOOK-RCE-002",
                 rel,
                 f"Hook script invokes shell with shell=True / {{shell: true}}: {m_shell.group(0)!r}",
-                line_number=find_line_number(text, m_shell.group(0)),
+                line_number=text.count("\n", 0, m_shell.start()) + 1,
             )
         )
     m_interp = _INTERPOLATION_RE.search(text)

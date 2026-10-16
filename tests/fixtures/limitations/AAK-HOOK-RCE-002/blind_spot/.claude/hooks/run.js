@@ -1,7 +1,10 @@
-const { spawn } = require("node:child_process");
+const { spawn, exec, execFile } = require("node:child_process");
 
-function run(cmd, dir) {
-  return spawn(cmd, [], { cwd: dir, shell: true });
+function run(cmd, args, dir) {
+  execFile(cmd, args, { cwd: dir, shell: true });
+  exec(cmd, { cwd: dir, shell: true });
+  spawn(String(cmd), [], { shell: true });
+  return spawn(cmd, [], { cwd: dir, "shell": true });
 }
 
 module.exports = { run };

@@ -177,6 +177,51 @@ def test_hook_rce_shell_true_shapes_keep_their_result(tmp_path: Path, source: st
     assert any(f.rule_id == "AAK-HOOK-RCE-002" for f in findings) is fires
 
 
+@pytest.mark.parametrize(("source", "fires"), [
+    # `shell: true` was read only as the first option of the object.
+    ("spawn(cmd, [], { cwd: dir, shell: true });\n", True),
+    ("spawn(cmd, [], { stdio: 'inherit', shell: true });\n", True),
+    ("spawnSync(cmd, args, {\n  cwd: dir,\n  env: process.env,\n  shell: true,\n});\n", True),
+    ("child_process.exec(cmd, { timeout: 5, shell: true });\n", True),
+    ("spawn(cmd, [], { cwd: dir, shell: false });\n", False),
+    ("spawn(cmd, [], { cwd: dir, myshell: true });\n", False),
+    ("spawn(cmd, [], { cwd: dir });\nconst opts = { x: 1, shell: true };\n", False),  # after the call's `)`
+])
+def test_hook_rce_shell_true_anywhere_in_the_options(tmp_path: Path, source: str, fires: bool) -> None:
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "pre.js").write_text(source, encoding="utf-8")
+    findings, _ = hook_rce.scan(tmp_path)
+    assert any(f.rule_id == "AAK-HOOK-RCE-002" for f in findings) is fires
+
+
+def test_hook_rce_shell_true_evidence_points_at_its_call(tmp_path: Path) -> None:
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "pre.js").write_text(
+        "const cp = require('child_process');\n\nspawn(cmd, [], { cwd: dir, shell: true });\n",
+        encoding="utf-8",
+    )
+    [hit] = [f for f in hook_rce.scan(tmp_path)[0] if f.rule_id == "AAK-HOOK-RCE-002"]
+    assert hit.line_number == 3
+
+
+@pytest.mark.parametrize("tail", [", " + " " * 1_000_000, ", x" * 330_000, "{ a: 1," * 140_000])
+def test_hook_rce_a_crafted_options_object_scans_in_linear_time(tmp_path: Path, tail: str) -> None:
+    """One call whose options are a 1 MB run of separators and blanks with no
+    `shell`. Each `,` or `{` reads its blanks once. The bound is loose for slow
+    CI runners."""
+    import time
+
+    hooks_dir = tmp_path / ".claude" / "hooks"
+    hooks_dir.mkdir(parents=True)
+    (hooks_dir / "pre.js").write_text("spawn(cmd" + tail, encoding="utf-8")
+    started = time.perf_counter()
+    findings, _ = hook_rce.scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+    assert not any(f.rule_id == "AAK-HOOK-RCE-002" for f in findings)
+
+
 @pytest.mark.parametrize("unit", ["spawn(", "os.system(", "subprocess.run("])
 def test_hook_rce_a_crafted_script_of_calls_scans_in_linear_time(tmp_path: Path, unit: str) -> None:
     """A 1 MB hook script of one call opener repeated with no `)`. Every opener

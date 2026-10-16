@@ -3779,13 +3779,15 @@ _r(
     adversa_references=["ADV-RCE-02"],
     limitations=(
         "Matches `shell=True` before the first closing parenthesis of a "
-        "`subprocess.run`, `call`, `Popen` or `check_output` call, and `{ shell: true "
-        "}` as the first option of a Node `spawn`, `spawnSync`, `child_process.exec` "
-        "or `child_process.execSync` call, in a .sh, .bash, .py, .js, .ts or .mjs "
-        "script under `.claude/.../hooks/`. A call with another call ahead of it "
-        "(`subprocess.run(build(cmd), shell=True)`), `subprocess.check_call`, "
-        "`os.system` and `os.popen`, which always use a shell, and a Node `{ cwd: dir, "
-        "shell: true }` that does not start with `shell`, are not matched."
+        "`subprocess.run`, `call`, `Popen` or `check_output` call, and `shell: true` "
+        "as any option of a Node `spawn`, `spawnSync`, `child_process.exec` or "
+        "`child_process.execSync` call (`{ cwd: dir, shell: true }`), in a .sh, .bash, "
+        ".py, .js, .ts or .mjs script under `.claude/.../hooks/`. A call with another "
+        "call ahead of the option (`subprocess.run(build(cmd), shell=True)`, "
+        "`spawn(String(cmd), [], { shell: true })`), a quoted key (`{ \"shell\": true "
+        "}`), `shell: true` passed to `execFile` or to `exec` called by its bare "
+        "name, `subprocess.check_call`, and `os.system` and `os.popen`, which always "
+        "use a shell, are not matched."
     ),
 )
 
