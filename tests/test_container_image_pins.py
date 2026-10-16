@@ -549,3 +549,72 @@ def test_obsidian_tc_image_fixtures_positive_and_negative() -> None:
 def test_obsidian_tc_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
     ids = _write(tmp_path, "docker-compose.yml", f"services:\n  vaults:\n    image: {ref}\n")
     assert (OBSIDIANTC in ids) is fires
+
+
+# --- 2026-10-15 second batch (#995-#997): EdgeEver's and NullHub's images ---
+
+EDGEEVER = "AAK-MCP-EDGEEVER-CVE-2026-109557-001"
+NULLHUB = "AAK-MCP-NULLHUB-CVE-2026-110616-001"
+
+
+def test_edgeever_and_nullhub_pins_carry_their_cves_and_severity() -> None:
+    assert RULES[EDGEEVER].cve_references == ["CVE-2026-109557", "CVE-2026-109558"]
+    assert RULES[NULLHUB].cve_references == ["CVE-2026-110616"]
+    assert (RULES[EDGEEVER].severity.value, RULES[NULLHUB].severity.value) == ("high", "high")
+
+
+def test_edgeever_fixtures_positive_and_negative() -> None:
+    """The self-hosted service on v1.112.0 fires on its image line; on 1.113.0,
+    which carries 6b5027e8, it does not."""
+    root = FIXTURES / "cve-2026-109557-edgeever"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(EDGEEVER, 6)]
+    assert EDGEEVER in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/tianma-if/edgeever:1.33.0", True),     # the oldest image tag; both sinks are in it
+    ("ghcr.io/tianma-if/edgeever:v1.33.0", True),    # GHCR tags each release both ways
+    ("ghcr.io/tianma-if/edgeever:v1.104.0", True),
+    ("ghcr.io/tianma-if/edgeever:1.112.0", True),    # the last release before the fix
+    ("ghcr.io/tianma-if/edgeever:v1.112.0", True),
+    ("ghcr.io/tianma-if/edgeever:1.113.0", False),   # 6b5027e8
+    ("ghcr.io/tianma-if/edgeever:v1.113.0", False),
+    ("ghcr.io/tianma-if/edgeever:v1.120.0", False),  # the newest release on 2026-10-15
+    ("ghcr.io/tianma-if/edgeever:latest", False),    # the 1.120.0 digest on 2026-10-15
+    ("ghcr.io/tianma-if/edgeever", False),           # untagged is latest
+    ("ghcr.io/tianma-if/edgeever:main", False),      # a branch tag states no version
+    ("ghcr.io/tianma-if/edgeever:sha-b83e99a9aced", False),
+    # The project's own compose file: the tag comes from the environment.
+    ('"${EDGE_EVER_IMAGE:-ghcr.io/tianma-if/edgeever}:${EDGE_EVER_VERSION:-latest}"', False),
+    ("ghcr.io/tianma-if/edgeever-docs:v1.112.0", False),  # another image name
+])
+def test_edgeever_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  edgeever:\n    image: {ref}\n")
+    assert (EDGEEVER in ids) is fires
+
+
+def test_nullhub_fixtures_positive_and_negative() -> None:
+    """The published image on v2026.5.29, the newest release, fires; an
+    interpolated tag and another image name do not."""
+    root = FIXTURES / "cve-2026-110616-nullhub"
+    findings = scan(root / "vulnerable")[0]
+    assert [(f.rule_id, f.line_number) for f in findings] == [(NULLHUB, 5)]
+    assert NULLHUB in {f.rule_id for f in run_scan(root / "vulnerable").findings}
+    assert _ids(root / "negative") == []
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/nullclaw/nullhub:v2026.3.2", True),    # the oldest image tag; auth_token unset there too
+    ("ghcr.io/nullclaw/nullhub:v2026.4.17", True),
+    ("ghcr.io/nullclaw/nullhub:v2026.5.29", True),   # the newest release
+    ("ghcr.io/nullclaw/nullhub:latest", True),       # the v2026.5.29 digest on 2026-10-15
+    ("ghcr.io/nullclaw/nullhub", True),              # untagged is latest
+    ("ghcr.io/nullclaw/nullhub:v2026.5.30", False),  # past the record's range, not a fix
+    ("ghcr.io/nullclaw/nullhub:${NULLHUB_VERSION}", False),
+    ("ghcr.io/nullclaw/nullhub-docs:v2026.5.29", False),  # another image name
+])
+def test_nullhub_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    ids = _write(tmp_path, "docker-compose.yml", f"services:\n  hub:\n    image: {ref}\n")
+    assert (NULLHUB in ids) is fires

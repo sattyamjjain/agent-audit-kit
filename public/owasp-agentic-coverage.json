@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-15T13:40:17Z",
+  "last_updated": "2026-10-16T04:07:54Z",
   "aak_version": "0.6.20",
-  "rule_count": 398,
+  "rule_count": 402,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1143,7 +1143,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 98,
+      "rule_density": 99,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -1676,6 +1676,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-NULLHUB-CVE-2026-110616-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-110616"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-OBOT-CVE-2026-101084-001",
           "severity": "critical",
           "cve_references": [
@@ -2133,7 +2145,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 184,
+      "rule_density": 188,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -2799,6 +2811,18 @@
           ]
         },
         {
+          "id": "AAK-MCP-EDGEEVER-CVE-2026-109557-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-109557",
+            "CVE-2026-109558"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-ELVIX-CVE-2026-108542-001",
           "severity": "medium",
           "cve_references": [
@@ -3004,12 +3028,35 @@
           ]
         },
         {
+          "id": "AAK-MCP-JAVASDK-CVE-2026-108395-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-108395"
+          ],
+          "aicm_references": [
+            "BCR-01",
+            "IVS-04",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
           "severity": "medium",
           "cve_references": [
             "CVE-2026-49856"
           ],
           "aicm_references": []
+        },
+        {
+          "id": "AAK-MCP-JUNIE-CVE-2026-111091-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111091"
+          ],
+          "aicm_references": [
+            "IAM-16",
+            "STA-08"
+          ]
         },
         {
           "id": "AAK-MCP-K6-CVE-2026-89039-001",
@@ -3406,6 +3453,18 @@
           "aicm_references": [
             "AIS-07",
             "IAM-01",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-NULLHUB-CVE-2026-110616-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-110616"
+          ],
+          "aicm_references": [
+            "IAM-01",
+            "IVS-04",
             "STA-08"
           ]
         },
@@ -4127,7 +4186,7 @@
     {
       "asi_id": "ASI05",
       "title": "Unexpected Code Execution (RCE)",
-      "rule_density": 87,
+      "rule_density": 89,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -4530,6 +4589,18 @@
           "aicm_references": []
         },
         {
+          "id": "AAK-MCP-EDGEEVER-CVE-2026-109557-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-109557",
+            "CVE-2026-109558"
+          ],
+          "aicm_references": [
+            "AIS-07",
+            "STA-08"
+          ]
+        },
+        {
           "id": "AAK-MCP-FLOWISE-CVE-2026-91931-001",
           "severity": "high",
           "cve_references": [
@@ -4575,6 +4646,17 @@
           ],
           "aicm_references": [
             "STA-02",
+            "STA-08"
+          ]
+        },
+        {
+          "id": "AAK-MCP-JUNIE-CVE-2026-111091-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-111091"
+          ],
+          "aicm_references": [
+            "IAM-16",
             "STA-08"
           ]
         },
@@ -5338,7 +5420,7 @@
     {
       "asi_id": "ASI08",
       "title": "Cascading Failures",
-      "rule_density": 6,
+      "rule_density": 7,
       "rules": [
         {
           "id": "AAK-A2A-009",
@@ -5363,6 +5445,18 @@
           "aicm_references": [
             "AIS-04",
             "IAM-05"
+          ]
+        },
+        {
+          "id": "AAK-MCP-JAVASDK-CVE-2026-108395-001",
+          "severity": "high",
+          "cve_references": [
+            "CVE-2026-108395"
+          ],
+          "aicm_references": [
+            "BCR-01",
+            "IVS-04",
+            "STA-08"
           ]
         },
         {

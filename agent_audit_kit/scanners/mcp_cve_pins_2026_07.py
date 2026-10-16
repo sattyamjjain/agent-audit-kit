@@ -183,6 +183,10 @@ available) before shipping:
     CVE-2026-77364, CVE-2026-77361, CVE-2026-77362; the HTTP transport's vault
     binding and Origin checks, and three read-ACL gaps. One fix release, one rule,
     a stated version required. `container_image_pins` reads the GHCR image)
+  - @jetbrains/junie, and
+    @jetbrains/junie-cli           888.0.0 <= v < 2548.5.0  (CVE-2026-111091; Junie CLI
+    before 26.8.3 runs an untrusted project's MCP server configuration. The npm
+    version is the Junie build, and 2548.5 is 26.8.3. A stated version is required)
 
 CVEs without a pinnable PyPI/npm artifact (aerostack-mcp SSRF, MaxKB stdio
 command-injection, mastergo-magic-mcp path-traversal/SSRF with no vendor fix,
@@ -261,13 +265,15 @@ _Ver = tuple[int, int, int]
 #     npm `1mcp` (buremba/1mcp, its own 0.1.x line) is not `@1mcp/agent`, and the
 #     scoped `@the-40-thieves/obsidian-tc` (a 0.0.1 placeholder) and the monorepo's
 #     `@the-40-thieves/obsidian-tc-*` parts are not the `obsidian-tc` server.
+#   * `@jetbrains/junie-cli` 1.0.0 (2025-08-04) is an empty package.json, published
+#     before the 0.1.x launchers; the Junie pin's 888.0.0 start keeps it quiet.
 #
 # `requires_version` marks the pins that report only a stated version, because
 # an unpinned reference resolves to a release the advisory does not cover:
 # mcp-remote (`npx mcp-remote` installs 0.14.x, and it sits in a large share of
 # all MCP configs), the MCP TypeScript SDKs, Payload's plugin, the two
-# LangChain.js integrations and obsidian-tc (`latest` resolved to a fixed release
-# for each),
+# LangChain.js integrations, obsidian-tc and Junie CLI (`latest` resolved to a
+# fixed release for each),
 # Claude Code (the CLI updates itself), pi-llm-wiki (upstream registers it by a
 # node_modules path, which states none), bare `mcp` (a lone `mcp` names too much
 # to report unversioned), and `next`, where only a declared version says which
@@ -1245,6 +1251,21 @@ _PINS: tuple[_Pin, ...] = (
     _Pin("AAK-MCP-OBSIDIANTC-CVE-2026-77366-001", "obsidian-tc", ("obsidian-tc",),
          (1, 3, 1), introduced=(1, 0, 0),
          fix_label="1.3.1 (affected 1.0.1 to 1.2.1)",
+         requires_version=True, ecosystem="js"),
+    # --- 2026-10-15 second batch (#995-#999) ---
+    # Junie CLI before 26.8.3 ran an untrusted project's MCP server configuration
+    # (CVE-2026-111091, CVSS 7.8, CWE-829). The npm package is a launcher whose
+    # version is the Junie build it installs (`junieVersion`), and 26.8.3 is build
+    # 2548.5 (npm 2548.5.0, 2026-08-03). Checked in the builds: 888.112 and 2470.4
+    # read `<project>/.junie/mcp/mcp.json`, and 2548.5 adds the trust prompt that
+    # previews it. `@jetbrains/junie-cli` is the earlier name: below 888 it installed
+    # the EAP builds of August 2025 to February 2026, which were not checked, and its
+    # 1.0.0 is an empty placeholder, so the pin starts at 888.0.0. `latest` is
+    # 3110.7.0, fixed, so a stated version is required.
+    _Pin("AAK-MCP-JUNIE-CVE-2026-111091-001", "Junie CLI",
+         ("@jetbrains/junie", "@jetbrains/junie-cli"), (2548, 5, 0),
+         introduced=(888, 0, 0),
+         fix_label="2548.5.0, which is Junie 26.8.3 (affected from 888.0.0)",
          requires_version=True, ecosystem="js"),
 )
 

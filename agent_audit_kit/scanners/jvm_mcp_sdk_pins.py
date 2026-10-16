@@ -45,7 +45,19 @@ release, and nothing on `main` sets a limit, so there is no fixed release. It
 lives in `kotlin-sdk-server`, which the `kotlin-sdk` umbrella pulls in, so it
 matches `kotlin-sdk-server`, `kotlin-sdk` and their `-jvm` variants, and not
 `kotlin-sdk-core` or `kotlin-sdk-client`, which do not carry it. Each pin reports
-once per file, and the two pins report independently.
+once per file, and the pins report independently.
+
+Third entry, and the first from the Java SDK: **CVE-2026-108395** (HIGH 7.5,
+CWE-770). The Servlet SSE, Streamable HTTP and Stateless server transports read a
+POST body into a `StringBuilder` with no size limit. The Java SDK publishes under
+its own group, `io.modelcontextprotocol.sdk`, so a pin names its group. The code
+is in `mcp` from 0.8.0 to 0.12.1 and in `mcp-core` from 0.13.0, and the `mcp`
+bundle depends on `mcp-core` at its own version, so both names are matched. The
+fix shipped on three lines (0.18.4, 1.1.4, 2.0.1), so a pin holds a range per
+line: 0.18.4 does not fix 1.0.0. The SDK's quickstart declares `mcp` with no
+version and imports `mcp-bom` instead, so a pin may name a BOM, and a versionless
+artifact then takes the BOM's version from the same file. Other BOMs (Spring AI's)
+are not read.
 """
 
 from __future__ import annotations
@@ -62,7 +74,9 @@ _Ver = tuple[int, int, int]
 
 RULE_ID = "AAK-MCP-STDIO-UNBOUNDED-BUFFER-001"
 WS_RULE_ID = "AAK-MCP-KOTLINSDK-CVE-2026-108714-001"
+JAVA_BODY_RULE_ID = "AAK-MCP-JAVASDK-CVE-2026-108395-001"
 
+# The Kotlin SDK's group, and the prefix every pin's group starts with.
 _GROUP = "io.modelcontextprotocol"
 
 
@@ -71,9 +85,12 @@ class _JvmPin:
     rule_id: str
     # Longest name first, so an alternation never stops at a prefix.
     artifacts: tuple[str, ...]
-    introduced: _Ver
-    fixed: _Ver | None         # None: no fixed release yet
+    # One [introduced, fixed) range per release line; fixed None: no fixed release yet.
+    ranges: tuple[tuple[_Ver, _Ver | None], ...]
     defect: str                # the evidence sentence after the resolved version
+    group: str = _GROUP
+    # A BOM in the same group: a versionless artifact takes its version.
+    bom: str | None = None
 
 
 _PINS: tuple[_JvmPin, ...] = (
@@ -83,7 +100,7 @@ _PINS: tuple[_JvmPin, ...] = (
     # NVD's range start; 0.13.0 is the vendor fix.
     _JvmPin(
         RULE_ID, ("kotlin-sdk-core", "kotlin-sdk-jvm", "kotlin-sdk"),
-        (0, 7, 0), (0, 13, 0),
+        (((0, 7, 0), (0, 13, 0)),),
         "the MCP Kotlin SDK stdio read buffer grows without bound until a newline "
         "arrives (CVE-2026-53937). Affected 0.7.0–0.12.0; fixed in 0.13.0.",
     ),
@@ -92,10 +109,25 @@ _PINS: tuple[_JvmPin, ...] = (
     _JvmPin(
         WS_RULE_ID,
         ("kotlin-sdk-server-jvm", "kotlin-sdk-server", "kotlin-sdk-jvm", "kotlin-sdk"),
-        (0, 7, 3), None,
+        (((0, 7, 3), None),),
         "`Application.mcpWebSocket` installs Ktor WebSockets with no maxFrameSize, so "
         "a client can declare a frame near 2 GiB and exhaust the heap "
         "(CVE-2026-108714). Affected from 0.7.3; no fixed release yet.",
+    ),
+    # The three Servlet transports read the body with an unbounded `readLine()`
+    # loop: in `mcp` from 0.8.0 (HttpServletSseServerTransportProvider arrives) to
+    # 0.12.1, in `mcp-core` from 0.13.0, and `mcp` 0.13.0+ depends on `mcp-core` at
+    # its own version. Fixed by a bounded `readBody` in 0.18.4, 1.1.4 and 2.0.1;
+    # 1.0.x has no fix. 1.0.0-RC3 and the 2.0.0 milestones read as 1.0.0 and 2.0.0
+    # here, and their source has the same loop.
+    _JvmPin(
+        JAVA_BODY_RULE_ID, ("mcp-core", "mcp"),
+        (((0, 8, 0), (0, 18, 4)), ((1, 0, 0), (1, 1, 4)), ((2, 0, 0), (2, 0, 1))),
+        "the MCP Java SDK Servlet SSE, Streamable HTTP and Stateless transports read "
+        "a request body of any size into memory (CVE-2026-108395). Affected 0.8.0 to "
+        "0.18.3, 1.0.0 to 1.1.3 and 2.0.0; fixed in 0.18.4, 1.1.4 and 2.0.1.",
+        group="io.modelcontextprotocol.sdk",
+        bom="mcp-bom",
     ),
 )
 
@@ -118,7 +150,6 @@ _ASSIGN_RE = re.compile(
     r"""(?:(?<!\s)\s+|(?<![\w.])(?:(?:val|var|def|ext\.)\s*)?|(?:val|var|def|ext\.)(?![\w.])\s*)"""
     r"""([\w.]+)\s*=\s*["']v?([\d][\w.\-]*)["']"""
 )
-_CATALOG_GROUP_RE = re.compile(r"""group\s*=\s*["']""" + re.escape(_GROUP) + r"""["']""")
 _VERSION_REF_RE = re.compile(r"""version\.ref\s*=\s*["']([\w.\-]+)["']""")
 _VERSION_LIT_RE = re.compile(r"""version\s*=\s*["']v?([\d][\w.\-]*)["']""")
 _MAVEN_PROP_RE = re.compile(r"<([\w.\-]+)>\s*v?([\d][\w.\-]*)\s*</\1>")
@@ -126,7 +157,7 @@ _MAVEN_PROP_RE = re.compile(r"<([\w.\-]+)>\s*v?([\d][\w.\-]*)\s*</\1>")
 
 @dataclass(frozen=True)
 class _PinRes:
-    """The per-pin patterns: each pin names its own artifacts."""
+    """The per-pin patterns: each pin names its own group and artifacts."""
     # `implementation "io.modelcontextprotocol:kotlin-sdk:0.12.0"` and the $var form.
     coord: re.Pattern[str]
     # Version catalog entries are one line each, so they are parsed per line rather
@@ -136,23 +167,24 @@ class _PinRes:
     # catalog resolved to "no version" and the arm silently never fired. Splitting
     # the coordinate match from the version match removes the ambiguity.
     catalog_coord: re.Pattern[str]
+    catalog_group: re.Pattern[str]
     catalog_name: re.Pattern[str]
     maven_dep: re.Pattern[str]
 
 
-def _compile(pin: _JvmPin) -> _PinRes:
-    names = "|".join(pin.artifacts)
+def _compile(group: str, names: str) -> _PinRes:
+    g = re.escape(group)
     return _PinRes(
         coord=re.compile(
-            r"""["']""" + re.escape(_GROUP) + r":(" + names + r")"
+            r"""["']""" + g + r":(" + names + r")"
             r"""(?::\$?\{?([\w.\-]+)\}?)?["']""",
         ),
-        catalog_coord=re.compile(
-            r"""["']""" + re.escape(_GROUP) + r":(" + names + r")[\"']",
-        ),
+        catalog_coord=re.compile(r"""["']""" + g + r":(" + names + r")[\"']"),
+        # The closing quote keeps `io.modelcontextprotocol` off `....sdk`.
+        catalog_group=re.compile(r"""group\s*=\s*["']""" + g + r"""["']"""),
         catalog_name=re.compile(r"""name\s*=\s*["'](""" + names + r""")["']"""),
         maven_dep=re.compile(
-            r"<groupId>\s*" + re.escape(_GROUP) + r"\s*</groupId>\s*"
+            r"<groupId>\s*" + g + r"\s*</groupId>\s*"
             r"<artifactId>\s*(" + names + r")\s*</artifactId>\s*"
             r"(?:<version>\s*\$?\{?([\w.\-]+)\}?\s*</version>)?",
             re.DOTALL,
@@ -160,7 +192,9 @@ def _compile(pin: _JvmPin) -> _PinRes:
     )
 
 
-_RES = {pin.rule_id: _compile(pin) for pin in _PINS}
+_RES = {pin.rule_id: _compile(pin.group, "|".join(pin.artifacts)) for pin in _PINS}
+# A BOM is read with the same patterns, as a one-name artifact list.
+_BOM_RES = {pin.rule_id: _compile(pin.group, re.escape(pin.bom)) for pin in _PINS if pin.bom}
 
 
 def _semver(raw: str | None) -> _Ver | None:
@@ -173,22 +207,19 @@ def _semver(raw: str | None) -> _Ver | None:
 
 
 def _affected(v: _Ver, pin: _JvmPin) -> bool:
-    if v < pin.introduced:
-        return False
-    return pin.fixed is None or v < pin.fixed
+    return any(lo <= v and (hi is None or v < hi) for lo, hi in pin.ranges)
 
 
-def _resolve(token: str | None, table: dict[str, str]) -> _Ver | None:
-    """A version token is either a literal or a name to look up."""
+def _resolve(token: str | None, table: dict[str, str]) -> str | None:
+    """The version a token names, as written: a literal or a name to look up."""
     if not token:
         return None
-    direct = _semver(token)
-    if direct is not None:
-        return direct
+    if _semver(token) is not None:
+        return token
     # `$mcpVersion` / `${mcp.version}` / a catalog version.ref
     for key in (token, token.split(".")[-1]):
         if key in table:
-            return _semver(table[key])
+            return table[key] if _semver(table[key]) is not None else None
     return None
 
 
@@ -214,46 +245,53 @@ def _maven_props(text: str) -> dict[str, str]:
     return {m.group(1): m.group(2) for m in _MAVEN_PROP_RE.finditer(block)}
 
 
-def _line_of(text: str, needle: str) -> int | None:
-    for i, line in enumerate(text.splitlines(), 1):
-        if needle in line:
-            return i
-    return None
+def _line_at(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
 
 
-def _analyze(text: str, kind: str, pin: _JvmPin) -> tuple[str, _Ver] | None:
-    """(artifact, resolved version) for the pin's first affected coordinate."""
-    if _GROUP not in text:
-        return None
-    res = _RES[pin.rule_id]
+def _declarations(text: str, kind: str, res: _PinRes) -> list[tuple[str, str | None, int]]:
+    """(artifact, version token or None, line) for each coordinate `res` matches."""
     if kind == "maven":
-        table = _maven_props(text)
-        for m in res.maven_dep.finditer(text):
-            v = _resolve(m.group(2), table)
-            if v is not None and _affected(v, pin):
-                return m.group(1), v
-        return None
-
-    table = _versions_table(text)
+        return [(m.group(1), m.group(2), _line_at(text, m.start(1)))
+                for m in res.maven_dep.finditer(text)]
     if kind == "catalog":
-        for line in text.splitlines():
+        out: list[tuple[str, str | None, int]] = []
+        for i, line in enumerate(text.splitlines(), 1):
             coord: re.Match[str] | None = res.catalog_coord.search(line)
-            if coord is None and _CATALOG_GROUP_RE.search(line):
+            if coord is None and res.catalog_group.search(line):
                 coord = res.catalog_name.search(line)
             if coord is None:
                 continue
             ref = _VERSION_REF_RE.search(line)
             lit = _VERSION_LIT_RE.search(line)
-            token = ref.group(1) if ref else (lit.group(1) if lit else None)
-            v = _resolve(token, table)
-            if v is not None and _affected(v, pin):
-                return coord.group(1), v
-        return None
+            out.append((coord.group(1), ref.group(1) if ref else (lit.group(1) if lit else None), i))
+        return out
+    return [(m.group(1), m.group(2), _line_at(text, m.start(1)))
+            for m in res.coord.finditer(text)]
 
-    for m in res.coord.finditer(text):
-        v = _resolve(m.group(2), table)
-        if v is not None and _affected(v, pin):
-            return m.group(1), v
+
+def _analyze(text: str, kind: str, pin: _JvmPin) -> tuple[str, str, int, bool] | None:
+    """(artifact, version as written, line, read through the BOM) for the pin's
+    first affected coordinate.
+
+    The BOM's version stands in only for a coordinate that states no version at
+    all. A version token that does not resolve (`$mcpVersion` set in another file)
+    overrides the BOM in the build, so it is not replaced by a guess.
+    """
+    if pin.group not in text:
+        return None
+    table = _maven_props(text) if kind == "maven" else _versions_table(text)
+    bom: str | None = None
+    if pin.rule_id in _BOM_RES:
+        for _name, bom_token, _line in _declarations(text, kind, _BOM_RES[pin.rule_id]):
+            bom = _resolve(bom_token, table)
+            if bom is not None:
+                break
+    for artifact, token, line in _declarations(text, kind, _RES[pin.rule_id]):
+        version = _resolve(token, table) if token else bom
+        v = _semver(version)
+        if version is not None and v is not None and _affected(v, pin):
+            return artifact, version, line, not token
     return None
 
 
@@ -296,14 +334,14 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             hit = _analyze(text, kind, pin)
             if hit is None:
                 continue
-            artifact, version = hit
-            shown = ".".join(str(x) for x in version)
+            artifact, version, line, via_bom = hit
+            through = f" through `{pin.bom}`" if via_bom else ""
             findings.append(make_finding(
                 pin.rule_id,
                 rel,
-                f"`{_GROUP}:{artifact}` resolves to {shown} in {path.name} — "
-                f"{pin.defect}",
-                _line_of(text, artifact),
+                f"`{pin.group}:{artifact}` resolves to {version}{through} in "
+                f"{path.name} — {pin.defect}",
+                line,
             ))
             scanned.add(rel)
     return findings, scanned

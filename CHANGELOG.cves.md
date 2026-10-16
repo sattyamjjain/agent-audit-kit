@@ -16,6 +16,112 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-16 (v0.6.21): five disclosures, four new pins, the first on the MCP Java SDK
+
+The watcher opened five `cve-response` issues at 17:01Z on 2026-10-15 (#995-#999),
+all `sev/high`. Four of them are records the 2026-10-15 batch left for the watcher
+(EdgeEver twice, NullHub and the MCP Java SDK), and the fifth, JetBrains Junie CLI,
+was published that day. Each gets a pin, measured with the scanner on a firing
+fixture and a negative one. Two are image pins, one an npm pin and one the first
+pin on the MCP Java SDK, which needed the JVM reader to learn the SDK's group and
+its BOM. NVD's CVSS 3.1 scores match the titles and `sev/` labels the watcher
+filed, so nothing was corrected first. NVD text below is quoted from the API
+record, read on 2026-10-15 and unchanged when re-read on 2026-10-16.
+
+**EdgeEver (CVE-2026-109557, CVE-2026-109558) gets
+`AAK-MCP-EDGEEVER-CVE-2026-109557-001` on its image, every tag below 1.113.0.**
+NVD, CVE-2026-109557: "Attackers can set malicious names via MCP create_notebook,
+rename_notebook or create_memo tools, running script on drag with access to the
+desktop bridge's session token." NVD, CVE-2026-109558: "Attackers can write
+templates containing HTML event handlers through an API or MCP token to run script
+on preview and access the privileged window.edgeeverDesktop bridge." EdgeEver is a
+knowledge base with a built-in MCP server, so this is not keyword noise: its MCP
+tools are the write path, and an agent steered by prompt injection can plant either
+payload. It is on neither npm nor PyPI. Its self-hosted server is the GHCR image
+`ghcr.io/tianma-if/edgeever`, which ships the web UI with the API. Checked in the
+source: at v1.33.0, the oldest image tag, and at v1.112.0, `setMemoDragPreview`
+writes the label into `innerHTML`, `TemplatesPane` renders `marked.parse` output
+through `dangerouslySetInnerHTML`, and `apps/api/src/mcp-tools.ts` defines the three
+tools. The fix, `6b5027e8` (2026-10-12), lands right after v1.112.0 and is in
+v1.113.0: the drag label goes through `textContent` and template HTML through
+DOMPurify. The records' ranges start at 0.1.0 and 1.6.0, below the oldest image, so
+every image tag below 1.113.0 carries both. GHCR tags each release as both `X.Y.Z`
+and `vX.Y.Z`. The one-command installer, the default install, pulls `latest` and
+updates it daily, and `latest` was the 1.120.0 digest on 2026-10-15. The project's
+own compose file reads the tag from `${EDGE_EVER_VERSION:-latest}`, which its
+Docker guide sets with `export` in the shell, so no file states it; a limitations
+fixture proves that gap. Upgrade to 1.113.0 or later.
+
+**NullHub (CVE-2026-110616) gets `AAK-MCP-NULLHUB-CVE-2026-110616-001` on its
+image, every tag through v2026.5.29 and `latest`.** NVD: "NullHub through 2026.5.29
+contains a missing authentication vulnerability that allows unauthenticated
+attackers to access the /api/* management API because the auth_token field defaults
+to null and is never assigned." NullHub manages nullclaw agent instances, their
+provider credentials, cron jobs and MCP servers. It is a Zig program shipped as
+release binaries and the GHCR image `ghcr.io/nullclaw/nullhub`, whose default
+command serves on `0.0.0.0`; npm and PyPI have no `nullhub`. Checked in the source:
+`server.zig` checks a bearer token only when `auth_token` is set, and no code
+assigns it at v2026.3.2, the oldest image tag, at v2026.5.29, the newest release, or
+on `main`, whose eleven later commits harden instance routes and add docs. So there
+is no fixed release. `latest` was the v2026.5.29 digest on 2026-10-15, so an
+untagged reference is reported too, and the floor sits just past v2026.5.29, as
+MetaMCP's does. NVD also gives a CVSS 4.0 score of 9.2. Until a fix ships, run
+NullHub on loopback behind an authenticating proxy.
+
+**JetBrains Junie CLI (CVE-2026-111091) gets `AAK-MCP-JUNIE-CVE-2026-111091-001`,
+`@jetbrains/junie` and `@jetbrains/junie-cli` from 888.0.0 below 2548.5.0.** NVD: "In
+JetBrains Junie CLI before 26.8.3 code execution was possible via an untrusted
+project's MCP server configuration". JetBrains' bulletin renders client-side and
+adds nothing a script can read, so the record, which JetBrains wrote as the CNA, is
+the vendor's statement. The npm package is a launcher: its `junieVersion` field names
+the build it downloads from the JetBrains/junie releases, and its version is that
+build number. The GitHub release "Junie Release 26.8.3 (2548.5)" and npm 2548.5.0
+are both dated 2026-08-03, and 2470.4.0 (26.7.27) is the npm release before them.
+Checked in the release jars: 888.112, the oldest `@jetbrains/junie`, and 2470.4
+resolve the project's `.junie/mcp/mcp.json` (`McpConfigPaths`, `JunieProjectPaths`),
+and 2548.5 adds `ProjectMcpServersPreview`, a trust prompt that lists the project's
+MCP servers; 2470.4 has no trust classes. `@jetbrains/junie-cli`, the earlier name,
+installed EAP builds below 888 from August 2025 to February 2026, which were not
+checked, and published an empty 1.0.0, so the pin starts at 888.0.0. Junie is
+usually installed by a script, Homebrew or `npm install -g`, which no file AAK
+reads. Like the Claude Code pins, this one reads a project's package.json or
+lockfile, and since `latest` (3110.7.0) is fixed, a stated version is required.
+Upgrade to 2548.5.0 (26.8.3) or later.
+
+**The MCP Java SDK (CVE-2026-108395) gets `AAK-MCP-JAVASDK-CVE-2026-108395-001`,
+`mcp` and `mcp-core` from 0.8.0 below 0.18.4, from 1.0.0 below 1.1.4, and 2.0.0.**
+NVD: "the Servlet-based SSE, Streamable HTTP, and Stateless server transports read an
+HTTP request body into memory without enforcing a maximum size." The record names
+`io.modelcontextprotocol.sdk:mcp` from 0.8.0 and `mcp-core` from 0.13.0;
+GHSA-4x8c-5vv7-973f lists only `mcp-core`, from 0.18.0, from 1.0.0 and at 2.0.0.
+Checked in the source: `HttpServletSseServerTransportProvider` arrives in 0.8.0, and
+the Servlet transports read the body with an unbounded `readLine()` loop through
+0.12.1 in `mcp`, then in `mcp-core` at 0.13.0, 0.18.3, 1.0.0-RC3, 1.0.2, 1.1.3,
+2.0.0-M1, 2.0.0-RC1 and 2.0.0. 0.18.4, 1.1.4 and 2.0.1 read through a bounded
+`readBody`, and 2.1.0, released on 2026-10-15, keeps it. 1.0.x has no fixed release.
+From 0.13.0 the `mcp` bundle's POM depends on `mcp-core` at its own version, so both
+names are pinned. 0.7.0's older `HttpServletSseServerTransport` reads the same way,
+but the record starts at 0.8.0, so it is not claimed. At every affected tag the
+SDK's quickstart declares `mcp` with no version and imports `mcp-bom` (1.1.0 at
+v1.1.3), so `jvm_mcp_sdk_pins` learned three things: a pin's own Maven group (the
+Java SDK's is `io.modelcontextprotocol.sdk`, the Kotlin SDK's
+`io.modelcontextprotocol`), a range per release line, and the BOM's version for a
+versionless artifact in the same file. The Kotlin pins read as before, and a JVM
+finding now sits on the dependency's line. The SDK that Spring AI's starters pull in
+is not read. Upgrade to 0.18.4, 1.1.4 or 2.0.1 or later on your release line.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-109557 | 8.7 | `ghcr.io/tianma-if/edgeever` (image) | **New pin** `AAK-MCP-EDGEEVER-CVE-2026-109557-001`: below 1.113.0, every tag from 1.33.0. | #995 |
+| CVE-2026-109558 | 8.7 | `ghcr.io/tianma-if/edgeever` (image) | Same pin; the template preview, fixed by the same commit. | #996 |
+| CVE-2026-110616 | 8.1 | `ghcr.io/nullclaw/nullhub` (image) | **New pin** `AAK-MCP-NULLHUB-CVE-2026-110616-001`: through v2026.5.29 and `latest`. No fixed release yet. | #997 |
+| CVE-2026-111091 | 7.8 | `@jetbrains/junie`, `@jetbrains/junie-cli` (npm) | **New pin** `AAK-MCP-JUNIE-CVE-2026-111091-001`: from 888.0.0 up to 2548.5.0, which is Junie 26.8.3. | #998 |
+| CVE-2026-108395 | 7.5 | `io.modelcontextprotocol.sdk:mcp`, `mcp-core` (Maven) | **New pin** `AAK-MCP-JAVASDK-CVE-2026-108395-001`: from 0.8.0 up to 0.18.4, from 1.0.0 up to 1.1.4, and 2.0.0. | #999 |
+
+CVSS is NVD's CVSS 3.1 score.
+
+Dispositioned at 2026-10-16T04:13:54Z.
+
 ## 2026-10-15 (v0.6.21): five disclosures and eleven held-back records, two new pins, four rules extended, four out of scope
 
 The watcher opened five `cve-response` issues at 11:29Z on 2026-10-15 (#982-#986),

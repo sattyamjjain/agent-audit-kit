@@ -4008,6 +4008,39 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-109557",
+        "CVE-2026-109558"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-EDGEEVER-CVE-2026-109557-001",
+      "severity": "high",
+      "title": "EdgeEver image below 1.113.0: notebook names, memo titles and templates written through MCP run as script (stored XSS)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-108542"
       ],
       "eu_ai_act": [
@@ -4635,6 +4668,33 @@
     {
       "category": "supply-chain",
       "cve_references": [
+        "CVE-2026-108395"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Instrument for logging and detection (p.13)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI08 Cascading Failures"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering"
+      ],
+      "rule_id": "AAK-MCP-JAVASDK-CVE-2026-108395-001",
+      "severity": "high",
+      "title": "MCP Java SDK 0.8.0 to 0.18.3, 1.0.0 to 1.1.3 and 2.0.0: the Servlet HTTP server transports read request bodies of any size"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
         "CVE-2026-49856"
       ],
       "eu_ai_act": [
@@ -4662,6 +4722,38 @@
       "rule_id": "AAK-MCP-JSHOOK-CVE-2026-49856-001",
       "severity": "medium",
       "title": "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-111091"
+      ],
+      "eu_ai_act": [
+        "Art. 9 - Risk Management",
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Validate parameters (p.11)",
+        "Constrain and sandbox tool execution (p.11)",
+        "Sign and verify MCP messages (p.12)",
+        "Filter and monitor output pipelines and chained execution (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI04 Agentic Supply Chain Vulnerabilities",
+        "ASI05 Unexpected Code Execution (RCE)"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP05:2025 Command Injection & Execution"
+      ],
+      "rule_id": "AAK-MCP-JUNIE-CVE-2026-111091-001",
+      "severity": "high",
+      "title": "JetBrains Junie CLI before 26.8.3 (npm build below 2548.5.0): an untrusted project's MCP server configuration runs code"
     },
     {
       "category": "supply-chain",
@@ -5694,6 +5786,34 @@
       "rule_id": "AAK-MCP-NOAUTH-DEFAULT",
       "severity": "high",
       "title": "MCP server unauthenticated-by-default / fail-open authentication"
+    },
+    {
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-110616"
+      ],
+      "eu_ai_act": [
+        "Art. 10 - Data Governance",
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Choose supported MCP projects when possible (p.10)",
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Track and patch MCP related vulnerabilities (p.13)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI04 Agentic Supply Chain Vulnerabilities"
+      ],
+      "owasp_mcp": [
+        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
+        "MCP07:2025 Insufficient Authentication & Authorization"
+      ],
+      "rule_id": "AAK-MCP-NULLHUB-CVE-2026-110616-001",
+      "severity": "high",
+      "title": "NullHub image through v2026.5.29: the /api management routes accept requests with no authentication (no fixed release)"
     },
     {
       "category": "supply-chain",
@@ -9705,39 +9825,39 @@
       "mcp-config": 68,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 157,
+      "supply-chain": 161,
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 186,
+      "Art. 10 - Data Governance": 190,
       "Art. 13 - Transparency": 30,
       "Art. 14 - Human Oversight": 19,
-      "Art. 15 - Robustness & Security": 290,
-      "Art. 9 - Risk Management": 200
+      "Art. 15 - Robustness & Security": 294,
+      "Art. 9 - Risk Management": 202
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 186,
-      "Constrain and sandbox tool execution (p.11)": 182,
-      "Design for boundaries (p.10)": 280,
-      "Filter and monitor output pipelines and chained execution (p.12)": 107,
-      "Instrument for logging and detection (p.13)": 19,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 246,
-      "Sign and verify MCP messages (p.12)": 256,
-      "Track and patch MCP related vulnerabilities (p.13)": 191,
-      "Validate parameters (p.11)": 186
+      "Choose supported MCP projects when possible (p.10)": 190,
+      "Constrain and sandbox tool execution (p.11)": 184,
+      "Design for boundaries (p.10)": 283,
+      "Filter and monitor output pipelines and chained execution (p.12)": 109,
+      "Instrument for logging and detection (p.13)": 20,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 250,
+      "Sign and verify MCP messages (p.12)": 260,
+      "Track and patch MCP related vulnerabilities (p.13)": 195,
+      "Validate parameters (p.11)": 188
     },
     "by_owasp_agentic": {
       "ASI01": 18,
       "ASI02": 97,
-      "ASI03": 98,
-      "ASI04": 184,
-      "ASI05": 87,
+      "ASI03": 99,
+      "ASI04": 188,
+      "ASI05": 89,
       "ASI06": 5,
       "ASI07": 23,
-      "ASI08": 6,
+      "ASI08": 7,
       "ASI09": 14,
       "ASI10": 5
     },
@@ -9745,23 +9865,23 @@
       "MCP01:2025": 29,
       "MCP02:2025": 15,
       "MCP03:2025": 12,
-      "MCP04:2025": 137,
-      "MCP05:2025": 109,
+      "MCP04:2025": 141,
+      "MCP05:2025": 111,
       "MCP06:2025": 5,
-      "MCP07:2025": 76,
+      "MCP07:2025": 77,
       "MCP08:2025": 1,
       "MCP09:2025": 5,
       "MCP10:2025": 15
     },
     "by_severity": {
       "critical": 90,
-      "high": 174,
+      "high": 178,
       "info": 5,
       "low": 16,
       "medium": 113
     },
-    "total_cves_covered": 327,
-    "total_rules": 398
+    "total_cves_covered": 332,
+    "total_rules": 402
   },
   "tool": "agent-audit-kit"
 }

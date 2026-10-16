@@ -122,6 +122,8 @@ PINS = {
     "AAK-MCP-ELVIX-CVE-2026-108542-001": "medium",
     # 2026-10-15 batch (#982-#986)
     "AAK-MCP-OBSIDIANTC-CVE-2026-77366-001": "critical",
+    # 2026-10-15 second batch (#995-#999)
+    "AAK-MCP-JUNIE-CVE-2026-111091-001": "high",
 }
 
 
@@ -2786,3 +2788,61 @@ def test_obsidian_tc_lockfile_reads_the_locked_version(tmp_path: Path) -> None:
         '"node_modules/obsidian-tc": {"version": "1.2.1"}}}'
     )
     assert _OBSIDIANTC in _ids(tmp_path, "package-lock.json", lock)
+
+
+# --- 2026-10-15 second batch (#998): Junie CLI, fixed in 26.8.3 -----------------------
+#
+# The npm package is a launcher whose version is the Junie build it installs
+# (`junieVersion`), and 26.8.3 is build 2548.5 (npm 2548.5.0, 2026-08-03). Checked in
+# the builds: 888.112 and 2470.4 read `<project>/.junie/mcp/mcp.json`, and 2548.5 adds
+# the trust prompt that previews it. `@jetbrains/junie-cli` is the earlier name; below
+# 888 it installed the EAP builds of August 2025 to February 2026, and its 1.0.0 is an
+# empty package.json.
+_JUNIE = "AAK-MCP-JUNIE-CVE-2026-111091-001"
+
+
+def test_junie_rule_carries_its_cve() -> None:
+    assert RULES[_JUNIE].cve_references == ["CVE-2026-111091"]
+
+
+def test_junie_fixtures_positive_and_negative() -> None:
+    """A devDependency on 2470.4.0, the last npm release before the fix, fires; on
+    2548.5.0 it does not, and neither does the old name's empty 1.0.0."""
+    root = _CVE_FIXTURES / "cve-2026-111091-junie"
+    assert [f.file_path for f in scan(root / "vulnerable")[0] if f.rule_id == _JUNIE] == [
+        "package.json",
+    ]
+    assert _JUNIE not in {f.rule_id for f in scan(root / "negative")[0]}
+    assert _JUNIE not in {f.rule_id for f in scan(root / "negative-placeholder")[0]}
+
+
+@pytest.mark.parametrize(("name", "version", "fires"), [
+    ("@jetbrains/junie", "888.112.0", True),       # the first @jetbrains/junie release
+    ("@jetbrains/junie", "2144.7.0", True),
+    ("@jetbrains/junie", "2470.4.0", True),        # Junie 26.7.27, the last before the fix
+    ("@jetbrains/junie", "^2470.4.0", True),       # admits 2470.4.0
+    ("@jetbrains/junie", "2548.5.0", False),       # Junie 26.8.3
+    ("@jetbrains/junie", "^2548.5.0", False),
+    ("@jetbrains/junie", "3110.7.0", False),       # latest on 2026-10-15
+    ("@jetbrains/junie-cli", "888.77.0", True),    # the old name, on release builds
+    ("@jetbrains/junie-cli", "1468.30.0", True),   # its last version
+    ("@jetbrains/junie-cli", "849.19.0", False),   # an EAP build, below the pin's start
+    ("@jetbrains/junie-cli", "0.1.5", False),      # a 2025 cloud EAP launcher
+    ("@jetbrains/junie-cli", "1.0.0", False),      # the empty package.json
+])
+def test_junie_versions(tmp_path: Path, name: str, version: str, fires: bool) -> None:
+    content = '{"devDependencies": {"%s": "%s"}}' % (name, version)
+    assert (_JUNIE in _ids(tmp_path, "package.json", content)) is fires
+
+
+def test_junie_unpinned_reference_is_not_reported(tmp_path: Path) -> None:
+    """`latest` is 3110.7.0, fixed, so the pin needs a stated version."""
+    content = '{"devDependencies": {"@jetbrains/junie": "latest"}}'
+    assert _JUNIE not in _ids(tmp_path, "package.json", content)
+
+
+def test_junie_evidence_names_the_build_and_the_release(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        '{"devDependencies": {"@jetbrains/junie": "2470.4.0"}}', encoding="utf-8")
+    [finding] = [f for f in scan(tmp_path)[0] if f.rule_id == _JUNIE]
+    assert "fixed in 2548.5.0, which is Junie 26.8.3" in finding.evidence

@@ -4549,6 +4549,38 @@
     },
     {
       "adversa_references": [
+        "ADV-INJECT-05"
+      ],
+      "aicm_references": [
+        "AIS-07",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-109557",
+        "CVE-2026-109558"
+      ],
+      "description": "EdgeEver is a self-hosted knowledge base with a built-in MCP server. Its image, `ghcr.io/tianma-if/edgeever`, serves the API, the MCP tools and the web UI. Through 1.112.0 the web UI writes a dragged memo's label into `innerHTML` in `setMemoDragPreview`, so a notebook name or memo title set through the MCP `create_notebook`, `rename_notebook` or `create_memo` tools runs as script when the user drags it (CVE-2026-109557, CVSS 3.1 8.7, CWE-79). `TemplatesPane` renders a template's Markdown through `marked` into `dangerouslySetInnerHTML` with no sanitizer, so a template written with an API or MCP token runs script on preview (CVE-2026-109558, CVSS 3.1 8.7, CWE-79). In the desktop app that script can reach the privileged `window.edgeeverDesktop` bridge and its session token. An agent steered by prompt injection can plant either payload. Checked in the source: both sinks and the three MCP tools are in 1.33.0, the oldest image tag, and in 1.112.0, and 1.113.0 (`6b5027e8`) sets the drag label with `textContent` and passes template HTML through DOMPurify.",
+      "incident_references": [],
+      "limitations": "Reads `ghcr.io/tianma-if/edgeever` references below 1.113.0 in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. The project's own compose file takes the tag from `${EDGE_EVER_VERSION:-latest}`, and its Docker guide sets that variable in the shell (`export EDGE_EVER_VERSION=vX.Y.Z`), which no file states, so a deployment that follows the guide is not reported. Its one-command installer pulls `latest` and updates it daily, and `latest` was the 1.120.0 digest on 2026-10-15, so an untagged reference is not reported either. The desktop app and the Cloudflare deployment state no image tag and are not read.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP05:2025"
+      ],
+      "remediation": "Upgrade the `ghcr.io/tianma-if/edgeever` image to 1.113.0 or later and pin the tag, and update the desktop app, which renders the same views. Until then, give MCP and API tokens only to trusted agents, and check notebook names, memo titles and templates for HTML.",
+      "rule_id": "AAK-MCP-EDGEEVER-CVE-2026-109557-001",
+      "sarif_name": "EdgeEverMcpStoredXss",
+      "severity": "high",
+      "title": "EdgeEver image below 1.113.0: notebook names, memo titles and templates written through MCP run as script (stored XSS)"
+    },
+    {
+      "adversa_references": [
         "ADV-SSRF-01"
       ],
       "aicm_references": [
@@ -5186,6 +5218,37 @@
     },
     {
       "adversa_references": [
+        "ADV-DOS-01"
+      ],
+      "aicm_references": [
+        "STA-08",
+        "IVS-04",
+        "BCR-01"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-108395"
+      ],
+      "description": "The MCP Java SDK's Servlet-based server transports (`HttpServletSseServerTransportProvider`, `HttpServletStreamableServerTransportProvider` and `HttpServletStatelessServerTransport`) read a POST body line by line into a `StringBuilder` with no size limit. An unauthenticated client that can reach one can stream an arbitrarily large body, chunked or not, until the JVM runs out of heap (CVE-2026-108395, CVSS 3.1 7.5, CWE-770). The transports are in `io.modelcontextprotocol.sdk:mcp` from 0.8.0 to 0.12.1 and in `mcp-core` from 0.13.0, and the `mcp` bundle depends on `mcp-core` at its own version. Checked in the source: the SSE provider reads without a limit from 0.8.0, where it arrives, and all three do at 0.12.1, 0.13.0, 0.18.3, 1.0.0-RC3, 1.0.2, 1.1.3, 2.0.0-M1, 2.0.0-RC1 and 2.0.0. 0.18.4, 1.1.4 and 2.0.1 read through a bounded `readBody`, and the 1.0.x line has no fixed release.",
+      "incident_references": [],
+      "limitations": "Dependency-level detection on JVM manifests only: `build.gradle`, `build.gradle.kts`, `gradle/libs.versions.toml` and `pom.xml`. Reports `io.modelcontextprotocol.sdk:mcp` and `mcp-core` from 0.8.0 below 0.18.4, from 1.0.0 below 1.1.4, and at 2.0.0, where a version resolves in the file, directly or through an `mcp-bom` in the same file. 1.0.0-RC3 reads as 1.0.0 and the 2.0.0 milestones as 2.0.0, and both are affected. It reads versions, not code, so a server that uses only stdio, or has a body-size limit in front of it, is reported too. The SDK that Spring AI's starters or `spring-ai-bom` pull in is not read, and neither is a dynamic version or a `version.ref` to a catalog outside the scanned tree. 0.7.0's older `HttpServletSseServerTransport` reads the body the same way, but the CVE record starts at 0.8.0, so 0.7.0 is not reported.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI08"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025"
+      ],
+      "remediation": "Upgrade `mcp` or `mcp-core`, or the `mcp-bom` that sets their version, to 0.18.4, 1.1.4 or 2.0.1 or later on your release line, or to 2.1.0, the newest. On 1.0.x, move to 1.1.4. Until then, put a reverse proxy or gateway that limits the request body size in front of the server.",
+      "rule_id": "AAK-MCP-JAVASDK-CVE-2026-108395-001",
+      "sarif_name": "McpJavaSdkServletUnboundedBody",
+      "severity": "high",
+      "title": "MCP Java SDK 0.8.0 to 0.18.3, 1.0.0 to 1.1.3 and 2.0.0: the Servlet HTTP server transports read request bodies of any size"
+    },
+    {
+      "adversa_references": [
         "ADV-SSRF-01"
       ],
       "aicm_references": [],
@@ -5211,6 +5274,37 @@
       "sarif_name": "JshookIcmpSsrfPolicyBypass",
       "severity": "medium",
       "title": "@jshookmcp/jshook 0.3.1 (ICMP/traceroute tools bypass the SSRF authorization policy)"
+    },
+    {
+      "adversa_references": [
+        "ADV-TRUST-01"
+      ],
+      "aicm_references": [
+        "IAM-16",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-111091"
+      ],
+      "description": "Junie CLI is JetBrains' coding agent for the terminal, published on npm as `@jetbrains/junie` and earlier as `@jetbrains/junie-cli`. It reads MCP servers from the project's `.junie/mcp/mcp.json` as well as from the user's own configuration. Before 26.8.3, an untrusted project's MCP server configuration could run code on the machine of a user who started Junie in it (CVE-2026-111091, CVSS 3.1 7.8, CWE-829). The npm package is a launcher that installs the Junie build named in its `junieVersion` field, and its version is that build number: 26.8.3 is build 2548.5, published to npm as 2548.5.0 on 2026-08-03. Checked in the builds: 888.112, the oldest `@jetbrains/junie` release, and 2470.4, the last npm release before the fix, read the project's `.junie/mcp/mcp.json`, and 2548.5 adds a trust prompt that previews the project's MCP servers.",
+      "incident_references": [],
+      "limitations": "Reports `@jetbrains/junie` and `@jetbrains/junie-cli` from 888.0.0 up to 2548.5.0 where a project states the version in a package.json or lockfile entry. An unpinned reference resolves to the newest release and is not reported. Junie is usually installed globally, by its install script, Homebrew or `npm install -g`, which no file AAK reads. The launcher installs one build, and Junie's shim can fetch and run another (`--use-version`, or a channel's latest build), so a stated version does not prove which build runs. `@jetbrains/junie-cli` releases below 888.0.0, which install the EAP builds of August 2025 to February 2026, and its empty 1.0.0 are not reported. A project's own `.junie/mcp/mcp.json` is not read. A file over 2 MB, or a lockfile over 32 MiB, is not read.",
+      "owasp_agentic_references": [
+        "ASI04",
+        "ASI05"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP05:2025"
+      ],
+      "remediation": "Upgrade `@jetbrains/junie` to 2548.5.0 (Junie 26.8.3) or later and pin it. `@jetbrains/junie-cli` stopped at 1468.30.0, so move to `@jetbrains/junie`. Until then, do not start Junie in a repository you do not trust, and read its `.junie/mcp/mcp.json` first.",
+      "rule_id": "AAK-MCP-JUNIE-CVE-2026-111091-001",
+      "sarif_name": "JunieCliUntrustedProjectMcpConfig",
+      "severity": "high",
+      "title": "JetBrains Junie CLI before 26.8.3 (npm build below 2548.5.0): an untrusted project's MCP server configuration runs code"
     },
     {
       "adversa_references": [
@@ -6310,6 +6404,38 @@
       "sarif_name": "McpNoAuthDefault",
       "severity": "high",
       "title": "MCP server unauthenticated-by-default / fail-open authentication"
+    },
+    {
+      "adversa_references": [
+        "ADV-AUTH-01"
+      ],
+      "aicm_references": [
+        "IAM-01",
+        "IVS-04",
+        "STA-08"
+      ],
+      "auto_fixable": false,
+      "category": "supply-chain",
+      "cve_references": [
+        "CVE-2026-110616"
+      ],
+      "description": "NullHub is the management console for the nullclaw agent ecosystem. Its `/api` routes install and configure agent instances, their provider credentials, cron jobs and MCP servers. It ships as release binaries and as the image `ghcr.io/nullclaw/nullhub`, whose default command serves on `0.0.0.0`. The server checks a bearer token only when `auth_token` is set, and nothing sets it: the field defaults to null and the settings API reports it as null. A client that reaches a non-loopback listener without an `Origin` header can therefore control the agent instances, rewrite their configuration and credentials, and manage their cron jobs and MCP servers (CVE-2026-110616, CVSS 3.1 8.1, CWE-306). Checked in the source: `auth_token` is never assigned at v2026.3.2, the oldest image tag, at v2026.5.29, the newest release, or on `main`, so there is no fixed release.",
+      "incident_references": [],
+      "limitations": "Reads `ghcr.io/nullclaw/nullhub` references up to and including v2026.5.29 in compose files, Kubernetes manifests, Helm values, Dockerfiles and MCP configs. `latest` was the v2026.5.29 digest on 2026-10-15, so an untagged or `latest` reference is reported too; once a fixed image takes `latest`, that arm reports a patched deployment until the pin moves. A release after v2026.5.29 is outside the record's range and is not reported, which is not a claim that it is fixed. It reads the tag, not the command, so a container started with `--host 127.0.0.1` is reported as well. The release binaries state no version in a file this reader opens and are not read.",
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI04"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [
+        "MCP04:2025",
+        "MCP07:2025"
+      ],
+      "remediation": "There is no fixed release. Run NullHub on loopback (`serve --host 127.0.0.1`) and reach it through an SSH tunnel or a reverse proxy that authenticates, and keep the container port off untrusted networks. Pin the first fixed release once it ships.",
+      "rule_id": "AAK-MCP-NULLHUB-CVE-2026-110616-001",
+      "sarif_name": "NullHubManagementApiNoAuth",
+      "severity": "high",
+      "title": "NullHub image through v2026.5.29: the /api management routes accept requests with no authentication (no fixed release)"
     },
     {
       "adversa_references": [

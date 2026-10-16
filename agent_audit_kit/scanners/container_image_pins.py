@@ -19,7 +19,10 @@ the `kortix` CLI are binaries. Unla is a Go MCP gateway published as
 Chinese README names. Trinity's backend ships as `ghcr.io/abilityai/trinity-backend`;
 PyPI's `trinity-cli` is its command-line client on its own 0.2.x line, and PyPI's
 `trinity` is an unrelated Ethereum client. Nginx UI is a Go binary on neither
-registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. Docker Hub
+registry, and its README deploys the Docker Hub image `uozi/nginx-ui`. EdgeEver is
+on neither registry either; its self-hosted server is `ghcr.io/tianma-if/edgeever`.
+NullHub is a Zig binary shipped as release binaries and `ghcr.io/nullclaw/nullhub`,
+and npm and PyPI have no `nullhub`. Docker Hub
 images are matched by the bare name their docs use, so `docker.io/grafana/mcp-k6`
 is not read. Nothing `mcp_cve_pins_2026_07` reads carries their version, and a pin
 on a look-alike package name would report somebody else's project. The image tag is
@@ -244,6 +247,28 @@ _PINS: tuple[_ImagePin, ...] = (
         (2, 4, 1), "from 2.0.1 up to 2.4.1", "Fixed in 2.4.1.",
         ("CVE-2026-84317", "CVE-2026-84318", "CVE-2026-84319", "CVE-2026-84360"),
         introduced=(2, 0, 1),
+    ),
+    # CVE-2026-109557 (`setMemoDragPreview` writes the label into `innerHTML`) and
+    # CVE-2026-109558 (`TemplatesPane` renders template Markdown into
+    # `dangerouslySetInnerHTML` unsanitised). The image ships the web UI beside the
+    # API and its MCP tools. GHCR tags each release as both `X.Y.Z` and `vX.Y.Z`
+    # from 1.33.0, whose source already has both sinks and the `create_notebook`,
+    # `rename_notebook` and `create_memo` tools; the fix, 6b5027e8, is in 1.113.0
+    # and not 1.112.0. `latest` was the 1.120.0 digest on 2026-10-15, fixed.
+    _ImagePin(
+        "AAK-MCP-EDGEEVER-CVE-2026-109557-001", "EdgeEver", "ghcr.io/tianma-if/edgeever",
+        (1, 113, 0), "below 1.113.0", "Fixed in 1.113.0.",
+        ("CVE-2026-109557", "CVE-2026-109558"),
+    ),
+    # CVE-2026-110616: the server checks a bearer token only when `auth_token` is
+    # set, and nothing sets it, at v2026.3.2 (the oldest image tag), at v2026.5.29
+    # (the newest release) and on `main`. The image serves on 0.0.0.0 by default.
+    # Calendar tags read as N.N.N. No fixed release, so the floor is the day after
+    # the newest tag, and `latest` was the v2026.5.29 digest on 2026-10-15.
+    _ImagePin(
+        "AAK-MCP-NULLHUB-CVE-2026-110616-001", "NullHub", "ghcr.io/nullclaw/nullhub",
+        (2026, 5, 30), "up to and including v2026.5.29", "No fixed release yet.",
+        ("CVE-2026-110616",), floating_affected=True,
     ),
 )
 
