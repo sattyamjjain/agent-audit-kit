@@ -290,11 +290,79 @@ def test_rust_cargo_lock_excessive_deps(tmp_path: Path) -> None:
     )
     lines = []
     for i in range(210):
-        lines.append(f'[[package]]\nname = "crate-{i}"\nversion = "1.0.0"\n')
+        lines.append(f'[[package]]\nname = "crate-{i}"\nversion = "1.0.0"\n{_CRATES_IO}\n')
     (tmp_path / "Cargo.lock").write_text("\n".join(lines))
     findings, _ = scan(tmp_path)
     supply005 = [f for f in findings if f.rule_id == "AAK-SUPPLY-005"]
     assert len(supply005) > 0, "Excessive Rust dependencies should be detected"
+
+
+# ---------------------------------------------------------------------------
+# AAK-SUPPLY-005 counts dependencies, not the project's own packages
+# ---------------------------------------------------------------------------
+#
+# package-lock.json's root entry `""` and Cargo.lock's root crate were counted, so
+# 200 dependencies read as 201 and a lockfile with exactly 200 was reported. A
+# workspace's members are the project's own packages too: npm lists each one as a
+# folder entry and a `link` to it, and Cargo.lock lists them, like the root crate
+# and any path dependency, as packages with no `source`.
+
+_CRATES_IO = 'source = "registry+https://github.com/rust-lang/crates.io-index"'
+
+
+def _supply_005(root: Path) -> list[str]:
+    return [f.evidence for f in scan(root)[0] if f.rule_id == "AAK-SUPPLY-005"]
+
+
+def _package_lock(deps: int, **own: dict) -> str:
+    packages: dict = {"": {"name": "app", "version": "1.0.0", "workspaces": ["packages/*"]}}
+    packages.update(own)
+    packages.update({f"node_modules/pkg-{i:04d}": {"version": "1.0.0"} for i in range(deps)})
+    return json.dumps({"name": "app", "lockfileVersion": 3, "packages": packages})
+
+
+@pytest.mark.parametrize(("deps", "reported"), [(200, []), (201, ["201 dependencies (threshold: 200)"])])
+def test_supply_005_does_not_count_the_root_entry(tmp_path: Path, deps: int, reported: list[str]) -> None:
+    (tmp_path / "package-lock.json").write_text(_package_lock(deps))
+    assert _supply_005(tmp_path) == reported
+
+
+def test_supply_005_does_not_count_npm_workspace_packages(tmp_path: Path) -> None:
+    own = {}
+    for name in ("api", "web", "shared"):
+        own[f"packages/{name}"] = {"name": name, "version": "1.0.0"}
+        own[f"node_modules/{name}"] = {"resolved": f"packages/{name}", "link": True}
+    (tmp_path / "package-lock.json").write_text(_package_lock(200, **own))
+    assert _supply_005(tmp_path) == []
+    # A dependency installed under a workspace member is still a dependency.
+    own["packages/web/node_modules/pkg-extra"] = {"version": "2.0.0"}
+    (tmp_path / "package-lock.json").write_text(_package_lock(200, **own))
+    assert _supply_005(tmp_path) == ["201 dependencies (threshold: 200)"]
+
+
+def _cargo_lock(registry: int, git: int = 0, local: tuple[str, ...] = ("myapp",)) -> str:
+    blocks = [f'[[package]]\nname = "{name}"\nversion = "0.1.0"\n' for name in local]
+    blocks += [f'[[package]]\nname = "dep-{i}"\nversion = "1.0.0"\n{_CRATES_IO}\n' for i in range(registry)]
+    blocks += [
+        f'[[package]]\nname = "git-{i}"\nversion = "0.3.0"\n'
+        f'source = "git+https://github.com/example/git-{i}?rev=abc#abc1234"\n'
+        for i in range(git)
+    ]
+    return "version = 3\n\n" + "\n".join(blocks)
+
+
+@pytest.mark.parametrize(("registry", "reported"), [(200, []), (201, ["201 dependencies (threshold: 200)"])])
+def test_supply_005_does_not_count_the_root_crate(tmp_path: Path, registry: int, reported: list[str]) -> None:
+    (tmp_path / "Cargo.lock").write_text(_cargo_lock(registry))
+    assert _supply_005(tmp_path) == reported
+
+
+def test_supply_005_counts_git_crates_and_not_workspace_or_path_crates(tmp_path: Path) -> None:
+    members = ("myapp", "myapp-core", "myapp-cli", "vendored-path-crate")
+    (tmp_path / "Cargo.lock").write_text(_cargo_lock(195, git=6, local=members))
+    assert _supply_005(tmp_path) == ["201 dependencies (threshold: 200)"]
+    (tmp_path / "Cargo.lock").write_text(_cargo_lock(195, git=5, local=members))
+    assert _supply_005(tmp_path) == []
 
 
 # ---------------------------------------------------------------------------

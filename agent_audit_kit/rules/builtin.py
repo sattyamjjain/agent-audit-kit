@@ -2027,17 +2027,22 @@ _r(
     Severity.LOW,
     Category.SUPPLY_CHAIN,
     "Remove unused dependencies, or swap heavy ones for lighter ones, until the "
-    "lockfile lists 200 or fewer packages. The rule counts every entry in "
-    "`package-lock.json` or `Cargo.lock`, transitive dependencies included.",
+    "lockfile lists 200 or fewer dependencies. The rule counts every package "
+    "`package-lock.json` installs under node_modules and every crate `Cargo.lock` "
+    "takes from a registry or a git repository, transitive dependencies included. "
+    "The project's own packages (the root, workspace members, path crates) are not "
+    "counted.",
     sarif_name="ExcessiveDependencyCount",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-07"],
     limitations=(
-        "Counts the entries of the root package-lock.json, the root package itself "
-        "included, and the packages of the root Cargo.lock, and reports more than "
-        "200. A uv.lock or yarn.lock of any size and a package-lock.json in a "
-        "sub-directory are not counted. A lockfile over 32 MiB is not counted."
+        "Counts the packages the root package-lock.json installs under node_modules "
+        "and the crates of the root Cargo.lock that have a `source`, and reports more "
+        "than 200. A lockfileVersion 1 package-lock.json is counted by its top-level "
+        "`dependencies` only, so a package nested under another is not counted. A "
+        "uv.lock or yarn.lock of any size and a package-lock.json in a sub-directory "
+        "are not counted. A lockfile over 32 MiB is not counted."
     ),
 )
 

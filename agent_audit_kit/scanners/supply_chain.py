@@ -166,11 +166,12 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
 
     # Check packages in lockfile v2/v3 format
     packages = data.get("packages", {})
-    if not packages:
-        # Try lockfile v1 format
+    if packages:
+        dep_count = sum(1 for key, info in packages.items() if _is_npm_dependency(key, info))
+    else:
+        # Try lockfile v1 format, which has no entry for the root package
         packages = data.get("dependencies", {})
-
-    dep_count = len(packages)
+        dep_count = len(packages)
 
     for pkg_path, pkg_info in packages.items():
         if not isinstance(pkg_info, dict):
@@ -208,6 +209,19 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
         ))
 
     return findings
+
+
+def _is_npm_dependency(key: str, info: object) -> bool:
+    """Is a lockfile v2/v3 `packages` entry a dependency (AAK-SUPPLY-005)?
+
+    The entries are keyed by install path. The root package is the `""` entry,
+    and a workspace member is a folder entry (`packages/web`) with a `link` to it
+    under node_modules; each is the project's own package, not a dependency.
+    Counting them reported 200 dependencies as 201, so a lockfile with exactly
+    200 crossed the threshold. A package installed under a member
+    (`packages/web/node_modules/x`) is a dependency like any other.
+    """
+    return "node_modules/" in key and not (isinstance(info, dict) and info.get("link") is True)
 
 
 def _scan_package_json(project_root: Path) -> list[Finding]:
@@ -383,6 +397,11 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
     A Cargo.toml without a Cargo.lock is `_check_lockfile_exists`'s to report
     (AAK-SUPPLY-004). This ended with that check too, but it returns early when
     there is no Cargo.lock, so the check could never fire here.
+
+    Only a package with a `source` (a registry or a git repository) counts as a
+    dependency. Cargo.lock lists the root crate as a `[[package]]` too, without
+    one, and counting it reported 200 dependencies as 201. Workspace members and
+    path dependencies have no `source` either: they are the project's own crates.
     """
     findings: list[Finding] = []
     rust_vulns = KNOWN_VULNERABLE_PACKAGES.get("rust", {})
@@ -403,6 +422,7 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
     # Parse TOML-style Cargo.lock: [[package]] blocks
     current_name = ""
     current_version = ""
+    current_has_source = False
     dep_count = 0
     for line in raw.splitlines():
         line = line.strip()
@@ -416,13 +436,17 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
                         f"{current_name}@{current_version} — {vuln_info['description']}",
                         _find_line_number(raw, current_name),
                     ))
+            if current_has_source:
+                dep_count += 1
             current_name = ""
             current_version = ""
-            dep_count += 1
+            current_has_source = False
         elif line.startswith('name = "'):
             current_name = line.split('"')[1]
         elif line.startswith('version = "'):
             current_version = line.split('"')[1]
+        elif line.startswith("source = "):
+            current_has_source = True
 
     # Check last package
     if current_name and current_version and current_name in rust_vulns:
@@ -433,6 +457,8 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
                 f"{current_name}@{current_version} — {vuln_info['description']}",
                 _find_line_number(raw, current_name),
             ))
+    if current_has_source:
+        dep_count += 1
 
     # AAK-SUPPLY-005 for Rust
     if dep_count > 200:
