@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T20:15:01Z",
+  "last_updated": "2026-10-16T20:50:43Z",
   "aak_version": "0.6.22",
-  "rule_count": 406,
+  "rule_count": 407,
   "coverage": [
     {
       "asi_id": "ASI01",
@@ -1155,7 +1155,7 @@
     {
       "asi_id": "ASI03",
       "title": "Identity and Privilege Abuse",
-      "rule_density": 104,
+      "rule_density": 105,
       "rules": [
         {
           "id": "AAK-A2A-002",
@@ -2216,6 +2216,15 @@
             "CVE-2026-21852"
           ],
           "aicm_references": [
+            "IAM-16"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-008",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08",
             "IAM-16"
           ]
         }
@@ -5379,7 +5388,7 @@
     {
       "asi_id": "ASI07",
       "title": "Insecure Inter-Agent Communication",
-      "rule_density": 23,
+      "rule_density": 24,
       "rules": [
         {
           "id": "AAK-A2A-001",
@@ -5603,6 +5612,15 @@
           "cve_references": [],
           "aicm_references": [
             "CEK-08"
+          ]
+        },
+        {
+          "id": "AAK-TRUST-008",
+          "severity": "high",
+          "cve_references": [],
+          "aicm_references": [
+            "CEK-08",
+            "IAM-16"
           ]
         }
       ]

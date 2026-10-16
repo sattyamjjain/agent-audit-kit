@@ -1705,7 +1705,7 @@
       "title": "Hook runs with shell=True and variable interpolation"
     },
     {
-      "category": "hook-injection",
+      "category": "supply-chain",
       "cve_references": [
         "CVE-2025-59536"
       ],
@@ -1728,7 +1728,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-HOOK-RCE-003",
       "severity": "high",
-      "title": "Hook trust check is bypassable by project-local config"
+      "title": "Claude Code below 1.0.111 runs project code before the trust dialog (CVE-2025-59536)"
     },
     {
       "category": "hook-injection",
@@ -9988,6 +9988,26 @@
       "rule_id": "AAK-TRUST-007",
       "severity": "medium",
       "title": "No MCP server allowlist configured"
+    },
+    {
+      "category": "trust-boundary",
+      "cve_references": [],
+      "eu_ai_act": [
+        "Art. 15 - Robustness & Security"
+      ],
+      "nsa_mcp_csi": [
+        "Design for boundaries (p.10)",
+        "Sign and verify MCP messages (p.12)",
+        "Scan local network for open or vulnerable MCP servers (p.14)"
+      ],
+      "owasp_agentic": [
+        "ASI03 Identity and Privilege Abuse",
+        "ASI07 Insecure Inter-Agent Communication"
+      ],
+      "owasp_mcp": [],
+      "rule_id": "AAK-TRUST-008",
+      "severity": "high",
+      "title": "Proxy or certificate-authority override in project settings"
     }
   ],
   "schema_version": "1",
@@ -9997,43 +10017,43 @@
       "agent-config": 19,
       "agentic-skill": 3,
       "composition": 3,
-      "hook-injection": 17,
+      "hook-injection": 16,
       "legal-compliance": 19,
       "mcp-config": 67,
       "mcp-server-card": 4,
       "secret-exposure": 18,
-      "supply-chain": 167,
+      "supply-chain": 168,
       "taint-analysis": 14,
       "tool-poisoning": 30,
       "transport-security": 15,
-      "trust-boundary": 17
+      "trust-boundary": 18
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 197,
       "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 300,
+      "Art. 15 - Robustness & Security": 301,
       "Art. 9 - Risk Management": 205
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 197,
       "Constrain and sandbox tool execution (p.11)": 188,
-      "Design for boundaries (p.10)": 290,
+      "Design for boundaries (p.10)": 291,
       "Filter and monitor output pipelines and chained execution (p.12)": 111,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 256,
-      "Sign and verify MCP messages (p.12)": 266,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 257,
+      "Sign and verify MCP messages (p.12)": 267,
       "Track and patch MCP related vulnerabilities (p.13)": 202,
       "Validate parameters (p.11)": 192
     },
     "by_owasp_agentic": {
       "ASI01": 17,
       "ASI02": 99,
-      "ASI03": 104,
+      "ASI03": 105,
       "ASI04": 195,
       "ASI05": 91,
       "ASI06": 5,
-      "ASI07": 23,
+      "ASI07": 24,
       "ASI08": 9,
       "ASI09": 13,
       "ASI10": 5
@@ -10052,13 +10072,13 @@
     },
     "by_severity": {
       "critical": 91,
-      "high": 176,
+      "high": 177,
       "info": 3,
       "low": 17,
       "medium": 119
     },
     "total_cves_covered": 345,
-    "total_rules": 406
+    "total_rules": 407
   },
   "tool": "agent-audit-kit"
 }

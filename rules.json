@@ -1739,15 +1739,15 @@
       "cve_references": [
         "CVE-2025-59536"
       ],
-      "description": "A hook command contains network-capable tools (curl, wget, nc, etc.). Hooks run automatically and can exfiltrate code, API keys, or session data.",
+      "description": "A hook command contains network-capable tools (curl, wget, nc, etc.), or an `http` hook posts each event to a URL that is cleartext to another machine, a bare IP address or carries a credential. Hooks run automatically and can exfiltrate code, API keys, or session data.",
       "incident_references": [],
-      "limitations": "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name, and the one-liners `python -c ... import requests` (not `python3 -c`) and `node -e ... fetch(`, in the command line of each hook (its `command`, followed by `args` when set) in `.claude/settings.json` and `.claude/settings.local.json`. What a script file does is not followed, so `bash .claude/hooks/report.sh` passes even when the script runs curl. An `http` hook, which posts the event to its `url` without running a command, is not read, and neither are the hooks a plugin ships in `hooks/hooks.json`.",
+      "limitations": "Matches curl, wget, nc, ncat, ssh, scp, rsync and ftp by name, and the one-liners `python -c ... import requests` (not `python3 -c`) and `node -e ... fetch(`, in the command line of each hook (its `command`, followed by `args` when set). An `http` hook, which posts the event to its `url`, is reported when the URL, read both the way Node reads it and the way urlsplit and curl do, is plain http to a host other than this machine, names a bare IP address other than loopback, or carries a credential that evidence redaction masks (a password or token in the userinfo, a credential-named query parameter such as `token`, or a known token format such as a Slack or Discord webhook path); one to an https URL on a DNS name in every reading is otherwise not reported, wherever it points. What a script file does is not followed, so `bash .claude/hooks/report.sh` passes even when the script runs curl. Hooks are read from `.claude/settings.json`, `.claude/settings.local.json`, a plugin's `hooks/hooks.json` (where the plugin's directory holds `.claude-plugin/` or sits under a marketplace's `.claude-plugin/marketplace.json`) and the frontmatter of a `SKILL.md`. A plugin or skill file over 512,000 bytes or nested too deeply to parse is not read, and neither is a frontmatter block that YAML aliases expand past twice its length. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Remove network calls from hooks. Use file-based logging if audit trail is needed.",
+      "remediation": "Remove network calls from hooks. Use file-based logging if audit trail is needed. An `http` hook that must report somewhere should post to an https URL on a host name you control, with any credential in a header taken from `allowedEnvVars` rather than in the URL.",
       "rule_id": "AAK-HOOK-001",
       "sarif_name": "HookNetworkCapableCommand",
       "severity": "critical",
@@ -1763,15 +1763,15 @@
       "auto_fixable": false,
       "category": "hook-injection",
       "cve_references": [],
-      "description": "A hook command accesses credential environment variables. This enables direct credential theft via hook execution.",
+      "description": "A hook command accesses credential environment variables, or an `http` hook sends one in a header. This enables direct credential theft via hook execution.",
       "incident_references": [],
-      "limitations": "Matches four names written as a bare `$NAME` (ANTHROPIC_API_KEY, OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID) and three exfiltration pipelines; `$HOME` and `$PATH` are not credentials and are not reported. The braced form `${ANTHROPIC_API_KEY}` and any other credential variable on its own (`$GITHUB_TOKEN`) are not matched. An `http` hook that sends `$ANTHROPIC_API_KEY` in a header it lists in `allowedEnvVars` is not read, and neither are the hooks a plugin ships in `hooks/hooks.json`.",
+      "limitations": "Matches four names written as a bare `$NAME` (ANTHROPIC_API_KEY, OPENAI_API_KEY, AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID) and three exfiltration pipelines in a hook's command line, and an `http` hook that sends one of the four: a `headers` value that interpolates it (`$NAME` or `${NAME}`) while `allowedEnvVars` lists it. `$HOME` and `$PATH` are not credentials and are not reported. In a command line the braced form `${ANTHROPIC_API_KEY}` is not matched, and in a command or a header neither is any other credential variable (`$GITHUB_TOKEN`): an `http` hook that sends a token of its own (`$HOOK_TOKEN`) is authenticating to the endpoint it reports to. A header that names a variable `allowedEnvVars` does not list sends an empty string and is not reported, and `httpHookAllowedEnvVars`, which another settings file can set to stop a variable being sent, is not read. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, `$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY` and `$AWS_ACCESS_KEY_ID`, and the pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. Let the program the hook runs read its own credentials from its environment.",
+      "remediation": "Take the variable out of the hook command. The rule matches `$ANTHROPIC_API_KEY`, `$OPENAI_API_KEY`, `$AWS_SECRET_ACCESS_KEY` and `$AWS_ACCESS_KEY_ID`, and the pipelines `env | curl`, `printenv | nc` and `echo $VAR | base64`. Let the program the hook runs read its own credentials from its environment. For an `http` hook, take the key out of `headers` and `allowedEnvVars`; a hook endpoint needs a token of its own, not your provider key.",
       "rule_id": "AAK-HOOK-002",
       "sarif_name": "HookCredentialExfiltration",
       "severity": "critical",
@@ -1789,7 +1789,7 @@
       "cve_references": [],
       "description": "A hook command writes to paths outside the project boundary, which can modify system configs, plant persistence, or stage exfiltration.",
       "incident_references": [],
-      "limitations": "Reads the hook's command line as shell commands and reports one that writes a path under /tmp, ~, /etc, /var, /usr or /home: a `>` or `>>` redirect, `tee`, `mkdir`, `touch`, `chmod`, `chown` or `truncate` on it, the destination of `cp`, `mv`, `install` or `ln`, `sed -i` or `perl -i`, `curl -o`, `wget -O` or `-P`, `dd of=`, or `tar` creating or extracting there, also inside `sh -c` and after `sudo` or `env`. A command that only names such a path (`cd /tmp/build`, reading `~/.config`) is not reported, and neither is deleting one. A path reached through `$HOME` or a relative climb (`../../shared/out.json`) is not matched, nor is a write made by a script the hook runs. Hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Reads the hook's command line as shell commands and reports one that writes a path under /tmp, ~, /etc, /var, /usr or /home: a `>` or `>>` redirect, `tee`, `mkdir`, `touch`, `chmod`, `chown` or `truncate` on it, the destination of `cp`, `mv`, `install` or `ln`, `sed -i` or `perl -i`, `curl -o`, `wget -O` or `-P`, `dd of=`, or `tar` creating or extracting there, also inside `sh -c` and after `sudo` or `env`. A command that only names such a path (`cd /tmp/build`, reading `~/.config`) is not reported, and neither is deleting one. A path reached through `$HOME` or a relative climb (`../../shared/out.json`) is not matched, nor is a write made by a script the hook runs. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1813,7 +1813,7 @@
       "cve_references": [],
       "description": "A hook runs a command on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit, so it runs automatically around tool calls, on every prompt and at session start. This is an inventory entry, not evidence of harm: the rule reads only the event and whether the command names a formatter, not what the command or a script it calls does. Review what it runs.",
       "incident_references": [],
-      "limitations": "Fires only for a hook on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit whose command names none of a list of formatters. The same command on any other event, such as Stop, is not reported, and a command that merely contains a formatter name anywhere, even in a trailing comment (`# prettier`), counts as a formatter. A hook that runs no command (`http`, `prompt`, `agent`, `mcp_tool`) is not reported on any event, and the hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Fires only for a hook on PreToolUse, PostToolUse, SessionStart or UserPromptSubmit whose command names none of a list of formatters. The same command on any other event, such as Stop, is not reported, and a command that merely contains a formatter name anywhere, even in a trailing comment (`# prettier`), counts as a formatter. A hook that runs no command (`http`, `prompt`, `agent`, `mcp_tool`) is not reported on any event. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1837,7 +1837,7 @@
       "cve_references": [],
       "description": "A hook command contains base64 operations, commonly used to obfuscate exfiltration payloads or encode stolen credentials.",
       "incident_references": [],
-      "limitations": "Matches the words base64, btoa, atob, b64encode and b64decode in a hook command. Other encodings that hide a payload the same way, hex through `xxd -r -p` or `base32 -d`, are not matched. Hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Matches the words base64, btoa, atob, b64encode and b64decode in a hook command. Other encodings that hide a payload the same way, hex through `xxd -r -p` or `base32 -d`, are not matched. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1861,7 +1861,7 @@
       "cve_references": [],
       "description": "A hook command uses sudo, doas, pkexec, or chmod +x. Hooks should never require elevated privileges.",
       "incident_references": [],
-      "limitations": "Matches sudo, doas, pkexec and `chmod` followed by whitespace and `+x`. `chmod 755`, `chmod a+x` and `su root -c`, which grant the same execute or root rights, are not matched. Hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Matches sudo, doas, pkexec and `chmod` followed by whitespace and `+x`. `chmod 755`, `chmod a+x` and `su root -c`, which grant the same execute or root rights, are not matched. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -1885,11 +1885,11 @@
       "cve_references": [],
       "description": "More than 15 hook definitions in a single settings file. Large hook surface increases audit burden and risk of hidden malicious hooks.",
       "incident_references": [],
-      "limitations": "Counts the hooks of all events in one settings file, each hook in a `matcher` group's `hooks` array separately, and fires above 15. Hooks split between `.claude/settings.json` and `.claude/settings.local.json` are not added up, and the hooks a plugin ships in `hooks/hooks.json` are not counted.",
+      "limitations": "Counts the hooks of all events in one file (a settings file, a plugin's `hooks/hooks.json` or a `SKILL.md`), each hook in a `matcher` group's `hooks` array separately, and fires above 15. Hooks split between files, such as `.claude/settings.json` and `.claude/settings.local.json`, are not added up, and hooks a plugin declares in `.claude-plugin/plugin.json` or a subagent in its frontmatter are not counted.",
       "owasp_agentic_references": [],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Remove hooks that are not essential, or fold related ones into one script, until each settings file has 15 or fewer hooks. The rule counts every hook, each one in a matcher group's `hooks` array on its own, in `.claude/settings.json` and `.claude/settings.local.json` separately, and fires above 15.",
+      "remediation": "Remove hooks that are not essential, or fold related ones into one script, until each file has 15 or fewer hooks. The rule counts every hook, each one in a matcher group's `hooks` array on its own, in each settings file, plugin `hooks/hooks.json` and `SKILL.md` separately, and fires above 15.",
       "rule_id": "AAK-HOOK-007",
       "sarif_name": "ExcessiveHookCount",
       "severity": "medium",
@@ -1905,7 +1905,7 @@
       "cve_references": [],
       "description": "A hook command contains hex-encoded strings, unicode escapes, an embedded base64 blob or nested shell invocations. Obfuscation is a strong indicator of malicious intent.",
       "incident_references": [],
-      "limitations": "Matches `\\x41` and `\\u0041` escapes, `sh -c` twice in one command (inside `bash -c` too), and an unbroken run of 64 or more letters, digits, `+` or `=` that mixes upper case, lower case and digits, as base64 does. A hex digest (an image pinned `@sha256:`) and a long readable command are not reported, and a base64 blob whose `/` characters split it into runs shorter than 64 is missed. The same text written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from shell variables (`$a$b`) is not matched. Hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Matches `\\x41` and `\\u0041` escapes, `sh -c` twice in one command (inside `bash -c` too), and an unbroken run of 64 or more letters, digits, `+` or `=` that mixes upper case, lower case and digits, as base64 does. A hex digest (an image pinned `@sha256:`) and a long readable command are not reported, and a base64 blob whose `/` characters split it into runs shorter than 64 is missed. The same text written as bash octal escapes (`$'\\143\\165\\162\\154'`) or reassembled from shell variables (`$a$b`) is not matched. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1927,7 +1927,7 @@
       "cve_references": [],
       "description": "A hook command reads or references project source code files, which could enable code exfiltration.",
       "incident_references": [],
-      "limitations": "Matches a file a reader command reads: an operand of cat, head, tail, less or more, a file operand of grep, sed or awk (never the pattern or program), or a `< file` redirect, ending in a lower-case .py, .js, .ts, .go, .rs, .java, .rb, .c, .cpp or .h, also inside `sh -c`. A pattern that names an extension (`grep '\\.py$'`) is not a read. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py out/`) and reading a file of another type (`cat src/App.tsx`) are not matched. Hooks a plugin ships in `hooks/hooks.json` are not read.",
+      "limitations": "Matches a file a reader command reads: an operand of cat, head, tail, less or more, a file operand of grep, sed or awk (never the pattern or program), or a `< file` redirect, ending in a lower-case .py, .js, .ts, .go, .rs, .java, .rb, .c, .cpp or .h, also inside `sh -c`. A pattern that names an extension (`grep '\\.py$'`) is not a read. Archiving or copying source (`tar czf out.tgz src/`, `cp src/main.py out/`) and reading a file of another type (`cat src/App.tsx`) are not matched. Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a subagent's frontmatter are not read.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1975,7 +1975,7 @@
       ],
       "description": "A hook script invokes subprocess.run / spawn with shell=True (or the equivalent in Node/Bash) while passing a composed string that includes caller-provided fields.",
       "incident_references": [],
-      "limitations": "Matches `shell=True` before the first closing parenthesis of a `subprocess.run`, `call`, `Popen` or `check_output` call, and `{ shell: true }` as the first option of a Node `spawn`, `spawnSync`, `child_process.exec` or `child_process.execSync` call, in a .sh, .bash, .py, .js, .ts or .mjs script under `.claude/.../hooks/`. A call with another call ahead of it (`subprocess.run(build(cmd), shell=True)`), `subprocess.check_call`, `os.system` and `os.popen`, which always use a shell, and a Node `{ cwd: dir, shell: true }` that does not start with `shell`, are not matched.",
+      "limitations": "Matches `shell=True` before the first closing parenthesis of a `subprocess.run`, `call`, `Popen` or `check_output` call, and `shell: true` as any option of a Node `spawn`, `spawnSync`, `child_process.exec` or `child_process.execSync` call (`{ cwd: dir, shell: true }`), in a .sh, .bash, .py, .js, .ts or .mjs script under `.claude/.../hooks/`. A call with another call ahead of the option (`subprocess.run(build(cmd), shell=True)`, `spawn(String(cmd), [], { shell: true })`), a quoted key (`{ \"shell\": true }`), `shell: true` passed to `execFile` or to `exec` called by its bare name, `subprocess.check_call`, and `os.system` and `os.popen`, which always use a shell, are not matched.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -1993,24 +1993,24 @@
       ],
       "aicm_references": [],
       "auto_fixable": false,
-      "category": "hook-injection",
+      "category": "supply-chain",
       "cve_references": [
         "CVE-2025-59536"
       ],
-      "description": "A settings.local.json or project-relative hook file executes before the Claude Code trust prompt. This is the core CVE-2025-59536 regression pattern; any project-contained hook must not run until trust is confirmed.",
+      "description": "Claude Code (`@anthropic-ai/claude-code`, npm) shows a startup trust dialog before it acts on what a project carries, such as the hooks in its `.claude/settings.json`. Before 1.0.111, a bug in that dialog meant Claude Code \"could be tricked to execute code contained in a project before the user accepted the startup trust dialog\", so starting it in a cloned repository was enough (CVE-2025-59536, CVSS 4.0 8.7, CWE-94, GHSA-4fgq-fpq9-mr3g). This pin-only rule fires on a declared `@anthropic-ai/claude-code` below 1.0.111. Until 2026-10-17 it fired on any command in a `settings.local.json` instead, which cannot show whether a hook runs before the dialog: the release decides that. Auto-update has delivered the fix to installs that keep it on.",
       "incident_references": [],
-      "limitations": "Reports a `command`, `cmd`, `run` or `script` value only in `settings.local.json` at the root or in `.claude/`. The same hook committed in `.claude/settings.json`, which a repository ships to everyone who opens it, and hook script files are not reported.",
+      "limitations": "Reports `@anthropic-ai/claude-code` below 1.0.111 where a project states its version: a package.json or lockfile entry at the root, or a versioned `npx` reference in an MCP config. An unpinned reference is not reported, as for the other Claude Code pins: it resolves to the newest release, and the CLI updates itself. A global install, the usual one, is in no file AAK reads, and neither is a package.json in a sub-directory. A file over 2 MB, or a lockfile over 32 MiB, is not read. Settings files and hook commands are not read: whether a hook runs before the trust dialog depends on the release, not on the hook.",
       "owasp_agentic_references": [
         "ASI05",
         "ASI09"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Require explicit trust confirmation before loading project-local hook configuration. Upgrade to Claude Code 1.0.111 or later.",
+      "remediation": "Upgrade `@anthropic-ai/claude-code` to 1.0.111 or later and pin it, or leave auto-update on.",
       "rule_id": "AAK-HOOK-RCE-003",
       "sarif_name": "HookTrustBypass",
       "severity": "high",
-      "title": "Hook trust check is bypassable by project-local config"
+      "title": "Claude Code below 1.0.111 runs project code before the trust dialog (CVE-2025-59536)"
     },
     {
       "adversa_references": [
@@ -2050,7 +2050,7 @@
       "cve_references": [],
       "description": "A task in `.vscode/tasks.json` builds its `command`/`args` in a way that reaches a shell: a pipe-to-shell (`... | sh`), an interpreter invoked on a script path inside the repo, or a `${...}`/interpolated variable spliced into a shell string. A poisoned repository controls that string, so opening or running the task executes attacker-chosen code.",
       "incident_references": [],
-      "limitations": "Judges a task by its own `command` and `args` text: a pipe into sh, bash, zsh, dash, ksh, fish, pwsh or powershell; python, python2, python3, node, deno, bun, ruby, perl, php, bash, sh or zsh followed directly by a path of letters, digits, `_`, `-`, `.`, `/` and `\\` that ends .py, .js, .cjs, .mjs, .ts, .rb, .pl, .php, .sh, .bash, .zsh or .ps1; or `${`, `%{`, `{{`, `$(`, a backtick or a string `+` directly before a name beginning input, args, event, payload, user, argv or request. A script run directly (`./scripts/setup.sh`), through a runner (`npm run setup`) or after a flag (`bash -x ./scripts/setup.sh`), and a path that starts with `${workspaceFolder}`, are not followed.",
+      "limitations": "Judges a task by its own `command` and `args` text: a pipe into sh, bash, zsh, dash, ksh, fish, pwsh or powershell; python, python2, python3, node, deno, bun, ruby, perl, php, bash, sh or zsh followed directly by a path of letters, digits, `_`, `-`, `.`, `/` and `\\` that ends .py, .js, .cjs, .mjs, .ts, .rb, .pl, .php, .sh, .bash, .zsh or .ps1, where the path may start with the workspace folder as `${workspaceFolder}`, `${workspaceFolder:name}`, `${workspaceRoot}` or `${fileWorkspaceFolder}`; or `${`, `%{`, `{{`, `$(`, a backtick or a string `+` directly before a name beginning input, args, event, payload, user, argv or request. A script run directly (`./scripts/setup.sh`), through a runner (`npm run setup`) or after a flag (`bash -x ./scripts/setup.sh`), and a quoted path (`bash \"${workspaceFolder}/scripts/setup.sh\"`), are not followed.",
       "owasp_agentic_references": [
         "ASI05"
       ],
@@ -11227,6 +11227,33 @@
       "sarif_name": "NoMcpServerAllowlist",
       "severity": "medium",
       "title": "No MCP server allowlist configured"
+    },
+    {
+      "adversa_references": [
+        "ADV-REDIRECT-02",
+        "ADV-TRANSPORT-02"
+      ],
+      "aicm_references": [
+        "IAM-16",
+        "CEK-08"
+      ],
+      "auto_fixable": false,
+      "category": "trust-boundary",
+      "cve_references": [],
+      "description": "A project settings file (`.claude/settings.json`, or a committed `.claude/settings.local.json`) sets a proxy (`HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`), a certificate authority to trust (`NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE`) or `NODE_TLS_REJECT_UNAUTHORIZED=0` in its `env`. Claude Code's settings reference says `env` applies \"for every session and for the subprocesses Claude Code starts from it\", from project settings once the folder is trusted and at once in `-p` mode, and its network configuration page says each proxy and CA variable \"can also be configured in settings.json\" and that a terminal session reads them \"from every settings scope\". A repository that sets them sends the API traffic of everyone who opens it, credentials included, through a proxy it names, or has their session and the servers and commands it starts trust a certificate authority it chose, which together let it read and change that traffic. Where Claude Desktop manages the connection it ignores these variables in a repository's own settings files, \"so a checked-out repository can't redirect the TLS or proxy path of a session\"; a terminal session has no such guard.",
+      "incident_references": [],
+      "limitations": "Reads the `env` object of `.claude/settings.json` and `.claude/settings.local.json` at the root of the scanned directory, whether or not the second is committed (AAK does not ask git), and reports `HTTPS_PROXY`, `HTTP_PROXY` and `ALL_PROXY` in any case, `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and `REQUESTS_CA_BUNDLE` as written, each with a value that is not blank, and `NODE_TLS_REJECT_UNAUTHORIZED` set to `0`. The user's own `~/.claude/settings.json`, where the docs put these variables, is not reported, even with `--include-user-config`. `NO_PROXY`, `CLAUDE_CODE_CERT_STORE`, the mTLS client certificate variables, other switches with the same effect on the programs a session starts (`CURL_CA_BUNDLE`, `GIT_SSL_NO_VERIFY`), and a settings file in a subdirectory (`packages/web/.claude/settings.json`) are not read.",
+      "owasp_agentic_references": [
+        "ASI03",
+        "ASI07"
+      ],
+      "owasp_ast_references": [],
+      "owasp_mcp_references": [],
+      "remediation": "Remove the proxy and certificate variables from the project settings' `env`. Set them in `~/.claude/settings.json`, managed settings or your shell, where Claude Code's network configuration docs put them, so each user chooses their own network path. Never commit `NODE_TLS_REJECT_UNAUTHORIZED=0`.",
+      "rule_id": "AAK-TRUST-008",
+      "sarif_name": "ProjectSettingsProxyOrCaOverride",
+      "severity": "high",
+      "title": "Proxy or certificate-authority override in project settings"
     }
   ],
   "schema": "agent-audit-kit/rule-bundle/3"
