@@ -5795,14 +5795,16 @@ _r(
     "AAK-SEC-MD-001",
     "MCP server repo missing SECURITY.md or security_contact",
     "A repository whose name or pyproject keywords declare it as an "
-    "MCP server ships without a top-level SECURITY.md AND without a "
+    "MCP server ships no SECURITY.md in the root, `docs/` or `.github/` "
+    "(the three folders GitHub reads a security policy from) AND no "
     "`security_contact` entry in marketplace.json / pyproject.toml / "
     "package.json. Anthropic's April 2026 SECURITY.md guidance makes "
     "this the baseline expectation so researchers have a channel.",
     Severity.LOW,
     Category.SUPPLY_CHAIN,
-    "Add SECURITY.md at the repo root with a disclosure email and "
-    "response SLA; OR add `security_contact` to the project manifest.",
+    "Add SECURITY.md with a disclosure email and response SLA at the "
+    "repo root, in `docs/` or in `.github/`; OR add `security_contact` "
+    "to the project manifest.",
     sarif_name="McpServerNoSecurityMd",
     owasp_mcp_references=["MCP04:2025"],
     owasp_agentic_references=["ASI04"],

@@ -179,6 +179,34 @@ def test_security_md_present_is_quiet(tmp_path: Path) -> None:
     assert not any(f.rule_id == "AAK-SEC-MD-001" for f in findings)
 
 
+@pytest.mark.parametrize("where", ["SECURITY.md", ".github/SECURITY.md", "docs/SECURITY.md"])
+def test_security_md_in_any_folder_github_reads_is_quiet(tmp_path: Path, where: str) -> None:
+    """GitHub reads a community health file such as SECURITY.md from the
+    repository root, `.github/` or `docs/`, in that order of precedence after
+    `.github/` (docs.github.com, "Creating a default community health file").
+    A repo that kept its policy in `docs/` was told it shipped none."""
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "my-mcp-server"\nkeywords = ["mcp"]\n'
+    )
+    policy = tmp_path / where
+    policy.parent.mkdir(parents=True, exist_ok=True)
+    policy.write_text("# Security\n\nReport at security@example.com\n")
+    findings, _ = marketplace_manifest.scan(tmp_path)
+    assert not any(f.rule_id == "AAK-SEC-MD-001" for f in findings)
+
+
+@pytest.mark.parametrize("where", ["security/SECURITY.md", "packages/server/SECURITY.md"])
+def test_security_md_outside_those_folders_still_fires(tmp_path: Path, where: str) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "my-mcp-server"\nkeywords = ["mcp"]\n'
+    )
+    policy = tmp_path / where
+    policy.parent.mkdir(parents=True, exist_ok=True)
+    policy.write_text("# Security\n\nReport at security@example.com\n")
+    findings, _ = marketplace_manifest.scan(tmp_path)
+    assert any(f.rule_id == "AAK-SEC-MD-001" for f in findings)
+
+
 def test_security_contact_in_pyproject_satisfies(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         '[project]\n'

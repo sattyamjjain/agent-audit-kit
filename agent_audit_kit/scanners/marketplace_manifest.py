@@ -45,6 +45,13 @@ _BROAD_PERMISSIONS = (
     "*:*",
 )
 _COMMIT_SHA_RE = re.compile(r"^[a-f0-9]{40}$|^[a-f0-9]{7,40}$")
+# Where GitHub reads a SECURITY.md from: `.github/`, the root, then `docs/`, the
+# precedence its docs give for a community health file that can sit in more than
+# one place (https://docs.github.com/en/communities/setting-up-your-project-for-
+# healthy-contributions/creating-a-default-community-health-file). Only the root
+# and `.github/` were read, so a repository that kept its policy in `docs/` was
+# told it shipped none.
+_SECURITY_MD_FOLDERS = (".github", ".", "docs")
 
 
 def _iter_manifests(project_root: Path) -> list[Path]:
@@ -270,9 +277,9 @@ def _check_mcp_security_md(
     if not advertises_mcp:
         return []
 
-    has_security_md = (project_root / "SECURITY.md").is_file() or (
-        project_root / ".github" / "SECURITY.md"
-    ).is_file()
+    has_security_md = any(
+        (project_root / folder / "SECURITY.md").is_file() for folder in _SECURITY_MD_FOLDERS
+    )
     if has_security_md or security_contact_declared:
         return []
 

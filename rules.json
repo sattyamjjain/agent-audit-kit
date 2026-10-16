@@ -9565,7 +9565,7 @@
       "auto_fixable": false,
       "category": "supply-chain",
       "cve_references": [],
-      "description": "A repository whose name or pyproject keywords declare it as an MCP server ships without a top-level SECURITY.md AND without a `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
+      "description": "A repository whose name or pyproject keywords declare it as an MCP server ships no SECURITY.md in the root, `docs/` or `.github/` (the three folders GitHub reads a security policy from) AND no `security_contact` entry in marketplace.json / pyproject.toml / package.json. Anthropic's April 2026 SECURITY.md guidance makes this the baseline expectation so researchers have a channel.",
       "incident_references": [],
       "limitations": "Treats a repository as an MCP server only when `mcp` appears in the name or keywords of the root pyproject.toml, package.json or .claude-plugin/marketplace.json. A server named without it (an `acme-tools` package whose keyword is `model-context-protocol` and which depends on the SDK), one declared in Cargo.toml or go.mod, and a package.json in a sub-directory are not recognised.",
       "owasp_agentic_references": [
@@ -9575,7 +9575,7 @@
       "owasp_mcp_references": [
         "MCP04:2025"
       ],
-      "remediation": "Add SECURITY.md at the repo root with a disclosure email and response SLA; OR add `security_contact` to the project manifest.",
+      "remediation": "Add SECURITY.md with a disclosure email and response SLA at the repo root, in `docs/` or in `.github/`; OR add `security_contact` to the project manifest.",
       "rule_id": "AAK-SEC-MD-001",
       "sarif_name": "McpServerNoSecurityMd",
       "severity": "low",
