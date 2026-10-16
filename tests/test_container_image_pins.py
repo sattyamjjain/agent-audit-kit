@@ -749,3 +749,91 @@ def test_a_config_that_does_not_parse_even_as_jsonc_is_skipped(tmp_path: Path) -
         encoding="utf-8",
     )
     assert _ids(tmp_path) == []
+
+
+# --- Item 39: the images of two servers that also have package pins ---
+#
+# n8n-mcp and mcp-atlassian publish a GHCR image beside their npm and PyPI
+# releases, tagged with the package version (no `v`), and their docs run it with
+# `docker run` from an MCP config. The package pins never read an image, so a
+# config on a vulnerable tag was silent. These rows read a version tag only: an
+# untagged or `latest` reference is not reported, whatever `latest` is today,
+# because the State of MCP v1.1 corpus carries both images on `:latest` and a
+# report over it must not move.
+
+N8NMCP = "AAK-MCP-N8NMCP-CVE-2026-54052-001"
+ATL_27825 = "AAK-MCP-ATLASSIAN-CVE-2026-27825-001"
+ATL_27826 = "AAK-MCP-ATLASSIAN-CVE-2026-27826-001"
+ATL_73498 = "AAK-MCP-ATLASSIAN-CVE-2026-73498-001"
+
+
+def _docker_config(tmp_path: Path, image: str) -> list:
+    import json
+
+    config = {"mcpServers": {"s": {"command": "docker", "args": ["run", "-i", "--rm", image]}}}
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".mcp.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    return scan(tmp_path)[0]
+
+
+@pytest.mark.parametrize(("ref", "fires"), [
+    ("ghcr.io/czlonkowski/n8n-mcp:2.40.0", True),
+    ("ghcr.io/czlonkowski/n8n-mcp:2.56.0", True),    # CVE-2026-54052's last affected tag
+    ("ghcr.io/czlonkowski/n8n-mcp:2.57.3", True),    # CVE-2026-55608's last affected tag
+    ("ghcr.io/czlonkowski/n8n-mcp:2.56", True),      # the whole 2.56 line is affected
+    ("ghcr.io/czlonkowski/n8n-mcp:2.57.4", False),   # the fix
+    ("ghcr.io/czlonkowski/n8n-mcp:2.57", False),     # floats to 2.57.4 or later
+    ("ghcr.io/czlonkowski/n8n-mcp:2.94.0", False),
+    ("ghcr.io/czlonkowski/n8n-mcp:latest", False),   # not judged, whatever it is
+    ("ghcr.io/czlonkowski/n8n-mcp", False),          # untagged is latest
+    ("ghcr.io/czlonkowski/n8n-mcp:2", False),        # one part states no release
+    ("ghcr.io/czlonkowski/n8n-mcp:main", False),
+    ("ghcr.io/czlonkowski/n8n-mcp:sha-2a1b3c4", False),
+    ("ghcr.io/czlonkowski/n8n-mcp-railway:2.57.3", True),   # the same server, Dockerfile.railway
+    ("ghcr.io/czlonkowski/n8n-mcp-railway:2.57.4", False),
+    ("ghcr.io/czlonkowski/n8n-mcp-railway:latest", False),
+    ("ghcr.io/czlonkowski/n8n-mcp-docs:2.40.0", False),     # another image name
+    ("czlonkowski/n8n-mcp:2.40.0", False),                  # not on Docker Hub
+])
+def test_n8n_mcp_image_tag_reading(tmp_path: Path, ref: str, fires: bool) -> None:
+    findings = _docker_config(tmp_path, ref)
+    assert ([f.rule_id for f in findings] == [N8NMCP]) is fires
+    if fires:
+        assert findings[0].line_number == 9   # the image argument
+
+
+@pytest.mark.parametrize(("ref", "expected"), [
+    ("ghcr.io/sooperset/mcp-atlassian:0.11.9", {ATL_27825, ATL_27826, ATL_73498}),
+    ("ghcr.io/sooperset/mcp-atlassian:0.16.1", {ATL_27825, ATL_27826, ATL_73498}),
+    ("ghcr.io/sooperset/mcp-atlassian:0.16", {ATL_27825, ATL_27826, ATL_73498}),
+    ("ghcr.io/sooperset/mcp-atlassian:0.17.0", {ATL_73498}),   # fixes 27825 and 27826
+    ("ghcr.io/sooperset/mcp-atlassian:0.21.0", {ATL_73498}),
+    ("ghcr.io/sooperset/mcp-atlassian:0.21", {ATL_73498}),
+    ("ghcr.io/sooperset/mcp-atlassian:0.22.0", set()),          # fixes 73498
+    ("ghcr.io/sooperset/mcp-atlassian:0.22", set()),
+    ("ghcr.io/sooperset/mcp-atlassian:0.23.1", set()),
+    ("ghcr.io/sooperset/mcp-atlassian:latest", set()),
+    ("ghcr.io/sooperset/mcp-atlassian", set()),
+    ("ghcr.io/sooperset/mcp-atlassian:0", set()),
+    # A digest names one release, but not which: the 0.21.0 digest is not read.
+    ("ghcr.io/sooperset/mcp-atlassian@sha256:"
+     "6c4f96725b0e775a014a0b3016d358efdab58efd57c37ad7c2050136545b0e00", set()),
+    ("sooperset/mcp-atlassian:0.16.1", set()),                  # not on Docker Hub
+])
+def test_mcp_atlassian_image_tag_reading(tmp_path: Path, ref: str, expected: set[str]) -> None:
+    assert {f.rule_id for f in _docker_config(tmp_path, ref)} == expected
+
+
+def test_the_image_rows_carry_the_package_pins_cves() -> None:
+    from agent_audit_kit.scanners.container_image_pins import _PINS
+
+    for pin in _PINS:
+        if pin.rule_id in (N8NMCP, ATL_27825, ATL_27826, ATL_73498):
+            assert set(pin.cves) <= set(RULES[pin.rule_id].cve_references), pin
+            assert pin.floating_affected is False, "a floating tag must not move v1.1"
+
+
+def test_the_corpus_latest_references_stay_quiet(tmp_path: Path) -> None:
+    """The two v1.1 corpus configs run these images on `:latest`."""
+    assert _docker_config(tmp_path / "a", "ghcr.io/czlonkowski/n8n-mcp:latest") == []
+    assert _docker_config(tmp_path / "b", "ghcr.io/sooperset/mcp-atlassian:latest") == []

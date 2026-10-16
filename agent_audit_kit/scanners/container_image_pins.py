@@ -30,6 +30,10 @@ author.
 NetLicensing MCP is on PyPI
 too, and like obsidian-tc it has rows in both
 readers, here for `ghcr.io/labs64/netlicensing-mcp` and `labs64/netlicensing-mcp`.
+n8n-mcp (npm) and mcp-atlassian (PyPI) have rows here as well, for
+`ghcr.io/czlonkowski/n8n-mcp` (and its `-railway` build) and
+`ghcr.io/sooperset/mcp-atlassian`, which their docs run with `docker run`; those
+rows read a version tag only and never report `latest` or an untagged reference.
 Docker Hub
 images are matched by the bare name their docs use, so `docker.io/grafana/mcp-k6`
 is not read. Nothing `mcp_cve_pins_2026_07` reads carries their version, and a pin
@@ -323,6 +327,51 @@ _PINS: tuple[_ImagePin, ...] = (
         "AAK-MCP-NEZHA-CVE-2026-111385-001", "Nezha", "ghcr.io/nezhahq/nezha",
         (2, 3, 15), "from v2.1.0 up to v2.3.15", "Fixed in v2.3.15.",
         ("CVE-2026-111385",), introduced=(2, 1, 0),
+    ),
+    # Two servers with package pins elsewhere whose docs also run a GHCR image
+    # with `docker run` from an MCP config. These rows read a version tag only:
+    # `floating_affected` stays False even where `latest` were affected, because
+    # the State of MCP v1.1 corpus runs both images on `:latest` and a report over
+    # that corpus must not move with this table. Both release workflows tag the
+    # image with the package version, without a `v`, plus two-part tags and
+    # `latest`; neither image is on Docker Hub.
+    #
+    # n8n-mcp (npm), CVE-2026-54052 below 2.56.1 and CVE-2026-55608 below 2.57.4:
+    # tenant backups in HTTP multi-tenant mode. `release.yml` builds the image
+    # from the commit of the npm release, so the tag is the server's version; the
+    # Railway image (Dockerfile.railway) runs the same server on the same tags.
+    # On 2026-10-16 `2.57` and `latest` were fixed digests (2.57.4 and later,
+    # 2.94.0) and `2.56` an affected one.
+    _ImagePin(
+        "AAK-MCP-N8NMCP-CVE-2026-54052-001", "n8n-mcp", "ghcr.io/czlonkowski/n8n-mcp",
+        (2, 57, 4), "below 2.57.4", "Fixed in 2.57.4.",
+        ("CVE-2026-54052", "CVE-2026-55608"),
+    ),
+    _ImagePin(
+        "AAK-MCP-N8NMCP-CVE-2026-54052-001", "n8n-mcp",
+        "ghcr.io/czlonkowski/n8n-mcp-railway",
+        (2, 57, 4), "below 2.57.4", "Fixed in 2.57.4.",
+        ("CVE-2026-54052", "CVE-2026-55608"),
+    ),
+    # mcp-atlassian (PyPI): CVE-2026-27825 and CVE-2026-27826 below 0.17.0, the
+    # `mcp_atlassian` module's pair, and CVE-2026-73498 below 0.22.0, the pin
+    # table's row. `docker-publish.yml` tags each `v*.*.*` release as its version,
+    # and the image installs that checkout. GHCR carries 0.8.0 to 0.23.1; `latest`
+    # was the 0.23.1 digest on 2026-10-16.
+    _ImagePin(
+        "AAK-MCP-ATLASSIAN-CVE-2026-27825-001", "mcp-atlassian",
+        "ghcr.io/sooperset/mcp-atlassian",
+        (0, 17, 0), "below 0.17.0", "Fixed in 0.17.0.", ("CVE-2026-27825",),
+    ),
+    _ImagePin(
+        "AAK-MCP-ATLASSIAN-CVE-2026-27826-001", "mcp-atlassian",
+        "ghcr.io/sooperset/mcp-atlassian",
+        (0, 17, 0), "below 0.17.0", "Fixed in 0.17.0.", ("CVE-2026-27826",),
+    ),
+    _ImagePin(
+        "AAK-MCP-ATLASSIAN-CVE-2026-73498-001", "mcp-atlassian",
+        "ghcr.io/sooperset/mcp-atlassian",
+        (0, 22, 0), "below 0.22.0", "Fixed in 0.22.0.", ("CVE-2026-73498",),
     ),
 )
 
