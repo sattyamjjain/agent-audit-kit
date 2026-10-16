@@ -17,6 +17,7 @@ Home of AAK-MCPFRAME-001 — mcp-framework < 0.2.22 HTTP body-size DoS
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -24,6 +25,17 @@ from agent_audit_kit.models import Finding
 
 from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
 from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
+from ._http_routes import (
+    MCP_METHODS,
+    TEST_FILE_RE,
+    CodeIndex,
+    GoHandler,
+    GoRoute,
+    go_handlers,
+    go_routes,
+    is_mcp_endpoint_path,
+    py_routes,
+)
 
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
@@ -160,9 +172,419 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
     return findings
 
 
+# ---------------------------------------------------------------------------
+# AAK-MCP-016: an MCP endpoint that reads the whole request body, unbounded
+# ---------------------------------------------------------------------------
+#
+# AAK-MCPFRAME-001 above reads one shape, TS/JS chunks concatenated off
+# `req.on('data')`, and the SDK pins (AAK-MCP-SDK-CVE-2026-52869-001,
+# AAK-MCP-JAVASDK-CVE-2026-108395-001) read versions. Neither sees a server
+# that parses the JSON-RPC body itself in a framework that sets no limit,
+# which is how most hand-written MCP endpoints in Go and Python read it: Go's
+# net/http, gin, echo and chi, Starlette (so FastAPI) and Flask all hand the
+# handler a body of any size. `io.ReadAll(r.Body)`, `json.NewDecoder(r.Body)`,
+# `c.ShouldBindJSON(...)`, `await request.json()` and `request.get_json()` then
+# hold all of it in memory, and the tool arguments in it go on to the model.
+#
+# A read is reported only inside a handler that serves MCP: one registered on a
+# route whose path names `mcp`, or one whose body names an MCP method
+# (`"tools/call"`, `"initialize"`, ...). A handler named for MCP is not enough:
+# an admin API that binds MCP settings reads a body too. Any limit silences it,
+# however it is written, because a limit the check does not understand should
+# cost a missed finding, not a false one: `http.MaxBytesReader` or
+# `io.LimitReader` in the handler, a Content-Length test, a length test on what
+# was read (the body is already in memory then, but the developer chose a
+# size), and anywhere in the project `http.MaxBytesHandler`, a `.Body =`
+# reassignment through a limiting reader, echo's `BodyLimit`, chi's
+# `RequestSize`, gin's size limiter, Flask's `MAX_CONTENT_LENGTH` or a Starlette
+# middleware that names a body size. Frameworks with a default limit (Express's
+# body parsers, Fastify, aiohttp, Django, Quart, Fiber) are not read, and test
+# files serve no endpoint.
+
+_MCP016 = "AAK-MCP-016"
+_MCP016_MAX_BYTES = 1_000_000
+# An MCP method the handler dispatches on: `case "tools/call":`, `== "initialize"`,
+# a dispatch-table key. The same literal as a value (`Method: "initialize"`) is
+# a request the handler sends to a server as a client, not one it serves.
+_MCP_METHOD_NAMES = "(?:" + "|".join(map(re.escape, sorted(MCP_METHODS))) + ")"
+_GO_MCP_DISPATCH_RE = re.compile(
+    # `[^:\n]{0,160}`, not `*`: from every `case` on a long line with no colon the
+    # unbounded form read to the end of the line, so the line cost its square.
+    rf'\bcase[ \t]+[^:\n]{{0,160}}"{_MCP_METHOD_NAMES}"|[!=]=\s*"{_MCP_METHOD_NAMES}"|"{_MCP_METHOD_NAMES}"\s*(?:[!=]=|:)'
+)
+_WORD_RE = re.compile(r"[A-Za-z_]\w*")
+# `match` cases (3.10+); the 3.9 AST has none, and an empty tuple matches nothing.
+_MATCH_VALUE: tuple[type, ...] = tuple(t for t in (getattr(ast, "MatchValue", None),) if t is not None)
+_GO_PROJECT_CAP_RE = re.compile(
+    r"\bMaxBytesHandler\s*\(|\bMaxBytesReader\s*\(|\bBodyLimit\s*\(|\bRequestSize\s*\(|\bRequestSizeLimiter\s*\("
+    r"|\.Body\s*=\s*(?:\w+\.)?(?:LimitReader|NopCloser\s*\(\s*(?:\w+\.)?LimitReader)\s*\("
+    # A Content-Length test that answers 413 (a size-limit middleware).
+    r"|ContentLength\s*>[^\n{]{1,80}\{[^}]{0,300}?(?:StatusRequestEntityTooLarge|\b413\b)"
+)
+_GO_READS = {
+    "nethttp": r"\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Body\s*\)",
+    "gin": (
+        r"\b{n}\.(?:ShouldBindJSON|BindJSON|ShouldBind|Bind|ShouldBindBodyWith|GetRawData)\s*\("
+        r"|\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Request\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Request\.Body\s*\)"
+    ),
+    "echo": (
+        r"\b{n}\.Bind\s*\("
+        r"|\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Request\(\)\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Request\(\)\.Body\s*\)"
+    ),
+}
+# Any of the reads above, before the handler that makes them is known: a file
+# without one is not indexed.
+_GO_ANY_READ_RE = re.compile(
+    r"\b(?:io|ioutil)\.ReadAll\(|\bjson\.NewDecoder\(|\.(?:ShouldBindJSON|BindJSON|ShouldBind|Bind|ShouldBindBodyWith|GetRawData)\s*\("
+)
+_PY_ANY_READ_RE = re.compile(r"\.(?:json|body)\s*\(\s*\)|\bget_json\b|\bget_data\b|\brequest\.(?:json|data)\b")
+_GO_HANDLER_CAP = r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(|\b{n}(?:\.Request(?:\(\))?)?\.ContentLength\b"
+
+# Flask's (Werkzeug's) limit, set in code or config.
+_PY_PROJECT_CAP_RE = re.compile(r"\bMAX_CONTENT_LENGTH\b|\bmax_content_length\b")
+# A file that may hold a size-limiting middleware, before parsing it.
+_PY_MIDDLEWARE_HINT_RE = re.compile(r"middleware|before_request|__call__")
+_PY_SIZE_HINT_RE = re.compile(r"\b413\b|content[-_]length|TOO_LARGE|too large", re.IGNORECASE)
+# `^[ \t]*`, not `^\s*`: `\s` crosses newlines, so from every line start of a run
+# of blank lines the pattern reread the rest of the run.
+_PY_STARLETTE_RE = re.compile(r"^[ \t]*(?:from|import)[ \t]+(?:fastapi|starlette)\b", re.MULTILINE)
+_PY_FLASK_RE = re.compile(r"^[ \t]*from[ \t]+flask[ \t]+import\b[^\n]*\brequest\b", re.MULTILINE)
+_PY_OTHER_FRAMEWORK_RE = re.compile(
+    r"^[ \t]*(?:from|import)[ \t]+(?:quart|aiohttp|sanic|litestar|django|tornado|falcon|bottle)\b", re.MULTILINE
+)
+
+
+def _project_files(project_root: Path, suffix: str) -> list[Path]:
+    out: list[Path] = []
+    for path in project_root.rglob(f"*{suffix}"):
+        if not path.is_file() or in_skip_dir(path, project_root):
+            continue
+        try:
+            if path.stat().st_size > _MCP016_MAX_BYTES:
+                continue
+        except OSError:
+            continue
+        out.append(path)
+    return out
+
+
+def _read_texts(paths: list[Path]) -> dict[Path, str]:
+    texts: dict[Path, str] = {}
+    for path in paths:
+        try:
+            texts[path] = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+    return texts
+
+
+def _project_capped(texts: dict[Path, str], project_root: Path, cap_re: re.Pattern[str]) -> bool:
+    """A body-size limit anywhere in the project's own (non-test) code.
+
+    Project-wide on purpose: the limit is usually set where the server is
+    built (`http.MaxBytesHandler(mux, n)` in main.go, `MAX_CONTENT_LENGTH` in
+    the app factory, a Starlette middleware), not beside the handler, and which
+    handler it wraps is not worth guessing. A limit in a test configures no
+    server. A name alone is not a limit: `MAX_BODY_CHARS` that truncates a log
+    line, or `io.LimitReader(r.Body, n)` in some other handler, said nothing
+    about the MCP route and silenced 29 real findings in the design sample.
+    """
+    for path, text in texts.items():
+        if TEST_FILE_RE.search(path.relative_to(project_root).as_posix()):
+            continue
+        if cap_re.search(text):
+            return True
+        if path.suffix == ".py" and _py_size_middleware(text):
+            return True
+    return False
+
+
+def _py_size_middleware(text: str) -> bool:
+    """A Starlette/FastAPI middleware or Flask `before_request` hook that checks
+    a body size: `@app.middleware("http")`, a class with `dispatch(...,
+    call_next)` or an ASGI `__call__(self, scope, receive, send)`, whose own
+    code answers 413 or compares a Content-Length or a body length."""
+    if not (_PY_MIDDLEWARE_HINT_RE.search(text) and _PY_SIZE_HINT_RE.search(text)):
+        return False
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_middleware(node) and _checks_size(node):
+            return True
+        if isinstance(node, ast.ClassDef) and _names_body_limit(node.name) and any(
+            isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_middleware(item) for item in node.body
+        ):
+            return True
+    return False
+
+
+def _names_body_limit(name: str) -> bool:
+    """`BodyLimitMiddleware`, `BodySizeLimitMiddleware`, `ContentSizeLimitMiddleware`."""
+    low = name.lower()
+    return any(w in low for w in ("body", "content", "upload", "payload")) and any(
+        w in low for w in ("limit", "size", "max")
+    )
+
+
+_ORDERING = (ast.Gt, ast.GtE, ast.Lt, ast.LtE)
+
+
+def _is_middleware(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    params = [a.arg for a in func.args.args]
+    if func.name == "dispatch" and "call_next" in params:
+        return True
+    if func.name == "__call__" and params[:4] == ["self", "scope", "receive", "send"]:
+        return True
+    for deco in func.decorator_list:
+        target = deco.func if isinstance(deco, ast.Call) else deco
+        if isinstance(target, ast.Attribute) and target.attr in ("middleware", "before_request"):
+            return True
+    return False
+
+
+def _checks_size(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for node in _own_nodes(func):
+        if isinstance(node, ast.Constant) and node.value == 413:
+            return True
+        if isinstance(node, ast.Call):
+            callee = node.func.attr if isinstance(node.func, ast.Attribute) else getattr(node.func, "id", "")
+            if "too_large" in callee.lower() or "toolarge" in callee.lower():
+                return True
+        if isinstance(node, ast.Attribute) and node.attr in (
+            "HTTP_413_REQUEST_ENTITY_TOO_LARGE", "HTTP_413_CONTENT_TOO_LARGE", "REQUEST_ENTITY_TOO_LARGE",
+        ):
+            return True
+        # An ordering test on the Content-Length value; `"content-length" in
+        # request.headers` is a logging middleware asking whether there is one.
+        if isinstance(node, ast.Compare) and all(isinstance(op, _ORDERING) for op in node.ops) and any(
+            isinstance(n, ast.Constant) and isinstance(n.value, (str, bytes))
+            and n.value.lower() in ("content-length", b"content-length")
+            for side in [node.left, *node.comparators] for n in ast.walk(side)
+        ):
+            return True
+    return False
+
+
+def _check_unbounded_go(project_root: Path, scanned: set[str]) -> list[Finding]:
+    texts = _read_texts(_project_files(project_root, ".go"))
+    if _project_capped(texts, project_root, _GO_PROJECT_CAP_RE):
+        return []
+    findings: list[Finding] = []
+    for path, text in texts.items():
+        rel = path.relative_to(project_root).as_posix()
+        if TEST_FILE_RE.search(rel) or not _GO_ANY_READ_RE.search(text):
+            continue
+        scanned.add(rel)
+        index = CodeIndex(text, go=True)
+        handlers = go_handlers(index)
+        if not handlers:
+            continue
+        mcp_routes = [r for r in go_routes(index) if is_mcp_endpoint_path(r.path)]
+        reads: dict[int, tuple[GoHandler, re.Match[str]]] = {}
+        for handler in handlers:
+            read_re = re.compile(_GO_READS[handler.kind].format(n=re.escape(handler.request)))
+            for m in read_re.finditer(text, handler.body_start, handler.body_end):
+                held = reads.get(m.start())
+                if held is None or held[0].body_start < handler.body_start:
+                    reads[m.start()] = (handler, m)
+        reported: set[int] = set()
+        for pos in sorted(reads):
+            handler, m = reads[pos]
+            if not index.in_code(pos) or id(handler) in reported:
+                continue
+            route = _go_mcp_route(handler, mcp_routes, text)
+            if route is None and not _GO_MCP_DISPATCH_RE.search(text, handler.body_start, handler.body_end):
+                continue
+            cap_re = re.compile(_GO_HANDLER_CAP.format(n=re.escape(handler.request)))
+            if cap_re.search(text, handler.body_start, handler.body_end) or _calls_limit_helper(
+                text, handler.body_start, pos
+            ):
+                continue
+            reported.add(id(handler))
+            where = f"route {route!r}" if route else "a handler that serves MCP methods"
+            findings.append(make_finding(
+                _MCP016,
+                rel,
+                f"{handler.name or 'func literal'} ({where}) reads the request body with "
+                f"`{m.group(0)}` and nothing limits its size: no http.MaxBytesReader, "
+                "io.LimitReader or Content-Length check here, and no body-size middleware "
+                "in the project",
+                line_number=index.line_of(pos),
+            ))
+    return findings
+
+
+def _calls_limit_helper(text: str, start: int, end: int) -> bool:
+    """A call such as `limitRequestBody(w, r, max)` between ``start`` and ``end``.
+
+    Read word by word rather than with one pattern: `\\w*limit\\w*body` over a
+    long word with many `limit`s and no `body` backtracks with its square.
+    """
+    for m in _WORD_RE.finditer(text, start, end):
+        low = m.group().lower()
+        limited = "limit" in low or "max" in low
+        if limited and ("body" in low or "size" in low) and text.startswith("(", m.end()):
+            return True
+    return False
+
+
+def _go_mcp_route(handler: GoHandler, routes: list[GoRoute], text: str) -> str | None:
+    """The MCP route path ``handler`` is registered on in this file, if any."""
+    name_re = re.compile(rf"(?<![\w]){re.escape(handler.name)}\b") if handler.name else None
+    for route in routes:
+        for (s, e), arg in zip(route.arg_spans, route.args):
+            if s <= handler.start < e:
+                return route.path
+            if name_re is not None and name_re.search(arg):
+                return route.path
+    return None
+
+
+def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Finding]:
+    texts = _read_texts(_project_files(project_root, ".py"))
+    if _project_capped(texts, project_root, _PY_PROJECT_CAP_RE):
+        return []
+    findings: list[Finding] = []
+    for path, text in texts.items():
+        rel = path.relative_to(project_root).as_posix()
+        if TEST_FILE_RE.search(rel) or not _PY_ANY_READ_RE.search(text) or _PY_OTHER_FRAMEWORK_RE.search(text):
+            continue
+        starlette = bool(_PY_STARLETTE_RE.search(text))
+        flask = bool(_PY_FLASK_RE.search(text))
+        if starlette == flask:
+            continue
+        scanned.add(rel)
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        routes = py_routes(tree)
+        if not routes:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in routes:
+                continue
+            paths = [r.path for r in routes[node.name] if r.path is not None]
+            mcp_path = next((p for p in paths if is_mcp_endpoint_path(p)), None)
+            if mcp_path is None and not _py_names_mcp_method(node):
+                continue
+            read = _py_body_read(node, flask)
+            if read is None or _py_handler_capped(node, read[0]):
+                continue
+            where = f"route {mcp_path!r}" if mcp_path else "a handler that serves MCP methods"
+            framework = "Flask, with MAX_CONTENT_LENGTH unset," if flask else "Starlette"
+            findings.append(make_finding(
+                _MCP016,
+                rel,
+                f"{node.name} ({where}) reads the request body with `{read[1]}`; {framework} sets "
+                "no size limit, and there is no Content-Length or length check here or "
+                "body-size middleware in the project",
+                line_number=read[0],
+            ))
+    return findings
+
+
+def _own_nodes(func: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.AST]:
+    """Nodes of ``func``'s body, not those of functions or classes nested in it."""
+    out: list[ast.AST] = []
+    stack: list[ast.AST] = list(func.body)
+    while stack:
+        node = stack.pop()
+        out.append(node)
+        for child in ast.iter_child_nodes(node):
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                stack.append(child)
+    return out
+
+
+def _py_names_mcp_method(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True when ``func`` dispatches on an MCP method: compares one, matches a
+    `case` on one, or keys a dispatch table by one. A method as a dict value
+    (`{"method": "initialize"}`) is a request it sends as a client."""
+    for node in _own_nodes(func):
+        values: list[ast.AST] = []
+        if isinstance(node, ast.Compare):
+            values = [node.left, *node.comparators]
+            for side in node.comparators:
+                if isinstance(side, (ast.Tuple, ast.List, ast.Set)):
+                    values.extend(side.elts)
+        elif isinstance(node, ast.Dict):
+            values = [k for k in node.keys if k is not None]
+        elif isinstance(node, _MATCH_VALUE):
+            values = [getattr(node, "value", None) or node]
+        if any(isinstance(v, ast.Constant) and v.value in MCP_METHODS for v in values):
+            return True
+    return False
+
+
+def _py_request_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    names: set[str] = set()
+    for arg in func.args.posonlyargs + func.args.args + func.args.kwonlyargs:
+        ann = arg.annotation
+        ann_name = ann.id if isinstance(ann, ast.Name) else ann.attr if isinstance(ann, ast.Attribute) else ""
+        if ann_name == "Request" or arg.arg in ("request", "req"):
+            names.add(arg.arg)
+    return names
+
+
+def _py_body_read(func: ast.FunctionDef | ast.AsyncFunctionDef, flask: bool) -> tuple[int, str] | None:
+    """(line, source) of the first whole-body read in ``func``'s own body."""
+    reads: list[tuple[int, str]] = []
+    if flask:
+        for node in _own_nodes(func):
+            if (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "request"
+                and node.attr in ("get_json", "get_data", "json", "data")
+            ):
+                suffix = "()" if node.attr.startswith("get_") else ""
+                reads.append((node.lineno, f"request.{node.attr}{suffix}"))
+    else:
+        params = _py_request_params(func)
+        for node in _own_nodes(func):
+            if (
+                isinstance(node, ast.Await)
+                and isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Attribute)
+                and isinstance(node.value.func.value, ast.Name)
+                and node.value.func.value.id in params
+                and node.value.func.attr in ("json", "body")
+            ):
+                reads.append((node.lineno, f"await {node.value.func.value.id}.{node.value.func.attr}()"))
+    return min(reads) if reads else None
+
+
+def _py_handler_capped(func: ast.FunctionDef | ast.AsyncFunctionDef, read_line: int) -> bool:
+    """A size check in the handler: a Content-Length read, a length test, or a
+    call such as `body_exceeds_limit(request)` before the read."""
+    for node in _own_nodes(func):
+        if isinstance(node, ast.Call) and getattr(node, "lineno", read_line) <= read_line:
+            func_node = node.func
+            name = func_node.attr if isinstance(func_node, ast.Attribute) else getattr(func_node, "id", "")
+            low = name.lower()
+            if ("limit" in low or "max" in low or "exceed" in low) and ("body" in low or "size" in low):
+                return True
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.lower() in (
+            "content-length", "content_length",
+        ):
+            return True
+        if isinstance(node, ast.Attribute) and node.attr == "content_length":
+            return True
+        if isinstance(node, ast.Compare):
+            for side in [node.left, *node.comparators]:
+                if isinstance(side, ast.Call) and isinstance(side.func, ast.Name) and side.func.id == "len":
+                    return True
+    return False
+
+
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
     findings: list[Finding] = []
     findings.extend(_check_package_json(project_root, scanned))
     findings.extend(_check_body_accumulation(project_root, scanned))
+    findings.extend(_check_unbounded_go(project_root, scanned))
+    findings.extend(_check_unbounded_python(project_root, scanned))
     return findings, scanned
