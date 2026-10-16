@@ -20,14 +20,15 @@ Distinct from v0.3.4's
 token-shaped values flowing into log sinks at runtime. This rule fires
 on the *configuration* that makes the runtime leak inevitable: a
 `splunk-mcp-server` config file (`inputs.conf`, `splunk-mcp.yaml`,
-or any file under `splunk-mcp/`) that routes a token-bearing
+or any file under a directory whose name holds both `splunk` and `mcp`,
+such as `splunk-mcp/`, `splunk_mcp/` or `splunk-mcp-server/`) that routes a token-bearing
 sourcetype (`splunk_session`, `mcp_auth`, `bearer`, `access_token`,
 `session_token`, `jwt`) into the `_internal`, `_audit`, or
 `_introspection` index.
 
 ## Detection
 
-Two passes — files matching `splunk-mcp-*` paths get both:
+Two passes — every file the path gate opens gets both:
 
 1. **YAML structured pass.** `yaml.safe_load`, walk
    `inputs[]`/`sourcetypes[]`, fire when an entry pairs a token-bearing
