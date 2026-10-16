@@ -679,3 +679,74 @@ def test_secret_007_reads_a_config_whose_suffix_is_upper_case(tmp_path: Path) ->
     (tmp_path / "config.JSON").write_text(json.dumps(config, indent=2), encoding="utf-8")
 
     assert _secret_007(tmp_path) == [("config.JSON", 9)]
+
+
+# ---------------------------------------------------------------------------
+# AAK-SECRET-004 reads an unquoted YAML value
+#
+# It read `NAME=value` and a quoted value after `:` or `=`, so a compose file's
+# `environment:` map, `SECRET_KEY: <value>` with no quotes, was silent.
+# ---------------------------------------------------------------------------
+
+_RANDOM_VALUE = "Zk8Q2mPx7LwR4vN9bT1yU6hJ3dAeF5gC"  # 32 distinct characters, entropy 5.0
+
+
+@pytest.mark.parametrize(
+    "name, text",
+    [
+        ("docker-compose.yml", "services:\n  app:\n    environment:\n      SECRET_KEY: {v}\n"),
+        ("config.yaml", "database_password: {v}\n"),
+        ("deploy/values.yml", "auth:\n  - api_token:   {v}   # rotate monthly\n"),
+    ],
+    ids=lambda v: v if len(v) < 40 else "",
+)
+def test_secret_004_reads_an_unquoted_yaml_value(tmp_path: Path, name: str, text: str) -> None:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text.replace("{v}", _RANDOM_VALUE), encoding="utf-8")
+
+    findings, _ = scan(tmp_path)
+
+    (hit,) = _hits(findings, "AAK-SECRET-004")
+    assert hit.line_number == text.count("\n")
+    assert _RANDOM_VALUE not in hit.evidence
+
+
+@pytest.mark.parametrize(
+    "name, text",
+    [
+        # Not YAML: a TypeScript object and a Python annotation keep the two old shapes.
+        ("server.ts", "const opts = { apiKey: Zk8Q2mPx7LwR4vN9bT1yU6hJ3dAeF5gC };\n"),
+        ("settings.py", "secret_key: Zk8Q2mPx7LwR4vN9bT1yU6hJ3dAeF5gC\n"),
+        # YAML whose value is no literal: a reference, a block, an anchor, a tag, low entropy.
+        ("a.yml", "secret_key: ${SECRET_KEY_FROM_THE_ENVIRONMENT}\n"),
+        ("b.yml", "private_key: |\n  not-a-value\n"),
+        ("c.yml", "api_key: &default_api_key_anchor_name_here\n"),
+        ("d.yml", "token: !vault |\n  $ANSIBLE_VAULT;1.1;AES256\n"),
+        ("e.yml", "tokenizer: bert-base-uncased-tokenizer\n"),
+        ("f.yml", "key:no-space-after-the-colon-Zk8Q2mPx7LwR4vN9bT1y\n"),
+    ],
+    ids=lambda v: v if len(v) < 12 else "",
+)
+def test_secret_004_leaves_other_colon_shapes_alone(tmp_path: Path, name: str, text: str) -> None:
+    (tmp_path / name).write_text(text, encoding="utf-8")
+
+    findings, _ = scan(tmp_path)
+
+    assert _hits(findings, "AAK-SECRET-004") == []
+
+
+def test_the_yaml_reader_returns_the_old_pairs_and_adds_the_unquoted_one() -> None:
+    assert _secret_assignments("api_key: abcdefghijklmnop1234") == []
+    assert _secret_assignments("api_key: abcdefghijklmnop1234", yaml=True) == [("api_key", "abcdefghijklmnop1234")]
+    # A quoted value is still read once, by the quoted shape.
+    assert _secret_assignments('api_key: "abcdefghijklmnop1234"', yaml=True) == [("api_key", "abcdefghijklmnop1234")]
+
+
+@pytest.mark.parametrize("line", [line for _label, line in _CRAFTED_LINES], ids=_CRAFTED_IDS)
+def test_the_yaml_reader_takes_a_200_kb_line_in_linear_time(line: str) -> None:
+    started = time.perf_counter()
+    _secret_assignments(line, yaml=True)
+    _secret_assignments("KEY:" + " " * 200_000 + "x" * 20, yaml=True)
+    _secret_assignments("KEY: " * 40_000, yaml=True)
+    assert time.perf_counter() - started < 10.0

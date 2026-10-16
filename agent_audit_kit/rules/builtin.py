@@ -1792,7 +1792,8 @@ _r(
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-TOKEN-06"],
     limitations=(
-        "Reads `NAME=value` pairs and quoted values (`\"NAME\": \"value\"`) whose name "
+        "Reads `NAME=value` pairs, quoted values (`\"NAME\": \"value\"`) and, in YAML, "
+        "unquoted `NAME: value` pairs whose name "
         "contains SECRET, PASSWORD, TOKEN, KEY or CREDENTIAL, and reports a value of "
         "16 or more characters whose Shannon entropy exceeds 4.5 bits per character. A "
         "secret drawn from a small alphabet cannot reach that: a 64-digit hexadecimal "
