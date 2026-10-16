@@ -13,9 +13,13 @@ import time
 import pytest
 
 from agent_audit_kit.scanners._versions import (
+    ANY,
+    NONE,
     TOP,
     admits,
     exact_version,
+    intersect,
+    intersect_all,
     is_exact_version,
     parse_range,
     parse_version,
@@ -105,3 +109,45 @@ def test_a_crafted_specifier_parses_in_linear_time() -> None:
         parse_range(spec, "npm")
         parse_range(spec, "pep440")
     assert time.perf_counter() - start < 2.0
+
+
+def test_exclusions_remove_one_release_each() -> None:
+    assert parse_range(">=1.0,<2.0,!=1.2.0,!=1.4.*", "pep440") == (
+        ((1, 0, 0), (1, 2, 0)), ((1, 2, 1), (1, 4, 0)), ((1, 5, 0), (2, 0, 0)))
+    assert parse_range("!=1.0.0,!=1.0.0", "pep440") == (((0, 0, 0), (1, 0, 0)), ((1, 0, 1), TOP))
+    assert parse_range("!=*", "pep440") == NONE
+
+
+def test_a_long_exclusion_list_parses_in_linear_time() -> None:
+    """Each `!=` splits a span in two, and intersecting them one at a time read every
+    piece again: 16,000 exclusions on one line, 180 KB, took 82 s. The bound is
+    loose for slow CI runners."""
+    spec = ",".join(f"!=1.{i}.0" for i in range(16_000))
+    start = time.perf_counter()
+    spans = parse_range(spec, "pep440")
+    assert time.perf_counter() - start < 2.0
+    assert spans is not None and len(spans) == 16_001
+
+
+def test_intersect_all_is_every_set_at_once() -> None:
+    a = (((1, 0, 0), (2, 0, 0)),)
+    b = (((0, 0, 0), (1, 5, 0)), ((1, 6, 0), TOP))
+    c = (((1, 2, 0), (1, 8, 0)),)
+    assert intersect_all([a, b, c]) == intersect(intersect(a, b), c) == (
+        ((1, 2, 0), (1, 5, 0)), ((1, 6, 0), (1, 8, 0)))
+    assert intersect_all([a]) == a
+    assert intersect_all([a, NONE]) == NONE
+    assert intersect_all([]) == ANY
+    # A set that ends where another begins shares no version with it.
+    assert intersect_all([(((0, 0, 0), (1, 0, 0)),), (((1, 0, 0), TOP),)]) == NONE
+
+
+def test_many_declarations_intersect_in_linear_time() -> None:
+    """One package declared 20,000 times, each line excluding another release: the
+    result grew by a span per line, and rebuilding it per line took 38 s at 8,000.
+    The bound is loose for slow CI runners."""
+    sets = [parse_range(f"!=1.{i}.0", "pep440") or () for i in range(20_000)]
+    start = time.perf_counter()
+    spans = intersect_all(sets)
+    assert time.perf_counter() - start < 2.0
+    assert len(spans) == 20_001

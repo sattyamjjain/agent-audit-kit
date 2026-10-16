@@ -259,7 +259,7 @@ from agent_audit_kit.scanners._manifest_deps import (
     declaration_lines,
     declarations,
 )
-from agent_audit_kit.scanners._versions import TOP, ZERO, Spans, admits, intersect, parse_range
+from agent_audit_kit.scanners._versions import TOP, ZERO, Spans, admits, intersect, intersect_all, parse_range
 from agent_audit_kit.scanners.supply_chain import (
     _LOCKFILES,
     _PNPM_ENTRY_RE,
@@ -1617,12 +1617,8 @@ def _combined(declarations: list[Declaration]) -> Spans | None:
     group is the intersection of its members. A member that states no version
     (`pkg`, a VCS reference) adds no constraint; a group of only those is None.
     """
-    result: Spans | None = None
-    for declaration in declarations:
-        spans = parse_range(declaration.version, declaration.dialect)
-        if spans is not None:
-            result = spans if result is None else intersect(result, spans)
-    return result
+    stated = [s for s in (parse_range(d.version, d.dialect) for d in declarations) if s is not None]
+    return intersect_all(stated) if stated else None
 
 
 def _spans_admit_affected(pin: _Pin, spans: Spans | None) -> bool:

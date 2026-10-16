@@ -276,3 +276,19 @@ def test_an_unreadable_package_json_declares_nothing(tmp_path: Path, pin: _Pin, 
     (tmp_path / "package.json").write_text(text, encoding="utf-8")
     assert not pin.fires(tmp_path)
 
+
+@pytest.mark.parametrize("pin", _PY_PINS, ids=str)
+@pytest.mark.parametrize("shape", ["one line", "one line each"])
+def test_a_crafted_exclusion_list_reads_in_linear_time(tmp_path: Path, pin: _Pin, shape: str) -> None:
+    """Exclusions used to be intersected one at a time, on one line or across lines:
+    8,000 of them took 29 s on one line and 38 s on 8,000 lines. The bound is loose
+    for slow CI runners."""
+    exclusions = [f"!=0.{i}.0" for i in range(8_000)]
+    if shape == "one line":
+        text = pin.package + ",".join(exclusions) + "\n"
+    else:
+        text = "".join(f"{pin.package}{e}\n" for e in exclusions)
+    (tmp_path / "requirements.txt").write_text(text, encoding="utf-8")
+    started = time.perf_counter()
+    assert pin.fires(tmp_path)
+    assert time.perf_counter() - started < 5.0
