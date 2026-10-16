@@ -1126,3 +1126,55 @@ def test_secret_005_reports_a_key_written_out_in_markdown(tmp_path: Path) -> Non
     (tmp_path / "README.md").write_text("## Keys\n\n```\n" + _PRIVATE + "```\n", encoding="utf-8")
 
     assert _secret_005(tmp_path) == [("README.md", 4)]
+
+
+@pytest.mark.parametrize("word", ["your", "YOUR", "Example", "xxxx", "replace", "ChangeMe"])
+def test_secret_005_reports_a_real_length_key_whose_base64_spells_a_placeholder_word(
+    tmp_path: Path, word: str
+) -> None:
+    """A key's base64 spells a placeholder word now and then: 5 of 1,307 freshly
+    generated RSA-2048 keys held "your". The word test reads only a body shorter than
+    any real key (64 base64 characters, Ed25519 in PKCS#8)."""
+    body = "\n".join(["MIIEvQIBADANBgkqhkiG9w0BAQEFAASC" + _varied(32), _varied(20) + word + _varied(40)])
+    (tmp_path / "deploy.yml").write_text("key: |\n  " + _pem("PRIVATE KEY", body).replace("\n", "\n  "), encoding="utf-8")
+
+    assert _secret_005(tmp_path) == [("deploy.yml", 2)]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "PRIVATE_KEY_CONTENT_GOES_HERE",
+        "REDACTED-REDACTED-REDACTED",
+        "base64-encoded-key-material",
+        "INSERT_KEY_HERE_INSERT_KEY_HERE",
+        "NOT-A-REAL-KEY-DO-NOT-USE",
+        "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC...",
+        "<contents of your key>",
+    ],
+)
+def test_secret_005_reads_only_standard_base64_as_key_material(tmp_path: Path, body: str) -> None:
+    """PEM base64 never uses `-` or `_`, so a body holding them is a placeholder."""
+    (tmp_path / "README.md").write_text("## Setup\n\n```\n" + _pem("RSA " + "PRIVATE KEY", body) + "```\n", encoding="utf-8")
+
+    assert _secret_005(tmp_path) == []
+
+
+def test_secret_005_accepts_every_freshly_generated_key_body() -> None:
+    """Keys generated now, in the algorithms PEM private keys come in: none may be
+    taken for a placeholder, whatever its base64 happens to spell."""
+    from agent_audit_kit.scanners.secret_exposure import _is_key_body
+
+    crypto = pytest.importorskip("cryptography.hazmat.primitives.serialization")
+    from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+
+    def body(key: object) -> str:
+        pem = key.private_bytes(  # type: ignore[attr-defined]
+            crypto.Encoding.PEM, crypto.PrivateFormat.PKCS8, crypto.NoEncryption()
+        ).decode()
+        return pem[pem.index("-----", 11) + 5 : pem.index("-----END ")]
+
+    keys = [ed25519.Ed25519PrivateKey.generate() for _ in range(600)]
+    keys += [ec.generate_private_key(ec.SECP256R1()) for _ in range(300)]
+    keys += [rsa.generate_private_key(public_exponent=65537, key_size=2048) for _ in range(6)]
+    assert [k for k in keys if not _is_key_body(body(k))] == []

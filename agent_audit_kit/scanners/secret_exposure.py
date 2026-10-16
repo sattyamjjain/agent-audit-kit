@@ -92,7 +92,13 @@ _PEM_HEADER = re.compile(r"-----BEGIN [A-Z0-9 ]{1,40}-----")
 # written out: base64 lines, the RFC 1421 and OpenPGP armor headers (`Proc-Type:`,
 # `DEK-Info:`, `Version:`), blank lines and line breaks, escaped as in a JSON string.
 _ARMOR_HEADER = re.compile(r"[A-Za-z][A-Za-z0-9-]{0,40}: ")
-_KEY_LINE = re.compile(r"[A-Za-z0-9+/=_-]+")
+# PEM is standard base64: `-` and `_` never occur in a key line, while placeholders
+# such as `PRIVATE_KEY_CONTENT_GOES_HERE` and `NOT-A-REAL-KEY-DO-NOT-USE` have them.
+_KEY_LINE = re.compile(r"[A-Za-z0-9+/=]+")
+# The shortest body a private key has in PEM, Ed25519 in PKCS#8: 64 base64 characters.
+# Only a body shorter than that is read for a placeholder word, since a real key's
+# base64 spells one now and then: 5 of 1,307 freshly generated RSA-2048 keys held "your".
+_SHORTEST_KEY_BODY = 64
 _ESCAPED_BREAK = re.compile(r"\\r\\n|\\n|\\r")
 # A key is a few KB of text (an RSA-4096 key 3.2 KB); a block longer than this is
 # not read, which also bounds the work one header can cost.
@@ -490,11 +496,12 @@ def _is_key_body(body: str) -> bool:
     """Whether the text between a private-key header and its END marker is a key.
 
     Every line must be base64 (or an armor header, or blank), with at least 16
-    characters of it, more than one distinct character and no placeholder word. So
-    documentation that shows where a key goes (`...`, `<paste your key here>`,
-    `MIIEowIBAAKCAQEA...`, `YOUR_PRIVATE_KEY_HERE`, a run of `x`) is not a key, and
-    neither is a parser's pair of marker constants, whose "body" is the code between
-    them.
+    characters of it and more than one distinct character, and a body shorter than any
+    real key (`_SHORTEST_KEY_BODY`) must hold no placeholder word. So documentation that
+    shows where a key goes (`...`, `<paste your key here>`, `MIIEowIBAAKCAQEA...`,
+    `PRIVATE_KEY_CONTENT_GOES_HERE`, `REPLACEWITHYOURKEY`, a run of `x`) is not a key,
+    and neither is a parser's pair of marker constants, whose "body" is the code
+    between them.
     """
     material: list[str] = []
     for raw in _ESCAPED_BREAK.sub("\n", body).splitlines():
@@ -505,7 +512,9 @@ def _is_key_body(body: str) -> bool:
             return False
         material.append(line)
     text = "".join(material)
-    return len(text) >= 16 and len(set(text.lower())) > 1 and not _PLACEHOLDER_WORDS.search(text)
+    if len(text) < 16 or len(set(text.lower())) < 2:
+        return False
+    return len(text) >= _SHORTEST_KEY_BODY or not _PLACEHOLDER_WORDS.search(text)
 
 
 def _private_key_offsets(text: str, written_out: bool) -> list[int]:
