@@ -48,6 +48,11 @@ RETIRED_RULE_IDS: dict[str, str] = {
         "does not document; its documented MCP config is the user-level "
         "`mcp_config.json`, which names no auto-approve key"
     ),
+    "AAK-OPENCLAW-PRIVESC-001": (
+        "matched `from openclaw import OpenClawAgent`, which no published package "
+        "provides: PyPI `openclaw` installs the cmdop CLI, `openclaw-sdk` imports as "
+        "`openclaw_sdk`, and OpenClaw itself ships on npm"
+    ),
 }
 
 
@@ -374,7 +379,6 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-CREWAI-CVE-2026-2287-001": ["AIS-07", "IVS-04"],
     "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001": ["AIS-07"],
     "AAK-PRISMA-AIRS-COVERAGE-001": ["STA-08"],
-    "AAK-OPENCLAW-PRIVESC-001": ["IAM-02"],
 }
 
 
@@ -7099,7 +7103,7 @@ _r(
 # ---------------------------------------------------------------------------
 # v0.3.10 (2026-04-29) — CrewAI four-CVE chain (CERT/CC VU#221883),
 # LangChain prompt-loader path traversal (CVE-2026-34070), Prisma AIRS
-# coverage manifest, OpenClaw privesc (provisional, IronPlate-cited).
+# coverage manifest.
 # ---------------------------------------------------------------------------
 
 _r(
@@ -8078,39 +8082,6 @@ _r(
         "only through a lockfile is not reported. A compose file's "
         "`ghcr.io/berriai/litellm` image tag is not read."
         " A lockfile over 32 MiB is not read."
-    ),
-)
-
-_r(
-    "AAK-OPENCLAW-PRIVESC-001",
-    "OpenClaw agent role missing or attacker-influenced",
-    "`OpenClawAgent(role=...)` is unset, None, or sourced from "
-    "untrusted input without `assert_role_allowlisted(role)`. "
-    "IronPlate's 2026-04-07 weekly intel flagged a CVSS 9.9 "
-    "privilege-escalation in OpenClaw where a missing/forgable role "
-    "default lets a prompt-borne agent escalate to admin actions. "
-    "Provisional rule pending a public CVE assignment.",
-    Severity.HIGH,
-    Category.TRUST_BOUNDARY,
-    "Always pass an explicit, allow-listed role to OpenClawAgent. "
-    "Wrap the assignment with `aak.checks.openclaw."
-    "assert_role_allowlisted(role)`. Pin the OpenClaw version once "
-    "the upstream patch ships; the AAK rule will auto-promote from "
-    "`provisional` to `confirmed` when "
-    "`scripts/refresh_openclaw_status.py` finds a CVE ID.",
-    sarif_name="OpenClawPrivesc",
-    owasp_agentic_references=["ASI03"],
-    incident_references=["IRONPLATE-2026-04-07"],
-    limitations=(
-        "Fires on `OpenClawAgent(...)` with no `role=` or with `role=None`, whatever "
-        "else the file holds, and on a non-constant role when the call's function, or "
-        "the file as a whole, contains `request.json` (or `request.body`, "
-        "`request.args`, `request.form`, `request.data`, `request.values`, "
-        "`request.files`), `os.environ`, `sys.argv`, `user_input` or `llm_input` and "
-        "that same scope never calls `assert_role_allowlisted(`. A role passed in as "
-        "an ordinary parameter in a file with no such marker (`def build(role)`) is "
-        "not reported, and the class imported under another name (`from openclaw "
-        "import OpenClawAgent as Agent`) is not recognised."
     ),
 )
 

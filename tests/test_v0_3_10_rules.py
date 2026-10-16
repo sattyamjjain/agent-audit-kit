@@ -1,5 +1,4 @@
-"""v0.3.10 SAST tests — CrewAI 4-CVE chain, LangChain prompt-loader,
-OpenClaw privesc."""
+"""v0.3.10 SAST tests — CrewAI 4-CVE chain, LangChain prompt-loader."""
 from __future__ import annotations
 
 import time
@@ -9,7 +8,6 @@ import pytest
 
 from agent_audit_kit.scanners.crewai_rce_chain import scan as crewai_scan
 from agent_audit_kit.scanners.langchain_prompt_loader import scan as langchain_scan
-from agent_audit_kit.scanners.openclaw_privesc import scan as openclaw_scan
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -86,34 +84,6 @@ def test_langchain_prompt_loader_validated_passes(tmp_path: Path) -> None:
     assert not any(
         f.rule_id == "AAK-LANGCHAIN-PROMPT-LOADER-PATH-001" for f in findings
     )
-
-
-# -------------------- AAK-OPENCLAW-PRIVESC-001 --------------------
-
-def test_openclaw_unsafe_fires(tmp_path: Path) -> None:
-    src = (FIXTURES / "openclaw" / "role_default_admin_unsafe.py").read_text()
-    (tmp_path / "agent.py").write_text(src, encoding="utf-8")
-    findings, _ = openclaw_scan(tmp_path)
-    fired = [f for f in findings if f.rule_id == "AAK-OPENCLAW-PRIVESC-001"]
-    # Three unsafe constructions in the fixture (missing role, role=None, role=user_role)
-    assert len(fired) == 3
-
-
-def test_openclaw_safe_passes(tmp_path: Path) -> None:
-    src = (FIXTURES / "openclaw" / "role_explicit_safe.py").read_text()
-    (tmp_path / "agent.py").write_text(src, encoding="utf-8")
-    findings, _ = openclaw_scan(tmp_path)
-    assert not any(f.rule_id == "AAK-OPENCLAW-PRIVESC-001" for f in findings)
-
-
-def test_openclaw_no_import_passes(tmp_path: Path) -> None:
-    (tmp_path / "x.py").write_text(
-        "class OpenClawAgent: pass\n"
-        "OpenClawAgent()\n",
-        encoding="utf-8",
-    )
-    findings, _ = openclaw_scan(tmp_path)
-    assert findings == []
 
 
 @pytest.mark.parametrize(("line", "imports"), [

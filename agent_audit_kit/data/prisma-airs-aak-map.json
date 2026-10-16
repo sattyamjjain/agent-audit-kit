@@ -12,7 +12,7 @@
     {"airs_attack_id": "PA-AIRS-007", "aak_rule_ids": ["AAK-MCP-STDIO-PARAMS-001", "AAK-STDIO-001"], "status": "covered"},
     {"airs_attack_id": "PA-AIRS-008", "aak_rule_ids": ["AAK-DNS-REBIND-001", "AAK-DNS-REBIND-002"], "status": "covered"},
     {"airs_attack_id": "PA-AIRS-009", "aak_rule_ids": ["AAK-SPLUNK-TOKLOG-001", "AAK-LOG-TOKEN-LEAK-001"], "status": "covered"},
-    {"airs_attack_id": "PA-AIRS-010", "aak_rule_ids": ["AAK-OPENCLAW-PRIVESC-001", "AAK-A2A-002"], "status": "covered"},
+    {"airs_attack_id": "PA-AIRS-010", "aak_rule_ids": ["AAK-A2A-002"], "status": "covered"},
     {"airs_attack_id": "PA-AIRS-011", "aak_rule_ids": ["AAK-PRTITLE-IPI-001"], "status": "covered"},
     {"airs_attack_id": "PA-AIRS-012", "aak_rule_ids": ["AAK-MCP-FHI-001"], "status": "covered"},
     {"airs_attack_id": "PA-AIRS-013", "aak_rule_ids": ["AAK-LANGCHAIN-SSRF-REDIR-001", "AAK-LANGCHAIN-SSRF-TOCTOU-001"], "status": "covered"},

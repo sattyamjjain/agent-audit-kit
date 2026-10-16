@@ -78,11 +78,6 @@
       "aars": {"has_tool_use": true, "internet_egress": true},
       "environmental": {"network_exposure": "internet", "blast_radius": "host"},
       "threat": {"poc_public": true}
-    },
-    "AAK-OPENCLAW-PRIVESC-001": {
-      "aars": {"has_tool_use": true},
-      "threat": {"poc_public": false},
-      "exploit": {"patch_available": false, "workaround_available": true}
     }
   }
 }

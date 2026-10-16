@@ -100,7 +100,6 @@
       "category": "privesc",
       "status": "covered",
       "aak_rule_ids": [
-        "AAK-OPENCLAW-PRIVESC-001",
         "AAK-A2A-002"
       ]
     },

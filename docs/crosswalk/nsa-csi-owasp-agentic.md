@@ -1,6 +1,6 @@
 # AgentAuditKit standards crosswalk
 
-Every AgentAuditKit rule (410 total; 371 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
+Every AgentAuditKit rule (409 total; 370 mapped) against two agentic-security standards. Static and deterministic — generated from the committed rule registry and compliance mappings, no scan required.
 
 **Standards**
 
@@ -339,7 +339,6 @@ Every AgentAuditKit rule (410 total; 371 mapped) against two agentic-security st
 | `AAK-OAUTH-008` | low | mcp-config | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-OAUTH-3P-001` | medium | supply-chain | Choose supported MCP projects when possible; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-OAUTH-SCOPE-001` | high | trust-boundary | Choose supported MCP projects when possible; Design for boundaries; Sign and verify MCP messages; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse; ASI04 Agentic Supply Chain Vulnerabilities |
-| `AAK-OPENCLAW-PRIVESC-001` | high | trust-boundary | Design for boundaries; Sign and verify MCP messages; Scan local network for open or vulnerable MCP servers | ASI03 Identity and Privilege Abuse |
 | `AAK-OX-COVERAGE-MANIFEST-001` | info | supply-chain | — | — |
 | `AAK-POISON-001` | critical | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |
 | `AAK-POISON-002` | critical | tool-poisoning | Choose supported MCP projects when possible; Design for boundaries; Validate parameters; Constrain and sandbox tool execution; Sign and verify MCP messages; Filter and monitor output pipelines and chained execution; Track and patch MCP related vulnerabilities; Scan local network for open or vulnerable MCP servers | ASI02 Tool Misuse and Exploitation; ASI04 Agentic Supply Chain Vulnerabilities |

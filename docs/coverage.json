@@ -8221,25 +8221,6 @@
       "title": "Third-party OAuth client granted broad Workspace scopes"
     },
     {
-      "category": "trust-boundary",
-      "cve_references": [],
-      "eu_ai_act": [
-        "Art. 15 - Robustness & Security"
-      ],
-      "nsa_mcp_csi": [
-        "Design for boundaries (p.10)",
-        "Sign and verify MCP messages (p.12)",
-        "Scan local network for open or vulnerable MCP servers (p.14)"
-      ],
-      "owasp_agentic": [
-        "ASI03 Identity and Privilege Abuse"
-      ],
-      "owasp_mcp": [],
-      "rule_id": "AAK-OPENCLAW-PRIVESC-001",
-      "severity": "high",
-      "title": "OpenClaw agent role missing or attacker-influenced"
-    },
-    {
       "category": "supply-chain",
       "cve_references": [],
       "eu_ai_act": [],
@@ -10076,30 +10057,30 @@
       "taint-analysis": 14,
       "tool-poisoning": 31,
       "transport-security": 15,
-      "trust-boundary": 18
+      "trust-boundary": 17
     },
     "by_eu_ai_act": {
       "Art. 10 - Data Governance": 198,
       "Art. 13 - Transparency": 29,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 302,
+      "Art. 15 - Robustness & Security": 301,
       "Art. 9 - Risk Management": 206
     },
     "by_nsa_mcp_csi": {
       "Choose supported MCP projects when possible (p.10)": 198,
       "Constrain and sandbox tool execution (p.11)": 188,
-      "Design for boundaries (p.10)": 291,
+      "Design for boundaries (p.10)": 290,
       "Filter and monitor output pipelines and chained execution (p.12)": 111,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 258,
-      "Sign and verify MCP messages (p.12)": 268,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 257,
+      "Sign and verify MCP messages (p.12)": 267,
       "Track and patch MCP related vulnerabilities (p.13)": 203,
       "Validate parameters (p.11)": 192
     },
     "by_owasp_agentic": {
       "ASI01": 18,
       "ASI02": 99,
-      "ASI03": 105,
+      "ASI03": 104,
       "ASI04": 196,
       "ASI05": 91,
       "ASI06": 5,
@@ -10122,13 +10103,13 @@
     },
     "by_severity": {
       "critical": 91,
-      "high": 178,
+      "high": 177,
       "info": 5,
       "low": 17,
       "medium": 119
     },
     "total_cves_covered": 346,
-    "total_rules": 410
+    "total_rules": 409
   },
   "tool": "agent-audit-kit"
 }

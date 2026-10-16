@@ -257,7 +257,6 @@ _BREADTH_DIRS: tuple[str, ...] = (
     "mcp_deprecated/config_all",
     "mcp_stateless/vulnerable_003_k8s",
     "metis_pomdp",
-    "openclaw",
     "project_deal/vulnerable",
     "session_splice/path",
     "skill_composition/collude",

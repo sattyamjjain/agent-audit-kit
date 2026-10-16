@@ -9150,30 +9150,6 @@
     {
       "adversa_references": [],
       "aicm_references": [
-        "IAM-02"
-      ],
-      "auto_fixable": false,
-      "category": "trust-boundary",
-      "cve_references": [],
-      "description": "`OpenClawAgent(role=...)` is unset, None, or sourced from untrusted input without `assert_role_allowlisted(role)`. IronPlate's 2026-04-07 weekly intel flagged a CVSS 9.9 privilege-escalation in OpenClaw where a missing/forgable role default lets a prompt-borne agent escalate to admin actions. Provisional rule pending a public CVE assignment.",
-      "incident_references": [
-        "IRONPLATE-2026-04-07"
-      ],
-      "limitations": "Fires on `OpenClawAgent(...)` with no `role=` or with `role=None`, whatever else the file holds, and on a non-constant role when the call's function, or the file as a whole, contains `request.json` (or `request.body`, `request.args`, `request.form`, `request.data`, `request.values`, `request.files`), `os.environ`, `sys.argv`, `user_input` or `llm_input` and that same scope never calls `assert_role_allowlisted(`. A role passed in as an ordinary parameter in a file with no such marker (`def build(role)`) is not reported, and the class imported under another name (`from openclaw import OpenClawAgent as Agent`) is not recognised.",
-      "owasp_agentic_references": [
-        "ASI03"
-      ],
-      "owasp_ast_references": [],
-      "owasp_mcp_references": [],
-      "remediation": "Always pass an explicit, allow-listed role to OpenClawAgent. Wrap the assignment with `aak.checks.openclaw.assert_role_allowlisted(role)`. Pin the OpenClaw version once the upstream patch ships; the AAK rule will auto-promote from `provisional` to `confirmed` when `scripts/refresh_openclaw_status.py` finds a CVE ID.",
-      "rule_id": "AAK-OPENCLAW-PRIVESC-001",
-      "sarif_name": "OpenClawPrivesc",
-      "severity": "high",
-      "title": "OpenClaw agent role missing or attacker-influenced"
-    },
-    {
-      "adversa_references": [],
-      "aicm_references": [
         "STA-08"
       ],
       "auto_fixable": false,
