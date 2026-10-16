@@ -42,7 +42,7 @@ from urllib.parse import urlparse
 import yaml
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, url_hosts
 
 _RULE_ID = "AAK-AGENT-COMPOSE-001"
 
@@ -104,11 +104,31 @@ def _as_list(value: object) -> list[str]:
 
 
 def _host(dest: str) -> str:
-    """Normalise a declared egress destination to a bare host for allowlisting."""
+    """Normalise a declared egress destination to a bare host for allowlisting.
+
+    An http(s) or ws(s) URL is read by `url_hosts`, so its host is the one a
+    client connects to. `urlparse` kept a backslash inside the authority, so
+    `https://evil.example\\@docs.python.org/` came out as an allowlisted
+    `docs.python.org` while the agent's fetch tool, which parses as Node does,
+    went to evil.example. When the readings disagree the whole destination is
+    returned, which no allowlist entry (an exact host) matches. Any other scheme
+    (`s3://`, `ftp://`) is read by `urlparse` as before, and a malformed
+    authority such as `http://[::1/`, which made it raise and took the scanner
+    down, falls back to the destination itself.
+    """
     dest = dest.strip()
-    if "://" in dest:
-        return (urlparse(dest).hostname or dest).lower()
-    return dest.split("/")[0].lower()
+    if "://" not in dest:
+        return dest.split("/")[0].lower()
+    hosts = url_hosts(dest)
+    if len(hosts) > 1:
+        return dest.lower()
+    if hosts:
+        return hosts[0]
+    try:
+        host = urlparse(dest).hostname
+    except ValueError:
+        host = None
+    return (host or dest).lower()
 
 
 class _Skill:

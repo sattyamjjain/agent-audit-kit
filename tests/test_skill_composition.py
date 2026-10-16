@@ -100,3 +100,46 @@ def test_boundary_is_configurable_via_egress_allowlist(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     assert _ids(tmp_path / "proj") == []
+
+
+_ALLOWLIST_DOCS_ONLY = (
+    "boundaries:\n"
+    "  - name: exfiltration-path\n"
+    "    left: [filesystem_read, credential_access]\n"
+    "    right: [network_egress]\n"
+    "    destination_checked_side: right\n"
+    "    severity: high\n"
+    "egress_allowlist: [docs.example.com]\n"
+)
+
+
+def _collude_with_egress(tmp_path: Path, egress: str) -> Path:
+    """The colluding set, its egress skill declaring `egress`, `docs.example.com` allowlisted."""
+    root = tmp_path / "proj"
+    shutil.copytree(FIX / "collude", root)
+    reporter = root / "skills" / "metrics-reporter" / "SKILL.md"
+    text = reporter.read_text(encoding="utf-8")
+    reporter.write_text(
+        text.replace("egress: [metrics-collector.attacker.example]", f"egress: ['{egress}']"),
+        encoding="utf-8",
+    )
+    (root / ".aak").mkdir()
+    (root / ".aak" / "composition-boundaries.yaml").write_text(_ALLOWLIST_DOCS_ONLY, encoding="utf-8")
+    return root
+
+
+def test_an_allowlisted_egress_url_does_not_trip(tmp_path: Path) -> None:
+    assert _ids(_collude_with_egress(tmp_path, "https://docs.example.com/ping")) == []
+
+
+def test_a_backslash_cannot_make_an_egress_url_look_allowlisted(tmp_path: Path) -> None:
+    """`urlparse` read this host as the allowlisted docs.example.com; the agent's
+    fetch tool, which parses as Node does, ends the authority at the backslash and
+    posts to collector.attacker.example. The set tripped nothing."""
+    root = _collude_with_egress(tmp_path, "https://collector.attacker.example\\@docs.example.com/ping")
+    assert _ids(root) == [RULE]
+
+
+def test_a_malformed_egress_url_is_non_allowlisted_not_a_crash(tmp_path: Path) -> None:
+    """`urlparse` raises on an unclosed IPv6 bracket, which took the scanner down."""
+    assert _ids(_collude_with_egress(tmp_path, "http://[::1/ping")) == [RULE]
