@@ -36,7 +36,6 @@ vulnerable version.
 from __future__ import annotations
 
 import re
-import shlex
 from dataclasses import dataclass
 
 from agent_audit_kit.redaction import is_secret_option
@@ -126,15 +125,108 @@ def shell_tokens(line: str) -> list[str]:
     """Split a shell command line into words and control operators.
 
     `#` is not a comment here: it opens the commit fragment of
-    `github:org/repo#sha`. An unbalanced quote falls back to whitespace.
+    `github:org/repo#sha`. An unbalanced quote, or a backslash with nothing
+    after it, falls back to whitespace.
+
+    The split is exactly what `shlex.shlex(line, posix=True,
+    punctuation_chars=True)` gives with `whitespace_split` on and no comment
+    characters, fallback included, which `tests/test_shell_tokens.py` checks
+    against shlex itself. It used to be that call. shlex grows each token one
+    character at a time, `self.token += nextchar` on an attribute, which
+    CPython cannot extend in place, so a word of n characters cost about n squared: a
+    package.json script of one 1 MB word took 11 s to read, and the CVE pin
+    table reads package.json scripts and MCP config arguments up to 2 MB. This
+    reads the same grammar in runs, found with a regular expression and joined
+    once, so the cost grows with the length of the line. A length cut-over to
+    `str.split()` would have been faster still, but then padding a line would
+    change how a quoted or operator-glued package spec splits.
     """
-    lexer = shlex.shlex(line, posix=True, punctuation_chars=True)
-    lexer.whitespace_split = True
-    lexer.commenters = ""
-    try:
-        return list(lexer)
-    except ValueError:
-        return line.split()
+    tokens = _shell_split(line)
+    return line.split() if tokens is None else tokens
+
+
+# shlex's grammar under those settings: four whitespace characters, the
+# punctuation set, two quotes, and the backslash, which escapes anything outside
+# quotes, nothing inside single quotes, and only itself or `"` inside double
+# quotes. Every other character, `#` included, is part of a word.
+_SHELL_BLANKS = " \t\r\n"
+_SHELL_OPERATORS = "();<>|&"
+_SHELL_BLANK_RUN = re.compile(r"[ \t\r\n]+")
+_SHELL_OPERATOR_RUN = re.compile(r"[();<>|&]+")
+_SHELL_WORD_STOP = re.compile(r"[ \t\r\n'\"\\();<>|&]")
+_SHELL_DOUBLE_QUOTE_STOP = re.compile(r'["\\]')
+
+
+def _shell_split(line: str) -> list[str] | None:
+    """The tokens shlex gives for `line`, or None where shlex raises ValueError.
+
+    A run of punctuation characters is one token (`&&`, `>&`, `);`). A word
+    runs to the next blank or punctuation character outside quotes, and an
+    empty quoted word (`''`) is a token. shlex raises "No closing quotation"
+    for an unclosed quote and "No escaped character" for a backslash at the
+    end, inside double quotes or out.
+    """
+    tokens: list[str] = []
+    i, n = 0, len(line)
+    while True:
+        blanks = _SHELL_BLANK_RUN.match(line, i)
+        if blanks:
+            i = blanks.end()
+        if i == n:
+            return tokens
+        operators = _SHELL_OPERATOR_RUN.match(line, i)
+        if operators:
+            tokens.append(operators.group())
+            i = operators.end()
+            continue
+        parts: list[str] = []
+        while i < n and line[i] not in _SHELL_BLANKS and line[i] not in _SHELL_OPERATORS:
+            char = line[i]
+            if char == "\\":
+                if i + 1 == n:
+                    return None
+                parts.append(line[i + 1])
+                i += 2
+            elif char == "'":
+                end = line.find("'", i + 1)
+                if end == -1:
+                    return None
+                parts.append(line[i + 1:end])
+                i = end + 1
+            elif char == '"':
+                i = _double_quoted(line, i + 1, parts)
+                if i == -1:
+                    return None
+            else:
+                stop = _SHELL_WORD_STOP.search(line, i)
+                end = stop.start() if stop else n
+                parts.append(line[i:end])
+                i = end
+        tokens.append("".join(parts))
+
+
+def _double_quoted(line: str, i: int, parts: list[str]) -> int:
+    """Read a double-quoted run that opened just before `i` into `parts`.
+
+    Returns the index after the closing quote, or -1 where shlex raises. A
+    backslash keeps itself unless a backslash or a double quote follows it.
+    """
+    n = len(line)
+    while True:
+        stop = _SHELL_DOUBLE_QUOTE_STOP.search(line, i)
+        if stop is None:
+            return -1
+        j = stop.start()
+        parts.append(line[i:j])
+        if line[j] == '"':
+            return j + 1
+        if j + 1 == n:
+            return -1
+        escaped = line[j + 1]
+        if escaped not in '\\"':
+            parts.append("\\")
+        parts.append(escaped)
+        i = j + 2
 
 
 def _option(token: str) -> tuple[str, str | None]:
