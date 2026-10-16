@@ -47,6 +47,39 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         )
 
 
+@pytest.fixture(autouse=True)
+def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Keep every test out of the developer's home directory.
+
+    `test_update_command` runs `aak update`, which downloads the published
+    vulnerability database and writes it to `~/.agent-audit-kit/vuln_db.json`,
+    and `load_database()` reads that cache before the bundled copy. So each
+    local run replaced the developer's cache, and every later run on any
+    branch checked the rules against whatever main last published instead of
+    the branch's own `data/vuln_db.json`. On 2026-10-17 that failed the
+    AAK-SUPPLY-006 limitation test on branches older than #1020, which had
+    dropped a row. CI never saw it because its home starts empty.
+
+    HOME, and the paths modules computed from it at import time, point at an
+    empty directory per test, so the tests read only the checkout's own data.
+    A test that needs `gh`'s login (the live-tracker check in
+    `test_cve_watcher_backpressure.py`) skips locally as it does in CI: the
+    token lives in the macOS keychain, which `gh` does not find under this home.
+    """
+    home = tmp_path_factory.mktemp("home")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("AAK_HOME", raising=False)
+    from agent_audit_kit import feeds, vuln_db
+
+    state = home / ".agent-audit-kit"
+    monkeypatch.setattr(vuln_db, "CACHE_DIR", state)
+    monkeypatch.setattr(vuln_db, "CACHED_DB", state / "vuln_db.json")
+    monkeypatch.setattr(feeds, "_STATE_DIR", state)
+    monkeypatch.setattr(feeds, "_STATE_FILE", state / "watch-state.json")
+    monkeypatch.setattr(feeds, "_NVD_CACHE", state / "nvd-cache.json")
+    return home
+
+
 @pytest.fixture
 def fixtures_dir() -> Path:
     return FIXTURES_DIR
