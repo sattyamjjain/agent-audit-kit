@@ -121,7 +121,7 @@ def _check_package_json(project_root: Path, scanned: set[str]) -> list[Finding]:
             # No line, as before: giving package.json findings one re-keys
             # their code-scanning alerts.
             findings.append(make_finding(
-                rule_id, rel, f"{name} referenced as {hit.quoted} in {hit.declaration.section} — {tail}",
+                rule_id, rel, f"{name} referenced as {hit.quote(f' in {hit.declaration.section}')} — {tail}",
             ))
     return findings
 

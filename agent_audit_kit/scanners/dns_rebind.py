@@ -198,7 +198,7 @@ def _check_package_json_pin(project_root: Path, scanned: set[str]) -> list[Findi
             findings.append(make_finding(
                 "AAK-DNS-REBIND-002",
                 rel,
-                f"{name} referenced as {hit.quoted} in {hit.declaration.section} — {tail}",
+                f"{name} referenced as {hit.quote(f' in {hit.declaration.section}')} — {tail}",
             ))
     return findings
 

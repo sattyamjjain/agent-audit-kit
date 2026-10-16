@@ -493,7 +493,7 @@ def _check_splunk_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
         findings.append(make_finding(
             "AAK-SPLUNK-TOKLOG-001",
             rel,
-            f"splunk-mcp-server referenced as {hit.quoted}{where} — CVE-2026-20205 fixed in 1.0.3.",
+            f"splunk-mcp-server referenced as {hit.quote(where)} — CVE-2026-20205 fixed in 1.0.3.",
             line_number=line,
         ))
     return findings

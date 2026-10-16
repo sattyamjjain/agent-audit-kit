@@ -229,7 +229,7 @@ def test_evidence_quotes_the_declaration(tmp_path: Path, pin: _Pin, spec: str, g
         written, where = f'"{pin.package}": "{npm_spec}"', " in dependencies"
     findings, _ = pin.module.scan(tmp_path)
     [finding] = [f for f in findings if f.rule_id == pin.rule_id]
-    assert repr(written) + pin.fill(gloss) + where + " — " in finding.evidence
+    assert repr(written) + where + pin.fill(gloss) + " — " in finding.evidence
     assert "pinned at" not in finding.evidence
 
 

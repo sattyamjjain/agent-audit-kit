@@ -93,7 +93,12 @@ class PinnedDependency:
 
     @property
     def quoted(self) -> str:
-        """The declaration as written, and what it admits, for evidence.
+        """The declaration as written, and what it admits, for evidence."""
+        return self.quote()
+
+    def quote(self, where: str = "") -> str:
+        """The declaration as written, then `where` (" in devDependencies"), then
+        what it admits.
 
         An exact pin needs no gloss. A range says that it admits releases below
         the fix: a lower bound such as `mcp>=1.2.0` pins nothing, and is reported
@@ -108,7 +113,7 @@ class PinnedDependency:
             how = ""
         else:
             how = f", which admits releases below {'.'.join(str(n) for n in self.fixed)}"
-        return f"{declaration.text!r}{how}"
+        return f"{declaration.text!r}{where}{how}"
 
 
 def manifest_declarations(path: Path, text: str) -> list[Declaration]:
