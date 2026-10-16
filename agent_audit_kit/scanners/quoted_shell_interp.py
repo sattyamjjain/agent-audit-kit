@@ -490,10 +490,9 @@ _JS_TYPED_ASSIGN = (
 # A name a template literal is assigned to, and the assignment up to its backtick.
 _JS_ASSIGNABLE_RE = re.compile(r"(?<![\w$.])[A-Za-z_$][\w$]*")
 _JS_TEMPLATE_ASSIGN_RE = re.compile(_JS_TYPED_ASSIGN + "`")
+_JS_TEMPLATE_ASSIGNMENT_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*)" + _JS_TYPED_ASSIGN + "`")
 
 _BACKTICK_RE = re.compile("`")
-_SEMICOLON_RE = re.compile(";")
-_BLANK_LINE_RE = re.compile(r"(?=\n\n)")
 _NEWLINE_RE = re.compile("\n")
 _INTERP_OPEN_RE = re.compile(r"\$\{")
 _CLOSE_BRACE_RE = re.compile(r"\}")
@@ -533,18 +532,41 @@ class _JsFile:
     which a long line makes the whole file, for a local's assignment, with a
     regex compiled per name; and the whole prefix to count its line. A file of
     sinks grew with the square of its length (40 KB of `exec(cmd);` took a
-    second). Each of those is now a lookup in positions found once, and a
-    template's interpolations are read once however many sinks run it.
+    second). Each of those is now a lookup in positions found once, or a search
+    that carries on from the last sink's, and a template's interpolations are
+    read once however many sinks run it. Nothing is indexed until a file has a
+    sink, and most have none.
     """
 
     def __init__(self, text: str) -> None:
         self.text = text
-        self._ticks = _positions(text, _BACKTICK_RE)
-        self._semicolons = _positions(text, _SEMICOLON_RE)
-        self._blank_lines = _positions(text, _BLANK_LINE_RE)
-        self._newlines = _positions(text, _NEWLINE_RE)
+        self._ticks_found: list[int] | None = None
+        self._newlines_found: list[int] | None = None
+        self._next: dict[str, tuple[int, float]] = {}
         self._templates: dict[int, tuple[str, list[tuple[str, str]]]] = {}
         self._assignments: dict[str, _JsAssignments] | None = None
+
+    @property
+    def _ticks(self) -> list[int]:
+        if self._ticks_found is None:
+            self._ticks_found = _positions(self.text, _BACKTICK_RE)
+        return self._ticks_found
+
+    @property
+    def _newlines(self) -> list[int]:
+        if self._newlines_found is None:
+            self._newlines_found = _positions(self.text, _NEWLINE_RE)
+        return self._newlines_found
+
+    def _first(self, needle: str, start: int) -> float:
+        """The first ``needle`` at or after ``start``, or infinity. The sinks ask
+        in order, so each search starts where the last one found nothing."""
+        asked, found = self._next.get(needle, (-1, -1.0))
+        if not asked <= start <= found:
+            at = self.text.find(needle, start)
+            found = at if at >= 0 else math.inf
+        self._next[needle] = (start, found)
+        return found
 
     def template_at(self, start: int) -> tuple[str, list[tuple[str, str]]] | None:
         """The backtick template literal that starts at or after ``start``, and
@@ -554,7 +576,7 @@ class _JsFile:
         if i + 1 >= len(self._ticks):
             return None  # no opening backtick, or none to close it
         opening = self._ticks[i]
-        if _first_at(self._semicolons, start) < opening or _first_at(self._blank_lines, start) + 2 <= opening:
+        if self._first(";", start) < opening or self._first("\n\n", start) + 2 <= opening:
             return None
         return self._template(i)
 
@@ -573,7 +595,12 @@ class _JsFile:
         platform and then runs whichever was taken.
         """
         if self._assignments is None:
-            self._assignments = _js_template_assignments(self.text)
+            read = set()
+            for sink in _JS_SHELL_SINK_RE.finditer(self.text):
+                first = _JS_FIRST_IDENT_RE.match(self.text, sink.end())
+                if first:
+                    read.add(first.group(1))
+            self._assignments = _js_template_assignments(self.text, read)
         sites = self._assignments.get(ident)
         if sites is None:
             return []
@@ -647,24 +674,40 @@ class _JsAssignments:
         return list(self._merged)
 
 
-def _js_template_assignments(text: str) -> dict[str, _JsAssignments]:
-    """Every assignment of a template literal to a name, by name.
+def _js_template_assignments(text: str, names: set[str]) -> dict[str, _JsAssignments]:
+    """Every assignment of a template literal to one of ``names``, by name.
 
-    A name the sink reads, assigned with `(?<![\\w$.])name` + `_JS_TYPED_ASSIGN`
-    + a backtick, is a whole run of name characters: the lookbehind starts it
-    and the type or `=` after it ends it. So each run that starts a name is
-    tried once, for whatever name it is.
+    An assignment the sink reads, `(?<![\\w$.])name` + `_JS_TYPED_ASSIGN` + a
+    backtick, names a whole run of name characters: the lookbehind starts it
+    and the type or `=` after it ends it. So one pattern finds them all, for
+    whichever of the names the sinks read (or, for a file whose sinks read many,
+    for any name, which reads every name in the file once). It skips one kind:
+    an assignment that starts inside another's type annotation (the second `x`
+    of `x: x =` before a template), which ends at the same backtick, so those
+    annotations are read again for one.
     """
+    if len(names) > 64:
+        pattern = _JS_TEMPLATE_ASSIGNMENT_RE
+    else:
+        alternatives = "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True))
+        pattern = re.compile(rf"(?<![\w$.])({alternatives})" + _JS_TYPED_ASSIGN + "`")
     out: dict[str, _JsAssignments] = {}
-    for m in _JS_ASSIGNABLE_RE.finditer(text):
-        tail = _JS_TEMPLATE_ASSIGN_RE.match(text, m.end())
-        if tail:
-            sites = out.get(m.group())
-            if sites is None:
-                sites = out[m.group()] = _JsAssignments()
-            sites.starts.append(m.start())
-            sites.ends.append(tail.end())
-            sites.ticks.append(tail.end() - 1)
+
+    def add(name: str, start: int, end: int) -> None:
+        sites = out.get(name)
+        if sites is None:
+            sites = out[name] = _JsAssignments()
+        sites.starts.append(start)
+        sites.ends.append(end)
+        sites.ticks.append(end - 1)
+
+    for m in pattern.finditer(text):
+        if m.group(1) in names:
+            add(m.group(1), m.start(), m.end())
+        for inner in _JS_ASSIGNABLE_RE.finditer(text, m.end(1), m.end() - 1):
+            tail = _JS_TEMPLATE_ASSIGN_RE.match(text, inner.end()) if inner.group() in names else None
+            if tail:
+                add(inner.group(), inner.start(), tail.end())
     return out
 
 
@@ -739,7 +782,7 @@ def _js_quotings(template: str, exprs: list[str]) -> dict[str, str]:
 
 def _js_sinks(text: str) -> list[_JsSink]:
     """Every shell sink with an interpolated command, inline or through a local."""
-    js = _JsFile(text)
+    js: _JsFile | None = None  # indexed at the first sink: most files have none
     sinks: list[_JsSink] = []
     line, counted = 1, 0
     for match in _JS_SHELL_SINK_RE.finditer(text):
@@ -754,6 +797,8 @@ def _js_sinks(text: str) -> list[_JsSink]:
                 continue
 
         mode = "shell" if sink in _JS_SHELL_ONLY else "argv-eval"
+        if js is None:
+            js = _JsFile(text)
         inline = js.template_at(call_start)
         interps: list[tuple[str, str, str, str]] = []
         if inline is not None:
@@ -1398,7 +1443,7 @@ class _JsHandler:
         self._tainted: set[str] | None = None
         self._calls: dict[str, list[tuple[int, int]]] | None = None
         self._answers: dict[tuple[str, int], int | None] = {}
-        self._newlines = _positions(text, _NEWLINE_RE)
+        self._newlines: list[int] = []
         self._specials: list[int] = []
         self._paren_close: dict[int, int] = {}
         self._group_close: dict[int, int] = {}
@@ -1420,6 +1465,7 @@ class _JsHandler:
             return
         self._indexed = True
         text = self.text
+        self._newlines = _positions(text, _NEWLINE_RE)
         parens: list[int] = []
         groups: list[int] = []
         brackets: list[int] = []
