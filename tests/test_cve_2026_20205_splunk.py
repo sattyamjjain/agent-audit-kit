@@ -26,14 +26,24 @@ def test_redacted_token_log_passes() -> None:
     assert not any(f.rule_id == "AAK-SPLUNK-TOKLOG-001" for f in findings)
 
 
-def test_vulnerable_splunk_pin_fires() -> None:
-    findings, _ = scan(FIXTURES / "vulnerable-splunk-pin")
-    assert any(f.rule_id == "AAK-SPLUNK-TOKLOG-001" for f in findings)
-
-
-def test_patched_splunk_pin_passes() -> None:
-    findings, _ = scan(FIXTURES / "patched-splunk-pin")
-    assert not any(f.rule_id == "AAK-SPLUNK-TOKLOG-001" for f in findings)
+def test_a_splunk_mcp_server_dependency_is_not_reported(tmp_path: Path) -> None:
+    """The rule had a pin on `splunk-mcp-server` below 1.0.3, which can only match the
+    wrong package. CVE-2026-20205 is the Splunk MCP Server app (Splunkbase app 7931,
+    `Splunk_MCP_Server`), fixed in its 1.0.3 and shipped by no package registry: on
+    2026-10-17 PyPI had no `splunk-mcp-server`, and npm's (0.1.1, published
+    2026-03-09 with no repository) is another project, every release of which read
+    as affected. The log-call check is the rule now."""
+    for name, body in (
+        ("requirements.txt", "splunk-mcp-server==1.0.2\n"),
+        ("pyproject.toml", '[project]\nname = "d"\ndependencies = ["splunk-mcp-server<1.0.3"]\n'),
+        ("package.json", '{"dependencies": {"splunk-mcp-server": "0.1.1"}}'),
+    ):
+        root = tmp_path / name.replace(".", "_")
+        root.mkdir()
+        (root / name).write_text(body, encoding="utf-8")
+        findings, scanned = scan(root)
+        assert not any(f.rule_id == "AAK-SPLUNK-TOKLOG-001" for f in findings), name
+        assert name not in scanned
 
 
 def test_jwt_in_log_fires(tmp_path: Path) -> None:

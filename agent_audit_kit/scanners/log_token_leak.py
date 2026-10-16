@@ -1,23 +1,25 @@
 """AAK-SPLUNK-TOKLOG-001 — token-shaped values in log sinks.
 
-CVE-2026-20205 (splunk-mcp-server < 1.0.3) logged session tokens into
-the Splunk `_internal` index in cleartext. The pattern generalises:
+CVE-2026-20205 (the Splunk MCP Server app below 1.0.3) logged session
+tokens into the Splunk `_internal` index in cleartext. The pattern generalises:
 any `logger.info|warn|error` or `print` whose interpolated argument
 matches a Bearer / JWT / `splunkd_session` / `st-*` shape is a token
 leak into whatever the log sink is wired to.
 
-Two detections:
+One detection, and no version pin:
 
 1. Pattern: log-sink call (Python / TS / JS) whose argument contains a
    token-shaped literal or writes the value of a credential-named variable,
    attribute or key (`access_token`, `client_secret`, `headers["Authorization"]`).
-2. Pin check: `splunk-mcp-server < 1.0.3` in Python / npm manifests. It
-   took the first number after the name, acted on `==`, `<`, `<=` and `~=`
-   only in a requirements file and on any operator in pyproject.toml, so
-   `splunk-mcp-server<1.0.3`, which admits only affected releases, was silent
-   everywhere, and a lower bound below the fix fired in one manifest and not
-   the other. Manifests are now read as the CVE pin table reads them
-   (`_dependency_pins`).
+
+The module used to pin `splunk-mcp-server` below 1.0.3 in Python and npm
+manifests, which could only match the wrong package. CVE-2026-20205 names the
+Splunk MCP Server app (Splunkbase app 7931, `Splunk_MCP_Server`; Splunk's
+SVD-2026-0407), which installs into Splunk, not from a package registry. On
+2026-10-17 PyPI had no `splunk-mcp-server`, and npm's, 0.1.1 since 2026-03-09
+with no repository, is an unrelated MCP server for Splunk's REST API, every
+release of which read as affected. The pin is gone; the app's version, in its
+`default/app.conf`, is not read.
 """
 
 from __future__ import annotations
@@ -28,12 +30,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, pinned_dependency
 from ._helpers import in_skip_dir, make_finding
-
-_SPLUNK_PATCHED = (1, 0, 3)
-# Both registries, as the module always read, and a stated version only.
-_SPLUNK_PIN = DependencyPin(("splunk-mcp-server",), _SPLUNK_PATCHED)
 
 # A log-level call on any receiver; `_is_logger_receiver` decides whether the receiver
 # is a logger. The receiver used to be part of this pattern, as `\b(?:logger|logging|
@@ -468,40 +465,8 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     return findings
 
 
-def _check_splunk_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
-    findings: list[Finding] = []
-    manifests = sorted(project_root.glob("requirements*.txt"))
-    manifests.extend(p for p in (project_root / "pyproject.toml", project_root / "package.json") if p.is_file())
-    for manifest in manifests:
-        try:
-            text = manifest.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        rel = str(manifest.relative_to(project_root))
-        if manifest.suffix == ".txt":
-            scanned.add(rel)
-        hit = pinned_dependency(manifest, text, _SPLUNK_PIN)
-        if hit is None:
-            continue
-        scanned.add(rel)
-        if manifest.name == "package.json":
-            # No line, as before: giving package.json findings one re-keys
-            # their code-scanning alerts.
-            where, line = f" in {hit.declaration.section}", None
-        else:
-            where, line = "", hit.line
-        findings.append(make_finding(
-            "AAK-SPLUNK-TOKLOG-001",
-            rel,
-            f"splunk-mcp-server referenced as {hit.quote(where)} — CVE-2026-20205 fixed in 1.0.3.",
-            line_number=line,
-        ))
-    return findings
-
-
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     scanned: set[str] = set()
     findings: list[Finding] = []
     findings.extend(_check_pattern(project_root, scanned))
-    findings.extend(_check_splunk_pin(project_root, scanned))
     return findings, scanned

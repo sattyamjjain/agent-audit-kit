@@ -1,14 +1,14 @@
-"""The seven version pins outside the CVE pin table read a dependency one way.
+"""The version pins outside the CVE pin table read a dependency one way.
 
-langchain_vuln, neo4j_cve, ssrf_redirect, ssrf_toctou, log_token_leak,
-transport_limits and dns_rebind each took the first number after the package
-name as the version in use, with a regex of its own per manifest. So an upper
-bound read as the version (`pkg<FIXED` admits only affected releases and was
-silent), the order of a range's bounds decided the answer, extras and markers
-hid the version, and pyproject.toml and Poetry tables went unread. They now
-read `_manifest_deps` declarations and judge them with the CVE pin table's own
-policy (`_dependency_pins`). Every shape below runs through every pin, so a
-module that drifts from the shared reading fails here.
+langchain_vuln, neo4j_cve, ssrf_redirect, ssrf_toctou, transport_limits and
+dns_rebind each took the first number after the package name as the version in
+use, with a regex of its own per manifest. So an upper bound read as the version
+(`pkg<FIXED` admits only affected releases and was silent), the order of a
+range's bounds decided the answer, extras and markers hid the version, and
+pyproject.toml and Poetry tables went unread. They now read `_manifest_deps`
+declarations and judge them with the CVE pin table's own policy
+(`_dependency_pins`). Every shape below runs through every pin, so a module that
+drifts from the shared reading fails here.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ import pytest
 from agent_audit_kit.scanners import (
     dns_rebind,
     langchain_vuln,
-    log_token_leak,
     neo4j_cve,
     ssrf_redirect,
     ssrf_toctou,
@@ -60,7 +59,6 @@ _PY_PINS = (
     _Pin("AAK-NEO4J-001", neo4j_cve, "mcp-neo4j-cypher", "0.5.0", "0.6.0", False),
     _Pin("AAK-LANGCHAIN-SSRF-REDIR-001", ssrf_redirect, "langchain-text-splitters", "1.1.1", "1.1.2", True),
     _Pin("AAK-SSRF-TOCTOU-001", ssrf_toctou, "langchain-openai", "1.1.13", "1.1.14", True),
-    _Pin("AAK-SPLUNK-TOKLOG-001", log_token_leak, "splunk-mcp-server", "1.0.2", "1.0.3", False),
     _Pin("AAK-DNS-REBIND-002", dns_rebind, "mcp", "1.22.0", "1.23.0", False),
 )
 _NPM_PINS = (
@@ -68,7 +66,6 @@ _NPM_PINS = (
     _Pin("AAK-NEXT-AI-DRAW-001", transport_limits, "next-ai-draw-io", "0.4.14", "0.4.15", True),
     _Pin("AAK-DNS-REBIND-002", dns_rebind, "@modelcontextprotocol/sdk", "1.21.0", "1.21.1", False),
     _Pin("AAK-DNS-REBIND-002", dns_rebind, "@apollo/mcp-server", "1.6.0", "1.7.0", False),
-    _Pin("AAK-SPLUNK-TOKLOG-001", log_token_leak, "splunk-mcp-server", "1.0.2", "1.0.3", False),
 )
 
 # (label, file contents, fires?). None: fires only for a rule that reports an

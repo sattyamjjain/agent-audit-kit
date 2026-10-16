@@ -6358,8 +6358,8 @@ _r(
 
 
 # ---------------------------------------------------------------------------
-# Splunk MCP Server token-cleartext logging (CVE-2026-20205, splunk-mcp-server
-# < 1.0.3). The server logged session tokens into the _internal index without
+# Splunk MCP Server token-cleartext logging (CVE-2026-20205, the Splunk MCP Server
+# app below 1.0.3). The app logged session tokens into the _internal index without
 # redaction, exposing them to anyone with read access.
 # ---------------------------------------------------------------------------
 
@@ -6368,8 +6368,8 @@ _r(
     "Session token written to log sink in cleartext",
     "An MCP server, agent, or tool logs a session token, JWT, or Bearer "
     "credential through a generic log sink (logger.info / .warn / .error, "
-    "print) without redaction. CVE-2026-20205 (splunk-mcp-server < 1.0.3) "
-    "shipped this exact pattern — session tokens ended up in the Splunk "
+    "print) without redaction. CVE-2026-20205 (the Splunk MCP Server app below "
+    "1.0.3) shipped this exact pattern — session tokens ended up in the Splunk "
     "`_internal` index, readable by anyone with index-read. Any token "
     "written to a log sink is also a supply-chain risk: the log file, "
     "shipper, and SIEM are now in scope for the token's blast radius.",
@@ -6377,13 +6377,14 @@ _r(
     Category.SECRET_EXPOSURE,
     "Redact token-shaped values before logging. Never interpolate a raw "
     "`Authorization`, `Bearer`, JWT, `splunkd_session`, or `st-` credential "
-    "into a log message. Pin `splunk-mcp-server >= 1.0.3`.",
+    "into a log message. On a Splunk instance, upgrade the Splunk MCP Server app "
+    "to 1.0.3 or later.",
     sarif_name="SplunkMcpTokenLog",
     cve_references=["CVE-2026-20205"],
     owasp_mcp_references=["MCP01:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-LEAK-01"],
-    incident_references=["SVD-2026-0405"],
+    incident_references=["SVD-2026-0407"],
     limitations=(
         "The log-call check reads calls on a logger (`logger`, `_logger`, `self.log`, "
         "`LOG`, `app_logger`, `logging.getLogger(...)` and the like), `print`, "
@@ -6397,6 +6398,14 @@ _r(
         "not reported. A call whose arguments run past 4,000 characters is not read, and a "
         "call is read only if its arguments end within the file's first 2,000,000 characters "
         "of call arguments, so a crafted file cannot stall the scan."
+        " There is no version pin. CVE-2026-20205 names the Splunk MCP Server app "
+        "(Splunkbase app 7931, `Splunk_MCP_Server`, fixed in 1.0.3 per Splunk's "
+        "SVD-2026-0407), which installs into Splunk rather than from a package "
+        "registry, so its version, in the app's `default/app.conf`, is not read. A "
+        "`splunk-mcp-server` dependency is not reported either: on 2026-10-17 PyPI had "
+        "no such project, and npm's (0.1.1, published 2026-03-09 with no repository) is "
+        "an unrelated MCP server for Splunk's REST API. NVD's record (published "
+        "2026-04-15, still awaiting analysis, with no CPE) cites only SVD-2026-0407."
     ),
 )
 

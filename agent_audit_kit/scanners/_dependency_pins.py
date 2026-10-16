@@ -1,10 +1,11 @@
 """How a version pin outside the CVE pin table reads a dependency.
 
-Seven modules keep a version pin of their own beside a code check:
+Six modules keep a version pin of their own beside a code check:
 langchain_vuln (AAK-LANGCHAIN-001 and -003), neo4j_cve (AAK-NEO4J-001),
 ssrf_redirect (AAK-LANGCHAIN-SSRF-REDIR-001), ssrf_toctou (AAK-SSRF-TOCTOU-001),
-log_token_leak (AAK-SPLUNK-TOKLOG-001), transport_limits (AAK-MCPFRAME-001 and
-AAK-NEXT-AI-DRAW-001) and dns_rebind (AAK-DNS-REBIND-002). Each read its
+transport_limits (AAK-MCPFRAME-001 and AAK-NEXT-AI-DRAW-001) and dns_rebind
+(AAK-DNS-REBIND-002). A seventh, log_token_leak's pin on `splunk-mcp-server`,
+is gone: it could only match the wrong package (see that module). Each read its
 manifests with a regex of its own and took the first number after the package
 name as the version in use, the flaw `_versions` retired from the pin table:
 
