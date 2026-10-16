@@ -1,0 +1,6 @@
+{
+  "name": "app",
+  "dependencies": {
+    "@langchain/core": "0.3.10"
+  }
+}

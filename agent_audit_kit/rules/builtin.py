@@ -4326,10 +4326,13 @@ _r(
     auto_fixable=True,
     limitations=(
         "Reads `langchain-core`, in any PEP 503 spelling, from requirements.txt, "
-        "requirements-dev.txt, requirements-prod.txt, dev-requirements.txt and "
-        "pyproject.toml, taking the lowest version a range allows. npm packages are "
-        "not read: the advisory names only the PyPI distribution, and npm's "
-        "`@langchain/*` packages have version lines of their own. The umbrella "
+        "requirements-dev.txt, requirements-prod.txt and dev-requirements.txt at the "
+        "project root and from every pyproject.toml, taking the lowest version a "
+        "range allows. A `langchain-core` that states no version is not reported, "
+        "and a lockfile (uv.lock, poetry.lock) or another requirements file "
+        "(`requirements-test.txt`, `requirements/base.txt`) is not read. npm "
+        "packages are not read: the advisory names only the PyPI distribution, and "
+        "npm's `@langchain/*` packages have version lines of their own. The umbrella "
         "`langchain` and `langchain-community` distributions are not read either, "
         "because their version numbers are not langchain-core's, so a project that "
         "pins only those is not reported."
