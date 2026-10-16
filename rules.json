@@ -10154,11 +10154,11 @@
       "cve_references": [
         "CVE-2026-20205"
       ],
-      "description": "An MCP server, agent, or tool logs a session token, JWT, or Bearer credential through a generic log sink (logger.info / .warn / .error, print) without redaction. CVE-2026-20205 (splunk-mcp-server < 1.0.3) shipped this exact pattern \u2014 session tokens ended up in the Splunk `_internal` index, readable by anyone with index-read. Any token written to a log sink is also a supply-chain risk: the log file, shipper, and SIEM are now in scope for the token's blast radius.",
+      "description": "An MCP server, agent, or tool logs a session token, JWT, or Bearer credential through a generic log sink (logger.info / .warn / .error, print) without redaction. CVE-2026-20205 (the Splunk MCP Server app below 1.0.3) shipped this exact pattern \u2014 session tokens ended up in the Splunk `_internal` index, readable by anyone with index-read. Any token written to a log sink is also a supply-chain risk: the log file, shipper, and SIEM are now in scope for the token's blast radius.",
       "incident_references": [
-        "SVD-2026-0405"
+        "SVD-2026-0407"
       ],
-      "limitations": "The log-call check reads calls on a logger (`logger`, `_logger`, `self.log`, `LOG`, `app_logger`, `logging.getLogger(...)` and the like), `print`, `console.*` and `System.out` that write a token-shaped literal or the value of a credential-named variable, attribute or key (`access_token`, `github_token`, `client_secret`, `password`, `headers[\"Authorization\"]`). It judges the name, not where the value came from: `value = access_token` and then `logger.info(\"auth %s\", value)` is not reported, while the same call with `access_token` is. A value named only `token` counts when the message also names a credential (`\"auth %s\"`, `\"token=%s\"`), so `logger.debug(\"%s\", token)` is not reported. A call whose arguments run past 4,000 characters is not read, and a call is read only if its arguments end within the file's first 2,000,000 characters of call arguments, so a crafted file cannot stall the scan.",
+      "limitations": "The log-call check reads calls on a logger (`logger`, `_logger`, `self.log`, `LOG`, `app_logger`, `logging.getLogger(...)` and the like), `print`, `console.*` and `System.out` that write a token-shaped literal or the value of a credential-named variable, attribute or key (`access_token`, `github_token`, `client_secret`, `password`, `headers[\"Authorization\"]`). It judges the name, not where the value came from: `value = access_token` and then `logger.info(\"auth %s\", value)` is not reported, while the same call with `access_token` is. A value named only `token` counts when the message also names a credential (`\"auth %s\"`, `\"token=%s\"`), so `logger.debug(\"%s\", token)` is not reported. A call whose arguments run past 4,000 characters is not read, and a call is read only if its arguments end within the file's first 2,000,000 characters of call arguments, so a crafted file cannot stall the scan. There is no version pin. CVE-2026-20205 names the Splunk MCP Server app (Splunkbase app 7931, `Splunk_MCP_Server`, fixed in 1.0.3 per Splunk's SVD-2026-0407), which installs into Splunk rather than from a package registry, so its version, in the app's `default/app.conf`, is not read. A `splunk-mcp-server` dependency is not reported either: on 2026-10-17 PyPI had no such project, and npm's (0.1.1, published 2026-03-09 with no repository) is an unrelated MCP server for Splunk's REST API. NVD's record (published 2026-04-15, still awaiting analysis, with no CPE) cites only SVD-2026-0407.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -10166,7 +10166,7 @@
       "owasp_mcp_references": [
         "MCP01:2025"
       ],
-      "remediation": "Redact token-shaped values before logging. Never interpolate a raw `Authorization`, `Bearer`, JWT, `splunkd_session`, or `st-` credential into a log message. Pin `splunk-mcp-server >= 1.0.3`.",
+      "remediation": "Redact token-shaped values before logging. Never interpolate a raw `Authorization`, `Bearer`, JWT, `splunkd_session`, or `st-` credential into a log message. On a Splunk instance, upgrade the Splunk MCP Server app to 1.0.3 or later.",
       "rule_id": "AAK-SPLUNK-TOKLOG-001",
       "sarif_name": "SplunkMcpTokenLog",
       "severity": "high",
