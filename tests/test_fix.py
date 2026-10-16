@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
+
+import pytest
 from unittest.mock import patch
 
 from agent_audit_kit.fix import (
@@ -124,6 +126,50 @@ class TestFixEnvGitignore:
         fix = _fix_env_gitignore(tmp_path, dry_run=False)
         assert fix.applied is True
         assert (tmp_path / ".gitignore").read_text() == original
+
+
+class TestFixEnvGitignoreAgreesWithTheRule:
+    """`aak fix` judged coverage with a substring test after AAK-SECRET-006 stopped
+    doing so: with `!.env.example`, `# .env` or `.envrc` in `.gitignore`, or `.env.local`
+    beside a `.env` pattern, it reported the finding fixed and wrote nothing."""
+
+    @pytest.mark.parametrize(
+        "gitignore", ["!.env.example\n", "# .env\n", ".envrc\n", ".env\n", "  .env\n", "node_modules/\n"]
+    )
+    def test_run_fixes_leaves_no_env_file_unignored(self, tmp_path: Path, gitignore: str) -> None:
+        from agent_audit_kit.scanners.secret_exposure import scan as secret_scan
+
+        (tmp_path / ".env").write_text("A=1\n")
+        (tmp_path / ".env.local").write_text("A=1\n")
+        (tmp_path / ".gitignore").write_text(gitignore)
+        assert [f for f in secret_scan(tmp_path)[0] if f.rule_id == "AAK-SECRET-006"]
+
+        fixes = [f for f in run_fixes(tmp_path) if f.rule_id == "AAK-SECRET-006"]
+
+        assert fixes and all(f.applied for f in fixes)
+        assert [f for f in secret_scan(tmp_path)[0] if f.rule_id == "AAK-SECRET-006"] == []
+
+    def test_a_template_the_gitignore_takes_back_stays_committable(self, tmp_path: Path) -> None:
+        (tmp_path / ".env").write_text("A=1\n")
+        (tmp_path / ".env.example").write_text("A=\n")
+        (tmp_path / ".gitignore").write_text("!.env.example\n")
+
+        run_fixes(tmp_path)
+
+        from agent_audit_kit.scanners.secret_exposure import _gitignore_ignores, _gitignore_rules
+
+        rules = _gitignore_rules((tmp_path / ".gitignore").read_text())
+        assert _gitignore_ignores(rules, ".env")
+        assert not _gitignore_ignores(rules, ".env.example")
+
+    def test_a_gitignore_that_already_ignores_every_env_file_is_left_alone(self, tmp_path: Path) -> None:
+        (tmp_path / ".env").write_text("A=1\n")
+        (tmp_path / ".gitignore").write_text(".env*\n")
+
+        fix = _fix_env_gitignore(tmp_path, dry_run=False)
+
+        assert fix.applied is True
+        assert (tmp_path / ".gitignore").read_text() == ".env*\n"
 
 
 # ---------------------------------------------------------------------------

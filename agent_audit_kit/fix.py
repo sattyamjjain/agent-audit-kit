@@ -542,14 +542,36 @@ def _fix_secret_env_ref(path: Path, dry_run: bool) -> FixAction | None:
 
 
 def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
-    """Add .env patterns to .gitignore."""
+    """Add .env patterns to .gitignore, unless it already ignores every root env file.
+
+    Coverage is judged as AAK-SECRET-006 judges it (`_gitignore_rules`). A substring
+    test here, `".env" in content`, read `!.env.example`, `# .env` or `.envrc` as
+    covering `.env`, so the fix reported the finding fixed and wrote nothing. The
+    patterns go at the end, where the last match decides, so a template the file took
+    back with `!` (`!.env.example`) is taken back again after them.
+    """
+    from agent_audit_kit.scanners.secret_exposure import (
+        _ENV_TEMPLATE_SUFFIXES,
+        _gitignore_ignores,
+        _gitignore_rules,
+        _read_gitignore,
+        _root_env_files,
+    )
+
     gitignore = project_root / ".gitignore"
     try:
-        content = gitignore.read_text() if gitignore.is_file() else ""
-        if ".env" not in content:
+        content = (_read_gitignore(project_root) or "") if gitignore.is_file() else ""
+        names = [path.name for path in _root_env_files(project_root)] or [".env"]
+        rules = _gitignore_rules(content)
+        if not all(_gitignore_ignores(rules, name) for name in names):
+            kept = [
+                line.strip() for line in content.splitlines()
+                if line.strip().startswith("!") and line.strip().lower().endswith(_ENV_TEMPLATE_SUFFIXES)
+            ]
             new_content = content.rstrip() + "\n\n# Environment files\n.env\n.env.*\n"
+            new_content += "".join(f"{line}\n" for line in kept)
             if not dry_run:
-                gitignore.write_text(new_content)
+                gitignore.write_text(new_content.lstrip("\n"), encoding="utf-8")
         return FixAction(
             "AAK-SECRET-006",
             ".gitignore",
