@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
@@ -15,14 +17,22 @@ from agent_audit_kit.scanners._helpers import (
 )
 from agent_audit_kit.scanners._launchers import (
     Launched,
+    basename,
     invocation_packages,
     launch_evidence,
+    launched_packages,
     npm_spec,
     pin_problem,
     shell_tokens,
     starts_with_launcher,
 )
-from agent_audit_kit.scanners._manifest_deps import MAX_LOCKFILE_BYTES, MAX_MANIFEST_BYTES
+from agent_audit_kit.scanners._manifest_deps import (
+    MAX_LOCKFILE_BYTES,
+    MAX_MANIFEST_BYTES,
+    _argv,
+    _command_entries,
+    declarations,
+)
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
 # Covers npm, Python (PyPI), and Rust (crates.io)
@@ -635,10 +645,6 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 _PY_VERSION_TAIL = r"\s*(?:(?:==|>=|~=|<=|<|>)\s*)?([0-9][\w.\-]*)"
 
 _DORIS_PATCHED = (0, 6, 1)
-_DORIS_VERSION_RE = re.compile(
-    r"apache-doris-mcp-server" + _PY_VERSION_TAIL,
-    re.IGNORECASE,
-)
 
 
 def _semver3(spec: str) -> tuple[int, int, int] | None:
@@ -668,16 +674,6 @@ def _lockfile_over_limit(path: Path) -> bool:
     their limitations. ``stat`` raises OSError, as the read it guards does.
     """
     return path.name.lower() in _LOCKFILES and path.stat().st_size > MAX_LOCKFILE_BYTES
-
-
-def _resolve_lockfile_version(
-    text: str, filename: str, names: tuple[str, ...]
-) -> tuple[int, int, int] | None:
-    """Lowest resolved version of any of ``names`` in a lockfile, or None if the
-    package is absent / unparseable (conservative — a `None` result means the
-    pin does not fire on this lockfile)."""
-    resolved = _resolve_lockfile_versions(text, filename, names)
-    return min(resolved) if resolved else None
 
 
 def _resolve_lockfile_versions(
@@ -817,6 +813,94 @@ def _lockfile_index(text: str, filename: str) -> dict[str, list[tuple[int, int, 
     }
 
 
+# ---------------------------------------------------------------------------
+# How the Doris, gateway-registry, Serena, Excel and LiteLLM pins read a file.
+#
+# They read the first number after the package name, so an upper bound read as
+# the version: `litellm<1.83.7`, which admits only affected releases, read as
+# 1.83.7 and passed, and `<2.0.0,>=1.0.0` passed where `>=1.0.0,<2.0.0` fired.
+# A comment that named the package with a number decided the file, as the first
+# mention decided the gateway-registry and Serena checks. A lockfile, where the
+# name and its version sit on separate lines, read as unpinned or not at all.
+# They now read a file the way the CVE pin table does: a lockfile on the
+# versions it resolves, any other file on the declarations it makes in its own
+# format (`_manifest_deps`), each judged by the releases its range admits
+# (`_versions`) with the pin table's own judge.
+# ---------------------------------------------------------------------------
+
+# `_manifest_deps` splits each package.json script, and each MCP config argument
+# that holds a space, with the shell tokenizer, which takes the square of a
+# word's length: a script of one 1 MB word took 11 s. A file holding a longer
+# word than this is not read for declarations; no manifest or config word comes
+# near it (the longest install script of 3,171 measured was 578 characters).
+_MAX_DECLARATION_WORD = 16 * 1024
+
+
+def _read_pin_candidate(path: Path) -> str | None:
+    """A candidate file's text, or None when it is unreadable or over its limit.
+
+    A lockfile is read up to MAX_LOCKFILE_BYTES and any other file up to
+    MAX_MANIFEST_BYTES, the pin table's limits, checked with stat() before the
+    read.
+    """
+    limit = MAX_LOCKFILE_BYTES if path.name.lower() in _LOCKFILES else MAX_MANIFEST_BYTES
+    try:
+        if path.stat().st_size > limit:
+            return None
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _affected_pin(
+    path: Path,
+    text: str,
+    names: tuple[str, ...],
+    floor: tuple[int, int, int],
+    *,
+    requires_version: bool = False,
+) -> str | None:
+    """How `path` takes a release of `names` below `floor`, or None when it does not.
+
+    Args:
+        path: The candidate file; its name selects how it is read.
+        text: The file's contents.
+        names: The package's names, compared as its registry compares them.
+        floor: The first fixed release.
+        requires_version: Report only a declaration that states a version.
+
+    Returns:
+        The version as the file states it: a lockfile's resolved version, or a
+        declaration's specifier (`<0.6.1`, with a lone `==` dropped), "" for a
+        declaration that states none, and None when nothing in the file admits
+        a release below `floor`.
+    """
+    filename = path.name.lower()
+    if filename in _LOCKFILES:
+        affected = [v for v in _resolve_lockfile_versions(text, filename, names) if v < floor]
+        return ".".join(str(x) for x in affected[0]) if affected else None
+    if any(len(word) > _MAX_DECLARATION_WORD for word in text.split()):
+        return None
+    # Imported here: the pin table imports this module's lockfile readers.
+    from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _Pin, _deciding_declaration
+
+    pin = _Pin(rule_id="", display=names[0], names=names, floor=floor,
+               requires_version=requires_version)
+    declaration = _deciding_declaration(pin, declarations(path, text))
+    return None if declaration is None else _stated_version(declaration.version)
+
+
+def _stated_version(spec: str) -> str:
+    """A specifier as the evidence quotes it: `==0.5.0` as `0.5.0`, any other as written."""
+    text = spec.strip()
+    exact = text[2:].strip()
+    if text.startswith("==") and not text.startswith("===") and exact and not any(
+        c in exact for c in " ,;<>=!~^*|"
+    ):
+        return exact
+    return text
+
+
 def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
     findings: list[Finding] = []
 
@@ -836,19 +920,15 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
             candidates.append(p)
 
     for path in candidates:
-        try:
-            if _lockfile_over_limit(path):
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = _read_pin_candidate(path)
+        if text is None:
             continue
-        for m in _DORIS_VERSION_RE.finditer(text):
-            version = _semver3(m.group(1))
-            if version is None or version < _DORIS_PATCHED:
-                rel = str(path.relative_to(project_root))
-                scanned_files.add(rel)
-                _fire(rel, m.group(1))
-                break  # one finding per file is enough
+        raw = _affected_pin(path, text, ("apache-doris-mcp-server",), _DORIS_PATCHED,
+                            requires_version=True)
+        if raw is not None:
+            rel = str(path.relative_to(project_root))
+            scanned_files.add(rel)
+            _fire(rel, raw)
     return findings
 
 
@@ -860,11 +940,53 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 # ---------------------------------------------------------------------------
 
 _MCP_GATEWAY_REGISTRY_PATCHED = (1, 0, 13)
-_MCP_GATEWAY_REGISTRY_RE = re.compile(
-    r"mcp-gateway-registry"
-    r"\s*(?:==|>=|~=|<=|<|>|@|:|\"?\s*version\"?\s*[:=])?\s*v?([0-9][\w.\-]*)?",
-    re.IGNORECASE,
-)
+_MCP_GATEWAY_REGISTRY_NAMES = ("mcp-gateway-registry",)
+
+
+def _command_lines(path: Path, text: str) -> list[list[str]]:
+    """The command lines an MCP config's entries or a package.json's scripts run."""
+    name = path.name.lower()
+    try:
+        if name == "package.json":
+            data = json.loads(text)
+            scripts = data.get("scripts") if isinstance(data, dict) else None
+            if not isinstance(scripts, dict):
+                return []
+            return [shell_tokens(line) for line in scripts.values() if isinstance(line, str)]
+        if name.endswith((".yaml", ".yml")):
+            data = yaml.safe_load(text)
+        elif name.endswith(".json"):
+            data = loads_jsonc(text)
+        else:
+            return []
+    except (ValueError, yaml.YAMLError, RecursionError):
+        return []
+    return [_argv(entry)[0] for entry, _where in _command_entries(data)]
+
+
+def _runs_unversioned(path: Path, text: str, names: tuple[str, ...]) -> bool:
+    """Does `path` run one of `names` that no launcher fetches, so at a version
+    nothing in the file states?
+
+    `uv run --directory ../serena serena-mcp-server` runs the entry point of a
+    checkout of unknown version, and a declaration cannot see it: `uv run`
+    fetches nothing. A command line that fetches a package is skipped, because
+    the command it then runs is that package's (`uvx --from <spec> serena`),
+    and the declarations judge `<spec>`. This replaces reading every mention of
+    the name in the text, which would report the command of a patched
+    `uvx --from x==1.0.13 x` as unpinned, and a server merely named `x`.
+    """
+    if any(len(word) > _MAX_DECLARATION_WORD for word in text.split()):
+        return False
+    wanted = {n.lower() for n in names}
+    for argv in _command_lines(path, text):
+        if launched_packages(argv):
+            continue
+        words = [w for token in argv
+                 for w in (shell_tokens(token) if any(c.isspace() for c in token) else [token])]
+        if any(basename(word).lower() in wanted for word in words):
+            return True
+    return False
 
 
 def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
@@ -895,18 +1017,13 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
     candidates.extend(project_root.glob("*.mcp.yml"))
 
     for path in candidates:
-        try:
-            if _lockfile_over_limit(path):
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = _read_pin_candidate(path)
+        if text is None:
             continue
-        m = _MCP_GATEWAY_REGISTRY_RE.search(text)
-        if not m:
-            continue
-        raw = m.group(1)
-        version = _semver3(raw) if raw else None
-        if version is None or version < _MCP_GATEWAY_REGISTRY_PATCHED:
+        raw = _affected_pin(path, text, _MCP_GATEWAY_REGISTRY_NAMES, _MCP_GATEWAY_REGISTRY_PATCHED)
+        if raw is None and _runs_unversioned(path, text, _MCP_GATEWAY_REGISTRY_NAMES):
+            raw = ""
+        if raw is not None:
             rel = str(path.relative_to(project_root))
             scanned_files.add(rel)
             _fire(rel, raw)
@@ -920,11 +1037,29 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
 # ---------------------------------------------------------------------------
 
 _SERENA_PATCHED = (1, 5, 2)
-_SERENA_RE = re.compile(
-    r"(?:serena-agent|serena-mcp-server|oraios/serena)"
-    r"\s*(?:==|>=|~=|<=|<|>|@|:|\"?\s*version\"?\s*[:=])?\s*v?([0-9][\w.\-]*)?",
-    re.IGNORECASE,
-)
+_SERENA_NAMES = ("serena-agent", "serena-mcp-server")
+# Serena's repository, which uvx, pip and docker take it from
+# (`uvx --from git+https://github.com/oraios/serena serena`,
+# `ghcr.io/oraios/serena`). Such a reference declares no package, so the text is
+# read for it, every reference and not the first: its tag is its version, and
+# one with no tag is unpinned. Bounded, so `oraios/serena-x` is another repo.
+_SERENA_REPO_RE = re.compile(r"(?<![\w-])oraios/serena(?![\w-])", re.IGNORECASE)
+# A reference's version, `@v1.5.2` or `:1.5.2`, read in a fixed window after it.
+_REFERENCE_VERSION_RE = re.compile(r"\s*(?:[@:]\s*)?v?([0-9][\w.\-]*)?")
+
+
+def _repository_reference_below(
+    text: str, pattern: re.Pattern[str], floor: tuple[int, int, int]
+) -> str | None:
+    """The version of the first reference that is unpinned or below `floor`
+    ("" when it carries none), or None when every reference is patched."""
+    for m in pattern.finditer(text):
+        after = _REFERENCE_VERSION_RE.match(text, m.end(), m.end() + 64)
+        raw = after.group(1) if after else None
+        version = _semver3(raw) if raw else None
+        if version is None or version < floor:
+            return raw or ""
+    return None
 
 
 def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
@@ -955,29 +1090,19 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
     candidates.extend(project_root.glob("*.mcp.yml"))
 
     for path in candidates:
-        try:
-            if _lockfile_over_limit(path):
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = _read_pin_candidate(path)
+        if text is None:
             continue
-        rel = str(path.relative_to(project_root))
-        if path.name.lower() in _LOCKFILES:
-            # Resolve the locked version; fire only when it is below the fix
-            # floor, so a correct upgrade + re-lock clears the finding.
-            resolved = _resolve_lockfile_version(
-                text, path.name.lower(), ("serena-agent", "serena-mcp-server")
-            )
-            if resolved is not None and resolved < _SERENA_PATCHED:
-                scanned_files.add(rel)
-                _fire(rel, ".".join(str(x) for x in resolved))
-            continue
-        m = _SERENA_RE.search(text)
-        if not m:
-            continue
-        raw = m.group(1)
-        version = _semver3(raw) if raw else None
-        if version is None or version < _SERENA_PATCHED:
+        # A lockfile resolves a version, so a correct upgrade and re-lock clears
+        # the finding; elsewhere the repository and a checkout's entry point
+        # count as references too.
+        raw = _affected_pin(path, text, _SERENA_NAMES, _SERENA_PATCHED)
+        if raw is None and path.name.lower() not in _LOCKFILES:
+            raw = _repository_reference_below(text, _SERENA_REPO_RE, _SERENA_PATCHED)
+            if raw is None and _runs_unversioned(path, text, _SERENA_NAMES):
+                raw = ""
+        if raw is not None:
+            rel = str(path.relative_to(project_root))
             scanned_files.add(rel)
             _fire(rel, raw)
     return findings
@@ -989,10 +1114,6 @@ def _check_serena_pin(project_root: Path, scanned_files: set[str]) -> list[Findi
 # ---------------------------------------------------------------------------
 
 _EXCEL_FIRST_PATCHED = (0, 1, 8)
-_EXCEL_VERSION_RE = re.compile(
-    r"excel-mcp-server" + _PY_VERSION_TAIL,
-    re.IGNORECASE,
-)
 
 
 def _check_excel_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Finding]:
@@ -1014,19 +1135,15 @@ def _check_excel_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
             candidates.append(p)
 
     for path in candidates:
-        try:
-            if _lockfile_over_limit(path):
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = _read_pin_candidate(path)
+        if text is None:
             continue
-        for m in _EXCEL_VERSION_RE.finditer(text):
-            version = _semver3(m.group(1))
-            if version is None or version < _EXCEL_FIRST_PATCHED:
-                rel = str(path.relative_to(project_root))
-                scanned_files.add(rel)
-                _fire(rel, m.group(1))
-                break
+        raw = _affected_pin(path, text, ("excel-mcp-server",), _EXCEL_FIRST_PATCHED,
+                            requires_version=True)
+        if raw is not None:
+            rel = str(path.relative_to(project_root))
+            scanned_files.add(rel)
+            _fire(rel, raw)
     return findings
 
 
@@ -1332,10 +1449,6 @@ def _scan_astro_mcp_query_concat(
 # ---------------------------------------------------------------------------
 
 _LITELLM_PATCHED = (1, 83, 7)
-_LITELLM_VERSION_RE = re.compile(
-    r"(?<![\w-])litellm" + _PY_VERSION_TAIL,
-    re.IGNORECASE,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -2031,17 +2144,12 @@ def _check_litellm_pin(project_root: Path, scanned_files: set[str]) -> list[Find
             candidates.append(p)
 
     for path in candidates:
-        try:
-            if _lockfile_over_limit(path):
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = _read_pin_candidate(path)
+        if text is None:
             continue
-        for m in _LITELLM_VERSION_RE.finditer(text):
-            version = _semver3(m.group(1))
-            if version is None or version < _LITELLM_PATCHED:
-                rel = str(path.relative_to(project_root))
-                scanned_files.add(rel)
-                _fire(rel, m.group(1))
-                break  # one finding per file is enough
+        raw = _affected_pin(path, text, ("litellm",), _LITELLM_PATCHED, requires_version=True)
+        if raw is not None:
+            rel = str(path.relative_to(project_root))
+            scanned_files.add(rel)
+            _fire(rel, raw)
     return findings

@@ -757,11 +757,11 @@ def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pyte
 # candidate whole, however large, where the pin table skips a lockfile over
 # MAX_LOCKFILE_BYTES unread; now they skip it too, and their rules say so.
 _PIN_CHECK_LOCKFILES = [
-    ("AAK-DORIS-001", "poetry.lock", "apache-doris-mcp-server==0.5.0\n"),
+    ("AAK-DORIS-001", "poetry.lock", '[[package]]\nname = "apache-doris-mcp-server"\nversion = "0.5.0"\n'),
     ("AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001", "uv.lock",
      '[[package]]\nname = "mcp-gateway-registry"\nversion = "1.0.0"\n'),
     ("AAK-MCP-SERENA-CVE-2026-49471-001", "uv.lock", '[[package]]\nname = "serena-agent"\nversion = "1.5.0"\n'),
-    ("AAK-EXCEL-MCP-001", "poetry.lock", "excel-mcp-server==0.1.7\n"),
+    ("AAK-EXCEL-MCP-001", "poetry.lock", '[[package]]\nname = "excel-mcp-server"\nversion = "0.1.7"\n'),
     ("AAK-ASTROMCP-SQLI-CVE-2026-7591-001", "yarn.lock", 'astro-mcp-server@1.1.1:\n  version "1.1.1"\n'),
     ("AAK-AGENT-ZERO-CVE-2026-30624-PIN-001", "uv.lock",
      'agent-zero = { git = "https://github.com/frdel/agent-zero#v0.9.8" }\n'),
@@ -772,7 +772,7 @@ _PIN_CHECK_LOCKFILES = [
     ("AAK-SK-INMEMORY-VECTORSTORE-FILTER-CVE-2026-26030-PIN-001", "poetry.lock", "semantic-kernel==1.39.0\n"),
     ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "uv.lock", "gpt-researcher==0.14.8\n"),
     ("AAK-GPTRESEARCHER-MCP-STDIO-MITM-001", "yarn.lock", "gpt-researcher@0.14.8:\n"),
-    ("AAK-LITELLM-CVE-2026-30623-PIN-001", "uv.lock", "litellm==1.83.0\n"),
+    ("AAK-LITELLM-CVE-2026-30623-PIN-001", "uv.lock", '[[package]]\nname = "litellm"\nversion = "1.83.0"\n'),
     ("AAK-CLAUDECODE-CVE-2026-40068-PIN-001", "yarn.lock", '"@anthropic-ai/claude-code@2.1.0":\n'),
     ("AAK-MCP-ATLASSIAN-CVE-2026-27825-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
     ("AAK-MCP-ATLASSIAN-CVE-2026-27826-001", "poetry.lock", 'mcp-atlassian = "0.16.0"\n'),
@@ -895,6 +895,175 @@ def test_the_npm_openclaw_placeholder_is_not_reported(tmp_path: Path, monkeypatc
     (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
     assert not [f for f in scan(tmp_path)[0] if f.rule_id in ("AAK-SUPPLY-002", "AAK-SUPPLY-006")]
     assert "openclaw" not in supply_chain.KNOWN_VULNERABLE_PACKAGES["npm"]
+
+
+# ---------------------------------------------------------------------------
+# The older pin checks judge what each declaration admits
+# ---------------------------------------------------------------------------
+#
+# They read the first number after the package name, so an upper bound read as
+# the version: `pkg<FIXED`, which admits only affected releases, read as FIXED and
+# passed, and `<2.0.0,>=1.0.0` passed where `>=1.0.0,<2.0.0` fired. The
+# gateway-registry and Serena checks judged only the first mention in a file, so
+# a comment or a patched mention above an affected one decided it. Each file is
+# now read in its own format (`_manifest_deps`), every declaration is judged by
+# the versions it admits (`_versions`), and a lockfile by the versions it
+# resolves, as the CVE pin table does.
+
+_DORIS = "AAK-DORIS-001"
+_GATEWAY = "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001"
+_SERENA = "AAK-MCP-SERENA-CVE-2026-49471-001"
+_EXCEL = "AAK-EXCEL-MCP-001"
+_LITELLM = "AAK-LITELLM-CVE-2026-30623-PIN-001"
+_OLD_PINS = (
+    # rule, package, the first fixed release, the release below it
+    (_DORIS, "apache-doris-mcp-server", "0.6.1", "0.6.0"),
+    (_GATEWAY, "mcp-gateway-registry", "1.0.13", "1.0.12"),
+    (_SERENA, "serena-agent", "1.5.2", "1.5.1"),
+    (_EXCEL, "excel-mcp-server", "0.1.8", "0.1.7"),
+    (_LITELLM, "litellm", "1.83.7", "1.83.6"),
+)
+
+
+def _pin_ids(root: Path, rel: str, text: str) -> set[str]:
+    target = root / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    return {f.rule_id for f in scan(root)[0]}
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("=={below}", True),
+    ("=={fixed}", False),
+    ("<{fixed}", True),  # admits only affected releases; read as {fixed} before
+    ("<=9.0.0,>={below}", True),  # upper bound first; read as 9.0.0 before
+    (">={below},<=9.0.0", True),
+    (">={fixed},<9.0.0", False),
+    (">{below}", False),  # admits {fixed} and up; read as {below} before
+    ("~={below}", True),
+    ("!={below}", True),  # excludes one affected release, admits the rest
+])
+def test_an_older_pin_judges_the_range_a_requirement_admits(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, spec: str, fires: bool
+) -> None:
+    line = name + spec.format(fixed=fixed, below=below)
+    assert (rule_id in _pin_ids(tmp_path, "requirements.txt", line + "\n")) is fires, line
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+def test_an_older_pin_is_not_decided_by_a_comment(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str
+) -> None:
+    text = f"# {name} {below} is affected, so we stay on the fix\n{name}=={fixed}\n"
+    assert rule_id not in _pin_ids(tmp_path, "requirements.txt", text)
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+@pytest.mark.parametrize(("rel", "template"), [
+    ("pyproject.toml", '[tool.poetry.dependencies]\npython = "^3.10"\n{name} = "{spec}"\n'),
+    ("Pipfile", '[packages]\n{name} = "{spec}"\n'),
+    ("pyproject.toml", '[project]\nname = "x"\ndependencies = ["{name}[extra]{spec}"]\n'),
+])
+def test_an_older_pin_reads_poetry_pipfile_and_extras(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, rel: str, template: str
+) -> None:
+    spec = "==" + below if rel == "Pipfile" or "[extra]" in template else below
+    assert rule_id in _pin_ids(tmp_path / "bad", rel, template.format(name=name, spec=spec))
+    spec = "==" + fixed if rel == "Pipfile" or "[extra]" in template else fixed
+    assert rule_id not in _pin_ids(tmp_path / "good", rel, template.format(name=name, spec=spec))
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+@pytest.mark.parametrize("lockfile", ["uv.lock", "poetry.lock"])
+def test_an_older_pin_judges_the_version_a_lockfile_resolves(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, lockfile: str
+) -> None:
+    block = '[[package]]\nname = "{name}"\nversion = "{version}"\n'
+    assert rule_id in _pin_ids(tmp_path / "bad", lockfile, block.format(name=name, version=below))
+    assert rule_id not in _pin_ids(tmp_path / "good", lockfile, block.format(name=name, version=fixed))
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+def test_an_older_pin_reports_its_package_not_a_longer_name(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str
+) -> None:
+    assert rule_id not in _pin_ids(tmp_path, "requirements.txt", f"my-{name}-extras=={below}\n")
+
+
+@pytest.mark.parametrize(("rule_id", "name"), [(_GATEWAY, "mcp-gateway-registry"), (_SERENA, "serena-agent")])
+def test_an_unpinned_reference_is_still_reported(tmp_path: Path, rule_id: str, name: str) -> None:
+    assert rule_id in _pin_ids(tmp_path, "requirements.txt", f"{name}\n")
+
+
+@pytest.mark.parametrize(("rule_id", "name"), [
+    (_DORIS, "apache-doris-mcp-server"), (_EXCEL, "excel-mcp-server"), (_LITELLM, "litellm"),
+])
+def test_a_version_pin_still_needs_a_stated_version(tmp_path: Path, rule_id: str, name: str) -> None:
+    assert rule_id not in _pin_ids(tmp_path, "requirements.txt", f"{name}\n")
+
+
+def test_every_mention_in_an_mcp_config_is_judged(tmp_path: Path) -> None:
+    """The first mention decided: a patched launch above an unpinned one hid it."""
+    config = {"mcpServers": {
+        "new": {"command": "uvx", "args": ["serena-agent==1.5.2"]},
+        "old": {"command": "uvx", "args": ["--from", "git+https://github.com/oraios/serena", "serena"]},
+    }}
+    assert _SERENA in _pin_ids(tmp_path, ".mcp.json", json.dumps(config))
+    config = {"mcpServers": {
+        "new": {"command": "uvx", "args": ["mcp-gateway-registry@1.0.13"]},
+        "old": {"command": "uvx", "args": ["mcp-gateway-registry==1.0.12"]},
+    }}
+    assert _GATEWAY in _pin_ids(tmp_path, ".mcp.json", json.dumps(config))
+
+
+@pytest.mark.parametrize(("args", "fires"), [
+    (["--from", "git+https://github.com/oraios/serena", "serena", "start-mcp-server"], True),
+    (["--from", "git+https://github.com/oraios/serena@v1.5.0", "serena-mcp-server"], True),
+    (["--from", "git+https://github.com/oraios/serena@v1.5.2", "serena-mcp-server"], False),
+    (["run", "--directory", "/src/serena", "serena-mcp-server"], True),  # a checkout of unknown version
+    (["--from", "serena-agent[dashboard]==1.5.2", "serena"], False),
+    (["serena-agent<1.5.2"], True),
+])
+def test_serena_reads_its_git_and_checkout_launches(tmp_path: Path, args: list[str], fires: bool) -> None:
+    command = "uv" if args[0] == "run" else "uvx"
+    config = {"mcpServers": {"serena": {"command": command, "args": args}}}
+    assert (_SERENA in _pin_ids(tmp_path, ".mcp.json", json.dumps(config))) is fires
+
+
+def test_a_crafted_mention_run_scans_in_linear_time(tmp_path: Path) -> None:
+    """A mention is judged on a fixed window after it, so a file of mentions is linear."""
+    import time
+
+    text = json.dumps({"mcpServers": {"s": {"command": "uvx", "args": ["serena-agent " * 80_000]}}})
+    started = time.perf_counter()
+    _pin_ids(tmp_path, ".mcp.json", text)
+    assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize("rel", ["package.json", ".mcp.json"])
+def test_a_crafted_long_word_is_not_tokenized(tmp_path: Path, rel: str) -> None:
+    """The shell tokenizer behind `_manifest_deps` takes the square of a word's
+    length (a 1 MB one took 11 s), so a file holding a word over 16 KiB is not
+    read for declarations. The bound is loose for slow CI runners."""
+    import time
+
+    word = "serena-agent==1.5.0" + "a" * 1_000_000
+    if rel == "package.json":
+        text = json.dumps({"scripts": {"mcp": f"uvx {word} x"}})
+    else:
+        text = json.dumps({"mcpServers": {"s": {"command": "uvx", "args": [f"{word} x"]}}})
+    started = time.perf_counter()
+    found = _pin_ids(tmp_path, rel, text)
+    assert time.perf_counter() - started < 5.0
+    assert _SERENA not in found
+
+
+def test_a_manifest_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    text = "litellm==1.83.6\n"
+    assert _LITELLM in _pin_ids(tmp_path, "requirements.txt", text)
+    monkeypatch.setattr(supply_chain, "MAX_MANIFEST_BYTES", len(text) - 1)
+    assert _LITELLM not in _pin_ids(tmp_path, "requirements.txt", text)
 
 
 # ---------------------------------------------------------------------------

@@ -6104,16 +6104,15 @@ _r(
     adversa_references=["ADV-INJECT-02"],
     aicm_references=["AIS-07", "DSP-07"],
     limitations=(
-        "Matches `apache-doris-mcp-server` followed directly by a version "
-        "(`apache-doris-mcp-server==0.5.0`) in requirements*.txt at the project "
-        "root and in a dependency string of the root pyproject.toml. A name with no "
-        "version, a git URL, the table form that Poetry and Pipfile use "
-        "(`apache-doris-mcp-server = \"^0.5.0\"`), a requirements file in a "
-        "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
-        "poetry.lock and uv.lock are opened but never match, because the name and "
-        "the version sit on separate lines, so a version that reaches the project "
-        "only through a lockfile is not reported."
-        " A lockfile over 32 MiB is not read."
+        "Reads the dependency declarations of the root requirements*.txt, "
+        "pyproject.toml and Pipfile in their own formats, and reports one whose "
+        "range admits a release below 0.6.1 (`apache-doris-mcp-server<0.6.1` included), and the "
+        "version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is "
+        "below 0.6.1. A declaration that states no version, such as "
+        "`apache-doris-mcp-server` alone or a git URL, is not reported, and neither is a "
+        "requirements file in a sub-directory or an `.mcp.json` launcher. A "
+        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
+        "declarations. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6376,16 +6375,15 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-INJECT-03"],
     limitations=(
-        "Matches `excel-mcp-server` followed directly by a version "
-        "(`excel-mcp-server==0.1.7`) in requirements*.txt at the project root and "
-        "in a dependency string of the root pyproject.toml. A name with no version, "
-        "a git URL, the table form that Poetry and Pipfile use (`excel-mcp-server = "
-        "\"^0.1.7\"`), a requirements file in a sub-directory and an `.mcp.json` "
-        "launcher are not reported. Pipfile.lock, poetry.lock and uv.lock are "
-        "opened but never match, because the name and the version sit on separate "
-        "lines, so a version that reaches the project only through a lockfile is "
-        "not reported."
-        " A lockfile over 32 MiB is not read."
+        "Reads the dependency declarations of the root requirements*.txt, "
+        "pyproject.toml and Pipfile in their own formats, and reports one whose "
+        "range admits a release below 0.1.8 (`excel-mcp-server<0.1.8` included), and the "
+        "version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is "
+        "below 0.1.8. A declaration that states no version, such as "
+        "`excel-mcp-server` alone or a git URL, is not reported, and neither is a "
+        "requirements file in a sub-directory or an `.mcp.json` launcher. A "
+        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
+        "declarations. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -8273,17 +8271,15 @@ _r(
     incident_references=["BERRIAI-LITELLM-2026-04-30"],
     auto_fixable=True,
     limitations=(
-        "Matches `litellm` followed directly by a version (`litellm==1.83.0`) in "
-        "requirements*.txt at the project root and in a dependency string of the "
-        "root pyproject.toml. A name with no version, a name with extras "
-        "(`litellm[all]==1.83.0`), a git URL, the table form that Poetry and "
-        "Pipfile use (`litellm = \"^1.83.0\"`), a requirements file in a "
-        "sub-directory and an `.mcp.json` launcher are not reported. Pipfile.lock, "
-        "poetry.lock and uv.lock are opened but never match, because the name and "
-        "the version sit on separate lines, so a version that reaches the project "
-        "only through a lockfile is not reported. A compose file's "
-        "`ghcr.io/berriai/litellm` image tag is not read."
-        " A lockfile over 32 MiB is not read."
+        "Reads the dependency declarations of the root requirements*.txt, "
+        "pyproject.toml and Pipfile in their own formats, and reports one whose "
+        "range admits a release below 1.83.7 (`litellm<1.83.7` included), and the "
+        "version the root Pipfile.lock, poetry.lock or uv.lock resolves when it is "
+        "below 1.83.7. A declaration that states no version, such as "
+        "`litellm` alone or a git URL, is not reported, and neither is a "
+        "requirements file in a sub-directory or an `.mcp.json` launcher. A compose file's `ghcr.io/berriai/litellm` image tag is not read. A "
+        "manifest over 2 MB is not read, nor one holding a word over 16 KiB for "
+        "declarations. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -9033,14 +9029,18 @@ _r(
     owasp_agentic_references=["ASI02", "ASI04"],
     adversa_references=["ADV-SUPPLY-01"],
     limitations=(
-        "Reads `mcp-gateway-registry` as text in the project root's "
-        "requirements*.txt, pyproject.toml, Pipfile, Pipfile.lock, poetry.lock, "
-        "uv.lock, package.json, package-lock.json, .mcp.json, mcp.json, "
-        "claude_desktop_config.json and *.mcp.yaml/.yml files, and reports a file "
-        "whose first mention has a version below 1.0.13 or none. It does not read a "
+        "Reads the dependency declarations and launchers of the project root's "
+        "requirements*.txt, pyproject.toml, Pipfile, package.json, .mcp.json, "
+        "mcp.json, claude_desktop_config.json and *.mcp.yaml/.yml files, and reports "
+        "one whose range admits a release below 1.0.13 or that states no version, a "
+        "command line that runs `mcp-gateway-registry` without fetching it, and the "
+        "version the root Pipfile.lock, poetry.lock, uv.lock or package-lock.json "
+        "resolves when it is below 1.0.13. A mention that is not a declaration, such "
+        "as a server's name, a URL or an image name, is not read. It does not read a "
         "sub-directory, including a requirements file there, `.cursor/mcp.json` or "
-        "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`."
-        " A lockfile over 32 MiB is not read."
+        "`.vscode/mcp.json`, or a `pdm.lock`, `yarn.lock` or `pnpm-lock.yaml`. A file "
+        "over 2 MB is not read, nor one holding a word over 16 KiB for declarations. "
+        "A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -9137,12 +9137,18 @@ _r(
     owasp_agentic_references=["ASI04", "ASI05"],
     adversa_references=["ADV-AUTH-01"],
     limitations=(
-        "Looks for `serena-agent`, `serena-mcp-server` or `oraios/serena`, unpinned or "
-        "below 1.5.2, in the root dependency manifests and lockfiles and in the root "
+        "Reads the declarations and launchers of `serena-agent` and "
+        "`serena-mcp-server` in the root dependency manifests and in the root "
         "`.mcp.json`, `mcp.json`, `claude_desktop_config.json` and `*.mcp.yaml` or "
-        "`*.mcp.yml` files. Only these root-level files are read, so the same server "
-        "launched from `.cursor/mcp.json` is missed."
-        " A lockfile over 32 MiB is not read."
+        "`*.mcp.yml` files, and reports one whose range admits a release below 1.5.2 "
+        "or that states no version, the version a root lockfile resolves when it is "
+        "below 1.5.2, every `oraios/serena` git or image reference whose tag is below "
+        "1.5.2 or missing, and a command line that runs `serena-mcp-server` without "
+        "fetching it (`uv run --directory ../serena serena-mcp-server`). A mention of "
+        "the names that is none of these, such as a server's name, is not read. Only "
+        "these root-level files are read, so the same server launched from "
+        "`.cursor/mcp.json` is missed. A file over 2 MB is not read, nor one holding a "
+        "word over 16 KiB for declarations. A lockfile over 32 MiB is not read."
     ),
 )
 

@@ -1,5 +1,0 @@
-version = 1
-
-[[package]]
-name = "apache-doris-mcp-server"
-version = "0.5.0"
