@@ -287,13 +287,16 @@ def _refers_to_fetched(tail: str, url: str) -> re.Match[str] | None:
     """Match when the text after an act verb points back at what was fetched.
 
     The URL's own file name counts too: "Fetch <url>/setup.sh, then run setup.sh"
-    runs what it fetched as surely as "and run it" does.
+    runs what it fetched as surely as "and run it" does. The name follows the
+    last `/` or `\\`: Node, which the agent's fetch tool parses with, reads a
+    backslash in an http(s) path as `/`, and `<url>/tools\\setup.sh` was named
+    `tools\\setup.sh`, which "then run setup.sh" never matched.
     """
     ref = _FETCHED_REF_RE.match(tail)
     if ref is not None:
         return ref
     # `_URL_RE` keeps a trailing comma or full stop, so trim it off the name.
-    name = urlsplit(url).path.rstrip(".,;:!?").rsplit("/", 1)[-1]
+    name = re.split(r"[/\\]", urlsplit(url).path.rstrip(".,;:!?"))[-1]
     if len(name) >= 3:
         return re.match(r"\s*\S*" + re.escape(name), tail)
     return None
