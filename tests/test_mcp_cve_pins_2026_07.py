@@ -3752,6 +3752,30 @@ def test_a_toml_finding_names_the_declaration_that_decides_it(
     assert _lines(tmp_path, name, content, ATLASSIAN_73498) == [line]
 
 
+SDK_52869 = "AAK-MCP-SDK-CVE-2026-52869-001"
+
+
+@pytest.mark.parametrize("name", ["pyproject.toml", "requirements.txt"])
+def test_a_name_inside_a_longer_name_is_not_its_line(tmp_path: Path, name: str) -> None:
+    """`fastmcp==1.22.0` holds the text of `mcp==1.22.0`. A search with no left
+    boundary gave the mcp finding the fastmcp line."""
+    if name == "pyproject.toml":
+        content = ('[project]\nname = "app"\ndependencies = [\n'
+                   '    "fastmcp==1.22.0",\n    "mcp==1.22.0",\n]\n')
+        want = 5
+    else:
+        content, want = "fastmcp==1.22.0\nmcp==1.22.0\n", 2
+    assert _lines(tmp_path, name, content, SDK_52869) == [want]
+
+
+def test_a_patched_dependency_group_above_an_affected_main_entry(tmp_path: Path) -> None:
+    content = (
+        '[dependency-groups]\ndev = ["mcp-atlassian==0.23.0"]\n\n'
+        '[project]\nname = "app"\ndependencies = ["mcp-atlassian==0.21.0"]\n'
+    )
+    assert _lines(tmp_path, "pyproject.toml", content, ATLASSIAN_73498) == [6]
+
+
 def test_a_package_json_finding_names_the_affected_section(tmp_path: Path) -> None:
     content = json.dumps({"name": "app", "dependencies": {"n8n-mcp": "2.94.0"},
                           "devDependencies": {"n8n-mcp": "2.50.0"}}, indent=2) + "\n"
