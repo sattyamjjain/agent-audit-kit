@@ -61,6 +61,21 @@ _SANDBOX_SET_RE = re.compile(
     r"""\.sandbox\b|setAttribute\s*\(\s*["']sandbox["']|allow\s*=\s*["'][^"']*sandbox""",
     re.IGNORECASE,
 )
+# A sandbox value written in script as a literal: `setAttribute("sandbox", "...")`
+# or `frame.sandbox = "..."` (not `==`). An iframe made in script used to be
+# judged only by whether any sandbox call existed, so `allow-scripts
+# allow-same-origin` set there passed while the same value in a tag fired.
+_SANDBOX_VALUE_RE = re.compile(
+    r"""(?:setAttribute\s*\(\s*["']sandbox["']\s*,|\.sandbox\s*=(?!=))\s*"""
+    r"""(?:"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`)""",
+    re.IGNORECASE,
+)
+
+
+def _grants_both(value: str) -> bool:
+    """`allow-scripts` with `allow-same-origin` lets the framed document remove its own sandbox."""
+    val = value.lower()
+    return "allow-scripts" in val and "allow-same-origin" in val
 
 
 def _iframe_unsafe(tag: str) -> bool:
@@ -69,8 +84,15 @@ def _iframe_unsafe(tag: str) -> bool:
     m = _SANDBOX_ATTR_RE.search(tag)
     if not m:
         return True  # no sandbox at all
-    val = m.group(1).lower()
-    return "allow-scripts" in val and "allow-same-origin" in val
+    return _grants_both(m.group(1))
+
+
+def _first_unsafe_script_sandbox(text: str) -> re.Match[str] | None:
+    """The first sandbox value written in script that grants both, or None."""
+    for m in _SANDBOX_VALUE_RE.finditer(text):
+        if _grants_both(m.group(1) or m.group(2) or m.group(3) or ""):
+            return m
+    return None
 
 
 # --- APPS-002: raw-HTML sink without sanitizer ---------------------------
@@ -118,6 +140,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     # read `[^>]*` to the end of the file.
     tags = _IFRAME_TAG_RE.findall(text, 0, text.rfind(">") + 1)
     unsafe_iframe = next((t for t in tags if _iframe_unsafe(t)), None)
+    unsafe_set = _first_unsafe_script_sandbox(text)
     if unsafe_iframe is not None:
         findings.append(make_finding(
             "AAK-MCP-APPS-001",
@@ -125,6 +148,14 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             f"MCP Apps UI iframe rendered without a hardening sandbox: {unsafe_iframe[:120]!r} "
             "— add sandbox and do not grant allow-scripts together with allow-same-origin.",
             line_number=find_line_number(text, unsafe_iframe[:60]),
+        ))
+    elif unsafe_set is not None:
+        findings.append(make_finding(
+            "AAK-MCP-APPS-001",
+            rel,
+            f"MCP Apps UI iframe given a self-defeating sandbox in script: {unsafe_set.group(0)[:120]!r} "
+            "— do not grant allow-scripts together with allow-same-origin.",
+            line_number=text.count("\n", 0, unsafe_set.start()) + 1,
         ))
     elif _IFRAME_CREATE_RE.search(text) and not _SANDBOX_SET_RE.search(text):
         m = _IFRAME_CREATE_RE.search(text)

@@ -5092,10 +5092,12 @@ _r(
     limitations=(
         "Reads `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.html`, `.htm`, "
         "`.vue` and `.svelte` files that carry an MCP Apps marker (`ui://`, "
-        "`@mcp-ui/`, `createUIResource` and similar). An `<iframe>` tag is judged "
-        "by the value of its `sandbox`, but an iframe created in script is judged "
-        "only by whether a sandbox is set at all: `frame.setAttribute(\"sandbox\", "
-        "\"allow-scripts allow-same-origin\")` is not reported."
+        "`@mcp-ui/`, `createUIResource` and similar). A sandbox value is judged "
+        "where it is written as a literal: in an `<iframe>` tag, in "
+        "`setAttribute(\"sandbox\", ...)` or in `frame.sandbox = ...`. A value held "
+        "in a variable, or added with `frame.sandbox.add(...)`, counts as a sandbox "
+        "whatever it grants, and a sandbox set anywhere in a file counts for every "
+        "iframe the file creates in script."
     ),
 )
 

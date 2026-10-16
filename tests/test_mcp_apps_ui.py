@@ -6,6 +6,8 @@ import json
 import time
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.models import ScanResult
 from agent_audit_kit.output.sarif import format_results
 from agent_audit_kit.rules.builtin import RULES
@@ -87,3 +89,72 @@ def test_unclosed_iframe_tags_scan_in_linear_time(tmp_path: Path) -> None:
     ids = _ids(tmp_path, "App.tsx", src)
     assert time.perf_counter() - started < 5.0
     assert "AAK-MCP-APPS-001" not in ids
+
+
+# An iframe made in script was judged only by whether any sandbox call existed,
+# so a self-defeating value set there passed where the same value in a tag fired.
+
+_HOST = (
+    'import { createUIResource } from "@mcp-ui/server";\n'
+    "\n"
+    'const frame = document.createElement("iframe");\n'
+    "@@SET@@\n"
+    'frame.src = "ui://notes/view";\n'
+    "document.body.appendChild(frame);\n"
+    "export { createUIResource };\n"
+)
+
+
+def _apps001(tmp: Path, set_line: str) -> list[tuple[str, int | None]]:
+    (tmp / "host.js").write_text(_HOST.replace("@@SET@@", set_line), encoding="utf-8")
+    return [(f.rule_id, f.line_number) for f in scan(tmp)[0] if f.rule_id == "AAK-MCP-APPS-001"]
+
+
+@pytest.mark.parametrize("set_line", [
+    'frame.setAttribute("sandbox", "allow-scripts allow-same-origin");',
+    "frame.setAttribute('sandbox', 'allow-same-origin allow-forms allow-scripts');",
+    'frame.setAttribute( "SANDBOX" , "Allow-Scripts Allow-Same-Origin" );',
+    'frame.sandbox = "allow-scripts allow-same-origin";',
+    "frame.sandbox=`allow-scripts allow-same-origin`;",
+])
+def test_a_self_defeating_sandbox_set_in_script_fires_001(tmp_path: Path, set_line: str) -> None:
+    assert _apps001(tmp_path, set_line) == [("AAK-MCP-APPS-001", 4)]
+
+
+@pytest.mark.parametrize("set_line", [
+    'frame.setAttribute("sandbox", "allow-scripts");',
+    'frame.setAttribute("sandbox", "");',
+    'frame.sandbox = "allow-forms allow-same-origin";',
+    "frame.sandbox = policy;",
+    'if (frame.sandbox == "allow-scripts allow-same-origin") { report(); }',
+])
+def test_a_hardening_or_unknown_sandbox_set_in_script_clears_001(tmp_path: Path, set_line: str) -> None:
+    assert _apps001(tmp_path, set_line) == []
+
+
+def test_a_script_iframe_with_no_sandbox_still_fires_001(tmp_path: Path) -> None:
+    assert _apps001(tmp_path, "// no sandbox") == [("AAK-MCP-APPS-001", 3)]
+
+
+def test_an_unsafe_tag_is_still_the_one_reported(tmp_path: Path) -> None:
+    """One APPS-001 per file, as before: the tag path is judged first."""
+    src = _HOST.replace(
+        "@@SET@@",
+        'frame.sandbox = "allow-scripts allow-same-origin";\n'
+        'document.body.insertAdjacentHTML("beforeend", \'<iframe src="ui://x"></iframe>\');',
+    )
+    (tmp_path / "host.js").write_text(src, encoding="utf-8")
+    hits = [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-MCP-APPS-001"]
+    assert len(hits) == 1 and "<iframe" in hits[0].evidence
+
+
+def test_sandbox_values_set_in_script_read_in_linear_time(tmp_path: Path) -> None:
+    """1 MB of `.sandbox = \\`` with no closing backtick, and 50,000
+    `setAttribute("sandbox", "` with no closing quote."""
+    for src in (
+        "// @mcp-ui/client ui://\n" + "x.sandbox = `" + "a" * 1_000_000,
+        "// @mcp-ui/client ui://\n" + 'f.setAttribute("sandbox", "' * 25_000,
+    ):
+        started = time.perf_counter()
+        _ids(tmp_path, "host.js", src)
+        assert time.perf_counter() - started < 5.0
