@@ -6932,7 +6932,8 @@ _r(
     "AAK-SPLUNK-MCP-TOKEN-LEAK-001",
     "splunk-mcp-server configured to write tokens to _internal / _audit",
     "A splunk-mcp-server configuration (`inputs.conf`, "
-    "`splunk-mcp.yaml`, or any file under `splunk-mcp/`) routes a "
+    "`splunk-mcp.yaml`, or any file under `splunk-mcp/`, `splunk-mcp-server/` "
+    "or another directory named for both) routes a "
     "token-bearing source into the `_internal` or `_audit` index, "
     "or names a sourcetype known to carry session tokens "
     "(`splunk_session`, `mcp_auth`, `bearer`). Distinct from "
@@ -6952,7 +6953,8 @@ _r(
     incident_references=["SVD-2026-0405"],
     limitations=(
         "Reads a Splunk MCP config: `inputs.conf`, `splunk-mcp.yaml` or any file under "
-        "a `splunk-mcp` directory. A YAML file is read as structure only when `inputs` "
+        "a directory whose name holds both `splunk` and `mcp` (`splunk-mcp`, "
+        "`splunk-mcp-server`). A YAML file is read as structure only when `inputs` "
         "or `sourcetypes` is a top-level list, so the same entries nested under "
         "another key, such as `splunk:`, are not reported."
     ),

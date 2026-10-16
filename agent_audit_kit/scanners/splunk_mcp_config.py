@@ -3,7 +3,8 @@
 v0.3.4's AAK-SPLUNK-TOKLOG-001 fires on token-shaped values in log
 sinks at runtime. This rule fires on the *configuration* that makes
 the runtime leak inevitable: a splunk-mcp-server config (inputs.conf,
-splunk-mcp.yaml, anything under splunk-mcp/) that routes a token-bearing
+splunk-mcp.yaml, anything under a directory named for splunk and mcp, such
+as splunk-mcp/ or splunk-mcp-server/) that routes a token-bearing
 source into the `_internal` or `_audit` index.
 """
 
@@ -34,10 +35,19 @@ _INTERNAL_INDEX_RE = re.compile(
 )
 
 
+_NAME_WORD_SPLIT_RE = re.compile(r"[-_.]+")
+
+
+def _names_splunk_mcp(part: str) -> bool:
+    """A directory named for both splunk and mcp, in either order: `splunk-mcp`,
+    `splunk_mcp_server`, `splunk-mcp-server` (the server's own repository name, so a
+    vendored copy below the scan root), `mcp-server-splunk`."""
+    return {"splunk", "mcp"} <= set(_NAME_WORD_SPLIT_RE.split(part.lower()))
+
+
 def _is_splunk_mcp_path(path: Path, project_root: Path) -> bool:
     rel = path.relative_to(project_root)
-    parts = {p.lower() for p in rel.parts}
-    if "splunk-mcp" in parts or "splunk_mcp" in parts:
+    if any(_names_splunk_mcp(part) for part in rel.parts[:-1]):
         return True
     name = path.name.lower()
     return name in {"inputs.conf", "splunk-mcp.yaml", "splunk-mcp.yml", "splunk_mcp.yaml", "splunk_mcp.yml"}
