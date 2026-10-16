@@ -90,3 +90,26 @@ def test_pin_reads_ranges_extras_and_pyproject(tmp_path: Path, manifest: str, te
     (tmp_path / manifest).write_text(text, encoding="utf-8")
     findings, _ = scan(tmp_path)
     assert any(f.rule_id == "AAK-LANGCHAIN-SSRF-REDIR-001" for f in findings) is fires
+
+
+# Lockfiles are read with the CVE pin table's lockfile reader. The old pattern
+# wanted TOML `name =` and `version =` lines, one after the other, so Pipfile.lock's
+# JSON never matched, and neither did a uv.lock entry under a PEP 503 spelling.
+_PIPFILE_LOCK = '{"_meta": {}, "default": {"langchain-text-splitters": {"hashes": [], "version": "==%s"}}}'
+
+
+@pytest.mark.parametrize(("lockfile", "text", "fires"), [
+    ("Pipfile.lock", _PIPFILE_LOCK % "1.1.1", True),
+    ("Pipfile.lock", _PIPFILE_LOCK % "1.1.2", False),
+    ("uv.lock", '[[package]]\nname = "langchain_text_splitters"\nversion = "1.1.1"\n', True),
+    ("uv.lock", '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.2"\n', False),
+    ("poetry.lock", '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.1"\ndescription = "x"\n', True),
+    ("poetry.lock", '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.2"\n', False),
+])
+def test_pin_reads_lockfiles_as_the_pin_table_does(tmp_path: Path, lockfile: str, text: str, fires: bool) -> None:
+    (tmp_path / lockfile).write_text(text, encoding="utf-8")
+    findings, _ = scan(tmp_path)
+    hits = [f for f in findings if f.rule_id == "AAK-LANGCHAIN-SSRF-REDIR-001"]
+    assert bool(hits) is fires
+    if fires:
+        assert [(f.file_path, f.evidence.split(" — ")[0]) for f in hits] == [(lockfile, "langchain-text-splitters pinned at '1.1.1'")]

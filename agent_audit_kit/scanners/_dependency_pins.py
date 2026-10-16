@@ -70,6 +70,7 @@ from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
     _Pin,
     _pin_applies,
 )
+from agent_audit_kit.scanners.supply_chain import _lockfile_index, _lockfile_lookup
 
 
 @dataclass(frozen=True)
@@ -173,6 +174,20 @@ def pinned_dependency(
     if declaration is None:
         return None
     return PinnedDependency(declaration, declaration_line(text, declaration, path.name), pin.fixed)
+
+
+def locked_affected_versions(path: Path, text: str, pin: DependencyPin) -> list[Ver]:
+    """The affected versions a lockfile resolves the package to, lowest first.
+
+    Read with the CVE pin table's lockfile reader (`supply_chain._lockfile_index`),
+    so Pipfile.lock's JSON, the `[[package]]` blocks of poetry.lock and uv.lock,
+    and a PEP 503 spelling of the name all read as the pins read them. The
+    pattern this replaced wanted a TOML `name =` line followed by a `version =`
+    line, so it never matched a Pipfile.lock, though both modules listed one.
+    """
+    filename = path.name.lower()
+    resolved = _lockfile_lookup(_lockfile_index(text, filename), filename, pin.names)
+    return [v for v in resolved if v < pin.fixed]
 
 
 def _dotted(version: Ver) -> str:

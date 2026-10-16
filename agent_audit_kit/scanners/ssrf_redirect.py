@@ -30,8 +30,9 @@ Two detections:
    name, so `langchain-text-splitters<1.1.2`, which admits only affected
    releases, read as the fix and was silent, and the extras in
    `langchain-text-splitters[x]==1.1.2` read as a name with no version and
-   fired. Manifests are now read as the CVE pin table reads them
-   (`_dependency_pins`).
+   fired. Manifests and lockfiles are now read as the CVE pin table reads
+   them (`_dependency_pins`), which also reads the Pipfile.lock the lockfile
+   pattern listed and never matched.
 """
 
 from __future__ import annotations
@@ -42,13 +43,12 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, pinned_dependency
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._dependency_pins import DependencyPin, locked_affected_versions, pinned_dependency
+from ._helpers import in_skip_dir, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
 
 _PY_PATCHED = (1, 1, 2)
-_SEMVER_RE = re.compile(r"[^\d]*(\d+)\.(\d+)(?:\.(\d+))?")
 # A bare name is reported too, as the requirements reader always reported one.
 _PIN = DependencyPin(("langchain-text-splitters",), _PY_PATCHED, ecosystem="py", report_unversioned=True)
 
@@ -105,15 +105,6 @@ _TS_FETCH_RE = re.compile(
 _TS_REDIRECT_OFF_RE = re.compile(
     r"redirect\s*:\s*['\"](?:manual|error)['\"]|maxRedirects\s*:\s*0"
 )
-
-
-def _parse_semver(spec: str | None) -> tuple[int, int, int] | None:
-    if not spec:
-        return None
-    m = _SEMVER_RE.match(str(spec))
-    if not m:
-        return None
-    return int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
 
 
 # ---------------------------------------------------------------------------
@@ -294,16 +285,10 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
             text = lock.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        for m in re.finditer(
-            r"""(?:name|package)\s*=\s*['"]langchain-text-splitters['"][^\n]*\n[^\n]*?version\s*=\s*['"]([0-9][0-9A-Za-z.\-+]*)['"]""",
-            text,
-            re.IGNORECASE,
-        ):
-            parsed = _parse_semver(m.group(1))
-            if parsed and parsed < _PY_PATCHED:
-                rel = lock_name
-                scanned.add(rel)
-                _fire(rel, f"pinned at {m.group(1)!r}", find_line_number(text, m.group(0)))
+        affected = locked_affected_versions(lock, text, _PIN)
+        if affected:
+            scanned.add(lock_name)
+            _fire(lock_name, f"pinned at {'.'.join(str(n) for n in affected[0])!r}", None)
 
     return findings
 
