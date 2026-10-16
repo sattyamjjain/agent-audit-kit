@@ -611,3 +611,15 @@ def test_inline_plugin_json_hooks_and_agent_frontmatter_hooks_are_not_read(tmp_p
     _write(tmp_path, ".claude-plugin/plugin.json", {"name": "demo", "hooks": _NESTED["hooks"]})
     _write(tmp_path, ".claude/agents/reviewer.md", _SKILL_HOOKS.replace("name: deploy", "name: reviewer"))
     assert scan(tmp_path)[0] == []
+
+
+def test_scanning_a_plugins_hooks_directory_looks_one_level_up_and_no_further(tmp_path: Path) -> None:
+    """`aak scan plugin/hooks` reads its hooks.json when the plugin beside it has a
+    manifest; a marketplace further above the scanned directory is not searched
+    for, so the walk cannot climb out of the project to the filesystem root."""
+    _write(tmp_path, ".claude-plugin/marketplace.json", {"name": "m", "plugins": []})
+    _write(tmp_path, "plugins/a/hooks/hooks.json", _NESTED)
+    _write(tmp_path, "plugins/b/.claude-plugin/plugin.json", {"name": "b"})
+    _write(tmp_path, "plugins/b/hooks/hooks.json", _NESTED)
+    assert scan(tmp_path / "plugins" / "a" / "hooks")[0] == []
+    assert "AAK-HOOK-001" in {f.rule_id for f in scan(tmp_path / "plugins" / "b" / "hooks")[0]}

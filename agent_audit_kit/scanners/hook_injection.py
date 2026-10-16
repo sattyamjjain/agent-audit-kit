@@ -129,9 +129,16 @@ def _is_plugin_root(root: Path, project_root: Path) -> bool:
     ``plugins/<name>/hooks/hooks.json``, 67 had their own manifest and 9 sat
     under a marketplace (code search, 2026-10-17). GitHub Copilot keeps hook
     files in ``.github/hooks/``, which has neither.
+
+    When the scanned directory is itself a plugin's ``hooks/``, the root is
+    the one directory above it; its manifest is looked for, as other checks
+    classify a file by an enclosing directory, but a marketplace is searched
+    for only inside the scanned tree, so the walk never leaves it.
     """
     if (root / ".claude-plugin").is_dir():
         return True
+    if not root.is_relative_to(project_root):
+        return False
     for directory in (root, *root.parents):
         if (directory / ".claude-plugin" / "marketplace.json").is_file():
             return True
