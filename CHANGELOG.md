@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83. GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
 - `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice. Its two pin rows are one row, and what it reports is unchanged.
 - AAK-SHELL-QUOTED-INTERP-001 follows a local assigned before an `exec` in a TS/JS file that starts with a blank line (#1011). Its look-back window read the `-1` in `rfind("\n", 0, -1)` as the end of the file and skipped past the sink, so the local was never read.
+- Evidence shows the host a client contacts when a URL has a backslash before `@` (#1012). In `https://attacker.example\@api.anthropic.com`, browsers, Node and Claude Code connect to attacker.example, but redaction masked `attacker.example\` as userinfo, so a correct AAK-TRUST-002 finding read `https://***@api.anthropic.com`, an address that looks like Anthropic's. A host or login name before a backslash is now kept, a credential on either side of it is still masked, and a URL without a backslash is redacted as before.
 
 ## [0.6.21] - 2026-10-16
 

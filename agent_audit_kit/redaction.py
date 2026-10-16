@@ -98,6 +98,8 @@ _RUN_SPLIT_RE = re.compile(r"[-_.~+/=]+")
 _DOTTED_NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}(?:\.[A-Za-z_][A-Za-z0-9_]{0,63}){1,8}")
 _ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9]{0,63}(?:_[A-Z0-9]{1,63}){1,8}")
 _LOGIN_RE = re.compile(r"[a-z][a-z0-9._-]{0,63}")
+# A dotted host name with no port: what a WHATWG parser reads before a backslash.
+_HOST_NAME_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,62})(?:\.[A-Za-z0-9-]{1,63}){1,8}")
 _PLACEHOLDER_USERINFO_RE = re.compile(r"[.*xX…]{1,64}")
 
 
@@ -279,12 +281,47 @@ def _sub_token_format(match: re.Match[str]) -> str:
 
 
 def _sub_userinfo(match: re.Match[str]) -> str:
+    """Mask the userinfo of a URL, but never the host a client would contact.
+
+    A URL parser that follows the WHATWG URL standard (browsers, Node's
+    `fetch`, and so Claude Code) ends an `http(s)` authority at a backslash:
+    in `https://attacker.example\\@api.anthropic.com` the host is
+    `attacker.example` and `@api.anthropic.com` is path, while Python's
+    `urlsplit` reads `attacker.example\\` as userinfo. Masking the whole run
+    printed `https://***@api.anthropic.com`, so a correct AAK-TRUST-002 finding
+    showed the host the client never contacts and hid the one it does.
+
+    So when a userinfo run that would be masked holds a backslash, a piece
+    before a backslash that reads as a host or login name is kept and every
+    other piece is masked. Nothing else changes: a run kept before is kept
+    whole, and a run without a backslash is masked whole, as before, so the
+    output never shows more of a credential than it did.
+    """
     userinfo = match.group(1)
+    if _keep_userinfo(userinfo):
+        return match.group(0)
+    if "\\" not in userinfo:
+        return f"{MASK}@"
+    *before, last = userinfo.split("\\")
+    pieces = [piece if _reads_as_host(piece) else (piece and MASK) for piece in before]
+    pieces.append(last and MASK)
+    return "\\".join(pieces) + "@"
+
+
+def _keep_userinfo(userinfo: str) -> bool:
     if ":" not in userinfo and _LOGIN_RE.fullmatch(userinfo) and not _looks_random(userinfo):
-        return match.group(0)  # `git@`, `deploy@`, a decoy hostname: a login name, not a secret
-    if _PLACEHOLDER_USERINFO_RE.fullmatch(userinfo) or _keep_value(userinfo):
-        return match.group(0)  # `https://...@host`, `https://${KEY}@host`: a placeholder
-    return f"{MASK}@"
+        return True  # `git@`, `deploy@`, a decoy hostname: a login name, not a secret
+    # `https://...@host`, `https://${KEY}@host`: a placeholder
+    return bool(_PLACEHOLDER_USERINFO_RE.fullmatch(userinfo)) or _keep_value(userinfo)
+
+
+def _reads_as_host(piece: str) -> bool:
+    """A piece before a backslash that is a host or login name, not a secret."""
+    return (
+        ":" not in piece
+        and not _looks_random(piece)
+        and bool(_LOGIN_RE.fullmatch(piece) or _HOST_NAME_RE.fullmatch(piece))
+    )
 
 
 def _sub_query(match: re.Match[str]) -> str:
