@@ -100,6 +100,9 @@ def _trust_002(root: Path, base_url: str) -> list[str]:
     "https://evilanthropic.com/v1",                  # no dot before it
     "https://evil.example\\@api.anthropic.com/v1",   # Node reads \ as /, so evil.example
     "https://evil.example\\.anthropic.com/v1",       # likewise; urlsplit sees a subdomain
+    # Anthropic to Claude Code, evil.example to the Python SDK (httpx), which
+    # keeps the backslash in the authority and takes the host after the `@`.
+    "https://api.anthropic.com\\@evil.example/v1",
 ])
 def test_a_url_that_only_mentions_anthropic_is_flagged(tmp_path: Path, base_url: str) -> None:
     # Evidence goes through the shared redaction, which takes `evil.example\` for
@@ -113,22 +116,28 @@ def test_a_url_that_only_mentions_anthropic_is_flagged(tmp_path: Path, base_url:
     "HTTPS://API.ANTHROPIC.COM./v1",
     "https://api.anthropic.com:443/v1",
     "api.anthropic.com/v1",
+    "https:api.anthropic.com/v1",                # Node reads it; httpx reads no host at all
+    "https://%61pi.anthropic.com/v1",            # an escaped letter, decoded as Node does
 ])
 def test_an_anthropic_host_is_not_flagged(tmp_path: Path, base_url: str) -> None:
     assert _trust_002(tmp_path, base_url) == []
 
 
 @pytest.mark.parametrize(("value", "host"), [
-    ("https://evil.example\\@api.anthropic.com/v1", "evil.example"),
-    ("https://api.anthropic.com\\@evil.example/v1", "api.anthropic.com"),
+    # Node and httpx read different hosts here, so neither is the host.
+    ("https://evil.example\\@api.anthropic.com/v1", None),
+    ("https://api.anthropic.com\\@evil.example/v1", None),
+    # A backslash inside the host leaves httpx no host, so Node's is the one.
+    ("https://evil.example\\.anthropic.com/v1", "evil.example"),
     (" \x00https://evil.example/v1", "evil.example"),
     ("https://evil.example\t.anthropic.com/v1", "evil.example.anthropic.com"),
     ("localhost:8080", "localhost"),
     ("https://evil.example .anthropic.com/v1", None),
-    ("https://evil%2Eexample.anthropic.com/v1", None),
+    # Node decodes the escape: a subdomain of anthropic.com, as the host says.
+    ("https://evil%2Eexample.anthropic.com/v1", "evil.example.anthropic.com"),
     ("https://[::1]:8080/v1", None),
     ("https://[::1/v1", None),
     ("${PROXY_URL}", None),
 ])
-def test_url_host_reads_the_host_as_node_does(value: str, host: str | None) -> None:
+def test_url_host_is_the_host_every_client_reads(value: str, host: str | None) -> None:
     assert url_host(value) == host

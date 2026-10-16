@@ -352,7 +352,16 @@ def test_no_module_reads_both_server_maps_by_hand() -> None:
     "http://[::1]:9000/mcp",
     "http://0.0.0.0:8080/mcp",
     "http://LOCALHOST.:8001/mcp",
-    "http://localhost\\@evil.example/mcp",  # Node reads `\` as `/`: the host is localhost
+    # Read as the client reads them: each of these is 127.0.0.1 to Node and to
+    # the resolver behind curl and httpx.
+    "http://127.1:8001/mcp",
+    "http://0x7f.1/mcp",
+    "http://2130706433/mcp",
+    "http://[::ffff:127.0.0.1]/mcp",
+    "http://%6c%6f%63%61%6c%68%6f%73%74:8001/mcp",
+    # A State of MCP corpus config has this shape: the port is a template
+    # Claude Code expands, so it is still the developer's own machine.
+    "http://localhost:${JETBRAINS_MCP_PORT:-64342}/sse",
 ])
 def test_a_loopback_server_is_not_remote_or_internal(tmp_path: Path, url: str) -> None:
     _write_vscode(tmp_path, {"local": {"type": "http", "url": url}})
@@ -362,13 +371,46 @@ def test_a_loopback_server_is_not_remote_or_internal(tmp_path: Path, url: str) -
 
 @pytest.mark.parametrize(("url", "rules"), [
     ("http://localhost.evil.example/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
-    ("http://evil.example\\@localhost/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),  # the host is evil.example
+    ("http://evil.example\\@localhost/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),  # evil.example to Node
+    # localhost to Node, evil.example to curl, httpx and urlsplit, which keep the
+    # backslash in the authority and take the host after the last `@`. This was
+    # exempt as loopback, so a Python MCP client went to evil.example unreported.
+    ("http://localhost\\@evil.example/mcp", {"AAK-MCP-001"}),
     ("http://127.0.0.1.nip.io/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
     ("http://192.168.1.20:8080/mcp", {"AAK-MCP-001", "AAK-MCP-009"}),
 ])
 def test_a_host_that_only_looks_local_still_fires(tmp_path: Path, url: str, rules: set[str]) -> None:
     _write_vscode(tmp_path, {"remote": {"type": "http", "url": url}})
     assert rules <= {f.rule_id for f in scan(tmp_path)[0]}
+
+
+_IDEOGRAPHIC_STOP = chr(0x3002)
+
+
+@pytest.mark.parametrize("url", [
+    "http://10.1/mcp",            # 10.0.0.1
+    "http://0xa.0.0.5/mcp",       # 10.0.0.5
+    "http://167772165/mcp",       # 10.0.0.5
+    "http://012.0.0.5/mcp",       # octal 012 is 10
+    "http://%31%30.0.0.5/mcp",    # percent-escaped digits
+    "http://192.168.1/mcp",       # 192.168.0.1
+    "http://0xc0a80101/mcp",      # 192.168.1.1
+    "http://172.16.1/mcp",        # 172.16.0.1
+    "http://[::ffff:a00:5]/mcp",  # IPv4-mapped 10.0.0.5
+    "http://10" + _IDEOGRAPHIC_STOP + "0" + _IDEOGRAPHIC_STOP + "0" + _IDEOGRAPHIC_STOP + "5/mcp",
+])
+def test_mcp_009_reads_an_internal_address_as_the_client_does(tmp_path: Path, url: str) -> None:
+    """The regex read the URL's text, so every other spelling of an RFC 1918
+    address passed. Node reads each of these as one, and so does the resolver
+    (`inet_aton`) behind curl and httpx for the numeric forms."""
+    _write_vscode(tmp_path, {"internal": {"type": "http", "url": url}})
+    assert "AAK-MCP-009" in {f.rule_id for f in scan(tmp_path)[0]}
+
+
+@pytest.mark.parametrize("url", ["http://0x08080808/mcp", "http://8.8.2056/mcp", "https://public.example/mcp"])
+def test_mcp_009_a_public_address_in_another_spelling_is_not_internal(tmp_path: Path, url: str) -> None:
+    _write_vscode(tmp_path, {"public": {"type": "http", "url": url}})
+    assert "AAK-MCP-009" not in {f.rule_id for f in scan(tmp_path)[0]}
 
 
 @pytest.mark.parametrize("command", [
@@ -527,6 +569,26 @@ def test_mcp_003_a_crafted_value_scans_in_linear_time(tmp_path: Path, opener: st
     ("http://[::ffff:10.0.0.5]/", False),
     ("http://[::1/", False),
     ("${input:host}", False),
+    # Every reading has to be local. The first is evil.example to Node, the
+    # second evil.example to curl and httpx.
+    ("http://evil.example\\@localhost/", False),
+    ("http://localhost\\@evil.example/", False),
+    ("http://evil.example\\.localhost/", False),
+    ("http://127.0.0.1\\@localhost/", True),
+    # IPv4 numbers, escapes and mapped addresses, read as Node reads them.
+    ("http://127.1/", True),
+    ("http://0x7f.1/", True),
+    ("http://127.0.0.010/", True),   # 127.0.0.8 to Node, 127.0.0.10 to macOS: local either way
+    ("http://0177.0.0.1/", False),   # 127.0.0.1 to Node, 177.0.0.1 to macOS's resolver
+    ("http://[::ffff:127.0.0.1]/", True),
+    ("http://%31%32%37.0.0.1/", True),
+    ("http:/localhost:8080/", True),
+    # A templated port: Claude Code fills it in, and the host is localhost.
+    ("http://localhost:${JETBRAINS_MCP_PORT:-64342}/sse", True),
+    # No client opens these, so nothing exempts them.
+    ("http://[::1]evil.example/", False),
+    ("http://evil.example[::1]/", False),
+    ("http://[::1%25eth0]/", False),
 ])
 def test_is_loopback_url(url: str, loopback: bool) -> None:
     from agent_audit_kit.scanners._helpers import is_loopback_url

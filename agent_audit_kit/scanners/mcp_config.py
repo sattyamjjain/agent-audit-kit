@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 from pathlib import Path
@@ -9,12 +10,14 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    host_ip,
     in_skip_dir,
     is_loopback_url,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
     strip_vscode_variables,
+    url_hosts,
 )
 from agent_audit_kit.scanners._launchers import launch_evidence
 
@@ -42,6 +45,35 @@ INTERNAL_URL_PATTERNS = re.compile(
     r"172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+|\.local\b)",
     re.IGNORECASE,
 )
+# The private ranges INTERNAL_URL_PATTERNS spells out, for a host read as an
+# address (`_is_internal_url`).
+_INTERNAL_NETWORKS = tuple(
+    ipaddress.IPv4Network(net) for net in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+)
+
+
+def _is_internal_url(url: str) -> bool:
+    """AAK-MCP-009's test: the URL names an RFC 1918 address or a `.local` host.
+
+    The regex reads the URL's text, so it missed every other way a client reads
+    one of those addresses: `http://10.1/`, `http://0xa.0.0.5/`,
+    `http://167772165/`, `http://012.0.0.5/` and `http://%31%30.0.0.5/` all
+    reach 10.0.0.x, and so does 10.0.0.5 written with ideographic full stops
+    (U+3002), which Node maps to dots. Each host `url_hosts` reads is now
+    tested as well, as an address or a `.local` name; the regex still answers
+    first, so nothing it reported is lost.
+    """
+    if INTERNAL_URL_PATTERNS.search(url):
+        return True
+    for host in url_hosts(url):
+        address = host_ip(host)
+        if address is None:
+            if host.rstrip(".").endswith(".local"):
+                return True
+        elif address.version == 4 and any(address in net for net in _INTERNAL_NETWORKS):
+            return True
+    return False
+
 
 # --- AAK-MCP-001 authentication-header recognition (#475) --------------------
 # Header names historically recognized as auth. Kept NAME-only (value not
@@ -366,7 +398,7 @@ def _check_server(
     # server-side reach into an internal network the rule describes, and 27 of its
     # 28 findings on real `.vscode/mcp.json` files were loopback, none a true
     # positive. RFC 1918 and `.local` hosts still fire.
-    if url and not is_loopback_url(url) and INTERNAL_URL_PATTERNS.search(url):
+    if url and not is_loopback_url(url) and _is_internal_url(url):
         findings.append(_make_finding(
             "AAK-MCP-009", file_path,
             f"Server '{server_name}' URL: {url}",

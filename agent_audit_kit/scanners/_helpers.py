@@ -3,9 +3,10 @@ from __future__ import annotations
 import ipaddress
 import json
 import re
+import unicodedata
 from pathlib import Path
-from typing import AbstractSet, Any, Callable, Iterator
-from urllib.parse import urlsplit
+from typing import AbstractSet, Any, Callable, Iterator, NamedTuple
+from urllib.parse import unquote
 
 try:
     import tomllib
@@ -193,49 +194,127 @@ def make_finding(
 _C0_CONTROL_OR_SPACE = "".join(chr(c) for c in range(0x21))
 _HOSTNAME_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-.")
 
+# ---- URL hosts: the two ways a client reads one -----------------------------
+#
+# The clients that consume what AAK scans read a URL's host two ways, and the two
+# disagree on exactly the input an attacker writes. Node's `new URL()` (Claude
+# Code, VS Code, Cursor, the MCP TypeScript SDK), urllib3 under requests, and
+# Rust's `url` follow the WHATWG URL Standard, where a backslash ends an http(s)
+# authority. Python's urlsplit, httpx, yarl and curl keep the backslash inside
+# the authority and take the host after its last `@`. So
+# `http://localhost\@evil.example/` is localhost to Node and evil.example to curl
+# (which dials it), and `http://evil.example\@localhost/` is the other way round.
+# A rule that exempts or allowlists a host on one reading is bypassed through the
+# other, so the exemptions here hold only when every reading agrees.
+
+#: The schemes WHATWG calls special that MCP, A2A and HTTP clients connect with,
+#: and their default ports. `ftp` and `file` are special too, but no rule here
+#: judges one.
+_SPECIAL_SCHEME_PORTS = {"http": 80, "https": 443, "ws": 80, "wss": 443}
+_SCHEME_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:")
+_TAB_OR_NEWLINE_RE = re.compile(r"[\t\n\r]")
+#: Where an authority ends: WHATWG also stops at a backslash, RFC 3986 does not.
+_AUTHORITY_END_RE = {False: re.compile(r"[/\\?#]"), True: re.compile(r"[/?#]")}
+#: WHATWG's forbidden domain code points: a host that holds one is no host.
+_FORBIDDEN_DOMAIN_RE = re.compile(r"[\x00-\x20#%/:<>?@\[\\\]^|\x7f]")
+#: The code points UTS #46 maps to nothing (soft hyphen, zero-width space,
+#: variation selectors, ...), so Node reads `local` + U+00AD + `host` as
+#: `localhost`. Read off Node 22's `url.domainToASCII` over every code point.
+_IDNA_IGNORED = (
+    (0x00AD, 0x00AD), (0x034F, 0x034F), (0x180B, 0x180D), (0x180F, 0x180F),
+    (0x200B, 0x200B), (0x2060, 0x2060), (0x2064, 0x2064), (0xFE00, 0xFE0F),
+    (0xFEFF, 0xFEFF), (0x1BCA0, 0x1BCA3), (0xE0100, 0xE01EF),
+)
+_IDNA_IGNORED_RE = re.compile(
+    "[" + "".join(f"{chr(first)}-{chr(last)}" for first, last in _IDNA_IGNORED) + "]"
+)
+_ENDS_IN_NUMBER_RE = re.compile(r"[0-9]+|0x[0-9a-f]*")
+_IPV4_DIGITS_RE = {10: re.compile(r"[0-9]+"), 8: re.compile(r"[0-7]+"), 16: re.compile(r"[0-9a-f]+")}
+
+
+class UrlReading(NamedTuple):
+    """One parser family's reading of an http(s) or ws(s) URL."""
+    scheme: str        # `http`, `https`, `ws` or `wss`
+    host: str          # see `_read_host`
+    port: int | None   # None when absent, the scheme's default, or not a port number
+
+
+def url_readings(value: str) -> tuple[UrlReading, ...]:
+    """How the two parser families read `value`: one reading when they agree,
+    the WHATWG one first and then the RFC 3986 one when they differ, and none
+    when neither finds an http(s) or ws(s) URL with a host.
+
+    WHATWG, as Node reads it: leading and trailing C0 controls and spaces are
+    stripped and every tab, CR and LF removed; the scheme is case-blind and any
+    run of `/` and `\\` after it is skipped, so `http:/host`, `http:\\\\host` and
+    ` HTTP://host` are all http URLs; the authority ends at `/`, `\\`, `?` or
+    `#`. RFC 3986, as urlsplit and httpx read it: leading C0 controls and spaces
+    stripped and tab, CR and LF removed, as urlsplit does; the authority needs
+    `//` and ends at `/`, `?` or `#`, so a backslash stays inside it. Both take
+    the host after the authority's last `@` and read it as `_read_host` does. A
+    port that is not a number leaves the host standing where WHATWG fails the
+    URL, because it is usually a template (see `_split_host_port`).
+
+    For a URL with no backslash, no tab or newline and `//` after its scheme the
+    two readings are the same reading.
+    """
+    readings: list[UrlReading] = []
+    for rfc3986 in (False, True):
+        reading = _read_url(value, rfc3986)
+        if reading is not None and reading not in readings:
+            readings.append(reading)
+    return tuple(readings)
+
+
+def url_hosts(value: str) -> tuple[str, ...]:
+    """The distinct hosts of `url_readings(value)`, WHATWG's first.
+
+    A value with no `://` that does not open with a slash is read as a bare
+    authority first (`api.anthropic.com/v1`, `localhost:8080`), as a scheme-less
+    `ANTHROPIC_BASE_URL` or server address is meant. Empty when no reading finds
+    a host, which every caller treats as "not loopback, not allowlisted".
+    """
+    readings = url_readings(value)
+    stripped = value.strip(_C0_CONTROL_OR_SPACE)
+    if not readings and "://" not in stripped and not stripped.startswith(("/", "\\")):
+        readings = url_readings("http://" + stripped)
+    return tuple(dict.fromkeys(reading.host for reading in readings))
+
 
 def url_host(value: str) -> str | None:
-    """The host a client would connect to for `value`, or None when there is none.
+    """The one host every client would connect to for `value`, or None.
 
-    Read the way a WHATWG URL parser reads it (Node's ``new URL``, so Claude
-    Code), not the way ``urlsplit`` does, because the two disagree on exactly the
-    input an attacker writes. For an http(s) URL WHATWG treats ``\\`` as ``/``:
-    ``https://evil.example\\@api.anthropic.com`` connects to ``evil.example``,
-    while ``urlsplit`` reads its host as ``api.anthropic.com``, and it reads
-    ``https://evil.example\\.anthropic.com`` as a subdomain of anthropic.com. An
-    allowlist built on raw ``urlsplit`` waves both through. So, before parsing:
-    leading and trailing C0 controls and spaces are stripped and tab, CR and LF
-    removed, as WHATWG does (``urlsplit`` does so only on newer Python
-    releases); ``\\`` becomes ``/``; and a value with no ``://`` is read as a
-    bare authority (``api.anthropic.com/v1``, ``localhost:8080``).
-
-    The host comes back lower-cased without a trailing dot, and only when it is a
-    plain DNS name or IPv4 address: anything else (a space, ``%``, non-ASCII, an
-    IPv6 literal, a malformed authority) returns None, so a caller comparing the
-    host against an allowlist fails closed on it.
+    None when there is no host, when the two readings of `url_readings` name
+    different hosts, or when the host is not a plain DNS name or IPv4 address (an
+    IPv6 literal, a non-ASCII or underscored name). A caller comparing it with an
+    allowlist therefore fails closed on all three. ``https://evil.example\\@
+    api.anthropic.com`` is evil.example to Claude Code and api.anthropic.com to a
+    Python SDK inheriting the same environment, and ``https://api.anthropic.com
+    \\@evil.example`` the reverse, so neither has a host here. The host comes
+    back lower-cased without a trailing dot.
     """
-    host = _whatwg_hostname(value)
-    if host is None or not set(host) <= _HOSTNAME_CHARS:
+    hosts = url_hosts(value)
+    if len(hosts) != 1:
+        return None
+    host = hosts[0].rstrip(".")
+    if not host or not set(host) <= _HOSTNAME_CHARS:
         return None
     return host
 
 
-def _whatwg_hostname(value: str) -> str | None:
-    """`url_host`'s normalisation and parse, without its character filter, so an
-    IPv6 literal (`[::1]`) comes back as `::1`."""
-    url = value.strip(_C0_CONTROL_OR_SPACE)
-    for ch in "\t\r\n":
-        url = url.replace(ch, "")
-    url = url.replace("\\", "/")
-    if "://" not in url:
-        url = "//" + url
+def host_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """The address a `url_hosts` host names, or None when it is a domain.
+
+    An IPv4-mapped IPv6 address (`::ffff:7f00:1`) comes back as its IPv4
+    address, which is where a dual-stack socket sends it.
+    """
     try:
-        host = urlsplit(url).hostname
+        address = ipaddress.ip_address(host)
     except ValueError:
         return None
-    if not host:
-        return None
-    return host.rstrip(".") or None
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return address.ipv4_mapped
+    return address
 
 
 def is_loopback_url(value: str) -> bool:
@@ -247,20 +326,200 @@ def is_loopback_url(value: str) -> bool:
     developer's own `http://localhost:8001/mcp` as a remote server without
     authentication (CRITICAL) and AAK-MCP-009 reported it again as an internal
     network address. On 190 real `.vscode/mcp.json` files that was 51 findings
-    and not one true positive. The host is read as `url_host` reads it, so
-    `http://evil.example\\@localhost/` is not local and
-    `http://localhost\\@evil.example/` is.
+    and not one true positive.
+
+    Every host in `url_hosts` has to be local, so neither
+    `http://evil.example\\@localhost/` (evil.example to Node) nor
+    `http://localhost\\@evil.example/` (evil.example to curl and httpx) is. The
+    host is read as the client reads it, so `http://127.1/`, `http://0x7f.1/`,
+    `http://[::ffff:127.0.0.1]/` and `http://%6c%6f%63%61%6c%68%6f%73%74/` are.
     """
-    host = _whatwg_hostname(value)
-    if host is None:
-        return False
-    if host == "localhost":
+    hosts = url_hosts(value)
+    return bool(hosts) and all(_is_loopback_host(host) for host in hosts)
+
+
+def _is_loopback_host(host: str) -> bool:
+    if host.rstrip(".") == "localhost":
         return True
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    return address.is_loopback or (address.version == 4 and address.is_unspecified)
+    address = host_ip(host)
+    return address is not None and (
+        address.is_loopback or (address.version == 4 and address.is_unspecified)
+    )
+
+
+def _read_url(value: str, rfc3986: bool) -> UrlReading | None:
+    """`value` as one parser family reads it (see `url_readings`), or None."""
+    url = value.lstrip(_C0_CONTROL_OR_SPACE) if rfc3986 else value.strip(_C0_CONTROL_OR_SPACE)
+    url = _TAB_OR_NEWLINE_RE.sub("", url)
+    scheme_match = _SCHEME_RE.match(url)
+    if scheme_match is None:
+        return None
+    scheme = scheme_match.group()[:-1].lower()
+    default_port = _SPECIAL_SCHEME_PORTS.get(scheme)
+    if default_port is None:
+        return None
+    rest = url[scheme_match.end():]
+    if rfc3986:
+        if not rest.startswith("//"):
+            return None
+        rest = rest[2:]
+    else:
+        rest = rest.lstrip("/\\")
+    end = _AUTHORITY_END_RE[rfc3986].search(rest)
+    authority = rest if end is None else rest[:end.start()]
+    host_port = _split_host_port(authority.rpartition("@")[2])
+    if host_port is None:
+        return None
+    host = _read_host(host_port[0], rfc3986)
+    if host is None:
+        return None
+    port = host_port[1]
+    return UrlReading(scheme, host, None if port == default_port else port)
+
+
+def _split_host_port(host_port: str) -> tuple[str, int | None] | None:
+    """``(host, port)``, or None for text between an IPv6 literal's `]` and its
+    port (`[::1]evil.example`), which leaves no host.
+
+    A port that is not a number up to 65535 comes back as None and leaves the
+    host standing. WHATWG fails such a URL, but the value scanned is often a
+    template the client fills in before it parses: Claude Code expands
+    `http://localhost:${JETBRAINS_MCP_PORT:-64342}/sse` to a loopback URL, and an
+    instruction file writes `http://localhost:$PORT/`. Which host is contacted
+    never depends on the port.
+    """
+    if host_port.startswith("["):
+        close = host_port.find("]")
+        if close < 0:
+            return None
+        host, rest = host_port[:close + 1], host_port[close + 1:]
+        if rest and not rest.startswith(":"):
+            return None
+        port_text = rest[1:]
+    else:
+        host, _, port_text = host_port.partition(":")
+    if not (port_text.isascii() and port_text.isdigit()):
+        return host, None
+    digits = port_text.lstrip("0") or "0"
+    if len(digits) > 5 or int(digits) > 65535:
+        return host, None
+    return host, int(digits)
+
+
+def _read_host(text: str, rfc3986: bool) -> str | None:
+    """A URL's host the way WHATWG's host parser reads it, or None where it fails.
+
+    An IPv6 literal must fill its brackets and take no zone id, and comes back
+    compressed without them (`[0:0:0:0:0:0:0:1]` is `::1`). Anything else is
+    percent-decoded and mapped as `_map_domain` maps it, and fails on a forbidden
+    domain code point; then, when its last label is a number, it is an IPv4
+    address and must parse as one (`_read_ipv4`). A domain is otherwise returned
+    as mapped, lower-cased, with any trailing dot kept.
+
+    The RFC 3986 reading differs in one place, the resolver behind it: macOS
+    reads a four-part all-digit address as decimal, leading zeros and all, so
+    `0177.0.0.1` is 177.0.0.1 to curl and httpx there and 127.0.0.1 to Node
+    (`_decimal_dotted_quad`). That reading is the RFC 3986 one, so the two
+    disagree and no exemption holds on either.
+    """
+    if text.startswith("["):
+        inner = text[1:-1] if text.endswith("]") else ""
+        if not inner or "%" in inner:
+            return None
+        try:
+            return ipaddress.IPv6Address(inner).compressed
+        except ValueError:
+            return None
+    host = _map_domain(unquote(text, errors="replace"))
+    if not host or _FORBIDDEN_DOMAIN_RE.search(host) or chr(0xFFFD) in host:
+        return None
+    labels = host.split(".")
+    if labels[-1] == "" and len(labels) > 1:
+        labels.pop()
+    if _ENDS_IN_NUMBER_RE.fullmatch(labels[-1]):
+        quad = _decimal_dotted_quad(labels) if rfc3986 else None
+        return quad or _read_ipv4(labels)
+    return host
+
+
+def _map_domain(text: str) -> str:
+    """`text` mapped the way UTS #46 maps a domain wherever the result is ASCII.
+
+    Its ignored code points are dropped, then a non-ASCII name is NFKC-normalised
+    with U+3002 as a dot, then lower-cased. Checked against Node's
+    `url.domainToASCII` over every code point: for each one Node maps into ASCII
+    this gives the same text (U+1E9E, which NFKC keeps and UTS #46 makes `ss`, is
+    the one special case). A name still non-ASCII is a real IDN; it is returned
+    as mapped, never punycoded, so it cannot equal an ASCII allowlist entry. For a
+    handful of compatibility characters UTS #46 disallows (dot leaders, `1.`-style
+    digits) this reads an ASCII host where Node fails the URL, which only matters
+    for a URL no client can open.
+    """
+    text = _IDNA_IGNORED_RE.sub("", text)
+    if not text.isascii():
+        text = unicodedata.normalize("NFKC", text.replace(chr(0x1E9E), "ss"))
+        text = text.replace(chr(0x3002), ".")
+    return text.lower()
+
+
+def _read_ipv4(labels: list[str]) -> str | None:
+    """WHATWG's IPv4 parser over a host's labels, or None where it fails the URL.
+
+    Up to four numbers, each decimal, octal (a leading `0`) or hex (`0x`), the
+    last filling the bytes the others leave, so `127.1`, `0x7f.1`, `2130706433`
+    and `0177.0.0.1` are all 127.0.0.1. `inet_aton`, which the resolver behind
+    curl and httpx falls back to, reads these forms the same way.
+    """
+    if len(labels) > 4:
+        return None
+    numbers: list[int] = []
+    for label in labels:
+        number = _ipv4_number(label)
+        if number is None:
+            return None
+        numbers.append(number)
+    if any(number > 255 for number in numbers[:-1]) or numbers[-1] >= 256 ** (5 - len(numbers)):
+        return None
+    address = numbers[-1]
+    for index, number in enumerate(numbers[:-1]):
+        address += number * 256 ** (3 - index)
+    return str(ipaddress.IPv4Address(address))
+
+
+def _decimal_dotted_quad(labels: list[str]) -> str | None:
+    """The address macOS's resolver reads in four all-digit labels, each read as
+    decimal, or None when that read fails (a label over 255, as in
+    `0300.0250.1.1`) and it falls back to `inet_aton`, which reads them as
+    `_read_ipv4` does."""
+    if len(labels) != 4:
+        return None
+    octets: list[int] = []
+    for label in labels:
+        digits = label.lstrip("0") or "0"
+        if _IPV4_DIGITS_RE[10].fullmatch(label) is None or len(digits) > 3 or int(digits) > 255:
+            return None
+        octets.append(int(digits))
+    return ".".join(map(str, octets))
+
+
+def _ipv4_number(label: str) -> int | None:
+    if not label:
+        return None
+    radix = 10
+    if label.startswith("0x"):
+        label, radix = label[2:], 16
+    elif len(label) > 1 and label.startswith("0"):
+        label, radix = label[1:], 8
+    if not label:
+        return 0
+    if _IPV4_DIGITS_RE[radix].fullmatch(label) is None:
+        return None
+    digits = label.lstrip("0") or "0"
+    # 2**32 takes 11 octal digits, so a longer number fails the range checks
+    # anyway, and int() of a long digit string is quadratic before Python 3.11.
+    if len(digits) > 11:
+        return None
+    return int(digits, radix)
 
 
 # The variables VS Code substitutes itself, per its variables reference: the 20

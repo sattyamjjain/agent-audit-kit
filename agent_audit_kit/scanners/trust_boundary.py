@@ -54,10 +54,14 @@ def _is_anthropic_endpoint(value: str) -> bool:
     exists to catch, CVE-2026-21852, went through any of them unreported.
 
     The comparison is on the parsed host, dot-bounded, as agent_config's
-    ``_is_safe_host`` does. ``url_host`` reads the host as Node does, so a
-    backslash cannot make Python see Anthropic where Claude Code connects
-    elsewhere. The scheme is not compared: a cleartext ``http://`` URL to an
-    Anthropic host passes, as it always did, and is stated as a limitation.
+    ``_is_safe_host`` does. ``url_host`` returns a host only when Node and
+    urlsplit/httpx read the same one, so a backslash cannot make either see
+    Anthropic where the other connects elsewhere: Claude Code reads
+    ``https://api.anthropic.com\\@evil.example/v1`` as Anthropic, and the Python
+    SDK (httpx), reading the same variable, sends its key to evil.example. The
+    scheme is not compared: a cleartext
+    ``http://`` URL to an Anthropic host passes, as it always did, and is stated
+    as a limitation.
     """
     host = url_host(value)
     if host is None:
