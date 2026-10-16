@@ -79,7 +79,7 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
         replacement=(
             "Every other MCP server rule still reads `.windsurf/mcp.json`. CVE-2026-30615, in "
             "which a prompt injection rewrites Windsurf's MCP configuration, is covered by "
-            "these five rules:"
+            "these rules:"
         ),
         covered_by=(
             "AAK-STDIO-001",
@@ -100,7 +100,7 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
             "on npm. The rule was provisional from the start, and no CVE was assigned."
         ),
         replacement=(
-            "Nothing replaces the role check. OpenClaw's npm releases are pinned by these two "
+            "Nothing replaces the role check. OpenClaw's npm releases are pinned by these "
             "rules, which report its vulnerable versions:"
         ),
         covered_by=(
