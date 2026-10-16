@@ -61,8 +61,14 @@ from agent_audit_kit.scanners._manifest_deps import (
     package_json_declarations,
     requirements_declarations,
 )
-from agent_audit_kit.scanners._versions import Ver, exact_version, parse_range
-from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _deciding_declaration, _Pin
+from agent_audit_kit.scanners._versions import NONE, TOP, Ver, exact_version, intersect, parse_range
+from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
+    _admits_affected,
+    _deciding_declaration,
+    _names_match,
+    _Pin,
+    _pin_applies,
+)
 
 
 @dataclass(frozen=True)
@@ -112,7 +118,7 @@ class PinnedDependency:
         elif exact_version(spans) is not None:
             how = ""
         else:
-            how = f", which admits releases below {'.'.join(str(n) for n in self.fixed)}"
+            how = f", which admits releases below {_dotted(self.fixed)}"
         return f"{declaration.text!r}{where}{how}"
 
 
@@ -166,3 +172,115 @@ def pinned_dependency(
     if declaration is None:
         return None
     return PinnedDependency(declaration, declaration_line(text, declaration, path.name), pin.fixed)
+
+
+def _dotted(version: Ver) -> str:
+    return ".".join(str(n) for n in version)
+
+
+@dataclass(frozen=True)
+class Raised:
+    """What raising one package's declarations in one manifest came to."""
+
+    text: str      # the manifest to write: the input, unchanged, when anything was refused
+    raised: int    # declarations rewritten; 0 when anything was refused
+    # (line, why) for each declaration that admits an affected release and cannot
+    # be rewritten where it is written.
+    refused: tuple[tuple[int | None, str], ...] = ()
+
+
+def raise_to_fix(path: Path, text: str, pin: DependencyPin) -> Raised:
+    """`text` with every declaration that admits an affected release raised to the fix.
+
+    `aak fix` uses this, so a fix reads the manifest exactly as the rule does
+    and rewrites what the rule reports and nothing else. Its bumps used to match
+    `name op version` at the start of a requirement line and judge the first
+    number, so they left `langchain-core<1.2.22` alone (the first number is the
+    fix), could not see a pin with extras, and refused pyproject.toml, all of
+    which the rules report.
+
+    Each declaration that admits an affected release keeps what it admitted
+    from the fix up: `>=1.0,<2` becomes `>=1.2.22,<2.0.0`, and `~=1.2.0` becomes
+    `>=1.2.22,<1.3.0`. One that admitted nothing at or above the fix
+    (`<1.2.22`, `==1.2.21`), or several ranges, becomes `>=<fix>`. Extras,
+    markers, comments and the file's line endings stay as they were. The
+    result is read again with the rule's policy before it is returned.
+
+    A manifest is rewritten whole or not at all. A declaration that spans
+    several lines, keeps its version on a line of its own (a Poetry sub-table)
+    or carries a `--hash` (which pip checks against the pinned release, so a
+    range would fail the install) is refused, and then nothing is rewritten:
+    raising the other lines alone could leave a file that no resolver can
+    satisfy, such as `>=1.2.22` beside a hashed `==1.2.21`.
+    """
+    table_pin = pin.as_table_pin()
+    targets = [
+        d for d in manifest_declarations(path, text)
+        if _pin_applies(table_pin, d.ecosystem) and _names_match(table_pin, d)
+        and _admits_affected(table_pin, d)
+    ]
+    if not targets:
+        return Raised(text, 0)
+    # Lines are counted in `\n`s, as `declaration_line` counts them; splitlines()
+    # also breaks on rarer separators.
+    lines = text.split("\n")
+    refused: list[tuple[int | None, str]] = []
+    for declaration in targets:
+        number = declaration_line(text, declaration, path.name)
+        if number is None:
+            refused.append((None, f"{declaration.text!r} is not written where AAK read it"))
+            continue
+        line, why = _raised_line(lines, number - 1, declaration, _raised_spec(declaration, pin.fixed))
+        if why:
+            refused.append((number, why))
+        else:
+            lines[number - 1] = line
+    if refused:
+        return Raised(text, 0, tuple(refused))
+    raised = "\n".join(lines)
+    if pinned_dependency(path, raised, pin) is not None:
+        return Raised(text, 0, ((None, "the rewritten file would still admit a release below the fix"),))
+    return Raised(raised, len(targets))
+
+
+def _raised_spec(declaration: Declaration, fixed: Ver) -> str:
+    """What `declaration` admitted from `fixed` up, as a specifier, or `>=fixed`."""
+    spans = parse_range(declaration.version, declaration.dialect)
+    kept = intersect(spans, ((fixed, TOP),)) if spans is not None else NONE
+    if len(kept) == 1:
+        lo, hi = kept[0]
+        joiner = " " if declaration.dialect == "npm" else ","
+        return f">={_dotted(lo)}" + ("" if hi == TOP else f"{joiner}<{_dotted(hi)}")
+    return f">={_dotted(fixed)}"
+
+
+def _raised_line(lines: list[str], index: int, declaration: Declaration, spec: str) -> tuple[str, str]:
+    """`lines[index]` with the declaration's version replaced by `spec`, and "".
+
+    Or the line unchanged and why it cannot be rewritten. A requirement string
+    as written (a requirements line, a PEP 621 entry) is found on the line and
+    its version replaced inside it; a TOML value (`name = "^1.2"`, `{ version =
+    "<1.2" }`) is found as the quoted version.
+    """
+    line = lines[index]
+    if declaration.section == "requirements":
+        logical = [line]
+        while logical[-1].rstrip("\r").endswith("\\") and index + len(logical) < len(lines):
+            logical.append(lines[index + len(logical)])
+        if any("--hash" in part for part in logical):
+            return line, "has a --hash, which pip checks against the pinned release; re-lock it instead"
+    at = line.find(declaration.text)
+    if at != -1:
+        start = declaration.text.find(declaration.version, len(declaration.name))
+        if start == -1:
+            return line, "states its version in a form AAK does not rewrite"
+        requirement = declaration.text[:start] + spec + declaration.text[start + len(declaration.version):]
+        return line[:at] + requirement + line[at + len(declaration.text):], ""
+    for quote in ('"', "'"):
+        token = quote + declaration.version + quote
+        at = line.find(token)
+        if at != -1:
+            return line[:at] + quote + spec + quote + line[at + len(token):], ""
+    if declaration.section == "requirements":
+        return line, "continues onto the next line"
+    return line, "keeps its version on another line"

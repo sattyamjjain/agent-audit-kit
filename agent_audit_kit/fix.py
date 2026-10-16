@@ -209,8 +209,8 @@ def _apply_fix(
         return _fix_env_gitignore(project_root, dry_run)
     elif rule_id == "AAK-SECRET-007":
         return _fix_secret_env_ref(full_path, dry_run)
-    elif rule_id in ("AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003"):
-        return _fix_langchain_version(full_path, rule_id, dry_run)
+    elif rule_id in _RAISED_PIN_RULES:
+        return _fix_raised_pin(full_path, rule_id, dry_run)
     elif rule_id == "AAK-LITELLM-CVE-2026-30623-PIN-001":
         return _fix_litellm_version(full_path, dry_run)
     elif rule_id in _DEPENDENCY_FLOORS:
@@ -230,8 +230,6 @@ _CVE_FIXABLE_RULES: frozenset[str] = frozenset({
     "AAK-LITELLM-CVE-2026-30623-PIN-001",  # CVE-2026-30623 — bump litellm >=1.83.7
 })
 
-# Both floors are langchain-core's, so both bumps rewrite that one distribution,
-# in any PEP 503 spelling, the same name `langchain_vuln` reports.
 # A requirement line's optional operator, with the blanks after it. The pin
 # patterns below start at `^[^\S\n]*`, not `^\s*`: with MULTILINE, `^\s*` started
 # at every line of a run of blank lines and read to its end, and the two `\s*`
@@ -242,10 +240,9 @@ _CVE_FIXABLE_RULES: frozenset[str] = frozenset({
 _PIN_OPERATOR = r"(?:(?:==|>=|<=|<|>|~=|!=)\s*)?"
 
 
-_LANGCHAIN_MIN_VERSIONS = {
-    "AAK-LANGCHAIN-001": ("1.2.22", r"langchain[-_.]+core"),
-    "AAK-LANGCHAIN-003": ("0.3.14", r"langchain[-_.]+core"),
-}
+# The version pins `aak fix` raises through their rule's own reader, so a fix
+# rewrites every declaration the rule reports and nothing it does not.
+_RAISED_PIN_RULES = frozenset({"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-NEO4J-001"})
 
 
 def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
@@ -274,68 +271,65 @@ def run_cve_fixes(project_root: Path, dry_run: bool = True) -> list[FixAction]:
     return fixes
 
 
-def _fix_langchain_version(path: Path, rule_id: str, dry_run: bool) -> FixAction:
-    """Bump a vulnerable langchain-core pin to the patched version.
+def _fix_raised_pin(path: Path, rule_id: str, dry_run: bool) -> FixAction:
+    """Raise a pinned package to its fix wherever the rule reads it.
 
-    Rewrites requirements.txt / requirements-*.txt line by line. The rules
-    read only Python manifests, so there is no package.json case. poetry's
-    pyproject.toml and uv.lock are intentionally out of scope because their
-    locking semantics make a naive text bump unsafe.
+    The bumps for these rules matched `name op version` at the start of a
+    requirement line and judged the first number, as the rules did before they
+    moved onto `_dependency_pins`. So `aak fix` answered "No langchain-core pin
+    below the fix" for `langchain-core<1.2.22`, which the rule reports, could
+    not see a pin with extras, and refused pyproject.toml, where the rules read
+    PEP 621 and Poetry tables. `raise_to_fix` reads the file as the rule does,
+    rewrites every declaration that admits an affected release, and checks the
+    result against the rule before anything is written. AAK-LANGCHAIN-001 and
+    -003 both raise langchain-core, and whichever runs second finds nothing
+    below its floor, so a pin is never lowered.
+
+    The file is read and written without newline translation, so a CRLF
+    manifest stays CRLF. A pyproject.toml change needs a re-lock to take effect,
+    and the action says so.
     """
-    import re as _re
+    from agent_audit_kit.scanners import langchain_vuln, neo4j_cve
+    from agent_audit_kit.scanners._dependency_pins import raise_to_fix
 
-    min_version, name_pattern = _LANGCHAIN_MIN_VERSIONS[rule_id]
+    pin, label = {
+        "AAK-LANGCHAIN-001": (langchain_vuln._PATH_TRAVERSAL, "langchain-core"),
+        "AAK-LANGCHAIN-003": (langchain_vuln._DESERIALIZE, "langchain-core"),
+        "AAK-NEO4J-001": (neo4j_cve._PIN, "mcp-neo4j-cypher"),
+    }[rule_id]
+    floor = ".".join(str(n) for n in pin.fixed)
+    name = path.name.lower()
+    if not (name.endswith(".txt") or name == "pyproject.toml"):
+        return FixAction(rule_id, str(path), f"{path.name} is not a manifest the {label} pin reads", False)
     try:
-        text = path.read_text(encoding="utf-8")
-    except OSError:
+        with open(path, encoding="utf-8", newline="") as handle:
+            text = handle.read()
+    except (OSError, UnicodeDecodeError):
         return FixAction(rule_id, str(path), "Unable to read file", False)
-
-    if path.name.endswith(".txt"):
-        pin_re = _re.compile(
-            rf"^([^\S\n]*)({name_pattern})\s*{_PIN_OPERATOR}([0-9][0-9a-zA-Z.\-_]*)",
-            _re.MULTILINE | _re.IGNORECASE,
-        )
-        floor = tuple(int(n) for n in min_version.split("."))
-        count = 0
-
-        def _bump(m: _re.Match[str]) -> str:
-            # Never lower a pin. AAK-LANGCHAIN-001 and -003 both rewrite
-            # langchain-core, and whichever runs second must leave the higher
-            # floor the first one wrote.
-            nonlocal count
-            current = tuple(int(n) for n in _re.findall(r"\d+", m.group(3))[:3])
-            if current >= floor:
-                return m.group(0)
-            count += 1
-            return f"{m.group(1)}{m.group(2)}>={min_version}"
-
-        new_text = pin_re.sub(_bump, text)
-        if count == 0:
-            return FixAction(rule_id, str(path), "No langchain-core pin below the fix", False)
-        if not dry_run:
-            path.write_text(new_text, encoding="utf-8")
-        return FixAction(
-            rule_id,
-            str(path),
-            f"Bumped {count} langchain-core pin(s) to >={min_version}",
-            not dry_run,
-        )
-
+    result = raise_to_fix(path, text, pin)
+    if result.refused:
+        left = "; ".join(f"line {line} {why}" if line else why for line, why in result.refused)
+        return FixAction(rule_id, str(path), f"Left {path.name} as it is: {left}", False)
+    if not result.raised:
+        return FixAction(rule_id, str(path), f"No {label} declaration admits a release below {floor}", False)
+    if not dry_run:
+        with open(path, "w", encoding="utf-8", newline="") as handle:
+            handle.write(result.text)
+    relock = "; re-lock the project to install it" if name == "pyproject.toml" else ""
     return FixAction(
         rule_id,
         str(path),
-        f"{path.name} is not a supported manifest for auto-bump",
-        False,
+        f"Raised {result.raised} {label} declaration(s) to >={floor}{relock}",
+        not dry_run,
     )
 
 
 def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
     """Bump a vulnerable litellm pin to 1.83.7 (CVE-2026-30623).
 
-    Same posture as `_fix_langchain_version`: rewrite line-based
-    requirements*.txt manifests in place; refuse to touch lockfiles
-    or pyproject.toml because their locking semantics make a naive
-    text bump unsafe.
+    Rewrite line-based requirements*.txt manifests in place; refuse to
+    touch lockfiles or pyproject.toml because their locking semantics make
+    a naive text bump unsafe.
     """
     import re as _re
 
@@ -372,24 +366,23 @@ def _fix_litellm_version(path: Path, dry_run: bool) -> FixAction:
     )
 
 
-# Dependency floor bumps that had an AUTO_PR_ALLOWLIST entry but no recipe, so
-# `aak fix` silently did nothing and `suggest --auto-pr` could never reach them
-# (run_fixes -> _apply_fix returned None, so they never entered `pending`).
+# A dependency floor bump that had an AUTO_PR_ALLOWLIST entry but no recipe, so
+# `aak fix` silently did nothing and `suggest --auto-pr` could never reach it
+# (run_fixes -> _apply_fix returned None, so it never entered `pending`).
+# AAK-NEO4J-001 was the other entry; it reads through `_fix_raised_pin` now.
 # rule_id -> (package-name regex, minimum version, label used in the FixAction)
 _DEPENDENCY_FLOORS: dict[str, tuple[str, str, str]] = {
     # Pin floor is the highest fixed version, matching _FLOWISE_PATCHED_VERSION in
     # scanners/stdio_injection.py, so 3.1.0/3.1.1/3.1.2 stay flagged for the CVEs
     # they remain exposed to.
     "AAK-FLOWISE-001": (r"flowise(?:-components)?", "3.1.3", "flowise"),
-    # CVE-2026-35402, patched in 0.6.0 — see scanners/neo4j_cve.py.
-    "AAK-NEO4J-001": (r"mcp-neo4j-cypher", "0.6.0", "mcp-neo4j-cypher"),
 }
 
 
 def _fix_dependency_floor(path: Path, rule_id: str, dry_run: bool) -> FixAction:
     """Raise a vulnerable dependency to its vendor-published fixed version.
 
-    Same posture as ``_fix_langchain_version``: rewrite line-based
+    Same posture as ``_fix_litellm_version``: rewrite line-based
     ``requirements*.txt`` and the ``package.json`` dependency maps, and refuse
     lockfiles or poetry's ``pyproject.toml``, whose locking semantics make a naive
     text bump unsafe.
