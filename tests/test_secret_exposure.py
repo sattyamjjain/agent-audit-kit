@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
 import time
 from pathlib import Path
 
@@ -852,36 +855,81 @@ def test_secret_006_does_not_report_an_env_template(tmp_path: Path, name: str, g
     assert _secret_006(tmp_path) == []
 
 
+# Each case's expected answer is git's own (`git check-ignore --no-index`), computed in
+# the test, so nothing here restates gitignore(5) by hand. The `  .env*  ` case pinned
+# the wrong answer before: git keeps leading whitespace, so it ignores nothing.
+_GITIGNORE_CASES = [
+    b"node_modules/\n", b"!.env.example\n", b"# .env\n", b".envrc\n", b".env/\n", b"config/.env\n",
+    b".env\n", b".env\n!.env\n", b".env*\n", b".env.*\n.env\n", b"*.env\n.env.local\n",
+    b"/.env\n/.env.local\n", b"**/.env*\n", b"  .env*  \n", b"  .env\n", b"\t.env\n", b".env\t\n",
+    b".env  \n", b".env\\ \n", b"\xef\xbb\xbf.env\n", b".env\r\n", b"/**/.env\n", b"**/**/.env\n", b"/**\n",
+    b".env # secrets\n", b"\\#.env\n", b"\\.env\n", b"\\!.env\n", b".env\n  !.env\n", b"[.]env\n",
+    b"[!a]env\n", b"[^a]env\n", b"*\n", b"**\n", b".e?v\n", b".env.l[a-z]cal\n", b".env[\n",
+]
+
+
+def _git_ignores(root: Path, name: str) -> bool:
+    home = root.parent / "git-home"
+    home.mkdir(exist_ok=True)
+    env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home), "GIT_CONFIG_NOSYSTEM": "1"}
+    result = subprocess.run(
+        ["git", "-C", str(root), "-c", "core.excludesFile=", "-c", "core.ignorecase=false",
+         "check-ignore", "-q", "--no-index", name],
+        env=env, capture_output=True,
+    )
+    assert result.returncode in (0, 1), result.stderr
+    return result.returncode == 0
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="needs git to say what git ignores")
+@pytest.mark.parametrize("gitignore", _GITIGNORE_CASES, ids=repr)
+def test_secret_006_reads_gitignore_patterns_as_git_does(tmp_path: Path, gitignore: bytes) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name in (".env", ".env.local"):
+        (root / name).write_text("DATABASE_URL=postgres://localhost/app\n", encoding="utf-8")
+    (root / ".env.example").write_text("DATABASE_URL=\n", encoding="utf-8")
+    (root / ".gitignore").write_bytes(gitignore)
+
+    expected = sorted(name for name in (".env", ".env.local") if not _git_ignores(root, name))
+
+    assert _secret_006(root) == expected
+
+
 @pytest.mark.parametrize(
     "gitignore, reported",
     [
         (None, [".env", ".env.local"]),
-        ("node_modules/\n", [".env", ".env.local"]),
-        ("!.env.example\n", [".env", ".env.local"]),  # a negation ignores nothing
-        ("# .env\n", [".env", ".env.local"]),  # a comment is not a pattern
-        (".envrc\n", [".env", ".env.local"]),  # another file's name
-        (".env/\n", [".env", ".env.local"]),  # a trailing slash matches directories only
-        ("config/.env\n", [".env", ".env.local"]),  # anchored below the root
-        (".env\n", [".env.local"]),  # matches .env exactly
-        (".env\n!.env\n", [".env", ".env.local"]),  # the last match decides
+        ("!.env.example\n", [".env", ".env.local"]),
+        (".env\n", [".env.local"]),
         (".env*\n", []),
-        (".env.*\n.env\n", []),
-        ("*.env\n.env.local\n", []),
-        ("/.env\n/.env.local\n", []),
-        ("**/.env*\n", []),
-        ("  .env*  \n", []),
+        ("  .env*  \n", [".env", ".env.local"]),  # leading whitespace is part of the pattern
     ],
 )
-def test_secret_006_reads_gitignore_patterns_as_git_does(
+def test_secret_006_reads_the_common_gitignore_shapes(
     tmp_path: Path, gitignore: str | None, reported: list[str]
 ) -> None:
+    """The same reading without git on the machine, for the shapes most projects use."""
     (tmp_path / ".env").write_text("DATABASE_URL=postgres://localhost/app\n", encoding="utf-8")
     (tmp_path / ".env.local").write_text("DATABASE_URL=postgres://localhost/dev\n", encoding="utf-8")
-    (tmp_path / ".env.example").write_text("DATABASE_URL=\n", encoding="utf-8")
     if gitignore is not None:
         (tmp_path / ".gitignore").write_text(gitignore, encoding="utf-8")
 
     assert _secret_006(tmp_path) == reported
+
+
+def test_a_gitignore_of_many_patterns_reads_in_linear_time(tmp_path: Path) -> None:
+    """100,000 patterns and four env files took 13.7 s: each pattern was translated again
+    for each file. Patterns are now compiled once, and only those that can match a name
+    starting with `.`."""
+    for name in (".env", ".env.local", ".env.prod", ".env.test"):
+        (tmp_path / name).write_text("A=1\n", encoding="utf-8")
+    lines = "".join(f"p{i}*\n" for i in range(100_000)) + "".join(f"*q{i}\n" for i in range(20_000))
+    (tmp_path / ".gitignore").write_text(lines, encoding="utf-8")
+    started = time.perf_counter()
+    assert _secret_006(tmp_path) == [".env", ".env.local", ".env.prod", ".env.test"]
+    assert time.perf_counter() - started < 5.0
 
 
 def test_secret_006_reads_the_project_root_only(tmp_path: Path) -> None:

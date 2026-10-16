@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import fnmatch
 import json
 import math
 import re
@@ -640,47 +639,137 @@ def _check_private_key_files(project_root: Path) -> list[Finding]:
 _ENV_TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
 
 
-def _gitignore_ignores(patterns: list[str], name: str) -> bool:
-    """Whether a root `.gitignore` ignores the root file ``name``, read as git reads it.
+# A `.gitignore` is read up to this many bytes. A matcher is either the literal name a
+# pattern spells or a compiled regex for a glob.
+_GITIGNORE_MAX_BYTES = 1_000_000
+_GLOB_CHARS = frozenset("*?[\\")
 
-    Each pattern is tried in order and the last one that matches decides, so `!` takes
-    a file back out. A comment, a pattern ending in `/` (directories only) and one
-    anchored below the root (`config/.env`) never match a root file; `/.env` and
-    `**/.env` do. This replaced a substring test, under which `!.env.example`,
-    `# .env` and `.envrc` each counted as ignoring `.env`.
+
+def _trim_trailing_spaces(line: str) -> str:
+    """``line`` without its trailing spaces, except one escaped with a backslash (git's
+    trim_trailing_spaces): tabs and leading whitespace are part of the pattern."""
+    end = len(line)
+    while end and line[end - 1] == " ":
+        backslashes = len(line[: end - 1]) - len(line[: end - 1].rstrip("\\"))
+        if backslashes % 2:
+            break
+        end -= 1
+    return line[:end]
+
+
+def _glob_regex(glob: str) -> str:
+    """A regex for a gitignore glob matched against one name (no `/`): `*` and `**` are
+    any run, `?` one character, `[...]` a class (`!` or `^` negating it), and a
+    backslash makes the next character literal."""
+    out: list[str] = []
+    i = 0
+    while i < len(glob):
+        ch = glob[i]
+        if ch == "\\" and i + 1 < len(glob):
+            out.append(re.escape(glob[i + 1]))
+            i += 2
+        elif ch == "*":
+            while i < len(glob) and glob[i] == "*":
+                i += 1
+            out.append(".*")
+        elif ch == "?":
+            out.append(".")
+            i += 1
+        elif ch == "[":
+            close = glob.find("]", i + 2 if glob[i + 1 : i + 2] in ("!", "^") else i + 1)
+            if close < 0:
+                out.append(re.escape(ch))
+                i += 1
+                continue
+            body = glob[i + 1 : close]
+            negated = body[:1] in ("!", "^")
+            body = body[1:] if negated else body
+            members = "".join(re.escape(c) if c != "-" else "-" for c in re.sub(r"\\(.)", r"\1", body))
+            out.append("[" + ("^" if negated else "") + members + "]")
+            i = close + 1
+        else:
+            out.append(re.escape(ch))
+            i += 1
+    return "".join(out)
+
+
+def _gitignore_rules(text: str) -> list[tuple[bool, str | re.Pattern[str]]]:
+    """The patterns of a root `.gitignore` that can match a root env file, each compiled
+    once, in order: ``(negated, matcher)``.
+
+    Read as git reads them (gitignore(5), and `git check-ignore` in the tests): the
+    caller drops a UTF-8 BOM; a line loses a trailing `\\r` and its trailing spaces
+    unless one is escaped, and keeps its leading whitespace and tabs; `#` opens a comment
+    and `!` a negation unless a backslash escapes them; a trailing `/` matches
+    directories only; a leading `/` and leading `**/` segments still match the root,
+    while any other `/` puts the pattern below it. Only a pattern that can match a name
+    starting with `.` is kept, so a file of unrelated patterns costs one pass and no
+    compile.
     """
-    ignored = False
-    for raw in patterns:
-        pattern = raw.strip()
-        if not pattern or pattern.startswith("#"):
+    rules: list[tuple[bool, str | re.Pattern[str]]] = []
+    for raw in text.split("\n"):
+        line = _trim_trailing_spaces(raw[:-1] if raw.endswith("\r") else raw)
+        if not line or line.startswith("#"):
             continue
-        negated = pattern.startswith("!")
+        negated = line.startswith("!")
         if negated:
-            pattern = pattern[1:]
-        if pattern.endswith("/"):
+            line = line[1:]
+        if not line or line.endswith("/"):
             continue
-        if pattern.startswith("**/"):
-            pattern = pattern[3:]
-        elif pattern.startswith("/"):
-            pattern = pattern[1:]
-        if "/" in pattern:
+        line = line[1:] if line.startswith("/") else line
+        while line.startswith("**/"):
+            line = line[3:]
+        if not line or "/" in line or line[0] not in ".*?[\\":
             continue
-        if fnmatch.fnmatchcase(name, pattern):
+        if not _GLOB_CHARS & set(line):
+            rules.append((negated, line))
+            continue
+        try:
+            rules.append((negated, re.compile(_glob_regex(line), re.DOTALL)))
+        except re.error:
+            continue
+    return rules
+
+
+def _gitignore_ignores(rules: list[tuple[bool, str | re.Pattern[str]]], name: str) -> bool:
+    """Whether the rules of a root `.gitignore` (`_gitignore_rules`) ignore the root file
+    ``name``: the last rule that matches decides, so `!` takes a file back out."""
+    ignored = False
+    for negated, matcher in rules:
+        if matcher == name if isinstance(matcher, str) else matcher.fullmatch(name):
             ignored = not negated
     return ignored
 
 
-def _check_env_gitignore(project_root: Path) -> list[Finding]:
-    findings: list[Finding] = []
-    env_files = [
+def _read_gitignore(project_root: Path) -> str | None:
+    """The root `.gitignore`, its first ``_GITIGNORE_MAX_BYTES``, or None if absent or
+    unreadable. Read as UTF-8 without a BOM, as git skips one."""
+    gitignore = project_root / ".gitignore"
+    if not gitignore.is_file():
+        return None
+    try:
+        with gitignore.open("rb") as handle:
+            data = handle.read(_GITIGNORE_MAX_BYTES)
+    except OSError:
+        return None
+    return data.decode("utf-8-sig", errors="replace")
+
+
+def _root_env_files(project_root: Path) -> list[Path]:
+    """The root's `.env` and `.env.*` files, the committed templates left out."""
+    return [
         path for path in sorted(list(project_root.glob(".env")) + list(project_root.glob(".env.*")))
         if path.is_file() and not path.name.lower().endswith(_ENV_TEMPLATE_SUFFIXES)
     ]
+
+
+def _check_env_gitignore(project_root: Path) -> list[Finding]:
+    findings: list[Finding] = []
+    env_files = _root_env_files(project_root)
     if not env_files:
         return findings
 
-    gitignore = project_root / ".gitignore"
-    if not gitignore.is_file():
+    if not (project_root / ".gitignore").is_file():
         for env_file in env_files:
             rel_path = str(env_file.relative_to(project_root))
             findings.append(_make_finding(
@@ -689,13 +778,13 @@ def _check_env_gitignore(project_root: Path) -> list[Finding]:
             ))
         return findings
 
-    try:
-        patterns = gitignore.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
+    text = _read_gitignore(project_root)
+    if text is None:
         return findings
+    rules = _gitignore_rules(text)
 
     for env_file in env_files:
-        if _gitignore_ignores(patterns, env_file.name):
+        if _gitignore_ignores(rules, env_file.name):
             continue
         rel_path = str(env_file.relative_to(project_root))
         findings.append(_make_finding(
