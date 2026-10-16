@@ -44,8 +44,17 @@ _PY_FETCH_CALLEES = (
     "requests.get", "requests.post", "requests.put", "requests.delete", "requests.head",
     "requests.request", "urllib.request.urlopen", "httpx.get", "httpx.post", "httpx.put",
     "httpx.delete", "httpx.request", "httpx.stream", "session.get", "session.post",
-    "client.get", "client.post", "aiohttp.request",
+    "session.request", "client.get", "client.post", "client.request", "client.stream",
+    "aiohttp.request",
 )
+# The callees above whose last name is one of these take the HTTP method first
+# and the URL second, or as `url=`: `requests.request`, `httpx.request`,
+# `httpx.stream`, `aiohttp.request`, and a requests or aiohttp session's or an
+# httpx client's `.request` and `.stream`. The URL used to be read from the first
+# positional argument everywhere, so the method was taken for it:
+# `requests.request("GET", url)` never carried the caller's URL, and
+# `requests.request(method, FIXED)` reported a caller's method as one.
+_PY_METHOD_FIRST = frozenset({"request", "stream"})
 # A call site and its first argument, read without backtracking. The argument is
 # everything up to the first `,`, `)` or `;` (at most 200 characters before the
 # closer's leading whitespace), and the call counts only when a `,` or `)` closes
@@ -701,7 +710,8 @@ def analyze_python(text: str) -> list[Reach]:
         name = _py_callee_name(node.func)
         if not _py_is_fetch(name):
             continue
-        url_arg: ast.AST | None = node.args[0] if node.args else None
+        position = 1 if name.rpartition(".")[2] in _PY_METHOD_FIRST else 0
+        url_arg: ast.AST | None = node.args[position] if len(node.args) > position else None
         if url_arg is None:
             for kw in node.keywords:
                 if kw.arg in ("url", "uri"):

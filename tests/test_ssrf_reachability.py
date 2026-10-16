@@ -258,6 +258,52 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
 
 
+# --- a method-first call reads its URL second -------------------------------
+#
+# `requests.request(method, url)`, `httpx.request`, `httpx.stream`,
+# `aiohttp.request` and a session's or client's `.request` take the HTTP method
+# first. The URL was read from the first positional argument, so the method was
+# taken for it: `requests.request("GET", url)` never carried the caller's URL,
+# and `requests.request(method, FIXED)` reported a caller's method as one.
+
+
+@pytest.mark.parametrize("call", [
+    'requests.request("GET", url)',
+    'requests.request("GET", url=url)',
+    'requests.request(method="GET", url=url)',
+    'httpx.request("POST", url)',
+    'httpx.stream("GET", url)',
+    'aiohttp.request("GET", url)',
+    'session.request("GET", url)',
+    'self.session.request("GET", url)',
+    'client.request("GET", url)',
+    'client.stream("GET", url)',
+])
+def test_a_method_first_call_reads_its_url_second(tmp_path: Path, call: str) -> None:
+    body = f"@mcp.tool()\ndef fetch(url: str) -> object:\n    return {call}\n"
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body)
+
+
+@pytest.mark.parametrize("call", [
+    'requests.request(method, "https://api.example.com/v1/items")',
+    'httpx.request(method, BASE + "/items")',
+    'session.request(method, url=f"{BASE}/items")',
+    'client.stream(method, "https://api.example.com/v1/items")',
+])
+def test_a_caller_s_method_is_not_a_url(tmp_path: Path, call: str) -> None:
+    body = f"@mcp.tool()\ndef call(method: str) -> object:\n    return {call}\n"
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
+
+
+def test_an_address_in_a_method_first_call_is_read(tmp_path: Path) -> None:
+    body = (
+        "import requests\n"
+        "def creds() -> str:\n"
+        '    return requests.request("GET", "http://169.254.169.254/latest/meta-data/").text\n'
+    )
+    assert "AAK-SSRF-003" in _ids(tmp_path, "meta.py", body)
+
+
 # --- a `@tool` decorator alone marks the file -------------------------------
 #
 # The gate wrote `\b(@tool|...)\b`. A word boundary before `@` needs a word
@@ -650,9 +696,18 @@ def test_a_crafted_tool_url_is_read_in_linear_time(arg: str) -> None:
     """The caller-input walk reads a tool's URL expression part by part. Chains
     thousands long are walked with a stack, not by recursion, so none of these
     can exhaust the interpreter's stack, and each takes a fraction of a second;
-    the bound is loose for slow runners."""
+    the bound is loose for slow runners. Python 3.11's own parser refuses the
+    deepest chains ("maximum recursion depth exceeded during ast construction"),
+    before this code runs, so the case is skipped there."""
+    import ast
+
+    source = "import requests\n@mcp.tool()\ndef t(p):\n    requests.get(" + arg + ")\n"
+    try:
+        ast.parse(source)
+    except RecursionError:
+        pytest.skip("this interpreter's parser refuses an expression this deep")
     started = time.perf_counter()
-    analyze_python("import requests\n@mcp.tool()\ndef t(p):\n    requests.get(" + arg + ")\n")
+    analyze_python(source)
     assert time.perf_counter() - started < 5.0
 
 
