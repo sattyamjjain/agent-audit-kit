@@ -2541,8 +2541,15 @@ _r(
         "(`subprocess.run([\"python3\"], input=code)`) is missed. A command built "
         "from the parameter (`f\"ls {path}\"`, "
         "`\"ls \" + path`) is not, although AAK-SHELL-QUOTED-INTERP-001 reports the "
-        "f-string form, and neither is a sink imported by name (`from subprocess "
-        "import run`). The TypeScript arm reads `.ts` and `.tsx` files only and "
+        "f-string form. A sink imported under another name is read through the "
+        "file's imports (`from subprocess import run`, `import subprocess as sp`), "
+        "but one bound by an assignment (`sh = subprocess.run`), or imported under a "
+        "name the file also binds some other way anywhere, a method or another "
+        "function's parameter included (`def run(self)` in an unrelated class), is "
+        "matched by its spelling only, so a call through that name is not reported. "
+        "A file with a star import reads no name through its imports, so "
+        "`from subprocess import *` never resolves `run`. The TypeScript arm reads `.ts` and "
+        "`.tsx` files only and "
         "matches `exec`, `execSync`, `spawn` and `spawnSync`: the same call in a "
         "`.js` file, or `execFile`, is not reported."
     ),
@@ -2608,7 +2615,9 @@ _r(
     "AAK-TAINT-003",
     "Tool parameter flows to file open",
     "A @tool function parameter is used in open() or file path construction, "
-    "enabling path traversal attacks.",
+    "enabling path traversal attacks. A pathlib.Path read at once for a part of its "
+    "name (Path(p).suffix, .stem, .name) opens nothing and is not reported; only that "
+    "inline read is skipped, so p = Path(path) and then p.suffix still is.",
     Severity.HIGH,
     Category.TAINT_ANALYSIS,
     "Validate and sanitize file paths. Use os.path.realpath() and verify against allowed directories.",
@@ -2624,8 +2633,12 @@ _r(
         "are reported only when the argument is a parameter or an item read from "
         "one (`arguments[\"path\"]`) or, in a `call_tool` handler, a local holding "
         "one at most two assignments away, so `open(os.path.join(ROOT, name))` is "
-        "not, nor is a local in a `@tool` function (`target = path`), and "
-        "`Path(path)` after `from pathlib import Path` is not matched at all. The "
+        "not, nor is a local in a `@tool` function (`target = path`). `Path` "
+        "imported under another name (`from pathlib import Path`) is read through "
+        "the file's imports, but not when the file also binds that name some other "
+        "way anywhere, a method or another function's parameter included "
+        "(`def describe(Path)`), or has a star import: the call is then matched by "
+        "its spelling only. The "
         "TypeScript arm looks at `fs.writeFile` and `appendFile` calls only: a tool "
         "that reads a path with `fs.readFileSync(path)` is not reported."
     ),
@@ -2652,13 +2665,17 @@ _r(
         "`@<server>.call_tool()` handler, are analysed, so a FastMCP instance under "
         "another name (`@app.tool()`) is skipped. Reports "
         "`requests.get/post/put/delete`, `httpx.get/post` and "
-        "`urllib.request.urlopen`, written that way, when the URL is not a literal "
+        "`urllib.request.urlopen`, written that way or imported under another name "
+        "(`from urllib.request import urlopen`), when the URL is not a literal "
         "and an argument is a parameter, an item read from one or, in a "
         "`call_tool` handler, a local holding one at most two assignments away. A "
-        "local in a `@tool` function (`target = url`) is not followed. A client "
+        "local in a `@tool` function (`target = url`) is not followed. An imported "
+        "name the file also binds some other way anywhere, a method included "
+        "(`def get(self, key)` in an unrelated class silences `from requests import "
+        "get`), and every name in a file with a star import, is matched by its "
+        "spelling only. A client "
         "instance (`await client.get(url)` on an "
-        "`httpx.AsyncClient`), `requests.request(\"GET\", url)` and `from "
-        "urllib.request import urlopen` are not matched."
+        "`httpx.AsyncClient`) and `requests.request(\"GET\", url)` are not matched."
     ),
 )
 

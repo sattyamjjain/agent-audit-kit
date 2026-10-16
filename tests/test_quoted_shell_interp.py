@@ -693,3 +693,30 @@ def test_straddling_chains_agree_with_the_per_sink_code() -> None:
             b = rng.randrange(a + 1, len(text) + 1)
             want = qsi._js_derived(_old_strip_subscripts(text[a:b]), _SPAN_TAINTED)
             assert bare.derived(a, b) == want, (text, a, b)
+
+
+@pytest.mark.parametrize("imports", [
+    "import subprocess",
+    "from subprocess import run",
+    "from subprocess import run as sh",
+    "import subprocess as sp",
+])
+def test_an_imported_shell_sink_is_read_through_the_import(tmp_path: Path, imports: str) -> None:
+    """`run(...)` after `from subprocess import run` is `subprocess.run`, as AAK-TAINT-001 reads it."""
+    call = {"import subprocess": "subprocess.run", "from subprocess import run": "run",
+            "from subprocess import run as sh": "sh", "import subprocess as sp": "sp.run"}[imports]
+    _write(tmp_path, "server.py", (
+        f"{imports}\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        f"@mcp.tool()\ndef listing(path: str) -> int:\n    return {call}(f\"ls {{path}}\", shell=True).returncode\n"
+    ))
+    assert [f.rule_id for f in _interp(tmp_path)] == [INTERP_RULE]
+
+
+def test_a_star_import_leaves_a_bare_shell_name_unread(tmp_path: Path) -> None:
+    _write(tmp_path, "server.py", (
+        "from subprocess import run\nfrom helpers import *\nfrom mcp.server.fastmcp import FastMCP\n\n"
+        "mcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef listing(path: str) -> int:\n    return run(f\"ls {path}\", shell=True).returncode\n"
+    ))
+    assert _ids(tmp_path) == []
+    assert _interp(tmp_path) == []

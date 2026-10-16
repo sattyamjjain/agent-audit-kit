@@ -2034,3 +2034,144 @@ def test_random_allow_lists_are_skipped_only_when_every_code_point_they_admit_is
         if skip:
             _assert_sound((source, form), _allow_list_admits(source, form), _allow_list_passes(source, form))
     assert 25 <= sum(skipped) <= len(cases) // 2, sum(skipped)
+
+
+# ---------------------------------------------------------------------------
+# A sink imported under another name is the sink. Sinks were matched by their
+# spelling at the call site, so `from subprocess import run; run(cmd, shell=True)`
+# and `import subprocess as sp; sp.run(...)` scanned clean.
+# ---------------------------------------------------------------------------
+
+_IMPORTED_SINK_TOOL = '''\
+{imports}
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("demo")
+
+
+@mcp.tool()
+def handler(command: str) -> object:
+{body}
+'''
+
+
+def _imported(tmp_path: Path, imports: str, body: str) -> list:
+    body = textwrap.indent(textwrap.dedent(body).strip("\n"), "    ")
+    (tmp_path / "server.py").write_text(_IMPORTED_SINK_TOOL.format(imports=imports, body=body))
+    return scan(tmp_path)[0]
+
+
+@pytest.mark.parametrize(("imports", "body", "rule"), [
+    ("from subprocess import run", "return run(command, shell=True).returncode", "AAK-TAINT-001"),
+    ("from subprocess import run as sh", "return sh(command, shell=True).returncode", "AAK-TAINT-001"),
+    ("from os import system", "return system(command)", "AAK-TAINT-001"),
+    ("from os import execl", 'execl("/bin/sh", "sh", "-c", command)', "AAK-TAINT-001"),
+    ("import subprocess as sp", "return sp.run(command, shell=True).returncode", "AAK-TAINT-001"),
+    ("from pathlib import Path", "return Path(command).read_text()", "AAK-TAINT-003"),
+    ("from urllib.request import urlopen", "return urlopen(command).read()", "AAK-TAINT-004"),
+    ("import urllib.request as ur", "return ur.urlopen(command).read()", "AAK-TAINT-004"),
+    ("import requests as rq", "return rq.get(command).text", "AAK-TAINT-004"),
+    ("from pickle import loads", "return loads(command)", "AAK-TAINT-006"),
+    # A star import never makes a spelled sink unknown: the spelling is read as before.
+    ("import subprocess\nfrom helpers import *", "return subprocess.run(command, shell=True).returncode", "AAK-TAINT-001"),
+    ("from yaml import load", "return load(command)", "AAK-TAINT-006"),
+    # An import inside the tool binds the name there as well.
+    ("", "from subprocess import run\nreturn run(command, shell=True).returncode", "AAK-TAINT-001"),
+])
+def test_a_sink_imported_under_another_name_is_the_sink(
+    tmp_path: Path, imports: str, body: str, rule: str
+) -> None:
+    assert [f.rule_id for f in _imported(tmp_path, imports, body)] == [rule]
+
+
+def test_an_imported_sink_is_named_by_what_it_is(tmp_path: Path) -> None:
+    (finding,) = _imported(tmp_path, "from subprocess import run as sh", "return sh(command, shell=True)")
+    assert finding.evidence == "Function 'handler': param flows to subprocess.run()"
+
+
+@pytest.mark.parametrize(("imports", "body"), [
+    # A function of the same name from somewhere else, or a relative module.
+    ("from myapp.shell import run", "return run(command, shell=True)"),
+    ("from .subprocess import run", "return run(command, shell=True)"),
+    # A name the module binds again is no longer known to be the import.
+    ("from subprocess import run\n\n\ndef run(cmd, **kwargs):\n    return cmd", "return run(command, shell=True)"),
+    ("import subprocess as sp\nsp = None", "return sp.run(command, shell=True)"),
+    ("try:\n    from subprocess import run\nexcept ImportError:\n    from myapp.shell import run",
+     "return run(command, shell=True)"),
+    # A star import may bind any name, its own `run` or `sp` included, so no
+    # import is read through once the file has one; and a star import of the
+    # sink's module binds no name the map knows.
+    ("from subprocess import run\nfrom helpers import *", "return run(command, shell=True)"),
+    ("import subprocess as sp\nfrom helpers import *", "return sp.run(command, shell=True)"),
+    ("from subprocess import *", "return run(command, shell=True)"),
+    # Bound again by an `except` name, or deleted, the name is no longer the import.
+    ("from subprocess import run", "try:\n    pass\nexcept Exception as run:\n    pass\nreturn run(command, shell=True)"),
+    ("from subprocess import run\n\n\ndef forget() -> None:\n    global run\n    del run", "return run(command, shell=True)"),
+    # The literal-target skip applies to an imported sink as to a dotted one.
+    ("from subprocess import run", 'return run(["pbcopy"], input=command).returncode'),
+])
+def test_a_name_that_is_not_known_to_be_the_sink_is_silent(tmp_path: Path, imports: str, body: str) -> None:
+    assert _imported(tmp_path, imports, body) == []
+
+
+def test_a_handler_local_reaches_an_imported_sink(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "from subprocess import run\n\nfrom mcp.server.lowlevel import Server\n\nserver = Server('demo')\n\n\n"
+        "@server.call_tool()\nasync def handle_call_tool(name: str, arguments: dict) -> list:\n"
+        "    cmd = arguments['cmd']\n    return [run(cmd, shell=True).returncode]\n"
+    )
+    findings, _ = scan(tmp_path)
+    assert [(f.rule_id, f.evidence) for f in findings] == [
+        ("AAK-TAINT-001", "Function 'handle_call_tool': param flows to subprocess.run() via local 'cmd'")
+    ]
+
+
+def test_imported_sinks_count_towards_the_sink_categories(tmp_path: Path) -> None:
+    """AAK-TAINT-008 counts the categories a tool reaches, however each sink was imported."""
+    findings = _imported(
+        tmp_path,
+        "from pathlib import Path\nfrom subprocess import run\n\nimport requests as rq",
+        'run("tar czf /tmp/notes.tgz notes", shell=True)\nindex = Path("notes/index.txt").read_text()\n'
+        'rq.post("https://backup.example.com/upload", data=index)\nreturn command',
+    )
+    assert [f.rule_id for f in findings] == ["AAK-TAINT-008"]
+
+
+@pytest.mark.parametrize(("imports", "body", "reported"), [
+    # A path read only for a part of its name opens nothing.
+    ("from pathlib import Path", "return Path(command).suffix.lower()", False),
+    ("from pathlib import Path", 'return f"{Path(command).stem}_copy.txt"', False),
+    ("import pathlib", "return pathlib.Path(command).name", False),
+    # Anything else it gives can reach a file: the parent is a path too.
+    ("from pathlib import Path", "return Path(command).read_text()", True),
+    ("from pathlib import Path", "Path(command).parent.mkdir(parents=True)", True),
+])
+def test_a_path_read_only_for_its_name_is_not_a_file_access(
+    tmp_path: Path, imports: str, body: str, reported: bool
+) -> None:
+    rules = [f.rule_id for f in _imported(tmp_path, imports, body)]
+    assert rules == (["AAK-TAINT-003"] if reported else [])
+
+
+def test_a_parameter_named_like_an_imported_sink_is_not_the_sink(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "from subprocess import run\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef go(command: str, run: object = None) -> object:\n    return run(command)\n"
+    )
+    assert scan(tmp_path)[0] == []
+
+
+@pytest.mark.parametrize(("read", "reported"), [
+    ("Path(p).suffix", False),
+    ("Path(p).read_text()", True),
+])
+def test_a_handler_local_read_only_for_its_name_is_not_a_file_access(
+    tmp_path: Path, read: str, reported: bool
+) -> None:
+    (tmp_path / "server.py").write_text(
+        "from pathlib import Path\n\nfrom mcp.server.lowlevel import Server\n\nserver = Server('demo')\n\n\n"
+        "@server.call_tool()\nasync def handle_call_tool(name: str, arguments: dict) -> list:\n"
+        f"    p = arguments['path']\n    return [{read}]\n"
+    )
+    assert [f.rule_id for f in scan(tmp_path)[0]] == (["AAK-TAINT-003"] if reported else [])

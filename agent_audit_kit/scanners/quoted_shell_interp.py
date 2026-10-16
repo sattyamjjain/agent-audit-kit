@@ -61,8 +61,9 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
+    _import_names,
     _is_tool_function,
-    _resolve_callee,
+    _resolve_sink,
 )
 
 INTERP_RULE = "AAK-SHELL-QUOTED-INTERP-001"
@@ -321,9 +322,13 @@ class _PySource:
 
 
 def _analyse_py_function(
-    func: ast.FunctionDef | ast.AsyncFunctionDef, rel: str, source: _PySource
+    func: ast.FunctionDef | ast.AsyncFunctionDef, rel: str, source: _PySource, imported: dict[str, str]
 ) -> tuple[list[Finding], bool]:
-    """Returns (findings, reached_a_command_sink)."""
+    """Returns (findings, reached_a_command_sink).
+
+    A sink imported under another name (`from subprocess import run`) is read
+    through `imported`, the file's import map, as AAK-TAINT-001 reads it.
+    """
     params = _get_param_names(func)
     if not params:
         return [], False
@@ -357,7 +362,7 @@ def _analyse_py_function(
     for node in ast.walk(func):
         if not isinstance(node, ast.Call):
             continue
-        callee = _resolve_callee(node)
+        callee = _resolve_sink(node, imported)
         if callee not in _PY_SHELL_SINKS:
             continue
         reached_sink = True
@@ -457,12 +462,15 @@ def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
     findings: list[Finding] = []
     exec_tools: list[str] = []
     source = _PySource(text)
+    imported: dict[str, str] | None = None
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         if not _is_tool_function(node):
             continue
-        found, reached = _analyse_py_function(node, rel, source)
+        if imported is None:
+            imported = _import_names(tree)
+        found, reached = _analyse_py_function(node, rel, source, imported)
         findings.extend(found)
         if found and reached:
             exec_tools.append(node.name)

@@ -189,6 +189,108 @@ def _resolve_callee(node: ast.Call) -> tuple[str | None, str] | None:
     return None
 
 
+# ---- Sinks imported under another name ----
+#
+# A sink is listed by its module and function (`("subprocess", "run")`), and was
+# matched by its spelling at the call site, so `from subprocess import run` then
+# `run(cmd, shell=True)`, `from pathlib import Path` then `Path(p)`, and `import
+# subprocess as sp` then `sp.run(...)` were no sinks. A file's imports now say
+# what such a name stands for. A name counts only when every binding the file
+# makes of it is an import of the same thing, anywhere in the file: a `def`, a
+# class, an assignment, a parameter or a second import that names something else
+# leaves it read by its spelling, and a relative import names no module this
+# list knows. The spelling also wins when it is a sink itself or the import names
+# none, so the builtin `open` stays a sink whatever the file imports.
+
+
+def _import_names(tree: ast.Module) -> dict[str, str]:
+    """What each name the file binds only by importing it stands for, as a dotted path.
+
+    A star import may bind any name, so a file with one reads no name through
+    its imports: `from helpers import *` after `from subprocess import run`
+    can define its own `run`, and `from subprocess import *` binds names this
+    map never learns. Every call is then matched by its spelling, as before.
+    """
+    targets: dict[str, set[str]] = {}
+    rebound: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    targets.setdefault(alias.asname, set()).add(alias.name)
+                else:
+                    top = alias.name.split(".")[0]
+                    targets.setdefault(top, set()).add(top)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.name == "*":
+                    return {}
+                bound = alias.asname or alias.name
+                if node.level or not node.module:
+                    rebound.add(bound)
+                else:
+                    targets.setdefault(bound, set()).add(f"{node.module}.{alias.name}")
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            rebound.add(node.name)
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+            rebound.add(node.id)
+        elif isinstance(node, ast.arg):
+            rebound.add(node.arg)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            rebound.add(node.name)
+        elif type(node).__name__ in ("MatchAs", "MatchStar", "MatchMapping"):
+            # Read by name: the `match` nodes are 3.10, and this runs on 3.9.
+            for captured in (getattr(node, "name", None), getattr(node, "rest", None)):
+                if isinstance(captured, str):
+                    rebound.add(captured)
+    return {
+        name: next(iter(paths)) for name, paths in targets.items() if len(paths) == 1 and name not in rebound
+    }
+
+
+def _resolve_sink(node: ast.Call, imported: dict[str, str]) -> tuple[str | None, str] | None:
+    """`_resolve_callee`, with a name the file imports read as what it stands for.
+
+    `run(...)` after `from subprocess import run` is `("subprocess", "run")`, and
+    `sp.run(...)` after `import subprocess as sp` is too. The spelling is kept
+    when it is a sink already, or when what the import names is not one.
+    """
+    callee = _resolve_callee(node)
+    if callee is None or callee in _SINK_LOOKUP or not imported:
+        return callee
+    module, name = callee
+    if module is None:
+        path = imported.get(name)
+        if path is None or "." not in path:
+            return callee
+        owner, _, attr = path.rpartition(".")
+        resolved: tuple[str | None, str] = (owner, attr)
+    else:
+        head, dot, rest = module.partition(".")
+        path = imported.get(head)
+        if path is None:
+            return callee
+        resolved = (path + dot + rest, name)
+    return resolved if resolved in _SINK_LOOKUP else callee
+
+
+#: What a `pathlib.Path` gives without touching a file: the parts of its name.
+#: `Path(p).suffix` reads the caller's string and opens nothing, so a `Path` call
+#: whose result is read only for one of these is no file-access sink. Of 100
+#: sampled AAK-TAINT-003 findings the import map above added on the corpus, 7
+#: had that shape (`Path(name).stem`, `Path(file_name).suffix.lower()`).
+_PATH_NAME_PARTS = frozenset({"name", "stem", "suffix", "suffixes", "parts", "anchor", "drive", "root"})
+_NAME_ONLY_SINKS: frozenset[tuple[str | None, str]] = frozenset({("pathlib", "Path")})
+
+
+def _name_only_calls(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> set[int]:
+    """The calls in `func_def` whose result is read only for a part of its name."""
+    return {
+        id(node.value) for node in ast.walk(func_def)
+        if isinstance(node, ast.Attribute) and node.attr in _PATH_NAME_PARTS and isinstance(node.value, ast.Call)
+    }
+
+
 def _reads_param(node: ast.expr, param_names: set[str]) -> bool:
     """True when ``node`` is a parameter, or an item read out of one.
 
@@ -446,11 +548,18 @@ class _HandlerFlow:
     """Follow one `call_tool` handler's locals to the sinks they reach (see above)."""
 
     def __init__(
-        self, func_def: ast.FunctionDef | ast.AsyncFunctionDef, rel_path: str, param_names: set[str]
+        self,
+        func_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        rel_path: str,
+        param_names: set[str],
+        imported: dict[str, str] | None = None,
+        name_only: set[int] | None = None,
     ) -> None:
         self.func_def = func_def
         self.rel_path = rel_path
         self.params = param_names
+        self.imported = imported or {}
+        self.name_only = name_only or set()
         self.locals = _Locals()
         self.findings: list[Finding] = []
 
@@ -467,9 +576,11 @@ class _HandlerFlow:
                 self._bind(node.target, self._depth(node.value))
 
     def _check(self, call: ast.Call, hidden: frozenset[str]) -> None:
-        callee = _resolve_callee(call)
+        callee = _resolve_sink(call, self.imported)
         rule_id = _SINK_LOOKUP.get(callee) if callee is not None else None
         if callee is None or rule_id is None or rule_id not in _ALIAS_FOLLOWED_RULES:
+            return
+        if callee in _NAME_ONLY_SINKS and id(call) in self.name_only:
             return
         # A call the direct rules consider, because a parameter or an item read
         # from one is among its arguments, is theirs: they report it, or the
@@ -1071,10 +1182,14 @@ def _read_allow_listed_sinks(func_def: ast.FunctionDef | ast.AsyncFunctionDef, f
 
 
 def _alias_flow_findings(
-    func_def: ast.FunctionDef | ast.AsyncFunctionDef, rel_path: str, param_names: set[str]
+    func_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    rel_path: str,
+    param_names: set[str],
+    imported: dict[str, str] | None = None,
+    name_only: set[int] | None = None,
 ) -> list[Finding]:
     """Findings for sink calls a handler's locals reach (see the block comment above)."""
-    flow = _HandlerFlow(func_def, rel_path, param_names)
+    flow = _HandlerFlow(func_def, rel_path, param_names, imported, name_only)
     flow.visit(func_def.body)
     return flow.findings
 
@@ -1084,6 +1199,7 @@ def _analyse_tool_function(
     rel_path: str,
     call_tool_handler: bool = False,
     file_facts: _FileFacts | None = None,
+    imported: dict[str, str] | None = None,
 ) -> list[Finding]:
     """Perform taint analysis on a single @tool function.
 
@@ -1102,10 +1218,13 @@ def _analyse_tool_function(
             `@tool` function only: it leaves out an AAK-TAINT-002 call an
             allow-list check guards (see `_allow_listed_sinks`). None, as for a
             `call_tool` handler, reads no checks.
+        imported: What the names the file binds by import stand for (see
+            `_import_names`), so a sink imported under another name is found.
     """
     findings: list[Finding] = []
     param_names = _get_param_names(func_def)
     func_name = func_def.name
+    name_only = _name_only_calls(func_def)
 
     # Track which rule categories have dangerous sinks (for AAK-TAINT-008)
     triggered_categories: set[str] = set()
@@ -1116,12 +1235,12 @@ def _analyse_tool_function(
         if not isinstance(node, ast.Call):
             continue
 
-        callee = _resolve_callee(node)
+        callee = _resolve_sink(node, imported or {})
         if callee is None:
             continue
 
         rule_id = _SINK_LOOKUP.get(callee)
-        if rule_id is None:
+        if rule_id is None or (callee in _NAME_ONLY_SINKS and id(node) in name_only):
             continue
 
         # Track category regardless of param taint
@@ -1145,7 +1264,7 @@ def _analyse_tool_function(
             ))
 
     if call_tool_handler:
-        findings.extend(_alias_flow_findings(func_def, rel_path, param_names))
+        findings.extend(_alias_flow_findings(func_def, rel_path, param_names, imported, name_only))
         return findings
 
     # AAK-TAINT-007: No type hints on any parameter
@@ -1214,13 +1333,18 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
         scanned_files.add(rel_path)
         file_facts = _FileFacts(tree)
+        imported: dict[str, str] | None = None
 
         # Walk top-level and nested function definitions
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if _is_tool_function(node):
-                    findings.extend(_analyse_tool_function(node, rel_path, file_facts=file_facts))
+                    imported = _import_names(tree) if imported is None else imported
+                    findings.extend(_analyse_tool_function(node, rel_path, file_facts=file_facts, imported=imported))
                 elif _is_call_tool_handler(node):
-                    findings.extend(_analyse_tool_function(node, rel_path, call_tool_handler=True))
+                    imported = _import_names(tree) if imported is None else imported
+                    findings.extend(_analyse_tool_function(
+                        node, rel_path, call_tool_handler=True, imported=imported,
+                    ))
 
     return findings, scanned_files
