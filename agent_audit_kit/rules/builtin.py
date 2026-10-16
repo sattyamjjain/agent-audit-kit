@@ -7923,7 +7923,10 @@ _r(
         "parameter (`def search(website_url)`) carries no marker and is not reported. "
         "`validate_rag_url` itself refuses a URL whose host Node, requests and Rust's "
         "`url` crate read differently from curl, httpx and urlsplit, which keep a "
-        "backslash inside the authority."
+        "backslash inside the authority. It resolves the host to check its addresses "
+        "and the RAG tool resolves it again to fetch, so a name whose DNS answer "
+        "changes in between (DNS rebinding) passes the check and is fetched at a "
+        "private address."
     ),
 )
 
