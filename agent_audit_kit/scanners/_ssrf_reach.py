@@ -6,20 +6,23 @@ be code, related, or near each other — a match inside a comment, a rule title 
 a regex literal counted. That produced findings like "loopback address reachable
 from MCP tool" on the scanner's own detection pattern (#593).
 
-This module answers the question the finding text actually claims: does the URL
-argument of an outbound HTTP call derive from caller-controlled input, and does a
+This module answers the question the finding text actually claims: can the
+caller of a tool set the host an outbound HTTP call connects to, and does a
 private or metadata address actually reach one of those calls?
 
 Two backends, both dependency-free:
 
-  * Python — `ast`. Call sites are real Call nodes; the URL argument is traced
-    back through assignments, f-strings and simple concatenation.
+  * Python — `ast`. Call sites are real Call nodes. Caller input is the
+    parameters of the tool function the call sits in (`_CallerInput`), traced
+    through assignments, f-strings, concatenation and formatting to the URL's
+    host.
   * TS/JS — comment-stripped def-use. No parser is available, so this is a
     narrower approximation: it finds call sites, extracts the argument
     expression, and resolves single-hop assignments of the names in it.
 
-Both are strictly more conservative than the old file-wide matching, so this can
-only remove findings, never add them.
+The TS/JS backend is strictly more conservative than the old file-wide
+matching. The Python one also reads a tool's own parameters, which the old name
+list missed (`def fetch(url: str)`), and no longer reads a name outside a tool.
 """
 
 from __future__ import annotations
@@ -30,6 +33,11 @@ import re
 from typing import Callable, Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
+from agent_audit_kit.scanners.taint_analysis import (
+    _get_param_names,
+    _is_call_tool_handler,
+    _is_tool_function,
+)
 
 # Callees that perform an outbound request.
 _PY_FETCH_CALLEES = (
@@ -51,11 +59,8 @@ _JS_FETCH_RE = re.compile(
     r"superagent\.(?:get|post))\s*\(\s*(?P<arg>[^,);]{0,200})(?P<close>\s*[,)])?",
 )
 
-# Caller-controlled sources.
-_PY_USER_ROOTS = frozenset({
-    "input", "args", "params", "kwargs", "request", "req", "event", "tool_input",
-    "arguments", "payload", "body", "query",
-})
+# Caller-controlled sources in TS/JS. Python reads a tool's parameters instead
+# (see `_CallerInput`).
 _JS_USER_RE = re.compile(
     r"\b(?:req\.query|req\.body|req\.params|request\.json|event\.body|tool_input|"
     r"arguments|params\[|args\[|input)\b"
@@ -115,7 +120,7 @@ class Reach(NamedTuple):
     """What an outbound call site was found to reach."""
     callee: str
     line: int
-    tainted: bool          # URL argument derives from caller-controlled input
+    tainted: bool          # caller input can set the URL's host
     private_addr: str | None   # private/metadata address reaching this call
 
 
@@ -241,23 +246,6 @@ def _py_names_in(node: ast.AST) -> set[str]:
     return {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
 
 
-def _py_roots_in(node: ast.AST) -> set[str]:
-    """Root identifiers referenced, including the base of attribute/subscript chains."""
-    roots = _py_names_in(node)
-    for sub in ast.walk(node):
-        if isinstance(sub, (ast.Attribute, ast.Subscript)):
-            cur: ast.AST = sub
-            while isinstance(cur, (ast.Attribute, ast.Subscript)):
-                cur = cur.value
-            if isinstance(cur, ast.Name):
-                roots.add(cur.id)
-    return roots
-
-
-def _py_is_user_expr(node: ast.AST) -> bool:
-    return bool(_py_roots_in(node) & _PY_USER_ROOTS)
-
-
 def _py_literal_strings(node: ast.AST) -> list[str]:
     return [
         n.value for n in ast.walk(node)
@@ -272,27 +260,22 @@ _PY_MAX_DEPTH = 4
 _JS_MAX_DEPTH = 3
 
 
-def _py_reach(
-    assigns: dict[str, list[ast.AST]],
-) -> tuple[Callable[[ast.AST], bool], Callable[[ast.AST], str | None]]:
-    """Whether an expression derives from caller input, and the first private
-    address that reaches it, through up to four levels of assignments.
+def _py_addr_reach(assigns: dict[str, list[ast.AST]]) -> Callable[[ast.AST], str | None]:
+    """The first private address that reaches an expression, through up to four
+    levels of assignments.
 
-    Both used to walk the assignment graph afresh for every name at every
-    level: each step tried every name an expression mentions and every
-    expression that name was assigned, four levels down, with nothing
-    remembered. Names assigned from each other multiplied: twenty names that
-    each read all twenty took a second for one call, growing with the fifth
-    power of the fan-out, and every call site paid again. A depth bound stops a
-    cycle; it does not stop that.
+    The walk used to start afresh for every name at every level: each step
+    tried every name an expression mentions and every expression that name was
+    assigned, four levels down, with nothing remembered. Names assigned from
+    each other multiplied: twenty names that each read all twenty took a second
+    for one call, growing with the fifth power of the fan-out, and every call
+    site paid again. A depth bound stops a cycle; it does not stop that.
 
     The answer for an expression at a given depth never changes within a file,
     so each (expression, depth) and each (name, depth) is worked out once. The
     order is the old one (names in the set's order, a name's assignments in
     source order), so the address reported is the one the old walk reached
     first."""
-    expr_tainted: dict[tuple[int, int], bool] = {}
-    name_tainted: dict[tuple[str, int], bool] = {}
     expr_addr: dict[tuple[int, int], str | None] = {}
     name_addr: dict[tuple[str, int], str | None] = {}
     names: dict[int, set[str]] = {}
@@ -302,24 +285,6 @@ def _py_reach(
         if found is None:
             found = names[id(node)] = _py_names_in(node)
         return found
-
-    def tainted(node: ast.AST, depth: int = 0) -> bool:
-        if depth > _PY_MAX_DEPTH:
-            return False
-        key = (id(node), depth)
-        hit = expr_tainted.get(key)
-        if hit is None:
-            hit = expr_tainted[key] = _py_is_user_expr(node) or any(
-                assigned_tainted(name, depth + 1) for name in names_in(node)
-            )
-        return hit
-
-    def assigned_tainted(name: str, depth: int) -> bool:
-        key = (name, depth)
-        hit = name_tainted.get(key)
-        if hit is None:
-            hit = name_tainted[key] = any(tainted(rhs, depth) for rhs in assigns.get(name, []))
-        return hit
 
     def addr_reaching(node: ast.AST, depth: int = 0) -> str | None:
         if depth > _PY_MAX_DEPTH:
@@ -346,7 +311,7 @@ def _py_reach(
             name_addr[key] = found
         return name_addr[key]
 
-    return tainted, addr_reaching
+    return addr_reaching
 
 
 def _py_addr_here(node: ast.AST) -> str | None:
@@ -358,6 +323,356 @@ def _py_addr_here(node: ast.AST) -> str | None:
     return None
 
 
+# ---- Caller input: a tool's parameters --------------------------------------
+#
+# Caller input was a list of names (`input`, `args`, `params`, `kwargs`,
+# `request`, `req`, `event`, `tool_input`, `arguments`, `payload`, `body`,
+# `query`) matched anywhere in the file. A tool's own `url` parameter was not on
+# it, so `@mcp.tool() def fetch(url: str): return requests.get(url).text`
+# reached neither AAK-SSRF-001 nor -005, while any function with a parameter
+# called `query` counted, and so did a module-level `request`. Caller input is
+# now what taint_analysis takes it to be: the parameters of a function it reads
+# as a tool (`@tool`, `@mcp.tool`, `@server.tool`, ...) or as a low-level
+# `@<server>.call_tool()` handler, less a `Context` the framework fills in
+# (`_injected_params`), inside that function and its closures, and the locals
+# bound from them there.
+#
+# A parameter reaching the URL is not enough on its own. A tool that calls one
+# fixed API with the caller's values in the path or the query,
+# `f"https://api.github.com/repos/{owner}/{repo}"`, is how most MCP servers are
+# written, and it sends nothing to a host the caller chooses. So a URL counts
+# when caller input can set its host (`_CallerInput.sets_host`).
+
+#: Where an authority ends: WHATWG also stops at a backslash.
+_AUTHORITY_END_RE = re.compile(r"[/\\?#]")
+#: Text the code does not spell out (a configured base URL, `self.base`, a call).
+_UNKNOWN = "\x00"
+#: How much of a URL's leading text is read: no host is longer.
+_PREFIX_CAP = 512
+#: How deeply nested expressions are followed inside one assignment level.
+#: Real URL expressions nest a few levels; the bound keeps a crafted file from
+#: exhausting the interpreter's stack.
+_PY_MAX_NEST = 40
+
+
+#: Functions that return a URL built from the arguments they are given, so
+#: caller input in an argument is in the URL: `str(url)`, `urljoin(BASE, path)`
+#: (`path` replaces the base when it is absolute), the quoting helpers,
+#: `urlunparse`/`urlunsplit` over their parts, and the URL and request objects
+#: of urllib, requests, httpx and yarl (`Request(url)`, `httpx.URL(url)`).
+_PASS_THROUGH = frozenset({
+    "str", "urljoin", "quote", "quote_plus", "unquote", "unquote_plus", "requote_uri",
+    "urlunparse", "urlunsplit", "URL", "Request",
+})
+
+
+def _authority_closed(prefix: str) -> bool:
+    """Whether the leading text of a URL has ended its authority, so that
+    nothing after it can change the host.
+
+    `prefix` is the URL's text up to a caller-controlled piece, each piece the
+    code does not spell out written as `_UNKNOWN`. The authority has ended once
+    `/`, `?`, `#` or `\\` follows at least one character of it, counted after
+    the `://` when the text has one (`https://api.example.com/`) and from the
+    start otherwise (`{BASE}/items/`, `api.example.com/`). A path that starts
+    with one `/` (for a client holding a `base_url`) has no authority to change,
+    and nor does a leading piece the code does not spell out, which is a base
+    URL with its own host. Until then the caller's text can still name the
+    host: `https://` + host, `"https://api.example.com"` + `@evil.example` or
+    `.evil.example`, or `http://localhost:` + a port and an `@`.
+    """
+    if prefix.startswith("/") and not prefix.startswith("//"):
+        return True
+    scheme = prefix.find("://")
+    if prefix.startswith(_UNKNOWN) and scheme < 0:
+        # A base the code does not spell out (`{BASE}`, `os.getenv(...)`,
+        # `self.base_url`) is taken to carry its own host: it is how a client
+        # is pointed at its one API (`FHIR_SERVER_BASE + endpoint`, the base
+        # read from the environment). AAK-SSRF-001's limitation names the
+        # base without a trailing `/` that this lets through.
+        return True
+    authority = prefix[scheme + 3:] if scheme >= 0 else prefix
+    end = _AUTHORITY_END_RE.search(authority)
+    return end is not None and end.start() > 0
+
+
+def _str_constant(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    return None
+
+
+def _literal_join(node: ast.AST) -> tuple[str, list[ast.expr]] | None:
+    """``(separator, items)`` for `"/".join([a, b])` over a literal list."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+        return None
+    sep = _str_constant(node.func.value)
+    if node.func.attr != "join" or sep is None or len(node.args) != 1 or node.keywords:
+        return None
+    items = node.args[0]
+    return (sep, list(items.elts)) if isinstance(items, (ast.List, ast.Tuple)) else None
+
+
+def _is_built(node: ast.AST) -> bool:
+    """An f-string, a `+` or a literal `.join`: a URL put together from pieces."""
+    return (
+        isinstance(node, ast.JoinedStr)
+        or (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add))
+        or _literal_join(node) is not None
+    )
+
+
+def _pieces(node: ast.AST) -> list[str | ast.AST]:
+    """A built string as the literal text and expressions it joins, in order:
+    an f-string's parts, a `+` chain flattened left to right (with an explicit
+    stack, as a chain can be thousands long), and a literal `.join` with its
+    separator between the items."""
+    out: list[str | ast.AST] = []
+    stack: list[str | ast.AST] = [node]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, str):
+            out.append(cur)
+            continue
+        joined = _literal_join(cur)
+        if joined is not None:
+            sep, items = joined
+            for index in range(len(items) - 1, -1, -1):
+                stack.append(items[index])
+                if index:
+                    stack.append(sep)
+        elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Add):
+            stack.extend((cur.right, cur.left))
+        elif isinstance(cur, ast.JoinedStr):
+            stack.extend(reversed(cur.values))
+        elif isinstance(cur, ast.FormattedValue):
+            out.append(cur.value)
+        else:
+            text = _str_constant(cur)
+            out.append(cur if text is None else text)
+    return out
+
+
+#: The annotations of parameters a framework fills in, not the caller: FastMCP's
+#: `Context` (`ctx: Context`, whose `request_context.lifespan_context` holds the
+#: server's own API client) and LangChain's `RunnableConfig`.
+_INJECTED_ANNOTATIONS = frozenset({"Context", "RunnableConfig"})
+
+
+def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
+    """The parameters of `func` annotated as one `_INJECTED_ANNOTATIONS` names,
+    written bare, dotted, subscripted (`Context[ServerSession, None]`) or as a
+    string."""
+    names: set[str] = set()
+    for arg in func.args.posonlyargs + func.args.args + func.args.kwonlyargs:
+        annotation = arg.annotation
+        if isinstance(annotation, ast.Subscript):
+            annotation = annotation.value
+        if annotation is None:
+            continue
+        text = _str_constant(annotation)
+        name = text.partition("[")[0] if text is not None else _py_callee_name(annotation)
+        if name.rpartition(".")[2] in _INJECTED_ANNOTATIONS:
+            names.add(arg.arg)
+    return names
+
+
+class _CallerInput:
+    """One tool function's caller input: what it is, and whether it can set the
+    host of a URL built in that function."""
+
+    def __init__(
+        self,
+        func: ast.FunctionDef | ast.AsyncFunctionDef,
+        module_assigns: dict[str, list[ast.AST]],
+    ) -> None:
+        self.params = _get_param_names(func) - _injected_params(func)
+        # name -> what it is bound to here: `=`, an annotated `=` and `:=` ...
+        self.values: dict[str, list[ast.AST]] = {}
+        # ... and the iterable a `for` or a comprehension takes it from, whose
+        # every element is the caller's when the iterable is.
+        self.elements: dict[str, list[ast.AST]] = {}
+        for node in ast.walk(func):
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        self.values.setdefault(target.id, []).append(node.value)
+            elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and isinstance(node.target, ast.Name):
+                if node.value is not None:
+                    self.values.setdefault(node.target.id, []).append(node.value)
+            elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+                if isinstance(node.target, ast.Name):
+                    self.elements.setdefault(node.target.id, []).append(node.iter)
+        self.module_assigns = module_assigns
+        self._sets: dict[tuple[int, int], bool] = {}
+        self._text: dict[tuple[int, int], str] = {}
+
+    def sets_host(self, node: ast.AST, depth: int = 0, nest: int = 0) -> bool:
+        """Whether caller input can set the host of the URL `node` evaluates to.
+
+        It can when the URL is caller input as a whole (a parameter, an item or
+        attribute read from one, a method called on one or a URL function given
+        one, a local bound from one), or when the URL is built (an f-string,
+        `+`, a literal `.join`, `%`, `.format`, `.replace`) and a piece of caller
+        input comes before the text the code wrote has ended the authority
+        (`_authority_closed`). Each (expression, depth) is worked out
+        once, as `_py_addr_reach` does, so names that read each other do not
+        multiply the work.
+        """
+        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+            return False
+        key = (id(node), depth)
+        hit = self._sets.get(key)
+        if hit is None:
+            hit = self._sets[key] = self._sets_host(node, depth, nest)
+        return hit
+
+    def _sets_host(self, node: ast.AST, depth: int, nest: int) -> bool:
+        # Read and attribute chains can be thousands long, so the parts of one
+        # expression are walked with a stack; only a built URL, or a name's
+        # binding one assignment down, is a call of its own.
+        stack = [node]
+        while stack:
+            cur = stack.pop()
+            if isinstance(cur, ast.Name):
+                if cur.id in self.params:
+                    return True
+                bound = self.values.get(cur.id, []) + self.elements.get(cur.id, [])
+                if any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound):
+                    return True
+            elif isinstance(cur, (ast.Subscript, ast.Attribute, ast.Starred, ast.Await, ast.NamedExpr)):
+                # `URLS[region]` reads a URL the code fixed: only the container counts.
+                stack.append(cur.value)
+            elif _is_built(cur):
+                if self._built_sets_host(_pieces(cur), depth, nest + 1):
+                    return True
+            elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Mod) and _str_constant(cur.left) is not None:
+                if not _authority_closed(str(_str_constant(cur.left)).partition("%")[0]):
+                    # `"%s://%s/" % (scheme, host)` and `"%(host)s" % {...}` format each value.
+                    if isinstance(cur.right, ast.Tuple):
+                        stack.extend(cur.right.elts)
+                    elif isinstance(cur.right, ast.Dict):
+                        stack.extend(value for value in cur.right.values if value is not None)
+                    else:
+                        stack.append(cur.right)
+            elif isinstance(cur, ast.BinOp):
+                stack.extend((cur.left, cur.right))
+            elif isinstance(cur, ast.Call):
+                stack.extend(self._call_operands(cur, depth, nest))
+            elif isinstance(cur, ast.IfExp):
+                stack.extend((cur.body, cur.orelse))
+            elif isinstance(cur, ast.BoolOp):
+                stack.extend(cur.values)
+        return False
+
+    def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
+        """The parts of a call that can carry caller input into the URL it
+        returns, read as `_PASS_THROUGH` says.
+
+        A method passes its receiver on (`url.strip()`, `arguments.get("url")`,
+        `params["url"].lower()`), and its arguments only where they become part
+        of the result: a `.format` and a `.replace` are read for where they put
+        them (a `"/".join([...])` of a literal list is read as the text it
+        builds, see `_pieces`), and `.get(key, default)` passes its default but
+        not its key. A function passes its arguments on only when it is one
+        that returns a URL built from them (`_PASS_THROUGH`); any other one is
+        taken to return what it builds, so a helper that puts the caller's
+        values on a host it fixes (`self._url(path)`, `make_link(owner)`) is not
+        read as a caller's URL, and nor is what a search or an API returns.
+        """
+        func = call.func
+        name = func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else ""
+        if name in _PASS_THROUGH:
+            operands: list[ast.AST] = []
+            for arg in call.args:
+                operands.extend(arg.elts if isinstance(arg, (ast.Tuple, ast.List)) else [arg])
+            operands.extend(kw.value for kw in call.keywords if kw.arg in ("url", "uri"))
+            return operands
+        if not isinstance(func, ast.Attribute):
+            return []
+        receiver = func.value
+        if name == "format":
+            template = self._spelled(receiver, depth, nest + 1)
+            if _authority_closed(template.partition("{")[0]):
+                return [receiver]
+            return [receiver, *call.args, *(kw.value for kw in call.keywords)]
+        if name == "replace" and len(call.args) >= 2:
+            template = self._spelled(receiver, depth, nest + 1)
+            old = self._spelled(call.args[0], depth, nest + 1)
+            if old and _UNKNOWN not in old and old in template and _authority_closed(template[:template.index(old)]):
+                return [receiver]
+            return [receiver, call.args[1]]
+        if name == "get":
+            return [receiver, *call.args[1:], *(kw.value for kw in call.keywords if kw.arg == "default")]
+        if name == "join" and call.args:
+            return [receiver, call.args[0]]
+        return [receiver]
+
+    def _built_sets_host(self, pieces: list[str | ast.AST], depth: int, nest: int) -> bool:
+        prefix = ""
+        for piece in pieces:
+            if _authority_closed(prefix):
+                return False
+            if isinstance(piece, str):
+                prefix = (prefix + piece)[:_PREFIX_CAP]
+            elif self.sets_host(piece, depth, nest):
+                return True
+            else:
+                prefix = (prefix + self._spelled(piece, depth, nest))[:_PREFIX_CAP]
+        return False
+
+    def _spelled(self, node: ast.AST, depth: int, nest: int) -> str:
+        """The text a piece holds, as far as the code spells it out, with
+        `_UNKNOWN` for the rest: a string constant, a name bound to one value
+        here or in the module (`BASE = "https://api.example.com"`), and the
+        built forms `sets_host` reads."""
+        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+            return _UNKNOWN
+        key = (id(node), depth)
+        text = self._text.get(key)
+        if text is None:
+            text = self._text[key] = self._spell(node, depth, nest)[:_PREFIX_CAP]
+        return text
+
+    def _spell(self, node: ast.AST, depth: int, nest: int) -> str:
+        constant = _str_constant(node)
+        if constant is not None:
+            return constant
+        if isinstance(node, ast.Name):
+            if node.id in self.params or node.id in self.elements:
+                return _UNKNOWN
+            bound = self.values.get(node.id) or self.module_assigns.get(node.id, [])
+            return self._spelled(bound[0], depth + 1, nest + 1) if len(bound) == 1 else _UNKNOWN
+        if _is_built(node):
+            text = ""
+            for piece in _pieces(node):
+                text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
+                if len(text) >= _PREFIX_CAP:
+                    break
+            return text
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod) and _str_constant(node.left) is not None:
+            return str(_str_constant(node.left)).partition("%")[0] + _UNKNOWN
+        func = node.func if isinstance(node, ast.Call) else None
+        if isinstance(func, ast.Attribute) and func.attr == "format":
+            return self._spelled(func.value, depth, nest + 1).partition("{")[0] + _UNKNOWN
+        return _UNKNOWN
+
+
+def _caller_inputs(tree: ast.AST, assigns: dict[str, list[ast.AST]]) -> dict[int, list[_CallerInput]]:
+    """id(call) -> the caller input of each tool function the call sits in."""
+    around: dict[int, list[_CallerInput]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not (_is_tool_function(node) or _is_call_tool_handler(node)):
+            continue
+        scope = _CallerInput(node, assigns)
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Call):
+                around.setdefault(id(sub), []).append(scope)
+    return around
+
+
 def analyze_python(text: str) -> list[Reach]:
     """Outbound call sites in a Python source, with what each one reaches."""
     try:
@@ -365,7 +680,8 @@ def analyze_python(text: str) -> list[Reach]:
     except (SyntaxError, ValueError):
         return []
 
-    # name -> assigned expressions (all of them; any tainted assignment taints).
+    # name -> assigned expressions, file-wide, for the address walk and for
+    # spelling out a module-level constant such as a base URL.
     assigns: dict[str, list[ast.AST]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
@@ -375,7 +691,8 @@ def analyze_python(text: str) -> list[Reach]:
         elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value:
             assigns.setdefault(node.target.id, []).append(node.value)
 
-    tainted, addr_reaching = _py_reach(assigns)
+    addr_reaching = _py_addr_reach(assigns)
+    caller_inputs = _caller_inputs(tree, assigns)
 
     out: list[Reach] = []
     for node in ast.walk(tree):
@@ -395,7 +712,7 @@ def analyze_python(text: str) -> list[Reach]:
         out.append(Reach(
             callee=name,
             line=getattr(node, "lineno", 0),
-            tainted=tainted(url_arg),
+            tainted=any(scope.sets_host(url_arg) for scope in caller_inputs.get(id(node), [])),
             private_addr=addr_reaching(url_arg),
         ))
     return out

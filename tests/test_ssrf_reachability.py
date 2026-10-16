@@ -85,6 +85,7 @@ def test_user_input_and_fetch_in_the_same_file_but_unconnected(tmp_path: Path) -
 def test_direct_user_input_to_fetch_fires(tmp_path: Path) -> None:
     body = (
         'import requests\n'
+        '@mcp.tool()\n'
         'def tool(request):\n'
         '    return requests.get(request.json["url"])\n'
     )
@@ -96,6 +97,7 @@ def test_direct_user_input_to_fetch_fires(tmp_path: Path) -> None:
 def test_user_input_through_a_variable_fires(tmp_path: Path) -> None:
     body = (
         'import requests\n'
+        '@mcp.tool()\n'
         'def tool(params):\n'
         '    target = params["endpoint"]\n'
         '    return requests.get(target)\n'
@@ -106,6 +108,7 @@ def test_user_input_through_a_variable_fires(tmp_path: Path) -> None:
 def test_user_input_through_an_fstring_fires(tmp_path: Path) -> None:
     body = (
         'import requests\n'
+        '@mcp.tool()\n'
         'def tool(args):\n'
         '    host = args["host"]\n'
         '    return requests.get(f"https://{host}/v1/data")\n'
@@ -136,10 +139,123 @@ def test_allowlist_guard_clears_the_tainted_finding(tmp_path: Path) -> None:
     body = (
         'import requests\n'
         'ALLOWED_HOSTS = {"api.example.com"}\n'
+        '@mcp.tool()\n'
         'def tool(params):\n'
         '    return requests.get(params["url"])\n'
     )
     assert "AAK-SSRF-005" not in _ids(tmp_path, "tool.py", body)
+
+
+# --- a tool's parameters are caller input -----------------------------------
+#
+# Caller input was a list of names (`args`, `params`, `request`, `arguments`,
+# ...) matched anywhere in the file, so `def fetch(url: str)` under
+# `@mcp.tool()` scanned clean while any function with a parameter called `query`
+# reported. The parameters of a tool function and of a low-level `call_tool`
+# handler, found the way taint_analysis finds them, are caller input now, inside
+# that function, and a URL counts when one of them can set its host.
+
+_TOOL_PRELUDE = (
+    "import httpx\n"
+    "import requests\n"
+    "import urllib.request\n"
+    "from urllib.parse import urljoin\n"
+    'BASE = "https://api.example.com"\n'
+    'BASE_SLASH = "https://api.example.com/"\n'
+    'REGIONS = {"eu": "https://eu.example.com"}\n'
+    'TEMPLATE = "https://{host}/status"\n'
+    'USER_URL = "https://api.example.com/users/[id]"\n'
+    "import os\n"
+)
+_SSRF_RULES = {"AAK-SSRF-001", "AAK-SSRF-005"}
+
+
+@pytest.mark.parametrize("body", [
+    "def fetch(url: str) -> str:\n    return requests.get(url).text\n",
+    "def fetch(url: str) -> str:\n    target = url.strip()\n    return requests.get(target).text\n",
+    'def fetch(arguments: dict) -> str:\n    return requests.get(arguments["url"]).text\n',
+    'def fetch(opts: dict) -> str:\n    return requests.get(opts.get("url")).text\n',
+    'def status(host: str) -> str:\n    return requests.get(f"https://{host}/status").text\n',
+    'def status(port: int) -> str:\n    return requests.get(f"http://localhost:{port}/status").text\n',
+    "def proxy(path: str) -> str:\n    return requests.get(BASE + path).text\n",
+    "def proxy(path: str) -> str:\n    return requests.get(urljoin(BASE, path)).text\n",
+    "def proxy(url: str) -> str:\n    return requests.get(str(url).strip()).text\n",
+    'def proxy(host: str) -> str:\n    return requests.get(TEMPLATE.replace("{host}", host)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("".join([host, "/status"])).text\n',
+    'def proxy(base: str) -> str:\n    return requests.get("{}/status".format(base)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("http://%s/status" % (host,)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("http://%(h)s/status" % {"h": host}).text\n',
+    "def fetch_all(urls: list[str]) -> list[str]:\n    return [requests.get(u).text for u in urls]\n",
+    'def fetch_all(urls: list[str]) -> str:\n    for u in urls:\n        requests.get(u)\n    return ""\n',
+    "def fetch(url: str) -> str:\n    def go() -> str:\n        return requests.get(url).text\n    return go()\n",
+    "async def fetch(url: str) -> str:\n    async with httpx.AsyncClient() as client:\n"
+    "        return (await client.get(url)).text\n",
+    "def post(url: str) -> bytes:\n    req = urllib.request.Request(url, data=b'{}')\n"
+    "    return urllib.request.urlopen(req).read()\n",
+])
+def test_a_tool_parameter_that_can_set_the_host_is_caller_input(tmp_path: Path, body: str) -> None:
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body)
+
+
+@pytest.mark.parametrize("body", [
+    'def repo(owner: str, name: str) -> str:\n'
+    '    return requests.get(f"https://api.github.com/repos/{owner}/{name}").text\n',
+    'def item(item_id: str) -> str:\n    return requests.get(f"{BASE}/items/{item_id}").text\n',
+    "def item(item_id: str) -> str:\n    return requests.get(BASE_SLASH + item_id).text\n",
+    'def search(query: str) -> str:\n    return requests.get(f"{BASE}?q={query}").text\n',
+    'def search(query: str) -> str:\n    return requests.get(BASE, params={"q": query}).text\n',
+    'def user(name: str) -> str:\n    return requests.get("https://api.example.com/users/{}".format(name)).text\n',
+    'def user(name: str) -> str:\n    return requests.get("https://api.example.com/users/%s" % name).text\n',
+    "def pick(region: str) -> str:\n    return requests.get(REGIONS[region]).text\n",
+    'def ingest(arguments: dict) -> str:\n    return requests.post(BASE + "/ingest", json=arguments).text\n',
+    'def page(self, path: str) -> str:\n    return self.session.get(f"{self.base}/{path}").text\n',
+    # A base the code does not spell out carries its own host.
+    'def item(path: str) -> str:\n    return requests.get(os.getenv("API_BASE") + path).text\n',
+    'def item(path: str) -> str:\n    return requests.get(self.base_url + path).text\n',
+    # A key into a fixed table, a placeholder in a fixed path, a literal join.
+    'def feed(topic: str) -> str:\n    return requests.get(REGIONS.get(topic, REGIONS["eu"])).text\n',
+    'def user(uid: str) -> str:\n    return requests.get(USER_URL.replace("[id]", uid)).text\n',
+    'def item(path: str) -> str:\n    return requests.get("/".join([BASE, path])).text\n',
+    # What a helper or a search returns is not the caller's URL.
+    "def repo(owner: str) -> str:\n    return requests.get(make_link(owner)).text\n",
+    # The framework fills a `Context` in, and its lifespan state is the server's.
+    'def item(ctx: Context, path: str) -> str:\n'
+    '    return requests.get(ctx.request_context.lifespan_context["base_url"]).text\n',
+    'def item(ctx: "Context[ServerSession, None]") -> str:\n'
+    '    return requests.get(ctx.request_context.lifespan_context["base_url"]).text\n',
+    "def first(query: str) -> str:\n    for link in search(query):\n        return requests.get(link).text\n",
+    # A request's method and body are not its address.
+    'def run(hook: str, method: str, body: bytes) -> bytes:\n'
+    '    req = urllib.request.Request(f"{BASE}/hooks/{hook}", data=body, method=method.upper())\n'
+    "    return urllib.request.urlopen(req).read()\n",
+])
+def test_a_tool_parameter_after_a_fixed_host_is_not_a_caller_url(tmp_path: Path, body: str) -> None:
+    """The caller picks a path, a query or a key on a host the code fixed."""
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body) & _SSRF_RULES == set()
+
+
+def test_a_call_tool_handler_s_arguments_are_caller_input(tmp_path: Path) -> None:
+    body = (
+        "@server.call_tool()\n"
+        "async def handle(tool: str, payload: dict) -> list:\n"
+        '    target = payload["url"]\n'
+        "    async with httpx.AsyncClient() as client:\n"
+        "        return [(await client.get(target)).text]\n"
+    )
+    assert _SSRF_RULES <= _ids(tmp_path, "server.py", _TOOL_PRELUDE + body)
+
+
+@pytest.mark.parametrize("body", [
+    # A parameter of a function that is no tool: its callers decide the URL.
+    'def fetch_page(request):\n    return requests.get(request.json["url"]).text\n',
+    'def fetch_page(url: str) -> str:\n    return requests.get(url).text\n',
+    # A name from the old list outside any function.
+    'url = request.args["url"]\nrequests.get(url)\n',
+    # A FastMCP instance under another name is not read as a tool (as in AAK-TAINT-*).
+    "@app.tool()\ndef fetch(url: str) -> str:\n    return requests.get(url).text\n",
+])
+def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) -> None:
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
 
 
 # --- a `@tool` decorator alone marks the file -------------------------------
@@ -479,6 +595,14 @@ def _fanout_py(names: int, calls: int) -> str:
     return "import requests\n" + "".join(lines) + "requests.get(n0)\n" * calls
 
 
+def _fanout_tool(names: int, calls: int) -> str:
+    """The same inside a tool, where a parameter is caller input, so the
+    caller-input walk reads every name as well as the address walk."""
+    every = " + ".join(f"n{i}" for i in range(names))
+    lines = [f"    n{i} = {every}\n" for i in range(names)]
+    return "import requests\n@mcp.tool()\ndef t(request):\n" + "".join(lines) + "    requests.get(n0)\n" * calls
+
+
 def test_names_assigned_from_each_other_resolve_in_linear_time() -> None:
     """Eight names to thirty (TS) or twenty-seven (Python) is ten times the
     text. The old walk grew with the fourth or fifth power of the fan-out, a
@@ -486,14 +610,18 @@ def test_names_assigned_from_each_other_resolve_in_linear_time() -> None:
     took 6.9 seconds."""
     assert 9.5 < len(_fanout_js(30, 4)) / len(_fanout_js(8, 4)) < 10.5
     assert 9.5 < len(_fanout_py(27, 4)) / len(_fanout_py(8, 4)) < 10.5
+    assert 9.5 < len(_fanout_tool(29, 4)) / len(_fanout_tool(8, 4)) < 10.5
     _grows_linearly(lambda: analyze_js(_fanout_js(8, 4)), lambda: analyze_js(_fanout_js(30, 4)))
     _grows_linearly(lambda: analyze_python(_fanout_py(8, 4)), lambda: analyze_python(_fanout_py(27, 4)))
+    _grows_linearly(lambda: analyze_python(_fanout_tool(8, 4)), lambda: analyze_python(_fanout_tool(29, 4)))
 
 
 def test_a_deep_fanout_still_reaches_its_source() -> None:
     """The memo must not cut the walk short. The request field and the address
     sit four assignments below the call, the deepest the walk reads, behind
-    names that all read each other."""
+    names that all read each other. In Python the caller's value has to lead
+    each piece it passes through, as it sets the host only from there:
+    `top = n0 + ...`, `n0 = n11 + ...`, `n11 = src + ...`."""
     js = (
         _fanout_js(12, 0).replace("const n11 = ", "const n11 = src + ", 1)
         + "const src = req.query.url + '169.254.169.254';\n"
@@ -501,11 +629,31 @@ def test_a_deep_fanout_still_reaches_its_source() -> None:
     )
     assert [tuple(s)[2:] for s in analyze_js(js)] == [(True, "169.254.169.254")]
     py = (
-        _fanout_py(12, 0).replace("n11 = ", "n11 = src + ", 1)
-        + "src = request.json['u'] + '169.254.169.254'\n"
-        + "top = n0 + n5\nrequests.get(top)\n"
+        _fanout_tool(12, 0).replace("n0 = ", "n0 = n11 + ", 1).replace("n11 = ", "n11 = src + ", 1)
+        + "    src = request.json['u'] + '169.254.169.254'\n"
+        + "    top = n0 + n5\n    requests.get(top)\n"
     )
     assert [tuple(s)[2:] for s in analyze_python(py)] == [(True, "169.254.169.254")]
+    # One more assignment between the call and the request field is past the walk.
+    deeper = py.replace("    top = n0 + n5\n", "    top = mid + n5\n    mid = n0\n")
+    assert [tuple(s)[2:] for s in analyze_python(deeper)] == [(False, "169.254.169.254")]
+
+
+@pytest.mark.parametrize("arg", [
+    "p" + ".a" * 4_000,                                   # an attribute chain
+    "q" + "[0]" * 4_000,                                  # a read chain
+    " if c else ".join(["'x'"] * 3_000) + " if c else p",  # a conditional chain
+    " + ".join(["'x'"] * 2_000) + " + p",                 # a concatenation
+    "f'" + "{c}x" * 10_000 + "{p}'",                      # an f-string of many parts
+])
+def test_a_crafted_tool_url_is_read_in_linear_time(arg: str) -> None:
+    """The caller-input walk reads a tool's URL expression part by part. Chains
+    thousands long are walked with a stack, not by recursion, so none of these
+    can exhaust the interpreter's stack, and each takes a fraction of a second;
+    the bound is loose for slow runners."""
+    started = time.perf_counter()
+    analyze_python("import requests\n@mcp.tool()\ndef t(p):\n    requests.get(" + arg + ")\n")
+    assert time.perf_counter() - started < 5.0
 
 
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
