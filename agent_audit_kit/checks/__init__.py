@@ -1,5 +1,5 @@
 """Runtime checks importable from CI for live parity / drift assertions
-+ path / role guards.
++ path guards.
 
 Pairs with the static SAST rules (e.g. AAK-PROJECT-DEAL-DRIFT-001,
 AAK-LANGCHAIN-PROMPT-LOADER-PATH-001) so consumers can assert at-test
