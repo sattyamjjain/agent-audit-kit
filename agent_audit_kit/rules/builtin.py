@@ -3712,8 +3712,10 @@ _r(
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Take the loopback or private address out of the outbound call's URL: use the real "
-    "public host, or read the target from configuration. The rule matches `localhost`, "
-    "`127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to `172.31.x` and `192.168.x`. "
+    "public host, or read the target from configuration. The rule matches `localhost` "
+    "and names under `.localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to "
+    "`172.31.x` and `192.168.x`, also in a URL that writes the address another way "
+    "(`http://2130706433/` is 127.0.0.1). "
     "Where the URL can also come from the caller, resolve the host and refuse loopback, "
     "private and link-local results before connecting.",
     sarif_name="SsrfLoopbackReachable",
@@ -3722,14 +3724,17 @@ _r(
     adversa_references=["ADV-SSRF-02"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It looks for the text 127.0.0.1, "
-        "localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a "
-        "string that reaches a recognised fetch call. Other spellings of loopback and "
-        "private space (`127.0.0.2`, the decimal form `http://2130706433/`, an IPv6 "
-        "unique-local address such as `[fd12:3456::7]`) are not matched, and a file "
-        "gets one finding, for the first matching call (in `ast.walk` order in "
-        "Python), so a loopback fetch that follows a metadata fetch is reported as "
-        "AAK-SSRF-003 alone."
+        "`mcp.tool` or `Server.run_streamable_http`. It reads each string that reaches "
+        "a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, "
+        "::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a "
+        "client reads as one (`http://2130706433/`, `http://0x7f.1/`). A string with no "
+        "scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, "
+        "`[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with "
+        "`HOST = \"2130706433\"`, is missed. Other loopback and private addresses "
+        "(`127.0.0.2`, an IPv6 unique-local address such as `[fd12:3456::7]`) are not "
+        "matched, and a file gets one finding, for the first matching call (in "
+        "`ast.walk` order in Python), so a loopback fetch that follows a metadata fetch "
+        "is reported as AAK-SSRF-003 alone."
     ),
 )
 
@@ -3749,8 +3754,9 @@ _r(
     adversa_references=["ADV-SSRF-03"],
     limitations=(
         "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254` "
-        "and `metadata.google.internal` only. Other cloud credential endpoints "
+        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254`, "
+        "in any spelling a client reads as it (`http://0xa9fea9fe/`), and "
+        "`metadata.google.internal` only. Other cloud credential endpoints "
         "(`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one "
         "finding, for the first matching call (in `ast.walk` order in Python), so a "
         "metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 "

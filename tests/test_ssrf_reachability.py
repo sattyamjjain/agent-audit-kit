@@ -210,6 +210,105 @@ def test_python_backend_finds_private_addresses_in_the_url_arg(addr: str) -> Non
     assert sites and sites[0].private_addr == addr
 
 
+# --- an address is the host a client reads ----------------------------------
+#
+# The private-address pattern was searched anywhere in a string with no
+# boundary, so `110.1.2.3` read as 10.1.2.3, `2001:db8::1` as ::1 and
+# `notlocalhost.example.com` as localhost, and AAK-SSRF-002 (HIGH) named an
+# address the code does not contain. It knew each address in one spelling, so
+# `http://0xa9fea9fe/`, 169.254.169.254 to Node and to the resolver behind curl,
+# reached no rule.
+
+_ADDRESS_RULES = {"AAK-SSRF-002", "AAK-SSRF-003"}
+
+
+def _status_ids(tmp_path: Path, url: str, ext: str = "py") -> list[tuple[str, str]]:
+    if ext == "py":
+        body = f'import requests\ndef status() -> str:\n    return requests.get("{url}").text\n'
+        (tmp_path / "tool.py").write_text(_HINT + body, encoding="utf-8")
+    else:
+        (tmp_path / "tool.ts").write_text(_TS_HEAD + f'export const status = () => fetch("{url}");\n', encoding="utf-8")
+    return [(f.rule_id, f.evidence) for f in scan(tmp_path)[0] if f.rule_id in _ADDRESS_RULES]
+
+
+@pytest.mark.parametrize("ext", ["py", "ts"])
+@pytest.mark.parametrize("url", [
+    "http://110.1.2.3/health",
+    "http://[2001:db8::1]/health",
+    "https://notlocalhost.example.com/health",
+    "https://localhost.example.com/health",
+    "http://10.1.2.3.example.com/health",
+    "http://172.32.0.1/health",
+    "http://192.169.0.1/health",
+    "http://8.8.8.8/health",
+])
+def test_a_public_host_is_not_a_private_address(tmp_path: Path, url: str, ext: str) -> None:
+    assert _status_ids(tmp_path, url, ext) == []
+
+
+@pytest.mark.parametrize("ext", ["py", "ts"])
+@pytest.mark.parametrize(("url", "rule_id", "address"), [
+    ("http://0xa9fea9fe/latest/meta-data/", "AAK-SSRF-003", "169.254.169.254"),
+    ("http://2852039166/latest/meta-data/", "AAK-SSRF-003", "169.254.169.254"),
+    ("http://169.254.43518/latest/meta-data/", "AAK-SSRF-003", "169.254.169.254"),
+    ("http://0251.0376.0251.0376/latest/meta-data/", "AAK-SSRF-003", "169.254.169.254"),
+    ("http://[::ffff:169.254.169.254]/latest/meta-data/", "AAK-SSRF-003", "169.254.169.254"),
+    ("http://METADATA.google.internal./computeMetadata/v1/", "AAK-SSRF-003", "metadata.google.internal"),
+    ("http://0x7f.1:9000/admin", "AAK-SSRF-002", "127.0.0.1"),
+    ("http://2130706433:9000/admin", "AAK-SSRF-002", "127.0.0.1"),
+    ("http://[0:0:0:0:0:0:0:1]:9000/admin", "AAK-SSRF-002", "::1"),
+    ("http://LOCALHOST.:9000/admin", "AAK-SSRF-002", "localhost"),
+    ("http://dev.localhost:3000/admin", "AAK-SSRF-002", "dev.localhost"),
+    ("http://10.1:9000/admin", "AAK-SSRF-002", "10.0.0.1"),
+    ("http://0/admin", "AAK-SSRF-002", "0.0.0.0"),
+    # evil.example to Node and requests, 10.0.0.5 to httpx and curl
+    ("http://evil.example\\\\@10.0.0.5/admin", "AAK-SSRF-002", "10.0.0.5"),
+])
+def test_an_address_counts_in_any_spelling_a_client_reads(
+    tmp_path: Path, url: str, rule_id: str, address: str, ext: str
+) -> None:
+    hits = _status_ids(tmp_path, url, ext)
+    assert [rule for rule, _ in hits] == [rule_id]
+    assert f": {address} via " in hits[0][1]
+
+
+@pytest.mark.parametrize(("literal", "address"), [
+    ("127.0.0.1", "127.0.0.1"),
+    ("localhost:9000", "localhost"),
+    ("169.254.169.254/latest/meta-data/", "169.254.169.254"),
+    ("[::1]:8080", "::1"),
+    ("::1", "::1"),
+    ("10.2.1.4", "10.2.1.4"),
+    # A string that is not a URL holds an address only when it is written out.
+    ("10.2.1", None),
+    ("2130706433", None),
+    ("0x7f.1", None),
+    ("notlocalhost", None),
+    ("/v1/10.0.0.1", None),
+])
+def test_a_host_written_without_a_scheme(literal: str, address: str | None) -> None:
+    sites = analyze_python(f'import requests\nHOST = "{literal}"\nrequests.get(f"http://{{HOST}}/x")\n')
+    assert [s.private_addr for s in sites] == [address]
+
+
+def test_js_code_is_not_read_as_an_address() -> None:
+    """The old search read the whole argument, names and all."""
+    assert [s.private_addr for s in analyze_js("fetch(localhostUrl);\n")] == [None]
+    assert [s.private_addr for s in analyze_js("const target = `http://${host}:8080/x`;\nfetch(target);\n")] == [None]
+    assert [s.private_addr for s in analyze_js("fetch(`http://localhost:${port}/x`);\n")] == ["localhost"]
+
+
+@pytest.mark.parametrize("unit", ["'", '"', "`", "`${", "'\\", "http://", "a b ", "a.b ", "a:b ", "[::"])
+def test_a_crafted_literal_reads_in_linear_time(tmp_path: Path, unit: str) -> None:
+    """The address check reads every string a URL argument holds. 400 KB of the
+    worst unit takes a fraction of a second; the bound is loose for slow runners."""
+    body = unit * (400_000 // len(unit))
+    started = time.perf_counter()
+    analyze_js(f"const base = {body};\nfetch(base);\n")
+    analyze_python(f"import requests\nrequests.get({body!r})\n")
+    assert time.perf_counter() - started < 5.0
+
+
 def test_python_backend_does_not_find_addresses_outside_a_call() -> None:
     sites = analyze_python('import requests\nDOC = "use 127.0.0.1 for local"\nrequests.get("https://a.example")\n')
     assert sites and sites[0].private_addr is None

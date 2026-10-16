@@ -25,10 +25,11 @@ only remove findings, never add them.
 from __future__ import annotations
 
 import ast
+import ipaddress
 import re
 from typing import Callable, Iterator, NamedTuple
 
-from agent_audit_kit.scanners._helpers import blank_js_comments
+from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
 
 # Callees that perform an outbound request.
 _PY_FETCH_CALLEES = (
@@ -60,11 +61,35 @@ _JS_USER_RE = re.compile(
     r"arguments|params\[|args\[|input)\b"
 )
 
-_PRIVATE_ADDR_RE = re.compile(
-    r"(?:127\.0\.0\.1|0\.0\.0\.0|localhost|::1|169\.254\.169\.254|metadata\.google\.internal|"
-    r"10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)",
-    re.IGNORECASE,
+# The private and metadata addresses AAK-SSRF-002 and -003 report, judged by
+# value: 127.0.0.1, 0.0.0.0, ::1, 169.254.169.254, 10/8, 172.16/12 and
+# 192.168/16, and the names localhost and metadata.google.internal.
+#
+# They were one regex searched anywhere in a string, with no boundary, so
+# `http://110.1.2.3/` read as 10.1.2.3, `http://[2001:db8::1]/` as ::1 and
+# `notlocalhost.example.com` as localhost, and AAK-SSRF-002 (HIGH) named an
+# address the code does not contain. It also knew each address in one spelling,
+# so `http://0xa9fea9fe/`, which Node and the resolver behind curl both read as
+# 169.254.169.254, reached no rule. A URL's host is now read the way the client
+# reads it (`_helpers.url_readings`, every reading counts), and a string that is
+# not a URL counts when it is a host written plainly (see `_bare_host`).
+_PRIVATE_V4_NETS = tuple(
+    ipaddress.IPv4Network(net) for net in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 )
+_PRIVATE_ADDRESSES = frozenset(
+    ipaddress.ip_address(addr) for addr in ("127.0.0.1", "0.0.0.0", "::1", "169.254.169.254")
+)
+_PRIVATE_NAMES = frozenset({"localhost", "metadata.google.internal"})
+#: Where a host written without a scheme ends.
+_BARE_HOST_END_RE = re.compile(r"[/\\?#]")
+#: The contents of a JS string or template literal, closed or not, read once:
+#: a quote's body cannot contain its own quote unescaped, so every match ends at
+#: the first one, and an unclosed literal ends at the line's or text's end.
+_JS_LITERAL_RE = re.compile(
+    r"'((?:[^'\\\n]|\\.)*)'?|\"((?:[^\"\\\n]|\\.)*)\"?|`((?:[^`\\]|\\[\s\S])*)`?"
+)
+#: A template literal's `${...}`, which is code, not text.
+_JS_TEMPLATE_HOLE_RE = re.compile(r"\$\{[^}]*\}?")
 
 # `const x = ...` / `let x = ...` / `x = ...`. The old one-piece pattern,
 # `(?:const|let|var)?\s*([A-Za-z_$][\w$]*)\s*=\s*([^;\n]{0,200})`, began an
@@ -103,6 +128,90 @@ def strip_comments(text: str, is_python: bool) -> str:
         # tokenizer's view via ast when the file parses, else leave it alone.
         return text
     return blank_js_comments(text)
+
+
+def _private_address(text: str) -> str | None:
+    """The first private or metadata address a string literal names, or None.
+
+    Each whitespace-separated word is read as a URL when it has a scheme, and
+    every reading of its host counts: `http://evil.example\\@10.0.0.5/` is
+    10.0.0.5 to httpx, which dials it. A word holding `://` without a URL
+    scheme in front (an f-string piece such as `://169.254.169.254/`, or
+    `gopher://127.0.0.1:6379/`) is read from its `://`. Any other word counts
+    when it is a host written plainly (`_bare_host`). The address comes back
+    in its usual form, so `http://0xa9fea9fe/` gives 169.254.169.254.
+    """
+    for word in text.split():
+        if "." not in word and ":" not in word and "localhost" not in word.lower():
+            continue  # no URL, address or private name: skip the parse
+        readings = url_readings(word)
+        if not readings and "://" in word:
+            readings = url_readings("http" + word[word.index("://"):])
+        if readings:
+            hosts = [reading.host for reading in readings]
+        elif "://" in word:
+            continue
+        else:
+            hosts = [_bare_host(word)]
+        for host in hosts:
+            label = _private_label(host)
+            if label is not None:
+                return label
+    return None
+
+
+def _bare_host(word: str) -> str:
+    """The host a word that is not a URL starts with: `127.0.0.1`,
+    `localhost:9000`, `169.254.169.254/latest`, `[::1]:8080` or `::1`.
+
+    Read this way, an address has to be written out: four decimal numbers or an
+    IPv6 address, which is all `host_ip` accepts. A URL parser also reads
+    `10.1`, `0x7f.1` and `2130706433` as addresses, but without a scheme saying
+    the string is a URL they are as often a version or a count, so `"10.2.1"`
+    in a path is not 10.2.0.1.
+    """
+    end = _BARE_HOST_END_RE.search(word)
+    authority = (word if end is None else word[:end.start()]).rpartition("@")[2]
+    if authority.startswith("["):
+        return authority[1:authority.find("]")] if "]" in authority else ""
+    if authority.count(":") > 1:
+        return authority  # an IPv6 address written without brackets
+    return authority.partition(":")[0].lower()
+
+
+def _private_label(host: str) -> str | None:
+    """`host` as AAK-SSRF-002 and -003 name it, when it is one of theirs.
+
+    A name under `.localhost` counts as localhost, as RFC 6761 reserves it for
+    loopback and the old substring search read it.
+    """
+    name = host.rstrip(".")
+    if name in _PRIVATE_NAMES or name.endswith(".localhost"):
+        return name
+    address = host_ip(name)
+    if address is None:
+        return None
+    if address in _PRIVATE_ADDRESSES:
+        return str(address)
+    if isinstance(address, ipaddress.IPv4Address) and any(address in net for net in _PRIVATE_V4_NETS):
+        return str(address)
+    return None
+
+
+def _js_private_address(expr: str) -> str | None:
+    """`_private_address` over the string and template literals of a piece of
+    JS, in order. Code is not text: the old search over the whole piece read
+    `fetch(localhostUrl)` as a request to localhost."""
+    for match in _JS_LITERAL_RE.finditer(expr):
+        single, double, template = match.groups()
+        if template is not None:
+            body = _JS_TEMPLATE_HOLE_RE.sub(" ", template)
+        else:
+            body = single if single is not None else double or ""
+        label = _private_address(body)
+        if label is not None:
+            return label
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +352,9 @@ def _py_reach(
 def _py_addr_here(node: ast.AST) -> str | None:
     """The first private address in the string literals of ``node`` itself."""
     for lit in _py_literal_strings(node):
-        m = _PRIVATE_ADDR_RE.search(lit)
-        if m:
-            return m.group(0).lower()
+        label = _private_address(lit)
+        if label is not None:
+            return label
     return None
 
 
@@ -347,8 +456,7 @@ def _js_reach(assigns: dict[str, str]) -> Callable[[str, int], tuple[bool, str |
         if hit is not None:
             return hit
         tainted = bool(_JS_USER_RE.search(expr))
-        m = _PRIVATE_ADDR_RE.search(expr)
-        addr = m.group(0).lower() if m else None
+        addr = _js_private_address(expr)
         if depth <= _JS_MAX_DEPTH:
             idents = names.get(expr)
             if idents is None:
