@@ -15,7 +15,8 @@ from pathlib import Path
 import pytest
 
 from agent_audit_kit.engine import run_scan
-from agent_audit_kit.output.sbom import emit_cyclonedx
+from agent_audit_kit.models import ScanResult
+from agent_audit_kit.output.sbom import _discover_mcp_packages, emit_cyclonedx
 from agent_audit_kit.output.vex import CONTEXT, emit_openvex
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -179,12 +180,25 @@ def _fixture_dirs() -> list[Path]:
 
 
 def test_not_affected_never_appears_in_any_emitted_document() -> None:
-    """Sweep every fixture directory in the tree, not a curated list."""
+    """Sweep every fixture directory in the tree, not a curated list.
+
+    The emitter makes its statements for the packages it discovers in the
+    directory, so where it discovers none the document has none, and the scan
+    cannot change it: the first assertion holds that, with a scan full of CVE
+    findings. Only the directories with a package are scanned. Scanning every
+    one, each file once for every directory above it, took 85 seconds, half of
+    it on the three that hold the rest, and none of those has a package.
+    """
+    rich = run_scan(AFFECTED_FIXTURE)
+    assert any(f.cve_references for f in rich.findings)
+    bare = next(d for d in _fixture_dirs() if not _discover_mcp_packages(d))
+    assert emit_openvex(bare, rich, timestamp=PINNED_TS) == emit_openvex(bare, ScanResult(), timestamp=PINNED_TS)
     checked = 0
     statements = 0
     for project in _fixture_dirs():
         try:
-            payload = emit_openvex(project, run_scan(project), timestamp=PINNED_TS)
+            result = run_scan(project) if _discover_mcp_packages(project) else ScanResult()
+            payload = emit_openvex(project, result, timestamp=PINNED_TS)
         except Exception:  # noqa: BLE001 - a fixture that cannot scan is not this test's subject
             continue
         checked += 1
