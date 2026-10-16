@@ -3838,3 +3838,32 @@ def test_many_findings_in_one_large_manifest_read_it_once(tmp_path: Path) -> Non
     assert len(findings) > 80
     assert all(f.line_number and f.line_number > 3 for f in findings)
     assert elapsed < 5.0, f"{len(findings)} findings took {elapsed:.1f}s"
+
+
+def _py_pins_at_an_affected_version() -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    for pin in _PINS:
+        if pin.ecosystem == "js" or pin.requires_arg is not None:
+            continue
+        version = pin.introduced or (0, 0, 1)
+        if _fires(pin, version):
+            out.extend((name, ".".join(map(str, version))) for name in pin.names
+                       if "/" not in name and not name.startswith("@"))
+    return out
+
+
+def test_a_large_manifest_is_judged_once_per_package(tmp_path: Path) -> None:
+    """Every pin filtered every declaration of the file, about 150 passes, so a
+    16,000-line requirements file took 7 s. Declarations are indexed by name
+    once, and each pin reads only its own packages."""
+    import time
+
+    lines = [f"pad-{i:05d}==1.0.{i % 10}" for i in range(60_000)]
+    lines += [f"{name}=={version}" for name, version in _py_pins_at_an_affected_version()]
+    (tmp_path / "requirements.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    start = time.perf_counter()
+    findings = scan(tmp_path)[0]
+    elapsed = time.perf_counter() - start
+    assert len(findings) > 40
+    assert all(f.line_number and f.line_number > 60_000 for f in findings)
+    assert elapsed < 3.0, f"{len(findings)} findings took {elapsed:.1f}s"

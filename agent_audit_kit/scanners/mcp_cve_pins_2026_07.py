@@ -1570,6 +1570,31 @@ def _names_match(pin: _Pin, declaration: Declaration) -> bool:
     return any(_canonical(n, ecosystem) == target for n in pin.names)
 
 
+def _declaration_index(found: list[Declaration]) -> dict[str, list[int]]:
+    """Where each package is declared in `found`: canonical name -> positions.
+
+    Every pin used to filter every declaration of the file, about 150 passes, so
+    a 16,000-line requirements file took 7 s. A declaration is filed under each
+    spelling `_names_match` could accept for it (both registries' for a program
+    run by name), so a pin reads only the declarations of its own names.
+    """
+    index: dict[str, list[int]] = {}
+    for position, declaration in enumerate(found):
+        ecosystems = ("py", "js") if declaration.ecosystem is None else (declaration.ecosystem,)
+        for key in {_canonical(declaration.name, ecosystem) for ecosystem in ecosystems}:
+            index.setdefault(key, []).append(position)
+    return index
+
+
+def _pin_candidates(
+    pin: _Pin, found: list[Declaration], index: dict[str, list[int]]
+) -> list[Declaration]:
+    """The declarations that may name `pin`'s packages, in file order: a superset
+    of what `_deciding_declaration` keeps, so its verdict does not change."""
+    keys = {_canonical(name, ecosystem) for name in pin.names for ecosystem in ("py", "js")}
+    return [found[i] for i in sorted({i for key in keys for i in index.get(key, ())})]
+
+
 def _affected(pin: _Pin) -> tuple[_Ver, _Ver]:
     """The pin's affected versions as one half-open span."""
     return pin.introduced or ZERO, pin.floor or TOP
@@ -1932,9 +1957,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             findings.extend(_lockfile_findings(path, rel, text))
             continue
         found = declarations(path, text)
+        index = _declaration_index(found)
         lines: Callable[[Declaration], int | None] | None = None
         for pin in _PINS:
-            declaration = _deciding_declaration(pin, found)
+            declaration = _deciding_declaration(pin, _pin_candidates(pin, found, index))
             if declaration is not None:  # one finding per pin per file
                 if lines is None:  # the file's positions, read once at its first finding
                     lines = declaration_lines(path, text)
