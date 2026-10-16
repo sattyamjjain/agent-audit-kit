@@ -19,6 +19,8 @@ clears it, and a plain argv list with no interpreter flag clears it.
 
 from __future__ import annotations
 
+import random
+import re
 import time
 from pathlib import Path
 from typing import Callable
@@ -26,6 +28,7 @@ from typing import Callable
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
+from agent_audit_kit.scanners import quoted_shell_interp as qsi
 from agent_audit_kit.scanners.quoted_shell_interp import INTERP_RULE, PROFILE_RULE, scan
 
 
@@ -395,7 +398,54 @@ _SINK_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
 }
 
 
-_CRAFTED = {**_PYTHON_SHAPES, **_SINK_SHAPES}
+_SINK_LIB = "function run(name) {\n  exec(`ls ${name}`);\n}\n"
+_CALLER = "const v = args.path;\nx = run(v);\n"
+
+
+def _backward_chain(k: int) -> dict[str, str]:
+    lines = [f"const x{i} = x{i - 1};\n" for i in range(k, 0, -1)]
+    return {"lib.js": _SINK_LIB, "tool.js": "".join(lines) + f"const x0 = args.path;\ny = run(x{k});\n"}
+
+
+_CROSS_FILE_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
+    # The header pattern began at every character of a word and read it to its
+    # end, from the top of the file for every sink: 16 KB took 2.8 seconds.
+    "word-before-paren": (lambda k: {"lib.js": "a" * k + "(\n" + _SINK_LIB, "tool.js": _CALLER}, 4_000),
+    "sinks-in-one-function": (
+        lambda k: {"lib.js": "function run(name) {\n" + "  exec(`ls ${name}`);\n" * k + "}\n", "tool.js": _CALLER},
+        200,
+    ),
+    # Each sink walked back over every closed function that takes the name.
+    "closed-functions-first": (
+        lambda k: {"lib.js": "function f(name) { }\n" * k + _SINK_LIB.replace("\n}", "\n" + "  exec(`ls ${name}`);\n" * k + "}"),
+                   "tool.js": _CALLER},
+        150,
+    ),
+    "untyped-return-types": (lambda k: {"lib.js": "f(): " * k + ";\n" + _SINK_LIB, "tool.js": _CALLER}, 1_000),
+    "blanks-after-a-header": (lambda k: {"lib.js": "f()" + " " * k + "x\n" + _SINK_LIB, "tool.js": _CALLER}, 4_000),
+    # Each pass of the fixed point found one more name: 8 KB took 6.3 seconds.
+    "locals-listed-backwards": (_backward_chain, 300),
+    "typed-declarations": (lambda k: {"lib.js": _SINK_LIB, "tool.js": "const a: " * k + "\n" + _CALLER}, 1_000),
+    "destructuring-openers": (lambda k: {"lib.js": _SINK_LIB, "tool.js": "const {" * k + "}\n" + _CALLER}, 1_000),
+    "nested-subscripts": (
+        lambda k: {"lib.js": _SINK_LIB, "tool.js": "const a = " + "[" * k + "v" + "]" * k + ";\nx = run(a);\n" + _CALLER},
+        2_000,
+    ),
+    # Every call's arguments were read to its closing paren, so nested calls
+    # read theirs once per level: 20 KB of nested `run(` took 4.2 seconds.
+    "nested-calls": (lambda k: {"lib.js": _SINK_LIB, "tool.js": _CALLER + "x = " + "run(" * k + "w" + ")" * k + ";\n"}, 2_000),
+    "nested-calls-in-brackets": (
+        lambda k: {"lib.js": _SINK_LIB, "tool.js": _CALLER + "x = " + "run([" * k + "w" + "])" * k + ";\n"},
+        1_500,
+    ),
+    "nested-calls-unmatched-brackets": (
+        lambda k: {"lib.js": _SINK_LIB, "tool.js": _CALLER + "x = " + "run([" * k + "w" + ")" * k + ";\n"},
+        1_500,
+    ),
+}
+
+
+_CRAFTED = {**_PYTHON_SHAPES, **_SINK_SHAPES, **_CROSS_FILE_SHAPES}
 
 
 @pytest.mark.parametrize("shape", sorted(_CRAFTED))
@@ -419,3 +469,145 @@ def test_crafted_projects_still_report_their_findings(tmp_path: Path) -> None:
     for rel, text in _CRAFTED["sinks-on-one-line"][0](3).items():
         _write(tmp_path, rel, text)
     assert len(_interp(tmp_path)) == 3
+    chain = tmp_path / "chain"
+    chain.mkdir()
+    for rel, text in _backward_chain(40).items():
+        (chain / rel).write_text(text, encoding="utf-8")
+    findings = [f for f in scan(chain)[0] if f.rule_id == INTERP_RULE]
+    assert [(f.file_path, f.line_number) for f in findings] == [("lib.js", 2)]
+    assert "tool.js:42 passes it to run()" in findings[0].evidence
+
+
+def test_a_sink_inside_a_methods_object_literal_return_type_is_owned_by_the_method(tmp_path: Path) -> None:
+    """The header pattern used to stop at each sink, so a method whose return
+    type is an object literal holding the sink ended at that literal's `{`,
+    and the literal counted as the method's body. Read once for the whole
+    file, the header runs on to the real body; the owner keeps the old answer."""
+    _write(tmp_path, "lib.ts", "const cmd = `ls ${name}`;\nclass A {\n  foo(name): {exec(cmd)} {\n  }\n}\n")
+    _write(tmp_path, "tool.ts", "const v = args.path;\nx = obj.foo(v);\n")
+    findings = _interp(tmp_path)
+    assert [(f.file_path, f.line_number) for f in findings] == [("lib.ts", 3)]
+    assert "tool.ts:2 passes it to foo()" in findings[0].evidence
+
+
+# The per-sink code the file indexes replaced, kept as the oracle they must
+# agree with on generated sources.
+
+
+def _old_enclosing_param(text: str, pos: int, name: str) -> tuple[str, int] | None:
+    for m in reversed(list(qsi._JS_HEADER_RE.finditer(text, 0, pos))):
+        func = m.group("fname") or m.group("mname") or m.group("aname") or ""
+        if func in qsi._JS_KEYWORDS:
+            continue
+        body = text.find("{", m.end())
+        if body < 0 or body >= pos:
+            continue
+        segment = text[body + 1 : pos]
+        if 1 + segment.count("{") - segment.count("}") <= 0:
+            continue
+        params = qsi._js_param_names(m.group("fparams") or m.group("mparams") or m.group("aparams") or "")
+        if name in params and func:
+            return func, params.index(name)
+    return None
+
+
+def _old_strip_subscripts(expr: str) -> str:
+    prev = None
+    while prev != expr:
+        prev = expr
+        expr = re.sub(r"\[[^\[\]]*\]", "", expr)
+    return expr
+
+
+def _old_is_tool_derived(expr: str, tainted: set[str], destructure: bool = False) -> bool:
+    bare = _old_strip_subscripts(expr)
+    if qsi._JS_TOOL_ARG_RE.search(bare):
+        return True
+    if destructure and re.search(r"\b(?:args|arguments|input)\b", bare):
+        return True
+    return any(re.search(rf"(?<![\w$.]){re.escape(n)}(?![\w$])", bare) for n in tainted)
+
+
+def _old_tool_derived_names(text: str) -> set[str]:
+    assigns: list[tuple[list[str], str]] = []
+    for m in re.finditer(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=(?![=>])\s*([^;\n]+)", text):
+        assigns.append(([m.group(1)], m.group(2)))
+    for m in re.finditer(r"\b(?:const|let|var)\s*\{([^}]*)\}\s*(?::[^=;\n]+)?=\s*([^;\n]+)", text):
+        bound = []
+        for part in qsi._split_top_level(m.group(1)):
+            local = part.split(":")[-1].split("=")[0].strip().lstrip(".")
+            if re.fullmatch(r"[A-Za-z_$][\w$]*", local):
+                bound.append(local)
+        assigns.append((bound, m.group(2)))
+    tainted: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for names, rhs in assigns:
+            if set(names) <= tainted:
+                continue
+            if _old_is_tool_derived(rhs, tainted, destructure=len(names) > 1 or rhs.strip() in {"args", "input"}):
+                tainted.update(names)
+                changed = True
+    return tainted
+
+
+def _old_tool_arg_call(text: str, func: str, index: int) -> int | None:
+    tainted = _old_tool_derived_names(text)
+    for m in re.finditer(rf"(?<![\w$]){re.escape(func)}\s*\(", text):
+        head = text[text.rfind("\n", 0, m.start()) + 1 : m.start()]
+        if re.search(r"\bfunction\s*$|^\s*(?:(?:public|private|protected|static|async)\s+)*$", head):
+            continue
+        depth, args = 0, []
+        for i in range(m.end() - 1, len(text)):
+            depth += {"(": 1, ")": -1}.get(text[i], 0)
+            if depth == 0:
+                args = qsi._split_top_level(text[m.end() : i], brackets="([{")
+                break
+        if index < len(args) and _old_is_tool_derived(args[index], tainted):
+            return text[: m.start()].count("\n") + 1
+    return None
+
+
+_LIB_FRAGMENTS = [
+    "function f(a, name) {", "function* g(x){", "$function k(name) {", "a$function m(name){", "functionexec(name) {",
+    "function exec(cmd) {", "foo(name) {", "foo(name): T {", "foo(name): {a: 1} {", "foo(name): {exec(cmd)} {",
+    "foo(name): exec(cmd) {x} {", "(name) => {", "(name): T => {", "(a): exec(cmd) => {", "x = async (name) => {",
+    "xasync(name) => {", "if (x) {", "}", "{", "exec(`ls ${name}`);", "exec(cmd);", "const cmd = `x ${name}`;",
+    "cmd = `z '${name}'`;", "execSync(`a ${b.name} \"${name}\"`)", "spawn('sh', ['-c', `${name}`])", "\n", "\n\n", ";",
+    "`", "foo({name}) {", "foo(...name) {", "f(a)b(name) {", "(", ")", "=>", "=",
+]
+_HANDLER_FRAGMENTS = [
+    "const v = args.path;", "const {a, b} = args;", "let w = v + 1;", "const z = obj[args.k];", "const t: string = v;",
+    "run(v);", "x = run(x, v);", "x = run(run(v));", "x = run([run(v)]);", "x = obj.run(v, 2)", "function run(name) {",
+    "public run(v)", "x = run(\n", "x = run(args.x)", "x = run(a, [b, v])", "x = run(v]", "x = run([v)", "x = run(a}, v)",
+    "x = run((v))", "x = run(v[0])", "\n", ";", "const a: X = = v;", "const c =\n", "let {x: y, ...rest} = input;",
+]
+
+
+def _generated(rng: random.Random, fragments: list[str], most: int) -> str:
+    return "".join(rng.choice(fragments) + rng.choice(["", " ", "\n"]) for _ in range(rng.randint(1, most)))
+
+
+def test_the_file_indexes_agree_with_the_per_sink_code_they_replace() -> None:
+    rng = random.Random(11)
+    sink_at = re.compile(r"\b(?:execAsync|execSync|exec|spawnSync|spawn|execFile|execFileSync)\s*\(")
+    for _ in range(300):
+        lib = _generated(rng, _LIB_FRAGMENTS, 24)
+        regex = [
+            (m.start(), m.end(), m.group("fname") or m.group("mname") or m.group("aname") or "",
+             m.group("fparams") or m.group("mparams") or m.group("aparams") or "")
+            for m in qsi._JS_HEADER_RE.finditer(lib)
+        ]
+        assert [(h.start, h.end, h.func, h.params) for h in qsi._js_headers(lib)] == regex, lib
+        owners = qsi._JsOwners(lib)
+        for m in sink_at.finditer(lib):
+            for name in ("name", "cmd", "a", "x"):
+                assert owners.owner(m.start(), name) == _old_enclosing_param(lib, m.start(), name), (lib, m.start(), name)
+        handler = _generated(rng, _HANDLER_FRAGMENTS, 20)
+        assert qsi._js_tool_derived_names(handler) == _old_tool_derived_names(handler), handler
+        reader = qsi._JsHandler(handler)
+        for index in (0, 1):
+            assert reader.tool_arg_call("run", index) == _old_tool_arg_call(handler, "run", index), (handler, index)
+        brackets = "".join(rng.choice("[]a ,()") for _ in range(rng.randint(0, 24)))
+        assert qsi._strip_subscripts(brackets) == _old_strip_subscripts(brackets), brackets

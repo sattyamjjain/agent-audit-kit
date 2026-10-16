@@ -805,7 +805,8 @@ _JS_KEYWORDS = frozenset({
     "await", "new", "function", "else", "do", "try",
 })
 
-# A function or method header whose body opens with `{`.
+# A function or method header whose body opens with `{`. `_js_headers` finds
+# what `finditer` over this finds, without its cost: tests hold it to that.
 _JS_HEADER_RE = re.compile(
     r"""
     (?:\bfunction\s*\*?\s*(?P<fname>[A-Za-z_$][\w$]*)\s*\((?P<fparams>[^()]*)\)
@@ -850,111 +851,755 @@ def _js_param_names(params: str) -> list[str | None]:
     return names
 
 
-def _js_enclosing_param(text: str, pos: int, name: str) -> tuple[str, int] | None:
-    """The nearest enclosing function that takes ``name`` as a parameter."""
-    headers = [m for m in _JS_HEADER_RE.finditer(text, 0, pos)]
-    for m in reversed(headers):
-        func = m.group("fname") or m.group("mname") or m.group("aname") or ""
-        if func in _JS_KEYWORDS:
-            continue
-        body = text.find("{", m.end())
-        if body < 0 or body >= pos:
-            continue
-        segment = text[body + 1 : pos]
-        if 1 + segment.count("{") - segment.count("}") <= 0:
-            continue  # the body closed before the sink: not enclosing
-        params = _js_param_names(m.group("fparams") or m.group("mparams") or m.group("aparams") or "")
-        if name in params and func:
-            return func, params.index(name)
-    return None
+_BLANKS_RE = re.compile(r"\s*")
+_SPACE_RE = re.compile(r"\s")
+_NAME_TAIL_RE = re.compile(r"[\w$]*")
+_NAME_START_RE = re.compile(r"[A-Za-z_$]")
+_WORD_CHAR_RE = re.compile(r"\w")
+_NAME_RUN_RE = re.compile(r"[\w$]+")
+_PAREN_RE = re.compile(r"[()]")
+_OPEN_PAREN_RE = re.compile(r"\(")
+_TYPE_STOP_RE = re.compile(r"[{};=]")
+_BRACE_RE = re.compile(r"[{}]")
+_ARROW_STOP_RE = re.compile(r"[=;{]")
+
+
+class _Header:
+    """One `_JS_HEADER_RE` match: where it is, the function it names, and its
+    parameters. For a method whose return type is an object literal, the
+    braces of that literal (`group`), which matter when a sink sits inside
+    them (see `_JsOwners.owner`)."""
+
+    __slots__ = ("start", "end", "func", "params", "group", "_positions")
+
+    def __init__(self, start: int, end: int, func: str, params: str, group: tuple[int, int] | None) -> None:
+        self.start = start
+        self.end = end
+        self.func = func
+        self.params = params
+        self.group = group
+        self._positions: dict[str, int] | None = None
+
+    def param_positions(self) -> dict[str, int]:
+        """Each parameter name and its first position, as `params.index(name)`."""
+        if self._positions is None:
+            self._positions = {}
+            for i, name in enumerate(_js_param_names(self.params)):
+                if name is not None:
+                    self._positions.setdefault(name, i)
+        return self._positions
+
+
+class _JsHeaderScan:
+    """`_JS_HEADER_RE.finditer` over a whole file, in linear time.
+
+    The regex let a method or arrow header start at every character of a name,
+    and each start read the name to its end: a 16 KB word before a `(` took 2.8
+    seconds and 160 KB took 279. Its return-type and arrow-type parts read on to
+    the next `{`, `;` or `=` from every header that failed, and split blank runs
+    every way. Here a header is tried only where one can start (a `(`, the first
+    letter of a run of name characters, or a `function` or `async` that a `$`
+    puts inside a run, which `\\b` and the literal still allow), and every part
+    that reads far is a lookup in positions found once. Starting later in a run
+    reads the same name end and the same rest, so it can only fail where the
+    run's first letter failed.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self._parens = _positions(text, _PAREN_RE)
+        self._type_stops = _positions(text, _TYPE_STOP_RE)
+        self._braces = _positions(text, _BRACE_RE)
+        self._arrow_stops = _positions(text, _ARROW_STOP_RE)
+
+    def headers(self) -> list[_Header]:
+        text = self.text
+        starts: list[tuple[int, int]] = [(p, 3) for p in _positions(text, _OPEN_PAREN_RE)]
+        for run in _NAME_RUN_RE.finditer(text):
+            first = _NAME_START_RE.search(text, run.start(), run.end())
+            if first is None:
+                continue
+            starts.append((first.start(), 0))
+            at = text.find("$function", first.start(), run.end())
+            while at >= 0:
+                starts.append((at + 1, 1))
+                at = text.find("$function", at + 1, run.end())
+            if run.end() - 5 > first.start() and text.startswith("async", run.end() - 5):
+                starts.append((run.end() - 5, 2))
+        starts.sort()
+        out: list[_Header] = []
+        resume = 0
+        for pos, kind in starts:
+            if pos < resume:
+                continue
+            if kind == 0:
+                header = self._function(pos) or self._method(pos) or self._arrow(pos)
+            elif kind == 1:
+                header = self._function(pos)
+            elif kind == 2:
+                header = self._arrow_async(pos, pos, "")
+            else:
+                header = self._arrow_tail(pos, pos, "")
+            if header is not None:
+                out.append(header)
+                resume = header.end
+        return out
+
+    def _blanks(self, i: int) -> int:
+        m = _BLANKS_RE.match(self.text, i)
+        return m.end() if m else i
+
+    def _name_end(self, i: int) -> int | None:
+        if not _NAME_START_RE.match(self.text, i):
+            return None
+        m = _NAME_TAIL_RE.match(self.text, i + 1)
+        return m.end() if m else i + 1
+
+    def _params(self, paren: int) -> int | None:
+        """The `)` that ends `[^()]*` after the `(` at ``paren``."""
+        i = bisect_left(self._parens, paren + 1)
+        if i < len(self._parens) and self.text[self._parens[i]] == ")":
+            return self._parens[i]
+        return None
+
+    @staticmethod
+    def _next(positions: list[int], start: int) -> int | None:
+        i = bisect_left(positions, start)
+        return positions[i] if i < len(positions) else None
+
+    def _function(self, p: int) -> _Header | None:
+        """`\\bfunction\\s*\\*?\\s*NAME\\s*\\(PARAMS\\)`."""
+        text = self.text
+        if not text.startswith("function", p) or (p and _WORD_CHAR_RE.match(text, p - 1)):
+            return None
+        at = self._blanks(p + 8)
+        if text.startswith("*", at):
+            at = self._blanks(at + 1)
+        name_end = self._name_end(at)
+        if name_end is None:
+            return None
+        paren = self._blanks(name_end)
+        if not text.startswith("(", paren):
+            return None
+        close = self._params(paren)
+        if close is None:
+            return None
+        return _Header(p, close + 1, text[at:name_end], text[paren + 1 : close], None)
+
+    def _method(self, p: int) -> _Header | None:
+        """`NAME\\s*\\(PARAMS\\)`, an optional `: Type` with at most one object
+        literal in it, and the body's `{`."""
+        text = self.text
+        name_end = self._name_end(p)
+        if name_end is None:
+            return None
+        paren = self._blanks(name_end)
+        if not text.startswith("(", paren):
+            return None
+        close = self._params(paren)
+        if close is None:
+            return None
+        at = self._blanks(close + 1)
+        func, params = text[p:name_end], text[paren + 1 : close]
+        if text.startswith("{", at):
+            return _Header(p, at, func, params, None)
+        if not text.startswith(":", at):
+            return None
+        # The type runs to the first `{`, `}`, `;` or `=`; it must be a `{`.
+        stop = self._next(self._type_stops, at + 1)
+        if stop is None or text[stop] != "{":
+            return None
+        # An object literal there, then more type, ending at the body's `{`;
+        # failing that, the `{` was the body's.
+        inner = self._next(self._braces, stop + 1)
+        if inner is not None and text[inner] == "}":
+            body = self._next(self._type_stops, inner + 1)
+            if body is not None and text[body] == "{":
+                return _Header(p, body, func, params, (stop, inner))
+        return _Header(p, stop, func, params, None)
+
+    def _arrow(self, p: int) -> _Header | None:
+        """`NAME\\s*=\\s*(?:async\\s*)?` before an arrow, or `async` alone."""
+        text = self.text
+        name_end = self._name_end(p)
+        if name_end is not None:
+            eq = self._blanks(name_end)
+            if text.startswith("=", eq):
+                at = self._blanks(eq + 1)
+                func = text[p:name_end]
+                if text.startswith("async", at):
+                    header = self._arrow_async(p, at, func)
+                    if header is not None:
+                        return header
+                elif text.startswith("(", at):
+                    header = self._arrow_tail(p, at, func)
+                    if header is not None:
+                        return header
+        return self._arrow_async(p, p, "")
+
+    def _arrow_async(self, p: int, at: int, func: str) -> _Header | None:
+        if not self.text.startswith("async", at):
+            return None
+        paren = self._blanks(at + 5)
+        return self._arrow_tail(p, paren, func) if self.text.startswith("(", paren) else None
+
+    def _arrow_tail(self, p: int, paren: int, func: str) -> _Header | None:
+        """`\\((?P<aparams>[^()]*)\\)\\s*(?::\\s*[^=;{]*?)?=>\\s*(?=\\{)` at ``paren``."""
+        text = self.text
+        close = self._params(paren)
+        if close is None:
+            return None
+        at = self._blanks(close + 1)
+        if text.startswith(":", at):
+            # The lazy type stops at its first `=`, `;` or `{`, which must open `=>`.
+            arrow = self._next(self._arrow_stops, self._blanks(at + 1))
+            if arrow is None or not text.startswith("=>", arrow):
+                return None
+        elif text.startswith("=>", at):
+            arrow = at
+        else:
+            return None
+        body = self._blanks(arrow + 2)
+        if not text.startswith("{", body):
+            return None
+        return _Header(p, body, func, text[paren + 1 : close], None)
+
+
+def _js_headers(text: str) -> list[_Header]:
+    return _JsHeaderScan(text).headers()
+
+
+class _RightmostAtMost:
+    """Over a fixed list of numbers: the rightmost index below ``limit`` whose
+    value is at most ``ceiling``, in logarithmic time (a min segment tree)."""
+
+    def __init__(self, values: list[int]) -> None:
+        size = 1
+        while size < len(values):
+            size *= 2
+        tree: list[float] = [math.inf] * (2 * size)
+        tree[size : size + len(values)] = values
+        for i in range(size - 1, 0, -1):
+            tree[i] = min(tree[2 * i], tree[2 * i + 1])
+        self._size = size
+        self._tree = tree
+
+    def find(self, limit: int, ceiling: int) -> int:
+        tree, size = self._tree, self._size
+        lo, hi = size, size + limit
+        left: list[int] = []
+        right: list[int] = []
+        while lo < hi:
+            if lo & 1:
+                left.append(lo)
+                lo += 1
+            if hi & 1:
+                hi -= 1
+                right.append(hi)
+            lo >>= 1
+            hi >>= 1
+        for node in right + left[::-1]:
+            if tree[node] <= ceiling:
+                while node < size:
+                    node = 2 * node + 1 if tree[2 * node + 1] <= ceiling else 2 * node
+                return node - size
+        return -1
+
+
+class _JsOwners:
+    """The nearest function around a sink that takes its interpolated name,
+    for every sink in one file.
+
+    Each sink used to run `_JS_HEADER_RE` from the top of the file to itself
+    and walk the headers back, counting braces from each body to the sink.
+    The headers are now found once and each answer is a few lookups: the
+    headers before a sink are a prefix of the file's, and the ones whose body
+    is still open there are those whose body's brace depth is at most the
+    sink's, the last of which a segment tree finds.
+
+    A sink cut the regex at itself, so one header can differ: the first that
+    runs past the sink. Nothing in it can start a header whose body is open at
+    the sink, except when the sink sits inside the object-literal return type
+    of a method (`foo(name): {exec(cmd)} {`): cut there, the method's header
+    ends at that literal's `{`, a body that encloses the sink.
+    """
+
+    def __init__(self, text: str) -> None:
+        self._headers = _js_headers(text)
+        self._ends = [h.end for h in self._headers]
+        self._opens = _positions(text, _OPEN_BRACE_RE)
+        self._closes = _positions(text, _CLOSE_BRACE_RE)
+        self._names: dict[str, tuple[list[int], list[tuple[str, int]], _RightmostAtMost]] = {}
+        groups: dict[str, list[tuple[int, str, int, int]]] = {}
+        for k, h in enumerate(self._headers):
+            if h.func in _JS_KEYWORDS or not h.func:
+                continue
+            body = _first_at(self._opens, h.end)
+            if body == math.inf:
+                continue
+            depth = self._depth(int(body) + 1)
+            for name, index in h.param_positions().items():
+                groups.setdefault(name, []).append((k, h.func, index, depth))
+        for name, entries in groups.items():
+            self._names[name] = (
+                [k for k, _, _, _ in entries],
+                [(func, index) for _, func, index, _ in entries],
+                _RightmostAtMost([depth for _, _, _, depth in entries]),
+            )
+
+    def _depth(self, i: int) -> int:
+        return bisect_left(self._opens, i) - bisect_left(self._closes, i)
+
+    def owner(self, pos: int, name: str) -> tuple[str, int] | None:
+        headers = self._headers
+        j = bisect_right(self._ends, pos)
+        if j < len(headers):
+            h = headers[j]
+            if h.start < pos and h.group is not None and h.group[0] < pos < h.group[1]:
+                index = h.param_positions().get(name)
+                if index is not None and h.func not in _JS_KEYWORDS:
+                    return h.func, index
+        entry = self._names.get(name)
+        if entry is None:
+            return None
+        ks, owners, depths = entry
+        # Headers that end at or before the last `{` before the sink have their
+        # body before it; any later one is a `function` whose body is after it.
+        last_open = bisect_left(self._opens, pos) - 1
+        limit = bisect_right(self._ends, self._opens[last_open]) if last_open >= 0 else 0
+        found = depths.find(bisect_left(ks, limit), self._depth(pos))
+        return owners[found] if found >= 0 else None
+
+
+_BRACKET_RE = re.compile(r"[\[\]]")
 
 
 def _strip_subscripts(expr: str) -> str:
-    """`TABLE[key]` is the table's value, not the key: drop what indexes it."""
-    prev = None
-    while prev != expr:
-        prev = expr
-        expr = re.sub(r"\[[^\[\]]*\]", "", expr)
-    return expr
+    """`TABLE[key]` is the table's value, not the key: drop what indexes it.
+
+    This removed the innermost `[...]` and went round again until nothing
+    changed, a pass per level of nesting. A pair is removed exactly when its
+    brackets match, so one pass with a stack does the same: a `]` cuts back to
+    the `[` it closes, and an unmatched bracket of either kind stays.
+    """
+    if "[" not in expr:
+        return expr
+    pieces: list[str] = []
+    opens: list[int] = []
+    last = 0
+    for m in _BRACKET_RE.finditer(expr):
+        pieces.append(expr[last : m.start()])
+        last = m.end()
+        if m.group() == "[":
+            opens.append(len(pieces))
+            pieces.append("[")
+        elif opens:
+            del pieces[opens.pop() :]
+        else:
+            pieces.append("]")
+    pieces.append(expr[last:])
+    return "".join(pieces)
+
+
+_JS_ARGS_WORD_RE = re.compile(r"\b(?:args|arguments|input)\b")
+# A name the tainted set can hold, where `(?<![\w$.])name(?![\w$])` finds it.
+_JS_TAINT_TOKEN_RE = re.compile(r"(?<![\w$.])[\w$]+")
+
+
+def _js_derived(bare: str, tainted: set[str], destructure: bool = False) -> bool:
+    """Is an expression, its subscripts already stripped, tool-derived?"""
+    if _JS_TOOL_ARG_RE.search(bare):
+        return True
+    if destructure and _JS_ARGS_WORD_RE.search(bare):
+        return True
+    return not tainted.isdisjoint(_JS_TAINT_TOKEN_RE.findall(bare))
+
+
+_JS_DECLARE_RE = re.compile(r"\b(?:const|let|var)")
+_JS_NAME_RE = re.compile(r"[A-Za-z_$][\w$]*")
+_JS_RHS_STOP_RE = re.compile(r"[;\n]")
+_JS_ANNOTATION_STOP_RE = re.compile(r"[=;\n]")
+
+
+class _JsDeclarations:
+    """`finditer` over the two declaration patterns `_js_tool_derived_names`
+    reads, without their cost:
+
+        \\b(?:const|let|var)\\s+(NAME)\\s*(?::[^=;\\n]+)?=(?![=>])\\s*([^;\\n]+)
+        \\b(?:const|let|var)\\s*\\{([^}]*)\\}\\s*(?::[^=;\\n]+)?=\\s*([^;\\n]+)
+
+    Each read a type annotation on to the next `=`, `;` or newline, and the
+    second a destructuring list on to the next `}`, from every declaration
+    keyword, so both grew with the square: 72 KB of `const a: ` took 2.8
+    seconds and 56 KB of `const {` took 0.9. A match can start only at a
+    keyword, and each far read is now a lookup in positions found once.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self._closes = _positions(text, _CLOSE_BRACE_RE)
+        self._annotation_stops = _positions(text, _JS_ANNOTATION_STOP_RE)
+        self._rhs_stops = _positions(text, _JS_RHS_STOP_RE)
+        self._rhs: dict[int, tuple[str, int] | None] = {}
+
+    def assignments(self) -> list[tuple[list[str], str]]:
+        keywords = [(m.start(), m.end()) for m in _JS_DECLARE_RE.finditer(self.text)]
+        out: list[tuple[list[str], str]] = []
+        for parse in (self._single, self._destructured):
+            resume = 0
+            for start, after in keywords:
+                if start < resume:
+                    continue
+                found = parse(after)
+                if found is not None:
+                    names, rhs, resume = found
+                    out.append((names, rhs))
+        return out
+
+    def _blanks(self, i: int) -> int:
+        m = _BLANKS_RE.match(self.text, i)
+        return m.end() if m else i
+
+    def _single(self, after: int) -> tuple[list[str], str, int] | None:
+        name_at = self._blanks(after)
+        if name_at == after:
+            return None  # `\s+`
+        name = _JS_NAME_RE.match(self.text, name_at)
+        if name is None:
+            return None
+        eq = self._equals(self._blanks(name.end()), strict=True)
+        if eq is None:
+            return None
+        rhs = self._value(eq)
+        return None if rhs is None else ([name.group()], rhs[0], rhs[1])
+
+    def _destructured(self, after: int) -> tuple[list[str], str, int] | None:
+        text = self.text
+        brace = self._blanks(after)
+        if not text.startswith("{", brace):
+            return None
+        i = bisect_left(self._closes, brace + 1)
+        if i == len(self._closes):
+            return None
+        close = self._closes[i]
+        eq = self._equals(self._blanks(close + 1), strict=False)
+        if eq is None:
+            return None
+        rhs = self._value(eq)
+        if rhs is None:
+            return None
+        bound = []
+        for part in _split_top_level(text[brace + 1 : close]):
+            local = part.split(":")[-1].split("=")[0].strip().lstrip(".")
+            if _JS_NAME_RE.fullmatch(local):
+                bound.append(local)
+        return bound, rhs[0], rhs[1]
+
+    def _equals(self, at: int, strict: bool) -> int | None:
+        """Where `(?::[^=;\\n]+)?=` puts its `=` from ``at``; the first pattern
+        also refuses an `=` followed by `=` or `>`."""
+        text = self.text
+        if text.startswith(":", at):
+            i = bisect_left(self._annotation_stops, at + 1)
+            if i == len(self._annotation_stops):
+                return None
+            eq = self._annotation_stops[i]
+            if eq < at + 2 or text[eq] != "=":
+                return None
+        elif text.startswith("=", at):
+            eq = at
+        else:
+            return None
+        if strict and text[eq + 1 : eq + 2] in ("=", ">"):
+            return None
+        return eq
+
+    def _value(self, eq: int) -> tuple[str, int] | None:
+        """`\\s*([^;\\n]+)` after the `=` at ``eq``: the right-hand side and
+        where the match ends. With nothing after the blanks but `;` or a
+        newline, the blanks give back their last character that is not a
+        newline. Every declaration that reaches one `=` reads the same, so it is
+        read once."""
+        if eq in self._rhs:
+            return self._rhs[eq]
+        text = self.text
+        start = eq + 1
+        at = self._blanks(start)
+        i = bisect_left(self._rhs_stops, at)
+        stop = self._rhs_stops[i] if i < len(self._rhs_stops) else len(text)
+        found: tuple[str, int] | None
+        if stop > at:
+            found = (text[at:stop], stop)
+        else:
+            kept = len(text[start:at].rstrip("\n"))
+            found = (text[start + kept - 1], start + kept) if kept else None
+        self._rhs[eq] = found
+        return found
 
 
 def _js_tool_derived_names(text: str) -> set[str]:
-    """Locals a handler file assigns from a tool argument, to a fixed point."""
-    assigns: list[tuple[list[str], str]] = []
-    for m in re.finditer(
-        r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=(?![=>])\s*([^;\n]+)", text
-    ):
-        assigns.append(([m.group(1)], m.group(2)))
-    for m in re.finditer(r"\b(?:const|let|var)\s*\{([^}]*)\}\s*(?::[^=;\n]+)?=\s*([^;\n]+)", text):
-        bound = []
-        for part in _split_top_level(m.group(1)):
-            local = part.split(":")[-1].split("=")[0].strip().lstrip(".")
-            if re.fullmatch(r"[A-Za-z_$][\w$]*", local):
-                bound.append(local)
-        assigns.append((bound, m.group(2)))
+    """Locals a handler file assigns from a tool argument, to a fixed point.
+
+    The old loop rescanned every assignment against every tainted name until a
+    pass changed nothing, with a regex compiled per name: a chain of locals
+    listed backwards, so each pass found one more, took 6.3 seconds at 8 KB and
+    grew with the cube. A name's taint never changes once set, so each
+    assignment's right-hand side is read once, for its names, and fires the
+    first time one of them is tainted.
+    """
     tainted: set[str] = set()
-    changed = True
-    while changed:
-        changed = False
-        for names, rhs in assigns:
-            if set(names) <= tainted:
-                continue
-            if _js_is_tool_derived(rhs, tainted, destructure=len(names) > 1 or rhs.strip() in {"args", "input"}):
-                tainted.update(names)
-                changed = True
+    waiting: dict[str, list[int]] = {}
+    assigns = _JsDeclarations(text).assignments()
+    fired = [False] * len(assigns)
+    pending: list[str] = []
+
+    def fire(i: int) -> None:
+        fired[i] = True
+        for name in assigns[i][0]:
+            if name not in tainted:
+                tainted.add(name)
+                pending.append(name)
+
+    for i, (names, rhs) in enumerate(assigns):
+        if not names:
+            continue  # binds nothing, so it can never add a name
+        bare = _strip_subscripts(rhs)
+        destructure = len(names) > 1 or rhs.strip() in {"args", "input"}
+        if _js_derived(bare, set(), destructure):
+            fire(i)
+            continue
+        for token in set(_JS_TAINT_TOKEN_RE.findall(bare)):
+            waiting.setdefault(token, []).append(i)
+    while pending:
+        for i in waiting.pop(pending.pop(), []):
+            if not fired[i]:
+                fire(i)
     return tainted
 
 
-def _js_is_tool_derived(expr: str, tainted: set[str], destructure: bool = False) -> bool:
-    bare = _strip_subscripts(expr)
-    if _JS_TOOL_ARG_RE.search(bare):
-        return True
-    if destructure and re.search(r"\b(?:args|arguments|input)\b", bare):
-        return True
-    return any(re.search(rf"(?<![\w$.]){re.escape(n)}(?![\w$])", bare) for n in tainted)
+_JS_CALL_SITE_RE = re.compile(r"(?<![\w$])([A-Za-z_$][\w$]*)\s*\(")
+_JS_DEFINITION_KEYWORDS_RE = re.compile(r"(?:public|private|protected|static|async)\s+")
+_JS_ARG_SPECIAL_RE = re.compile(r"[,()\[\]{}]")
 
 
-def _js_call_args(text: str, open_paren: int) -> list[str]:
-    depth = 0
-    for i in range(open_paren, len(text)):
-        if text[i] == "(":
-            depth += 1
-        elif text[i] == ")":
-            depth -= 1
-            if depth == 0:
-                return _split_top_level(text[open_paren + 1 : i], brackets="([{")
-    return []
+class _JsHandler:
+    """A tool-handler file, read once for every function the sink files ask
+    about: which call passes a tool-derived value at a given position.
+
+    Each question used to work out the file's tool-derived names again, read
+    the whole file for the function's call sites, and for each one read its
+    line back to the start and its arguments forward to the closing paren, so
+    nested calls read their arguments once per level: 20 KB of nested `run(`
+    took 4.2 seconds, growing with the square.
+    """
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+        self._tainted: set[str] | None = None
+        self._calls: dict[str, list[tuple[int, int]]] | None = None
+        self._answers: dict[tuple[str, int], int | None] = {}
+        self._newlines = _positions(text, _NEWLINE_RE)
+        self._specials: list[int] = []
+        self._paren_close: dict[int, int] = {}
+        self._group_close: dict[int, int] = {}
+        self._brackets: list[int] = []
+        self._bracket_close: dict[int, int] = {}
+        self._indexed = False
+        self._chains: dict[int, set[int]] = {}
+
+    def tool_arg_call(self, func: str, index: int) -> int | None:
+        """Line of a call to ``func`` whose argument at ``index`` is tool-derived."""
+        key = (func, index)
+        if key not in self._answers:
+            self._answers[key] = self._first_call(func, index)
+        return self._answers[key]
+
+    def _index(self) -> None:
+        """Paren, bracket and argument-separator positions, matched once."""
+        if self._indexed:
+            return
+        self._indexed = True
+        text = self.text
+        parens: list[int] = []
+        groups: list[int] = []
+        brackets: list[int] = []
+        for m in _JS_ARG_SPECIAL_RE.finditer(text):
+            at, ch = m.start(), m.group()
+            self._specials.append(at)
+            if ch == ",":
+                continue
+            if ch in "([{":
+                groups.append(at)
+            elif groups:
+                self._group_close[groups.pop()] = at
+            if ch == "(":
+                parens.append(at)
+            elif ch == ")" and parens:
+                self._paren_close[parens.pop()] = at
+            elif ch == "[":
+                self._brackets.append(at)
+                brackets.append(at)
+            elif ch == "]" and brackets:
+                self._bracket_close[brackets.pop()] = at
+
+    def _first_call(self, func: str, index: int) -> int | None:
+        if self._tainted is None:
+            self._tainted = _js_tool_derived_names(self.text)
+        if self._calls is None:
+            self._calls = {}
+            for m in _JS_CALL_SITE_RE.finditer(self.text):
+                self._calls.setdefault(m.group(1), []).append((m.start(), m.end() - 1))
+        calls = self._calls.get(func)
+        if not calls:
+            return None
+        self._index()
+        # Arguments already read and found clean, with the subscripts cut from
+        # them: an argument inside one, clear of those cuts, reads as part of
+        # it and is clean too (see `_clean_inside`).
+        clean: list[tuple[int, int, list[tuple[int, int]]]] = []
+        for start, paren in calls:
+            if self._is_definition(start):
+                continue
+            close = self._paren_close.get(paren)
+            if close is None:
+                continue
+            span = self._argument(paren + 1, close, index)
+            if span is None:
+                continue
+            while clean and clean[-1][1] <= start:
+                clean.pop()
+            if clean and _clean_inside(clean[-1], span):
+                continue
+            bare, cuts = self._strip(*span)
+            if _js_derived(bare, self._tainted):
+                return bisect_left(self._newlines, start) + 1
+            clean.append((span[0], span[1], cuts))
+        return None
+
+    def _is_definition(self, start: int) -> bool:
+        """`\\bfunction\\s*$` or `^\\s*(?:(?:public|...|async)\\s+)*$` on the line
+        before the call: a definition, not a call."""
+        text = self.text
+        line = bisect_left(self._newlines, start)
+        line_start = self._newlines[line - 1] + 1 if line else 0
+        end = start
+        while end > line_start and _SPACE_RE.match(text, end - 1):
+            end -= 1
+        word = end - 8
+        if word >= line_start and text.startswith("function", word):
+            if word == line_start or not _WORD_CHAR_RE.match(text, word - 1):
+                return True
+        chain = self._chains.get(line_start)
+        if chain is None:
+            line_end = self._newlines[line] if line < len(self._newlines) else len(text)
+            at = _BLANKS_RE.match(text, line_start, line_end)
+            pos = at.end() if at else line_start
+            chain = {pos}
+            while True:
+                m = _JS_DEFINITION_KEYWORDS_RE.match(text, pos, line_end)
+                if m is None:
+                    break
+                pos = m.end()
+                chain.add(pos)
+            self._chains[line_start] = chain
+        return start in chain
+
+    def _argument(self, begin: int, close: int, index: int) -> tuple[int, int] | None:
+        """The span of `_split_top_level(text[begin:close], "([{")[index]`.
+
+        Only separators at depth zero matter, and an opener's group, matched
+        across all three kinds as `_split_top_level` counts them, is stepped
+        over whole; a closer at depth zero changes nothing.
+        """
+        text, specials = self.text, self._specials
+        k = bisect_left(specials, begin)
+        part, commas = begin, 0
+        while k < len(specials) and specials[k] < close:
+            at = specials[k]
+            ch = text[at]
+            if ch == ",":
+                if commas == index:
+                    return part, at
+                commas += 1
+                part = at + 1
+                k += 1
+            elif ch in "([{":
+                end = self._group_close.get(at)
+                if end is None or end >= close:
+                    break
+                k = bisect_left(specials, end + 1)
+            else:
+                k += 1
+        if commas == index and text[part:close].strip():
+            return part, close
+        return None
+
+    def _strip(self, begin: int, end: int) -> tuple[str, list[tuple[int, int]]]:
+        """`_strip_subscripts(text[begin:end])`, and the pairs it cut.
+
+        Within a span, the brackets that match are the file's matching pairs
+        that lie wholly inside it, so the file's pairs are found once and the
+        outermost of those inside are cut.
+        """
+        text, brackets = self.text, self._brackets
+        pieces: list[str] = []
+        cuts: list[tuple[int, int]] = []
+        last = begin
+        k = bisect_left(brackets, begin)
+        while k < len(brackets) and brackets[k] < end:
+            at = brackets[k]
+            pair_end = self._bracket_close.get(at)
+            if pair_end is not None and pair_end < end:
+                pieces.append(text[last:at])
+                cuts.append((at, pair_end))
+                last = pair_end + 1
+                k = bisect_left(brackets, last)
+            else:
+                k += 1
+        pieces.append(text[last:end])
+        return "".join(pieces), cuts
 
 
-def _js_tool_arg_call(text: str, func: str, index: int) -> int | None:
-    """Line of a call to ``func`` whose argument at ``index`` is tool-derived."""
-    tainted = _js_tool_derived_names(text)
-    call_re = re.compile(rf"(?<![\w$]){re.escape(func)}\s*\(")
-    for m in call_re.finditer(text):
-        line_start = text.rfind("\n", 0, m.start()) + 1
-        head = text[line_start : m.start()]
-        if re.search(r"\bfunction\s*$|^\s*(?:(?:public|private|protected|static|async)\s+)*$", head):
-            continue  # a definition, not a call
-        args = _js_call_args(text, m.end() - 1)
-        if index < len(args) and _js_is_tool_derived(args[index], tainted):
-            return text[: m.start()].count("\n") + 1
-    return None
+def _clean_inside(outer: tuple[int, int, list[tuple[int, int]]], span: tuple[int, int]) -> bool:
+    """Is an argument at ``span`` clean because it reads as part of ``outer``?
+
+    ``outer`` was read and found clean. When ``span`` lies inside it and no cut
+    of it starts before ``span`` and reaches into it, or ends after ``span``
+    and starts inside it, ``span`` read alone is a piece of ``outer``'s read,
+    with the call's own parens or commas around it, which no tool-argument
+    pattern or name can join.
+    """
+    begin, end, cuts = outer
+    a, b = span
+    if a < begin or b > end:
+        return False
+    i = bisect_right(cuts, (a, math.inf)) - 1
+    if i >= 0 and cuts[i][0] < a <= cuts[i][1]:
+        return False
+    i = bisect_right(cuts, (b - 1, math.inf)) - 1
+    if i >= 0 and cuts[i][0] <= b - 1 < cuts[i][1]:
+        return False
+    return True
 
 
 def _cross_file_js(texts: dict[str, str]) -> list[Finding]:
     handlers = {rel: t for rel, t in texts.items() if _JS_TOOL_ARG_RE.search(t)}
+    readers = [(hrel, _JsHandler(htext)) for hrel, htext in sorted(handlers.items())]
     findings: list[Finding] = []
     for rel, text in texts.items():
         if rel in handlers or _JS_QUOTE_RE.search(text):
             continue  # `_scan_js` already judged a handler file
+        owners: _JsOwners | None = None
         for found in _js_sinks(text):
             for name, quoting, mode, template in found.interps:
-                owner = _js_enclosing_param(text, found.pos, name)
+                if owners is None:
+                    owners = _JsOwners(text)
+                owner = owners.owner(found.pos, name)
                 if owner is None:
                     continue
                 func, index = owner
-                for hrel, htext in sorted(handlers.items()):
-                    hline = _js_tool_arg_call(htext, func, index)
+                for hrel, handler in readers:
+                    hline = handler.tool_arg_call(func, index)
                     if hline is None:
                         continue
                     evidence = (
