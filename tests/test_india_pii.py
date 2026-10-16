@@ -5,6 +5,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import pytest
+
 from agent_audit_kit.scanners import india_pii
 
 FIX = Path(__file__).parent / "fixtures" / "cves" / "india_pii"
@@ -75,3 +77,40 @@ def test_bare_12_digit_with_aadhaar_context_fires(tmp_path: Path) -> None:
     (tmp_path / "d.py").write_text(f"aadhaar_number = {n}\n", encoding="utf-8")
     findings, _ = india_pii.scan(tmp_path)
     assert any(f.rule_id == "AAK-INDIA-PII-001" for f in findings)
+
+
+# ---------------------------------------------------------------------------
+# Env and config files are read
+#
+# `_iter_source` tested `path.suffix` against the extension list, and
+# `Path(".env").suffix` is empty, so a file named `.env` was never opened, nor
+# `.env.local` (suffix `.local`). `.cfg`, `.ini` and `.conf` were off the list too.
+# The same text in `deploy/prod.env` (suffix `.env`) fired.
+# ---------------------------------------------------------------------------
+
+_PII = "CUSTOMER_PAN=ABCDE1234F\nSUPPORT_PHONE=+919876543210\n"
+
+
+@pytest.mark.parametrize(
+    "name", [".env", ".env.local", ".env.production", "deploy/prod.env", "app.cfg", "settings.ini", "nginx.conf"]
+)
+def test_env_and_config_files_are_read(tmp_path: Path, name: str) -> None:
+    path = tmp_path / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_PII, encoding="utf-8")
+
+    findings, scanned = india_pii.scan(tmp_path)
+
+    assert {(f.rule_id, f.file_path, f.line_number) for f in findings} == {
+        ("AAK-INDIA-PII-002", name, 1),
+        ("AAK-INDIA-PII-005", name, 2),
+    }
+    assert name in scanned
+
+
+def test_an_export_is_still_not_read(tmp_path: Path) -> None:
+    (tmp_path / "customers.csv").write_text(_PII, encoding="utf-8")
+
+    findings, scanned = india_pii.scan(tmp_path)
+
+    assert findings == [] and scanned == set()

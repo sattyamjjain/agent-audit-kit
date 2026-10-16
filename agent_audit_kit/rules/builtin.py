@@ -5082,7 +5082,8 @@ _r(
     owasp_mcp_references=["MCP10:2025"],
     limitations=(
         "Reads source, config and text files by extension (`.py`, `.ts`, `.json`, "
-        "`.yaml`, `.toml`, `.txt`, `.md` and a few more) for a Verhoeff-valid Aadhaar "
+        "`.yaml`, `.toml`, `.ini`, `.txt`, `.md` and a few more) and env files (`.env`, "
+        "`.env.local`) for a Verhoeff-valid Aadhaar "
         "number. Any other extension is never opened: the rows of a customer export "
         "saved as `.csv` are not reported, while the same rows in a `.txt` file are."
     ),

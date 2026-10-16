@@ -22,9 +22,19 @@ from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in
 _SCAN_EXTS = {
     ".py", ".ts", ".tsx", ".js", ".jsx", ".mjs",
     ".json", ".yaml", ".yml", ".toml", ".env", ".txt", ".md",
+    ".cfg", ".ini", ".conf",
     ".go", ".rs", ".java", ".rb",
 }
 _MAX_FILE_BYTES = 512_000
+
+
+def _is_env_file(name: str) -> bool:
+    """`.env`, `.env.local`, `.env.production`, `prod.env`: what the secret walker reads.
+
+    The extension test alone never opened `.env` itself, whose suffix is empty, nor
+    `.env.local`, whose suffix is `.local`.
+    """
+    return name.startswith(".env") or name.endswith(".env")
 
 # Aadhaar: 12 digits formatted as XXXX XXXX XXXX or XXXX-XXXX-XXXX or bare
 # First digit cannot be 0 or 1 (UIDAI spec).
@@ -95,7 +105,7 @@ def _verhoeff_check(digits: str) -> bool:
 def _iter_source(project_root: Path) -> list[Path]:
     out: list[Path] = []
     for path in project_root.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in _SCAN_EXTS:
+        if not path.is_file() or not (path.suffix.lower() in _SCAN_EXTS or _is_env_file(path.name)):
             continue
         if in_skip_dir(path, project_root):
             continue
