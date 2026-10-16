@@ -85,8 +85,9 @@ available) before shipping:
     upstream issue #178 open, v0.3.0 still the newest tag)
   - awslabs.postgres-mcp-server     >= 1.1.7   (CVE-2026-85787)
   - knowns                          presence-only (CVE-2026-86439 fixed in 0.30.0,
-    but CVE-2026-88938 is scoped "through 0.33.0" and 0.33.0 is the newest npm
-    release, so there is no floor left to pin to)
+    but CVE-2026-88938 is scoped "through 0.33.0" and its advisory names no
+    patched version; npm's 0.34.0 and 0.34.1 are not confirmed fixed, so there
+    is no floor to pin to)
   - langflow                        >= 1.12.0  (CVE-2026-9186 raised the 1.11.0
     floor of CVE-2026-12940; CVE-2026-85025 / CVE-2026-78575 / CVE-2026-81941,
     all scoped 1.0.0–1.11.5, then raised it again, and CVE-2026-101861, eval() on
@@ -948,14 +949,19 @@ _PINS: tuple[_Pin, ...] = (
     # 0.1.0 release -- the cheaper of the two errors, since 86 of the real
     # project's 87 published versions still fire.
     # CVE-2026-88938 (2026-09-10) reopened the same class on the `code.find` tool
-    # and is scoped "through 0.33.0" -- which is the newest published release
-    # (npm, 2026-09-05). There is no fixed version to pin to, so the floor drops to
-    # None and the pin becomes presence-only. That is the permanent state until
-    # upstream ships a fix, the same as `postgres-mcp` and `mcp-florence2` above.
-    # The 0.1.1 `introduced` bound still matters and is still honoured -- see the
-    # ordering note in `_fires`.
+    # and is scoped "through 0.33.0", then the newest release (npm, 2026-09-05).
+    # Its advisory, GHSA-5cj9-fcqq-g2h7, names no patched version. npm published
+    # 0.34.0 and 0.34.1 on 2026-09-22 and 2026-09-28, and neither the advisory nor
+    # NVD says whether they fix it, so the floor stays None and the pin stays
+    # presence-only until a fixed release is named, the same as `postgres-mcp` and
+    # `mcp-florence2` above. The label names the advisory's range, not a newest
+    # release, which goes stale with every publish (it read "0.33.0 is newest"
+    # for three weeks after 0.34.0). The 0.1.1 `introduced` bound still matters
+    # and is still honoured -- see the ordering note in `_fires`.
     _Pin("AAK-MCP-KNOWNS-CVE-2026-86439-001", "knowns", ("knowns",), None,
-         introduced=(0, 1, 1), fix_label="no fixed release (0.33.0 is newest and affected)"),
+         introduced=(0, 1, 1),
+         fix_label="no release yet: GHSA-5cj9-fcqq-g2h7 names no patched version, "
+                   "and CVE-2026-88938 covers every release through 0.33.0"),
     # --- 2026-09-10..11 wave ---
     # AWS Security Agent MCP server (PyPI) before 0.2.0 writes scan output to an S3
     # bucket it never verifies the ownership of, and the bucket name derives from a

@@ -13205,18 +13205,19 @@ _r(
     "confine the `path` argument of the `code.find` MCP tool to the project root, "
     "so an agent session supplies an absolute path or traversal sequence and "
     "retrieves full file contents from anywhere the server process can read. "
-    "0.33.0 is the newest published release (npm, 2026-09-05) and is itself in the "
-    "affected range, so **there is no fix floor to upgrade to** and this pin is "
-    "presence-only: it fires on any referenced version. That is the permanent "
-    "state until upstream ships a fix, not a placeholder — the same shape as the "
-    "`postgres-mcp` and `mcp-florence2` pins in this table.",
+    "Its advisory (GHSA-5cj9-fcqq-g2h7) names no patched version, and the releases "
+    "published since 0.33.0 are not confirmed fixed, so **there is no fix floor to "
+    "upgrade to** and this pin is presence-only: it fires on any referenced "
+    "version. That holds until upstream names a fixed release, and is not a "
+    "placeholder — the same shape as the `postgres-mcp` and `mcp-florence2` pins in "
+    "this table.",
     Severity.HIGH,
     Category.SUPPLY_CHAIN,
-    "No fixed release exists: 0.33.0 is the newest and is affected. Until upstream "
-    "ships one, run `knowns` against a directory that contains nothing the agent "
-    "session should not read, or drop it. When a fix lands, upgrade past 0.33.0 and "
-    "pin it. The upstream fix has to resolve every path taken from a tool argument "
-    "and reject any result that escapes the project root before opening it.",
+    "No release is confirmed fixed. Until upstream names one, run `knowns` against "
+    "a directory that contains nothing the agent session should not read, or drop "
+    "it. When a fixed release is named, upgrade to it and pin it. The upstream fix "
+    "has to resolve every path taken from a tool argument and reject any result "
+    "that escapes the project root before opening it.",
     sarif_name="KnownsMcpPathTraversal",
     cve_references=["CVE-2026-86439", "CVE-2026-88938"],
     owasp_mcp_references=["MCP04:2025", "MCP05:2025"],

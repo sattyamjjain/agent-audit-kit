@@ -203,20 +203,37 @@ def test_awslabs_postgres_floor(tmp_path: Path, version: str, fires: bool) -> No
     ("0.8.3", True),
     ("0.1.1", True),    # lowest npm release the introduced bound still covers
     ("0.30.0", True),   # CVE-2026-86439's fix, but CVE-2026-88938 still applies
-    ("0.33.0", True),   # newest published release, and itself affected
+    ("0.33.0", True),   # the last release CVE-2026-88938 names
+    ("0.34.1", True),   # newer, and not confirmed fixed by the advisory or NVD
 ])
 def test_knowns_fires_on_every_published_version(
     tmp_path: Path, version: str, fires: bool
 ) -> None:
     """0.30.0 and 0.33.0 used to be asserted NOT to fire.
 
-    CVE-2026-88938 (2026-09-10) is scoped "through 0.33.0" and 0.33.0 is the
-    newest release on npm, so there is no version left that clears the rule. The
-    pin is presence-only and this test says so rather than being deleted: if a
-    fix ships and someone restores a floor, the new patched version belongs here
-    as a False.
+    CVE-2026-88938 (2026-09-10) is scoped "through 0.33.0", and its advisory
+    (GHSA-5cj9-fcqq-g2h7) names no patched version. npm has published 0.34.0 and
+    0.34.1 since, and neither source says they fix it, so no version clears the
+    rule. The pin is presence-only and this test says so rather than being
+    deleted: if a fix is confirmed and someone restores a floor, the patched
+    version belongs here as a False.
     """
     assert (KNOWNS in _npm(tmp_path, knowns=version)) is fires
+
+
+def test_knowns_evidence_names_no_newest_release(tmp_path: Path) -> None:
+    """The evidence said "0.33.0 is newest and affected" after npm published
+    0.34.0 and 0.34.1 (2026-09-22, 2026-09-28). A newest version goes stale with
+    every release, so the text names the advisory's range instead."""
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {"knowns": "0.34.1"}}), encoding="utf-8"
+    )
+    evidence = [f.evidence for f in pins.scan(tmp_path)[0] if f.rule_id == KNOWNS]
+    assert len(evidence) == 1
+    assert "newest" not in evidence[0]
+    assert "through 0.33.0" in evidence[0]
+    rule = RULES[KNOWNS]
+    assert "newest" not in rule.description and "newest" not in rule.remediation
 
 
 def test_knowns_pin_is_presence_only_because_no_fix_exists() -> None:
