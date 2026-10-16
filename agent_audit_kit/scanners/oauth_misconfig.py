@@ -76,6 +76,30 @@ _TOKEN_ACQUISITION_RE = re.compile(
     r"|/(?:oauth2?/)?(?:authorize|token)\b",
     re.IGNORECASE,
 )
+# In a data file the flow has to be part of the data: a `grant_type`,
+# `authorization_endpoint` or `token_endpoint` key, `response_type: code`, or
+# a value that is wholly a token or authorization URL (a quoted string, a bare
+# YAML value or a list item, optionally with a query). The scanner read
+# .json/.yaml/.yml/.toml files with the code pattern above, so prose that
+# mentions OAuth and a `/token` path was a token request: AAK's own
+# case-study scan results (an evidence string quoting `curl -s
+# https://auth.internal/token`) and the State of MCP baseline (a registry id,
+# `ai.tachyo/token-safety`) both reported. Server metadata that advertises a
+# `token_endpoint` key stays in scope. A value without a scheme may not
+# start with `//`, or the colon of a URL inside prose (`curl
+# https://auth.internal/token`) would start one. The path characters exclude
+# `:`, `=`, `,`, brackets and braces, which every value start needs, so two
+# value starts never share a run and a crafted line is read in linear time.
+_DATA_SUFFIXES = frozenset({".json", ".yaml", ".yml", ".toml"})
+_DATA_KEY_START = r"(?:^[ \t]*(?:-[ \t]+)?|[{,][ \t]*)"
+_DATA_VALUE_START = r"(?:^[ \t]*(?:-[ \t]+)?|[:=\[,][ \t]*)"
+_DATA_TOKEN_ACQUISITION_RE = re.compile(
+    rf"""{_DATA_KEY_START}["']?(?:grant_type|authorization_endpoint|token_endpoint)["']?[ \t]*[:=]"""
+    rf"""|{_DATA_KEY_START}["']?response_type["']?[ \t]*[:=][ \t]*["']?code\b"""
+    rf"""|{_DATA_VALUE_START}["']?(?:https?://[^\s"'/]+|(?!//))(?:/[^\s"'?#:=,\[\]{{}}]*)?/(?:authorize|token)/?"""
+    r"""(?:[?#][^\s"']*)?["']?[ \t]*(?:[,}\]#]|$)""",
+    re.IGNORECASE | re.MULTILINE,
+)
 # Presence of the RFC 8707 `resource` indicator (query param, JSON/dict key,
 # kwarg/assignment, or an explicit RFC-8707 marker). Also matches the RFC 9728
 # protected-resource-metadata `resource` field so an MCP server's own metadata
@@ -242,7 +266,8 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             )
         )
 
-    m_flow = _TOKEN_ACQUISITION_RE.search(text)
+    data_file = path.suffix.lower() in _DATA_SUFFIXES
+    m_flow = (_DATA_TOKEN_ACQUISITION_RE if data_file else _TOKEN_ACQUISITION_RE).search(text)
     if m_flow and not _RESOURCE_PARAM_RE.search(text):
         findings.append(
             make_finding(
@@ -251,7 +276,11 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 "OAuth flow builds authorization/token requests without the RFC 8707 "
                 "`resource` parameter (Resource Indicators) — issued tokens are not "
                 "audience-bound to this MCP server (MCP 2025-11-25 auth spec)",
-                line_number=find_line_number(text, m_flow.group(0)),
+                line_number=(
+                    text.count("\n", 0, m_flow.start()) + 1
+                    if data_file
+                    else find_line_number(text, m_flow.group(0))
+                ),
             )
         )
 

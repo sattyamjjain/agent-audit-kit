@@ -1,0 +1,3 @@
+oauth:
+  client_id: mcp
+  description: the client posts its code to https://auth.example.com/oauth/token
