@@ -277,15 +277,54 @@ def _shell_true(call: ast.Call) -> bool:
     return False
 
 
+# A source line as `ast.get_source_segment` splits them: up to `\r\n`, `\n` or `\r`.
+_PY_LINE_RE = re.compile(r".*?(?:\r\n|\n|\r|$)")
+
+
+class _PySource:
+    """`ast.get_source_segment` for many nodes of one file, its lines split once.
+
+    `get_source_segment` splits the whole source into lines on every call, and
+    this scanner asks it for every tool function and for every template it
+    cannot rebuild: 227 KB of tool functions took 7.6 seconds, growing with the
+    square of the file. The lines are split where it splits them, and a segment
+    is cut from them the way it cuts one, from each line encoded once.
+    """
+
+    def __init__(self, text: str) -> None:
+        self._lines = [m.group() for m in _PY_LINE_RE.finditer(text)]
+        self._encoded: dict[int, bytes] = {}
+
+    def _line(self, i: int) -> bytes:
+        line = self._encoded.get(i)
+        if line is None:
+            line = self._encoded[i] = self._lines[i].encode()
+        return line
+
+    def segment(self, node: ast.AST) -> str | None:
+        lineno, end_lineno = getattr(node, "lineno", None), getattr(node, "end_lineno", None)
+        col, end_col = getattr(node, "col_offset", None), getattr(node, "end_col_offset", None)
+        if lineno is None or end_lineno is None or col is None or end_col is None:
+            return None
+        first, last = lineno - 1, end_lineno - 1
+        if first == last:
+            return self._line(first)[col:end_col].decode()
+        return (
+            self._line(first)[col:].decode()
+            + "".join(self._lines[first + 1 : last])
+            + self._line(last)[:end_col].decode()
+        )
+
+
 def _analyse_py_function(
-    func: ast.FunctionDef | ast.AsyncFunctionDef, rel: str, text: str
+    func: ast.FunctionDef | ast.AsyncFunctionDef, rel: str, source: _PySource
 ) -> tuple[list[Finding], bool]:
     """Returns (findings, reached_a_command_sink)."""
     params = _get_param_names(func)
     if not params:
         return [], False
 
-    body_src = ast.get_source_segment(text, func) or ""
+    body_src = source.segment(func) or ""
     if _PY_QUOTE_RE.search(body_src):
         return [], False
 
@@ -305,7 +344,7 @@ def _analyse_py_function(
             if isinstance(target, ast.Name):
                 template = _shell_template(value)
                 if template is None:
-                    template = ast.get_source_segment(text, value) or ""
+                    template = source.segment(value) or ""
                 tainted_locals[target.id] = (template, node.lineno)
 
     findings: list[Finding] = []
@@ -334,7 +373,7 @@ def _analyse_py_function(
             line = node.lineno
             direct, contributors = _fmt_parts(expr)
             if direct and (contributors & params):
-                template = _shell_template(expr) or ast.get_source_segment(text, expr) or ""
+                template = _shell_template(expr) or source.segment(expr) or ""
                 tainted_names = contributors & params
             elif isinstance(expr, ast.Name) and expr.id in tainted_locals:
                 template, line = tainted_locals[expr.id]
@@ -389,12 +428,13 @@ def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
         return [], []
     findings: list[Finding] = []
     exec_tools: list[str] = []
+    source = _PySource(text)
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         if not _is_tool_function(node):
             continue
-        found, reached = _analyse_py_function(node, rel, text)
+        found, reached = _analyse_py_function(node, rel, source)
         findings.extend(found)
         if found and reached:
             exec_tools.append(node.name)

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -342,3 +343,59 @@ def test_a_long_blank_type_scans_in_linear_time(tmp_path: Path) -> None:
     findings = _interp(tmp_path)
     assert time.perf_counter() - started < 5.0
     assert len(findings) == 1
+
+
+# --------------------------------------------------------------------------
+# One pass per file.
+# --------------------------------------------------------------------------
+#
+# Both passes read a file again for every place they looked at: the Python
+# pass split the whole source into lines for every tool function, and the
+# TS/JS passes read the template, its quoting, sixty lines back for a local,
+# and the prefix for the line number at every sink, and the cross-file hop ran
+# the header pattern from the top of the file to every sink and worked out the
+# handler's tool-derived names and call arguments for every question. Each test
+# below runs a crafted project at two sizes, best of three, and allows the
+# larger 40 times the smaller's time for 10 times the text (the old passes
+# needed 100 times or more) plus a fixed slack, under an absolute bound that is
+# loose for slow CI runners.
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+# shape -> (project for k units, k for the smaller size)
+_PYTHON_SHAPES: dict[str, tuple[Callable[[int], dict[str, str]], int]] = {
+    # `ast.get_source_segment` split the file into lines for every tool
+    # function: 227 KB of them took 7.6 seconds.
+    "python-tool-functions": (
+        lambda k: {"tools.py": "".join(f"@mcp.tool()\ndef f{i}(name: str) -> str:\n    return name\n" for i in range(k))},
+        200,
+    ),
+}
+
+
+_CRAFTED = dict(_PYTHON_SHAPES)
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED))
+def test_a_crafted_project_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    build, count = _CRAFTED[shape]
+    roots = []
+    for name, k in (("small", count), ("large", 10 * count)):
+        root = tmp_path / name
+        root.mkdir()
+        for rel, text in build(k).items():
+            assert len(text) < 400_000, "under the scanner's file cap"
+            (root / rel).write_text(text, encoding="utf-8")
+        roots.append(root)
+    t_small, t_large = _seconds(lambda: scan(roots[0])), _seconds(lambda: scan(roots[1]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
