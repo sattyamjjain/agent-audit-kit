@@ -1,0 +1,2 @@
+fast-mcp-telegram==0.30.0
+mcp-contextforge-gateway==1.0.2
