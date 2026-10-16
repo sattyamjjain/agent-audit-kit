@@ -4911,35 +4911,6 @@
       "title": "knowns MCP doc/memory and code.find tools: path traversal outside the project directory (no fixed release)"
     },
     {
-      "category": "tool-poisoning",
-      "cve_references": [
-        "CVE-2026-13341"
-      ],
-      "eu_ai_act": [
-        "Art. 9 - Risk Management",
-        "Art. 10 - Data Governance",
-        "Art. 13 - Transparency",
-        "Art. 15 - Robustness & Security"
-      ],
-      "nsa_mcp_csi": [
-        "Choose supported MCP projects when possible (p.10)",
-        "Sign and verify MCP messages (p.12)",
-        "Track and patch MCP related vulnerabilities (p.13)",
-        "Scan local network for open or vulnerable MCP servers (p.14)"
-      ],
-      "owasp_agentic": [
-        "ASI01 Agent Goal Hijack",
-        "ASI04 Agentic Supply Chain Vulnerabilities"
-      ],
-      "owasp_mcp": [
-        "MCP04:2025 Software Supply Chain Attacks & Dependency Tampering",
-        "MCP06:2025 Intent Flow Subversion"
-      ],
-      "rule_id": "AAK-MCP-KONG-CVE-2026-13341-001",
-      "severity": "high",
-      "title": "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)"
-    },
-    {
       "category": "supply-chain",
       "cve_references": [
         "CVE-2026-108115"
@@ -10033,33 +10004,33 @@
       "secret-exposure": 18,
       "supply-chain": 167,
       "taint-analysis": 14,
-      "tool-poisoning": 31,
+      "tool-poisoning": 30,
       "transport-security": 15,
       "trust-boundary": 17
     },
     "by_eu_ai_act": {
-      "Art. 10 - Data Governance": 198,
-      "Art. 13 - Transparency": 29,
+      "Art. 10 - Data Governance": 197,
+      "Art. 13 - Transparency": 28,
       "Art. 14 - Human Oversight": 18,
-      "Art. 15 - Robustness & Security": 301,
-      "Art. 9 - Risk Management": 206
+      "Art. 15 - Robustness & Security": 300,
+      "Art. 9 - Risk Management": 205
     },
     "by_nsa_mcp_csi": {
-      "Choose supported MCP projects when possible (p.10)": 198,
+      "Choose supported MCP projects when possible (p.10)": 197,
       "Constrain and sandbox tool execution (p.11)": 188,
       "Design for boundaries (p.10)": 290,
       "Filter and monitor output pipelines and chained execution (p.12)": 111,
       "Instrument for logging and detection (p.13)": 21,
-      "Scan local network for open or vulnerable MCP servers (p.14)": 257,
-      "Sign and verify MCP messages (p.12)": 267,
-      "Track and patch MCP related vulnerabilities (p.13)": 203,
+      "Scan local network for open or vulnerable MCP servers (p.14)": 256,
+      "Sign and verify MCP messages (p.12)": 266,
+      "Track and patch MCP related vulnerabilities (p.13)": 202,
       "Validate parameters (p.11)": 192
     },
     "by_owasp_agentic": {
-      "ASI01": 18,
+      "ASI01": 17,
       "ASI02": 99,
       "ASI03": 104,
-      "ASI04": 196,
+      "ASI04": 195,
       "ASI05": 91,
       "ASI06": 5,
       "ASI07": 23,
@@ -10071,9 +10042,9 @@
       "MCP01:2025": 32,
       "MCP02:2025": 16,
       "MCP03:2025": 12,
-      "MCP04:2025": 148,
+      "MCP04:2025": 147,
       "MCP05:2025": 114,
-      "MCP06:2025": 5,
+      "MCP06:2025": 4,
       "MCP07:2025": 80,
       "MCP08:2025": 1,
       "MCP09:2025": 5,
@@ -10081,13 +10052,13 @@
     },
     "by_severity": {
       "critical": 91,
-      "high": 177,
+      "high": 176,
       "info": 3,
       "low": 17,
       "medium": 119
     },
-    "total_cves_covered": 346,
-    "total_rules": 407
+    "total_cves_covered": 345,
+    "total_rules": 406
   },
   "tool": "agent-audit-kit"
 }

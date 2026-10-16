@@ -21,12 +21,14 @@ from agent_audit_kit.output.vex import CONTEXT, emit_openvex
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
-# Existing fixtures, one per status arm. `vulnerable` pins mcp-grafana at
-# 1.0.0 (below the 1.1.0 fix floor); `patched` pins it at 1.1.0; kong_konnect
-# pins a package the range table does not cover.
+# One fixture per status arm. `vulnerable` pins mcp-grafana at 1.0.0 (below the
+# 1.1.0 fix floor); `patched` pins it at 1.1.0; `no_range_knowledge` launches
+# mcp-gateway-registry 1.0.12, which an older supply_chain floor reports
+# (CVE-2026-14471) but the range table does not cover. That arm used the
+# kong_konnect fixture until AAK-MCP-KONG-CVE-2026-13341-001 was retired.
 AFFECTED_FIXTURE = FIXTURES / "cves" / "cve-2026-19516-mcp-grafana" / "vulnerable"
 FIXED_FIXTURE = FIXTURES / "cves" / "cve-2026-19516-mcp-grafana" / "patched"
-UNDER_INVESTIGATION_FIXTURE = FIXTURES / "kong_konnect"
+UNDER_INVESTIGATION_FIXTURE = FIXTURES / "vex" / "no_range_knowledge"
 
 PINNED_TS = datetime(2026, 9, 12, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -143,7 +145,7 @@ def test_fixed_is_reachable_without_any_finding() -> None:
 
 def test_unresolvable_range_is_under_investigation() -> None:
     doc = _emit(UNDER_INVESTIGATION_FIXTURE)
-    assert _statuses(doc)["CVE-2026-13341"] == "under_investigation"
+    assert _statuses(doc)["CVE-2026-14471"] == "under_investigation"
 
 
 def test_under_investigation_carries_no_action_statement() -> None:

@@ -113,6 +113,24 @@ RETIRED_RULE_IDS: dict[str, RetiredRule] = {
             "`agent_audit_kit/data/prisma-airs-aak-map.json` and prints the coverage."
         ),
     ),
+    "AAK-MCP-KONG-CVE-2026-13341-001": RetiredRule(
+        title="Kong Konnect MCP server < 1.0.0 (indirect prompt injection)",
+        last_release="0.6.22",
+        reason=(
+            "It reported the Kong Konnect MCP server below 1.0.0 (CVE-2026-13341) by a "
+            "package name that was never published: on 2026-10-17 npm and PyPI returned 404 "
+            "for every spelling the rule matched, and for `kong-konnect-mcp`, the name in the "
+            "project's own `package.json`. Kong/mcp-konnect, the repository the advisory "
+            "names, is archived. Its README installs the server from a clone and launches "
+            "`node /absolute/path/to/mcp-konnect/build/index.js`, which states no version a "
+            "static scan can judge."
+        ),
+        replacement=(
+            "Nothing replaces it. The advisory, GHSA-7767-3m3w-2p44, gives 1.0.0 as the fix, "
+            "so a clone of Kong/mcp-konnect should be on v1.0.0 or later. Kong points users "
+            "to its remote Konnect MCP server instead."
+        ),
+    ),
 }
 
 
@@ -226,7 +244,6 @@ _AICM_TAGS: dict[str, list[str]] = {
     "AAK-OAUTH-008": ["IAM-01", "IAM-16"],
     "AAK-AZURE-MCP-NOAUTH-001": ["IAM-01", "IAM-16"],
     "AAK-MCP-AUTH-PATHTRAVERSAL-001": ["IAM-01", "IVS-04"],
-    "AAK-MCP-KONG-CVE-2026-13341-001": ["AIS-07", "AIS-12"],
     "AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001": ["AIS-07", "DSP-07"],
     "AAK-MCP-SSRF-001": ["IVS-04", "AIS-08"],
     "AAK-MCP-SERENA-CVE-2026-49471-001": ["IAM-01", "IAM-16"],
@@ -8832,40 +8849,6 @@ _r(
         "capability counts as asserted only when its value is the boolean `true`: a "
         "card that lists `tools`, `resources`, `prompts` and `logging` as objects "
         "is not reported."
-    ),
-)
-
-_r(
-    "AAK-MCP-KONG-CVE-2026-13341-001",
-    "Kong Konnect MCP server < 1.0.0 (indirect prompt injection)",
-    "The Kong Konnect MCP server before 1.0.0 is vulnerable to indirect prompt "
-    "injection: untrusted content returned to the server (e.g. an API response, "
-    "spec, or resource body it relays to the agent) can carry attacker-authored "
-    "instructions that the agent then acts on, causing it to issue unintended "
-    "Kong Admin/Konnect API requests it was never asked to make — a "
-    "confidentiality-impacting cross-boundary injection, not a generic "
-    "prompt-injection heuristic (CVE-2026-13341, CVSS 7.4 HIGH, published "
-    "2026-07-03). A config that dispatches the Konnect MCP server at a version "
-    "below 1.0.0 (or unpinned) is exposed.",
-    Severity.HIGH,
-    Category.TOOL_POISONING,
-    "Upgrade the Kong Konnect MCP server to >= 1.0.0 and pin it explicitly. "
-    "Treat every API/spec/resource body the server relays as untrusted data "
-    "(never as instructions), and constrain the agent's Konnect/Admin API "
-    "credentials to the least scope the workflow needs so an injected request "
-    "cannot reach sensitive endpoints.",
-    sarif_name="KongKonnectMcpPromptInjection",
-    cve_references=["CVE-2026-13341"],
-    owasp_mcp_references=["MCP04:2025", "MCP06:2025"],
-    owasp_agentic_references=["ASI01", "ASI04"],
-    adversa_references=["ADV-INJECT-01"],
-    limitations=(
-        "Reads the `konnect-mcp` spelling (with an optional `kong-` or `@kong/` "
-        "before it and `-server` after it) in manifests, `.mcp.json`, `mcp.json` "
-        "and `claude_desktop_config.json` at the project root. The `mcp-konnect` "
-        "order, as in `npx @kong/mcp-konnect@0.1.0`, is not matched, and a server "
-        "configured in `.cursor/mcp.json` or `.vscode/mcp.json` is not read."
-        " A lockfile over 32 MiB is not read."
     ),
 )
 

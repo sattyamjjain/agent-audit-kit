@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "gateway-registry": {
+      "command": "uvx",
+      "args": ["mcp-gateway-registry@1.0.12"]
+    }
+  }
+}

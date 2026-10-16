@@ -580,8 +580,6 @@ def test_a_lockfile_over_the_limit_is_not_read(tmp_path: Path, monkeypatch: pyte
 # MAX_LOCKFILE_BYTES unread; now they skip it too, and their rules say so.
 _PIN_CHECK_LOCKFILES = [
     ("AAK-DORIS-001", "poetry.lock", "apache-doris-mcp-server==0.5.0\n"),
-    ("AAK-MCP-KONG-CVE-2026-13341-001", "package-lock.json",
-     '{"packages": {"node_modules/@kong/konnect-mcp": {"version": "0.9.0"}}}\n'),
     ("AAK-MCP-GATEWAY-REGISTRY-CVE-2026-14471-001", "uv.lock",
      '[[package]]\nname = "mcp-gateway-registry"\nversion = "1.0.0"\n'),
     ("AAK-MCP-SERENA-CVE-2026-49471-001", "uv.lock", '[[package]]\nname = "serena-agent"\nversion = "1.5.0"\n'),

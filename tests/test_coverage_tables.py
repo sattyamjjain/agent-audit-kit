@@ -40,9 +40,18 @@ def test_mcp_table_covers_all_ten() -> None:
         assert code in text
 
 
-def test_kong_rule_lands_in_leaderboard() -> None:
-    text = gen_coverage.render_mcp()
-    assert "AAK-MCP-KONG-CVE-2026-13341-001" in text  # MCP05
+def test_a_retired_rule_leaves_the_leaderboard() -> None:
+    """The tables are rendered from the registry, so a retired id must be gone from them.
+
+    AAK-MCP-KONG-CVE-2026-13341-001 used to be this file's sample of a rule landing in
+    the MCP table; it was retired with the others in `RETIRED_RULE_IDS`.
+    """
+    from agent_audit_kit.rules.builtin import RETIRED_RULE_IDS
+
+    tables = gen_coverage.render_mcp() + gen_coverage.render_agentic()
+    assert RETIRED_RULE_IDS
+    assert not [rule_id for rule_id in RETIRED_RULE_IDS if rule_id in tables]
+    assert "AAK-MCP-AGENTICMAIL-CVE-2026-57495-001" in gen_coverage.render_mcp()  # MCP06
 
 
 def test_toolkit_note_is_sourced_and_honest() -> None:

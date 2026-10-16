@@ -1,13 +1,13 @@
 {
   "schema_version": "1",
-  "last_updated": "2026-10-16T20:14:38Z",
+  "last_updated": "2026-10-16T20:15:01Z",
   "aak_version": "0.6.22",
-  "rule_count": 407,
+  "rule_count": 406,
   "coverage": [
     {
       "asi_id": "ASI01",
       "title": "Agent Goal Hijack",
-      "rule_density": 18,
+      "rule_density": 17,
       "rules": [
         {
           "id": "AAK-AGENT-001",
@@ -82,17 +82,6 @@
           "aicm_references": [
             "AIS-07",
             "AIS-08"
-          ]
-        },
-        {
-          "id": "AAK-MCP-KONG-CVE-2026-13341-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-13341"
-          ],
-          "aicm_references": [
-            "AIS-07",
-            "AIS-12"
           ]
         },
         {
@@ -2235,7 +2224,7 @@
     {
       "asi_id": "ASI04",
       "title": "Agentic Supply Chain Vulnerabilities",
-      "rule_density": 196,
+      "rule_density": 195,
       "rules": [
         {
           "id": "AAK-AGENT-006",
@@ -3202,17 +3191,6 @@
             "CVE-2026-88938"
           ],
           "aicm_references": []
-        },
-        {
-          "id": "AAK-MCP-KONG-CVE-2026-13341-001",
-          "severity": "high",
-          "cve_references": [
-            "CVE-2026-13341"
-          ],
-          "aicm_references": [
-            "AIS-07",
-            "AIS-12"
-          ]
         },
         {
           "id": "AAK-MCP-KORTIX-CVE-2026-108115-001",
