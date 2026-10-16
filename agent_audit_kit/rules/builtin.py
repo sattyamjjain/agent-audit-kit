@@ -3353,7 +3353,7 @@ _r(
 #     code_challenge_method
 #        OPTIONAL, defaults to "plain" if not present in the request.
 # so a request that leaves the method out is a plain request, which the
-# description names ("or omits it") and the limitation says is not reported.
+# limitation says is not reported.
 # A request-level arm (a dict literal, `dict(...)` call or URL string naming
 # both `response_type` and `code_challenge`, in a file that never names the
 # method) was measured on 2026-10-17 on 3,876 files from GitHub code search:
@@ -3363,9 +3363,9 @@ _r(
 _r(
     "AAK-OAUTH-002",
     "PKCE using the plain challenge method",
-    "An OAuth client sets code_challenge_method=plain (or omits it). S256 "
-    "is mandatory; 'plain' leaks the verifier to anyone with access to the "
-    "authorization request.",
+    "An OAuth client sets code_challenge_method=plain. S256 is mandatory; "
+    "'plain' leaks the verifier to anyone with access to the authorization "
+    "request.",
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Set code_challenge_method=S256 and derive code_challenge as "
@@ -3379,11 +3379,11 @@ _r(
         "authorization_endpoint, token_endpoint or client_id (in any case; "
         "`GOOGLE_CLIENT_ID` does not count) or the call `authorize(`. In them it fires "
         "only when `code_challenge_method` is assigned the literal `plain` "
-        "(`code_challenge_method=plain`, `\"code_challenge_method\": \"plain\"`). A "
-        "request that sends a `code_challenge` with no method at all, which RFC 7636 "
-        "treats as plain, one that takes the method from a constant (`METHOD = "
-        "\"plain\"`), and the same literal in a file with none of those words, are not "
-        "reported."
+        "(`code_challenge_method=plain`, `\"code_challenge_method\": \"plain\"`). An "
+        "authorization request that sends `code_challenge` with no "
+        "`code_challenge_method` defaults to `plain` (RFC 7636 §4.3) and is not "
+        "reported. Neither is a method taken from a constant (`METHOD = \"plain\"`), "
+        "or the same literal in a file with none of those words."
     ),
 )
 
