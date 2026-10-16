@@ -33,7 +33,9 @@ short copy is the only copy anyone uses.
 from __future__ import annotations
 
 import re
+from bisect import bisect_left
 from pathlib import Path
+from typing import Callable, Iterator
 
 from agent_audit_kit.models import Finding
 
@@ -69,11 +71,21 @@ _PY_TRUNC_RE = re.compile(
 
 # A deny / block decision being made. Deliberately broad on naming, because the
 # vendor names vary, but it must look like a *policy* decision, not any regex.
+#
+# Every use asks only whether it matches somewhere. The letters after `deny`,
+# `block`, `forbidden` and `disallow` used to be read to the end of their run by
+# every occurrence of the word in it, so a run of `deny` repeated grew with the
+# square: 80,000 characters took 31 seconds. Each read now stops at the next
+# occurrence of its own word, which reads on to the same end itself. Whether a
+# suffix ends the run, followed by a non-word character, is the same for every
+# occurrence in the run, and none of the four words can overlap a suffix, so the
+# last occurrence that leaves room for a suffix matches exactly when the first
+# did.
 _DENY_CONTEXT_RE = re.compile(
-    r"deny[_A-Za-z]*(?:Pattern|List|Rule|Match|Regex|s)\b"
-    r"|block(?:ed)?[_A-Za-z]*(?:Pattern|List|Rule|Match|Regex|s)\b"
-    r"|forbidden[_A-Za-z]*\b"
-    r"|disallow(?:ed)?[_A-Za-z]*\b"
+    r"deny(?:(?!deny)[_A-Za-z])*(?:Pattern|List|Rule|Match|Regex|s)\b"
+    r"|block(?:ed)?(?:(?!block)[_A-Za-z])*(?:Pattern|List|Rule|Match|Regex|s)\b"
+    r"|forbidden(?:(?!forbidden)[_A-Za-z])*\b"
+    r"|disallow(?:ed)?(?:(?!disallow)[_A-Za-z])*\b"
     r"|blacklist\w*"
     r"|hard[_-]?deny\w*",
     re.IGNORECASE,
@@ -118,25 +130,228 @@ def _strip_prose(text: str, is_python: bool) -> str:
     return _TS_LINE_COMMENT_RE.sub(" ", sub_up_to_last(_TS_BLOCK_COMMENT_RE, " ", text, "*/"))
 
 
-def _source_used_untruncated(code: str, src: str, var: str) -> bool:
-    """Is the original still referenced somewhere other than the truncation?
+# A reference to the untruncated source: not part of a longer name or a member
+# access before it, not followed by more of a name.
+_SOURCE_REF = r"(?<![\w$.]){src}(?![\w$])"
 
-    Without this, a file that truncates once and only ever uses the short copy
-    is legitimate — there is no policy/executor asymmetry to exploit.
+# The sites of `_TEST_TEMPLATE`'s six forms, found once for every variable at
+# once (see `_TruncationChecks`). Forms 1 and 5 start inside the run of name
+# characters before them (the variable has no left boundary there), so they are
+# found from the run's end and the variable is a suffix of the run.
+_FORM_METHOD_RE = re.compile(r"(?<=[\w$])\s*\.\s*(?:match|search|test|includes|startsWith|indexOf)\s*\(")
+_FORM_ARG_RE = re.compile(r"\.\s*(?:test|exec|search|match|fullmatch)\s*\(\s*([\w$]+)\s*\)")
+_FORM_CALL_RE = re.compile(_TEST_CALL)
+_FORM_IN_BEFORE_RE = re.compile(r"\bin(?=\s+[\w$])")
+_FORM_IN_AFTER_RE = re.compile(r"(?<=[\w$])\s+in\b")
+_FORM_PAREN_RE = re.compile(r"\(\s*([\w$]+)\s*\)")
+_BLANKS_RE = re.compile(r"\s*")
+_NAME_RUN_RE = re.compile(r"[\w$]*")
+_ARG_NAME_RE = re.compile(r"\s*([\w$]+)\s*")
+_BOUNDARY_RE = re.compile(r"\b")
+_CLOSE_PAREN_RE = re.compile(r"\)")
+_COMMA_RE = re.compile(r",")
+# A maximal run of name and member-access characters, where a source can start.
+_SOURCE_RUN_RE = re.compile(r"(?<![\w$.])[A-Za-z_$][\w$.]*")
+_NAME_CHAR_RE = re.compile(r"[\w$]")
+
+
+class _TruncationChecks:
+    """The two questions asked of every truncation, answered from one pass.
+
+    Whether the policy tests the truncated variable, and whether the source is
+    still used untruncated, were each a fresh regex over the whole file for
+    every truncation, compiled per name: 4,000 truncations in 79 KB took 5.6
+    seconds and 790 KB took 493, growing with the square of the file. Both are
+    now read off indexes built once per file, and each answer is the one the
+    per-name regex gave: `tests/test_policy_truncation.py` holds them to
+    `_TEST_TEMPLATE` and `_SOURCE_REF` on generated files.
     """
-    base = re.escape(src)
-    # Occurrences of the source identifier that are not the truncation itself.
-    hits = len(re.findall(rf"(?<![\w$.]){base}(?![\w$])", code))
-    # One hit is the truncation's own right-hand side.
-    return hits >= 2 and src != var
+
+    def __init__(self, code: str, names: set[str], sources: set[str]) -> None:
+        self._code = code
+        self._sites = _test_sites(code, names)
+        self._deny_windows: dict[tuple[int, int], bool] = {}
+        self._tested: dict[str, bool] = {}
+        self._sources = sources
+        self._refs: _SourceRefs | None = None
+
+    def tests_truncated_value(self, var: str) -> bool:
+        """Does a deny-flavoured test read ``var``? The deny context must be
+        near the test, not merely somewhere in the file."""
+        hit = self._tested.get(var)
+        if hit is None:
+            hit = self._tested[var] = any(self._deny_near(*span) for span in self.test_matches(var))
+        return hit
+
+    def test_matches(self, var: str) -> Iterator[tuple[int, int]]:
+        """The spans `_TEST_TEMPLATE`'s regex for ``var`` matches, in order: its
+        sites by start, at each start the first form that matches there, and
+        none starting inside the previous match."""
+        resume = 0
+        for start, _form, end in sorted(self._sites.get(var, ())):
+            if start >= resume:
+                resume = end
+                yield start, end
+
+    def source_used_untruncated(self, src: str, var: str) -> bool:
+        """Is the original still referenced somewhere other than the truncation?
+
+        Without this, a file that truncates once and only ever uses the short
+        copy is legitimate — there is no policy/executor asymmetry to exploit.
+        One reference is the truncation's own right-hand side.
+        """
+        if self._refs is None:
+            self._refs = _SourceRefs(self._code, self._sources)
+        return self._refs.at_least_two(src) and src != var
+
+    def _deny_near(self, start: int, end: int) -> bool:
+        key = (start, end)
+        hit = self._deny_windows.get(key)
+        if hit is None:
+            window = (max(0, start - 400), end + 400)
+            hit = self._deny_windows[key] = bool(_DENY_CONTEXT_RE.search(self._code, *window))
+        return hit
 
 
-def _policy_tests_the_truncated_value(code: str, var: str) -> bool:
-    pattern = _TEST_TEMPLATE.format(var=re.escape(var))
-    for m in re.finditer(pattern, code):
-        # The deny context must be near the test, not merely somewhere in file.
-        window = code[max(0, m.start() - 400):m.end() + 400]
-        if _DENY_CONTEXT_RE.search(window):
+def _test_sites(code: str, names: set[str]) -> dict[str, list[tuple[int, int, int]]]:
+    """``name -> [(start, form, end)]`` for every match `_TEST_TEMPLATE` has for
+    a name in ``names``, form numbered as in the template (1 to 6)."""
+    sites: dict[str, list[tuple[int, int, int]]] = {}
+    lengths = sorted({len(n) for n in names})
+    reverse = code[::-1]
+
+    def add(name: str, start: int, form: int, end: int) -> None:
+        if name in names:
+            sites.setdefault(name, []).append((start, form, end))
+
+    def suffixes(run_end: int, form: int, end: int) -> None:
+        # The run of name characters that ends at ``run_end``, read backwards.
+        run = _end_of(_NAME_RUN_RE, reverse, len(code) - run_end) - (len(code) - run_end)
+        for n in lengths:
+            if n > run:
+                break
+            add(code[run_end - n:run_end], run_end - n, form, end)
+
+    for m in _FORM_METHOD_RE.finditer(code):
+        suffixes(m.start(), 1, m.end())
+    for m in _FORM_ARG_RE.finditer(code):
+        add(m.group(1), m.start(), 2, m.end())
+    _call_sites(code, add)
+    for m in _FORM_IN_BEFORE_RE.finditer(code):
+        at = _end_of(_BLANKS_RE, code, m.end())
+        run = _end_of(_NAME_RUN_RE, code, at) - at
+        for n in lengths:
+            if n > run:
+                break
+            if _BOUNDARY_RE.match(code, at + n):
+                add(code[at:at + n], m.start(), 4, at + n)
+    for m in _FORM_IN_AFTER_RE.finditer(code):
+        suffixes(m.start(), 5, m.end())
+    for m in _FORM_PAREN_RE.finditer(code):
+        add(m.group(1), m.start(), 6, m.end())
+    return sites
+
+
+def _end_of(pattern: re.Pattern[str], text: str, pos: int) -> int:
+    """Where a pattern that may match nothing (`\\s*`, `[\\w$]*`) stops from ``pos``."""
+    m = pattern.match(text, pos)
+    return m.end() if m else pos
+
+
+def _call_sites(code: str, add: Callable[[str, int, int, int], None]) -> None:
+    """Form 3: a test call whose last argument is the name.
+
+    Its arguments are read up to the first `)` or the next test call, then back
+    to the last `,` before that `)`; the name is what lies between the two.
+    """
+    calls = list(_FORM_CALL_RE.finditer(code))
+    opens = [m.start() for m in calls]
+    closes = [m.start() for m in _CLOSE_PAREN_RE.finditer(code)]
+    commas = [m.start() for m in _COMMA_RE.finditer(code)]
+    for m in calls:
+        args = m.end()
+        nxt = bisect_left(closes, args)
+        close = closes[nxt] if nxt < len(closes) else len(code)
+        nxt_open = bisect_left(opens, args)
+        if nxt_open < len(opens) and opens[nxt_open] < close:
+            continue  # the next test call comes first and reads on itself
+        if close == len(code):
+            continue
+        last = bisect_left(commas, close) - 1
+        if last < 0 or commas[last] < args:
+            continue
+        name = _ARG_NAME_RE.fullmatch(code, commas[last] + 1, close)
+        if name:
+            add(name.group(1), m.start(), 3, close + 1)
+
+
+class _SourceRefs:
+    """How many references `_SOURCE_REF` finds for each source, up to two.
+
+    A reference starts where a run of name and member-access characters starts.
+    A source without brackets is that run, or the part of it before one of its
+    dots. A source with a bracket is the run up to its first bracket followed
+    by the rest, so it is looked for only where that run starts, and two of
+    them count only when the later one starts after the earlier one ends (one
+    can overlap another, and the regex reads them left to right). Bracketed
+    sources of one head and length are keyed by their text together, within a
+    budget of a few times the file; past it, a source is counted by reading the
+    file, which is what the budget saves.
+    """
+
+    def __init__(self, code: str, sources: set[str]) -> None:
+        self._code = code
+        self._runs: dict[str, list[int]] = {}
+        for m in _SOURCE_RUN_RE.finditer(code):
+            self._runs.setdefault(m.group(), []).append(m.start())
+        self._dotted: dict[str, int] = {}
+        plain_lengths = {len(s) for s in sources if "[" not in s and "]" not in s}
+        for run, starts in self._runs.items():
+            dot = run.find(".")
+            while dot >= 0:
+                if dot in plain_lengths:
+                    prefix = run[:dot]
+                    self._dotted[prefix] = self._dotted.get(prefix, 0) + len(starts)
+                dot = run.find(".", dot + 1)
+        self._bracketed: dict[tuple[str, int], dict[str, list[int]]] = {}
+        self._budget = 8 * len(code) + 65_536
+        self._answers: dict[str, bool] = {}
+
+    def at_least_two(self, src: str) -> bool:
+        hit = self._answers.get(src)
+        if hit is None:
+            hit = self._answers[src] = self._count(src)
+        return hit
+
+    def _count(self, src: str) -> bool:
+        cut = min((i for i in (src.find("["), src.find("]")) if i >= 0), default=-1)
+        if cut < 0:
+            return len(self._runs.get(src, ())) + self._dotted.get(src, 0) >= 2
+        head, size = src[:cut], len(src)
+        starts = self._runs.get(head, [])
+        group = self._bracketed.get((head, size))
+        if group is None:
+            if len(starts) * size > self._budget:
+                return _two_refs(self._code, src)
+            self._budget -= len(starts) * size
+            group = self._bracketed[(head, size)] = {}
+            code = self._code
+            for start in starts:
+                after = start + size
+                if after <= len(code) and not _NAME_CHAR_RE.match(code, after):
+                    group.setdefault(code[start:after], []).append(start)
+        refs = group.get(src, [])
+        return bool(refs) and refs[-1] >= refs[0] + size
+
+
+def _two_refs(code: str, src: str) -> bool:
+    """`_SOURCE_REF` read directly, stopping at the second reference."""
+    if code.count(src) < 2:
+        return False
+    found = 0
+    for _ in re.finditer(_SOURCE_REF.format(src=re.escape(src)), code):
+        found += 1
+        if found == 2:
             return True
     return False
 
@@ -146,11 +361,14 @@ def _scan_text(code: str, is_python: bool) -> tuple[str, str, str] | None:
     if not _DENY_CONTEXT_RE.search(code):
         return None
     trunc_re = _PY_TRUNC_RE if is_python else _JS_TRUNC_RE
-    for m in trunc_re.finditer(code):
-        var, src, bound = m.group("var"), m.group("src"), m.group("n")
-        if not _policy_tests_the_truncated_value(code, var):
+    truncations = [(m.group("var"), m.group("src"), m.group("n")) for m in trunc_re.finditer(code)]
+    if not truncations:
+        return None
+    checks = _TruncationChecks(code, {t[0] for t in truncations}, {t[1] for t in truncations})
+    for var, src, bound in truncations:
+        if not checks.tests_truncated_value(var):
             continue
-        if not _source_used_untruncated(code, src, var):
+        if not checks.source_used_untruncated(src, var):
             continue
         return var, src, bound
     return None
