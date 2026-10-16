@@ -6073,11 +6073,16 @@ _r(
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-LOG-01"],
     limitations=(
-        "Reads the arguments of calls spelled `logger.<level>`, `log.<level>`, "
-        "`console.<level>` and `sys.stdout.write` in functions whose decorator name "
-        "ends in `tool`. `logging.info(...)`, `self.logger.info(...)` and "
-        "`print(...)` are not matched, and a `.replace(\"\\n\", ...)` or a `sanitize` "
-        "call anywhere in the function clears it, whichever value that touches."
+        "Reads the arguments of `print`, of a level method (`info`, `exception` and "
+        "the rest) of `logger`, `log` or the `logging` module, of any `sys.stdout` or "
+        "`sys.stderr` method and of `console.<log|info|warn|error>`, in functions "
+        "whose decorator name ends in `tool`. A logger held as an attribute "
+        "(`self.logger.info(...)`) is not read: measured on 9,137 Python files from "
+        "GitHub code searches for MCP servers, it would add 69 findings, only 44 of "
+        "them (64%) a "
+        "raw string parameter. Nor is a logger under another name "
+        "(`_logger.info(...)`), and a `.replace(\"\\n\", ...)` or a `sanitize` call "
+        "anywhere in the function clears it, whichever value that touches."
     ),
 )
 

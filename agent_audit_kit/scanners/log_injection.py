@@ -1,15 +1,16 @@
 """Log-injection scanner for MCP tool handlers (AAK-LOGINJ-001 / CVE-2026-6494).
 
-A `@tool`-decorated function parameter flows into `logger.*` / `print` /
-`sys.stdout.write` / `console.log` without stripping CRLF or ANSI
-escape sequences. Attackers can forge log entries + inject escape
-sequences to social-engineer an operator into running dangerous
-commands.
+A `@tool`-decorated function parameter flows into `logger.*` / `logging.*` /
+`print` / `sys.stdout.write` / `sys.stderr.write` / `console.log` without
+stripping CRLF or ANSI escape sequences. Attackers can forge log entries +
+inject escape sequences to social-engineer an operator into running
+dangerous commands.
 
 Detection is pragmatic:
 - locate functions decorated with anything ending in `tool`
-- for each, check the body for logger.* / print / sys.stdout.write
-  calls whose args reference a parameter name
+- for each, check the body for the calls `_log_target` reads (logger.*,
+  logging.*, print, sys.stdout / sys.stderr) whose args reference a
+  parameter name
 - fire unless the function has obvious sanitization:
     * `.replace('\\r', '').replace('\\n', '')`, or
     * `.encode('ascii', 'ignore').decode()`, or
@@ -31,13 +32,14 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
 
 
-_LOG_CALL_PATTERNS = {
-    ("logger", "info"), ("logger", "debug"), ("logger", "warning"),
-    ("logger", "error"), ("logger", "critical"), ("logger", "log"),
-    ("log", "info"), ("log", "debug"), ("log", "warning"), ("log", "error"),
-    ("sys", "stdout"), ("sys", "stderr"),
-    ("console", "log"), ("console", "info"), ("console", "warn"), ("console", "error"),
-}
+# Every level method of a stdlib logger. `logger` lacked `exception`, `warn`
+# and `fatal`, and `log` also `critical` and `log`, so the `logger.exception`
+# in an `except` block, the commonest way a tool logs a failure, was not read.
+_LOG_LEVELS = frozenset({
+    "debug", "info", "warning", "warn", "error", "critical", "exception", "fatal", "log",
+})
+_LOGGER_NAMES = frozenset({"logger", "log"})
+_CONSOLE_METHODS = frozenset({"log", "info", "warn", "error"})
 _SANITIZERS = re.compile(
     r"""sanitize|strip_control|escape_controls|re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]|
         \.replace\s*\(\s*['"]\\r['"]|
@@ -71,17 +73,39 @@ def _is_tool_decorated(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
 
 
 def _log_target(call: ast.Call) -> tuple[str, str] | None:
+    """The (receiver, method) of a call that writes its arguments to a log or a console, else None.
+
+    The sinks are `print`, a level method of `logger`, `log` or the `logging`
+    module, any method of `sys.stdout` or `sys.stderr`, and
+    `console.<log|info|warn|error>`. The rule text named `print` and this
+    returned a pair for it, but the table it was checked against had none, so
+    `print` was never a sink; nor were `sys.stderr` (only `sys.stdout` was
+    peeled) or the `logging` module's own functions.
+
+    Each was measured before it was added, on 9,137 Python files from GitHub
+    code searches for MCP servers, reading every finding it added: true means
+    a tool parameter reaches the call as a raw string. `print` added 372
+    findings, 82.5% true; the `logging` functions 100, 84.0%; `sys.stderr` 43,
+    95.3%; the levels `logger` and `log` lacked (`exception` above all) 373,
+    92.8%. A logger held as an attribute (`self.logger.info`) is left out: 69
+    findings, 63.8% true, most of the rest an int, a list or a `!r` value in a
+    class-based server's debug logging.
+    """
     func = call.func
-    if isinstance(func, ast.Name) and func.id == "print":
-        return ("", "print")
-    if isinstance(func, ast.Attribute):
-        node = func.value
-        if isinstance(node, ast.Name):
+    if isinstance(func, ast.Name):
+        return ("", "print") if func.id == "print" else None
+    if not isinstance(func, ast.Attribute):
+        return None
+    node = func.value
+    if isinstance(node, ast.Name):
+        if node.id in _LOGGER_NAMES or node.id == "logging":
+            return (node.id, func.attr) if func.attr in _LOG_LEVELS else None
+        if node.id == "console" and func.attr in _CONSOLE_METHODS:
             return (node.id, func.attr)
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            # `sys.stdout.write` → (stdout, write) after peeling sys.
-            if node.value.id == "sys" and node.attr == "stdout":
-                return ("sys", "stdout")
+        return None
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "sys":
+        # `sys.stdout.write` → (sys, stdout) after peeling the method.
+        return ("sys", node.attr) if node.attr in ("stdout", "stderr") else None
     return None
 
 
@@ -123,7 +147,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             continue
         for call in (c for c in ast.walk(node) if isinstance(c, ast.Call)):
             target = _log_target(call)
-            if target is None or target not in _LOG_CALL_PATTERNS:
+            if target is None:
                 continue
             for arg in list(call.args) + [kw.value for kw in call.keywords]:
                 if _arg_refs_param(arg, params):

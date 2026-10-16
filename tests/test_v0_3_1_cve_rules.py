@@ -171,6 +171,90 @@ def test_loginj_sanitized_tool_is_quiet(tmp_path: Path) -> None:
     assert not any(f.rule_id == "AAK-LOGINJ-001" for f in findings)
 
 
+_LOGINJ_FN = '''import logging
+import sys
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("notes")
+logger = logging.getLogger(__name__)
+log = logger
+
+
+@mcp.tool()
+def add_note(text: str, count: int) -> str:
+    @@STMT@@
+    return text
+'''
+
+_LOGINJ_METHOD = '''import logging
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("notes")
+
+
+class Notes:
+    def __init__(self) -> None:
+        self.logger = logging.getLogger(__name__)
+
+    @mcp.tool()
+    def add_note(self, text: str) -> str:
+        @@STMT@@
+        return text
+'''
+
+
+def _loginj(tmp_path: Path, template: str, stmt: str) -> list[tuple[int | None, str]]:
+    (tmp_path / "server.py").write_text(template.replace("@@STMT@@", stmt), encoding="utf-8")
+    findings, _ = log_injection.scan(tmp_path)
+    return [(f.line_number, f.evidence) for f in findings if f.rule_id == "AAK-LOGINJ-001"]
+
+
+@pytest.mark.parametrize(("stmt", "via"), [
+    ('print("adding", text)', "print"),
+    ('print(f"adding {text}", file=sys.stderr, flush=True)', "print"),
+    ('logging.info("adding %s", text)', "logging.info"),
+    ('logging.warning(f"adding {text}")', "logging.warning"),
+    ('logger.exception("adding %s failed", text)', "logger.exception"),
+    ('log.exception("adding %s failed", text)', "log.exception"),
+    ('log.critical("adding %s", text)', "log.critical"),
+    ('logger.warn("adding %s", text)', "logger.warn"),
+])
+def test_loginj_reads_print_and_every_logger_level(tmp_path: Path, stmt: str, via: str) -> None:
+    hits = _loginj(tmp_path, _LOGINJ_FN, stmt)
+    assert [line for line, _ in hits] == [13]
+    assert f"via {via}(...)" in hits[0][1]
+
+
+def test_loginj_does_not_read_a_logger_held_on_the_instance(tmp_path: Path) -> None:
+    """Measured and left out (stated in the limitation): on 9,137 Python files
+    from code searches for MCP servers the attribute form added 69 findings,
+    63.8% true."""
+    assert _loginj(tmp_path, _LOGINJ_METHOD, 'self.logger.info("adding %s", text)') == []
+
+
+def test_loginj_reads_sys_stderr_like_sys_stdout(tmp_path: Path) -> None:
+    for stream in ("stdout", "stderr"):
+        hits = _loginj(tmp_path, _LOGINJ_FN, f'sys.{stream}.write(text + "\\n")')
+        assert [line for line, _ in hits] == [13], stream
+        assert f"via sys.{stream}(...)" in hits[0][1]
+
+
+@pytest.mark.parametrize("stmt", [
+    'print("adding a note")',
+    'logging.basicConfig(level="INFO")',
+    "logging.getLogger(text)",
+    "sys.stderr.flush()",
+    'print("adding", text.replace("\\n", " "))',
+    '_logger.info("adding %s", text)',
+])
+def test_loginj_static_text_and_other_calls_stay_silent(tmp_path: Path, stmt: str) -> None:
+    """A call with no parameter in it, a `logging` call that is not a level,
+    a sanitised value, and a logger under another name (stated in the limitation)."""
+    assert _loginj(tmp_path, _LOGINJ_FN, stmt) == []
+
+
 def test_loginj_non_tool_function_ignored(tmp_path: Path) -> None:
     (tmp_path / "util.py").write_text(
         "import logging\n"
