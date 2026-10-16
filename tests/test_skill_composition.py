@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 from pathlib import Path
+
+import pytest
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.output.sarif import format_results
 from agent_audit_kit.rules.builtin import RULES
-from agent_audit_kit.scanners.skill_composition import scan
+from agent_audit_kit.scanners.skill_composition import _parse_frontmatter, scan
 
 FIX = Path(__file__).resolve().parent / "fixtures" / "skill_composition"
 RULE = "AAK-AGENT-COMPOSE-001"
@@ -143,3 +146,103 @@ def test_a_backslash_cannot_make_an_egress_url_look_allowlisted(tmp_path: Path) 
 def test_a_malformed_egress_url_is_non_allowlisted_not_a_crash(tmp_path: Path) -> None:
     """`urlparse` raises on an unclosed IPv6 bracket, which took the scanner down."""
     assert _ids(_collude_with_egress(tmp_path, "http://[::1/ping")) == [RULE]
+
+
+# ---------------------------------------------------------------------------
+# The SKILL.md frontmatter reader, shared by this scanner, agentic_skills,
+# composition and hook_injection. It must not raise on a hostile file, must end
+# the block only at a line that is `---`, and must stay linear when YAML aliases
+# repeat a node.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("value", [
+    "[" * 2000 + "]" * 2000,
+    "{a: " * 2000 + "1" + "}" * 2000,
+])
+def test_frontmatter_nested_past_the_recursion_limit_is_unread_not_a_crash(value: str) -> None:
+    assert _parse_frontmatter(f"---\nname: x\nmeta: {value}\n---\nbody\n") == {}
+
+
+def test_frontmatter_ends_only_at_a_line_that_is_three_dashes() -> None:
+    text = (
+        "---\nname: deploy\ndescription: Deploy the app --- fast\n"
+        "hooks:\n  Stop:\n    - command: echo done\n---\nBody with --- in it.\n---\nmore\n"
+    )
+    data = _parse_frontmatter(text)
+    assert data["description"] == "Deploy the app --- fast"
+    assert data["hooks"] == {"Stop": [{"command": "echo done"}]}
+
+
+def test_frontmatter_with_crlf_line_ends_is_read() -> None:
+    text = "---\r\nname: deploy\r\ndescription: Deploy\r\n---\r\nBody.\r\n"
+    assert _parse_frontmatter(text) == {"name": "deploy", "description": "Deploy"}
+
+
+@pytest.mark.parametrize("text", [
+    "---\nname: x\n",                           # never closed
+    "--- \nname: x\n--",                        # no closing line
+    "name: x\n---\nbody\n",                     # no opening line
+])
+def test_frontmatter_without_both_delimiter_lines_is_empty(text: str) -> None:
+    assert _parse_frontmatter(text) == {}
+
+
+def test_frontmatter_aliases_that_reuse_a_node_are_read() -> None:
+    text = (
+        "---\nname: fmt\nbase: &fmt {type: command, command: 'npx prettier --write .'}\n"
+        "hooks:\n  PostToolUse:\n    - matcher: Write\n      hooks: [*fmt]\n"
+        "    - matcher: Edit\n      hooks: [*fmt]\n---\n"
+    )
+    groups = _parse_frontmatter(text)["hooks"]["PostToolUse"]
+    assert [g["hooks"][0]["command"] for g in groups] == ["npx prettier --write ."] * 2
+
+
+def _amplified(k: int, m: int) -> str:
+    return (
+        "---\nname: x\nh: &h {type: command, command: 'echo hi'}\n"
+        "g: &g {hooks: [" + ", ".join(["*h"] * m) + "]}\n"
+        "hooks:\n  Stop: [" + ", ".join(["*g"] * k) + "]\n---\n"
+    )
+
+
+def test_frontmatter_that_aliases_expand_past_its_own_size_is_refused() -> None:
+    """300 references to a group of 300 references to one handler: 2,490
+    characters that read as 90,000 handlers. Every reader of the result walks
+    the expansion, so a hook scan of it took 2.9 s, and 24 KB took 136 s."""
+    assert _parse_frontmatter(_amplified(300, 300)) == {}
+
+
+def test_a_crafted_alias_expansion_reads_in_linear_time() -> None:
+    """24 KB of aliases standing for 9,000,000 handlers. The bound is loose for
+    slow CI runners."""
+    started = time.perf_counter()
+    assert _parse_frontmatter(_amplified(3000, 3000)) == {}
+    assert time.perf_counter() - started < 5.0
+
+
+def test_a_self_referencing_alias_is_refused() -> None:
+    assert _parse_frontmatter("---\nname: x\nloop: &a [*a]\n---\n") == {}
+
+
+@pytest.mark.parametrize("text", [
+    "---\nname: x\nmeta: " + "[" * 250_000 + "\n---\n",
+    "---\nname: x\nmeta: " + "{a: " * 120_000 + "\n---\n",
+    "---\n" + "".join(" " * i + f"k{i}:\n" for i in range(900)) + "---\n",
+])
+def test_deep_nesting_is_refused_while_it_is_scanned(text: str) -> None:
+    """PyYAML's scanner pays for every open flow level on every token, so a
+    structure 1,000 deep cost 213 ms of scanning alone and reaching the
+    recursion limit about 2 s, on every parse of the file. Nesting is refused
+    past 32 levels as it is scanned. The bound is loose for slow CI runners."""
+    started = time.perf_counter()
+    assert _parse_frontmatter(text) == {}
+    assert time.perf_counter() - started < 1.0
+
+
+def test_frontmatter_nested_as_deep_as_real_hooks_is_read() -> None:
+    text = (
+        "---\nname: x\nhooks:\n  PreToolUse:\n    - matcher: Bash\n      hooks:\n"
+        "        - type: command\n          command: echo hi\n          args: [-c, [x, [y]]]\n---\n"
+    )
+    handler = _parse_frontmatter(text)["hooks"]["PreToolUse"][0]["hooks"][0]
+    assert handler["args"] == ["-c", ["x", ["y"]]]

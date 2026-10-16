@@ -36,10 +36,13 @@ analysis cover in-body behaviour).
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
 import yaml
+from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
+from yaml.scanner import ScannerError
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, url_hosts
@@ -75,19 +78,119 @@ _PROJECT_OVERRIDE = ".aak/composition-boundaries.yaml"
 _MAX_FILE_BYTES = 512_000
 
 
+# The line that closes a frontmatter block: `---` alone, with trailing blanks
+# and a CR allowed. The block used to end at the next `---` anywhere, so
+# `description: Deploy the app --- fast` cut the block short and every key
+# after it, `hooks` and `allowed-tools` included, was never read.
+_FRONTMATTER_CLOSE_RE = re.compile(r"^---[ \t]*\r?$", re.MULTILINE)
+# How far YAML aliases may grow a block beyond its own length. Every reader of
+# the result walks it with each alias expanded, and nothing else bounds that:
+# 2,490 characters of `*g` references to a group of `*h` references read as
+# 90,000 hook handlers, and 24 KB as 9,000,000. No alias-free block comes near
+# the bound, because each node and each character of a scalar takes at least a
+# character of text; aliases that reuse a node a few times stay under it.
+_ALIAS_SLACK = 1_000
+# How deep flow collections (`[`, `{`), and separately block indentation, may
+# nest in a frontmatter block. A hooks block written the way the docs show
+# nests about eight levels.
+_MAX_NESTING = 32
+
+
+class _FrontmatterLoader(yaml.SafeLoader):
+    """SafeLoader that refuses nesting past `_MAX_NESTING` levels as it scans.
+
+    PyYAML's scanner revisits every open flow level on each token, so a
+    structure `d` deep costs `d` squared: 1,000 levels took 213 ms to scan, and
+    reaching the recursion limit, which the composer and constructor hit near
+    300 levels, about 2 s, on each of the four parses a SKILL.md gets. Counting
+    in the scanner rather than in the text keeps a `]` inside a quoted scalar
+    from hiding a level.
+    """
+
+    def fetch_flow_collection_start(self, TokenClass: type) -> None:
+        if self.flow_level >= _MAX_NESTING:
+            raise ScannerError(problem="flow collections nested too deeply", problem_mark=self.get_mark())
+        super().fetch_flow_collection_start(TokenClass)
+
+    def add_indent(self, column: int) -> bool:
+        if self.indent < column and len(self.indents) >= _MAX_NESTING:
+            raise ScannerError(problem="block collections nested too deeply", problem_mark=self.get_mark())
+        return super().add_indent(column)
+
+
 def _parse_frontmatter(text: str) -> dict:
-    """Parse the YAML frontmatter block of a SKILL.md, tolerant of no block."""
+    """Parse the YAML frontmatter block of a SKILL.md, tolerant of no block.
+
+    The block opens with `---` at the start of the file and closes at the next
+    line that is `---` alone. A block that YAML aliases expand past twice its
+    length (plus `_ALIAS_SLACK`), or whose alias sits inside its own anchor, is
+    refused like invalid YAML, and so is one nested past `_MAX_NESTING` levels.
+    PyYAML composes recursively, and `RecursionError` is neither a YAMLError nor
+    caught by any reader, so 2,000 `[` took down every scanner that called this;
+    the nesting limit stops a block long before that, and the except stays as a
+    backstop.
+    """
     if not text.startswith("---"):
         return {}
-    try:
-        _, fm, _ = text.split("---", 2)
-    except ValueError:
+    close = _FRONTMATTER_CLOSE_RE.search(text, 3)
+    if close is None:
         return {}
+    block = text[3:close.start()]
+    loader = _FrontmatterLoader(block)
     try:
-        data = yaml.safe_load(fm)
-    except yaml.YAMLError:
+        node = loader.get_single_node()
+        if node is None or _expanded_size(node, 2 * len(block) + _ALIAS_SLACK) is None:
+            return {}
+        data = loader.construct_document(node)
+    except (yaml.YAMLError, RecursionError):
         return {}
+    finally:
+        loader.dispose()
     return data if isinstance(data, dict) else {}
+
+
+def _children(node: Node) -> list[Node]:
+    if isinstance(node, SequenceNode):
+        return list(node.value)
+    if isinstance(node, MappingNode):
+        return [part for pair in node.value for part in pair]
+    return []
+
+
+def _expanded_size(root: Node, limit: int) -> int | None:
+    """The size of `root` with every alias expanded, or None past `limit` or on
+    a cycle. A node counts 1, a scalar 1 more per character, and a node an alias
+    reaches counts again each time. Iterative, and each node is sized once, so
+    the work is linear in the composed document whatever the aliases do."""
+    sizes: dict[int, int] = {}
+    on_path: set[int] = set()
+    stack: list[tuple[Node, bool]] = [(root, False)]
+    while stack:
+        node, children_sized = stack.pop()
+        key = id(node)
+        if children_sized:
+            on_path.discard(key)
+            total = 1 + sum(sizes[id(child)] for child in _children(node))
+            if total > limit:
+                return None
+            sizes[key] = total
+            continue
+        if key in sizes:
+            continue
+        if isinstance(node, ScalarNode):
+            size = 1 + len(node.value)
+            if size > limit:
+                return None
+            sizes[key] = size
+            continue
+        on_path.add(key)
+        stack.append((node, True))
+        for child in _children(node):
+            if id(child) in on_path:
+                return None
+            if id(child) not in sizes:
+                stack.append((child, False))
+    return sizes.get(id(root))
 
 
 def _as_list(value: object) -> list[str]:
