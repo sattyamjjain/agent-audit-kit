@@ -56,6 +56,12 @@ NETWORK_IN_SCRIPTS = re.compile(
 # Package fetchers for MCP config
 PACKAGE_FETCHERS = frozenset({"npx", "uvx", "bunx", "pnpx"})
 
+# The client configs AAK-SUPPLY-001 and AAK-SUPPLY-006 read, at the project root.
+# AAK-SUPPLY-006 kept a list of its own, .mcp.json and .vscode/mcp.json, so a
+# vulnerable launch in Cursor's, Amazon Q's or the root mcp.json was never looked
+# up, though AAK-SUPPLY-001 judged its pin in all five.
+_MCP_CONFIGS = (".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".amazonq/mcp.json", "mcp.json")
+
 
 _find_line_number = find_line_number
 _make_finding = make_finding
@@ -95,15 +101,7 @@ def _version_in_range(version: str, affected: str) -> bool:
 def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
     """Check MCP configs for unpinned packages (AAK-SUPPLY-001)."""
     findings: list[Finding] = []
-    mcp_files = [
-        project_root / ".mcp.json",
-        project_root / ".cursor" / "mcp.json",
-        project_root / ".vscode" / "mcp.json",
-        project_root / ".amazonq" / "mcp.json",
-        project_root / "mcp.json",
-    ]
-
-    for mcp_path in mcp_files:
+    for mcp_path in (project_root / name for name in _MCP_CONFIGS):
         if not mcp_path.is_file():
             continue
         try:
@@ -449,7 +447,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     # Track which files exist and were scanned
     for candidate in [
-        ".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".amazonq/mcp.json", "mcp.json",
+        *_MCP_CONFIGS,
         "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
         "pyproject.toml", "Pipfile", "Pipfile.lock", "poetry.lock", "uv.lock",
         "Cargo.toml", "Cargo.lock",
@@ -982,15 +980,12 @@ def _check_azure_mcp_auth(
     return findings
 
 
-# The configs AAK-SUPPLY-006 reads: the root .mcp.json, and VS Code's
-# .vscode/mcp.json, which keeps its servers under `servers`. Until both maps were
-# read through `iter_mcp_servers` the rule saw only `mcpServers` in .mcp.json, so
-# a vulnerable package launched from VS Code was never looked up.
-_SUPPLY_006_CONFIGS = (".mcp.json", ".vscode/mcp.json")
-
-
 def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
-    """AAK-SUPPLY-006: Check MCP server packages against vuln DB."""
+    """AAK-SUPPLY-006: Check MCP server packages against vuln DB.
+
+    Reads the configs AAK-SUPPLY-001 reads (`_MCP_CONFIGS`), both server maps of
+    each through `iter_mcp_servers`: VS Code keeps its servers under `servers`.
+    """
     findings: list[Finding] = []
     try:
         from agent_audit_kit.vuln_db import load_database
@@ -999,7 +994,7 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
         return findings
 
     npm_vulns = db.get("npm", {})
-    for name in _SUPPLY_006_CONFIGS:
+    for name in _MCP_CONFIGS:
         mcp_path = project_root / name
         if not mcp_path.is_file():
             continue

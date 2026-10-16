@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "x": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "axios@1.7.2"
+      ]
+    }
+  }
+}

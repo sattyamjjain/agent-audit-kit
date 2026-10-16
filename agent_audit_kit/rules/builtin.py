@@ -2055,14 +2055,16 @@ _r(
     owasp_agentic_references=["ASI04"],
     adversa_references=["ADV-SUPPLY-08"],
     limitations=(
-        "Reads the `args` of the servers in the root .mcp.json and in .vscode/mcp.json, "
-        "under `mcpServers` or VS Code's `servers`, and looks each `package@version` "
-        "up in the npm section of the vulnerability database, which bundles one "
-        "package, `axios` 1.7.0 to 1.7.3. OpenClaw is not in it: it publishes "
-        "calendar versions, which its own CVE pins read, and the only `openclaw` "
-        "below 2.1.0, where the database used to place it, is the empty placeholder "
-        "0.0.1. The same package in package.json or in an MCP config under `.cursor/` "
-        "is not read, and neither is a package that states no version."
+        "Reads the `args` of the servers in the MCP configs AAK-SUPPLY-001 reads at "
+        "the project root (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, "
+        ".amazonq/mcp.json and mcp.json), under `mcpServers` or VS Code's `servers`, "
+        "and looks each `package@version` up in the npm section of the vulnerability "
+        "database, which bundles one package, `axios` 1.7.0 to 1.7.3. OpenClaw is not "
+        "in it: it publishes calendar versions, which its own CVE pins read, and the "
+        "only `openclaw` below 2.1.0, where the database used to place it, is the "
+        "empty placeholder 0.0.1. The same package in package.json, in "
+        "claude_desktop_config.json or in a sub-project's .mcp.json is not reported, "
+        "and neither is a package that states no version."
     ),
 )
 

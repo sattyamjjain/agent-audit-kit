@@ -955,3 +955,26 @@ def test_supply_006_reads_both_maps_of_the_root_config(tmp_path: Path) -> None:
     (tmp_path / ".mcp.json").write_text(json.dumps(config), encoding="utf-8")
     hits = [evidence.split(" — ")[0] for _, evidence in _supply_006(tmp_path)]
     assert hits == ["Server 'a' uses axios@1.7.3", "Server 'b' uses axios@1.7.2"]
+
+
+_SUPPLY_001_CONFIGS = (".mcp.json", ".cursor/mcp.json", ".vscode/mcp.json", ".amazonq/mcp.json", "mcp.json")
+
+
+@pytest.mark.parametrize("rel", _SUPPLY_001_CONFIGS)
+def test_supply_006_reads_every_config_supply_001_reads(tmp_path: Path, rel: str) -> None:
+    """It read .mcp.json and .vscode/mcp.json only, so the same vulnerable launch
+    in Cursor's, Amazon Q's or the root mcp.json was never looked up, though
+    AAK-SUPPLY-001 judged its pin in all five."""
+    _write(tmp_path, rel, {"mcpServers": {"x": {"command": "npx", "args": ["-y", "axios@1.7.2"]}}})
+    assert [path for path, _ in _supply_006(tmp_path)] == [str(Path(rel))]
+    _write(tmp_path, rel, {"servers": {"x": {"command": "npx", "args": ["-y", "axios@1.7.4"]}}})
+    assert _supply_006(tmp_path) == []
+
+
+def test_supply_006_reads_a_jsonc_cursor_config(tmp_path: Path) -> None:
+    (tmp_path / ".cursor").mkdir()
+    (tmp_path / ".cursor" / "mcp.json").write_text(
+        '{\n  // Cursor allows comments\n  "mcpServers": {"x": {"command": "npx", "args": ["axios@1.7.3",],},},\n}\n',
+        encoding="utf-8",
+    )
+    assert [path for path, _ in _supply_006(tmp_path)] == [str(Path(".cursor") / "mcp.json")]
