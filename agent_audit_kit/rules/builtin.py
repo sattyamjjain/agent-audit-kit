@@ -7637,8 +7637,14 @@ _r(
         "import: a URL held in a constant is not seen. An untrusted source is "
         "recognised only from a short list (`request.json`, `request.args`, "
         "`pdfplumber.open`, `unstructured.partition`, `open(...).read()`), so a "
-        "page fetched with `requests.get(url).text` is not one, and any `re.sub(` "
-        "call in the function counts as sanitising."
+        "page fetched with `requests.get(url).text` is not one. Besides "
+        "`sanitize_tool_description`, a `re.sub` counts as sanitising only when the "
+        "pattern written in the call names `route` or `expert` (in any case), the "
+        "words in the routing tokens `[ROUTE: ...]`, `<|route_id|>`, `__route__=` and "
+        "`{{expert: ...}}`; collapsing whitespace, stripping tags or control "
+        "characters, or a character allow-list does not count. What the pattern "
+        "removes is not checked, so `re.sub(r\"route\", \"path\", doc)` counts, and "
+        "either one counts anywhere in the function, whichever value it cleans."
     ),
 )
 

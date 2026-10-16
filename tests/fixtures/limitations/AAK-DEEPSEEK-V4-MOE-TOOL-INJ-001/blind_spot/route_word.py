@@ -7,7 +7,8 @@ client = OpenAI(base_url="https://api.deepseek.com", api_key=os.environ["DEEPSEE
 
 
 def answer(request) -> str:
-    doc = re.sub(r"\s+", " ", request.json["document"])
+    # Drops the lower-case word only: `[ROUTE: expert_7]` goes through as is.
+    doc = re.sub(r"route", "path", request.json["document"])
     tools = [
         {
             "type": "function",

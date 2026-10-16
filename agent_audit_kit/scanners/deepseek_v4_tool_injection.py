@@ -48,12 +48,20 @@ _TAINT_RE = re.compile(
     """,
     re.VERBOSE,
 )
+# A `re.sub` counts only when the pattern written in the call names the routing
+# envelope (`route` or `expert`, any case), the words in the tokens
+# `sanitize_tool_description` removes: `[ROUTE: ...]`, `<|route_id|>`,
+# `__route__=`, `{{expert: ...}}`. Any `re.sub(` used to count, so collapsing
+# whitespace (`re.sub(r"\s+", " ", doc)`) silenced the rule while every routing
+# token went through. Whether the pattern really removes them is not checked:
+# that would mean running a regex the scanned file wrote, which a crafted one
+# could make take forever.
 _SANITIZE_RE = re.compile(
     r"""
     (?:
         sanitize_tool_description\s*\(
       | aak\.sanitizers\.deepseek
-      | re\.sub\s*\(
+      | re\.sub\s*\(\s*[rRbBuU]{0,2}['"][^'"\n]*(?i:route|expert)
     )
     """,
     re.VERBOSE,

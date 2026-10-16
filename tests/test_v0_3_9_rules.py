@@ -123,6 +123,66 @@ def test_deepseek_v4_sanitizer_passes(tmp_path: Path) -> None:
     )
 
 
+_DEEPSEEK = '''import re
+
+from flask import request
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.deepseek.com", api_key="x")
+
+
+def answer():
+    doc = request.json["doc"]
+@@SUB@@    return client.chat.completions.create(
+        model="deepseek-chat",
+        messages=[],
+        tools=[{"type": "function", "function": {"name": "lookup", "description": doc}}],
+    )
+'''
+
+
+@pytest.mark.parametrize("sub", [
+    # Whitespace, tags, control characters and a character allow-list: none
+    # removes the routing tokens, so none is the sanitiser the rule asks for.
+    '    doc = re.sub(r"\\s+", " ", doc)\n',
+    '    doc = re.sub(r"<[^>]+>", "", doc)\n',
+    '    doc = re.sub(r"[\\x00-\\x1f\\x7f]", "", doc)\n',
+    "    doc = re.sub(r'[^A-Za-z0-9 .,]', '', doc)\n",
+    '    doc = re.sub(pattern, "", doc)\n',
+])
+def test_deepseek_v4_a_substitution_that_leaves_routing_tokens_does_not_clear_it(
+    tmp_path: Path, sub: str
+) -> None:
+    (tmp_path / "app.py").write_text(_DEEPSEEK.replace("@@SUB@@", sub), encoding="utf-8")
+    findings, _ = deepseek_scan(tmp_path)
+    assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
+
+
+@pytest.mark.parametrize("sub", [
+    '    doc = re.sub(r"\\[\\s*ROUTE\\s*:[^\\]]*\\]", "", doc)\n',
+    '    doc = re.sub(r"<\\|\\s*route_id\\s*\\|>|__route__\\s*=", "", doc)\n',
+    "    doc = re.sub(r'\\{\\{?\\s*Expert\\s*:[^}]*\\}?\\}?', '[REDACTED]', doc, flags=re.I)\n",
+    '    doc = re.sub(\n        r"\\[ROUTE:[^\\]]*\\]", "", doc\n    )\n',
+    '    doc = sanitize_tool_description(doc)\n',
+])
+def test_deepseek_v4_a_substitution_aimed_at_routing_tokens_clears_it(tmp_path: Path, sub: str) -> None:
+    (tmp_path / "app.py").write_text(_DEEPSEEK.replace("@@SUB@@", sub), encoding="utf-8")
+    assert deepseek_scan(tmp_path)[0] == []
+
+
+def test_deepseek_v4_reads_a_crafted_substitution_in_linear_time(tmp_path: Path) -> None:
+    """`re.sub("` and 1 MB of a string literal with no routing word and no
+    closing quote, then 100,000 more `re.sub(` calls, inside one function."""
+    crafted = (
+        '    x = re.sub("' + "a" * 1_000_000 + "\n"
+        + "    y = 1\n" + "    re.sub(\n" * 100_000
+    )
+    (tmp_path / "app.py").write_text(_DEEPSEEK.replace("@@SUB@@", crafted), encoding="utf-8")
+    started = time.perf_counter()
+    deepseek_scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
 def test_deepseek_v4_no_deepseek_hint_passes(tmp_path: Path) -> None:
     """No deepseek base_url / import → scope gate excludes."""
     (tmp_path / "x.py").write_text(
