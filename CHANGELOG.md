@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `AAK-MCP-NETWORKAI-CVE-2026-109332-001` (LOW): `network-ai` from 4.0.0 below 5.15.2 (CVE-2026-109332). Its MCP SSE server let other origins read unauthenticated endpoints such as `/health`.
 - `AAK-MCP-NEZHA-CVE-2026-111385-001`: the `ghcr.io/nezhahq/nezha` image from v2.1.0 below v2.3.15 (CVE-2026-111385). Its MCP file-transfer tools built upload and download URLs from the request's Host header.
 
+### Security
+
+- A crafted file could still stall `aak scan` through four loops #993 left (#1011). AAK-SHELL-QUOTED-INTERP-001's cross-file pass read a TS/JS file again for every sink and every handler: a long word before `(` took 2.8 s in 16 KB and 279 s in 160 KB. AAK-POLICY-TRUNCATION-001 read its template again for every truncated name (4,000 truncations: 5.6 s in 79 KB, 493 s in 790 KB), and a run of `deny` repeated through 80 KB took 31 s. The SSRF rules' reachability check expanded a URL argument's assignments with nothing remembered, so names assigned from each other grew with the fourth power of their fan-out, and ten `fetch` calls in a 3 KB file took 11 s. Each now indexes a file once, and the same inputs take milliseconds. Findings are unchanged: the old and new code agree on more than 88,000 TS/JS and 98,000 Python files from installed packages, and on more than 200,000 generated cases.
+
 ### Changed
 
 - Disposed eight records the watcher had not filed yet, so it won't file them. Two n8n records and a Claude Code record raise existing floors, four get the new pins above, and the WSP MCP AI Agents Connector, a WordPress plugin (CVE-2026-109382), is out of scope. Each was measured with the scanner on a firing fixture and a negative one. The reasoning is in CHANGELOG.cves.md.
@@ -24,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `AAK-CLAUDECODE-CVE-2026-40068-PIN-001` said CVE-2026-40068 was fixed in 2.1.83. GHSA-q5hj-mxqh-vv77 says 2.1.84, affected from 2.1.63, so a 2.1.83 pin's evidence now names the folder-trust bug, and a pin below 2.1.63 no longer does.
 - `AAK-MCP-N8N-CVE-2026-65594-001` reports an unversioned `n8n` once, not twice. Its two pin rows are one row, and what it reports is unchanged.
+- AAK-SHELL-QUOTED-INTERP-001 follows a local assigned before an `exec` in a TS/JS file that starts with a blank line (#1011). Its look-back window read the `-1` in `rfind("\n", 0, -1)` as the end of the file and skipped past the sink, so the local was never read.
 
 ## [0.6.21] - 2026-10-16
 
