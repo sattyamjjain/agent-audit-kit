@@ -2068,7 +2068,7 @@
       "owasp_mcp": [],
       "rule_id": "AAK-LEGAL-001",
       "severity": "high",
-      "title": "Copyleft license (AGPL/SSPL) declared in package.json"
+      "title": "Copyleft license (AGPL, SSPL, GPL-3 or EUPL) declared in package.json"
     },
     {
       "category": "legal-compliance",

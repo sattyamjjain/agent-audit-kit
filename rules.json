@@ -2441,7 +2441,7 @@
       "rule_id": "AAK-LEGAL-001",
       "sarif_name": "CopyleftLicenseDep",
       "severity": "high",
-      "title": "Copyleft license (AGPL/SSPL) declared in package.json"
+      "title": "Copyleft license (AGPL, SSPL, GPL-3 or EUPL) declared in package.json"
     },
     {
       "adversa_references": [],
@@ -2631,7 +2631,7 @@
       "cve_references": [],
       "description": "A plugin's manifest grants access to filesystem, network, shell exec, or user-credential surfaces. Broad permissions should be opt-in after a clear user prompt.",
       "incident_references": [],
-      "limitations": "Reads the `permissions` of each plugin entry in a marketplace.json, as a list of `scope:action` strings or an object from scope to action, and reports a grant that covers `fs:*`, `shell:exec`, `network:*`, `credentials:*`, `env:*` or `*:*`: case is ignored, a `*` on either side stands for every scope or action, and a bare `*` is `*:*`. A narrower grant on one of those scopes (`fs:write`, `credentials:read`), a string with no colon (`network`), and permissions declared in a plugin's own `.claude-plugin/plugin.json` are not reported.",
+      "limitations": "Reads the `permissions` of each plugin entry in a marketplace.json, as a list of `scope:action` strings, one such string, or an object from scope to an action, a list of actions or `true` (every action), and reports a grant that covers `fs:*`, `shell:exec`, `network:*`, `credentials:*`, `env:*` or `*:*`: case is ignored, a `*` on either side stands for every scope or action, and a bare `*` is `*:*`. A narrower grant on one of those scopes (`fs:write`, `credentials:read`), a grant that covers none of the six (`*:read` reads every scope but is not one), a string with no colon (`network`), and permissions declared in a plugin's own `.claude-plugin/plugin.json` are not reported.",
       "owasp_agentic_references": [
         "ASI02"
       ],
@@ -8572,7 +8572,7 @@
       ],
       "description": "The WhatsApp MCP Server's `whatsapp-bridge` HTTP API before 0.2.1 listens on 127.0.0.1:8080 with no authentication and no Host-header validation, and its `/api/send` endpoint accepts an absolute `media_path` with no directory confinement. Any local process running as the same user \u2014 which in an MCP session includes sibling MCP servers, IDE extensions, and tool-triggered flows \u2014 can send WhatsApp messages from the paired account and read then exfiltrate arbitrary user-readable files (SSH keys, browser session data, dotfiles) as document attachments; the missing Host validation also enables DNS-rebinding from a visited webpage (CVE-2026-46555, CVSS 7.7). Fixed in 0.2.1, which adds required bearer-token auth, a Host allow-list, and media_path confinement. The project is the GitHub repository verygoodplugins/whatsapp-mcp, which ships as a clone and release assets and on no registry; npm's and PyPI's `whatsapp-mcp` are other projects. A reference to the repository that names an earlier release is reported.",
       "incident_references": [],
-      "limitations": "Reads a reference to `github.com/verygoodplugins/whatsapp-mcp` that names a release below v0.2.1: a git URL with `@v0.2.0`, a lockfile's git source with `rev=` or `tag=`, a `/releases/download/` asset or an `/archive/` tarball, in requirements*.txt at any depth and, at the project root only, in pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles. The install the project's README documents, a clone run with `uv --directory <path> run main.py`, states no version and is not reported, and neither is a reference by commit or branch, or one in `.cursor/mcp.json`, `.vscode/mcp.json`, a sub-directory manifest (`services/api/pyproject.toml`) or `pdm.lock`. npm's and PyPI's `whatsapp-mcp`, and PyPI's `whatsapp-mcp-server`, are other projects and are not read. A file over 2 MB, or a lockfile over 32 MiB, is not read.",
+      "limitations": "Reads a reference to `github.com/verygoodplugins/whatsapp-mcp` that names a release below v0.2.1: a git URL with `@v0.2.0` or `@refs/tags/v0.2.0`, a lockfile's git source with `rev=` or `tag=`, a `/releases/download/` asset or an `/archive/` tarball, and a `tag`, `rev`, `ref` or `reference` key beside a `git` or `url` key that names the repository (uv sources, Poetry, Pipfile, poetry.lock). It reads requirements*.txt, `*.mcp.yaml` and `*.mcp.yml` at any depth and, at the project root only, pyproject.toml, Pipfile, package.json, .mcp.json, mcp.json, claude_desktop_config.json and the Pipfile.lock, poetry.lock, uv.lock, package-lock.json, pnpm-lock.yaml and yarn.lock lockfiles. The install the project's README documents, a clone run with `uv --directory <path> run main.py`, states no version and is not reported, and neither is a reference by commit or branch, or one in `.cursor/mcp.json`, `.vscode/mcp.json`, a sub-directory manifest (`services/api/pyproject.toml`) or `pdm.lock`. npm's and PyPI's `whatsapp-mcp`, and PyPI's `whatsapp-mcp-server`, are other projects and are not read. A file over 2 MB, or a lockfile over 32 MiB, is not read.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
