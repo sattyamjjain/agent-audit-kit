@@ -35,6 +35,8 @@ vulnerable version.
 
 from __future__ import annotations
 
+import functools
+import itertools
 import re
 from dataclasses import dataclass
 
@@ -128,60 +130,134 @@ def shell_tokens(line: str) -> list[str]:
     `github:org/repo#sha`. An unbalanced quote, or a backslash with nothing
     after it, falls back to whitespace.
 
-    The split is exactly what `shlex.shlex(line, posix=True,
-    punctuation_chars=True)` gives with `whitespace_split` on and no comment
-    characters, fallback included, which `tests/test_shell_tokens.py` checks
-    against shlex itself. It used to be that call. shlex grows each token one
-    character at a time, `self.token += nextchar` on an attribute, which
-    CPython cannot extend in place, so a word of n characters cost about n squared: a
-    package.json script of one 1 MB word took 11 s to read, and the CVE pin
-    table reads package.json scripts and MCP config arguments up to 2 MB. This
-    reads the same grammar in runs, found with a regular expression and joined
-    once, so the cost grows with the length of the line. A length cut-over to
-    `str.split()` would have been faster still, but then padding a line would
-    change how a quoted or operator-glued package spec splits.
+    This is `shlex.shlex(line, posix=True, punctuation_chars=True)` with
+    `whitespace_split` on and no comment characters, which it used to call;
+    `shell_words` says why it no longer does.
     """
-    tokens = _shell_split(line)
+    return shell_words(line, punctuation="();<>|&", whitespace=" \t\r\n", commenters="")
+
+
+def shell_words(line: str, *, punctuation: str, whitespace: str, commenters: str) -> list[str]:
+    """Split `line` exactly as a posix shlex lexer with `whitespace_split` on would.
+
+    That is `shlex.shlex(line, posix=True, punctuation_chars=punctuation)` with
+    its `whitespace` and `commenters` set to these, falling back to
+    `line.split()` where shlex raises (an unclosed quote, or a backslash with
+    nothing after it), as both callers did. `tests/test_shell_tokens.py` checks
+    both callers' settings against shlex itself.
+
+    shlex grows each token one character at a time, `self.token += nextchar` on
+    an attribute, which CPython cannot extend in place, so a word of n
+    characters cost about n squared: a package.json script of one 1 MB word
+    took 11 s to read, the CVE pin table reads package.json scripts and MCP
+    config arguments up to 2 MB, and hook_injection splits hook commands up to
+    1 MB. This reads the same grammar in runs, found with regular expressions
+    and joined once, so the cost grows with the length of the line. A length
+    cut-over to `str.split()` would have been faster still, but then padding a
+    line would change how a quoted or operator-glued word splits.
+
+    Args:
+        line: The text to split.
+        punctuation: shlex's `punctuation_chars`; a run of them is one token.
+        whitespace: shlex's `whitespace`.
+        commenters: shlex's `commenters`; one starts a comment that runs
+            through the next newline, outside quotes.
+
+    Returns:
+        The tokens, with quotes removed and escapes applied.
+    """
+    tokens = _shell_split(line, _shell_syntax(punctuation, whitespace, commenters))
     return line.split() if tokens is None else tokens
 
 
-# shlex's grammar under those settings: four whitespace characters, the
-# punctuation set, two quotes, and the backslash, which escapes anything outside
+@dataclass(frozen=True)
+class _ShellSyntax:
+    """A lexer's character classes, with the patterns that find their runs."""
+
+    whitespace: frozenset[str]
+    punctuation: frozenset[str]
+    commenters: frozenset[str]
+    blank_run: re.Pattern[str]
+    operator_run: re.Pattern[str]
+    word_stop: re.Pattern[str]
+
+
+# shlex's quotes and escape in posix mode. The backslash escapes anything outside
 # quotes, nothing inside single quotes, and only itself or `"` inside double
-# quotes. Every other character, `#` included, is part of a word.
-_SHELL_BLANKS = " \t\r\n"
-_SHELL_OPERATORS = "();<>|&"
-_SHELL_BLANK_RUN = re.compile(r"[ \t\r\n]+")
-_SHELL_OPERATOR_RUN = re.compile(r"[();<>|&]+")
-_SHELL_WORD_STOP = re.compile(r"[ \t\r\n'\"\\();<>|&]")
+# quotes. Every character in none of the classes is part of a word.
+_SHELL_QUOTES = "'\""
+_SHELL_ESCAPE = "\\"
 _SHELL_DOUBLE_QUOTE_STOP = re.compile(r'["\\]')
 
 
-def _shell_split(line: str) -> list[str] | None:
+def _char_class(chars: str) -> str:
+    """A pattern matching one of `chars`, or nothing when there are none."""
+    return "[" + "".join(re.escape(c) for c in sorted(set(chars))) + "]" if chars else "(?!)"
+
+
+@functools.lru_cache(maxsize=None)
+def _shell_syntax(punctuation: str, whitespace: str, commenters: str) -> _ShellSyntax:
+    """The syntax for one set of settings, built once.
+
+    shlex settles a character that sits in two classes by the order of its
+    checks, and this splitter does not, so overlapping classes are refused.
+    """
+    classes = (punctuation, whitespace, commenters, _SHELL_QUOTES, _SHELL_ESCAPE)
+    for a, b in itertools.combinations(classes, 2):
+        if set(a) & set(b):
+            raise ValueError(f"shell syntax classes overlap: {sorted(set(a) & set(b))!r}")
+    return _ShellSyntax(
+        whitespace=frozenset(whitespace),
+        punctuation=frozenset(punctuation),
+        commenters=frozenset(commenters),
+        blank_run=re.compile(_char_class(whitespace) + "+"),
+        operator_run=re.compile(_char_class(punctuation) + "+"),
+        word_stop=re.compile(_char_class("".join(classes))),
+    )
+
+
+def _comment_end(line: str, i: int) -> int:
+    """The index after the newline that ends a comment at `i`, or the end.
+
+    shlex reads the rest of the line, newline included, and drops it, so a
+    newline that is punctuation is not a token after a comment.
+    """
+    newline = line.find("\n", i)
+    return len(line) if newline == -1 else newline + 1
+
+
+def _shell_split(line: str, syntax: _ShellSyntax) -> list[str] | None:
     """The tokens shlex gives for `line`, or None where shlex raises ValueError.
 
     A run of punctuation characters is one token (`&&`, `>&`, `);`). A word
-    runs to the next blank or punctuation character outside quotes, and an
-    empty quoted word (`''`) is a token. shlex raises "No closing quotation"
-    for an unclosed quote and "No escaped character" for a backslash at the
-    end, inside double quotes or out.
+    runs to the next whitespace, punctuation or comment character outside
+    quotes, and an empty quoted word (`''`) is a token. A comment ends the word
+    it is in and is dropped, through its newline. shlex raises "No closing
+    quotation" for an unclosed quote and "No escaped character" for a
+    backslash at the end, inside double quotes or out.
     """
     tokens: list[str] = []
     i, n = 0, len(line)
     while True:
-        blanks = _SHELL_BLANK_RUN.match(line, i)
+        blanks = syntax.blank_run.match(line, i)
         if blanks:
             i = blanks.end()
         if i == n:
             return tokens
-        operators = _SHELL_OPERATOR_RUN.match(line, i)
+        if line[i] in syntax.commenters:
+            i = _comment_end(line, i)
+            continue
+        operators = syntax.operator_run.match(line, i)
         if operators:
             tokens.append(operators.group())
             i = operators.end()
             continue
         parts: list[str] = []
-        while i < n and line[i] not in _SHELL_BLANKS and line[i] not in _SHELL_OPERATORS:
+        while i < n and line[i] not in syntax.whitespace and line[i] not in syntax.punctuation:
             char = line[i]
+            if char in syntax.commenters:
+                i = _comment_end(line, i)
+                break
             if char == "\\":
                 if i + 1 == n:
                     return None
@@ -198,7 +274,7 @@ def _shell_split(line: str) -> list[str] | None:
                 if i == -1:
                     return None
             else:
-                stop = _SHELL_WORD_STOP.search(line, i)
+                stop = syntax.word_stop.search(line, i)
                 end = stop.start() if stop else n
                 parts.append(line[i:end])
                 i = end

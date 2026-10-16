@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -19,6 +18,7 @@ from agent_audit_kit.scanners._helpers import (
     make_finding,
     url_readings,
 )
+from agent_audit_kit.scanners._launchers import shell_words
 from agent_audit_kit.scanners.skill_composition import _parse_frontmatter
 
 # Network-capable commands
@@ -423,13 +423,8 @@ def _shell_words(command: str) -> list[str]:
     An unbalanced quote makes shlex give up; whitespace words are the
     fallback, so a malformed hook is still read.
     """
-    lexer = shlex.shlex(command, posix=True, punctuation_chars="".join(sorted(_PUNCTUATION)))
-    lexer.whitespace = " \t\r"  # a newline ends a command, so it is punctuation here
-    lexer.whitespace_split = True
-    try:
-        return list(lexer)
-    except ValueError:
-        return command.split()
+    # A newline ends a command, so it is punctuation here; `#` starts a comment.
+    return shell_words(command, punctuation="".join(sorted(_PUNCTUATION)), whitespace=" \t\r", commenters="#")
 
 
 def _split_commands(words: list[str]) -> list[list[str]]:
