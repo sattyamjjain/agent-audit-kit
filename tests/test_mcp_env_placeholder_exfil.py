@@ -250,3 +250,63 @@ def test_a_crafted_aliased_source_scans_in_linear_time(tmp_path: Path, unit: str
     started = time.perf_counter()
     scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+# ---------------------------------------------------------------------------
+# Review follow-ups: many distinct alias names cost one pass, and a finding
+# reports the line of the resolver, not of the alias
+# ---------------------------------------------------------------------------
+
+
+def test_many_distinct_typescript_env_aliases_scan_in_linear_time(tmp_path: Path) -> None:
+    """Every alias name used to join one regex alternation, so the cost was names x
+    resolver sites: 8,000 names and 2,000 sites took 157 s. A repeated name dedupes in
+    the alias set, so this test uses distinct ones."""
+    import time
+
+    decls = "".join(f"const e{k} = process.env;\n" for k in range(8_000))
+    site = ".replace(${" + " e" * 90 + "\n"
+    _write(tmp_path, "mcp.ts", "// mcp server\n" + decls + site * 2_000)
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
+def test_many_distinct_python_import_aliases_scan_in_linear_time(tmp_path: Path) -> None:
+    import time
+
+    decls = "".join(f"from os import environ as v{k}\n" for k in range(10_000))
+    decls += "".join(f"from os.path import expandvars as x{k}\n" for k in range(10_000))
+    filler = (" x v" * 25 + "\n") * 2_500
+    _write(tmp_path, "server.py", "# mcp server\n" + decls + filler)
+    started = time.perf_counter()
+    scan(tmp_path)
+    assert time.perf_counter() - started < 5.0
+
+
+_RESOLVE_TS = 'url.replace(/\\$\\{(\\w+)\\}/g, (_m, k) => ENV[k] ?? "");\n'
+
+
+@pytest.mark.parametrize(
+    ("name", "src"),
+    [
+        ("mcp.ts", "// mcp server\nconst env = process.env;\nconst port = env.PORT;\n\n\nexport const u = "
+         + _RESOLVE_TS.replace("ENV", "env")),
+        ("mcp.ts", '// mcp server\nimport { env } from "node:process";\n\n\nexport const u = '
+         + _RESOLVE_TS.replace("ENV", "env")),
+        ("mcp.ts", "// mcp server\nconst { env } = process;\n\n\nexport const u = " + _RESOLVE_TS.replace("ENV", "env")),
+        ("mcp.ts", "// mcp server\nconst port = process.env.PORT;\n/* a\nblock\ncomment */\nexport const u = "
+         + _RESOLVE_TS.replace("ENV", "process.env")),
+        ("server.py", '# mcp server\nimport os, string\nPORT = os.environ.get("PORT")\n\n\ndef f(cfg):\n'
+         "    return string.Template(cfg).substitute(os.environ)\n"),
+        ("server.py", "# mcp server\nfrom os.path import expandvars\n\n\ndef f(cfg):\n    return expandvars(cfg)\n"),
+        ("server.py", '# mcp server\n"""Calls os.path.expandvars on the URL."""\nimport os\n\n\ndef f(cfg):\n'
+         "    return os.path.expandvars(cfg)\n"),
+    ],
+    ids=["alias", "import", "destructure", "block-comment-before", "template", "from-import", "docstring-first"],
+)
+def test_a_finding_reports_the_line_of_the_resolver(tmp_path: Path, name: str, src: str) -> None:
+    _write(tmp_path, name, src)
+    resolver = next(i for i, line in enumerate(src.splitlines(), 1)
+                    if "replace(" in line or "substitute(" in line or "expandvars(" in line)
+    assert [f.line_number for f in _hits(scan(tmp_path)[0])] == [resolver]

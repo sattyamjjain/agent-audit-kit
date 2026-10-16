@@ -24,12 +24,11 @@ Detection signatures (gated to MCP-context files, low false-positive):
 
 from __future__ import annotations
 
-import functools
 import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, sub_up_to_last
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
 
 _RULE_ID = "AAK-MCP-ENV-PLACEHOLDER-EXFIL-001"
 
@@ -55,23 +54,21 @@ _TS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 #
 # `.replaceAll(` counts as `.replace(` does, and the replacer may read the environment
 # under a local name: `const env = process.env;`, `const { env } = process;`,
-# `import { env } from "node:process"`. The pattern is built once per set of names.
+# `import { env } from "node:process"`. A site is found with a pattern that names no
+# alias; the read after its placeholder is matched as any identifier and looked up in
+# the file's set of aliases. Splicing every alias into one alternation, as a first
+# version did, cost names x sites: 8,000 names and 2,000 sites took 157 s.
 _TS_REPLACE = r"\.replace(?:All)?\s*\("
+_TS_SITE_RE = re.compile(
+    _TS_REPLACE                                        # .replace( or .replaceAll(
+    + r"(?:(?!" + _TS_REPLACE + r")[^;])*?\\?\$\\?\{",  # first arg carries a ${ placeholder
+    re.DOTALL,
+)
+# The replacer's read of the environment: `process.env`, or a name read by `[` or `.`.
+_TS_ENV_READ_RE = re.compile(r"process\.env|(?<![\w$.])([A-Za-z_$][\w$]*)\s*[\[.]")
+_TS_REPLACER_REACH = 200  # how far after the placeholder the read may start, before a `;`
 
 
-@functools.lru_cache(maxsize=64)
-def _ts_resolver_re(env_names: tuple[str, ...]) -> re.Pattern[str]:
-    env = "process\\.env" + "".join(rf"|(?<![\w$.]){re.escape(name)}\s*[\[.]" for name in env_names)
-    return re.compile(
-        _TS_REPLACE                                        # .replace( or .replaceAll(
-        + r"(?:(?!" + _TS_REPLACE + r")[^;])*?\\?\$\\?\{"  # first arg carries a ${ placeholder
-        + r"[^;]{0,200}?"                                  # ...up to the replacer (escaping-tolerant)
-        + "(?:" + env + ")",                               # ...which reads the environment
-        re.DOTALL,
-    )
-
-
-_TS_ENV_PLACEHOLDER_RE = _ts_resolver_re(())
 # `const env = process.env` (not `process.env.X`), `const { env, argv } = process`,
 # `const { env: e } = process` and `import { env as e } from "process"`.
 _TS_ENV_ALIAS_RE = re.compile(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*process\s*\.\s*env\b(?!\s*[.\[])")
@@ -81,10 +78,6 @@ _TS_ENV_BINDING_RE = re.compile(r"(?:^|,)\s*env\s*(?:(?::|\bas\b)\s*([A-Za-z_$][
 
 # Python: expandvars expands $VAR/${VAR} against os.environ.
 _PY_EXPANDVARS_RE = re.compile(r"\bos\.path\.expandvars\s*\(")
-# Python: format/format_map spreading the whole environment into a template.
-_PY_FORMAT_ENV_RE = re.compile(
-    r"\.format(?:_map)?\s*\(\s*(?:\*\*\s*os\.environ\b|os\.environ\s*\))"
-)
 # The same resolvers under the names a module imports them by: `from os.path import
 # expandvars [as ev]`, `import os.path as osp`, `from os import path`, `posixpath` and
 # `ntpath`, and `from os import environ [as env]`; plus `string.Template`'s
@@ -131,25 +124,62 @@ def _ts_env_names(text: str) -> tuple[str, ...]:
     return tuple(sorted(names))
 
 
+def _strip_ts_comments_keeping_lines(text: str) -> str:
+    """`_strip_ts_comments`, with each block comment's line breaks left in place, so an
+    offset in the result is on the same line as in ``text``."""
+    text = sub_up_to_last(_TS_BLOCK_COMMENT_RE, lambda m: "\n" * m.group().count("\n") or " ", text, "*/")
+    return _TS_LINE_COMMENT_RE.sub(" ", text)
+
+
+def _ts_resolver(text: str) -> int | None:
+    """The offset of the first `.replace(`/`.replaceAll(` site in ``text`` whose
+    replacer reads the environment, or None."""
+    names = set(_ts_env_names(text))
+    for site in _TS_SITE_RE.finditer(text):
+        end = site.end()
+        stop = text.find(";", end, end + _TS_REPLACER_REACH)
+        limit = stop if stop >= 0 else end + _TS_REPLACER_REACH
+        for read in _TS_ENV_READ_RE.finditer(text, end, limit + 64):
+            if read.start() > limit:
+                break
+            if read.group(1) is None or read.group(1) in names:
+                return site.start()
+    return None
+
+
 def _ts_hit(text: str) -> bool:
-    stripped = _strip_ts_comments(text)
-    return bool(_ts_resolver_re(_ts_env_names(stripped)).search(stripped))
+    return _ts_resolver(_strip_ts_comments_keeping_lines(text)) is not None
 
 
-def _py_resolver(text: str) -> re.Match[str] | None:
-    """The first call in ``text`` that resolves placeholders against the environment."""
-    found = _PY_EXPANDVARS_RE.search(text) or _PY_FORMAT_ENV_RE.search(text)
-    if found is not None:
-        return found
+# A call of a bare or once-dotted name, and an environment spread into a template; the
+# name each captures is looked up in the file's import aliases (`_py_import_aliases`).
+_PY_CALL_RE = re.compile(r"(?<![\w.])([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)?)\s*\(")
+_PY_ENV_SPREAD_RE = re.compile(
+    r"\.(?:format|substitute|safe_substitute)\s*\(\s*\*\*\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)?)\b"
+    r"|\.(?:format_map|substitute|safe_substitute)\s*\(\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)?)\s*\)"
+)
+_SPACES_RE = re.compile(r"\s+")
+
+
+def _py_resolver(text: str) -> int | None:
+    """The offset of the first call in ``text`` that resolves placeholders against the
+    environment, or None. Each candidate is matched once and its name looked up in a
+    set, so a file of many aliases costs one pass, not aliases x calls."""
+    offsets: list[int] = []
+    dotted = _PY_EXPANDVARS_RE.search(text)
+    if dotted is not None:
+        offsets.append(dotted.start())
     expanders, environs = _py_import_aliases(text)
-    env = r"os\.environ\b" + "".join(rf"|(?<![\w.]){re.escape(name)}\b" for name in sorted(environs))
-    callables = "|".join(re.escape(name) for name in sorted(expanders))
-    resolver = re.compile(
-        rf"(?<![\w.])(?:{callables})\s*\("
-        rf"|\.(?:format|substitute|safe_substitute)\s*\(\s*\*\*\s*(?:{env})"
-        rf"|\.(?:format_map|substitute|safe_substitute)\s*\(\s*(?:{env})\s*\)"
-    )
-    return resolver.search(text)
+    environs.add("os.environ")
+    for call in _PY_CALL_RE.finditer(text):
+        if _SPACES_RE.sub("", call.group(1)) in expanders:
+            offsets.append(call.start())
+            break
+    for spread in _PY_ENV_SPREAD_RE.finditer(text):
+        if _SPACES_RE.sub("", spread.group(1) or spread.group(2)) in environs:
+            offsets.append(spread.start())
+            break
+    return min(offsets) if offsets else None
 
 
 def _py_hit(text: str) -> bool:
@@ -189,19 +219,19 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if not _MCP_CTX_RE.search(text):
             continue
 
-        line_number: int | None = None
+        # The line is the resolver's own, from its offset: the first line naming the
+        # marker could be an alias, an import or a docstring.
         if path.suffix in _PY_SUFFIXES:
-            resolver = _py_resolver(text)
-            hit = resolver is not None
+            offset = _py_resolver(text)
             marker = "os.path.expandvars" if "expandvars" in text else "os.environ"
-            if resolver is not None and marker not in text:
-                # Only an imported name resolves here: report the line of the call.
-                line_number = text.count("\n", 0, resolver.start()) + 1
+            lined = text
         else:
-            hit = _ts_hit(text)
+            lined = _strip_ts_comments_keeping_lines(text)
+            offset = _ts_resolver(lined)
             marker = "process.env"
-        if not hit:
+        if offset is None:
             continue
+        line_number = lined.count("\n", 0, offset) + 1
 
         rel_path = str(path.relative_to(project_root))
         scanned_files.add(rel_path)
@@ -216,7 +246,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 f"(CVE-2026-32625, CWE-200). Do not expand env placeholders "
                 f"found inside untrusted config values."
             ),
-            line_number or find_line_number(text, marker),
+            line_number,
         ))
 
     return findings, scanned_files
