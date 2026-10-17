@@ -226,10 +226,12 @@ _CP_LIST = r"\{([^{}]{0,2000})\}"
 # side wherever the optional tokens were absent, and a match failing after a run
 # of blanks split the run every way: 160,000 blanks took 224 s, and
 # `.then(function` followed by 4,000 blanks, a 4 KB file, 177 s.
-_CP_THEN = (
-    rf"\bimport\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*then\s*\(\s*"
-    r"(?:async\b\s*)?(?:function\b\s*(?:[A-Za-z_$][\w$]*\s*)?)?"
-)
+_CP_THEN = rf"\bimport\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*then\s*\(\s*(?:async\b\s*)?"
+# A function callback's head, up to and with the `(` of its parameter list.
+# The `(` was optional after an optional name, so a callback naming no parameter
+# had its name cut short and its last letter read as one:
+# `.then(function load() {...})` bound `d`.
+_CP_FUNCTION_HEAD = r"(?:function\b\s*(?:[A-Za-z_$][\w$]*\s*)?)?\(\s*"
 # A name bound to the module. Any assignment of the module to a name binds it
 # (`require(...).exec` is a member, below): `const cp = require('child_process')`,
 # a second declarator (`const fs = require('fs'), cp = require(...)`), a name
@@ -241,7 +243,7 @@ _CP_THEN = (
 _CP_ALIAS_RE = re.compile(
     rf"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=(?![=>])\s*{_CP_LOAD_P}(?!\s*\??\.)"
     rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^{{}}]{{0,2000}}\}}\s*)?from\s*{_CP_MODULE}"
-    rf"|{_CP_THEN}(?:\(\s*)?(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
+    rf"|{_CP_THEN}(?:{_CP_FUNCTION_HEAD})?(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
 )
 # `this.cp = require('child_process')`, called as `this.cp.exec(...)`. Another
 # object's property is not followed.
@@ -255,7 +257,7 @@ _CP_THIS_ALIAS_RE = re.compile(
 _CP_NAMED_RE = re.compile(
     rf"\b(?:const|let|var)\s*{_CP_LIST}\s*=\s*{_CP_LOAD_P}"
     rf"|\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?{_CP_LIST}\s*from\s*{_CP_MODULE}"
-    rf"|{_CP_THEN}\(\s*{_CP_LIST}"
+    rf"|{_CP_THEN}{_CP_FUNCTION_HEAD}{_CP_LIST}"
 )
 # A list destructured from a plain name, `const { exec } = cp`, read once the
 # names bound to the module are known.

@@ -387,6 +387,12 @@ _MCP_HEAD = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
     ("import('child_process').then(cp => cp.spawn(cmd));", True),
     ("import('child_process').then(async function (cp) { cp.execSync(cmd); });", True),
     ("import('node:child_process').then(({ execSync }) => execSync(cmd));", True),
+    ("import('child_process').then(function load(cp) { cp.exec(cmd); });", True),
+    # A callback that names no parameter binds nothing: neither a letter of its
+    # function's name (`d`, after `load` was cut short) nor the name itself.
+    ("import('child_process').then(function load() { ready(); });\nconst d = new Database(':memory:');\nd.exec(sql);", False),
+    ("import('child_process').then(async function load() {});\nload.exec(cmd);", False),
+    ("import('child_process').then(function () {});\nconst d = db;\nd.exec(sql);", False),
     # Optional chaining.
     ("const cp = require('child_process');\ncp?.exec(cmd);", True),
     ("child_process?.spawn(cmd);", True),
