@@ -30,7 +30,7 @@ registry, ``rules/``, which defines every id and so proves nothing) and records
 which of them contain the rule id as a string literal. Comments and docstrings
 are excluded on purpose: ``mcp_auth_patterns.py`` says in its docstring that it
 "fires AAK-MCP-011..020" and emits seven of those ten, so a text search would
-have credited it with AAK-MCP-016, -019 and -020, which no module emits. The
+have credited it with AAK-MCP-016, -019 and -020, which it does not emit. The
 result is shown as found. A rule no module names in code says so ("no detector
 in this release is known to emit it"), and ``--summary`` lists them.
 

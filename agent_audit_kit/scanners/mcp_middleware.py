@@ -1,4 +1,5 @@
-"""MCPwn twin-route middleware-asymmetry scanner (AAK-MCPWN-001).
+"""MCP route rules: twin-route asymmetry (AAK-MCPWN-001) and one handler on an
+authenticated and an unauthenticated route (AAK-MCP-020).
 
 CVE-2026-33032 / MCPwn (nginx-ui, CVSS 9.8, KEV-listed 2026-04-13) was
 caused by two routes sharing a handler but only one being wrapped in an
@@ -17,7 +18,8 @@ a route's middleware is every argument between its path and its handler; a
 FastAPI route is its decorators up to the `def`. False-positive rate stays
 low because we only fire when two routes matching the MCP endpoint pattern
 live in the same file and one has a recognised auth marker while the other
-doesn't.
+doesn't. AAK-MCP-020, at the end of this module, pairs routes by the handler
+they reach instead of by their paths.
 
 References:
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2026-33032
@@ -37,7 +39,14 @@ from typing import Iterable, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
-from agent_audit_kit.scanners._http_routes import CodeIndex, find_calls
+from agent_audit_kit.scanners._http_routes import (
+    GO_TEST_SERVER_RE,
+    TEST_FILE_RE,
+    Call,
+    CodeIndex,
+    find_calls,
+    is_mcp_endpoint_path,
+)
 
 
 _SCAN_EXTS = {".go", ".py", ".ts", ".tsx", ".js", ".mjs"}
@@ -326,15 +335,21 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return []
-    # Cheap short-circuit: file must at least mention /mcp.
-    if "/mcp" not in text:
-        return []
     rel = str(path.relative_to(project_root))
     suffix = path.suffix.lower()
-    if suffix == ".py":
-        return _asymmetry_findings(_extract_fastapi(text), rel, text)
     go = suffix == ".go"
-    return _mcpwn_findings(CodeIndex(text, go=go), go, rel)
+    index: CodeIndex | None = None
+    findings: list[Finding] = []
+    # Cheap short-circuit: AAK-MCPWN-001 needs the file to mention /mcp.
+    if "/mcp" in text:
+        if suffix == ".py":
+            return _asymmetry_findings(_extract_fastapi(text), rel, text)
+        index = CodeIndex(text, go=go)
+        findings = _mcpwn_findings(index, go, rel)
+    if suffix != ".py" and _reads_shared_handlers(rel, text, go):
+        index = index or CodeIndex(text, go=go)
+        findings.extend(_shared_handler_findings(index, rel, {f.line_number for f in findings if f.line_number}))
+    return findings
 
 
 def _mcpwn_findings(index: CodeIndex, go: bool, rel: str) -> list[Finding]:
@@ -389,6 +404,439 @@ def _gin_grouped_auth_prefixes(index: CodeIndex) -> list[str]:
         if any(marker in part for part in parts for marker in _AUTH_MARKERS):
             prefixes.append(prefix or "/")
     return prefixes
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-020: one handler, two routes, authentication on only one of them
+# ---------------------------------------------------------------------------
+#
+# AAK-MCPWN-001 above pairs routes by path: an MCP-looking path with no auth
+# marker next to one with. What made nginx-ui exploitable was that both routes
+# ran the same handler, `mcp.ServeHTTP(c)`, and only one carried
+# `middleware.AuthRequired()`. This check pairs routes by what they reach
+# instead: the same handler value, or inline handlers whose only statement is
+# the same delegate call, registered on two routes in the same block, one with
+# an authentication middleware (or wrapper) and one with none. The
+# unauthenticated route then serves every tool its twin protects, whatever the
+# two paths are called.
+#
+# Each condition is there because the corpus showed its absence firing on safe
+# code:
+#   - same block, different (method, path): the TypeScript SDK's example server,
+#     copied widely, registers `app.post('/mcp', authMiddleware, h)` in an `if`
+#     and `app.post('/mcp', h)` in its `else`;
+#   - the unauthenticated route carries no middleware the check cannot name
+#     (auth, or a known body parser, CORS, logger or rate limiter): an unknown
+#     `checkKey` may well be the authentication;
+#   - not covered by scope auth: `app.use('/mcp', auth)`, `r.Use(auth)`, a Gin
+#     or echo group made with auth, or the mux handed to an auth wrapper,
+#     wherever it appears in the file, since a route ordering argument is the
+#     kind of reasoning a text check gets wrong;
+#   - one of the two paths is an MCP endpoint, or an SSE/message path in a
+#     file that builds an MCP server.
+# A route AAK-MCPWN-001 already reports is left to it: two findings on one line
+# would be one defect twice, and that rule is the one named for the CVE.
+
+_MCP020 = "AAK-MCP-020"
+
+_JS_ROUTE_HEAD_RE = re.compile(
+    r"(?<![\w$.])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\.\s*(get|post|put|patch|delete|all|use)\s*\("
+)
+_GO_SHARED_HEAD_RE = re.compile(
+    r"(?<![\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.("
+    r"GET|POST|PUT|PATCH|DELETE|Any|Handle|HandleFunc|Get|Post|Put|Patch|Delete|Method|MethodFunc|Use|Group"
+    r")\s*\("
+)
+_GO_GROUP_ASSIGN_RE = re.compile(r"(?<!\w)([A-Za-z_]\w*)\s*:?=\s*$")
+_CALL_HEAD_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(")
+_JS_ASYNC_RE = re.compile(r"async\b\s*")
+_JS_FUNCTION_RE = re.compile(r"function\b\s*\*?\s*(?:[A-Za-z_$][\w$]*\s*)?(?=\()")
+_JS_ARROW_PARAM_RE = re.compile(r"[A-Za-z_$][\w$]*\s*=>")
+_GO_FUNC_LITERAL_RE = re.compile(r"func\s*(?=\()")
+_BLANK_RE = re.compile(r"\s*")
+_BIND_SUFFIX_RE = re.compile(r"\.bind\([^()]*\)$")
+_SPACE_RE = re.compile(r"\s+")
+_LEADING_KEYWORD_RE = re.compile(r"(?:return|await)\b\s*")
+_DOTTED_RE = re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*")
+_MCP_SERVER_HINT_RE = re.compile(
+    r"modelcontextprotocol|McpServer|StreamableHTTPServerTransport|SSEServerTransport|mcp-go|"
+    r"mcp\.NewServer|server\.NewMCPServer|FastMCP",
+)
+_SSE_PATH_RE = re.compile(r"/(?:sse|messages?|rpc)/?$", re.IGNORECASE)
+
+_NOT_AUTH_RE = re.compile(
+    r"(?:optional|skip|no|public|bypass|allow|maybe|soft)[-_]?auth|auth[-_]?(?:optional|skip|bypass)|unauth|csrf",
+    re.IGNORECASE,
+)
+_AUTH_WORD_RE = re.compile(
+    r"auth|jwt|bearer|token|api[-_]?key|passport|clerk|login|signature|hmac|protect|guard|permission"
+    r"|scope|require[-_]?user",
+    re.IGNORECASE,
+)
+_BENIGN_MW_RE = re.compile(
+    r"^(?:express\.(?:json|raw|text|urlencoded)|bodyParser\.\w+|json|cors|helmet|compression|morgan"
+    r"|cookieParser|gin\.Logger|gin\.Recovery|middleware\.(?:Logger|Recoverer|RequestID|RealIP|Recover|CORS\w*))\b"
+    r"|rate[-_]?limit|limiter|throttle|logger|logging|requestlog|metrics|tracing|timeout"
+    # An IP allowlist or an Origin check is not authentication: nginx-ui's
+    # unauthenticated `/mcp_message` carried `middleware.IPWhiteList()`, and an
+    # empty list let everyone in (AAK-MCP-012).
+    r"|ip[-_]?(?:white|allow)[-_]?list|ipfilter|origin",
+    re.IGNORECASE,
+)
+_GO_TRANSPARENT = frozenset({"http.HandlerFunc", "gin.WrapH", "gin.WrapF", "echo.WrapHandler", "http.StripPrefix"})
+
+
+# A middleware or handler name is short; a longer argument is an inline function
+# or a nested call, read no further than this so nested calls cost linear time.
+_NAME_WINDOW = 200
+
+
+def _classify(text: str) -> str:
+    """'auth', 'benign' or 'unknown' for one middleware argument."""
+    compact = _SPACE_RE.sub("", text[:_NAME_WINDOW])
+    if _NOT_AUTH_RE.search(compact):
+        return "unknown"
+    if _AUTH_WORD_RE.search(compact):
+        return "auth"
+    if _BENIGN_MW_RE.search(compact):
+        return "benign"
+    return "unknown"
+
+
+@dataclass(frozen=True)
+class _Reg:
+    """One route registration, reduced to what the pairing needs."""
+
+    receiver: str
+    method: str
+    path: str
+    handler: str | None
+    auth: str | None
+    unknown: bool
+    block: int
+    start: int
+    line: int
+
+
+_PARAM_NAME_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)")
+
+
+def _param_names(index: CodeIndex, start: int, end: int) -> set[str]:
+    """Names declared in the parameter list ``start:end`` (destructuring skipped)."""
+    text = index.text
+    names: set[str] = set()
+    bounds = [start] + [c for c in index.commas.get(start - 1, []) if c < end] + [end]
+    for a, b in zip(bounds, bounds[1:]):
+        m = _PARAM_NAME_RE.match(text, a + (1 if a != start else 0), b)
+        if m is not None:
+            names.add(m.group(1))
+    return names
+
+
+def _delegate(index: CodeIndex, start: int, end: int, params: set[str]) -> str | None:
+    """`delegate:<callee>` when the code in ``start:end`` is one call statement
+    (optionally awaited or returned) that hands the request on: some argument
+    is one of ``params``, and the callee is not a method of one of them, so
+    `res.json({...})` in two health checks is not one shared handler."""
+    text = index.text
+    pos = start
+    while pos < end and text[pos].isspace():
+        pos += 1
+    while end > pos and (text[end - 1].isspace() or text[end - 1] == ";"):
+        end -= 1
+    keyword = _LEADING_KEYWORD_RE.match(text, pos, end)
+    while keyword is not None and keyword.end() > pos:
+        pos = keyword.end()
+        keyword = _LEADING_KEYWORD_RE.match(text, pos, end)
+    callee = _DOTTED_RE.match(text, pos, end)
+    if callee is None or callee.group().split(".", 1)[0] in params:
+        return None
+    paren = callee.end()
+    while paren < end and text[paren].isspace():
+        paren += 1
+    if paren >= end or text[paren] != "(" or index.close.get(paren) != end - 1:
+        return None
+    for s, e in index.args(paren) or []:
+        arg = _DOTTED_RE.match(text, s, e)
+        if arg is not None and arg.group().split(".", 1)[0] in params:
+            return "delegate:" + callee.group()
+    return None
+
+
+def _skip_blank(text: str, pos: int, end: int) -> int:
+    m = _BLANK_RE.match(text, pos, end)
+    return m.end() if m else pos
+
+
+def _inline_body(
+    index: CodeIndex, start: int, end: int, go: bool,
+) -> tuple[bool, tuple[int, int] | None, set[str]]:
+    """(is an inline function, its body span, its parameter names) for the
+    argument ``start:end``.
+
+    Arrows and `function` expressions in TS/JS, func literals in Go. An arrow
+    with an expression body (`(c) => transport.handleRequest(c)`) has that
+    expression as its body. A literal whose brackets do not close is inline
+    with no body to read.
+    """
+    text = index.text
+    pos = _skip_blank(text, start, end)
+    params: set[str] = set()
+    if go:
+        lit = _GO_FUNC_LITERAL_RE.match(text, pos, end)
+        if lit is None:
+            return False, None, params
+        close = index.close.get(lit.end())
+        if close is not None:
+            params = _param_names(index, lit.end() + 1, close)
+    else:
+        a = _JS_ASYNC_RE.match(text, pos, end)
+        if a is not None:
+            pos = a.end()
+        fn = _JS_FUNCTION_RE.match(text, pos, end)
+        if fn is not None:
+            close = index.close.get(fn.end())
+            if close is not None:
+                params = _param_names(index, fn.end() + 1, close)
+        else:
+            if text.startswith("(", pos):
+                close = index.close.get(pos)
+                if close is None or close >= end:
+                    return False, None, params
+                arrow = text.find("=>", close, end)
+                between = text[close + 1:arrow] if arrow >= 0 else ""
+                if arrow < 0 or any(c in between for c in "({;"):
+                    return False, None, params
+                params = _param_names(index, pos + 1, close)
+                pos = arrow + 2
+            else:
+                param = _JS_ARROW_PARAM_RE.match(text, pos, end)
+                if param is None:
+                    return False, None, params
+                params = {param.group()[:-2].strip()}
+                pos = param.end()
+            pos = _skip_blank(text, pos, end)
+            if not text.startswith("{", pos):
+                return True, (pos, end), params
+            body_close = index.close.get(pos)
+            return True, ((pos + 1, body_close) if body_close is not None else None), params
+    if close is None:
+        return True, None, params
+    brace = text.find("{", close, end)
+    body_close = index.close.get(brace) if brace >= 0 else None
+    return True, ((brace + 1, body_close) if body_close is not None else None), params
+
+
+def _handler_identity(index: CodeIndex, start: int, end: int, go: bool) -> tuple[str | None, str | None]:
+    """(identity, auth wrapper) of a handler argument.
+
+    An inline handler is identified by its delegate call, and is not comparable
+    when it does more than that. `auth(h)` and `withAuth(h)` are the handler
+    `h` behind an auth wrapper; `http.HandlerFunc(h)` and `gin.WrapH(h)` are
+    `h`; `this.h.bind(this)` is `this.h`. Any other call stays as written, so
+    two routes that both pass `asyncHandler(h)` still match each other.
+    """
+    text = index.text
+    inline, body, params = _inline_body(index, start, end, go)
+    if inline:
+        return (_delegate(index, *body, params) if body else None), None
+    if end - start > _NAME_WINDOW:
+        return None, None
+    wrapper: str | None = None
+    for _ in range(4):
+        callee = _DOTTED_RE.match(text, start, end)
+        if callee is None or callee.end() >= end or text[callee.end()] != "(":
+            break
+        paren = callee.end()
+        if index.close.get(paren) != end - 1:
+            break
+        spans = index.args(paren) or []
+        name = callee.group()
+        if name in _GO_TRANSPARENT and spans:
+            start, end = spans[-1]
+            continue
+        if len(spans) == 1 and _classify(name) == "auth":
+            wrapper = name
+            start, end = spans[0]
+            continue
+        break
+    ident = _BIND_SUFFIX_RE.sub("", _SPACE_RE.sub("", text[start:end]))
+    return (ident or None), wrapper
+
+
+_Scope = tuple[str, "str | None", str]
+
+
+def _js_registrations(index: CodeIndex) -> tuple[list[_Reg], list[_Scope]]:
+    """Routes, and scope auth as (receiver, path prefix or None, middleware).
+
+    `app.use(auth)` covers every route on `app`, `app.use('/mcp', auth)` every
+    route under `/mcp`, and `app.use('/api', auth, router)` every route on
+    `router`. Scope auth counts wherever it sits in the file: whether it runs
+    before a route depends on registration order, which is not worth guessing.
+    """
+    text = index.text
+    regs: list[_Reg] = []
+    scopes: list[_Scope] = []
+    for call in find_calls(index, _JS_ROUTE_HEAD_RE):
+        spans = [s for s in call.args if s[0] < s[1]]
+        if not spans:
+            continue
+        path = index.string_literal(*spans[0])
+        if call.method == "use":
+            rest = spans[1:] if path is not None else spans
+            names = [text[s:min(e, s + _NAME_WINDOW)].strip() for s, e in rest]
+            auth = next((n for n in names if _classify(n) == "auth"), None)
+            if auth is not None:
+                scopes.append((call.receiver, path, auth))
+                scopes.extend((n, None, auth) for n in names if n != auth and _DOTTED_RE.fullmatch(n))
+            continue
+        if path is None or len(spans) < 2:
+            continue
+        handler, wrapper = _handler_identity(index, *spans[-1], go=False)
+        middleware = [text[s:min(e, s + _NAME_WINDOW)] for s, e in spans[1:-1]]
+        regs.append(_reg(call.receiver, call.method.upper(), path, handler, wrapper, middleware, call, index))
+    return regs, scopes
+
+
+def _reg(
+    receiver: str, method: str, path: str, handler: str | None, wrapper: str | None,
+    middleware: list[str], call: Call, index: CodeIndex,
+) -> _Reg:
+    kinds = [_classify(m) for m in middleware]
+    auth = wrapper or next((m for m, k in zip(middleware, kinds) if k == "auth"), None)
+    return _Reg(
+        receiver, method, path, handler, auth, "unknown" in kinds,
+        index.block_of.get(call.paren, -1), call.start, index.line_of(call.start),
+    )
+
+
+_GO_METHOD_LITERALS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
+
+
+def _go_registrations(index: CodeIndex, echo: bool) -> tuple[list[_Reg], list[_Scope]]:
+    """Routes and scope auth for gin, echo, chi and net/http.
+
+    gin takes (path, middleware..., handler), echo (path, handler,
+    middleware...), chi and net/http (path, handler) with middleware as
+    wrappers. Scope auth: `r.Use(auth)`, a group made with auth (`g :=
+    r.Group("/x", auth)`, and the groups made from it), and a mux handed to an
+    auth wrapper anywhere in the file (`http.ListenAndServe(addr, auth(mux))`).
+    """
+    text = index.text
+    regs: list[_Reg] = []
+    scopes: list[_Scope] = []
+    parents: dict[str, str] = {}
+    for call in find_calls(index, _GO_SHARED_HEAD_RE):
+        spans = [s for s in call.args if s[0] < s[1]]
+        if call.method in ("Use", "Group"):
+            rest = spans[1:] if call.method == "Group" else spans
+            auth = next((text[s:e] for s, e in rest if e - s <= _NAME_WINDOW and _classify(text[s:e]) == "auth"), None)
+            target = call.receiver
+            if call.method == "Group":
+                line_start = text.rfind("\n", 0, call.start) + 1
+                assigned = _GO_GROUP_ASSIGN_RE.search(text, line_start, call.start)
+                if assigned is None:
+                    continue
+                target = assigned.group(1)
+                parents[target] = call.receiver
+            if auth is not None:
+                scopes.append((target, None, auth))
+            continue
+        if call.method in ("Method", "MethodFunc", "Handle") and spans and (
+            index.string_literal(*spans[0]) in _GO_METHOD_LITERALS
+        ):
+            spans = spans[1:]
+        path = index.string_literal(*spans[0]) if spans else None
+        if path is None or len(spans) < 2:
+            continue
+        if echo:
+            handler_span, middleware_spans = spans[1], spans[2:]
+        else:
+            handler_span, middleware_spans = spans[-1], spans[1:-1]
+        handler, wrapper = _handler_identity(index, *handler_span, go=True)
+        method = call.method.upper() if call.method not in ("Handle", "HandleFunc", "Any") else "ANY"
+        middleware = [text[s:min(e, s + _NAME_WINDOW)] for s, e in middleware_spans]
+        regs.append(_reg(call.receiver, method, path, handler, wrapper, middleware, call, index))
+    for m in _CALL_HEAD_RE.finditer(text):
+        if not index.in_code(m.start()) or _classify(m.group(1)) != "auth":
+            continue
+        for s, e in index.args(m.end() - 1) or []:
+            if e - s <= _NAME_WINDOW and _DOTTED_RE.fullmatch(text[s:e]):
+                scopes.append((text[s:e], None, m.group(1)))
+    for _ in range(4):
+        authed = {receiver: auth for receiver, _prefix, auth in scopes}
+        inherited = [(g, None, authed[p]) for g, p in parents.items() if p in authed and g not in authed]
+        if not inherited:
+            break
+        scopes.extend(inherited)
+    return regs, scopes
+
+
+def _covered(reg: _Reg, scopes: list[_Scope]) -> bool:
+    for receiver, prefix, _auth in scopes:
+        if receiver != reg.receiver:
+            continue
+        if prefix is None:
+            return True
+        base = prefix.rstrip("*").rstrip("/")
+        if not base or reg.path == base or reg.path.startswith(base + "/"):
+            return True
+    return False
+
+
+def _shared_handler_findings(index: CodeIndex, rel: str, mcpwn_lines: set[int]) -> list[Finding]:
+    text = index.text
+    go = rel.endswith(".go")
+    if go:
+        regs, scopes = _go_registrations(index, echo='"github.com/labstack/echo' in text)
+    else:
+        regs, scopes = _js_registrations(index)
+    server_file = bool(_MCP_SERVER_HINT_RE.search(text))
+    groups: dict[tuple[str, int], list[_Reg]] = {}
+    for reg in regs:
+        if reg.handler is not None:
+            groups.setdefault((reg.handler, reg.block), []).append(reg)
+    findings: list[Finding] = []
+    for (handler, _block), members in groups.items():
+        authed = [r for r in members if r.auth is not None]
+        if not authed:
+            continue
+        for open_reg in members:
+            if open_reg.auth is not None or open_reg.unknown or open_reg.line in mcpwn_lines:
+                continue
+            if _covered(open_reg, scopes):
+                continue
+            twin = next((
+                t for t in authed
+                if (t.method, t.path) != (open_reg.method, open_reg.path)
+                and any(
+                    is_mcp_endpoint_path(p) or (server_file and _SSE_PATH_RE.search(p))
+                    for p in (t.path, open_reg.path)
+                )
+            ), None)
+            if twin is None:
+                continue
+            shown = handler.split(":", 1)[-1] if handler.startswith("delegate:") else handler
+            findings.append(make_finding(
+                _MCP020,
+                rel,
+                f"{open_reg.method} {open_reg.path!r} runs `{shown[:80]}` with no authentication, "
+                f"while {twin.method} {twin.path!r} (line {twin.line}) runs the same handler "
+                f"behind `{_SPACE_RE.sub(' ', twin.auth or '')[:60]}`",
+                line_number=open_reg.line,
+            ))
+    return findings
+
+
+def _reads_shared_handlers(rel: str, text: str, go: bool) -> bool:
+    """Whether AAK-MCP-020 reads this file: not a test file or a Go file that
+    starts an `httptest` server, and it mentions MCP and registers a route."""
+    if TEST_FILE_RE.search(Path(rel).as_posix()) or "mcp" not in text.lower():
+        return False
+    if go:
+        return bool(_GO_SHARED_HEAD_RE.search(text)) and not GO_TEST_SERVER_RE.search(text)
+    return bool(_JS_ROUTE_HEAD_RE.search(text))
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

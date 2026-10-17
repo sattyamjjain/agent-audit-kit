@@ -3497,18 +3497,45 @@ _r(
 _r(
     "AAK-MCP-020",
     "MCP handler shares routing with an unauthenticated path",
-    "Two MCP HTTP routes share a single handler but only one is wrapped in "
-    "auth middleware. The second route inherits the tool surface without the "
-    "auth check. This is the CVE-2026-33032 bypass pattern.",
+    "Two HTTP routes registered in the same Go or TypeScript/JavaScript file reach "
+    "the same MCP handler, and only one of them applies authentication: an auth "
+    "middleware on the route, or the handler wrapped in an auth function. The other "
+    "route serves every tool the first one protects, with no credential. This is the "
+    "CVE-2026-33032 bypass: nginx-ui's `/mcp_message` ran the same `mcp.ServeHTTP` as "
+    "`/mcp`, behind an IP allowlist that was empty by default and nothing else.",
     Severity.CRITICAL,
     Category.MCP_CONFIG,
-    "Apply auth middleware at the router level, not per-route. Or, wrap the "
-    "shared handler in the auth check.",
+    "Put the authentication where no route can miss it: on the router or group every "
+    "MCP route is registered on (`r.Use(AuthRequired())`, a gin group made with the "
+    "middleware, `app.use(\"/mcp\", requireAuth)`), or inside the shared handler. "
+    "If another route has to stay open, such as a health check, give it a handler "
+    "of its own that reaches no tool.",
     sarif_name="McpSharedHandlerAuthGap",
     cve_references=["CVE-2026-33032"],
     owasp_mcp_references=["MCP07:2025"],
     owasp_agentic_references=["ASI03"],
     adversa_references=["ADV-AUTH-01"],
+    limitations=(
+        "Reads gin, echo, chi and net/http routes in Go, and Express-style route calls "
+        "(`app.post(path, ...middleware, handler)` and its `get`, `put`, `patch`, "
+        "`delete` and `all` siblings, as Express, Hono and Koa Router write them) in "
+        "TypeScript and JavaScript; Python servers are not read. Two routes are paired "
+        "only when they sit in the same file and the same block, have different methods "
+        "or paths, run the same handler value (or inline functions whose only statement "
+        "is the same call handing on the request), and one path is an MCP endpoint "
+        "(`/mcp`, `/api/v1/mcp`, `/mcp/message`) or an SSE or message path in a file "
+        "that builds an MCP server. So routes registered in two files or two functions "
+        "are not paired, a path held in a constant (`app.get(MCP_PATH, h)`) is not "
+        "read, and inline handlers that do more than delegate are not compared. An "
+        "unauthenticated route that carries a middleware the check cannot name (auth, a "
+        "body parser, CORS, logging, rate limiting or an IP allowlist) is skipped, since "
+        "that middleware may be the authentication, and auth on a whole router "
+        "anywhere in the file (`app.use(auth)`, `r.Use(auth)`, a group made with auth, "
+        "the mux handed to an auth wrapper) covers every route on it, whatever the "
+        "registration order. Test files and mock servers are not read. A route "
+        "AAK-MCPWN-001 reports is left to that rule, so a scan restricted to "
+        "AAK-MCP-020 does not list it."
+    ),
 )
 
 # ---------------------------------------------------------------------------

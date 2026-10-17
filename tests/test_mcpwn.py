@@ -68,7 +68,8 @@ def test_the_real_router_shape_fires(tmp_path: Path) -> None:
     """A minimal reproduction of nginx-ui's router at e8ee931e16af. The Gin
     pattern this rule used read each route to the first `)`, the one closing
     `middleware.IPWhiteList()`, so `/mcp` never looked authenticated and the
-    rule was silent on the code its CVE was found in."""
+    rule was silent on the code its CVE was found in. AAK-MCP-020 recognises
+    the route too; it is reported once, here."""
     project = _stage(tmp_path, FIX / "vulnerable" / "mcp_router.go")
     findings, _ = mcp_middleware.scan(project)
     assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCPWN-001", 21)]
