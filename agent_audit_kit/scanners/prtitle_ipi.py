@@ -27,7 +27,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import MatchSpans, in_skip_dir, make_finding
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -73,26 +73,21 @@ def _heads(name: str) -> list[str]:
 
 # Title-shape sources from GitHub event payloads and env vars; the gh CLI's is
 # `_GH_PR_VIEW_RE`, below.
-_TITLE_SOURCE_RE = re.compile(
-    "|".join(
-        f"(?:{arm})"
-        for arm in (
-            r"pull_request\s*\.\s*title",
-            r"pull_request\s*\.\s*head\s*\.\s*ref",
-            r"issue\s*\.\s*title",
-            r"event\s*\.\s*pull_request\s*\.\s*title",
-            r"event\s*\.\s*issue\s*\.\s*title",
-            r"github\.event\.pull_request\.title",
-            r"github\.event\.issue\.title",
-            r"""os\.environ\[\s*['"]PR_TITLE['"]\s*\]""",
-            r"""os\.environ\[\s*['"]GITHUB_HEAD_REF['"]\s*\]""",
-            r"""os\.getenv\(\s*['"]PR_TITLE['"]""",
-            r"""os\.getenv\(\s*['"]GITHUB_HEAD_REF['"]""",
-            *(head + rf"\s*{_key('title')}" for head in _heads("pull_request")),
-            *(head + rf"\s*{_key('head')}\s*{_key('ref')}" for head in _heads("pull_request")),
-            *(head + rf"\s*{_key('title')}" for head in _heads("issue")),
-        )
-    )
+_TITLE_ARMS = (
+    r"pull_request\s*\.\s*title",
+    r"pull_request\s*\.\s*head\s*\.\s*ref",
+    r"issue\s*\.\s*title",
+    r"event\s*\.\s*pull_request\s*\.\s*title",
+    r"event\s*\.\s*issue\s*\.\s*title",
+    r"github\.event\.pull_request\.title",
+    r"github\.event\.issue\.title",
+    r"""os\.environ\[\s*['"]PR_TITLE['"]\s*\]""",
+    r"""os\.environ\[\s*['"]GITHUB_HEAD_REF['"]\s*\]""",
+    r"""os\.getenv\(\s*['"]PR_TITLE['"]""",
+    r"""os\.getenv\(\s*['"]GITHUB_HEAD_REF['"]""",
+    *(head + rf"\s*{_key('title')}" for head in _heads("pull_request")),
+    *(head + rf"\s*{_key('head')}\s*{_key('ref')}" for head in _heads("pull_request")),
+    *(head + rf"\s*{_key('title')}" for head in _heads("issue")),
 )
 # `gh pr view` with `title` anywhere after it, read apart. As the arm
 # `gh\s+pr\s+view.*?title` (with `.` matching newlines) it read to the end of the
@@ -117,98 +112,164 @@ def _title_start(text: str, start: int, end: int) -> int | None:
 # three `\s*` stood side by side, cubic in a run of blanks after
 # `anthropic.` (0.83 s for 800 blanks, 13 s for 2,000). Each `\s*` follows a
 # token that must be there now, and the arm matches the same text.
-_LLM_SINK_RE = re.compile(
-    r"""
-    (?:
-        anthropic\s*\.\s*(?:\w+\s*)?(?:\.\s*)?(?:messages\.create|completions\.create|create)
-      | client\s*\.\s*messages\s*\.\s*create
-      | openai\s*\.\s*chat\s*\.\s*completions\s*\.\s*create
-      | openai\s*\.\s*ChatCompletion\.create
-      | openai\s*\.\s*Completion\.create
-      | genai\s*\.\s*GenerativeModel
-      | model\s*\.\s*generate_content
-      | langchain\s*\.\s*\w+\s*\.\s*(?:invoke|run|call)
-      | LLMChain\s*\(
-      | ChatAnthropic\s*\(
-      | ChatOpenAI\s*\(
-      | LLM\s*\(\s*\)\s*\.\s*invoke
-      | claude_agent_sdk\.\s*\w+
-    )
-    """,
-    re.VERBOSE,
+_LLM_SINK_ARMS = (
+    r"anthropic\s*\.\s*(?:\w+\s*)?(?:\.\s*)?(?:messages\.create|completions\.create|create)",
+    r"client\s*\.\s*messages\s*\.\s*create",
+    r"openai\s*\.\s*chat\s*\.\s*completions\s*\.\s*create",
+    r"openai\s*\.\s*ChatCompletion\.create",
+    r"openai\s*\.\s*Completion\.create",
+    r"genai\s*\.\s*GenerativeModel",
+    r"model\s*\.\s*generate_content",
+    r"langchain\s*\.\s*\w+\s*\.\s*(?:invoke|run|call)",
+    r"LLMChain\s*\(",
+    r"ChatAnthropic\s*\(",
+    r"ChatOpenAI\s*\(",
+    r"LLM\s*\(\s*\)\s*\.\s*invoke",
+    r"claude_agent_sdk\.\s*\w+",
 )
 
 # Sanitiser markers — if any of these appear between source and sink in
 # the same function, we suppress. An `re.sub(` with an escaped pattern is
-# `_escaped_substitution`, below.
-_SANITIZE_RE = re.compile(
-    r"""
-    (?:
-        html\.escape\s*\(
-      | bleach\.clean\s*\(
-      | markupsafe\.escape\s*\(
-      | json\.dumps\s*\(
-      | shlex\.quote\s*\(
-      | hashlib\.\w+\s*\(
-      | re\.escape\s*\(
-      | \.replace\s*\(\s*['"]<['"]
-      | sanitize|sanitise|escape_html|escape_md
-      | ALLOWED_TITLE|TITLE_ALLOWLIST|TITLE_REGEX
-    )
-    """,
-    re.VERBOSE | re.IGNORECASE,
+# `_escaped_substitutions`, below.
+_SANITIZE_ARMS = (
+    r"html\.escape\s*\(",
+    r"bleach\.clean\s*\(",
+    r"markupsafe\.escape\s*\(",
+    r"json\.dumps\s*\(",
+    r"shlex\.quote\s*\(",
+    r"hashlib\.\w+\s*\(",
+    r"re\.escape\s*\(",
+    r"""\.replace\s*\(\s*['"]<['"]""",
+    r"sanitize|sanitise|escape_html|escape_md",
+    r"ALLOWED_TITLE|TITLE_ALLOWLIST|TITLE_REGEX",
 )
-# `re.sub(` with a quoted pattern of four backslashes and a letter before the
-# call's first `)`, read apart. As the arm
-# `re\.sub\s*\([^)]*['"][^'"]*\\\\\\\\[a-z][^'"]*['"]` it read to the next `)`
-# from every `re.sub(`, quadratic in their number (1.5 s for 10,000). Every
-# `re.sub(` before the same `)` sees the same quotes or fewer, so the first of
-# them decides, and each quote is tried once.
+
+
+def _either(arms: tuple[str, ...], flags: int = 0) -> re.Pattern[str]:
+    return re.compile("|".join(f"(?:{arm})" for arm in arms), flags)
+
+
+# Each list as one pattern, to read a whole file at once, and as one pattern per
+# arm, to find every match of each (`_Reader`).
+_TITLE_SOURCE_RE = _either(_TITLE_ARMS)
+_LLM_SINK_RE = _either(_LLM_SINK_ARMS)
+_SANITIZE_RE = _either(_SANITIZE_ARMS, re.IGNORECASE)
+_TITLE_SOURCE_RES = tuple(re.compile(arm) for arm in _TITLE_ARMS)
+_LLM_SINK_RES = tuple(re.compile(arm) for arm in _LLM_SINK_ARMS)
+_SANITIZE_RES = tuple(re.compile(arm, re.IGNORECASE) for arm in _SANITIZE_ARMS)
+
 _SUB_CALL_RE = re.compile(r"re\.sub\s*\(", re.IGNORECASE)
 _QUOTE_RE = re.compile(r"""['"]""")
-_ESCAPED_PATTERN_RE = re.compile(r"""['"][^'"]*\\\\\\\\[a-z][^'"]*['"]""", re.IGNORECASE)
+_ESCAPE_RE = re.compile(r"\\\\\\\\[a-z]", re.IGNORECASE)
 
 
-def _escaped_substitution(text: str, start: int, end: int) -> bool:
-    """Whether `text[start:end]` holds an `re.sub(` with an escaped pattern, as the arm read it."""
-    while True:
-        call = _SUB_CALL_RE.search(text, start, end)
-        if call is None:
-            return False
-        close = text.find(")", call.end(), end)
-        stop = end if close == -1 else close
-        at = call.end()
-        while True:
-            quote = _QUOTE_RE.search(text, at, stop)
-            if quote is None:
-                break
-            if _ESCAPED_PATTERN_RE.match(text, quote.start(), end):
-                return True
-            at = quote.start() + 1
-        if close == -1:
-            return False
-        start = close + 1
+def _word_starts(text: str, word: str) -> list[int]:
+    starts = []
+    at = text.find(word)
+    while at != -1:
+        starts.append(at)
+        at = text.find(word, at + 1)
+    return starts
 
 
-def _sanitised(text: str, start: int, end: int) -> bool:
-    return bool(_SANITIZE_RE.search(text, start, end)) or _escaped_substitution(text, start, end)
+def _escaped_substitutions(text: str) -> list[tuple[int, int]]:
+    """Every `re.sub(` with a quoted pattern of four backslashes and a letter,
+    each as the span from the call to the pattern's closing quote.
+
+    The pattern's quote opens before the call's first `)`, and its value runs
+    to the next quote, past the `)` if need be. As a sanitiser arm,
+    `re\\.sub\\s*\\([^)]*` and then the quoted pattern, it read to the next `)`
+    from every `re.sub(` (1.5 s for 10,000), then tried each escape in a value
+    never closed and read to the end of the file from every one: a quote and
+    then four backslashes and a letter 100,000 times took 511.6 s at 500 KB.
+    Each value between two quotes is searched once now. A call whose first
+    escaped value opens after its `)` never matches, since no value opening
+    before the `)` holds an escape. A range holds a match when it holds one of
+    these spans.
+    """
+    quotes = [m.start() for m in _QUOTE_RE.finditer(text)]
+    opens: list[int] = []
+    closes: list[int] = []
+    for here, there in zip(quotes, quotes[1:]):
+        if _ESCAPE_RE.search(text, here + 1, there):
+            opens.append(here)
+            closes.append(there)
+    if not opens:
+        return []
+    parens = _word_starts(text, ")")
+    spans = []
+    for call in _SUB_CALL_RE.finditer(text):
+        index = bisect.bisect_left(opens, call.end())
+        if index == len(opens):
+            break
+        paren = bisect.bisect_left(parens, call.end())
+        if paren == len(parens) or parens[paren] > opens[index]:
+            spans.append((call.start(), closes[index] + 1))
+    return spans
+
+
+class _Reader:
+    """A Python file's title sources, sinks and sanitisers, each match found once.
+
+    A function was judged by searching its own lines, so every level of a
+    nested function searched the levels inside it again: 99 levels over one
+    line of 20,000 calls took 31.6 s at 428 KB (main 24.4 s, the same body in
+    one function 2.1 s). Each arm's matches are found once per file now, and a
+    function asks about them by binary search (`MatchSpans`). A match counts
+    for a function when it lies wholly inside the function's lines, as a
+    search of those lines alone found it: no match can begin before a `def`
+    line and run into it, and each arm matches one way from where it starts.
+    """
+
+    def __init__(self, text: str) -> None:
+        self._titles = MatchSpans(m.span() for p in _TITLE_SOURCE_RES for m in p.finditer(text))
+        views = [m.span() for m in _GH_PR_VIEW_RE.finditer(text)]
+        self._view_starts = [start for start, _ in views]
+        self._view_ends = [end for _, end in views]
+        self._title_words = _word_starts(text, "title")
+        self._sinks = MatchSpans(m.span() for p in _LLM_SINK_RES for m in p.finditer(text))
+        self._sanitisers = MatchSpans(
+            [m.span() for p in _SANITIZE_RES for m in p.finditer(text)] + _escaped_substitutions(text)
+        )
+
+    def title_start(self, start: int, end: int) -> int | None:
+        """Where the first title source in `[start, end)` begins, as `_title_start` reads it."""
+        first = self._titles.first(start, end)
+        view = bisect.bisect_left(self._view_starts, start)
+        if view < len(self._view_starts) and self._view_ends[view] <= end:
+            word = bisect.bisect_left(self._title_words, self._view_ends[view])
+            if word < len(self._title_words) and self._title_words[word] + len("title") <= end:
+                if first is None or self._view_starts[view] < first:
+                    first = self._view_starts[view]
+        return first
+
+    def reported(self, start: int, end: int) -> int | None:
+        """Where the title source begins, when `[start, end)` holds one, a sink and no sanitiser."""
+        source = self.title_start(start, end)
+        if source is None or not self._sinks.within(start, end) or self._sanitisers.within(start, end):
+            return None
+        return source
 
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     """Per-function: title source seen + LLM sink seen + no sanitiser → fire."""
-    try:
-        tree = ast.parse(text, str(path))
-    except SyntaxError:
-        return []
-    findings: list[Finding] = []
     # A function's source is its lines joined with newlines, searched in place;
     # the file is split once. Each function used to split it again, so 20,000
     # functions took 35 s.
     lines = text.splitlines()
     joined = "\n".join(lines)
+    # No function holds a title source or a sink the file does not.
+    if _title_start(joined, 0, len(joined)) is None or not _LLM_SINK_RE.search(joined):
+        return []
+    try:
+        tree = ast.parse(text, str(path))
+    except SyntaxError:
+        return []
+    findings: list[Finding] = []
     line_starts = [0]
     for line in lines:
         line_starts.append(line_starts[-1] + len(line) + 1)
+    reader = _Reader(joined)
 
     class V(ast.NodeVisitor):
         def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
@@ -224,13 +285,8 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             last = min(len(lines), (func.end_lineno or func.lineno))
             if last <= first:
                 return
-            start, end = line_starts[first], line_starts[last] - 1
-            source = _title_start(joined, start, end)
+            source = reader.reported(line_starts[first], line_starts[last] - 1)
             if source is None:
-                return
-            if not _LLM_SINK_RE.search(joined, start, end):
-                return
-            if _sanitised(joined, start, end):
                 return
             rel = str(path.relative_to(project_root))
             scanned.add(rel)
@@ -260,7 +316,7 @@ def _walk_ts(text: str, path: Path, project_root: Path, scanned: set[str]) -> li
     sink_match = _LLM_SINK_RE.search(text)
     if sink_match is None:
         return findings
-    if _sanitised(text, 0, len(text)):
+    if _SANITIZE_RE.search(text) or _escaped_substitutions(text):
         return findings
     rel = str(path.relative_to(project_root))
     scanned.add(rel)

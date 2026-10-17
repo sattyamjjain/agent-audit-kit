@@ -101,6 +101,9 @@ def test_prtitle_ipi_reads_the_title_however_the_event_is_read(tmp_path: Path, e
     'event["title"]',
     'event["pull_request"]["head"]["sha"]',
     'html.escape(event["pull_request"]["title"])',
+    # A `.get()` default read to the first parenthesis, so one that is itself a
+    # call is no source (stated in the limitation).
+    'event.get("pull_request", dict()).get("title")',
 ])
 def test_prtitle_ipi_other_fields_and_an_escaped_title_stay_silent(tmp_path: Path, expr: str) -> None:
     (tmp_path / "review.py").write_text(
@@ -182,6 +185,17 @@ _PY_TAIL = "\n    return title\n"
 _TS_HEAD = "const title = event.pull_request.title;\nclient.messages.create(title);\n"
 
 
+def _prtitle_in_child(root: Path) -> tuple[float, int]:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _PRTITLE_CHILD, str(root)], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, count = done.stdout.split()
+    return float(elapsed), int(count)
+
+
 @pytest.mark.parametrize(("name", "text", "findings"), [
     ("review.ts", "const t = event.pull_request.title;\nanthropic." + " " * 500_000 + "!\n", 0),
     ("review.py", "def f(event):\n    t = event.pull_request.title\n    # anthropic." + " " * 500_000 + "!" + _PY_TAIL, 0),
@@ -197,15 +211,9 @@ def test_prtitle_ipi_reads_crafted_patterns_in_linear_time(
     timeout instead of holding the suite."""
     assert len(text.encode("utf-8")) <= 512_000
     (tmp_path / name).write_text(text, encoding="utf-8")
-    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
-    env = {**os.environ, "PYTHONPATH": str(package_root)}
-    done = subprocess.run(
-        [sys.executable, "-c", _PRTITLE_CHILD, str(tmp_path)], capture_output=True, text=True, timeout=120, env=env
-    )
-    assert done.returncode == 0, done.stderr
-    elapsed, count = done.stdout.split()
-    assert int(count) == findings
-    assert float(elapsed) < 5.0, elapsed
+    elapsed, count = _prtitle_in_child(tmp_path)
+    assert count == findings
+    assert elapsed < 5.0, elapsed
 
 
 @pytest.mark.parametrize(("size", "read"), [(512_000, True), (512_001, False)])
@@ -248,6 +256,14 @@ _FOUR_BACKSLASHES = "\\" * 4
     # four backslashes and a letter before the call's first `)`.
     (f"    out = re.sub('{_FOUR_BACKSLASHES}n', ' ', event.pull_request.title)", False),
     ("    out = re.sub(pattern, ' ', event.pull_request.title)", True),
+    # The pattern's quote opens before the call's first `)`; its value may run past it.
+    (f'    out = re.sub(" ) {_FOUR_BACKSLASHES}n", " ", event.pull_request.title)', False),
+    # A quote after the `)` does not count, though its value holds the escape.
+    (f"    out = re.sub(pattern, ' ', event.pull_request.title) + '{_FOUR_BACKSLASHES}n'", True),
+    # Five backslashes hold four, and the call and the letter are read in any case.
+    (f"    out = re.SUB(r'{_FOUR_BACKSLASHES}\\N', ' ', event.pull_request.title)", False),
+    # An escape in a value that closes before the pattern's does not count.
+    (f"    out = re.sub(pattern, '{_FOUR_BACKSLASHES}', event.pull_request.title)", True),
 ])
 def test_prtitle_ipi_the_split_out_patterns_read_as_before(tmp_path: Path, line: str, reported: bool) -> None:
     src = (
@@ -258,6 +274,90 @@ def test_prtitle_ipi_the_split_out_patterns_read_as_before(tmp_path: Path, line:
     )
     (tmp_path / "review.py").write_text(src, encoding="utf-8")
     assert [f.line_number for f in prtitle_scan(tmp_path)[0]] == ([6] if reported else [])
+
+
+# Verification of a323344c (2026-10-17, High): the escaped-pattern sanitiser,
+# matched at each quote as `['"][^'"]*\\\\\\\\[a-z][^'"]*['"]`, tried every escape
+# in a quoted value never closed and read to the end of the file from each: a
+# quote and then four backslashes and a letter 100,000 times took 511.6 s at
+# 500 KB, as main's arm does at any size. Each quoted value is searched once now.
+_ESCAPES = (_FOUR_BACKSLASHES + "a") * 100_000
+
+
+@pytest.mark.parametrize(("name", "text"), [
+    ("review.py", _PY_HEAD[: -len("    # ")] + '    re.sub("x", "y", title)\n    # ' + _ESCAPES + _PY_TAIL),
+    ("review.ts", _TS_HEAD + "re.sub('" + _ESCAPES + "\n"),
+])
+def test_prtitle_ipi_reads_an_unclosed_pattern_in_linear_time(tmp_path: Path, name: str, text: str) -> None:
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    elapsed, count = _prtitle_in_child(tmp_path)
+    assert count == 1
+    assert elapsed < 5.0, elapsed
+
+
+# Verification of a323344c (2026-10-17, Medium): each function's range was
+# searched for a title source, a sink and a sanitiser, so every level of a nested
+# function searched the levels inside it again: 99 levels over one line of
+# 20,000 `re.sub("a", "b", t)` calls took 31.6 s at 428 KB (main 24.4 s, the same
+# body in one function 2.1 s). Each match is found once per file now.
+def _nested_review(depth: int) -> str:
+    lines = ["import re"]
+    lines += [" " * level + f"def f{level}(event, client, t):" for level in range(depth)]
+    lines += [
+        " " * depth + "x = [" + ", ".join(['re.sub("a", "b", t)'] * 20_000) + "]",
+        " " * depth + "title = event.pull_request.title",
+        " " * depth + "client.messages.create(prompt=title)",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def test_prtitle_ipi_nested_functions_read_in_linear_time(tmp_path: Path) -> None:
+    text = _nested_review(99)
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / "review.py").write_text(text, encoding="utf-8")
+    elapsed, count = _prtitle_in_child(tmp_path)
+    assert count == 99, "every level holds the source, the sink and no sanitiser"
+    assert elapsed < 5.0, elapsed
+
+
+_NESTED_REVIEW = """import html
+
+
+def outer(event, client):
+    title = event.pull_request.title
+
+    def send():
+        return client.messages.create(prompt=title)
+
+    def clean(text):
+        return html.escape(text)
+
+    return send()
+
+
+def other(event, client):
+    def send(title):
+        return client.messages.create(prompt=title)
+
+    return send(event.pull_request.title)
+
+
+def inner_source(client):
+    def read(event):
+        return event.pull_request.title
+
+    return client.messages.create(prompt=read)
+"""
+
+
+def test_prtitle_ipi_judges_a_function_with_the_ones_nested_in_it(tmp_path: Path) -> None:
+    """A function's source includes the functions nested in it: `outer` holds a
+    sanitiser in `clean`, `other` reads the title in its own line and sends it in
+    `send`, and `inner_source` reads it in `read` and sends it itself. A nested
+    function holding no source of its own is not reported."""
+    (tmp_path / "review.py").write_text(_NESTED_REVIEW, encoding="utf-8")
+    assert [f.line_number for f in prtitle_scan(tmp_path)[0]] == [20, 25]
 
 
 # -------------------- AAK-MCP-FHI-001 --------------------

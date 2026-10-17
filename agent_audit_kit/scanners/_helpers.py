@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import bisect
 import ipaddress
 import json
 import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import AbstractSet, Any, Callable, Iterator, NamedTuple
+from typing import AbstractSet, Any, Callable, Iterable, Iterator, NamedTuple
 from urllib.parse import unquote
 
 try:
@@ -76,6 +77,48 @@ def sub_comments(pattern: re.Pattern[str], line_pattern: re.Pattern[str], text: 
         pos = m.end()
     out.append(line_pattern.sub("", text[pos:]))
     return "".join(out)
+
+
+class MatchSpans:
+    """Where the matches of patterns lie in one text, found once, to ask about a range of it.
+
+    A scanner that judges each function by searching the function's own source
+    searches the lines of a nested function again for every function around it,
+    so a function nested 99 deep made its lines be read 99 times. Each match is
+    found once per file instead, and a range is asked about by binary search. A
+    match counts for a range when it lies wholly inside it; for a range of whole
+    lines that is what a search of the range alone finds, provided every
+    pattern matches one way from where it starts and no match begins before the
+    first line of a range it could end in. Each caller says why its patterns do.
+    """
+
+    def __init__(self, spans: Iterable[tuple[int, int]]) -> None:
+        ordered = sorted(spans)
+        self._starts = [start for start, _ in ordered]
+        self._ends = [end for _, end in ordered]
+        # The earliest end among the spans from each one on.
+        self._earliest_end = self._ends[:]
+        for index in range(len(ordered) - 2, -1, -1):
+            self._earliest_end[index] = min(self._earliest_end[index], self._earliest_end[index + 1])
+
+    def within(self, start: int, end: int) -> bool:
+        """Whether a match lies wholly inside `[start, end)`."""
+        index = bisect.bisect_left(self._starts, start)
+        return index < len(self._starts) and self._earliest_end[index] <= end
+
+    def first(self, start: int, end: int) -> int | None:
+        """Where the first match lying wholly inside `[start, end)` begins, or None.
+
+        A match that begins inside the range and ends past it is stepped over, so
+        this is quick when few matches can cover one position: the matches one
+        pattern's `finditer` gives never overlap.
+        """
+        index = bisect.bisect_left(self._starts, start)
+        while index < len(self._starts) and self._starts[index] < end:
+            if self._ends[index] <= end:
+                return self._starts[index]
+            index += 1
+        return None
 
 
 SKIP_DIRS = frozenset({
