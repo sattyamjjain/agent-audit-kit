@@ -567,6 +567,20 @@ def _dict_entries(node: ast.AST) -> list[tuple[str | None, ast.expr]]:
     return []
 
 
+def _iterated(node: ast.AST) -> list[ast.AST]:
+    """What iterating `node` yields, to read: a mapping yields its keys, so a
+    dict literal or comprehension, or a `dict(...)` call, gives its keys and
+    the mappings it unpacks or copies, never its values; anything else is
+    read whole."""
+    if isinstance(node, ast.DictComp):
+        return [node.key]
+    if isinstance(node, ast.Dict):
+        return [key if key is not None else value for key, value in zip(node.keys, node.values)]
+    if _is_dict_display(node) and isinstance(node, ast.Call):
+        return list(node.args)
+    return [node]
+
+
 def _template_lead(template: str) -> str:
     """The text of a `string.Template` before its first placeholder, with
     `$$` read as the `$` it writes."""
@@ -865,6 +879,7 @@ class _CallerInput:
         self._sets: dict[tuple[int, int], bool] = {}
         self._name_sets: dict[tuple[str, int], bool] = {}
         self._joined_sets: dict[tuple[str, str, int], bool] = {}
+        self._keys_sets: dict[tuple[str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
         self._joined_texts: dict[tuple[str, str, int], str] = {}
         self._mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]] = {}
@@ -1006,6 +1021,14 @@ class _CallerInput:
                         return True
                     continue
                 func = cur.func
+                mapping = self._joined_mapping(cur)
+                if mapping is not None and isinstance(func, ast.Attribute):
+                    # Joining a mapping held in a name joins its keys, judged
+                    # once per name and depth; the separator is read here.
+                    if self._mapping_keys_set_host(mapping, depth, nest):
+                        return True
+                    stack.append(func.value)
+                    continue
                 pieces = None
                 if isinstance(func, ast.Attribute) and func.attr == "format":
                     pieces = _format_pieces(self._spelled(func.value, depth, nest + 1), cur)
@@ -1161,6 +1184,34 @@ class _CallerInput:
             return node.args[0]
         return None
 
+    def _joined_mapping(self, node: ast.AST) -> str | None:
+        """The name `node` joins (`sep.join(name)`), when the name is bound once
+        here to a dict literal or comprehension or a `dict(...)` call."""
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join"):
+            return None
+        if len(node.args) != 1 or node.keywords or not isinstance(node.args[0], ast.Name):
+            return None
+        name = node.args[0].id
+        if name in self.params or name in self.elements:
+            return None
+        bound = self.values.get(name, [])
+        if len(bound) == 1 and (isinstance(bound[0], ast.DictComp) or _is_dict_display(bound[0])):
+            return name
+        return None
+
+    def _mapping_keys_set_host(self, name: str, depth: int, nest: int) -> bool:
+        """Whether a key of the mapping `name` is bound to, or a mapping it
+        unpacks or copies, can set the host, worked out once per name and
+        depth. The keys were read again at every join: a dict of 23,070 keys
+        joined at 7,690 fetches took 189 s."""
+        key = (name, depth)
+        hit = self._keys_sets.get(key)
+        if hit is None:
+            self._keys_sets[key] = False
+            binding = self.values[name][0]
+            hit = self._keys_sets[key] = any(self.sets_host(part, depth, nest + 1) for part in _iterated(binding))
+        return hit
+
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
         """The parts of a call that can carry caller input into the URL it
         returns, read as `_PASS_THROUGH` says.
@@ -1214,26 +1265,8 @@ class _CallerInput:
         if name == "get":
             return [receiver, *call.args[1:], *(kw.value for kw in call.keywords if kw.arg == "default")]
         if name == "join" and call.args:
-            return [receiver, *self._iterated(call.args[0])]
+            return [receiver, *_iterated(call.args[0])]
         return [receiver]
-
-    def _iterated(self, node: ast.AST) -> list[ast.AST]:
-        """What iterating `node` yields, to read: a mapping yields its keys, so
-        a dict literal or comprehension, a `dict(...)` call, or a name bound
-        once here to one of those, gives its keys and the mappings it unpacks
-        or copies, never its values; anything else is read whole."""
-        target = node
-        if isinstance(node, ast.Name) and node.id not in self.params and node.id not in self.elements:
-            bound = self.values.get(node.id, [])
-            if len(bound) == 1:
-                target = bound[0]
-        if isinstance(target, ast.DictComp):
-            return [target.key]
-        if isinstance(target, ast.Dict):
-            return [key if key is not None else value for key, value in zip(target.keys, target.values)]
-        if _is_dict_display(target) and isinstance(target, ast.Call):
-            return list(target.args)
-        return [node]
 
     def _built_sets_host(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> bool:
         prefix = ""

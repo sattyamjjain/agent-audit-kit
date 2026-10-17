@@ -1288,6 +1288,10 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
     "replaceable-keys": (lambda: _TOOL_HEAD.replace("p: str", "arguments: dict") + "    d = {"
         + "".join(f"'k{i}': 'a', " for i in range(7_000)) + "".join(f"**x{i}, " for i in range(7_000))
         + "**arguments}\n" + "".join(f"    requests.get('https://%(k{i})s/' % d)\n" for i in range(7_000)), True),
+    # A dict of 23,070 keys joined by name at 7,690 fetches: joining a mapping
+    # reads its keys, which were read again at every join.
+    "dict-join": (lambda: _TOOL_HEAD + "    d = {" + "".join(f"'k{i}': 0, " for i in range(23_070)) + "}\n"
+        + "    requests.get(''.join(d))\n" * 7_690, False),
 }
 
 
