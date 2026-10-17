@@ -2197,10 +2197,22 @@ _PY_MAX_NESTING = 20_000
 # 500 KB cost 0.2 to 0.35 s and 250 to 380 MB a parse on 3.9.6, once for each
 # scanner that parsed it, which the screen spares.
 _PARSE_STACK_BYTES = 256 * 1024 * 1024
-# The worker, as (process id, executor, worker thread id): a forked child has no
-# threads and starts its own.
-_parse_worker: tuple[int, ThreadPoolExecutor, int] | None = None
+# The worker, as (process id, executor, worker thread id), or (process id, None,
+# 0) where no thread with that stack could start: a forked child has no threads
+# and starts its own. It is started under the lock, which a forked child
+# replaces, since a parent's thread may have held it at the fork.
+_parse_worker: tuple[int, ThreadPoolExecutor | None, int] | None = None
+_parse_worker_lock = threading.Lock()
 _PARSE_ON_WORKER = sys.version_info < (3, 11)
+
+
+def _new_parse_worker_lock() -> None:
+    global _parse_worker_lock
+    _parse_worker_lock = threading.Lock()
+
+
+if hasattr(os, "register_at_fork"):
+    os.register_at_fork(after_in_child=_new_parse_worker_lock)
 
 # One token of Python source, for the screen. A string is only opened here; its
 # end is found by `_py_string_end`. Numbers are spelled out so that `1..real`
@@ -2438,20 +2450,43 @@ def _parse_quietly(source: str | bytes, filename: str) -> ast.Module:
 
 def _large_stack_worker() -> ThreadPoolExecutor | None:
     """The worker thread with `_PARSE_STACK_BYTES` of stack, started on first
-    use; None where a thread's stack size cannot be set."""
+    use; None where a thread's stack size cannot be set or no such thread can
+    start (an address-space or process limit), and the caller works in place
+    with the default recursion limit, as `_ast_parse` and `walk_tree` do. A
+    thread that could not start made every parse raise RuntimeError, and with
+    it every Python scanner.
+
+    The stack size is the process's while it is set, so the worker starts
+    under a lock. Two threads parsing for the first time at once could each
+    start one, the one kept having started under the size the other had
+    already put back, and leave 256 MB as the size of every later thread.
+    """
     global _parse_worker
-    if _parse_worker is None or _parse_worker[0] != os.getpid():
-        try:
-            previous = threading.stack_size(_PARSE_STACK_BYTES)
-        except (ValueError, RuntimeError):
-            return None
-        try:
-            worker = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aak-parse")
-            thread_id = worker.submit(threading.get_ident).result()  # start the thread now, with the large stack
-        finally:
-            threading.stack_size(previous)
-        _parse_worker = (os.getpid(), worker, thread_id)
-    return _parse_worker[1]
+    pid = os.getpid()
+    worker = _parse_worker
+    if worker is None or worker[0] != pid:
+        with _parse_worker_lock:
+            worker = _parse_worker
+            if worker is None or worker[0] != pid:
+                executor, thread_id = _start_parse_worker()
+                worker = _parse_worker = (pid, executor, thread_id)
+    return worker[1]
+
+
+def _start_parse_worker() -> tuple[ThreadPoolExecutor | None, int]:
+    try:
+        previous = threading.stack_size(_PARSE_STACK_BYTES)
+    except (ValueError, RuntimeError):
+        return None, 0
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="aak-parse")
+    try:
+        thread_id = executor.submit(threading.get_ident).result()  # start the thread now, with the large stack
+    except RuntimeError:  # "can't start new thread"
+        executor.shutdown(wait=False, cancel_futures=True)
+        return None, 0
+    finally:
+        threading.stack_size(previous)
+    return executor, thread_id
 
 
 def _on_large_stack() -> bool:

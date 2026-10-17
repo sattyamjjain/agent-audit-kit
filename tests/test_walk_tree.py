@@ -20,7 +20,10 @@ import sys
 import tempfile
 import textwrap
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -172,6 +175,81 @@ def _nested_calls(n: int) -> ast.expr:
     for _ in range(n):
         node = ast.Call(func=node, args=[], keywords=[])
     return node
+
+
+# ---------------------------------------------------------------------------
+# The large-stack worker
+# ---------------------------------------------------------------------------
+
+
+class _NoThreads(ThreadPoolExecutor):
+    def submit(self, *args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("can't start new thread")
+
+
+def test_a_worker_that_cannot_start_leaves_parses_and_walks_in_place(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Under an address-space or process limit the 256 MB thread cannot start,
+    and before 3.11 that RuntimeError came out of every parse, with every
+    Python scanner. The parse and the walk now run in place, the walk under
+    the default recursion limit, and the stack size is put back."""
+    monkeypatch.setattr(_helpers, "_parse_worker", None)
+    monkeypatch.setattr(_helpers, "ThreadPoolExecutor", _NoThreads)
+    monkeypatch.setattr(_helpers, "_PARSE_ON_WORKER", True)
+    monkeypatch.setattr(_helpers, "_WALK_ON_WORKER", True)
+    size = threading.stack_size()
+    assert _helpers._large_stack_worker() is None
+    assert threading.stack_size() == size
+    assert _helpers.parse_python("x = 1", "x.py").body[0].lineno == 1
+    assert walk_tree(_recurse, 100) == 100
+    with pytest.raises(RecursionError):
+        walk_tree(_recurse, sys.getrecursionlimit() + 100)
+    (tmp_path / "server.py").write_text(
+        "import requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('x')\n\n"
+        "@mcp.tool()\ndef fetch(url):\n    return requests.get(url).text\n"
+    )
+    assert run_scan(tmp_path).scanner_failures == []
+
+
+def test_threads_parsing_for_the_first_time_at_once_start_one_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The stack size is the process's while it is set. Without a lock, threads
+    starting the worker at once each started one, the one kept could have
+    started under the size another had already put back, and 256 MB stayed the
+    size of every later thread. Setting the size is slowed here, so that all
+    eight threads are inside the start at once."""
+    real = threading.stack_size
+
+    def slow_stack_size(*size: int) -> int:
+        previous = real(*size)
+        if size:
+            time.sleep(0.02)
+        return previous
+
+    monkeypatch.setattr(_helpers, "_parse_worker", None)
+    monkeypatch.setattr(threading, "stack_size", slow_stack_size)
+    before = {thread.ident for thread in threading.enumerate() if thread.name.startswith("aak-parse")}
+    size = real()
+    gate = threading.Barrier(8)
+    got: list[ThreadPoolExecutor | None] = []
+
+    def first_use() -> None:
+        gate.wait()
+        got.append(_helpers._large_stack_worker())
+
+    threads = [threading.Thread(target=first_use) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+    started = [t for t in threading.enumerate() if t.name.startswith("aak-parse") and t.ident not in before]
+    try:
+        assert len(got) == 8 and got[0] is not None and all(worker is got[0] for worker in got)
+        assert len(started) == 1
+        assert real() == size
+    finally:
+        for worker in {id(worker): worker for worker in got if worker is not None}.values():
+            worker.shutdown(wait=False)
 
 
 # ---------------------------------------------------------------------------
