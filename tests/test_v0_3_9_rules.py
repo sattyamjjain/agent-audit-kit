@@ -187,9 +187,8 @@ def test_deepseek_v4_reads_a_crafted_substitution_in_linear_time(tmp_path: Path)
     file parses on every Python, and the finding still firing shows the
     sanitiser pattern read them and did not count them."""
     crafted = '    # re.sub("' + "a" * 1_000_000 + "\n" + "    # re.sub(\n" * 100_000
-    (tmp_path / "app.py").write_text(_DEEPSEEK.replace("@@SUB@@", crafted), encoding="utf-8")
     started = time.perf_counter()
-    findings, _ = deepseek_scan(tmp_path)
+    findings = _read(tmp_path, _DEEPSEEK.replace("@@SUB@@", crafted))
     assert time.perf_counter() - started < 5.0
     assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
 
@@ -201,9 +200,8 @@ def test_deepseek_v4_reads_many_patterns_and_substitutions_in_linear_time(tmp_pa
     consts = "P0 = r'\\s+'\n" + "".join(f"P{i} = re.compile(P{i - 1})\n" for i in range(1, 10_000))
     subs = "".join(f"    other{i} = re.sub(P{i}, '', doc)\n" for i in range(10_000))
     src = _DEEPSEEK.replace("import re\n", "import re\n" + consts, 1).replace("@@SUB@@", subs)
-    (tmp_path / "app.py").write_text(src, encoding="utf-8")
     started = time.perf_counter()
-    findings, _ = deepseek_scan(tmp_path)
+    findings = _read(tmp_path, src)
     assert time.perf_counter() - started < 5.0
     assert [f.rule_id for f in findings] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
 
@@ -217,11 +215,8 @@ def test_deepseek_v4_many_functions_scale_linearly(tmp_path: Path) -> None:
         lines = ["import deepseek", "import re"]
         for i in range(count):
             lines += [f"def f{i}(request):", "    data = request.json", "    return data"]
-        root = tmp_path / str(count)
-        root.mkdir()
-        (root / "app.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
         started = time.perf_counter()
-        deepseek_scan(root)
+        _read(tmp_path, "\n".join(lines) + "\n")
         timings.append(time.perf_counter() - started)
     small, large = timings
     assert large < 30 * small + 1.0, (small, large)
@@ -457,11 +452,23 @@ def test_deepseek_v4_a_sibling_does_not_see_another_functions_names(tmp_path: Pa
 
 
 _DEEPSEEK_HEAD = "from openai import OpenAI\nclient = OpenAI(base_url='https://api.deepseek.com')\n"
+_DEEPSEEK_BODY = "def f(request):\n    doc = request.json\n    return client.create(tools=[{'description': doc}])\n"
 
 
-# The source `\bopen\([^)]*\)\.read\(\)` read to the next `)` from every `open(`
-# (0.62 s at 100 KB, quadratic, on main too). A child process scans it at 505 KB,
-# so the old pattern fails on the timeout instead of holding the suite.
+@pytest.mark.parametrize(("size", "read"), [(512_000, True), (512_001, False)])
+def test_deepseek_v4_reads_a_file_up_to_512_kb(tmp_path: Path, size: int, read: bool) -> None:
+    padding = "#" * (size - len(_DEEPSEEK_HEAD) - len(_DEEPSEEK_BODY) - 1) + "\n"
+    text = _DEEPSEEK_HEAD + padding + _DEEPSEEK_BODY
+    assert len(text.encode("utf-8")) == size
+    (tmp_path / "app.py").write_text(text, encoding="utf-8")
+    assert bool(deepseek_scan(tmp_path)[0]) is read
+
+
+# Two patterns of main's took quadratic time on a crafted file at any size: the
+# gate's `OpenAI\s*\([^)]*base_url...` read to the next `)` from every
+# `OpenAI(` (5.6 s at 280 KB), and the source `\bopen\([^)]*\)\.read\(\)` from
+# every `open(` (0.62 s at 100 KB). A child process scans each at the cap, so the
+# old patterns fail on the timeout instead of holding the suite.
 _DEEPSEEK_CHILD = (
     "import sys, time\n"
     "from pathlib import Path\n"
@@ -484,12 +491,14 @@ def _deepseek_in_child(root: Path) -> tuple[float, int]:
 
 
 @pytest.mark.parametrize(("shape", "findings"), [
+    ("OpenAI(" * 73_000, 0),
     (_DEEPSEEK_HEAD + "def f(request):\n    s = '" + "open(" * 101_000 + "'\n", 0),
     (_DEEPSEEK_HEAD + "def f(request):\n    s = '" + "open(" * 101_000 + "'\n"
      "    doc = open(path).read()\n    return client.create(tools=[{'description': doc}])\n", 1),
 ])
-def test_deepseek_v4_reads_its_sources_in_linear_time(tmp_path: Path, shape: str, findings: int) -> None:
+def test_deepseek_v4_reads_its_gate_and_sources_in_linear_time(tmp_path: Path, shape: str, findings: int) -> None:
     (tmp_path / "app.py").write_text(shape, encoding="utf-8")
+    assert len(shape.encode("utf-8")) <= 512_000
     elapsed, count = _deepseek_in_child(tmp_path)
     assert count == findings
     assert elapsed < 5.0, elapsed

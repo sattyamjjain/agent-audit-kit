@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import bisect
 import re
+import stat
 from collections import deque
 from collections.abc import Callable, Iterable
 from pathlib import Path
@@ -24,11 +25,20 @@ from agent_audit_kit.models import Finding
 from ._helpers import in_skip_dir, make_finding
 
 
+# A file over this many bytes is not read; the rule's limitation says so. The
+# reader below is linear in the file, so the cap bounds the time a crafted file
+# can take rather than keeping a quadratic path in check.
+_MAX_BYTES = 512_000
+
+# `OpenAI(... base_url="...deepseek...")` was an arm of its own, with `[^)]*`
+# between the call and `base_url`, which read to the next `)` from every
+# `OpenAI(`: a file of `OpenAI(` with no `)` took 5.6 s at 280 KB, before any
+# other check. The `base_url=` arm matches inside every such call, so the gate
+# passes the same files without it.
 _DEEPSEEK_HINT_RE = re.compile(
     r"""
     (?:
-        OpenAI\s*\([^)]*base_url\s*=\s*['"][^'"]*deepseek[^'"]*['"]
-      | base_url\s*=\s*['"][^'"]*deepseek[^'"]*['"]
+        base_url\s*=\s*['"][^'"]*deepseek[^'"]*['"]
       | from\s+deepseek
       | import\s+deepseek
     )
@@ -423,6 +433,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root):
             continue
         try:
+            info = path.stat()
+            if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_BYTES:
+                continue
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue

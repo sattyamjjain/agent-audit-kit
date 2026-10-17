@@ -7704,7 +7704,8 @@ _r(
         "keyword belongs to something else "
         "(`argparse.ArgumentParser(description=re.sub(...))`). What the pattern removes "
         "is not checked, so `re.sub(r\"route\", \"path\", doc)` counts, and a pattern "
-        "built at run time or held on a class never does."
+        "built at run time or held on a class never does. A file over 512 KB is not "
+        "read."
     ),
 )
 
