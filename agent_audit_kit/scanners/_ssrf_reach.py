@@ -96,6 +96,11 @@ _PRIVATE_ADDRESSES = frozenset(
 _PRIVATE_NAMES = frozenset({"localhost", "metadata.google.internal"})
 #: Where a host written without a scheme ends.
 _BARE_HOST_END_RE = re.compile(r"[/\\?#]")
+#: Punctuation a host written without a scheme sits between in prose and lists
+#: (`hosts: localhost, 10.0.0.5,`, `(127.0.0.1)`). Not `[` or `]`, which bracket
+#: an IPv6 host, and not `=` or `&`, after which a query value is not the URL's
+#: host.
+_BARE_HOST_PUNCT_RE = re.compile(r"[,;()<>{}\"'`|]+")
 #: The contents of a JS string or template literal, closed or not, read once:
 #: a quote's body cannot contain its own quote unescaped, so every match ends at
 #: the first one, and an unclosed literal ends at the line's or text's end.
@@ -152,8 +157,10 @@ def _private_address(text: str) -> str | None:
     10.0.0.5 to httpx, which dials it. A word holding `://` without a URL
     scheme in front (an f-string piece such as `://169.254.169.254/`, or
     `gopher://127.0.0.1:6379/`) is read from its `://`. Any other word counts
-    when it is a host written plainly (`_bare_host`). The address comes back
-    in its usual form, so `http://0xa9fea9fe/` gives 169.254.169.254.
+    when it is a host written plainly (`_bare_host`), after the punctuation
+    around it is split off: the old search found `localhost` in
+    `hosts: localhost, 10.0.0.5,` and 127.0.0.1 in `(127.0.0.1)`. The address
+    comes back in its usual form, so `http://0xa9fea9fe/` gives 169.254.169.254.
     """
     for word in text.split():
         if "." not in word and ":" not in word and "localhost" not in word.lower():
@@ -166,7 +173,7 @@ def _private_address(text: str) -> str | None:
         elif "://" in word:
             continue
         else:
-            hosts = [_bare_host(word)]
+            hosts = [_bare_host(part) for part in _BARE_HOST_PUNCT_RE.split(word) if part]
         for host in hosts:
             label = _private_label(host)
             if label is not None:

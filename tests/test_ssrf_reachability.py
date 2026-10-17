@@ -267,6 +267,20 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
 # read as validation, and the address walk, which keeps its old bindings.
 
 
+@pytest.mark.parametrize(("literal", "address"), [
+    ("hosts: localhost, 10.0.0.5,", "localhost"),
+    ("(127.0.0.1)", "127.0.0.1"),
+    ("[::1],", "::1"),
+    ("upstream=10.0.0.5", None),
+])
+def test_a_bare_host_next_to_punctuation(literal: str, address: str | None) -> None:
+    """The old search found an address anywhere; reading a word as a host lost
+    one glued to a comma or a parenthesis. A query value (`upstream=`) is not
+    the URL's host, and stays unread."""
+    sites = analyze_python(f'import requests\nHOST = "{literal}"\nrequests.get(f"http://{{HOST}}/x")\n')
+    assert [s.private_addr for s in sites] == [address]
+
+
 @pytest.mark.parametrize(("check", "silenced"), [
     ('    scheme = "https"\n', False),
     ('    if parsed.scheme == "https":\n        pass\n', True),
