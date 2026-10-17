@@ -4,13 +4,14 @@ import ipaddress
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
     ZCODE_SERVER_KEY,
     find_line_number,
+    find_line_numbers,
     host_ip,
     in_skip_dir,
     is_loopback_url,
@@ -282,6 +283,23 @@ _find_line_number = find_line_number
 _make_finding = make_finding
 
 
+def _line_keys(servers: dict[str, Any]) -> Iterator[str]:
+    """What the per-server checks look up in the file, so one pass finds them all:
+    each server's quoted name, its `url`, its `command` and that command's first
+    word, its env keys and its string args."""
+    for name, cfg in servers.items():
+        yield f'"{name}"'
+        if not isinstance(cfg, dict):
+            continue
+        for value in (cfg.get("url"), cfg.get("command")):
+            if isinstance(value, str):
+                yield value
+                yield from value.split()[:1]
+        for group in (cfg.get("env"), cfg.get("args")):
+            if isinstance(group, (dict, list)):
+                yield from (item for item in group if isinstance(item, str))
+
+
 def _check_server(
     server_name: str, server_cfg: dict[str, Any], file_path: str, raw_text: str
 ) -> list[Finding]:
@@ -503,6 +521,8 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                     _find_line_number(raw_text, f'"{key}"'),
                 ))
 
+            # Every server's lines in one pass over the file, not one search per finding.
+            find_line_numbers(raw_text, _line_keys(servers))
             for server_name, server_cfg in servers.items():
                 if isinstance(server_cfg, dict):
                     findings.extend(_check_malformed_fields(server_name, server_cfg, rel_path, raw_text))

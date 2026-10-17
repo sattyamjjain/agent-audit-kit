@@ -37,6 +37,7 @@ from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     in_skip_dir,
     find_line_number,
+    find_line_numbers,
     loads_jsonc,
     make_finding,
 )
@@ -137,6 +138,15 @@ def _flatten_strings(value: object) -> list[str]:
     return out
 
 
+def _anchor(task: dict) -> str:
+    """What a task's findings are placed by: its label, else its command line."""
+    label = task.get("label")
+    if isinstance(label, str) and label:
+        return label
+    joined = " ".join(_flatten_strings(task.get("command")) + _flatten_strings(task.get("args")))
+    return joined.strip()[:60]
+
+
 def _iter_config_files(project_root: Path, name: str) -> Iterable[Path]:
     for path in project_root.rglob(name):
         if path.parent.name != _VSCODE_DIR:
@@ -188,6 +198,8 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
     tasks = data.get("tasks")
     if not isinstance(tasks, list):
         return [], set()
+    # Every task's line in one pass over the file, not one search of it per task.
+    find_line_numbers(raw, (_anchor(task) for task in tasks if isinstance(task, dict)))
     for task in tasks:
         if not isinstance(task, dict):
             continue
@@ -196,7 +208,7 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
         joined = " ".join(
             _flatten_strings(task.get("command")) + _flatten_strings(task.get("args"))
         ).strip()
-        anchor = label_str or joined[:60]
+        anchor = _anchor(task)
         line = find_line_number(raw, anchor) if anchor else 1
 
         run_on = ""
@@ -258,6 +270,7 @@ def _scan_launch(
     configs = data.get("configurations")
     if not isinstance(configs, list):
         return []
+    find_line_numbers(raw, (cfg.get("preLaunchTask") for cfg in configs if isinstance(cfg, dict)))
     for cfg in configs:
         if not isinstance(cfg, dict):
             continue

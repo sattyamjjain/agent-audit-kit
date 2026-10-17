@@ -25,7 +25,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import find_line_number, make_finding
+from ._helpers import find_line_number, find_line_numbers, make_finding
 
 _WORKFLOWS_DIR = ".github/workflows"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -95,6 +95,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         # numbers (yaml.safe_load drops source positions).
         parsed_uses: list[str] = []
         _walk_uses(doc, parsed_uses)
+        # Every step's line in one pass over the file, not one search of it per step.
+        find_line_numbers(text, ("{}/{}@{}".format(*c) for c in map(_classify, parsed_uses) if c))
 
         seen: set[str] = set()
         for uses in parsed_uses:

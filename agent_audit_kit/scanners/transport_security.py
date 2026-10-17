@@ -8,6 +8,7 @@ from typing import Any
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    find_line_numbers,
     in_skip_dir,
     is_loopback_url,
     iter_mcp_servers,
@@ -215,6 +216,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
+        # Every server's URL line in one pass over the file, not one search per server.
+        find_line_numbers(raw_text, (cfg.get("url") for _, cfg in iter_mcp_servers(data)))
         # `mcpServers`, and VS Code's `servers`, which this read past until
         # mcp_server_maps: a cleartext VS Code server came back clean.
         for server_name, server_cfg in iter_mcp_servers(data):

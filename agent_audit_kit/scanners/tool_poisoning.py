@@ -4,11 +4,12 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    find_line_numbers,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
@@ -227,6 +228,17 @@ def _extract_tool_descriptions(data: Any) -> list[tuple[str, str, str]]:
     return results
 
 
+def _line_keys(tools: list[tuple[str, str, str]]) -> Iterator[str]:
+    """What `_check_description` looks up in the file for these tools, so one pass
+    finds them all: each tool's name and the start of each pattern it matches."""
+    for _server, tool_name, description in tools:
+        yield tool_name
+        for pattern in (_PROMPT_INJECTION_RE, _CROSS_TOOL_RE):
+            yield from (m.group().strip()[:40] for m in pattern.finditer(description))
+        for pattern in (_URL_RE, _FILE_PATH_RE):
+            yield from (m.group()[:40] for m in pattern.finditer(description))
+
+
 def _check_description(
     server_name: str,
     tool_name: str,
@@ -349,7 +361,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        for server_name, tool_name, description in _extract_tool_descriptions(data):
+        tools = list(_extract_tool_descriptions(data))
+        # Every tool's lines in one pass over the file, not one search per finding.
+        find_line_numbers(raw_text, _line_keys(tools))
+        for server_name, tool_name, description in tools:
             findings.extend(
                 _check_description(server_name, tool_name, description, rel_path, raw_text)
             )

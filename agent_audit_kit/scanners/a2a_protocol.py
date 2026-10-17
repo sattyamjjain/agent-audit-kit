@@ -3,10 +3,16 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, url_readings
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    find_line_numbers,
+    in_skip_dir,
+    make_finding,
+    url_readings,
+)
 
 # ---- Known file names and patterns for A2A Agent Cards ----
 _AGENT_CARD_FILES: list[str] = [
@@ -54,6 +60,24 @@ def _find_agent_cards(project_root: Path) -> list[Path]:
             found.append(p)
 
     return found
+
+
+def _line_keys(data: dict[str, Any]) -> Iterator[str]:
+    """What the checks look up in a card once per item, so one pass finds them all:
+    each capability's name, and each skill's name, `url` and `endpoint`."""
+    capabilities = data.get("capabilities")
+    if isinstance(capabilities, (list, dict)):
+        yield from (cap for cap in capabilities if isinstance(cap, str))
+    skills = data.get("skills")
+    if not isinstance(skills, list):
+        return
+    for skill in skills:
+        if isinstance(skill, dict):
+            yield str(skill.get("name", skill.get("id", "<unnamed>")))
+            for key in ("url", "endpoint"):
+                value = skill.get(key)
+                if isinstance(value, str):
+                    yield value
 
 
 def _check_capabilities(
@@ -365,6 +389,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
+        # Every skill's lines in one pass over the card, not one search per finding.
+        find_line_numbers(raw_text, _line_keys(data))
         findings.extend(_check_capabilities(data, rel_path, raw_text))
         findings.extend(_check_authentication(data, rel_path, raw_text))
         findings.extend(_check_skills(data, rel_path, raw_text))
