@@ -306,8 +306,10 @@ _TEXT_LOOKUPS_KEPT = 4
 # entry and moving it to the end are two steps, and without the lock another
 # thread could evict the entry between them, which raised KeyError. What an entry
 # keeps is filled in without it: two threads that work out the same answer for
-# one text store the same value.
-_TEXT_LOOKUPS_LOCK = threading.Lock()
+# one text store the same value. The lock is reentrant because the memo's own
+# dict lookup hashes and compares the text, which a `str` subclass does in Python
+# and can do through another lookup on the same thread.
+_TEXT_LOOKUPS_LOCK = threading.RLock()
 
 
 def _lookups(text: str) -> _TextLookups:

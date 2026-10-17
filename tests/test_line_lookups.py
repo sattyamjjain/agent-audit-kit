@@ -11,7 +11,9 @@ knows, and on every fixture, and hold the timing to linear growth.
 from __future__ import annotations
 
 import ast
+import os
 import random
+import subprocess
 import sys
 import threading
 import time
@@ -306,6 +308,24 @@ def test_only_a_key_the_automaton_would_take_is_compiled_before_python_3_10(monk
         _helpers._TEXT_LOOKUPS.clear()
         assert find_line_number("x\n" * 3 + key + "\n", key) == 4
     assert compiled == [limit]
+
+
+def test_a_lookup_made_while_the_memo_is_held_does_not_deadlock() -> None:
+    """The memo's dict lookup hashes and compares the text, which a `str` subclass can
+    do in Python, through another lookup on the same thread; a plain lock deadlocked
+    there. It runs in a child with a timeout, so a deadlock cannot hold the lock here."""
+    code = (
+        "from agent_audit_kit.scanners import _helpers as H\n"
+        "class Hostile(str):\n"
+        "    def __hash__(self):\n"
+        "        H.find_line_number('other text\\nkey\\n', 'key')\n"
+        "        return str.__hash__(self)\n"
+        "print(H.find_line_number(Hostile('x\\nkey\\n'), 'key'))\n"
+    )
+    root = str(Path(_helpers.__file__).resolve().parents[2])
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(p for p in (root, os.environ.get("PYTHONPATH")) if p)}
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=30, env=env)
+    assert result.stdout.strip() == "2", result.stderr[-500:]
 
 
 @pytest.mark.parametrize("longest", [None, 3])
