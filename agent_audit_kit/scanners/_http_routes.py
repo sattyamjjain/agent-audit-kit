@@ -617,9 +617,10 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
     # the list finds.
     params = list(_GO_REQUEST_PARAM_RE.finditer(text))
     param_starts = [p.start() for p in params]
-    # Where each signature walk ended, kept for the points it passed: see
-    # `_go_body_open`.
+    # Where each signature walk ended, kept for the points it passed just after
+    # a `)` that closes a `(`: see `_go_body_open`.
     walked: dict[int, int] = {}
+    closes = {close for start, close in index.close.items() if text[start] == "("}
     for m in _GO_FUNC_RE.finditer(text):
         if not index.in_code(m.start()):
             continue
@@ -649,7 +650,7 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
         if i == len(params) or param_starts[i] >= params_close:
             continue
         param = params[i]
-        body = _go_body_open(index, params_close + 1, walked)
+        body = _go_body_open(index, params_close + 1, walked, closes)
         if body is None:
             continue
         kind = _GO_KINDS[param.group(2).lstrip("*").strip().split(".")[0]]
@@ -657,7 +658,7 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
     return handlers
 
 
-def _go_body_open(index: CodeIndex, pos: int, walked: dict[int, int]) -> int | None:
+def _go_body_open(index: CodeIndex, pos: int, walked: dict[int, int], closes: set[int]) -> int | None:
     """The `{` that opens the body of the signature whose parameter list ends
     just before ``pos``: the walk to the end of the line steps over bracketed
     groups (a result list) and gives up at `,`, `;`, `=` or a `(` that never
@@ -665,16 +666,19 @@ def _go_body_open(index: CodeIndex, pos: int, walked: dict[int, int]) -> int | N
 
     The walk from a point on a line always ends the same way, so ``walked``
     keeps its end, as an offset or -1 for none, for each point it passed just
-    after a `)`, and a later walk stops at the first such point. Those are the
-    only points where two walks meet: a walk lands on a point another one
-    passed either where it starts, just after its parameter list's `)`, or
-    where one of the two jumped a group and the other stepped onto it, again
-    just after a `)`. So each character is walked once. Walking every
-    signature to the line end on its own stepped past every func literal after
-    it on that line: 10,700 bodiless literals on one 256 KB line took 26
-    seconds. The line end comes from the newline offsets by bisection;
-    searching the text for it from every literal read the rest of the line
-    once each as well (84,000 on one 4 MB line took 8.6 seconds).
+    after a `)` that closes a `(` (the offsets in ``closes``), and a later walk
+    stops at the first such point. Those are the only points where two walks
+    meet: a walk lands on a point another one passed either where it starts,
+    just after its parameter list's `)`, or where one of the two jumped a
+    group and the other stepped onto it, just after the group's `)`. So each
+    character is walked once. Walking every signature to the line end on its
+    own stepped past every func literal after it on that line: 10,700
+    bodiless literals on one 256 KB line took 26 seconds. A `)` that closes
+    nothing is not kept, since no two walks meet after one: keeping every
+    point after a run of them, behind one func literal, held 99.5 MB at 999
+    KB. The line end comes from the newline offsets by bisection; searching
+    the text for it from every literal read the rest of the line once each as
+    well (84,000 on one 4 MB line took 8.6 seconds).
     """
     text = index.text
     i = bisect_left(index._newlines, pos)
@@ -682,7 +686,7 @@ def _go_body_open(index: CodeIndex, pos: int, walked: dict[int, int]) -> int | N
     passed: list[int] = []
     found = -1
     while pos < end:
-        if text[pos - 1] == ")":
+        if text[pos - 1] == ")" and pos - 1 in closes:
             known = walked.get(pos)
             if known is not None:
                 found = known

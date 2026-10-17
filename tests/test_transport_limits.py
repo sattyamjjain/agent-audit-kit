@@ -534,6 +534,17 @@ def test_nested_route_calls_scan_in_linear_time_and_memory(tmp_path: Path) -> No
     assert count == 1 and peak < 200, peak
 
 
+def test_a_run_of_unmatched_closes_after_a_func_literal_scans_in_little_memory(tmp_path: Path) -> None:
+    """The signature walk kept every point it passed just after a `)`, one that
+    closes nothing included, so a func literal followed by 999 KB of unmatched
+    `)` peaked at 99.5 MB, against 1.9 MB before the walk kept anything. Only
+    a point after a `)` that closes a `(` is kept now."""
+    head = _GO_HEAD + _READ_HANDLER + "// mcp\nvar x = func(r *http.Request)"
+    text = head + ")" * (999_000 - len(head)) + "\n"
+    _seconds, _count, peak = _scan_in_child(tmp_path, "main.go", text, memory=True)
+    assert peak < 20, peak
+
+
 def _distinct_request_names(n: int, gin: bool) -> str:
     funcs, routes = [], []
     for i in range(n):
