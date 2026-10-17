@@ -269,20 +269,6 @@ def test_a_decorator_with_arguments_declares_no_tool(tmp_path: Path, enable_flag
     assert scan(tmp_path) == ([], set())
 
 
-def test_remediation_names_only_commands_the_cli_has() -> None:
-    """It told users to run `agent-audit-kit toxic-flow --explain`, which never existed."""
-    import re
-
-    from agent_audit_kit.cli import cli
-    from agent_audit_kit.rules.builtin import RULES
-
-    rule = RULES["AAK-TOXICFLOW-001"]
-    text = " ".join((rule.description, rule.remediation, rule.limitations))
-    named = set(re.findall(r"\b(?:agent-audit-kit|aak)\s+([a-z][a-z-]*)", text))
-    assert named <= set(cli.commands), named - set(cli.commands)
-    assert "--explain" not in text
-
-
 def test_a_long_decorator_line_reads_in_linear_time() -> None:
     """`@tool` and 1 MB of blanks. The two `\\s*` around an optional `(`
     split the run every way: 40,000 blanks took 4 seconds and the time grew

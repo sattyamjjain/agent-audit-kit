@@ -1,8 +1,9 @@
 """Codemod: rewrite ToolNode(positional-list) -> ToolNode(tools=[...]).
 
 Pairs with AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001. Applied by `aak fix` (via
-`fix._fix_langgraph_toolnode`) and by
-`aak suggest --apply-trivial --rule AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001`.
+`fix._fix_langgraph_toolnode`) and by `aak suggest SARIF --apply-trivial`, which
+runs the same fixes; neither takes a rule filter, so each applies every
+auto-fixable rule's fix. A bare name (`ToolNode(tools_list)`) is not rewritten.
 
 The rewrite is text-level: ToolNode([a, b]) -> ToolNode(tools=[a, b]). It is
 idempotent, so re-running cannot double-apply.

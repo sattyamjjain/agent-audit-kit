@@ -7598,11 +7598,10 @@ _r(
     Severity.MEDIUM,
     Category.AGENT_CONFIG,
     "Switch every `ToolNode([t1, t2, ...])` to `ToolNode(tools=[t1, t2, "
-    "...])`. The codemod at "
-    "`agent_audit_kit/autofix/langgraph_toolnode.py` rewrites the trivial "
-    "shape; `aak suggest --apply-trivial --rule "
-    "AAK-LANGGRAPH-TOOLNODE-LIST-REGRESSION-001` will run it (queued for "
-    "v0.4.0).",
+    "...])`. `aak fix` rewrites the list-literal form in place, through the "
+    "codemod at `agent_audit_kit/autofix/langgraph_toolnode.py` "
+    "(`aak fix --dry-run` lists the change first); a bare name, "
+    "`ToolNode(tools_list)`, is left for you to change.",
     sarif_name="LangGraphToolNodePositionalList",
     auto_fixable=True,
     limitations=(
@@ -8027,9 +8026,11 @@ _r(
     "No action required for the rule fire itself — this is a lineage "
     "data point. For SBOM / supply-chain attestation, record the "
     "Stainless lineage alongside the package's own version metadata. "
-    "If you'd prefer to suppress the rule in your project, add the "
-    "rule ID to your `aak ignore` config — `INFO` rules are silent "
-    "by default in `aak scan` unless `--severity info` is passed.",
+    "`INFO` findings are not shown by default, since `aak scan` "
+    "reports from `low` up; `aak scan --severity info` shows them. To "
+    "suppress the rule even then, list its id under `exclude-rules` in "
+    "`.agent-audit-kit.yml`, or run "
+    "`aak scan --exclude-rules AAK-MCP-LINEAGE-STAINLESS-001`.",
     sarif_name="StainlessLineageProvenance",
     incident_references=["ANTHROPIC-STAINLESS-2026-05-18"],
     limitations=(
