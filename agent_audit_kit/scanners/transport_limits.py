@@ -29,6 +29,7 @@ from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
 from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
 from ._http_routes import (
     GO_TEST_SERVER_RE,
+    MCP_HANDSHAKE,
     MCP_METHODS,
     TEST_FILE_RE,
     CodeIndex,
@@ -190,9 +191,10 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
 # hold all of it in memory, and the tool arguments in it go on to the model.
 #
 # A read is reported only inside a handler that serves MCP: one registered on a
-# route whose path names `mcp`, or one whose body names an MCP method
-# (`"tools/call"`, `"initialize"`, ...). A handler named for MCP is not enough:
-# an admin API that binds MCP settings reads a body too. Any limit silences it,
+# route whose path names `mcp`, or one whose body names a method only MCP has
+# (`"tools/call"`, `"resources/read"`, ...; `"initialize"` is a language
+# server's handshake too). A handler named for MCP is not enough: an admin API
+# that binds MCP settings reads a body too. Any limit silences it,
 # however it is written, because a limit the check does not understand should
 # cost a missed finding, not a false one: `http.MaxBytesReader` or
 # `io.LimitReader` in the handler, a Content-Length test, a length test on what
@@ -206,15 +208,23 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
 
 _MCP016 = "AAK-MCP-016"
 _MCP016_MAX_BYTES = 1_000_000
-# An MCP method the handler dispatches on: `case "tools/call":`, `== "initialize"`,
-# a dispatch-table key. The same literal as a value (`Method: "initialize"`) is
+# An MCP method the handler dispatches on: `case "tools/call":`, `== "tools/list"`,
+# a dispatch-table key. The same literal as a value (`Method: "tools/list"`) is
 # a request the handler sends to a server as a client, not one it serves.
 _MCP_METHOD_NAMES = "(?:" + "|".join(map(re.escape, sorted(MCP_METHODS))) + ")"
-_GO_MCP_DISPATCH_RE = re.compile(
+_HANDSHAKE_NAMES = "(?:" + "|".join(map(re.escape, sorted(MCP_HANDSHAKE))) + ")"
+
+
+def _go_dispatch_re(names: str) -> re.Pattern[str]:
     # `[^:\n]{0,160}`, not `*`: from every `case` on a long line with no colon the
     # unbounded form read to the end of the line, so the line cost its square.
-    rf'\bcase[ \t]+[^:\n]{{0,160}}"{_MCP_METHOD_NAMES}"|[!=]=\s*"{_MCP_METHOD_NAMES}"|"{_MCP_METHOD_NAMES}"\s*(?:[!=]=|:)'
-)
+    return re.compile(rf'\bcase[ \t]+[^:\n]{{0,160}}"{names}"|[!=]=\s*"{names}"|"{names}"\s*(?:[!=]=|:)')
+
+
+_GO_MCP_DISPATCH_RE = _go_dispatch_re(_MCP_METHOD_NAMES)
+_GO_HANDSHAKE_DISPATCH_RE = _go_dispatch_re(_HANDSHAKE_NAMES)
+# A method only MCP has, named anywhere in the file: what lets the handshake count.
+_GO_MCP_LITERAL_RE = re.compile(rf'"{_MCP_METHOD_NAMES}"')
 _WORD_RE = re.compile(r"[A-Za-z_]\w*")
 _WORD_RUN_RE = re.compile(r"\w+")
 # `match` cases (3.10+); the 3.9 AST has none, and an empty tuple matches nothing.
@@ -423,6 +433,8 @@ def _unbounded_go_reads(index: CodeIndex, handlers: list[GoHandler], rel: str) -
     text = index.text
     routes = _McpRoutes([r for r in go_routes(index) if is_mcp_endpoint_path(r.path)], text)
     dispatch = _Offsets(m.start() for m in _GO_MCP_DISPATCH_RE.finditer(text))
+    names_mcp = _GO_MCP_LITERAL_RE.search(text) is not None
+    handshake = _Offsets(m.start() for m in _GO_HANDSHAKE_DISPATCH_RE.finditer(text)) if names_mcp else _Offsets(())
     caps: dict[str, _Offsets] = {}
     helpers: _Offsets | None = None
     findings: list[Finding] = []
@@ -433,7 +445,10 @@ def _unbounded_go_reads(index: CodeIndex, handlers: list[GoHandler], rel: str) -
         if not index.in_code(pos) or id(handler) in reported:
             continue
         route = routes.path_for(handler)
-        if route is None and not dispatch.any_in(handler.body_start, handler.body_end):
+        if route is None and not (
+            dispatch.any_in(handler.body_start, handler.body_end)
+            or handshake.any_in(handler.body_start, handler.body_end)
+        ):
             continue
         cap = caps.get(handler.request)
         if cap is None:
@@ -573,13 +588,21 @@ def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Findi
         routes = py_routes(tree)
         if not routes:
             continue
+        names_mcp: bool | None = None
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in routes:
                 continue
             paths = [r.path for r in routes[node.name] if r.path is not None]
             mcp_path = next((p for p in paths if is_mcp_endpoint_path(p)), None)
-            if mcp_path is None and not _py_names_mcp_method(node):
-                continue
+            if mcp_path is None and not _py_dispatches_on(node, MCP_METHODS):
+                if not _py_dispatches_on(node, MCP_HANDSHAKE):
+                    continue
+                if names_mcp is None:
+                    names_mcp = any(
+                        isinstance(n, ast.Constant) and n.value in MCP_METHODS for n in ast.walk(tree)
+                    )
+                if not names_mcp:
+                    continue
             read = _py_body_read(node, flask)
             if read is None or _py_handler_capped(node, read[0]):
                 continue
@@ -609,10 +632,10 @@ def _own_nodes(func: ast.FunctionDef | ast.AsyncFunctionDef) -> list[ast.AST]:
     return out
 
 
-def _py_names_mcp_method(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """True when ``func`` dispatches on an MCP method: compares one, matches a
-    `case` on one, or keys a dispatch table by one. A method as a dict value
-    (`{"method": "initialize"}`) is a request it sends as a client."""
+def _py_dispatches_on(func: ast.FunctionDef | ast.AsyncFunctionDef, methods: frozenset[str]) -> bool:
+    """True when ``func`` dispatches on one of ``methods``: compares one,
+    matches a `case` on one, or keys a dispatch table by one. A method as a dict
+    value (`{"method": "tools/list"}`) is a request it sends as a client."""
     for node in _own_nodes(func):
         values: list[ast.AST] = []
         if isinstance(node, ast.Compare):
@@ -624,7 +647,7 @@ def _py_names_mcp_method(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
             values = [k for k in node.keys if k is not None]
         elif isinstance(node, _MATCH_VALUE):
             values = [getattr(node, "value", None) or node]
-        if any(isinstance(v, ast.Constant) and v.value in MCP_METHODS for v in values):
+        if any(isinstance(v, ast.Constant) and v.value in methods for v in values):
             return True
     return False
 

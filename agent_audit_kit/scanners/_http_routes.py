@@ -65,10 +65,16 @@ TEST_FILE_RE = re.compile(
 # (a grading harness's fake MCP peer). `httptest.NewRecorder()` alone is not:
 # production code uses it to capture a handler's response.
 GO_TEST_SERVER_RE = re.compile(r"\bhttptest\.New(?:TLS|Unstarted)?Server\(")
+# Methods only MCP has, and the handshake it shares with a language server. A
+# handler that dispatches on `initialize` or its `initialized` notification
+# serves MCP only in a file that names one of the others too: VS Code LSP
+# endpoints over JSON-RPC answer `initialize` (endomorphosis/ipfs_kit_py has a
+# dozen), while an MCP server that handles the handshake in its HTTP handler
+# usually dispatches the rest in a function beside it.
 MCP_METHODS = frozenset({
-    "tools/call", "tools/list", "initialize", "notifications/initialized", "resources/list",
-    "resources/read", "prompts/list", "prompts/get",
+    "tools/call", "tools/list", "resources/list", "resources/read", "prompts/list", "prompts/get",
 })
+MCP_HANDSHAKE = frozenset({"initialize", "notifications/initialized"})
 # A route that receives MCP traffic: a segment ending in `mcp`, then nothing, a
 # path parameter, a transport tail or an MCP method spelled as a path
 # (`/mcp`, `/api/v1/mcp`, `/tunnel/{id}/mcp`, `/mcp/message`, `/mcp/tools/call`).

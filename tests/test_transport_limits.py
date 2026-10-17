@@ -281,6 +281,69 @@ def test_test_files_and_mock_servers_serve_no_endpoint(tmp_path: Path, name: str
     assert _hits(_write(tmp_path, {name: text})) == []
 
 
+# A language server speaks JSON-RPC too, and its handshake is also `initialize`:
+# endomorphosis/ipfs_kit_py serves VS Code's LSP client this way.
+GO_LSP = """package lsp
+
+import (
+	"io"
+	"net/http"
+)
+
+func handle(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	switch method(body) {
+	case "initialize":
+		w.Write([]byte("{}"))
+	case "notifications/initialized", "shutdown":
+		w.Write([]byte("{}"))
+	}
+}
+
+func main() {
+	http.HandleFunc("/jsonrpc", handle)
+}
+"""
+PY_LSP = FASTAPI.replace('"/mcp"', '"/jsonrpc"').replace(
+    '    return {"jsonrpc"',
+    '    if message.get("method") == "initialize":\n        pass\n'
+    '    elif message.get("method") in ("initialized", "notifications/initialized"):\n        pass\n'
+    '    return {"jsonrpc"',
+)
+
+
+@pytest.mark.parametrize(("name", "text"), [("lsp.go", GO_LSP), ("lsp.py", PY_LSP)])
+def test_methods_mcp_shares_with_lsp_are_not_enough(tmp_path: Path, name: str, text: str) -> None:
+    assert _hits(_write(tmp_path, {name: text})) == []
+
+
+@pytest.mark.parametrize(("name", "text", "line"), [
+    ("lsp.go", GO_LSP.replace('"shutdown"', '"tools/list"'), 9),
+    ("lsp.py", PY_LSP.replace('("initialized", "notifications/initialized")', '("tools/call",)'), 8),
+])
+def test_an_mcp_only_method_beside_them_is_enough(tmp_path: Path, name: str, text: str, line: int) -> None:
+    assert _hits(_write(tmp_path, {name: text})) == [(name, line)]
+
+
+# The handshake in the HTTP handler and the rest of the methods in a function
+# beside it, as internet-dot/pith and databrickslabs/ontos are written.
+GO_HANDSHAKE_HANDLER = GO_LSP.replace(
+    "func main() {",
+    'func dispatch(m string) {\n\tswitch m {\n\tcase "tools/call":\n\t}\n}\n\nfunc main() {',
+)
+PY_HANDSHAKE_HANDLER = PY_LSP + '\n\nHANDLERS = {"tools/list": None}\n'
+
+
+@pytest.mark.parametrize(("name", "text", "line"), [
+    ("server.go", GO_HANDSHAKE_HANDLER, 9),
+    ("server.py", PY_HANDSHAKE_HANDLER, 8),
+])
+def test_the_handshake_counts_in_a_file_that_names_an_mcp_only_method(
+    tmp_path: Path, name: str, text: str, line: int,
+) -> None:
+    assert _hits(_write(tmp_path, {name: text})) == [(name, line)]
+
+
 @pytest.mark.parametrize("framework", ["aiohttp", "quart"])
 def test_frameworks_with_a_default_limit_are_not_read(tmp_path: Path, framework: str) -> None:
     text = f"import {framework}\n" + FASTAPI
