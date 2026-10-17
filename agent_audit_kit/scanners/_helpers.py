@@ -1346,6 +1346,24 @@ def _json_nesting(text: str) -> int:
     return max(accumulate(map(_BRACKET_STEP.__getitem__, brackets)), default=0)
 
 
+# Python's limit on the digits `int()` converts from text: 4,300 by default since
+# 3.9.14, 3.10.7 and 3.11, and none before (0 also means none). `json.loads`
+# converts each integer with `int()`, so one longer than the limit raised a plain
+# ValueError, which no reader catches as a parse error: a 5,000-digit number in
+# one file took 29 scanners down, with their findings on every other file.
+_INT_MAX_STR_DIGITS: Callable[[], int] | None = getattr(sys, "get_int_max_str_digits", None)
+
+
+def _json_int(digits: str) -> int | float:
+    """An integer of a JSON text: `int(digits)` where Python converts it, as
+    `json.loads` does, and otherwise `float(digits)`, the nearest value a reader
+    can still compare (inf past 309 digits) where `int()` would raise."""
+    limit = _INT_MAX_STR_DIGITS() if _INT_MAX_STR_DIGITS is not None else 0
+    if limit and len(digits) - digits.startswith("-") > limit:
+        return float(digits)
+    return int(digits)
+
+
 def _json_past_limit(text: str) -> bool:
     """Whether `text` nests past `JSON_MAX_NESTING`. A text with no more opening
     brackets than the limit cannot, so most texts are not counted at all."""
@@ -1377,7 +1395,7 @@ def _parse_json(text: str, path: Path | str | None) -> Any:
     caller's own stack was deep) propagates as it did.
     """
     try:
-        data = json.loads(text)
+        data = json.loads(text, parse_int=_json_int)
     except json.JSONDecodeError as exc:
         if _json_past_limit(text[: exc.pos]):
             raise _too_deep(text, path) from None
@@ -2750,6 +2768,16 @@ def loads_toml(text: str, path: Path | str | None) -> dict[str, Any]:
         reason = f"TOML nested too deep for Python's parser ({type(exc).__name__})"
         refuse(path, reason)
         raise RefusedTOML(reason, text, 0) from None
+    except tomllib.TOMLDecodeError:
+        raise
+    except ValueError as exc:
+        # tomllib converts an integer with `int()` and lets its ValueError out
+        # unwrapped, so one past Python's digit limit (see `_INT_MAX_STR_DIGITS`)
+        # was no TOMLDecodeError, and a reader catching only that lost the
+        # scanner. The value cannot be read, so the file is refused.
+        reason = f"TOML value Python cannot convert ({type(exc).__name__})"
+        refuse(path, reason)
+        raise RefusedTOML(reason, text, 0) from None
 
 
 # How deep flow collections (`[`, `{`) and, separately, block indentation may
@@ -2796,6 +2824,36 @@ class _BoundedLoader(yaml.SafeLoader):
         if self.indent < column and len(self.indents) >= YAML_MAX_NESTING:
             raise _NestedTooDeep(problem="block collections nested too deeply", problem_mark=self.get_mark())
         return super().add_indent(column)
+
+
+def _text_if_unconvertible(construct: Callable[[Any, Node], Any]) -> Callable[[Any, Node], Any]:
+    """A scalar constructor that gives the scalar's own text where `construct`
+    raises a conversion error, and `construct`'s value everywhere else.
+
+    `SafeLoader` converts a plain scalar that looks like a date, an integer or
+    a boolean, and one tagged as such, and its converters raise ValueError
+    (`2026-13-01`, an integer past Python's digit limit, `!!int abc`), KeyError
+    (`!!bool maybe`) or AttributeError (`!!timestamp x`), none of them a
+    YAMLError, so a reader catching YAMLError lost the whole scanner on one
+    such scalar: a release date of month 13 in a workflow took 5 scanners
+    down, the always-on hook scanner among them. The text is what the file
+    says, and nothing a reader compares it with can tell the difference.
+    """
+
+    def construct_or_text(loader: Any, node: Node) -> Any:
+        try:
+            return construct(loader, node)
+        except (ValueError, KeyError, AttributeError, TypeError):
+            return loader.construct_scalar(node)
+
+    return construct_or_text
+
+
+for _tag in ("int", "float", "bool", "timestamp"):
+    _BoundedLoader.add_constructor(
+        f"tag:yaml.org,2002:{_tag}",
+        _text_if_unconvertible(yaml.SafeLoader.yaml_constructors[f"tag:yaml.org,2002:{_tag}"]),
+    )
 
 
 def _yaml_children(node: Node) -> list[Node]:

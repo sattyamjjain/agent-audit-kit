@@ -776,6 +776,93 @@ def test_a_replacement_character_in_evidence_keeps_json_and_sarif_valid(tmp_path
 
 
 # ---------------------------------------------------------------------------
+# A number or a date Python cannot convert
+# ---------------------------------------------------------------------------
+
+_BIG = "1" * 5_000
+# Python's digit limit on `int()` from text: 4,300 since 3.9.14, 3.10.7 and 3.11;
+# none on 3.9.6, which converts any length.
+_DIGIT_LIMIT = bool(getattr(sys, "get_int_max_str_digits", lambda: 0)())
+
+
+def test_each_reader_reads_or_refuses_a_number_python_cannot_convert() -> None:
+    """`int()` raised a plain ValueError past the digit limit, which none of
+    the readers caught. JSON and JSONC keep reading, with the float nearest the
+    number; YAML keeps the scalar's text; TOML refuses the file."""
+    for read in (loads_json, loads_jsonc):
+        assert read('{"n": ' + _BIG + "}", "a.json")["n"] == (float(_BIG) if _DIGIT_LIMIT else int(_BIG))
+        assert read('[-' + _BIG + "]", "a.json") == [-float(_BIG) if _DIGIT_LIMIT else -int(_BIG)]
+    assert load_yaml("n: " + _BIG, "b.yaml") == {"n": _BIG if _DIGIT_LIMIT else int(_BIG)}
+    with collecting_refusals() as refused:
+        if _DIGIT_LIMIT:
+            with pytest.raises(_helpers.tomllib.TOMLDecodeError):
+                loads_toml("n = " + _BIG, "c.toml")
+        else:
+            assert loads_toml("n = " + _BIG, "c.toml") == {"n": int(_BIG)}
+        # A date that does not exist is invalid TOML, skipped as it always was.
+        with pytest.raises(_helpers.tomllib.TOMLDecodeError):
+            loads_toml("d = 2026-13-01", "d.toml")
+    assert refused == ({"c.toml": "TOML value Python cannot convert (ValueError)"} if _DIGIT_LIMIT else {})
+
+
+@pytest.mark.parametrize(("text", "value"), [
+    ("d: 2026-13-01", "2026-13-01"),
+    ("x: !!int abc", "abc"),
+    ("x: !!bool maybe", "maybe"),
+    ("x: !!timestamp x", "x"),
+    ("x: !!float x", "x"),
+])
+def test_a_yaml_scalar_that_cannot_be_converted_is_read_as_its_text(text: str, value: str) -> None:
+    assert list(load_yaml(text, "a.yaml").values()) == [value]
+    assert list(load_yaml_all("---\n" + text, "a.yaml")[0].values()) == [value]
+
+
+def test_a_yaml_scalar_that_converts_reads_as_safe_load_reads_it() -> None:
+    import datetime
+
+    text = "d: 2026-01-13\nn: 0x1f\nb: yes\nf: 1.5\nt: !!int '12'\nz: 2001-12-14t21:59:43.10-05:00\n"
+    assert load_yaml(text, "a.yaml") == yaml.safe_load(text)
+    assert load_yaml(text, "a.yaml")["d"] == datetime.date(2026, 1, 13)
+    assert yaml.SafeLoader.yaml_constructors["tag:yaml.org,2002:int"].__name__ == "construct_yaml_int"
+
+
+_UNCONVERTIBLE = {
+    ".mcp.json": '{"mcpServers": {"s": {"command": "npx", "args": ["x"], "timeout": ' + _BIG + "}}}",
+    ".claude/settings.json": '{"n": ' + _BIG + ', "hooks": {}}',
+    "package.json": '{"name": "x", "version": ' + _BIG + "}",
+    "agent-card.json": '{"name": "a", "n": ' + _BIG + "}",
+    ".github/workflows/ci.yml": "on: [push]\njobs:\n  b:\n    runs-on: ubuntu-latest\n    timeout-minutes: " + _BIG
+    + "\n    steps:\n      - run: echo ${{ github.event.issue.title }}\nreleased: 2026-13-01\n",
+    "skills/x/SKILL.md": "---\nname: x\nn: " + _BIG + "\nupdated: 2026-13-01\n---\nbody\n",
+    "docker-compose.yml": "services:\n  a:\n    image: x\nbuilt: 2026-13-01\n",
+    "mcp.yaml": "mcpServers:\n  s:\n    command: npx\n    args: [x]\nupdated: 2026-13-01\n",
+    ".agent-audit-kit.yml": "n: " + _BIG + "\n",
+    "pyproject.toml": "[project]\nname = 'x'\ndependencies = ['mcp']\n[tool.x]\nn = " + _BIG + "\n",
+}
+
+
+def test_a_number_or_date_python_cannot_convert_costs_no_scanner_its_run(tmp_path: Path) -> None:
+    """A 5,000-digit number took 29 whole scanners down, and an impossible YAML
+    date 5, the always-on hook scanner among them. Now only the TOML file is
+    refused, by each scanner that reads it, where Python limits the digits."""
+    _write(tmp_path, _UNCONVERTIBLE)
+    result = run_scan(tmp_path, strict_loading=True)
+    assert not _crashed(result)
+    assert set(_refused(result)) == ({"pyproject.toml"} if _DIGIT_LIMIT else set())
+
+
+def test_a_long_number_in_one_file_hides_no_finding_in_another(tmp_path: Path) -> None:
+    root = tmp_path / "proj"
+    shutil.copytree(ROOT / "examples" / "vulnerable-configs", root)
+    before = _findings(run_scan(root, strict_loading=True))
+    _write(root, {".claude/settings.json": '{"n": ' + _BIG + "}"})
+    after = run_scan(root, strict_loading=True)
+    assert not after.scanner_failures
+    lost = before - _findings(after)
+    assert not lost, sorted(lost)[:10]
+
+
+# ---------------------------------------------------------------------------
 # JSON nested past one depth on every version
 # ---------------------------------------------------------------------------
 
