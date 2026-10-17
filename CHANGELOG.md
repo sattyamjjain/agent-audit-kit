@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - AAK-LANGCHAIN-SSRF-REDIR-001 and AAK-SSRF-TOCTOU-001 report a pyproject.toml dependency that states no version, as they already did one in a requirements file.
 - AAK-LANGCHAIN-001 and -003, AAK-NEO4J-001, AAK-LANGCHAIN-SSRF-REDIR-001, AAK-SSRF-TOCTOU-001 and AAK-DNS-REBIND-002 no longer report two pins in one requirements file that no release satisfies together (`mcp==1.23.0` beside `mcp==1.22.0`), which pip refuses to install; their first-number readers judged each line alone. The last three no longer report a pyproject.toml that does not parse, which their readers searched as text. The limitations say both.
 - The version pins of those rules and of AAK-MCPFRAME-001 and AAK-NEXT-AI-DRAW-001 leave a manifest over 2 MB unread, the CVE pin table's limit, and parse each manifest once per scan for all of them. Reading pyproject.toml as TOML costs more than the line search it replaced: 0.7 s of CPU across them for a 1.9 MB file of 100,000 dependencies, where the search took 0.06 s. The two SSRF pins index each lockfile once between them, so a 31 MiB uv.lock takes 1.2 s, where the search took 1.0 s.
+- Disposed #1036, the xSpeed Cache plugin for WordPress (CVE-2026-109985). It ships through wordpress.org, and no file AAK reads states its version, so it is out of scope. The reasoning is in CHANGELOG.cves.md.
 
 ### Removed
 

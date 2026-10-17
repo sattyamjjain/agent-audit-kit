@@ -16,6 +16,34 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
+## 2026-10-17 (v0.6.23): one disclosure, a WordPress plugin, out of scope
+
+The watcher opened one `cve-response` issue at 04:26Z on 2026-10-17 (#1036), `sev/medium`.
+It is a WordPress plugin, out of scope like DoubleScale CRM (#1013) and the WSP MCP AI
+Agents Connector below, and #915 and #916 before them. NVD's CVSS 3.1 score, 6.4 from
+Wordfence as the Primary metric, matches the title and `sev/` label the watcher filed, so
+nothing was corrected first. NVD text below is quoted from the API record, read on
+2026-10-17.
+
+**xSpeed Cache (CVE-2026-109985) is out of scope.** NVD: "The xSpeed Cache: AI-Powered
+Performance Hub with MCP, Caching & CDN plugin for WordPress is vulnerable to Stored
+Cross-Site Scripting via the 'content' parameter in all versions up to, and including,
+1.4.2 due to insufficient input sanitization and output escaping." It is the wordpress.org
+plugin `xspeed`, installed into a WordPress site, and its version is in no file AAK reads.
+npm and PyPI have no `xspeed` or `xspeed-cache`, and the two Docker Hub repositories named
+xspeed (atanu8617/xspeed, last pushed 2022, and ossgotgo/xspeed, 2024) are not the plugin.
+The flaw is in its lazy-loading module, not in anything an MCP client connects to.
+wordpress.org lists 1.4.3, released 2026-10-16, after the last affected version, so
+upgrade to 1.4.3 or later.
+
+| CVE | CVSS | Package | What changed | Issue |
+|---|---|---|---|---|
+| CVE-2026-109985 | 6.4 | xSpeed Cache (wordpress.org plugin `xspeed`) | **Out of scope**, non-pinnable: no artifact AAK reads. Affected up to and including 1.4.2; fixed in 1.4.3. | #1036 |
+
+CVSS is NVD's CVSS 3.1 score.
+
+Dispositioned at 2026-10-17T06:37:11Z.
+
 ## 2026-10-17 (v0.6.23): the Claude Agent SDK passes a session id to the Claude CLI as its own argument, one new rule on two registries
 
 The watcher opened one `cve-response` issue at 21:08Z on 2026-10-16 (#1026), `sev/unknown`.
