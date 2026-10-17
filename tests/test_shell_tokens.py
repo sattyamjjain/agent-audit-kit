@@ -236,6 +236,7 @@ _SHAPES: dict[str, Callable[[int], str]] = {
     "operators": lambda n: "a&&" * (n // 3),
     "comments": lambda n: "a #c\n" * (n // 5),
     "an unclosed quote": lambda n: '"' + "a " * (n // 2),
+    "words joined by no-break spaces": lambda n: "a\u00a0" * (n // 2),
 }
 
 
@@ -257,6 +258,26 @@ def test_a_crafted_package_json_reads_in_linear_time(tmp_path: Path) -> None:
     started = time.perf_counter()
     mcp_cve_pins_2026_07.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+def test_a_script_joined_by_no_break_spaces_reads_in_linear_time(tmp_path: Path) -> None:
+    """sh and shlex read a no-break space as part of a word, while `str.split`
+    splits at it; the 16 KiB word guard the old splitter needed split that way,
+    so a script of short words joined by them passed the guard and reached
+    shlex as one word. Both readers of package.json scripts are timed."""
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07, supply_chain
+
+    def scan_both(pairs: int) -> float:
+        root = tmp_path / str(pairs)
+        root.mkdir()
+        script = "a\u00a0" * pairs
+        text = json.dumps({"scripts": {"x": script}}, ensure_ascii=False)
+        (root / "package.json").write_text(text, encoding="utf-8")
+        return _seconds(lambda: (supply_chain.scan(root), mcp_cve_pins_2026_07.scan(root)))
+
+    t_small, t_large = scan_both(20_000), scan_both(200_000)
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
 
 
 @pytest.mark.parametrize("command", [
