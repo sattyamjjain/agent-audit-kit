@@ -554,6 +554,17 @@ def test_a_line_of_group_calls_scans_in_linear_time(tmp_path: Path) -> None:
     assert seconds < 5.0
 
 
+def test_nested_handlers_with_a_late_not_found_scan_in_linear_time(tmp_path: Path) -> None:
+    """Each handler's not-found `if` was searched whole for its 404 and its
+    `return`, and here each one holds the next handler: 2,700 nested handlers
+    (256 KB) took 13 seconds, and 4,250 (400 KB) about 33."""
+    head = 'package main\n\nimport "github.com/gin-gonic/gin"\n\nvar _ = 401\n\nfunc main() {\n\tr := gin.New()\n'
+    level = 'r.GET("/mcp",func(c *gin.Context){\nif a:=s.Get(c.Param("n"));a==nil{\n'
+    text = head + level * 4_250 + "c.JSON(404,nil)\nreturn}})\n" * 4_250 + "}\n"
+    seconds, _count = _scan_in_child(tmp_path, "nested", text)
+    assert seconds < 5.0
+
+
 def _methods_and_routes(k: int, same: bool) -> str:
     names = ["h" if same else f"h{i}" for i in range(k)]
     return (
@@ -702,6 +713,20 @@ def test_a_gate_is_read_for_its_first_1000_characters(tmp_path: Path, extra: int
     )
     end = text.index("StatusUnauthorized") + len("StatusUnauthorized")
     assert end - (text.index("\tif adapter.AuthRequired {") + 1) == 1000 + extra
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
+
+
+@pytest.mark.parametrize(("extra", "fires"), [(0, True), (1, False)])
+def test_the_not_found_if_is_read_for_its_first_1000_characters(tmp_path: Path, extra: int, fires: bool) -> None:
+    """Its `return` ends at character 1,000 of the `if`, or one past it."""
+    miss = GATEWAY.index("if err != nil || adapter == nil")
+    ret_end = GATEWAY.index("return", miss) + len("return")
+    pad = 1000 - (ret_end - miss) - len("\t\t//\n") + extra
+    text = GATEWAY.replace(
+        "\t\treturn\n\t}\n\n\tif adapter.AuthRequired",
+        "\t\t//" + "x" * pad + "\n\t\treturn\n\t}\n\n\tif adapter.AuthRequired",
+    )
+    assert text.index("return", miss) + len("return") - miss == 1000 + extra
     assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
 
 

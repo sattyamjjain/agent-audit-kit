@@ -982,9 +982,12 @@ _NOT_LOOKUP_ROOTS = frozenset({
     "bytes", "context", "errors", "filepath", "fmt", "http", "io", "json", "log", "math", "os", "path",
     "regexp", "sort", "strconv", "strings", "sync", "time", "url",
 })
-# An `if` header is short; the gate's auth call sits near the top of its block.
+# An `if` header is short, and an `if` is read for its first 1,000 characters:
+# a gate's auth call and its 401 or 403, a miss's not-found answer and its
+# `return`. Searching a whole block let nested handlers, each in the block of
+# the one around it, read the file once per level.
 _IF_HEADER_WINDOW = 400
-_GATE_WINDOW = 1000
+_IF_WINDOW = 1000
 _LINE_WINDOW = 200
 
 
@@ -1070,7 +1073,8 @@ def _miss_answer(
             return None
         found = nxt
     branch = ifs[found]
-    if not _NOT_FOUND_RE.search(text, branch.block, branch.close) or "return" not in text[branch.block:branch.close]:
+    window = min(branch.close, branch.at + _IF_WINDOW)
+    if not _NOT_FOUND_RE.search(text, branch.block, window) or text.find("return", branch.block, window) < 0:
         return None
     return found
 
@@ -1079,7 +1083,7 @@ def _is_gate(index: CodeIndex, branch: _If, request: str) -> bool:
     """An `if` that calls a function named for authentication with the request
     (or a value read from it) and answers 401 or 403."""
     text = index.text
-    window = min(branch.close, branch.at + _GATE_WINDOW)
+    window = min(branch.close, branch.at + _IF_WINDOW)
     if not _DENIED_RE.search(text, branch.block, window):
         return False
     for m in _GO_CALL_RE.finditer(text, branch.at, window):
