@@ -264,6 +264,24 @@ def test_the_negation_reader_reads_a_crafted_file_in_linear_time(tmp_path: Path)
     assert time.perf_counter() - started < 5.0
 
 
+def test_the_negation_look_back_is_200_characters(tmp_path: Path) -> None:
+    """That fixed window is 200 characters, so a negation further back is not
+    read even when it is among the four words before the claim, and the
+    limitations say so."""
+    found = {}
+    for gap in (197, 198):  # `not` starts 200 and 201 characters before the claim
+        root = tmp_path / str(gap)
+        root.mkdir()
+        (root / "README.md").write_text(
+            "The agent does not" + " " * gap + "automatically approve prior authorization requests.\n",
+            encoding="utf-8",
+        )
+        found[gap] = [f.rule_id for f in healthcare_ai.scan(root)[0]]
+    assert found == {197: [], 198: ["AAK-HEALTHCARE-AI-002"]}
+    for rule_id in ("AAK-HEALTHCARE-AI-001", "AAK-HEALTHCARE-AI-002", "AAK-HEALTHCARE-AI-003"):
+        assert "within 200 characters" in RULES[rule_id].limitations, rule_id
+
+
 # ---------------------------------------------------------------------------
 # State privacy
 # ---------------------------------------------------------------------------

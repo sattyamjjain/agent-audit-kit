@@ -291,6 +291,26 @@ def test_without_the_grammar(label: str, body: str, fires: bool, tmp_path: Path,
     assert (RULE in _scan_source(tmp_path, body)) is fires, label
 
 
+def _long_first_member(n: int) -> str:
+    """A transport whose `command` member closes `n + 37` characters into the call."""
+    return ("export function h(ctx: any) {\n"
+            f"  return new StdioClientTransport({{ args: ['{'x' * n}'], command: ctx.query.cmd }});\n}}\n")
+
+
+def test_the_fallback_reads_the_first_1024_characters_of_the_call(tmp_path: Path, without_grammar: None) -> None:
+    """The options reader stops 1,024 characters into the call, so a crafted
+    file stays linear: a `command` member that closes later is not read, and
+    the limitation says so."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    inside, outside = tmp_path / "inside", tmp_path / "outside"
+    inside.mkdir()
+    outside.mkdir()
+    assert RULE in _scan_source(inside, _long_first_member(986))  # closes at character 1,024
+    assert RULE not in _scan_source(outside, _long_first_member(987))  # closes at 1,025
+    assert "within the first 1,024 characters of the call" in RULES[RULE].limitations
+
+
 def test_the_fallback_evidence_says_which_path_ran(tmp_path: Path, without_grammar: None) -> None:
     (tmp_path / "s.ts").write_text(_IMPORT + _INLINE, encoding="utf-8")
     found = [f for f in scan(tmp_path)[0] if f.rule_id == RULE]

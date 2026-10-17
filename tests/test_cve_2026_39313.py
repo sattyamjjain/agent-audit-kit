@@ -10,6 +10,7 @@ from typing import Callable
 
 import pytest
 
+from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners import transport_limits
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-39313"
@@ -160,4 +161,6 @@ def test_the_request_body_gate_still_reads_a_handler(tmp_path: Path) -> None:
     ):
         assert rx.search(handler), handler
     assert not rx.search("req.on('end', () => resolve(body))")
-    assert not rx.search("req.on('data'," + " " * 1_100 + "(chunk) => {")
+    assert rx.search("req.on('data'," + " " * 1_018 + "(chunk) => {")  # 1,024 characters before the `)`
+    assert not rx.search("req.on('data'," + " " * 1_019 + "(chunk) => {")  # 1,025
+    assert "more than 1,024 characters after the comma" in RULES["AAK-MCPFRAME-001"].limitations
