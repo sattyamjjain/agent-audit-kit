@@ -6,5 +6,12 @@
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": "github:modelcontextprotocol/typescript-sdk#release/1.20.0"
+  },
+  "optionalDependencies": {
+    "@modelcontextprotocol/sdk": "file:../vendor/typescript-sdk",
+    "@apollo/mcp-server": "github:apollographql/apollo-mcp-server#v1.7.0-rc.1"
   }
 }

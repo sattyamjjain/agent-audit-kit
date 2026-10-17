@@ -1,0 +1,1 @@
+mcp-neo4j-cypher @ git+https://github.com/neo4j-contrib/mcp-neo4j@release/0.5.0#subdirectory=servers/mcp-neo4j-cypher

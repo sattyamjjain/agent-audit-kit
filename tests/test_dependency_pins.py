@@ -411,6 +411,9 @@ _PY_REFS: tuple[tuple[str, str, bool | None], ...] = (
     ("branch ref", "git+https://github.com/o/r@refs/heads/{f}#egg={p}", None),
     ("tag ref", "git+https://github.com/o/r@refs/tags/v{a}#egg={p}", True),
     ("tag ref, fixed", "git+https://github.com/o/r@refs/tags/v{f}#egg={p}", False),
+    # Releases compare on their first three numbers, as in the pin table, so a
+    # pre-release of the fix reads as the fix. The limitations say so.
+    ("pre-release of the fix", "git+https://github.com/o/r@v{f}-rc1#egg={p}", False),
 )
 
 _NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
@@ -432,6 +435,7 @@ _NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
     ("branch named after a release", "github:o/r#feature/v2.0.0", None),
     ("tag ref", "github:o/r#refs/tags/v{a}", True),
     ("tag ref, fixed", "github:o/r#refs/tags/v{f}", False),
+    ("pre-release of the fix", "github:o/r#v{f}-rc.1", False),
 )
 
 

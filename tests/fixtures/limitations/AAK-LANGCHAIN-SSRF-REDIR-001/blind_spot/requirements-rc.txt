@@ -1,0 +1,1 @@
+langchain-text-splitters @ git+https://github.com/langchain-ai/langchain@langchain-text-splitters==1.1.2rc1#subdirectory=libs/text-splitters

@@ -1,0 +1,1 @@
+langchain-openai @ git+https://github.com/langchain-ai/langchain@langchain-openai==1.1.14rc1#subdirectory=libs/partners/openai

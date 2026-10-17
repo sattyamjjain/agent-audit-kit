@@ -1,0 +1,1 @@
+langchain-core @ git+https://github.com/langchain-ai/langchain@langchain-core==1.2.22rc1#subdirectory=libs/core

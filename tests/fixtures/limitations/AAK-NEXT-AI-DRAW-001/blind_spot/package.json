@@ -1,0 +1,6 @@
+{
+  "name": "demo",
+  "dependencies": {
+    "next-ai-draw-io": "github:DayuanJiang/next-ai-draw-io#v0.4.15-rc.1"
+  }
+}

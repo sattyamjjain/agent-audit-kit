@@ -44,7 +44,8 @@ two cannot drift apart:
   clear a range in this one.
 - A git reference, an archive (a URL or a local `file:` tarball) and a
   workspace spec are judged by the release their tag, file name or range
-  names (`_with_referenced_version`).
+  names (`_with_referenced_version`). Releases compare on their first three
+  numbers, as in the pin table, so a pre-release of the fix reads as the fix.
 - A declaration that states no version AAK can read (a bare name, `*`,
   `latest`, a local directory, a git reference to a commit or a branch) is
   reported only by a rule that always reported one (`report_unversioned`).

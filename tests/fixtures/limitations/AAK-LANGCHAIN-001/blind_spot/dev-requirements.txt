@@ -1,0 +1,1 @@
+langchain-core @ git+https://github.com/langchain-ai/langchain@release/1.2.21#subdirectory=libs/core
