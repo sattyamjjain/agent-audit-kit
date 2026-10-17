@@ -485,6 +485,24 @@ def find_line_numbers(raw: str, keys: Iterable[object]) -> dict[str, int | None]
     return {key: found[key] for key in asked}
 
 
+def placed(raw: str, unplaced: Iterable[tuple[Finding, object]]) -> list[Finding]:
+    """The findings, each given the line `find_line_number(raw, key)` gives its key.
+
+    A loop that reports one finding per item makes each without a line and keeps
+    the key it is placed by (a server's URL, a tool's name); this then looks those
+    keys up together, in one pass over `raw` (`find_line_numbers`). The keys are
+    exactly those of the findings made, so a key no finding needs, such as an
+    argument of a server no rule reports, is never searched for.
+    """
+    pending = list(unplaced)
+    if not pending:
+        return []
+    lines = find_line_numbers(raw, (key for _, key in pending))
+    for finding, key in pending:
+        finding.line_number = lines[key if isinstance(key, str) else str(key)]
+    return [finding for finding, _ in pending]
+
+
 def first_offsets(text: str, keys: list[str]) -> list[int]:
     """`[text.find(key) for key in keys]`, the keys searched for together when that costs less.
 

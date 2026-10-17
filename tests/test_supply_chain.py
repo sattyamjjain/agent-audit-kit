@@ -11,6 +11,7 @@ from agent_audit_kit.cli import cli
 from agent_audit_kit.engine import _drop_launches_supply_chain_reports, run_scan
 from agent_audit_kit.models import Severity
 from agent_audit_kit.scanners import mcp_config, supply_chain
+from agent_audit_kit.scanners._helpers import placed
 from agent_audit_kit.scanners._launchers import launch_evidence, launch_subject
 from agent_audit_kit.scanners.supply_chain import scan, _version_in_range
 
@@ -1346,7 +1347,7 @@ def test_the_vscode_servers_shape_is_reported_once(tmp_path: Path) -> None:
     # reports for this entry and check the engine drops it beside AAK-SUPPLY-001.
     raw = (tmp_path / ".vscode" / "mcp.json").read_text()
     mcp007 = [
-        f for f in mcp_config._check_server("fs", server, ".vscode/mcp.json", raw)
+        f for f in placed(raw, mcp_config._check_server("fs", server, ".vscode/mcp.json"))
         if f.rule_id == "AAK-MCP-007"
     ]
     supply001 = [f for f in supply_chain.scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-001"]

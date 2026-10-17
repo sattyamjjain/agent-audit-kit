@@ -32,12 +32,11 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    find_line_number,
-    find_line_numbers,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
+    placed,
     strip_vscode_variables,
 )
 
@@ -179,9 +178,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        # Every server's line in one pass over the file, not one search of it per server.
-        find_line_numbers(raw_text, (name for name, _ in iter_mcp_servers(data)))
         # `mcpServers` (Claude, Cursor, ...) and VS Code's `servers`.
+        unplaced: list[tuple[Finding, str]] = []
         for server_name, cfg in iter_mcp_servers(data):
             # stdio transport only: an entry with a `url` (and no `command`)
             # is an HTTP/SSE server — out of scope for launcher injection.
@@ -193,7 +191,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             reason = _evaluate_server(launcher, tokens)
             if reason is None:
                 continue
-            findings.append(make_finding(
+            unplaced.append((make_finding(
                 _RULE_ID,
                 rel_path,
                 (
@@ -201,7 +199,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     f"CVE-2026-40933 class. Pin command to a concrete "
                     f"executable and pass only static literal args."
                 ),
-                find_line_number(raw_text, server_name),
-            ))
+            ), server_name))
+        # Every reported server's line in one pass over the file, not one search of it per server.
+        findings.extend(placed(raw_text, unplaced))
 
     return findings, scanned_files

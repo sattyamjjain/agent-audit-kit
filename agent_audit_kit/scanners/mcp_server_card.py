@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir, url_readings
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, placed, url_readings
 
 # Reuse the tool-poisoning detectors — do NOT duplicate the regexes.
 from agent_audit_kit.scanners.tool_poisoning import (
@@ -109,8 +109,7 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
     # ---- (a) AAK-MCP-CARD-001: tool-description poisoning (reused detectors)
     tools = data.get("tools")
     if isinstance(tools, list):
-        # Every tool's line in one pass over the file, not one search of it per tool.
-        find_line_numbers(raw_text, (str(t.get("name", "?")) for t in tools if isinstance(t, dict)))
+        unplaced: list[tuple[Finding, str]] = []
         for tool in tools:
             if not isinstance(tool, dict):
                 continue
@@ -128,7 +127,7 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
             if _BASE64_RE.search(desc) or _HEX_SEQUENCE_RE.search(desc):
                 reasons.append("encoded-payload")
             if reasons:
-                findings.append(make_finding(
+                unplaced.append((make_finding(
                     _CARD_POISON,
                     rel_path,
                     (
@@ -136,8 +135,9 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
                         f"({', '.join(reasons)}) — a client that trusts the card "
                         f"ingests the injected instructions before connecting."
                     ),
-                    find_line_number(raw_text, name),
-                ))
+                ), name))
+        # Every poisoned tool's line in one pass over the file, not one search of it per tool.
+        findings.extend(placed(raw_text, unplaced))
 
     # ---- (b) AAK-MCP-CARD-002: transport vs capability/auth mismatch
     transport = data.get("transport")

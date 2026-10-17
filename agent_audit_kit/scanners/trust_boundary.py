@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, url_host
+from agent_audit_kit.scanners._helpers import find_line_number, make_finding, placed, url_host
 
 # Patterns for API URL override env vars
 API_URL_PATTERNS = re.compile(
@@ -107,17 +107,17 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                     ))
 
             # AAK-TRUST-005: Custom API base URL for any provider
-            # Every variable's line in one pass over the file, not one search of it per variable.
-            find_line_numbers(raw_text, env)
+            unplaced: list[tuple[Finding, str]] = []
             for key, value in env.items():
                 if key == "ANTHROPIC_BASE_URL":
                     continue  # Already handled by AAK-TRUST-002
                 if API_URL_PATTERNS.search(key) and isinstance(value, str) and value:
-                    findings.append(_make_finding(
+                    unplaced.append((_make_finding(
                         "AAK-TRUST-005", rel_path,
                         f"{key} = {value}",
-                        _find_line_number(raw_text, key),
-                    ))
+                    ), key))
+            # Every reported variable's line in one pass over the file, not one search of it per variable.
+            findings.extend(placed(raw_text, unplaced))
 
         # Check permissions
         permissions = data.get("permissions", {})

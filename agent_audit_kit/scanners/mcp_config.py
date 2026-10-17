@@ -4,14 +4,13 @@ import ipaddress
 import json
 import re
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
     ZCODE_SERVER_KEY,
     find_line_number,
-    find_line_numbers,
     host_ip,
     in_skip_dir,
     is_loopback_url,
@@ -19,6 +18,7 @@ from agent_audit_kit.scanners._helpers import (
     loads_jsonc,
     make_finding,
     mcp_server_maps,
+    placed,
     strip_vscode_variables,
     url_hosts,
     zcode_workspace_configs,
@@ -283,27 +283,11 @@ _find_line_number = find_line_number
 _make_finding = make_finding
 
 
-def _line_keys(servers: dict[str, Any]) -> Iterator[str]:
-    """What the per-server checks look up in the file, so one pass finds them all:
-    each server's quoted name, its `url`, its `command` and that command's first
-    word, its env keys and its string args."""
-    for name, cfg in servers.items():
-        yield f'"{name}"'
-        if not isinstance(cfg, dict):
-            continue
-        for value in (cfg.get("url"), cfg.get("command")):
-            if isinstance(value, str):
-                yield value
-                yield from value.split()[:1]
-        for group in (cfg.get("env"), cfg.get("args")):
-            if isinstance(group, (dict, list)):
-                yield from (item for item in group if isinstance(item, str))
-
-
 def _check_server(
-    server_name: str, server_cfg: dict[str, Any], file_path: str, raw_text: str
-) -> list[Finding]:
-    findings: list[Finding] = []
+    server_name: str, server_cfg: dict[str, Any], file_path: str
+) -> list[tuple[Finding, str]]:
+    """One server's findings, each with the key its line is found by (see `placed`)."""
+    findings: list[tuple[Finding, str]] = []
 
     # A field whose JSON type contradicts the MCP schema is reported by
     # AAK-MCP-CONFIG-MALFORMED-001 and is unevaluable here: there is no honest
@@ -327,11 +311,10 @@ def _check_server(
     # its 24 loopback findings held no true positive.
     if url and not is_loopback_url(url):
         if not _server_declares_auth(server_cfg.get("headers", {})):
-            findings.append(_make_finding(
+            findings.append((_make_finding(
                 "AAK-MCP-001", file_path,
                 f"Server '{server_name}' URL: {url} — no authentication headers",
-                _find_line_number(raw_text, url),
-            ))
+            ), url))
 
     # AAK-MCP-002: Shell expansion in command. A VS Code variable is removed
     # first: VS Code substitutes `${workspaceFolder}` and its kind itself and
@@ -341,11 +324,10 @@ def _check_server(
         has_shell_meta = bool(SHELL_METACHARACTERS.search(strip_vscode_variables(command)))
         has_shell_wrapper = any(command.strip().startswith(sw) for sw in SHELL_WRAPPERS)
         if has_shell_meta or has_shell_wrapper:
-            findings.append(_make_finding(
+            findings.append((_make_finding(
                 "AAK-MCP-002", file_path,
                 f"Server '{server_name}' command: {command}",
-                _find_line_number(raw_text, command),
-            ))
+            ), command))
 
     # AAK-MCP-003: Hardcoded secrets in env
     if isinstance(env, dict):
@@ -354,19 +336,17 @@ def _check_server(
                 # Allow variable references like ${VAR}, and literals that cannot
                 # be a credential (see _could_be_credential).
                 if not re.match(r"^\$\{.+\}$", value) and value and _could_be_credential(key, value):
-                    findings.append(_make_finding(
+                    findings.append((_make_finding(
                         "AAK-MCP-003", file_path,
                         f"Server '{server_name}' env.{key} = (hardcoded value)",
-                        _find_line_number(raw_text, key),
-                    ))
+                    ), key))
 
     # AAK-MCP-005: npx/uvx package fetcher
     if command and command.strip().split()[0] in PACKAGE_FETCHERS:
-        findings.append(_make_finding(
+        findings.append((_make_finding(
             "AAK-MCP-005", file_path,
             f"Server '{server_name}' command: {command}",
-            _find_line_number(raw_text, command),
-        ))
+        ), command))
 
     # AAK-MCP-006: Relative path command
     if command:
@@ -374,11 +354,10 @@ def _check_server(
         is_absolute = cmd_bin.startswith("/")
         is_known = cmd_bin in KNOWN_BINARIES
         if not is_absolute and not is_known and cmd_bin:
-            findings.append(_make_finding(
+            findings.append((_make_finding(
                 "AAK-MCP-006", file_path,
                 f"Server '{server_name}' command: {cmd_bin}",
-                _find_line_number(raw_text, cmd_bin),
-            ))
+            ), cmd_bin))
 
     # AAK-MCP-007: Unpinned package version in args. `engine.run_scan` drops a
     # finding here when AAK-SUPPLY-001 reports the same launch, which it
@@ -391,11 +370,10 @@ def _check_server(
                     continue
                 # Check if it looks like a package name without @version
                 if arg and "@" not in arg:
-                    findings.append(_make_finding(
+                    findings.append((_make_finding(
                         "AAK-MCP-007", file_path,
                         launch_evidence(server_name, str(shown_arg(args, index)), "no version pin"),
-                        _find_line_number(raw_text, arg),
-                    ))
+                    ), arg))
                 elif arg and "@" in arg:
                     # Has @ but check if it's scoped package without version
                     # e.g. @org/pkg has @ but no version; @org/pkg@1.0.0 is fine
@@ -405,19 +383,17 @@ def _check_server(
                     if arg.startswith("@"):
                         # Scoped package
                         if len(parts) < 3 or not parts[2]:
-                            findings.append(_make_finding(
+                            findings.append((_make_finding(
                                 "AAK-MCP-007", file_path,
                                 launch_evidence(server_name, str(shown_arg(args, index)), "no version pin"),
-                                _find_line_number(raw_text, arg),
-                            ))
+                            ), arg))
 
     # AAK-MCP-008: headersHelper
     if headers_helper:
-        findings.append(_make_finding(
+        findings.append((_make_finding(
             "AAK-MCP-008", file_path,
             f"Server '{server_name}' headersHelper: {headers_helper}",
-            _find_line_number(raw_text, "headersHelper"),
-        ))
+        ), "headersHelper"))
 
     # AAK-MCP-009: Internal-network URL. A loopback server is left out, as in
     # AAK-MCP-001: a client config pointing at the local machine is not the
@@ -425,21 +401,19 @@ def _check_server(
     # 28 findings on real `.vscode/mcp.json` files were loopback, none a true
     # positive. RFC 1918 and `.local` hosts still fire.
     if url and not is_loopback_url(url) and _is_internal_url(url):
-        findings.append(_make_finding(
+        findings.append((_make_finding(
             "AAK-MCP-009", file_path,
             f"Server '{server_name}' URL: {url}",
-            _find_line_number(raw_text, url),
-        ))
+        ), url))
 
     # AAK-MCP-010: Filesystem root access
     if isinstance(args, list):
         for arg in args:
             if isinstance(arg, str) and arg in ("/", "~", "/home", "/Users", "/etc", "/var"):
-                findings.append(_make_finding(
+                findings.append((_make_finding(
                     "AAK-MCP-010", file_path,
                     f"Server '{server_name}' grants access to '{arg}'",
-                    _find_line_number(raw_text, arg),
-                ))
+                ), arg))
 
     return findings
 
@@ -466,23 +440,23 @@ def _as_str(value: object) -> str:
 
 
 def _check_malformed_fields(
-    server_name: str, server_cfg: dict, rel_path: str, raw_text: str
-) -> list[Finding]:
-    """AAK-MCP-CONFIG-MALFORMED-001: a server field with the wrong JSON type."""
-    findings: list[Finding] = []
+    server_name: str, server_cfg: dict, rel_path: str
+) -> list[tuple[Finding, str]]:
+    """AAK-MCP-CONFIG-MALFORMED-001: a server field with the wrong JSON type, each
+    finding with the key its line is found by (see `placed`)."""
+    findings: list[tuple[Finding, str]] = []
     for field, expected in sorted(_EXPECTED_FIELD_TYPES.items()):
         if field not in server_cfg:
             continue
         value = server_cfg[field]
         if value is None or isinstance(value, expected):
             continue
-        findings.append(_make_finding(
+        findings.append((_make_finding(
             "AAK-MCP-CONFIG-MALFORMED-001", rel_path,
             f"server {server_name!r} declares {field!r} as "
             f"{type(value).__name__}, expected "
             f"{' or '.join(t.__name__ for t in expected)}",
-            _find_line_number(raw_text, f'"{field}"'),
-        ))
+        ), f'"{field}"'))
     return findings
 
 
@@ -521,17 +495,18 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
                     _find_line_number(raw_text, f'"{key}"'),
                 ))
 
-            # Every server's lines in one pass over the file, not one search per finding.
-            find_line_numbers(raw_text, _line_keys(servers))
+            unplaced: list[tuple[Finding, str]] = []
             for server_name, server_cfg in servers.items():
                 if isinstance(server_cfg, dict):
-                    findings.extend(_check_malformed_fields(server_name, server_cfg, rel_path, raw_text))
-                    findings.extend(_check_server(server_name, server_cfg, rel_path, raw_text))
+                    unplaced.extend(_check_malformed_fields(server_name, server_cfg, rel_path))
+                    unplaced.extend(_check_server(server_name, server_cfg, rel_path))
 
             # AAK-MCP-ATTEST-001: Servers admitted without attestation
             # (no signed clearance / well-known URI / pinned trust root).
             # Reference: Metere 2026, arXiv:2605.24248 — Attested Tool-Server Admission.
-            findings.extend(_check_attestation(data, servers, rel_path, raw_text))
+            unplaced.extend(_check_attestation(data, servers, rel_path))
+            # Every finding's line in one pass over the file, not one search of it per finding.
+            findings.extend(placed(raw_text, unplaced))
 
         # AAK-MCP-ZCODE-CVE-2026-88755-001: ZCode connects every server its
         # workspace config declares when the folder is opened, asking no one.
@@ -707,8 +682,7 @@ def _check_attestation(
     data: Any,
     servers: Any,
     rel_path: str,
-    raw_text: str,
-) -> list[Finding]:
+) -> list[tuple[Finding, str]]:
     """Flag dispatched servers admitted without any attestation evidence.
 
     A server is considered attested when ANY of the following is present:
@@ -723,28 +697,26 @@ def _check_attestation(
         data: Parsed host config (the top-level dict of the MCP config file).
         servers: The `mcpServers` map within `data`.
         rel_path: Config path relative to the project root (for the finding).
-        raw_text: Raw config text (for line-number lookup).
 
     Returns:
-        One `Finding` per dispatched-but-unattested server entry. An empty
-        list if the host pins a trust root (which covers all servers) or if
-        no servers dispatch.
+        One `Finding` per dispatched-but-unattested server entry, with the key
+        its line is found by (see `placed`). An empty list if the host pins a
+        trust root (which covers all servers) or if no servers dispatch.
     """
     if not isinstance(servers, dict) or not servers:
         return []
     if _host_has_attestation(data):
         return []
-    out: list[Finding] = []
+    out: list[tuple[Finding, str]] = []
     for server_name, server_cfg in servers.items():
         if not _server_dispatches(server_cfg):
             continue
         if _server_has_attestation(server_cfg):
             continue
-        out.append(_make_finding(
+        out.append((_make_finding(
             "AAK-MCP-ATTEST-001", rel_path,
             f"Server '{server_name}' admitted without attestation "
             f"(no signed clearance / pinned trust root) "
             f"— deny-by-default server admission unenforced",
-            _find_line_number(raw_text, f'"{server_name}"'),
-        ))
+        ), f'"{server_name}"'))
     return out

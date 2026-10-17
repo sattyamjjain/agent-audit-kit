@@ -7,13 +7,12 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    find_line_number,
-    find_line_numbers,
     in_skip_dir,
     is_loopback_url,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
+    placed,
     url_readings,
 )
 
@@ -104,10 +103,10 @@ def _check_server(
     server_name: str,
     server_cfg: dict[str, Any],
     rel_path: str,
-    raw_text: str,
-) -> list[Finding]:
-    """Run transport security rules against a single MCP server block."""
-    findings: list[Finding] = []
+) -> list[tuple[Finding, str]]:
+    """Run transport security rules against a single MCP server block; each finding
+    comes with the key its line is found by (see `placed`)."""
+    findings: list[tuple[Finding, str]] = []
 
     # A malformed config can put a non-string here; the MCP-config scanner
     # reports that as AAK-MCP-CONFIG-MALFORMED-001. Reading it as "" means the
@@ -121,33 +120,30 @@ def _check_server(
     scheme = _cleartext_scheme(url) if url else None
     if scheme and not is_loopback_url(url):
         secure = "wss" if scheme == "ws" else "https"
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-TRANSPORT-001",
             rel_path,
             f"Server '{server_name}' URL: {url} — cleartext {scheme}:// "
             f"(use {secure}://)",
-            find_line_number(raw_text, url),
-        ))
+        ), url))
 
     # AAK-TRANSPORT-002: TLS validation disabled
     if isinstance(env, dict):
         for env_key, bad_value in _TLS_DISABLE_KEYS.items():
             val = env.get(env_key)
             if isinstance(val, str) and val == bad_value:
-                findings.append(make_finding(
+                findings.append((make_finding(
                     "AAK-TRANSPORT-002",
                     rel_path,
                     f"Server '{server_name}' env.{env_key}={val}",
-                    find_line_number(raw_text, env_key),
-                ))
+                ), env_key))
         # SSL_CERT_FILE override
         if _SSL_CERT_OVERRIDE_KEY in env:
-            findings.append(make_finding(
+            findings.append((make_finding(
                 "AAK-TRANSPORT-002",
                 rel_path,
                 f"Server '{server_name}' env.{_SSL_CERT_OVERRIDE_KEY}={env[_SSL_CERT_OVERRIDE_KEY]}",
-                find_line_number(raw_text, _SSL_CERT_OVERRIDE_KEY),
-            ))
+            ), _SSL_CERT_OVERRIDE_KEY))
 
     # AAK-TRANSPORT-003: Deprecated SSE transport, reported once per server: by
     # the key that declares it when the server has one, otherwise by its URL.
@@ -162,28 +158,25 @@ def _check_server(
         None,
     )
     if declared is not None:
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-TRANSPORT-003",
             rel_path,
             f"Server '{server_name}' {declared}: sse (deprecated)",
-            find_line_number(raw_text, url) if url else find_line_number(raw_text, "sse"),
-        ))
+        ), url or "sse"))
     elif url and _SSE_URL_RE.search(url):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-TRANSPORT-003",
             rel_path,
             f"Server '{server_name}' URL contains /sse: {url}",
-            find_line_number(raw_text, url),
-        ))
+        ), url))
 
     # AAK-TRANSPORT-004: Token / key / secret in URL query string
     if url and _TOKEN_QUERY_RE.search(url):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-TRANSPORT-004",
             rel_path,
             f"Server '{server_name}' URL query contains credential: {url}",
-            find_line_number(raw_text, url),
-        ))
+        ), url))
 
     return findings
 
@@ -216,13 +209,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        # Every server's URL line in one pass over the file, not one search per server.
-        find_line_numbers(raw_text, (cfg.get("url") for _, cfg in iter_mcp_servers(data)))
         # `mcpServers`, and VS Code's `servers`, which this read past until
         # mcp_server_maps: a cleartext VS Code server came back clean.
+        unplaced: list[tuple[Finding, str]] = []
         for server_name, server_cfg in iter_mcp_servers(data):
-            findings.extend(
-                _check_server(server_name, server_cfg, rel_path, raw_text)
-            )
+            unplaced.extend(_check_server(server_name, server_cfg, rel_path))
+        # Every finding's line in one pass over the file, not one search of it per finding.
+        findings.extend(placed(raw_text, unplaced))
 
     return findings, scanned_files

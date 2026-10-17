@@ -4,16 +4,15 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    find_line_number,
-    find_line_numbers,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
+    placed,
 )
 
 # ---- MCP config file discovery (mirrors mcp_config.py) ----
@@ -228,107 +227,87 @@ def _extract_tool_descriptions(data: Any) -> list[tuple[str, str, str]]:
     return results
 
 
-def _line_keys(tools: list[tuple[str, str, str]]) -> Iterator[str]:
-    """What `_check_description` looks up in the file for these tools, so one pass
-    finds them all: each tool's name and the start of each pattern it matches."""
-    for _server, tool_name, description in tools:
-        yield tool_name
-        for pattern in (_PROMPT_INJECTION_RE, _CROSS_TOOL_RE):
-            yield from (m.group().strip()[:40] for m in pattern.finditer(description))
-        for pattern in (_URL_RE, _FILE_PATH_RE):
-            yield from (m.group()[:40] for m in pattern.finditer(description))
-
-
 def _check_description(
     server_name: str,
     tool_name: str,
     description: str,
     rel_path: str,
-    raw_text: str,
-) -> list[Finding]:
-    """Run all six POISON rules against a single tool description."""
-    findings: list[Finding] = []
+) -> list[tuple[Finding, str]]:
+    """Run all six POISON rules against a single tool description; each finding
+    comes with the key its line is found by (see `placed`)."""
+    findings: list[tuple[Finding, str]] = []
     ctx = f"Server '{server_name}', tool '{tool_name}'"
 
     # AAK-POISON-001: Invisible Unicode
     invisible_hits = _has_invisible_unicode(description)
     if invisible_hits:
         codepoints = ", ".join(cp for cp, _ in invisible_hits[:5])
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-001",
             rel_path,
             f"{ctx}: invisible chars {codepoints}",
-            find_line_number(raw_text, tool_name),
-        ))
+        ), tool_name))
 
     # AAK-POISON-002: Prompt injection
     for match in _PROMPT_INJECTION_RE.finditer(description):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-002",
             rel_path,
             f"{ctx}: injection pattern '{match.group().strip()}'",
-            find_line_number(raw_text, match.group().strip()[:40]),
-        ))
+        ), match.group().strip()[:40]))
 
     # AAK-POISON-003: Cross-tool references
     for match in _CROSS_TOOL_RE.finditer(description):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-003",
             rel_path,
             f"{ctx}: cross-tool ref '{match.group().strip()}'",
-            find_line_number(raw_text, match.group().strip()[:40]),
-        ))
+        ), match.group().strip()[:40]))
 
     # AAK-POISON-004: Encoded content
     has_encoded = False
     if _BASE64_RE.search(description):
         has_encoded = True
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-004",
             rel_path,
             f"{ctx}: base64-like content detected",
-            find_line_number(raw_text, tool_name),
-        ))
+        ), tool_name))
     if _HEX_SEQUENCE_RE.search(description):
         has_encoded = True
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-004",
             rel_path,
             f"{ctx}: hex-encoded content detected",
-            find_line_number(raw_text, tool_name),
-        ))
+        ), tool_name))
     if _URL_ENCODED_RE.search(description) and not has_encoded:
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-004",
             rel_path,
             f"{ctx}: URL-encoded content detected",
-            find_line_number(raw_text, tool_name),
-        ))
+        ), tool_name))
 
     # AAK-POISON-005: Excessive description length
     if len(description) > _MAX_DESCRIPTION_LENGTH:
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-005",
             rel_path,
             f"{ctx}: description length {len(description)} chars (max {_MAX_DESCRIPTION_LENGTH})",
-            find_line_number(raw_text, tool_name),
-        ))
+        ), tool_name))
 
     # AAK-POISON-006: URLs or file paths
     for match in _URL_RE.finditer(description):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-006",
             rel_path,
             f"{ctx}: URL in description '{match.group()[:120]}'",
-            find_line_number(raw_text, match.group()[:40]),
-        ))
+        ), match.group()[:40]))
     for match in _FILE_PATH_RE.finditer(description):
-        findings.append(make_finding(
+        findings.append((make_finding(
             "AAK-POISON-006",
             rel_path,
             f"{ctx}: file path in description '{match.group()[:120]}'",
-            find_line_number(raw_text, match.group()[:40]),
-        ))
+        ), match.group()[:40]))
 
     return findings
 
@@ -361,12 +340,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
-        tools = list(_extract_tool_descriptions(data))
-        # Every tool's lines in one pass over the file, not one search per finding.
-        find_line_numbers(raw_text, _line_keys(tools))
-        for server_name, tool_name, description in tools:
-            findings.extend(
-                _check_description(server_name, tool_name, description, rel_path, raw_text)
-            )
+        unplaced: list[tuple[Finding, str]] = []
+        for server_name, tool_name, description in _extract_tool_descriptions(data):
+            unplaced.extend(_check_description(server_name, tool_name, description, rel_path))
+        # Every finding's line in one pass over the file, not one search of it per finding.
+        findings.extend(placed(raw_text, unplaced))
 
     return findings, scanned_files

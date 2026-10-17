@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, placed
 
 _RULE_ID = "AAK-AGENT-SHARED-RES-AUTHZ-001"
 
@@ -246,8 +246,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         _iter_tool_descriptors(data, 0, descriptors)
 
         seen: set[str] = set()
-        # Every tool's line in one pass over the file, not one search of it per tool.
-        find_line_numbers(raw_text, (name for name, _, _ in descriptors))
+        unplaced: list[tuple[Finding, str]] = []
         for name, description, schema in descriptors:
             if not _is_mutating(name, description):
                 continue
@@ -261,7 +260,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             if name in seen:
                 continue
             seen.add(name)
-            findings.append(make_finding(
+            unplaced.append((make_finding(
                 _RULE_ID,
                 rel_path,
                 (
@@ -271,7 +270,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     f"enforce a per-actor authorization parameter, or annotate "
                     f"the tool x-aak-shared-authz: global-ok if intentional."
                 ),
-                find_line_number(raw_text, name),
-            ))
+            ), name))
+        # Every reported tool's line in one pass over the file, not one search of it per tool.
+        findings.extend(placed(raw_text, unplaced))
 
     return findings, scanned_files

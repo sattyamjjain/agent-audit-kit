@@ -25,7 +25,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import find_line_number, find_line_numbers, make_finding
+from ._helpers import make_finding, placed
 
 _WORKFLOWS_DIR = ".github/workflows"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -95,10 +95,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         # numbers (yaml.safe_load drops source positions).
         parsed_uses: list[str] = []
         _walk_uses(doc, parsed_uses)
-        # Every step's line in one pass over the file, not one search of it per step.
-        find_line_numbers(text, ("{}/{}@{}".format(*c) for c in map(_classify, parsed_uses) if c))
 
         seen: set[str] = set()
+        unplaced: list[tuple[Finding, str]] = []
         for uses in parsed_uses:
             if uses in seen:
                 continue
@@ -111,12 +110,13 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                 continue
             if _is_sha_pinned(ref):
                 continue
-            findings.append(make_finding(
+            unplaced.append((make_finding(
                 "AAK-GHA-IMMUTABLE-001",
                 rel,
                 f"`uses: {owner}/{action}@{ref}` is pinned by tag/branch, not by "
                 "40-character commit SHA. GitHub's 2026 Security Roadmap "
                 "requires SHA pinning for third-party Actions.",
-                line_number=find_line_number(text, f"{owner}/{action}@{ref}"),
-            ))
+            ), f"{owner}/{action}@{ref}"))
+        # Every reported step's line in one pass over the file, not one search of it per step.
+        findings.extend(placed(text, unplaced))
     return findings, scanned
