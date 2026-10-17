@@ -88,8 +88,15 @@ NETWORK_IN_SCRIPTS = re.compile(
 # prefix of the command, so `tscripts/setup.sh`, `vite-installer` and, through
 # `node`, `NODE_ENV=production sh ./evil.sh` passed. `npx` was a prefix too, so
 # any package given to it passed: a launcher is judged by the package it runs
-# instead (`_launch_is_local`).
-_SAFE_SCRIPT_TOOLS = frozenset({"tsc", "node", "webpack", "rollup", "esbuild", "vite"})
+# instead (`_launch_is_local`). `node-gyp` and `node-gyp-build` passed as
+# prefixes of `node` and stay: npm itself runs `node-gyp rebuild` for a package
+# with a binding.gyp and no install script, and node-gyp-build builds the
+# package's own sources or loads the prebuilds it ships, fetching nothing.
+# `node-pre-gyp` and `prebuild-install`, which download a prebuilt binary from
+# a host the package.json names, are not on the list.
+_SAFE_SCRIPT_TOOLS = frozenset({
+    "tsc", "node", "node-gyp", "node-gyp-build", "webpack", "rollup", "esbuild", "vite",
+})
 # A shell variable assignment before a command (`NODE_ENV=production webpack`).
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 # How deep command substitutions nested in each other are judged; one nested

@@ -186,6 +186,19 @@ def test_supply_003_passes_the_same_tools_read_by_name(tmp_path: Path, script: s
     assert _supply_003(tmp_path, script, **deps) == []
 
 
+@pytest.mark.parametrize(("script", "reported"), [
+    ("node-gyp rebuild", False),  # what npm runs itself for a binding.gyp
+    ("node-gyp-build", False),  # builds, or loads the package's own prebuilds
+    ("npx node-gyp rebuild", False),
+    ("node-pre-gyp install --fallback-to-build", True),  # downloads a prebuilt binary
+    ("prebuild-install || node-gyp rebuild", True),  # so does prebuild-install
+])
+def test_supply_003_trusts_the_native_builders_not_the_binary_downloaders(
+    tmp_path: Path, script: str, reported: bool
+) -> None:
+    assert bool(_supply_003(tmp_path, script)) is reported
+
+
 def test_supply_003_does_not_read_the_script_npm_run_build_runs(tmp_path: Path) -> None:
     """Stated: following `npm run`, `yarn`, `pnpm` and `bun run` into the
     scripts they name reported 238 more of 3,171 real install scripts and 42
