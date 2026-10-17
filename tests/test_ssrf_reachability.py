@@ -506,6 +506,143 @@ def test_a_nested_tool_reads_the_enclosing_tools_names_as_a_closure_does() -> No
     assert _nested("", "        host = 'api.example.com'\n        return requests.get('https://' + host + '/x').text\n") == [False]
 
 
+@pytest.mark.parametrize(("source", "tainted"), [
+    ("def create_server():\n    mcp = FastMCP('d')\n    SCHEME = 'https://'\n    @mcp.tool()\n"
+     "    def fetch(arguments: dict) -> str:\n        return requests.get(SCHEME + arguments['host']).text\n"
+     "    return mcp\n", True),
+    ("def register(mcp):\n    URL_T = 'https://{host}/v1/items'\n    @mcp.tool()\n"
+     "    def fetch(arguments: dict) -> str:\n        return requests.get(URL_T.format(host=arguments['host'])).text\n",
+     True),
+    ("def register(mcp):\n    URL_T = Template('https://$host/v1/items')\n    @mcp.tool()\n"
+     "    def fetch(arguments: dict) -> str:\n        return requests.get(URL_T.substitute(arguments)).text\n", True),
+    ("def register(mcp):\n    URL_T = 'https://%s/v1/items'\n    @mcp.tool()\n"
+     "    def fetch(arguments: dict) -> str:\n        return requests.get(URL_T % arguments['host']).text\n", True),
+    ("def main():\n    mcp = FastMCP('d')\n    scheme = 'https://'\n    @mcp.tool()\n"
+     "    def fetch(host: str) -> str:\n        return requests.get(scheme + host + '/status').text\n    mcp.run()\n",
+     True),
+    # A host the function fixes keeps the caller's value in the path.
+    ("def register(mcp):\n    BASE = 'https://api.example.com/v1/'\n    @mcp.tool()\n"
+     "    def fetch(path: str) -> str:\n        return requests.get(BASE + path).text\n", False),
+])
+def test_a_tool_defined_inside_a_function_reads_that_function_s_names(source: str, tainted: bool) -> None:
+    """A tool registered inside a function that is no tool (`create_server()`,
+    `register(mcp)`, `main()`) reads that function's names, as a closure does.
+    Only an enclosing tool's scope was handed on, so the factory's `SCHEME`
+    read as unbound, the caller's host after it went unread, and the forms
+    main reported went quiet."""
+    sites = analyze_python(_CYCLE_HEAD + "from string import Template\n" + source)
+    assert [site.tainted for site in sites] == [tainted]
+
+
+@pytest.mark.parametrize("inner", [
+    "    def helper() -> str:\n        BASE = 'https://api.example.com/'\n        return BASE\n",
+    "    class Cfg:\n        BASE = 'https://api.example.com/'\n",
+    "    seen = [BASE for BASE in ('a', 'b')]\n",
+    "    make = lambda: (BASE := 'https://api.example.com/')\n",
+])
+def test_a_name_a_scope_inside_the_tool_binds_is_not_the_tool_s(inner: str) -> None:
+    """A function, class, comprehension or lambda inside a tool binds its names
+    in a scope of its own, so a nested helper's local, a class attribute, a
+    comprehension's variable or a lambda's `:=` does not hide the module's
+    `BASE` from the tool. Each landed in the tool's scope, giving `BASE` a
+    second value the tool read as a base the code does not spell out."""
+    source = (
+        _CYCLE_HEAD + "BASE = 'https://'\n@mcp.tool()\ndef fetch(arguments: dict) -> str:\n" + inner
+        + "    return requests.get(BASE + arguments['host']).text\n"
+    )
+    assert [site.tainted for site in analyze_python(source)] == [True]
+
+
+@pytest.mark.parametrize(("helper", "call", "tainted"), [
+    ("    def get(url: str) -> str:\n        return requests.get(url).text\n", "get('https://api.example.com/')", False),
+    ("    get = lambda url: requests.get(url).text\n", "get('https://api.example.com/')", False),
+    # Without a parameter of its own, the name is the tool's, as in a closure.
+    ("    def get() -> str:\n        return requests.get(url).text\n", "get()", True),
+])
+def test_a_helper_inside_a_tool_reads_its_own_parameter_as_its_own(helper: str, call: str, tainted: bool) -> None:
+    """A function or lambda inside a tool reads a parameter of its own as its
+    own, even one called what the tool's is: what a helper is handed is not
+    followed, as AAK-SSRF-001's limitation says. Its body was read in the
+    tool's scope, where the name was the caller's, so a helper handed a fixed
+    URL was reported."""
+    source = _CYCLE_HEAD + "@mcp.tool()\ndef fetch(url: str) -> str:\n" + helper + f"    return {call}\n"
+    assert [site.tainted for site in analyze_python(source)] == [tainted]
+
+
+@pytest.mark.parametrize(("source", "tainted"), [
+    # A nested tool's `nonlocal` write to the name the enclosing tool fetches.
+    ("@mcp.tool()\ndef outer(arguments: dict) -> str:\n    url = 'https://api.example.com/'\n    @mcp.tool()\n"
+     "    def inner(query: dict) -> str:\n        nonlocal url\n        url = query['url']\n        return ''\n"
+     "    inner(arguments)\n    return requests.get(url).text\n", True),
+    # A nested tool's `global` write to the module name the enclosing tool fetches.
+    ("URL = 'https://api.example.com/'\n@mcp.tool()\ndef outer(arguments: dict) -> str:\n    @mcp.tool()\n"
+     "    def inner(query: dict) -> str:\n        global URL\n        URL = query['url']\n        return ''\n"
+     "    inner(arguments)\n    return requests.get(URL).text\n", True),
+    # One tool sets the module's base from its caller; another fetches from it.
+    ("BASE = 'https://api.example.com/'\n@mcp.tool()\ndef set_base(query: dict) -> str:\n    global BASE\n"
+     "    BASE = query['base']\n    return 'ok'\n@mcp.tool()\ndef fetch(arguments: dict) -> str:\n"
+     "    return requests.get(BASE + arguments['path']).text\n", True),
+    # A function that is no tool sets it from its own parameter, no caller's.
+    ("BASE = 'https://api.example.com/'\ndef configure(base: str) -> None:\n    global BASE\n    BASE = base\n"
+     "@mcp.tool()\ndef fetch(path: str) -> str:\n    return requests.get(BASE + path).text\n", False),
+])
+def test_a_global_or_nonlocal_write_is_read_where_it_is_written(source: str, tainted: bool) -> None:
+    """A `nonlocal` or `global` write binds the name in the scope that declares
+    it, and its value is read in the function that writes it, where `query`
+    is that tool's parameter. The write was kept in the writing function's
+    scope, so the enclosing tool's `url` never saw it; a `global` write was
+    the module's, read in the module's scope, where no name is the caller's."""
+    sites = sorted(analyze_python(_CYCLE_HEAD + source), key=lambda site: site.line)
+    assert sites[-1].tainted is tainted
+
+
+def _sibling_tools(tools: int, fetch: bool) -> str:
+    """One tool that binds four names for each of `tools` handlers defined
+    beside one another in it, each a `*_call_tool` function of its own."""
+    names = [f"a{i}" for i in range(4 * tools)]
+    body = "".join("    " + "=".join(names[i:i + 500]) + "=0\n" for i in range(0, len(names), 500))
+    call = "requests.get(arguments)" if fetch else "pass"
+    body += "".join(f"    def f{i}_call_tool(arguments):{call}\n" for i in range(tools))
+    return _CYCLE_HEAD + "@mcp.tool()\ndef outer(p: str) -> str:\n" + body + "    return requests.get(p).text\n"
+
+
+def _peak_in_child(source: str, timeout: float = 120) -> int:
+    """The most memory analyze_python held at once for `source`, in bytes, from
+    a child traced with tracemalloc."""
+    code = (
+        "import sys, tracemalloc\n"
+        "from agent_audit_kit.scanners._ssrf_reach import analyze_python\n"
+        "source = sys.stdin.read()\n"
+        "tracemalloc.start()\n"
+        "analyze_python(source)\n"
+        "print(tracemalloc.get_traced_memory()[1])\n"
+    )
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(filter(None, [str(_REPO_ROOT), os.environ.get("PYTHONPATH")])))
+    proc = subprocess.run(
+        [sys.executable, "-c", code], input=source, capture_output=True, text=True, timeout=timeout, env=env,
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    return int(proc.stdout)
+
+
+def test_tools_defined_side_by_side_are_read_in_linear_time() -> None:
+    """Each nested tool's scope used to copy the enclosing tool's parameters
+    and names, so one tool holding 7,700 handlers beside 30,800 names took 18
+    seconds. A scope now holds its own names and reads the rest up the chain
+    of scopes around it."""
+    source = _sibling_tools(7_700, fetch=False)
+    assert len(source) < 512_000
+    sites, seconds = _analyze_in_child(source, timeout=60)
+    assert [site[2] for site in sites] == [True]
+    assert seconds < 5.0
+
+
+def test_tools_defined_side_by_side_hold_no_copy_of_the_enclosing_names() -> None:
+    """The copies stayed alive for every call, so 2,000 handlers that each
+    fetch held 437 MB at once, and 3,000 held 1.28 GB."""
+    assert _peak_in_child(_sibling_tools(2_000, fetch=True)) < 100_000_000
+
+
 def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
     body = (
         "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"

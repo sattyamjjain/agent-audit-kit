@@ -13,9 +13,9 @@ private or metadata address actually reach one of those calls?
 Two backends, both dependency-free:
 
   * Python — `ast`. Call sites are real Call nodes. Caller input is the
-    parameters of the tool function the call sits in (`_CallerInput`), traced
-    through assignments, f-strings, concatenation and formatting to the URL's
-    host.
+    parameters of the tool function the call sits in, read through the scopes
+    around it (`_Scope`), traced through assignments, f-strings, concatenation
+    and formatting to the URL's host.
   * TS/JS — comment-stripped def-use. No parser is available, so this is a
     narrower approximation: it finds call sites, extracts the argument
     expression, and resolves single-hop assignments of the names in it.
@@ -70,7 +70,7 @@ _JS_FETCH_RE = re.compile(
 )
 
 # Caller-controlled sources in TS/JS. Python reads a tool's parameters instead
-# (see `_CallerInput`).
+# (see `_Scope`).
 _JS_USER_RE = re.compile(
     r"\b(?:req\.query|req\.body|req\.params|request\.json|event\.body|tool_input|"
     r"arguments|params\[|args\[|input)\b"
@@ -358,7 +358,7 @@ def _py_addr_here(node: ast.AST) -> str | None:
 # fixed API with the caller's values in the path or the query,
 # `f"https://api.github.com/repos/{owner}/{repo}"`, is how most MCP servers are
 # written, and it sends nothing to a host the caller chooses. So a URL counts
-# when caller input can set its host (`_CallerInput.sets_host`).
+# when caller input can set its host (`_Scope.sets_host`).
 
 #: Where every reader ends an authority. WHATWG also ends one at a backslash,
 #: but curl, httpx and urlsplit keep it inside, so after `https://api.example.com\\`
@@ -380,7 +380,7 @@ _PY_MAX_NEST = 40
 #: How many pieces of one built URL are read. Its host is in the first few; the
 #: bound keeps a crafted run of empty pieces from costing more than this. A list
 #: joined by name is one piece of the URL that joins it, and is read to its own
-#: `_PIECE_CAP` pieces (`_CallerInput._joined_sets_host`).
+#: `_PIECE_CAP` pieces (`_Scope._joined_sets_host`).
 _PIECE_CAP = 256
 #: How many fields of a `%` or `.format` template are read; the rest of it is
 #: text the code does not spell out. A template a name holds is read again at
@@ -533,7 +533,7 @@ def _pieces(root: ast.AST | _Run) -> Iterator[str | ast.AST]:
     expression, or a `_Run` over a list's items.
 
     A join over a name is one piece, which the reader judges and spells once
-    per list (`_CallerInput._joined_sets_host`), the way it reads a name. It
+    per list (`_Scope._joined_sets_host`), the way it reads a name. It
     used to be read out item by item into every URL that joined it, so a list
     of 39,000 items joined by 10,000 fetches took 16 seconds, 8,000 lists that
     each joined the next took 60, and a list that joined itself had to be
@@ -594,20 +594,6 @@ def _dict_entries(node: ast.AST) -> list[tuple[str | None, ast.expr]]:
     if isinstance(node, ast.Call):
         return [(None, arg) for arg in node.args] + [(kw.arg, kw.value) for kw in node.keywords]
     return []
-
-
-def _iterated(node: ast.AST) -> list[ast.AST]:
-    """What iterating `node` yields, to read: a mapping yields its keys, so a
-    dict literal or comprehension, or a `dict(...)` call, gives its keys and
-    the mappings it unpacks or copies, never its values; anything else is
-    read whole."""
-    if isinstance(node, ast.DictComp):
-        return [node.key]
-    if isinstance(node, ast.Dict):
-        return [key if key is not None else value for key, value in zip(node.keys, node.values)]
-    if _is_dict_display(node) and isinstance(node, ast.Call):
-        return list(node.args)
-    return [node]
 
 
 def _template_lead(template: str) -> str:
@@ -734,81 +720,32 @@ def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return names
 
 
-#: The statements and expressions that bind a name.
-_BINDING_NODES = (
-    ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr, ast.For, ast.AsyncFor, ast.comprehension,
-)
-#: What opens a scope of its own, whose names are not the enclosing scope's.
-_SCOPE_NODES = (
-    ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef,
-    ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
-)
+#: The statements and expressions that bind a name in the scope they sit in.
+#: A comprehension's own `for` binds in the comprehension (`_scopes`).
+_BINDING_NODES = (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr, ast.For, ast.AsyncFor)
+_FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
+_COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
 
 
-def _collect_bindings(
-    root: ast.AST,
-    values: dict[str, list[ast.AST]],
-    parts: dict[str, list[ast.AST]],
-    skip: frozenset[int] = frozenset(),
-) -> None:
-    """The names `root` binds, in source order, outside the nodes below it whose
-    ids are in `skip`: into `values` what a name is bound to, into `parts` what
-    it holds a part of.
-
-    `=`, an annotated `=` and `:=` bind a name to their value. `x += y` extends
-    the binding above it in place, so `url = "https://"` then `url += host` is
-    one binding, `"https://" + host`: a chain is judged once, as one URL, and a
-    base built that way is spelled out. Each `+=` used to add a binding of its
-    own over the whole value before it, and every one was judged in full, so
-    4,000 lines took 4 seconds, growing with the square. With nothing bound
-    above it, `x += y` binds `x` itself combined with `y`. A name an unpacking
-    assignment, a `for` or a comprehension binds holds a part of the value it
-    is given (`host, _, port = target.partition(":")`).
-    """
-    pairs: list[tuple[ast.AST, frozenset[str] | None]] = []
-    stack = [root]
-    while stack:
-        node = stack.pop()
-        if isinstance(node, _BINDING_NODES):
-            pairs.append((node, None))
-        stack.extend(child for child in ast.iter_child_nodes(node) if id(child) not in skip)
-    _bind_nodes(pairs, values, parts)
+def _parameters(args: ast.arguments) -> set[str]:
+    """Every name a function's or a lambda's parameters bind, `self` too."""
+    names = {arg.arg for arg in args.posonlyargs + args.args + args.kwonlyargs}
+    names.update(arg.arg for arg in (args.vararg, args.kwarg) if arg is not None)
+    return names
 
 
-def _collect_file_bindings(
-    tree: ast.AST, values: dict[str, list[ast.AST]], parts: dict[str, list[ast.AST]]
-) -> None:
-    """The module's own bindings: the ones its top level makes, outside any
-    function, lambda, class or comprehension, and the ones a function makes to
-    a name it declares `global`.
-
-    They used to be every binding in the file, so another function's loop
-    over a module name, or a local of the same name, made the module's
-    binding unreadable, and a module list read as a tool's parameter of the
-    same name."""
-    pairs: list[tuple[ast.AST, frozenset[str] | None]] = []
-    pending: list[tuple[ast.AST, bool]] = [(tree, True)]
-    while pending:
-        scope, module = pending.pop()
-        own: list[ast.AST] = []
-        declared: set[str] = set()
-        stack = list(ast.iter_child_nodes(scope))
-        while stack:
-            node = stack.pop()
-            if isinstance(node, _SCOPE_NODES):
-                pending.append((node, False))
-                continue
-            if isinstance(node, ast.Global):
-                declared.update(node.names)
-            elif isinstance(node, _BINDING_NODES):
-                own.append(node)
-            stack.extend(ast.iter_child_nodes(node))
-        if module:
-            pairs.extend((node, None) for node in own)
-        elif declared and isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            names = frozenset(declared)
-            pairs.extend((node, names) for node in own)
-    _bind_nodes(pairs, values, parts)
+def _outer_parts(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef) -> list[ast.AST]:
+    """The parts of a definition that run in the scope around it: decorators,
+    defaults, annotations, a class's bases and keywords."""
+    if isinstance(node, ast.ClassDef):
+        return [*node.decorator_list, *node.bases, *(kw.value for kw in node.keywords)]
+    args = node.args
+    parts: list[ast.AST] = [*args.defaults, *(default for default in args.kw_defaults if default is not None)]
+    if isinstance(node, ast.Lambda):
+        return parts
+    every = [*args.posonlyargs, *args.args, *args.kwonlyargs, *(a for a in (args.vararg, args.kwarg) if a)]
+    parts.extend(arg.annotation for arg in every if arg.annotation is not None)
+    return [*node.decorator_list, *parts, *([node.returns] if node.returns else [])]
 
 
 def _bind_nodes(
@@ -886,109 +823,152 @@ def _bind_parts(
             stack.append(cur.value)
 
 
-class _CallerInput:
-    """One tool function's caller input: what it is, and whether it can set the
-    host of a URL built in that function.
+class _Foreign(ast.expr):
+    """A value bound in one scope and read in another: a `global` or `nonlocal`
+    write, a `:=` inside a comprehension (which binds in the scope around it),
+    a comprehension's first iterable (which runs in the scope around it) and a
+    dict comprehension's key. It is read in `scope`, the scope that evaluates
+    it, where the names in it are that scope's."""
 
-    The file's own bindings are read through one of these too, with no caller
-    input (`of_file`), which every tool's scope hands a name it does not bind.
-    What that scope spells, and how it judges a list joined by name, is worked
-    out once for the whole file. Each tool used to spell the file's bindings
-    again in a scope of its own, so a module-level `+=` chain read by 4,368
-    tools took 24 seconds, and a binding fanning out to 128 names of 128
-    names, read by 2,000 tools, 42."""
+    _fields = ()
 
-    def __init__(
-        self,
-        params: set[str],
-        values: dict[str, list[ast.AST]],
-        elements: dict[str, list[ast.AST]],
-        file: _CallerInput | None,
-    ) -> None:
+    def __init__(self, value: ast.AST, scope: _Scope) -> None:
+        super().__init__()
+        self.value = value
+        self.scope = scope
+
+
+#: The memo tables a scope makes on first use (`_Scope.__getattr__`): most of
+#: a file's scopes, a comprehension's or a handler's, are never read.
+_TABLES: dict[str, Callable[[], Any]] = {
+    name: dict for name in (
+        "_owners", "_sets", "_name_sets", "_joined_sets", "_joined_callers", "_keys_sets", "_text",
+        "_segments", "_mappings", "_cut_memo",
+    )
+}
+_TABLES["_either"] = set
+
+
+class _Scope:
+    """A module, function, lambda, class or comprehension: the names it binds,
+    and, in a tool, which of its parameters are the caller's input. Whether
+    caller input can set the host of a URL is worked out in the scope that
+    evaluates it, and a name is read in the scope that binds it, the way
+    Python reads it: the scope's own, then the functions around it, never a
+    class body from inside a function in it, then the module.
+
+    A scope holds only what it binds and points at the scope around it, so a
+    name costs a walk up that chain once per scope that reads it. Each tool
+    nested in another used to copy the enclosing tool's parameters and names,
+    so one tool holding 7,700 handlers beside 30,800 names took 18 seconds,
+    and 2,000 handlers that each fetch held 437 MB. Only enclosing tools were
+    handed on, so a tool registered inside `create_server()` or
+    `register(mcp)` read that function's `SCHEME` as unbound. A function,
+    class, comprehension or lambda inside a tool landed its names in the
+    tool's scope, so a helper's local `BASE` hid the module's from the tool.
+
+    The module's scope is read through one of these too, holding no caller
+    input of its own, and what it spells, and how it judges a list joined by
+    name, is worked out once for the whole file. Each tool used to spell the
+    file's bindings again in a scope of its own, so a module-level `+=` chain
+    read by 4,368 tools took 24 seconds, and a binding fanning out to 128
+    names of 128 names, read by 2,000 tools, 42."""
+
+    _owners: dict[str, _Scope]
+    _sets: dict[tuple[int, int], bool]
+    _name_sets: dict[tuple[str, int], bool]
+    _joined_sets: dict[tuple[str, str, int], bool]
+    _joined_callers: dict[tuple[str, int], bool]
+    _keys_sets: dict[tuple[str, int], bool]
+    _text: dict[tuple[int, int], str]
+    _segments: dict[tuple[str, int], list[str]]
+    _mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]]
+    # ids of the tuples `_mapping` makes for a key's value or what can replace
+    # it, whose parts are judged one by one, each once
+    _either: set[int]
+    _cut_memo: dict[tuple[int, Any, int], Any]
+
+    def __init__(self, node: ast.AST, parent: _Scope | None, params: set[str], caller: set[str]) -> None:
+        self.node = node
+        self.parent = parent
+        self.module: _Scope = parent.module if parent is not None else self
+        self.is_class = isinstance(node, ast.ClassDef)
+        self.is_comprehension = isinstance(node, _COMPREHENSIONS)
+        # Every name the parameters bind, which hides the same name around the
+        # scope, and the ones the caller fills in: a tool's, less what a
+        # framework fills in.
         self.params = params
+        self.caller = caller
         # name -> what it is bound to here: `=`, an annotated `=`, `:=`, and an
         # augmented `+=` read as the value before it plus the operand ...
-        self.values = values
+        self.values: dict[str, list[ast.AST]] = {}
         # ... and what it holds a part of: the iterable of a `for` or a
         # comprehension, and the value an unpacking assignment splits, whose
         # every part is the caller's when the whole is.
-        self.elements = elements
-        # The file's scope, for a name this function does not bind; None in
-        # the file's scope itself, whose bindings are file-wide.
-        self.file = file
-        self._sets: dict[tuple[int, int], bool] = {}
-        self._name_sets: dict[tuple[str, int], bool] = {}
-        self._joined_sets: dict[tuple[str, str, int], bool] = {}
-        self._joined_callers: dict[tuple[str, int], bool] = {}
-        self._keys_sets: dict[tuple[str, int], bool] = {}
-        self._text: dict[tuple[int, int], str] = {}
-        self._segments: dict[tuple[str, int], list[str]] = {}
-        self._mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]] = {}
-        # ids of the tuples `_mapping` makes for a key's value or what can
-        # replace it, whose parts are judged one by one, each once
-        self._either: set[int] = set()
+        self.elements: dict[str, list[ast.AST]] = {}
+        # name -> "global" or "nonlocal", as the scope declares it
+        self.declared: dict[str, str] = {}
+        # A dict comprehension's key, read in this scope (`_iterated`), and,
+        # shared by every scope in the file, id(comprehension) -> its scope.
+        self.key: ast.expr | None = None
+        self.inner: dict[int, _Scope] = parent.inner if parent is not None else {}
+        # Whether the scope sits in a tool, so the calls in it are judged, and
+        # whether any caller input can reach a URL it evaluates (`_scopes`).
+        self.in_tool = False
+        self.reaches = False
         # How many times the nesting bound has stopped a read, counted across
-        # the file's scope and every tool's, and what was worked out under
-        # such a stop, kept per depth of nesting (`_remember`).
-        self._cuts: list[int] = file._cuts if file is not None else [0]
-        self._cut_memo: dict[tuple[int, Any, int], Any] = {}
+        # every scope in the file, and what was worked out under such a stop,
+        # kept per depth of nesting (`_remember`).
+        self._cuts: list[int] = parent._cuts if parent is not None else [0]
 
-    @classmethod
-    def of_file(cls, tree: ast.AST) -> _CallerInput:
-        """The module's bindings (`_collect_file_bindings`), holding no caller
-        input."""
-        values: dict[str, list[ast.AST]] = {}
-        elements: dict[str, list[ast.AST]] = {}
-        _collect_file_bindings(tree, values, elements)
-        return cls(set(), values, elements, None)
+    def __getattr__(self, name: str) -> Any:
+        make = _TABLES.get(name)
+        if make is None:
+            raise AttributeError(name)
+        table = make()
+        setattr(self, name, table)
+        return table
 
-    @classmethod
-    def of_tool(
-        cls,
-        func: ast.FunctionDef | ast.AsyncFunctionDef,
-        file: _CallerInput,
-        only: frozenset[str] | None = None,
-        enclosing: _CallerInput | None = None,
-        tools: frozenset[int] = frozenset(),
-    ) -> _CallerInput:
-        """A tool function's scope: its parameters, less what a framework fills
-        in (and only those `only` names, when given), and the bindings in its
-        body outside the tools nested in it (`tools`, by id), which have scopes
-        of their own. Inside an `enclosing` tool's scope, a name this tool does
-        not have as a parameter or a binding is read as the enclosing scope
-        reads it, as a closure reads it."""
-        params = _get_param_names(func) - _injected_params(func)
-        if only is not None:
-            params &= only
-        values: dict[str, list[ast.AST]] = {}
-        elements: dict[str, list[ast.AST]] = {}
-        _collect_bindings(func, values, elements, tools)
-        if enclosing is not None:
-            own = params | values.keys() | elements.keys()
-            params |= enclosing.params - own
-            values = {**{k: v for k, v in enclosing.values.items() if k not in own}, **values}
-            elements = {**{k: v for k, v in enclosing.elements.items() if k not in own}, **elements}
-        return cls(params, values, elements, file)
+    def _owner(self, name: str) -> _Scope:
+        """The scope whose binding of `name` this one reads, found once per
+        name: its own, for a parameter, a loop or unpacking name or a name it
+        binds; for a name it declares `global`, the module's; else the nearest
+        function, lambda or comprehension around it that has it, passing over
+        a class body and a function that declares the name `nonlocal`, and
+        stopping at one that declares it `global`; else the module's. A tool's
+        parameter used to fall through to a module binding of the same name,
+        so `def fetch(params)` joining `params` read a module list called
+        `params`."""
+        owner = self._owners.get(name)
+        if owner is None:
+            owner = self._owners[name] = self._find_owner(name)
+        return owner
 
-    def _owner(self, name: str) -> _CallerInput:
-        """The scope whose binding of `name` this one reads: its own, for a
-        parameter, a loop or unpacking name or a name it binds, or else the
-        file's. A tool's parameter used to fall through to a module binding of
-        the same name, so `def fetch(params)` joining `params` read a module
-        list called `params`."""
-        if self.file is None or name in self.params or name in self.elements or self.values.get(name):
-            return self
-        return self.file
+    def _find_owner(self, name: str) -> _Scope:
+        scope = self
+        while scope.parent is not None:
+            if scope is self or not scope.is_class:
+                declared = scope.declared.get(name)
+                if declared == "global":
+                    return self.module
+                if declared is None and (name in scope.params or name in scope.values or name in scope.elements):
+                    return scope
+            scope = scope.parent
+        return scope
 
     def _bound(self, name: str) -> list[ast.AST]:
-        """What `name` is bound to here, or else in the file. A name the file
+        """What `name` is bound to in the scope that owns it. A name the module
         unpacks or loops over holds a part of a value, not the value: none."""
         owner = self._owner(name)
         if owner is not self:
             return owner._bound(name)
-        if self.file is None and name in self.elements:
+        if self.parent is None and name in self.elements:
             return []
         return self.values.get(name, [])
+
+    def _inner(self, node: ast.AST) -> _Scope:
+        """The scope of a comprehension `node`, where its element is read."""
+        return self.inner.get(id(node), self)
 
     def _list_of(self, name: str) -> list[ast.expr] | None:
         """The items of the list or tuple literal `name` is bound to, once. The
@@ -1010,9 +990,9 @@ class _CallerInput:
         (`_authority_closed`). Each (expression, depth), each (name, depth) and
         each (list joined by name, depth) is worked out once, as
         `_py_addr_reach` does, so names that read each other do not multiply
-        the work. A scope with no caller input, the file's, has none to find.
+        the work. A scope no caller input can reach has none to find.
         """
-        if not self.params or depth > _PY_MAX_DEPTH:
+        if not self.reaches or depth > _PY_MAX_DEPTH:
             return False
         if nest > _PY_MAX_NEST:
             return bool(self._cut(False))
@@ -1065,7 +1045,11 @@ class _CallerInput:
         while stack:
             cur = stack.pop()
             if isinstance(cur, ast.Name):
-                if cur.id in self.params or self._name_sets_host(cur.id, depth, nest):
+                owner = self._owner(cur.id)
+                if cur.id in owner.caller or owner._name_sets_host(cur.id, depth, nest):
+                    return True
+            elif isinstance(cur, _Foreign):
+                if cur.scope.sets_host(cur.value, depth, nest + 1):
                     return True
             elif isinstance(cur, (ast.Subscript, ast.Attribute, ast.Starred, ast.Await, ast.NamedExpr)):
                 # `URLS[region]` reads a URL the code fixed: only the container counts.
@@ -1097,11 +1081,14 @@ class _CallerInput:
                 # it unpacks (`{**arguments}`).
                 stack.extend(cur.values)
             elif isinstance(cur, ast.DictComp):
-                stack.append(cur.value)
+                if self._inner(cur).sets_host(cur.value, depth, nest + 1):
+                    return True
             elif isinstance(cur, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
-                # Each element is what `elt` reads, its loop names holding
-                # parts of what they iterate: `[u.strip() for u in urls]`.
-                stack.append(cur.elt)
+                # Each element is what `elt` reads in the comprehension's
+                # scope, its loop names holding parts of what they iterate:
+                # `[u.strip() for u in urls]`.
+                if self._inner(cur).sets_host(cur.elt, depth, nest + 1):
+                    return True
             elif isinstance(cur, ast.BinOp):
                 stack.extend((cur.left, cur.right))
             elif isinstance(cur, ast.Call):
@@ -1151,8 +1138,8 @@ class _CallerInput:
         return False
 
     def _name_sets_host(self, name: str, depth: int, nest: int) -> bool:
-        """Whether something `name` is bound to here can set the host, worked
-        out once per name and depth.
+        """Whether something `name` is bound to in this scope, the one that owns
+        it, can set the host, worked out once per name and depth.
 
         Every read of a name used to loop over all of its bindings, each read a
         node of its own: a name bound n times and read n times cost n squared,
@@ -1181,9 +1168,9 @@ class _CallerInput:
     def _joined_sets_host(self, sep: str, name: str, depth: int, nest: int) -> bool:
         """Whether caller input can set the host of `sep.join(name)`, read as a
         URL of its own, its items at this depth, once per list, separator and
-        depth. A list the file binds is the file scope's, where no caller input
-        is. A join reached again while it is being worked out, a list that
-        joins itself, adds nothing to its own answer.
+        depth, in the scope that binds the list. A join reached again while it
+        is being worked out, a list that joins itself, adds nothing to its own
+        answer.
 
         The list used to be read out into each URL that joined it, so in
         `BASE + "".join(parts)` its pieces followed the base's. A join is now
@@ -1195,7 +1182,7 @@ class _CallerInput:
         owner = self._owner(name)
         if owner is not self:
             return owner._joined_sets_host(sep, name, depth, nest)
-        if not self.params or depth > _PY_MAX_DEPTH:
+        if not self.reaches or depth > _PY_MAX_DEPTH:
             return False
         if nest > _PY_MAX_NEST:
             return bool(self._cut(False))
@@ -1233,7 +1220,7 @@ class _CallerInput:
     def _joined_text(self, sep: str, name: str, depth: int, nest: int) -> str:
         """The text `sep.join(name)` spells: the text between its separators,
         worked out once per list and depth (`_joined_segments`), joined with
-        this one. A list the file binds is spelled by the file's scope."""
+        this one, by the scope that binds the list."""
         owner = self._owner(name)
         if owner is not self:
             return owner._joined_text(sep, name, depth, nest)
@@ -1291,10 +1278,13 @@ class _CallerInput:
         `{**A, **B}` in one template and `{**B, **arguments}` in the next, the
         second was read as the first and lost the caller's host."""
         target: ast.expr = node
-        if isinstance(node, ast.Name) and node.id not in self.params and node.id not in self.elements:
-            bound = self.values.get(node.id, [])
+        reader: _Scope = self
+        if isinstance(node, ast.Name):
+            owner = self._owner(node.id)
+            bound = [] if node.id in owner.params or node.id in owner.elements else owner.values.get(node.id, [])
             if len(bound) == 1 and isinstance(bound[0], (ast.Dict, ast.Call)) and _is_dict_display(bound[0]):
-                target = bound[0]
+                # A mapping a function around this one holds is read there.
+                target, reader = bound[0], owner
         if not _is_dict_display(target):
             return {}, node
         hit = self._mappings.get(id(target))
@@ -1306,6 +1296,8 @@ class _CallerInput:
             # and a key knows whether an entry without a constant key follows
             # it (`{"host": FIXED, **arguments}`) and can replace its value.
             for key, value in reversed(_dict_entries(target)):
+                if reader is not self:
+                    value = _Foreign(value, reader)
                 if key is None:
                     others.append(value)
                 elif key not in keyed:
@@ -1326,17 +1318,17 @@ class _CallerInput:
             hit = self._mappings[id(target)] = (target, keyed, rest)
         return hit[1], hit[2]
 
-    def _template(self, node: ast.AST, depth: int) -> tuple[_CallerInput, ast.AST, int] | None:
+    def _template(self, node: ast.AST, depth: int) -> tuple[_Scope, ast.AST, int] | None:
         """For a `string.Template`: the scope that reads its text, the text, and
         the depth to read it at. `Template(text)` or `string.Template(text)`
         written in place is read here, at this depth; one bound once to a name
         is read by the scope that binds the name, one level down, so a module
-        template is the file's, with no caller input in it."""
+        template is the module's, with no caller input in it."""
         owner, level = self, depth
         if isinstance(node, ast.Name):
-            if node.id in self.params or node.id in self.elements:
-                return None
             owner = self._owner(node.id)
+            if node.id in owner.params or node.id in owner.elements:
+                return None
             bound = owner._bound(node.id)
             if len(bound) != 1:
                 return None
@@ -1346,16 +1338,18 @@ class _CallerInput:
         return None
 
     def _joined_mapping(self, node: ast.AST) -> str | None:
-        """The name `node` joins (`sep.join(name)`), when the name is bound once
-        here to a dict literal or comprehension or a `dict(...)` call."""
+        """The name `node` joins (`sep.join(name)`), when the scope that owns the
+        name binds it once to a dict literal or comprehension or a `dict(...)`
+        call."""
         if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join"):
             return None
         if len(node.args) != 1 or node.keywords or not isinstance(node.args[0], ast.Name):
             return None
         name = node.args[0].id
-        if name in self.params or name in self.elements:
+        owner = self._owner(name)
+        if name in owner.params or name in owner.elements:
             return None
-        bound = self.values.get(name, [])
+        bound = owner.values.get(name, [])
         if len(bound) == 1 and (isinstance(bound[0], ast.DictComp) or _is_dict_display(bound[0])):
             return name
         return None
@@ -1364,15 +1358,33 @@ class _CallerInput:
         """Whether a key of the mapping `name` is bound to, or a mapping it
         unpacks or copies, can set the host, worked out once per name and
         depth. The keys were read again at every join: a dict of 23,070 keys
-        joined at 7,690 fetches took 189 s."""
+        joined at 7,690 fetches took 189 s. They are read in the scope that
+        binds the mapping."""
+        owner = self._owner(name)
+        if owner is not self:
+            return owner._mapping_keys_set_host(name, depth, nest)
         key = (name, depth)
         hit = self._keys_sets.get(key)
         if hit is None:
             binding = self.values[name][0]
             hit = self._remember(self._keys_sets, key, nest, False, lambda: any(
-                self.sets_host(part, depth, nest + 1) for part in _iterated(binding)
+                self.sets_host(part, depth, nest + 1) for part in self._iterated(binding)
             ))
         return hit
+
+    def _iterated(self, node: ast.AST) -> list[ast.AST]:
+        """What iterating `node` yields, to read: a mapping yields its keys, so a
+        dict literal or comprehension, or a `dict(...)` call, gives its keys and
+        the mappings it unpacks or copies, never its values, a comprehension's
+        key read in the comprehension's scope; anything else is read whole."""
+        if isinstance(node, ast.DictComp):
+            inner = self._inner(node)
+            return [inner.key if inner.key is not None else node.key]
+        if isinstance(node, ast.Dict):
+            return [key if key is not None else value for key, value in zip(node.keys, node.values)]
+        if _is_dict_display(node) and isinstance(node, ast.Call):
+            return list(node.args)
+        return [node]
 
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
         """The parts of a call that can carry caller input into the URL it
@@ -1418,7 +1430,7 @@ class _CallerInput:
         if name == "get":
             return [receiver, *call.args[1:], *(kw.value for kw in call.keywords if kw.arg == "default")]
         if name == "join" and call.args:
-            return [receiver, *_iterated(call.args[0])]
+            return [receiver, *self._iterated(call.args[0])]
         return [receiver]
 
     def _built_sets_host(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> bool:
@@ -1458,11 +1470,13 @@ class _CallerInput:
         if constant is not None:
             return constant
         if isinstance(node, ast.Name):
-            if node.id in self.params or node.id in self.elements:
-                return _UNKNOWN
             owner = self._owner(node.id)
+            if node.id in owner.params or node.id in owner.elements:
+                return _UNKNOWN
             bound = owner._bound(node.id)
             return owner._spelled(bound[0], depth + 1, nest + 1) if len(bound) == 1 else _UNKNOWN
+        if isinstance(node, _Foreign):
+            return node.scope._spelled(node.value, depth, nest + 1)
         joined = self._joined_list(node)
         if joined is not None:
             return self._joined_text(joined[0], joined[1], depth, nest)
@@ -1597,8 +1611,8 @@ def _class_tool_methods(tree: ast.AST) -> set[int]:
     return found
 
 
-def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
-    """id(call) -> the caller input of each tool function the call sits in.
+def _tool_inputs(node: ast.AST, registered: set[str], class_tools: set[int]) -> set[str] | None:
+    """The caller input of `node` when it is a tool function, else None.
 
     A tool is what taint_analysis reads as one, a function decorated
     `@function_tool`, one the file registers by a call (`_registered_tools`),
@@ -1610,37 +1624,148 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     these, `mcp.add_tool(fetch)`, the OpenAI Agents SDK's tools, LangChain's
     and CrewAI's class tools and a class's `call_tool` had no caller input,
     where the old name list fired on them when the parameter was called
-    `query`, `params` or `arguments`.
+    `query`, `params` or `arguments`. What a framework fills in is no caller
+    input (`_injected_params`)."""
+    if not isinstance(node, _FUNCTIONS):
+        return None
+    params = _get_param_names(node) - _injected_params(node)
+    if (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
+            or node.name in registered or id(node) in class_tools):
+        return params
+    if _is_call_tool_name(node.name):
+        return params & _CALL_TOOL_INPUTS
+    return None
 
-    A call is judged once, in the scope of the innermost tool it sits in
-    (`_CallerInput.of_tool`), which holds the enclosing tools' parameters
-    and names as well. It was judged in every enclosing tool's scope, each
-    collecting every binding below it, so 97 nested tools around 4,252
-    fetches took 10.6 s.
+
+def _nonlocal_owner(writer: _Scope, name: str) -> _Scope:
+    """The function around `writer` whose `name` a `nonlocal` declaration in
+    `writer` writes to: the nearest that binds it, past class bodies and the
+    functions that declare it `nonlocal` too."""
+    scope = writer.parent
+    while scope is not None and scope.parent is not None:
+        if not scope.is_class:
+            declared = scope.declared.get(name)
+            if declared == "global":
+                break
+            if declared is None and (name in scope.params or name in scope.values or name in scope.elements):
+                return scope
+        scope = scope.parent
+    return writer.module
+
+
+def _scopes(tree: ast.Module) -> dict[int, _Scope]:
+    """id(call) -> the scope that reads the URL of each call inside a tool.
+
+    The module and every function, lambda, class and comprehension in it is a
+    scope (`_Scope`), chained to the scope around it, holding the names its
+    own statements bind. A call is judged once, in the scope it sits in: the
+    innermost function, lambda, class body or comprehension around it. It was
+    judged in every enclosing tool's scope, each collecting every binding
+    below it, so 97 nested tools around 4,252 fetches took 10.6 s.
+
+    Where Python binds a name somewhere other than the scope that writes it,
+    so does this. A comprehension's first iterable runs in the scope around
+    it, and its `:=` binds in the function around it. A `global` write binds
+    the module's name and a `nonlocal` one the enclosing function's, each
+    read in the function that writes it (`_Foreign`), so a nested tool that
+    sets the enclosing tool's `url` from its own caller, or a tool that sets
+    the module's base, reaches whatever fetches from it.
     """
     registered = _registered_tools(tree)
     class_tools = _class_tool_methods(tree)
-    file_scope = _CallerInput.of_file(tree)
-    tools: dict[int, frozenset[str] | None] = {}
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
-                or node.name in registered or id(node) in class_tools):
-            tools[id(node)] = None
-        elif _is_call_tool_name(node.name):
-            tools[id(node)] = _CALL_TOOL_INPUTS
-    nested = frozenset(tools)
-    around: dict[int, list[_CallerInput]] = {}
-    stack: list[tuple[ast.AST, _CallerInput | None]] = [(tree, None)]
+    module = _Scope(tree, None, set(), set())
+    scopes = [module]
+    statements: dict[int, list[ast.AST]] = {id(module): []}
+    walrus: list[tuple[_Scope, ast.NamedExpr]] = []
+    calls: dict[int, _Scope] = {}
+    stack: list[tuple[ast.AST, _Scope]] = [(child, module) for child in ast.iter_child_nodes(tree)]
     while stack:
         node, scope = stack.pop()
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and id(node) in tools:
-            scope = _CallerInput.of_tool(node, file_scope, tools[id(node)], scope, nested)
-        elif isinstance(node, ast.Call) and scope is not None:
-            around[id(node)] = [scope]
+        if isinstance(node, (*_FUNCTIONS, ast.Lambda, ast.ClassDef)):
+            caller = _tool_inputs(node, registered, class_tools)
+            params = set() if isinstance(node, ast.ClassDef) else _parameters(node.args)
+            inner = _Scope(node, scope, params, caller or set())
+            inner.in_tool = scope.in_tool or caller is not None
+            scopes.append(inner)
+            statements[id(inner)] = []
+            stack.extend((part, scope) for part in _outer_parts(node))
+            stack.extend((part, inner) for part in ([node.body] if isinstance(node, ast.Lambda) else node.body))
+            continue
+        if isinstance(node, _COMPREHENSIONS):
+            inner = _Scope(node, scope, set(), set())
+            inner.in_tool = scope.in_tool
+            scopes.append(inner)
+            statements[id(inner)] = []
+            module.inner[id(node)] = inner
+            first, *rest = node.generators
+            stack.append((first.iter, scope))
+            _bind_parts(first.target, _Foreign(first.iter, scope), inner.elements, {})
+            for generator in rest:
+                _bind_parts(generator.target, generator.iter, inner.elements, {})
+                stack.append((generator.iter, inner))
+            for generator in node.generators:
+                stack.extend((condition, inner) for condition in generator.ifs)
+            if isinstance(node, ast.DictComp):
+                inner.key = _Foreign(node.key, inner)
+                stack.extend(((node.key, inner), (node.value, inner)))
+            else:
+                stack.append((node.elt, inner))
+            continue
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            if scope.parent is not None:
+                kind = "global" if isinstance(node, ast.Global) else "nonlocal"
+                scope.declared.update(dict.fromkeys(node.names, kind))
+        elif isinstance(node, ast.NamedExpr) and scope.is_comprehension:
+            walrus.append((scope, node))
+        elif isinstance(node, _BINDING_NODES):
+            statements[id(scope)].append(node)
+        elif isinstance(node, ast.Call) and scope.in_tool:
+            calls[id(node)] = scope
         stack.extend((child, scope) for child in ast.iter_child_nodes(node))
-    return around
+
+    # Each scope's own bindings, in source order, then each `:=` inside a
+    # comprehension, then the writes declared `global` or `nonlocal`, which
+    # land where those declarations say, once every scope's own names are in.
+    landings: list[tuple[_Scope, str, str, list[ast.AST]]] = []
+    for scope in scopes:
+        values: dict[str, list[ast.AST]] = {}
+        elements: dict[str, list[ast.AST]] = {}
+        _bind_nodes([(node, None) for node in statements[id(scope)]], values, elements)
+        for table, bound in (("values", values), ("elements", elements)):
+            for name, nodes in bound.items():
+                if name in scope.declared:
+                    landings.append((scope, name, table, nodes))
+                else:
+                    getattr(scope, table).setdefault(name, []).extend(nodes)
+    for comprehension, node in walrus:
+        home = comprehension
+        while home.is_comprehension and home.parent is not None:
+            home = home.parent
+        name = node.target.id
+        value: list[ast.AST] = [_Foreign(node.value, comprehension)]
+        if name in home.declared:
+            landings.append((home, name, "values", value))
+        else:
+            home.values.setdefault(name, []).extend(value)
+    lifted: list[tuple[_Scope, _Scope]] = []
+    for writer, name, table, nodes in landings:
+        owner = module if writer.declared[name] == "global" else _nonlocal_owner(writer, name)
+        wrapped = [node if isinstance(node, _Foreign) else _Foreign(node, writer) for node in nodes]
+        getattr(owner, table).setdefault(name, []).extend(wrapped)
+        lifted.append((writer, owner))
+
+    # A scope reaches caller input through its own parameters, the scopes
+    # around it, or a write a scope that reaches it lands in it. Parents come
+    # before their children in `scopes`, and a write lands in a scope around
+    # the writer, so one pass settles the first two and a second the third.
+    for scope in scopes:
+        scope.reaches = bool(scope.caller) or (scope.parent is not None and scope.parent.reaches)
+    landed = {id(owner) for writer, owner in lifted if writer.reaches}
+    for scope in scopes:
+        scope.reaches = (
+            bool(scope.caller) or id(scope) in landed or (scope.parent is not None and scope.parent.reaches)
+        )
+    return calls
 
 
 def analyze_python(text: str) -> list[Reach]:
@@ -1665,7 +1790,7 @@ def analyze_python(text: str) -> list[Reach]:
             assigns.setdefault(node.target.id, []).append(node.value)
 
     addr_reaching = _py_addr_reach(assigns)
-    caller_inputs = _caller_inputs(tree)
+    scopes = _scopes(tree)
 
     out: list[Reach] = []
     for node in ast.walk(tree):
@@ -1686,7 +1811,7 @@ def analyze_python(text: str) -> list[Reach]:
         out.append(Reach(
             callee=name,
             line=getattr(node, "lineno", 0),
-            tainted=any(scope.sets_host(url_arg) for scope in caller_inputs.get(id(node), [])),
+            tainted=id(node) in scopes and scopes[id(node)].sets_host(url_arg),
             private_addr=addr_reaching(url_arg),
         ))
     return out
