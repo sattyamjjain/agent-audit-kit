@@ -1,0 +1,63 @@
+/* Site-wide overrides on top of Material for MkDocs, wired in by `extra_css` in
+   mkdocs.yml. The tests in tests/test_docs_row_headers.py and
+   tests/test_docs_contrast.py read this file. */
+
+/* Row headers. scripts/mkdocs_hooks.py turns the labels of a `Field | Value` table into
+   <th scope="row"> cells, so a screen reader says which fact a value belongs to (WCAG
+   1.3.1). Material draws the line between rows on `td` only, so without this rule the
+   first column would lose its row separators. */
+.md-typeset table:not([class]) tbody th {
+  border-top: 0.05rem solid var(--md-typeset-table-color);
+}
+
+/* Contrast (WCAG 2.2 AA, 1.4.3). Material's `primary: red` is about #ef5552 and its
+   `accent: orange` is #ff9100. Against the white page they are 3.45:1 and 2.26:1, and
+   against the grey behind inline code, where a link to a file name sits, 3.16:1 and
+   2.07:1; text this size needs 4.5:1. The primary colour is the link colour and the
+   header's background, behind its white title, and the accent is what a hovered or
+   focused link turns into, so one value of each fixes all of them.
+
+   They are replaced by the nearest compliant shades of the same hues, not by a new
+   palette. #d32f2f is Material's red 700: 4.98:1 on the page, 4.57:1 on code and 4.98:1
+   behind the header's white text, and still 3.23:1 against the body text, which is what
+   keeps a link in a paragraph distinguishable by colour alone (1.4.1). #b9440a is a
+   burnt orange: 5.39:1 on the page, 4.95:1 on code, and 4.62:1 in the worst case, a
+   hovered link inside code inside a hovered table row. #b71c1c is the dark shade, the
+   background of the repository link in the mobile menu (white on Material's own is
+   4.26:1).
+
+   The selectors name two attributes of <body>, so they outrank Material's own
+   `[data-md-color-primary=red]` whatever order the stylesheets load in. The site ships
+   one palette (the default scheme, no dark mode), and tests/test_docs_contrast.py
+   works out every ratio from this file, for each palette mkdocs.yml declares, against
+   Material's own background colours: a second palette, or a new colour here, fails
+   there until it has been checked. */
+[data-md-color-scheme="default"][data-md-color-primary="red"] {
+  --md-primary-fg-color: #d32f2f;
+  --md-primary-fg-color--dark: #b71c1c;
+}
+
+[data-md-color-scheme="default"][data-md-color-accent="orange"] {
+  --md-accent-fg-color: #b9440a;
+}
+
+/* Syntax highlighting (1.4.3). Material colours the operators, punctuation, comments and
+   two more kinds of token in code blocks with its secondary text colour, rgba(0,0,0,.54).
+   On the grey of a code block that is 4.48:1 as a browser reports it (the exact #0000008a
+   composites to 4.54:1, but tools read the rounded 0.54), so a highlighted block that has
+   one of those tokens fails an audit. #666666 is 5.27:1 and still reads as the quiet
+   colour next to the code's own #36464e. */
+body[data-md-color-scheme="default"] {
+  --md-code-hl-operator-color: #666666;
+  --md-code-hl-punctuation-color: #666666;
+  --md-code-hl-comment-color: #666666;
+  --md-code-hl-generic-color: #666666;
+  --md-code-hl-variable-color: #666666;
+}
+
+/* The hover colour is close to the link colour now, so a hovered or focused link also
+   gets an underline: colour alone is not a cue for everyone (WCAG 1.4.1, technique G183). */
+.md-typeset a:hover,
+.md-typeset a:focus {
+  text-decoration: underline;
+}
