@@ -1620,6 +1620,25 @@ def test_a_template_field_after_its_512th_character_is_not_filled(form: str, len
     assert [s.tainted for s in analyze_python(source)] == [tainted]
 
 
+@pytest.mark.parametrize(("names", "tainted"), [(3, True), (4, False)])
+@pytest.mark.parametrize("form", ["Template", "format"])
+def test_a_template_is_read_through_four_names(form: str, names: int, tainted: bool) -> None:
+    """AAK-SSRF-001's limitation states the bound: a value is read through four
+    names, so the template the fourth name from the fetch holds is read, a
+    `string.Template` as a `.format` string is, and one the fifth holds is
+    text the code does not spell out, with the caller's host it fills."""
+    if form == "Template":
+        head, fill = "T = Template('https://$host/v1')\n", "T.substitute(arguments)"
+    else:
+        head, fill = "T = 'https://{host}/v1'\n", "T.format(host=arguments['host'])"
+    chain = f"    u{names} = {fill}\n" + "".join(f"    u{i} = u{i + 1}\n" for i in range(names - 1, 0, -1))
+    source = (
+        _CYCLE_HEAD + "from string import Template\n" + head + "@mcp.tool()\ndef fetch(arguments: dict) -> str:\n"
+        + chain + "    return requests.get(u1).text\n"
+    )
+    assert [site.tainted for site in analyze_python(source)] == [tainted]
+
+
 def _wrapped(levels: int, inner: str) -> str:
     """`inner` inside `levels` of `"a" + (...).strip()`."""
     for _ in range(levels):
