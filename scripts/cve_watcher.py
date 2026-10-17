@@ -34,6 +34,12 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# The band word in a filed title comes from the ageing gate's own table, so the
+# word, the `sev/` label the workflow reads back out of the title's number, and the
+# budget the gate enforces on that number cannot disagree.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_cve_ageing import band_for_score  # noqa: E402
+
 NVD_SEARCH = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 KEYWORDS = (
     "mcp",
@@ -274,15 +280,91 @@ def _fetch(keyword: str, window_hours: int = 168) -> list[dict]:
     return data.get("vulnerabilities", [])
 
 
+# Which CVSS score a filed issue carries.
+#
+# `_extract` used to read `cvssMetricV31` and nothing else. A record whose only score
+# was a CNA's CVSS 4.0 metric was filed "(unknown CVSS n/a)" with `sev/unknown` and
+# retitled by hand at disposition: #917, #918 and #919, and #1026 for CVE-2026-96620,
+# which GitHub scores 9.2. The cap in `collect_new_cves` sorted such a record as a
+# 0.0, so a critical one was the first held back.
+#
+# An NVD record can carry NVD's own analysis (`type: Primary`, from nvd@nist.gov)
+# beside a CNA's or CISA's (`type: Secondary`), and CVSS 2.0, 3.0, 3.1 and 4.0
+# metrics side by side. The score comes from the first usable metric under two
+# rules, applied in this order:
+#
+# 1. Source before version. A Primary metric is used over any Secondary one,
+#    whatever their versions, because it is NVD's own analysis: the API schema marks
+#    every metric one or the other, and each Primary metric in the records
+#    tests/test_cve_watcher_cvss.py recorded comes from nvd@nist.gov. In the
+#    watcher's seven-day window a record seldom has one yet, so a CNA's score is
+#    what usually gets filed, as it was when only 3.1 was read.
+# 2. Then version: 3.1, 3.0, 4.0, 2.0. A newer CVSS version is used only when the
+#    older one is absent, so a record that carries 3.1 keeps the score it was
+#    always filed at, and the ledger's CVSS column ("NVD's CVSS 3.1 score, or its
+#    CVSS 4.0 score where NVD has only that") reads the same number. The order
+#    changes labels: of the 137 records NVD published in the eight hours to 22:01Z
+#    on 2026-10-16 that carried both 3.1 and 4.0, 34 put them in different bands.
+#    3.0 is the same metric system as 3.1, so it comes before the switch to 4.0.
+#    2.0 comes last: NVD stopped scoring new records in it in July 2022, and it has
+#    no Critical rating.
+#
+# The band is never the metric's own `baseSeverity`. It comes from the chosen score
+# through `band_for_score`, the ageing gate's table, because the workflow labels the
+# issue from the number in the title and the gate ages it on that number. CVSS 2.0
+# calls a 9.3 HIGH, and the gate would treat "CVSS 9.3" as critical.
+_CVSS_KEYS: tuple[tuple[str, str], ...] = (
+    ("cvssMetricV31", "3.1"),
+    ("cvssMetricV30", "3.0"),
+    ("cvssMetricV40", "4.0"),
+    ("cvssMetricV2", "2.0"),
+)
+
+
+def pick_cvss(metrics: object) -> dict | None:
+    """The NVD metric a filed issue's score comes from, under the rules above.
+
+    Args:
+        metrics: The ``metrics`` object of an NVD API 2.0 CVE record.
+
+    Returns:
+        ``{"score", "version", "source", "type"}`` for the chosen metric, or None
+        when the record carries no usable CVSS score. A metric whose base score is
+        missing, not a number, or outside 0.0-10.0 is skipped, so a malformed entry
+        falls through to the next candidate instead of costing the record its score.
+    """
+    if not isinstance(metrics, dict):
+        return None
+    for want_primary in (True, False):
+        for key, key_version in _CVSS_KEYS:
+            entries = metrics.get(key)
+            if not isinstance(entries, list):
+                continue
+            for metric in entries:
+                if not isinstance(metric, dict):
+                    continue
+                if (metric.get("type") == "Primary") is not want_primary:
+                    continue
+                data = metric.get("cvssData")
+                if not isinstance(data, dict):
+                    continue
+                score = data.get("baseScore")
+                if isinstance(score, bool) or not isinstance(score, (int, float)):
+                    continue
+                if not 0.0 <= score <= 10.0:  # NaN fails this too
+                    continue
+                return {
+                    "score": float(score),
+                    "version": str(data.get("version") or key_version),
+                    "source": metric.get("source"),
+                    "type": metric.get("type"),
+                }
+    return None
+
+
 def _extract(vuln: dict) -> dict:
     cve = vuln.get("cve") or {}
-    metrics = (cve.get("metrics") or {}).get("cvssMetricV31") or []
-    cvss = None
-    severity = None
-    if metrics:
-        cvss_data = (metrics[0].get("cvssData") or {})
-        cvss = cvss_data.get("baseScore")
-        severity = cvss_data.get("baseSeverity")
+    picked = pick_cvss(cve.get("metrics") or {})
     desc = ""
     for d in cve.get("descriptions") or []:
         if d.get("lang") == "en":
@@ -291,8 +373,13 @@ def _extract(vuln: dict) -> dict:
     return {
         "id": cve.get("id"),
         "published": cve.get("published"),
-        "cvss": cvss,
-        "severity": severity,
+        "cvss": picked["score"] if picked else None,
+        # The band of that score, as the ageing gate will read it from the title.
+        "severity": band_for_score(picked["score"]).upper() if picked else None,
+        # Which metric the score came from; the workflow names it in the body.
+        "cvss_version": picked["version"] if picked else None,
+        "cvss_source": picked["source"] if picked else None,
+        "cvss_type": picked["type"] if picked else None,
         "description": desc,
     }
 
