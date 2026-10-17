@@ -3539,8 +3539,10 @@ _r(
         "registered in another file is not read, and the handler's name or body must "
         "mention MCP: `mcp` in any case, or `tools/call` or `tools/list` (a JSON-RPC "
         "handler that does neither is not read). A route's middleware and handler "
-        "arguments are read for their first 200 characters (an inline handler's `{` must "
-        "open within 200 characters of its parameter list), a Go group counts only when "
+        "arguments are read for their first 200 characters; an inline handler that only "
+        "calls a named handler is matched to it only when its `{` opens within 200 "
+        "characters of its parameter list, while one that does the lookup itself is read "
+        "wherever its `{` opens on its line; a Go group counts only when "
         "it is assigned (`g := r.Group(...)`) within 200 characters before the call, and "
         "files over 512,000 bytes are not read."
     ),

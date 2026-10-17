@@ -459,7 +459,7 @@ def test_the_lookup_rule_states_what_it_reads() -> None:
     # Each bound, pinned by a test in this file.
     for stated in ("512,000 bytes", "first 1,000", "within 400", "first 200 characters", "within 200 characters of",
                    "within 200 characters after", "within 200 characters before", "top-level `if`",
-                   "within 200 characters of its parameter list"):
+                   "only calls a named handler", "does the lookup itself"):
         assert stated in rule.limitations, stated
 
 
@@ -830,6 +830,37 @@ def test_a_func_literal_is_read_when_its_body_opens_within_200_characters(
     line = text.splitlines()[5]
     assert line.index("{") - line.index(")") == gap
     assert _one(tmp_path, "router.go", text) == ([("router.go", 6)] if fires else [])
+
+
+def _inline_route_handler(gap: int, delegate: bool) -> str:
+    """GATEWAY with the route's inline handler opening its `{` ``gap`` characters
+    after its parameter list: one that calls listMCPTools, or one that does the
+    lookup itself."""
+    if delegate:
+        return GATEWAY.replace(
+            "func(c *gin.Context) {\n\t\tlistMCPTools", "func(c *gin.Context)" + " " * (gap - 1) + "{\n\t\tlistMCPTools",
+        )
+    body = GATEWAY[GATEWAY.index("\tname := c.Param"):GATEWAY.rindex("}")]
+    head = GATEWAY[:GATEWAY.index("\tadapters.GET(")]
+    return (
+        head + '\tadapters.GET("/:name/tools", func(c *gin.Context)' + " " * (gap - 1) + "{\n"
+        + body.replace("\n\t", "\n\t\t") + "\t})\n}\n"
+    )
+
+
+@pytest.mark.parametrize(("delegate", "gap", "line"), [
+    (True, 199, 21), (True, 200, None), (False, 199, 14), (False, 260, 14),
+], ids=["delegate-199", "delegate-200", "lookup-199", "lookup-260"])
+def test_the_inline_handler_window_applies_to_one_that_calls_a_named_handler(
+    tmp_path: Path, delegate: bool, gap: int, line: int | None,
+) -> None:
+    """An inline handler that only calls a named handler is matched to it when its
+    `{` opens within 200 characters of its parameter list; one that does the
+    lookup itself is read wherever its `{` opens on the line."""
+    text = _inline_route_handler(gap, delegate)
+    route = next(x for x in text.splitlines() if "adapters.GET(" in x)
+    assert route.index("{") - route.index(")") == gap
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", line)] if line else [])
 
 
 _MISS_IF = "\tif err != nil || adapter == nil {"
