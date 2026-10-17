@@ -1075,10 +1075,15 @@ def _input_read(index: CodeIndex, expr: re.Match[str]) -> str:
     `c.Param("name")`, keeping one short string argument and showing any other
     as `(...)`. The rest of the argument stays out of the evidence: quoting it
     whole put a signing key passed beside the caller's input
-    (`sign(c.Param("name"), "<key>")`) into every output."""
+    (`sign(c.Param("name"), "<key>")`) into every output. A read with more
+    than one argument is `(...)` before its arguments are listed: listing
+    them once per lookup that reaches the read was quadratic in a read of
+    250,000 arguments under 33 nested lookups."""
     text = index.text
     paren = expr.end() - 1 if expr.group(1) is not None else text.index("(", expr.start())
     callee = text[expr.start():paren]
+    if index.commas.get(paren):
+        return f"{callee}(...)"
     args = index.args(paren) or []
     if len(args) == 1:
         literal = index.string_literal(*args[0])

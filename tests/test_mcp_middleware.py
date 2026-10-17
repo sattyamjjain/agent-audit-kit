@@ -656,6 +656,25 @@ def test_a_long_chain_of_groups_resolves_in_linear_time(tmp_path: Path) -> None:
     assert count == 0 and seconds < 5.0
 
 
+def _nested_lookups(arguments: str) -> str:
+    """33 nested lookups, the innermost keyed by `c.Param(<arguments>)`."""
+    return (
+        'package main\n\nimport "github.com/gin-gonic/gin"\n\nvar _ = 401\nvar _ = 404\n\n'
+        "func handleMCP(c *gin.Context) {\n\tif x {\n\t}\n\t_ = " + "s.Get(" * 33 + f"c.Param({arguments})"
+        + ")" * 33 + '\n}\n\nfunc main() {\n\tr := gin.New()\n\tr.GET("/mcp", handleMCP)\n}\n'
+    )
+
+
+def test_a_request_read_with_many_arguments_is_named_without_listing_them(tmp_path: Path) -> None:
+    """Each lookup reaching the read listed every argument of `c.Param(...)` to
+    name it: 33 lookups over a read of 250,000 arguments (500 KB) took 1.8
+    seconds of CPU, against 0.24 for one argument of the same length."""
+    t_many, _ = _scan_in_child(tmp_path, "many", _nested_lookups(",".join(["a"] * 250_000)))
+    t_one, _ = _scan_in_child(tmp_path, "one", _nested_lookups("a" * 499_999))
+    assert t_many < 5.0
+    assert t_many < 3 * t_one + 0.25, (t_one, t_many)
+
+
 def _methods_and_routes(k: int, same: bool) -> str:
     names = ["h" if same else f"h{i}" for i in range(k)]
     return (
