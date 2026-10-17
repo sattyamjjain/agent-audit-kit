@@ -31,15 +31,30 @@ _SHARED_ADDRESS_SPACE = ipaddress.IPv4Network("100.64.0.0/10")
 #: RFC 6052's well-known NAT64 prefix: a DNS64 resolver answers an IPv4-only
 #: host with its address in the last 32 bits.
 _NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
+#: RFC 8215's local-use NAT64 prefix, read in RFC 6052's /48 form.
+_NAT64_LOCAL = ipaddress.IPv6Network("64:ff9b:1::/48")
 #: The deprecated IPv4-compatible block, `::a.b.c.d`.
 _IPV4_COMPATIBLE = ipaddress.IPv6Network("::/96")
 
 
 def _carried_ipv4(address: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
-    """The IPv4 address an IPv6 one carries: NAT64 (`64:ff9b::/96`), 6to4
-    (`2002::/16`, `.sixtofour`) or IPv4-compatible (`::/96`)."""
+    """The IPv4 address an IPv6 one carries: NAT64 (`64:ff9b::/96`), local-use
+    NAT64 (`64:ff9b:1::/48`), 6to4 (`2002::/16`, `.sixtofour`) or
+    IPv4-compatible (`::/96`).
+
+    In the /48 form the IPv4 address sits in bits 48-63 and 72-87, with the
+    `u` octet (bits 64-71) and the suffix (bits 88-127) zero, so
+    `64:ff9b:1:808:8:800::` carries 8.8.8.8. A network may use a longer prefix
+    inside the /48, which puts the address elsewhere; an address that is not
+    in the /48 form is not read, so it stays reserved and refused rather than
+    being judged by bits that may belong to the prefix."""
     if address in _NAT64 or address in _IPV4_COMPATIBLE:
         return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    if address in _NAT64_LOCAL:
+        value = int(address)
+        if (value >> 56) & 0xFF or value & ((1 << 40) - 1):
+            return None
+        return ipaddress.IPv4Address(((value >> 64) & 0xFFFF) << 16 | (value >> 40) & 0xFFFF)
     return address.sixtofour
 
 

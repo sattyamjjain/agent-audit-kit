@@ -120,6 +120,9 @@ def test_the_rebinding_window_is_stated() -> None:
     ("2002:a00:1::", False),        # 6to4 of 10.0.0.1
     ("::808:808", True),            # IPv4-compatible 8.8.8.8
     ("::a00:1", False),             # IPv4-compatible 10.0.0.1
+    ("64:ff9b:1:808:8:800::", True),    # local-use NAT64 (RFC 8215), /48 form, of 8.8.8.8
+    ("64:ff9b:1:a00:0:100::", False),   # the same of 10.0.0.1
+    ("64:ff9b:1::808:808", False),      # a longer local-use prefix: not read, so refused
 ])
 def test_an_ipv6_address_carrying_an_ipv4_one_is_judged_by_it(
     monkeypatch: pytest.MonkeyPatch, address: str, allowed: bool
@@ -127,7 +130,9 @@ def test_an_ipv6_address_carrying_an_ipv4_one_is_judged_by_it(
     """NAT64's 64:ff9b::/96 sits inside ::/8, which ipaddress calls reserved, so
     on a DNS64 network every IPv4-only host was refused; whether a 6to4 address
     was private depended on the interpreter (refused on 3.12, allowed on 3.9).
-    Each is judged as the IPv4 address it carries, the same on every Python."""
+    Each is judged as the IPv4 address it carries, the same on every Python.
+    The local-use 64:ff9b:1::/48 is read in RFC 6052's /48 form only; an
+    address in it written for a longer prefix is refused, as before."""
     _resolve_to(monkeypatch, address)
     if allowed:
         assert validate_rag_url("https://docs.example/", allowlist=_ALLOWED) == "https://docs.example/"
