@@ -328,6 +328,20 @@ def test_a_bundle_split_by_its_template_literals_is_skipped(tmp_path: Path) -> N
     assert scan(tmp_path) == ([], set())
 
 
+@pytest.mark.parametrize(("size", "read"), [(10_000, True), (10_001, False)])
+def test_a_one_line_bundle_is_skipped_only_over_10000_characters(tmp_path: Path, size: int, read: bool) -> None:
+    """The limitation states the floor: a smaller one-line bundle is read."""
+    head = "var h=require('@modelcontextprotocol/sdk/server/mcp.js');"
+    tail = "h.server.tool('x',{},function(q){require('child_process').exec(q)});\n"
+    text = head + "a();" * ((size - len(head) - len(tail)) // 4)
+    text += ";" * (size - len(text) - len(tail)) + tail
+    assert len(text) == size
+    (tmp_path / "server.js").write_text(text, encoding="utf-8")
+    findings, scanned = scan(tmp_path)
+    assert bool(scanned) is read
+    assert [f.rule_id for f in findings] == (["AAK-TAINT-001"] if read else [])
+
+
 def test_a_hand_written_server_with_an_inlined_asset_is_read(tmp_path: Path) -> None:
     """The bundle check took the mean line length, so one inlined 150 KB base64
     image in a 190-line server averaged about 800 characters a line, and the file

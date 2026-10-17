@@ -2505,6 +2505,19 @@ _r(
 # Taint Analysis (8 rules)
 # ---------------------------------------------------------------------------
 
+# The TypeScript/JavaScript pattern scanner skips a JavaScript file it takes for
+# a bundle (`typescript_pattern_scan._is_bundle`). Each rule it reports in
+# JavaScript states the test, and the two ways it misjudges a file.
+_JS_BUNDLE_LIMITATION = (
+    " A JavaScript file is skipped as a bundle when its name holds `.min.`, or when "
+    "it is over 10,000 characters and its median non-blank line is over 500 "
+    "characters long or most of it is lines over 5,000 characters in which `(` and "
+    "`;` make up at least 1%. So a one-line bundle of 10,000 characters or fewer is "
+    "read, and a hand-written file most of whose text is one long line of inlined "
+    "data with `;` in it, such as a stylesheet or an SVG, is skipped, and its "
+    "findings with it."
+)
+
 _r(
     "AAK-TAINT-001",
     "Tool parameter flows to shell command",
@@ -2573,8 +2586,8 @@ _r(
         "(`@modelcontextprotocol/sdk/server/...`), registers a tool "
         "(`server.tool(`, `server.registerTool(`) or handles "
         "`CallToolRequestSchema`, so a tool module that does none of these, or a "
-        "FastMCP server (`server.addTool`), is not reported, and it skips a "
-        "minified file or a one-line bundle."
+        "FastMCP server (`server.addTool`), is not reported."
+        + _JS_BUNDLE_LIMITATION
     ),
 )
 
@@ -2671,6 +2684,7 @@ _r(
         "file imports the SDK's server modules, registers a tool or handles "
         "`CallToolRequestSchema`, so a FastMCP server (`server.addTool`) is not "
         "reported."
+        + _JS_BUNDLE_LIMITATION
     ),
 )
 
@@ -2714,8 +2728,9 @@ _r(
     "Tool parameter flows to SQL query",
     "In Python, a @tool function parameter, or an item read from one, is passed as the "
     "whole query to cursor.execute(), connection.execute() or session.execute(), so the "
-    "caller chooses the SQL that runs. The TypeScript arm reports a template literal "
-    "with an interpolation passed to .query(), .execute() or .raw(), a string literal "
+    "caller chooses the SQL that runs. The TypeScript and JavaScript arm reports a "
+    "template literal with an interpolation passed to .query(), .execute() or "
+    ".raw(), a string literal "
     "concatenated into .query() or .execute(), and Prisma's $queryRawUnsafe and "
     "$executeRawUnsafe; the Rust arm, a sql!, query! or query_as! macro given a "
     "format! string or a concatenation that starts with a bare name "
@@ -2740,7 +2755,13 @@ _r(
         "(`cursor.execute(f\"SELECT * FROM notes WHERE title = '{title}'\")`), "
         "`.format()`, `%` or `+`, the usual shape of SQL injection, is not reported, "
         "and neither is the same call on a variable under another name "
-        "(`conn.execute(query)`)."
+        "(`conn.execute(query)`). The TypeScript and JavaScript arm reads the "
+        "template literal or the concatenation on the call's own line, so a query "
+        "built into a variable first (`db.query(sql)`), or one whose `${` falls on a "
+        "later line, is not reported. It reads a `.js`, `.jsx`, `.mjs` or `.cjs` file "
+        "only when the file imports the SDK's server modules, registers a tool or "
+        "handles `CallToolRequestSchema`."
+        + _JS_BUNDLE_LIMITATION
     ),
 )
 
@@ -8266,6 +8287,7 @@ _r(
         "whose only marker is the `tools/call` string, nor a server whose only tool "
         "registration is `server.registerTool(`, which is a marker in neither "
         "language."
+        + _JS_BUNDLE_LIMITATION
     ),
 )
 
