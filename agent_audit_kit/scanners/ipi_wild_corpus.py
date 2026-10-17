@@ -16,7 +16,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import CONFIG_MAX_BYTES, in_skip_dir, loads_json, make_finding, read_text_capped
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -28,7 +28,7 @@ def _load_corpus() -> list[dict]:
     if not _CORPUS_FILE.is_file():
         return []
     try:
-        data = json.loads(_CORPUS_FILE.read_text(encoding="utf-8"))
+        data = loads_json(_CORPUS_FILE.read_text(encoding="utf-8"), _CORPUS_FILE)
     except json.JSONDecodeError:
         return []
     return list(data.get("payloads") or [])
@@ -58,7 +58,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if path.suffix not in _TARGET_EXTS:
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
         rel = str(path.relative_to(project_root))

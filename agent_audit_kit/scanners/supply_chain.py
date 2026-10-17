@@ -13,9 +13,13 @@ from agent_audit_kit.scanners._helpers import (
     find_line_number,
     find_line_numbers,
     in_skip_dir,
+    CONFIG_MAX_BYTES,
     iter_mcp_servers,
+    load_yaml,
+    loads_json,
     loads_jsonc,
     make_finding,
+    read_text_capped,
 )
 from agent_audit_kit.scanners._launchers import (
     Launched,
@@ -177,8 +181,8 @@ def _scan_mcp_configs_for_supply_chain(project_root: Path) -> list[Finding]:
         if not mcp_path.is_file():
             continue
         try:
-            raw = mcp_path.read_text(encoding="utf-8")
-            data = loads_jsonc(raw)
+            raw = read_text_capped(mcp_path, CONFIG_MAX_BYTES, errors="replace")
+            data = loads_jsonc(raw, mcp_path)
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             continue
 
@@ -234,8 +238,8 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
     try:
         if lockfile.stat().st_size > MAX_LOCKFILE_BYTES:
             return findings
-        raw = lockfile.read_text(encoding="utf-8")
-        data = json.loads(raw)
+        raw = read_text_capped(lockfile, MAX_LOCKFILE_BYTES, errors="replace")
+        data = loads_json(raw, lockfile)
     except (json.JSONDecodeError, OSError):
         return findings
 
@@ -313,9 +317,11 @@ def _scan_package_json(project_root: Path) -> list[Finding]:
         return findings
 
     try:
-        raw = pkg_json.read_text(encoding="utf-8")
-        data = json.loads(raw)
+        raw = read_text_capped(pkg_json, MAX_MANIFEST_BYTES, errors="replace")
+        data = loads_json(raw, pkg_json)
     except (json.JSONDecodeError, OSError):
+        return findings
+    if not isinstance(data, dict):
         return findings
 
     rel_path = str(pkg_json.relative_to(project_root))
@@ -655,7 +661,7 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
         try:
             if req_file.stat().st_size > MAX_MANIFEST_BYTES:
                 continue
-            raw = req_file.read_text(encoding="utf-8")
+            raw = read_text_capped(req_file, MAX_MANIFEST_BYTES, errors="replace")
         except OSError:
             continue
         rel_path = str(req_file.relative_to(project_root))
@@ -675,8 +681,8 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
     if pipfile_lock.is_file():
         try:
             if pipfile_lock.stat().st_size <= MAX_LOCKFILE_BYTES:
-                raw = pipfile_lock.read_text(encoding="utf-8")
-                data = json.loads(raw)
+                raw = read_text_capped(pipfile_lock, MAX_LOCKFILE_BYTES, errors="replace")
+                data = loads_json(raw, pipfile_lock)
                 rel_path = str(pipfile_lock.relative_to(project_root))
                 for section in ["default", "develop"]:
                     pkgs = data.get(section, {})
@@ -724,7 +730,7 @@ def _scan_rust_deps(project_root: Path) -> list[Finding]:
     try:
         if cargo_lock.stat().st_size > MAX_LOCKFILE_BYTES:
             return findings
-        raw = cargo_lock.read_text(encoding="utf-8")
+        raw = read_text_capped(cargo_lock, MAX_LOCKFILE_BYTES, errors="replace")
     except OSError:
         return findings
 
@@ -872,8 +878,18 @@ def _lockfile_over_limit(path: Path) -> bool:
     return path.name.lower() in _LOCKFILES and path.stat().st_size > MAX_LOCKFILE_BYTES
 
 
+def _read_capped(path: Path) -> str:
+    """A pin source's text: a lockfile up to MAX_LOCKFILE_BYTES and any other
+    manifest or config up to MAX_MANIFEST_BYTES, the pin table's limits, and
+    only a regular file (see `read_text_capped`). The older checks gated only
+    lockfiles, so a `requirements*.txt` symlinked to a FIFO held the scan and
+    a 200 MB pyproject.toml was read whole."""
+    cap = MAX_LOCKFILE_BYTES if path.name.lower() in _LOCKFILES else MAX_MANIFEST_BYTES
+    return read_text_capped(path, cap, errors="replace")
+
+
 def _resolve_lockfile_versions(
-    text: str, filename: str, names: tuple[str, ...]
+    text: str, filename: str, names: tuple[str, ...], path: Path | None = None
 ) -> list[tuple[int, int, int]]:
     """Every resolved version of any of ``names`` in a lockfile, lowest first.
 
@@ -883,7 +899,7 @@ def _resolve_lockfile_versions(
     whenever the lowest sits below a pin's `introduced` bound, which is the
     "first match decides" mistake the manifest reader stopped making.
     """
-    return _lockfile_lookup(_lockfile_index(text, filename), filename, names)
+    return _lockfile_lookup(_lockfile_index(text, filename, path), filename, names)
 
 
 def _lockfile_canon(name: str, filename: str) -> str:
@@ -945,7 +961,7 @@ def _yarn_entries(text: str) -> list[tuple[str, str]]:
     return entries
 
 
-def _lockfile_index(text: str, filename: str) -> dict[str, list[tuple[int, int, int]]]:
+def _lockfile_index(text: str, filename: str, path: Path | None = None) -> dict[str, list[tuple[int, int, int]]]:
     """Every package a lockfile resolves, by canonical name, to its versions.
 
     One pass over the file, so a pin table of a hundred rows reads a large
@@ -971,7 +987,7 @@ def _lockfile_index(text: str, filename: str) -> dict[str, list[tuple[int, int, 
                 add(nm.group(1), vm.group(1))
     elif filename in ("pipfile.lock", "package-lock.json"):
         try:
-            data = json.loads(text)
+            data = loads_json(text, path)
         except ValueError:
             data = {}
         if not isinstance(data, dict):
@@ -1025,17 +1041,16 @@ def _lockfile_index(text: str, filename: str) -> dict[str, list[tuple[int, int, 
 # ---------------------------------------------------------------------------
 
 def _read_pin_candidate(path: Path) -> str | None:
-    """A candidate file's text, or None when it is unreadable or over its limit.
+    """A candidate file's text, or None when it is unreadable, not a regular
+    file or over its limit.
 
     A lockfile is read up to MAX_LOCKFILE_BYTES and any other file up to
-    MAX_MANIFEST_BYTES, the pin table's limits, checked with stat() before the
-    read.
+    MAX_MANIFEST_BYTES, the pin table's limits (`_read_capped`). A stat()
+    before the read was not enough: a FIFO reports a size of 0, so a
+    `requirements*.txt` symlinked to one held the scan.
     """
-    limit = MAX_LOCKFILE_BYTES if path.name.lower() in _LOCKFILES else MAX_MANIFEST_BYTES
     try:
-        if path.stat().st_size > limit:
-            return None
-        return path.read_text(encoding="utf-8", errors="replace")
+        return _read_capped(path)
     except OSError:
         return None
 
@@ -1065,7 +1080,7 @@ def _affected_pin(
     """
     filename = path.name.lower()
     if filename in _LOCKFILES:
-        affected = [v for v in _resolve_lockfile_versions(text, filename, names) if v < floor]
+        affected = [v for v in _resolve_lockfile_versions(text, filename, names, path) if v < floor]
         return ".".join(str(x) for x in affected[0]) if affected else None
     # Imported here: the pin table imports this module's lockfile readers.
     from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import _Pin, _deciding_declaration
@@ -1187,15 +1202,17 @@ def _command_lines(path: Path, text: str) -> list[list[str]]:
     name = path.name.lower()
     try:
         if name == "package.json":
-            data = json.loads(text)
+            data = loads_json(text, path)
             scripts = data.get("scripts") if isinstance(data, dict) else None
             if not isinstance(scripts, dict):
                 return []
             return [shell_tokens(line) for line in scripts.values() if isinstance(line, str)]
         if name.endswith((".yaml", ".yml")):
-            data = yaml.safe_load(text)
+            # `_command_entries` reads each container once, so a document that
+            # contains itself ends there and is read, not refused.
+            data = load_yaml(text, path, cycles_ok=True)
         elif name.endswith(".json"):
-            data = loads_jsonc(text)
+            data = loads_jsonc(text, path)
         else:
             return []
     except (ValueError, yaml.YAMLError, RecursionError):
@@ -1455,7 +1472,7 @@ def _check_azure_mcp_auth(
 
     for path in candidates:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if not _AZURE_MCP_HOST_RE.search(text):
@@ -1496,7 +1513,7 @@ def _check_mcp_specific_vulns(project_root: Path) -> list[Finding]:
         if not mcp_path.is_file():
             continue
         try:
-            data = loads_jsonc(mcp_path.read_text(encoding="utf-8"))
+            data = loads_jsonc(read_text_capped(mcp_path, CONFIG_MAX_BYTES, errors="replace"), mcp_path)
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             continue
         rel_path = str(mcp_path.relative_to(project_root))
@@ -1599,7 +1616,7 @@ def _check_astro_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if "astro-mcp-server" not in text:
@@ -1661,7 +1678,7 @@ def _scan_astro_mcp_query_concat(
         if path.suffix not in suffixes:
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, 1_000_000, errors="replace")
         except OSError:
             continue
         if len(text) > 1_000_000:
@@ -1809,7 +1826,7 @@ def _check_agent_zero_pin(project_root: Path, scanned_files: set[str]) -> list[F
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if not _AGENT_ZERO_GIT_RE.search(text):
@@ -1863,7 +1880,7 @@ def _check_chatgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if "chatgpt-mcp-server" not in text and "Toowiredd/chatgpt-mcp-server" not in text:
@@ -1951,7 +1968,7 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         try:
             if _lockfile_over_limit(p):
                 continue
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(p)
         except OSError:
             continue
         if "docsgpt" not in text.lower() and "arc53/DocsGPT" not in text:
@@ -1996,7 +2013,7 @@ def _check_docsgpt_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if "docsgpt" not in text.lower():
@@ -2059,7 +2076,7 @@ def _check_mcp_calculate_server_pin(project_root: Path, scanned_files: set[str])
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         low = text.lower()
@@ -2126,7 +2143,7 @@ def _check_semantic_kernel_pin(project_root: Path, scanned_files: set[str]) -> l
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if "semantic-kernel" not in text.lower() and "semantic_kernel" not in text.lower():
@@ -2229,7 +2246,7 @@ def _check_claudecode_pin(project_root: Path, scanned_files: set[str]) -> list[F
         try:
             if _lockfile_over_limit(p):
                 continue
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(p)
         except OSError:
             continue
         if "@anthropic-ai/claude-code" not in text:
@@ -2317,7 +2334,7 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         if "gpt-researcher" not in text.lower() and "gpt_researcher" not in text.lower():
@@ -2340,7 +2357,7 @@ def _check_gpt_researcher_mcp_pin(project_root: Path, scanned_files: set[str]) -
         try:
             if _lockfile_over_limit(p):
                 continue
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(p)
         except OSError:
             continue
         low = text.lower()

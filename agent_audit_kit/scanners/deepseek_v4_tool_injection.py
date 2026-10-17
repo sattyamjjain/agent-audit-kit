@@ -14,14 +14,20 @@ from __future__ import annotations
 
 import ast
 import re
-import stat
 from collections import deque
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import MatchSpans, PatternSpans, in_skip_dir, make_finding
+from ._helpers import (
+    MatchSpans,
+    PatternSpans,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+)
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -481,7 +487,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     if not _targets_deepseek(text):
         return []
     try:
-        tree = ast.parse(text, str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
     functions = _functions(tree)
@@ -538,10 +544,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            info = path.stat()
-            if not stat.S_ISREG(info.st_mode) or info.st_size > _MAX_BYTES:
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, _MAX_BYTES, errors="replace")
         except OSError:
             continue
         findings.extend(_walk_python(text, path, project_root, scanned))

@@ -65,7 +65,13 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    read_text_capped,
+)
 from agent_audit_kit.scanners.skill_composition import _parse_frontmatter
 
 _RULE_PROVENANCE = "AAK-AST02-001"
@@ -212,7 +218,7 @@ def _load_json(path: Path) -> dict[str, Any] | None:
     try:
         if path.stat().st_size > _MAX_FILE_BYTES:
             return None
-        data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        data = loads_json(read_text_capped(path, _MAX_FILE_BYTES, errors="replace"), path)
     except (OSError, json.JSONDecodeError):
         return None
     return data if isinstance(data, dict) else None
@@ -222,7 +228,7 @@ def _read(path: Path) -> str:
     try:
         if path.stat().st_size > _MAX_FILE_BYTES:
             return ""
-        return path.read_text(encoding="utf-8", errors="replace")
+        return read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return ""
 
@@ -250,7 +256,7 @@ def _bundles(project_root: Path) -> list[_Bundle]:
             skill_md=skill_md,
             body=raw,
         )
-        frontmatter = _parse_frontmatter(raw)
+        frontmatter = _parse_frontmatter(raw, skill_md)
         if frontmatter:
             bundle.manifests["SKILL.md"] = (skill_md, frontmatter)
         for name, _platform in _PLATFORM_MANIFESTS:

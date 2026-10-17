@@ -26,15 +26,24 @@ from typing import Iterable
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
-from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
+from ._helpers import (
+    SOURCE_MAX_BYTES,
+    blank_js_comments,
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    sub_comments,
+)
 from ._http_routes import (
+    CodeIndex,
     GO_TEST_SERVER_RE,
+    GoHandler,
+    GoRoute,
     MCP_HANDSHAKE,
     MCP_METHODS,
     TEST_FILE_RE,
-    CodeIndex,
-    GoHandler,
-    GoRoute,
     go_handlers,
     go_routes,
     is_mcp_endpoint_path,
@@ -150,7 +159,7 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if "readRequestBody" not in text and not _BODY_CONCAT_RE.search(text):
@@ -260,10 +269,10 @@ _PY_ANY_READ_RE = re.compile(r"\.(?:json|body)\s*\(\s*\)|\bget_json\b|\bget_data
 _GO_LIMIT_CALL_RE = re.compile(r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(")
 _GO_CONTENT_LENGTH_RE = re.compile(r"\.ContentLength\b")
 
-# What `ast.parse` raises on a file it cannot build a tree for: besides a syntax
-# error, MemoryError on deep nesting and RecursionError on a long flat
-# expression. The file is skipped; letting one escape lost every finding of
-# the scan. (Python 3.9 and 3.10 crash on some such files instead.)
+# What `parse_python` raises on a file it cannot build a tree for: a syntax
+# error, or a source nested too deep to parse, which it refuses (raised as a
+# SyntaxError) and before 3.11 parses where it cannot crash the process. The
+# file is skipped; letting one escape lost every finding of the scan.
 _PY_PARSE_ERRORS = (SyntaxError, ValueError, RecursionError, MemoryError)
 # Flask's (Werkzeug's) limit, set in code or config.
 _PY_PROJECT_CAP_RE = re.compile(r"\bMAX_CONTENT_LENGTH\b|\bmax_content_length\b")
@@ -333,12 +342,12 @@ def _project_capped(texts: list[tuple[Path, str, str]], cap_re: re.Pattern[str])
         # Each pattern needs one of its words: a file without any is not searched.
         if any(w in text for w in words) and cap_re.search(text):
             return True
-        if path.suffix == ".py" and _py_size_middleware(text):
+        if path.suffix == ".py" and _py_size_middleware(text, path):
             return True
     return False
 
 
-def _py_size_middleware(text: str) -> bool:
+def _py_size_middleware(text: str, path: Path) -> bool:
     """A Starlette/FastAPI middleware or Flask `before_request` hook that checks
     a body size: `@app.middleware("http")`, a class with `dispatch(...,
     call_next)` or an ASGI `__call__(self, scope, receive, send)`, whose own
@@ -350,7 +359,7 @@ def _py_size_middleware(text: str) -> bool:
     if not (_PY_MIDDLEWARE_HINT_RE.search(text) and _PY_SIZE_HINT_RE.search(text)):
         return False
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, path)
     except _PY_PARSE_ERRORS:
         return False
     for node in ast.walk(tree):
@@ -627,7 +636,7 @@ def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Findi
     if _project_capped(texts, _PY_PROJECT_CAP_RE):
         return []
     findings: list[Finding] = []
-    for _path, rel, text in texts:
+    for path, rel, text in texts:
         if TEST_FILE_RE.search(rel) or not _PY_ANY_READ_RE.search(text) or _PY_OTHER_FRAMEWORK_RE.search(text):
             continue
         starlette = bool(_PY_STARLETTE_RE.search(text))
@@ -636,7 +645,7 @@ def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Findi
             continue
         scanned.add(rel)
         try:
-            tree = ast.parse(text)
+            tree = parse_python(text, path)
         except _PY_PARSE_ERRORS:
             continue
         routes = py_routes(tree)

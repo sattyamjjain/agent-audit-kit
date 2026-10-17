@@ -30,6 +30,8 @@ from pathlib import Path
 
 import yaml
 
+from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, load_yaml, read_text_capped
+
 
 _SCHEMA_PREFIX = "pipelock/v2."
 
@@ -49,8 +51,8 @@ def translate(policy_path: Path) -> str:
     Returns:
         YAML string suitable for writing to `.agent-audit-kit.yml`.
     """
-    raw = policy_path.read_text(encoding="utf-8")
-    data = yaml.safe_load(raw) or {}
+    raw = read_text_capped(policy_path, CONFIG_MAX_BYTES)
+    data = load_yaml(raw, policy_path) or {}
     if not isinstance(data, dict):
         raise ValueError("Pipelock policy must be a YAML mapping at root")
     schema = str(data.get("schema", ""))

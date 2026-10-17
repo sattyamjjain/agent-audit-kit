@@ -30,7 +30,16 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, iter_mcp_servers, loads_jsonc, make_finding
+from ._helpers import (
+    CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    iter_mcp_servers,
+    load_yaml,
+    loads_jsonc,
+    make_finding,
+    read_text_capped,
+)
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -41,7 +50,7 @@ def _load_pairs() -> dict:
     if not _PAIRS_PATH.is_file():
         return {"sources": {}, "sinks": {}, "pairs": []}
     try:
-        return yaml.safe_load(_PAIRS_PATH.read_text(encoding="utf-8")) or {}
+        return load_yaml(_PAIRS_PATH.read_text(encoding="utf-8"), _PAIRS_PATH) or {}
     except yaml.YAMLError:
         return {"sources": {}, "sinks": {}, "pairs": []}
 
@@ -55,8 +64,10 @@ def _load_trust(project_root: Path) -> set[tuple[str, str]]:
     if not trust_path.is_file():
         return set()
     try:
-        data = yaml.safe_load(trust_path.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(trust_path, CONFIG_MAX_BYTES, errors="replace"), trust_path) or {}
+    except (yaml.YAMLError, OSError):
+        return set()
+    if not isinstance(data, dict):
         return set()
     out: set[tuple[str, str]] = set()
     for entry in data.get("trust", []) or []:
@@ -96,7 +107,7 @@ def _mcp_tool_origins(project_root: Path) -> tuple[dict[str, str], set[str]]:
         if not p.is_file():
             continue
         try:
-            data = loads_jsonc(p.read_text(encoding="utf-8", errors="replace"))
+            data = loads_jsonc(read_text_capped(p, CONFIG_MAX_BYTES, errors="replace"), p)
         except (json.JSONDecodeError, OSError):
             continue
         parsed.add(cfg)
@@ -153,7 +164,7 @@ def _repo_tool_origins(project_root: Path) -> dict[str, tuple[str, int]]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if "@tool" not in text and "@mcp.tool" not in text and "@server.tool" not in text:

@@ -38,7 +38,16 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    MANIFEST_MAX_BYTES,
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    parse_python,
+    read_text_capped,
+)
 from agent_audit_kit.scanners._versions import ZERO, admits, parse_range
 
 
@@ -217,13 +226,13 @@ def _python_hint_match(text: str) -> bool:
 
 def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     if not _python_hint_match(text):
         return []
     try:
-        tree = ast.parse(text, filename=str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
 
@@ -428,8 +437,8 @@ def _check_flowise(project_root: Path, scanned: set[str]) -> list[Finding]:
         rel = str(pkg.relative_to(project_root))
         scanned.add(rel)
         try:
-            data = _json.loads(pkg.read_text(encoding="utf-8", errors="replace"))
-        except _json.JSONDecodeError:
+            data = loads_json(read_text_capped(pkg, MANIFEST_MAX_BYTES, errors="replace"), pkg)
+        except (_json.JSONDecodeError, OSError):
             data = None
         if isinstance(data, dict):
             for section in ("dependencies", "devDependencies", "peerDependencies"):
@@ -463,7 +472,7 @@ def _check_flowise(project_root: Path, scanned: set[str]) -> list[Finding]:
             rel = str(path.relative_to(project_root))
             scanned.add(rel)
             try:
-                text = path.read_text(encoding="utf-8", errors="replace")
+                text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
             except OSError:
                 continue
             if "mcp" not in text.lower():

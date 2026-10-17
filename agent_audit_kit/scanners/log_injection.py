@@ -31,7 +31,13 @@ from collections import deque
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import PatternSpans, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    PatternSpans,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+)
 
 
 # Every level method of a stdlib logger. `logger` lacked `exception`, `warn`
@@ -196,11 +202,11 @@ def _own_calls(
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, 512_000, errors="replace")
     except OSError:
         return []
     try:
-        tree = ast.parse(text, filename=str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
 

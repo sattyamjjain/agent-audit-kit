@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, placed
+from agent_audit_kit.scanners._helpers import in_skip_dir, loads_json, make_finding, placed
 
 _RULE_ID = "AAK-AGENT-SHARED-RES-AUTHZ-001"
 
@@ -233,7 +233,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         ):
             continue
         try:
-            data = json.loads(raw_text)
+            data = loads_json(raw_text, json_path)
         except json.JSONDecodeError:
             continue
 

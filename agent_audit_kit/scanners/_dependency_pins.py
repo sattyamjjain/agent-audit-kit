@@ -60,7 +60,6 @@ named like one of them.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import stat
 import threading
@@ -70,11 +69,7 @@ from dataclasses import dataclass, replace
 from functools import cached_property
 from pathlib import Path
 
-try:
-    import tomllib
-except ImportError:  # Python < 3.11
-    import tomli as tomllib  # type: ignore[no-redef,import-not-found]
-
+from agent_audit_kit.scanners._helpers import collecting_refusals, loads_json, loads_toml, refuse
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
@@ -175,17 +170,22 @@ def _parsed(path: Path, text: str) -> tuple[list[Declaration], object]:
         return requirements_declarations(text), None
     try:
         if name == "package.json":
-            data = json.loads(text)
+            data = loads_json(text, path)
             if not isinstance(data, dict):
                 return [], None
             return package_json_declarations({k: v for k, v in data.items() if k != "scripts"}), data
         if name == "pyproject.toml":
-            document = tomllib.loads(text)
+            document = loads_toml(text, path)
             return pyproject_declarations(document), document
-    except (ValueError, RecursionError):
-        # TOMLDecodeError and JSONDecodeError are ValueErrors. Nesting deeper than
-        # the parser recurses (a 3,000-deep inline table) raises RecursionError,
-        # caught here so that no module lets it out of `scan`.
+    except ValueError:
+        # TOMLDecodeError and JSONDecodeError are ValueErrors, and so is what
+        # `loads_json` and `loads_toml` raise for a text nested deeper than the
+        # parser recurses (a 3,000-deep inline table), which they refuse.
+        return [], None
+    except RecursionError:
+        # A dependency table nested past the recursion limit, refused as
+        # `declarations` refuses one.
+        refuse(path, "dependency table nested too deep to read (RecursionError)")
         return [], None
     return [d for d in declarations(path, text) if d.kind != "launch"], None
 
@@ -474,7 +474,7 @@ def read_manifest(path: Path) -> Manifest | None:
 
     Returns:
         The manifest, shared with every other caller that reads the same file
-        content during the process, or None.
+        content during the process unless reading it refused a file, or None.
     """
     read = _read(path, MAX_MANIFEST_BYTES)
     if read is None:
@@ -486,7 +486,14 @@ def read_manifest(path: Path) -> Manifest | None:
             _MANIFESTS.move_to_end(key)
             return cached
     text = _decoded(raw)
-    manifest = Manifest(path, text, tuple(manifest_declarations(path, text)))
+    with collecting_refusals() as refused:
+        manifest = Manifest(path, text, tuple(manifest_declarations(path, text)))
+    if refused:
+        # Not kept: each reader of a file refused here records the refusal
+        # itself, as AAK-INTERNAL-SCANNER-FAIL names the scanner that skipped it.
+        for where, reason in refused.items():
+            refuse(where, reason)
+        return manifest
     with _MANIFESTS_LOCK:
         _MANIFESTS[key] = manifest
         held = sum(len(m.text) for m in _MANIFESTS.values())
@@ -552,7 +559,7 @@ def read_lockfile(path: Path, limit: int = MAX_LOCKFILE_BYTES) -> Lockfile | Non
 
     Returns:
         The lockfile, shared with every other caller that reads the same file
-        content during the process, or None.
+        content during the process unless reading it refused the file, or None.
     """
     read = _read(path, limit)
     if read is None:
@@ -563,7 +570,13 @@ def read_lockfile(path: Path, limit: int = MAX_LOCKFILE_BYTES) -> Lockfile | Non
         if cached is not None:
             _LOCKFILES.move_to_end(key)
             return cached
-    lockfile = Lockfile(path, _lockfile_index(_decoded(raw), path.name.lower()), len(raw))
+    with collecting_refusals() as refused:
+        lockfile = Lockfile(path, _lockfile_index(_decoded(raw), path.name.lower(), path), len(raw))
+    if refused:
+        # Not kept, as in `read_manifest`.
+        for where, reason in refused.items():
+            refuse(where, reason)
+        return lockfile
     with _LOCKFILES_LOCK:
         _LOCKFILES[key] = lockfile
         held = sum(entry.size for entry in _LOCKFILES.values())

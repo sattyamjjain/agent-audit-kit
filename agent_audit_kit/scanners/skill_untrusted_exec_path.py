@@ -34,7 +34,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, make_finding, parse_python
 
 _RULE_ID = "AAK-SKILL-UNTRUSTED-EXEC-PATH"
 
@@ -167,9 +167,9 @@ def _command_expr(call: ast.Call) -> ast.AST | None:
     return None
 
 
-def _scan_python(text: str) -> int | None:
+def _scan_python(text: str, path: Path) -> int | None:
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, path)
     except SyntaxError:
         return None
 
@@ -285,7 +285,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
 
         line = (
-            _scan_python(text) if path.suffix in _PY_SUFFIXES
+            _scan_python(text, path) if path.suffix in _PY_SUFFIXES
             else _scan_shell(text)
         )
         if line is None:

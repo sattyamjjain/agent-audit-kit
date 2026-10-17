@@ -25,7 +25,16 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import (
+    CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    load_yaml,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+)
 
 
 _PY_FETCH_NAMES = frozenset({"get", "post", "request", "urlopen"})
@@ -74,8 +83,8 @@ def _trusted_urls(project_root: Path) -> set[str]:
     if not cfg.is_file():
         return set()
     try:
-        data = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(cfg, CONFIG_MAX_BYTES), cfg) or {}
+    except (yaml.YAMLError, OSError):
         return set()
     out: set[str] = set()
     for entry in data.get("trust", []) or []:
@@ -89,7 +98,7 @@ def _trusted_urls(project_root: Path) -> set[str]:
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str], trusted: set[str]) -> list[Finding]:
     try:
-        tree = ast.parse(text, str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
     findings: list[Finding] = []
@@ -174,11 +183,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         suffix = path.suffix
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if suffix == ".py":
-            findings.extend(_walk_python(text, path, project_root, scanned, trusted))
+            with refusing_overflow(path):
+                findings.extend(_walk_python(text, path, project_root, scanned, trusted))
         elif suffix in (".ts", ".tsx", ".js", ".mjs", ".cjs"):
             findings.extend(_walk_ts(text, path, project_root, scanned))
     return findings, scanned

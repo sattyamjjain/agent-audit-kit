@@ -18,7 +18,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, finditer_up_to_last
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    finditer_up_to_last,
+    in_skip_dir,
+    make_finding,
+    read_text_capped,
+)
 from agent_audit_kit.scanners.agent_config import (
     _downloaded_code_runs,
     _line_at,
@@ -226,7 +232,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
 def _check_skill(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        raw = read_text_capped(path, 512_000, errors="replace")
     except OSError:
         return findings
     rel = str(path.relative_to(project_root))

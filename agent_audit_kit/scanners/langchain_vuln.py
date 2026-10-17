@@ -42,7 +42,11 @@ from agent_audit_kit.scanners._dependency_pins import (
     read_manifest,
     read_text,
 )
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+)
 
 
 _REQUIREMENTS_NAMES = (
@@ -130,7 +134,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for py in _iter_python_sources(project_root):
         rel = str(py.relative_to(project_root))
         scanned.add(rel)
-        text = read_text(py)
+        text = read_text(py, 512_000)
         if text is None:
             continue
         if "langchain" in text.lower():

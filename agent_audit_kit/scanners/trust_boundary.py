@@ -5,7 +5,15 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, placed, url_host
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    find_line_number,
+    loads_json,
+    make_finding,
+    placed,
+    read_text_capped,
+    url_host,
+)
 
 # Patterns for API URL override env vars
 API_URL_PATTERNS = re.compile(
@@ -76,15 +84,17 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
 
     for settings_path in settings_files:
         try:
-            raw_text = settings_path.read_text(encoding="utf-8")
+            raw_text = read_text_capped(settings_path, CONFIG_MAX_BYTES, errors="replace")
             if len(raw_text) > 1_000_000:
                 continue
-            data = json.loads(raw_text)
+            data = loads_json(raw_text, settings_path)
         except (json.JSONDecodeError, OSError):
             continue
 
         rel_path = str(settings_path.relative_to(project_root)) if settings_path.is_relative_to(project_root) else str(settings_path)
         scanned_files.add(rel_path)
+        if not isinstance(data, dict):
+            continue
 
         # AAK-TRUST-001: enableAllProjectMcpServers
         if data.get("enableAllProjectMcpServers") is True:

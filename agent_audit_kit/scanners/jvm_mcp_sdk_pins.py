@@ -68,7 +68,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import in_skip_dir, make_finding, read_text_capped
 
 _Ver = tuple[int, int, int]
 
@@ -326,7 +326,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
         except OSError:
             continue
         rel = str(path.relative_to(project_root))

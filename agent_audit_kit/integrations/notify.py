@@ -49,9 +49,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from agent_audit_kit.models import Finding, ScanResult, Severity
+from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, load_yaml, read_text_capped
 
 
 _SEVERITY_ORDER: dict[Severity, int] = {
@@ -326,7 +325,9 @@ def load_notify_config(path: Path) -> NotifyConfig:
     if not path.is_file():
         return NotifyConfig(sinks=[])
 
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data = load_yaml(read_text_capped(path, CONFIG_MAX_BYTES), path) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} must be a YAML mapping with a `sinks` list")
     sinks: list[NotifySink] = []
     for entry in data.get("sinks", []):
         if not isinstance(entry, dict):

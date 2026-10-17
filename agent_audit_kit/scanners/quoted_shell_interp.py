@@ -58,7 +58,13 @@ from pathlib import Path
 from typing import Callable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import PySource as _PySource, in_skip_dir, make_finding
+from agent_audit_kit.scanners._helpers import (
+    PySource as _PySource,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    refusing_overflow,
+)
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
     _import_names,
@@ -417,7 +423,7 @@ def _evidence(func_name: str, param: str, quoting: str, mode: str, template: str
 
 def _scan_python(text: str, rel: str) -> tuple[list[Finding], list[str]]:
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, rel)
     except SyntaxError:
         return [], []
     findings: list[Finding] = []
@@ -1937,7 +1943,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         if suffix == ".py":
-            found, exec_tools = _scan_python(text, rel)
+            found: list[Finding] = []
+            exec_tools: list[str] = []
+            with refusing_overflow(rel):
+                found, exec_tools = _scan_python(text, rel)
         else:
             js_texts[rel] = text
             found, exec_tools = _scan_js(text, rel)

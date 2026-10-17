@@ -29,7 +29,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_json, loads_jsonc, make_finding
 
 _CAP_TO_RULE = {
     "roots": "AAK-MCP-DEPRECATED-001",
@@ -110,21 +110,26 @@ def _line_of(text: str, start: int) -> int:
 
 def _walk_capabilities(obj: object, found: set[str]) -> None:
     """Collect deprecated capability keys declared under any `capabilities`
-    object anywhere in a parsed JSON structure (handles dict or list form)."""
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if key == "capabilities":
-                if isinstance(value, dict):
-                    found.update(c for c in value if c in _CAP_TO_RULE)
-                elif isinstance(value, list):
-                    found.update(c for c in value if isinstance(c, str) and c in _CAP_TO_RULE)
-            _walk_capabilities(value, found)
-    elif isinstance(obj, list):
-        for item in obj:
-            _walk_capabilities(item, found)
+    object anywhere in a parsed JSON structure (handles dict or list form).
+    Iterative: `json.loads` accepts nesting deeper than Python's recursion
+    limit, and the recursive walk this was took the scanner down on one such
+    file."""
+    stack: list[object] = [obj]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "capabilities":
+                    if isinstance(value, dict):
+                        found.update(c for c in value if c in _CAP_TO_RULE)
+                    elif isinstance(value, list):
+                        found.update(c for c in value if isinstance(c, str) and c in _CAP_TO_RULE)
+                stack.append(value)
+        elif isinstance(node, list):
+            stack.extend(node)
 
 
-def _json_capability_hits(text: str, jsonc: bool = False) -> set[str]:
+def _json_capability_hits(text: str, jsonc: bool = False, path: Path | None = None) -> set[str]:
     """Rule IDs for deprecated capabilities declared in a JSON `capabilities`
     block (precise; multi-key safe). Empty when the file is not JSON.
 
@@ -133,7 +138,7 @@ def _json_capability_hits(text: str, jsonc: bool = False) -> set[str]:
     Source files and `package.json` stay strict JSON.
     """
     try:
-        data = loads_jsonc(text) if jsonc else json.loads(text)
+        data = loads_jsonc(text, path) if jsonc else loads_json(text, path)
     except (json.JSONDecodeError, ValueError):
         return set()
     found: set[str] = set()
@@ -141,7 +146,7 @@ def _json_capability_hits(text: str, jsonc: bool = False) -> set[str]:
     return {_CAP_TO_RULE[c] for c in found}
 
 
-def _check_text(text: str, has_hint: bool, jsonc: bool = False) -> dict[str, int]:
+def _check_text(text: str, has_hint: bool, jsonc: bool = False, path: Path | None = None) -> dict[str, int]:
     """Return {rule_id: line} for each deprecated feature matched in text.
 
     Merges regex markers (source-side) with a JSON `capabilities` walk
@@ -155,7 +160,7 @@ def _check_text(text: str, has_hint: bool, jsonc: bool = False) -> dict[str, int
         if m is not None:
             out[rule_id] = _line_of(text, m.start())
 
-    for rule_id in sorted(_json_capability_hits(text, jsonc)):
+    for rule_id in sorted(_json_capability_hits(text, jsonc, path)):
         if rule_id not in out:
             cap = next(c for c, r in _CAP_TO_RULE.items() if r == rule_id)
             out[rule_id] = find_line_number(text, f'"{cap}"') or 1
@@ -207,7 +212,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         scanned.add(rel)
         has_hint = bool(_MCP_HINT.search(text))
         jsonc = path.suffix == ".json" and path.name != "package.json"
-        for rule_id, line in _check_text(text, has_hint, jsonc).items():
+        for rule_id, line in _check_text(text, has_hint, jsonc, path).items():
             findings.append(make_finding(rule_id, rel, _EVIDENCE[rule_id], line))
 
     return findings, scanned

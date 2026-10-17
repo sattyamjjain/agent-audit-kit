@@ -13,9 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from agent_audit_kit.models import Severity
+from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, load_yaml, read_text_capped
 
 SEVERITY_MAP: dict[str, Severity] = {
     "critical": Severity.CRITICAL,
@@ -67,8 +66,11 @@ def _load_config(config_path: str | None, project_root: Path) -> dict[str, Any]:
     if not p.is_file():
         return {}
 
-    with p.open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh)
+    # The scanned repository can carry this file, so it is read the way the
+    # scanners read a repository's YAML: a regular file of at most 1 MB, nested
+    # no deeper than 100 levels and not grown past its bound by aliases (a
+    # refusal raises a YAMLError, which `aak scan` reports as an error).
+    data = load_yaml(read_text_capped(p, CONFIG_MAX_BYTES), p)
 
     return data if isinstance(data, dict) else {}
 

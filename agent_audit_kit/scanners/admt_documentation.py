@@ -67,7 +67,14 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, loads_jsonc, make_finding, mcp_server_maps
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    loads_jsonc,
+    make_finding,
+    mcp_server_maps,
+    parse_python,
+    read_text_capped,
+)
 
 _DECL_EXTS = {".py"}
 _DOC_EXTS = {".md", ".txt", ".rst", ".html"}
@@ -220,7 +227,7 @@ def _sort_key(path: Path, project_root: Path) -> str:
 
 def _read(path: Path) -> str:
     try:
-        return path.read_text(encoding="utf-8", errors="replace")
+        return read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return ""
 
@@ -291,7 +298,7 @@ def _mcp_descriptions(project_root: Path) -> list[tuple[str, str]]:
     for path in _mcp_config_paths(project_root):
         name = str(path.relative_to(project_root))
         try:
-            data = loads_jsonc(_read(path))
+            data = loads_jsonc(_read(path), path)
         except (json.JSONDecodeError, ValueError):
             continue
         parts: list[str] = []
@@ -339,8 +346,8 @@ def _tool_declarations(path: Path) -> Iterable[str]:
     6-1-1702(3) and (5) actually test.
     """
     try:
-        tree = ast.parse(_read(path))
-    except (SyntaxError, ValueError, RecursionError):
+        tree = parse_python(_read(path), path)
+    except (SyntaxError, ValueError):
         return
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):

@@ -249,7 +249,7 @@ except ImportError:  # Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, strip_jsonc
+from agent_audit_kit.scanners._helpers import in_skip_dir, loads_toml, make_finding, strip_jsonc
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
@@ -1863,7 +1863,9 @@ def _toml_repo_refs(
     """(version, path of the URL key, evidence) for every TOML table that points
     `git` or `url` at the repository and names a release tag beside it."""
     try:
-        data = tomllib.loads(text)
+        # pyproject.toml and Pipfile, which `declarations` parses too and
+        # reports when it refuses; the screen keeps a long dotted key out.
+        data = loads_toml(text, None)
     except (tomllib.TOMLDecodeError, ValueError, RecursionError):
         return []
     refs: list[tuple[_Ver, tuple[str | int, ...], str]] = []
@@ -2032,7 +2034,7 @@ def _lockfile_findings(path: Path, rel: str, text: str) -> list[Finding]:
     filename = path.name.lower()
     # Parsed once, not once a pin: a hundred pins re-parsed a large lockfile a
     # hundred times.
-    index = _lockfile_index(text, filename)
+    index = _lockfile_index(text, filename, path)
     hits: list[tuple[_Pin, _Ver]] = []
     for pin in _PINS:
         if not _pin_applies(pin, file_ecosystem) or pin.requires_arg is not None:

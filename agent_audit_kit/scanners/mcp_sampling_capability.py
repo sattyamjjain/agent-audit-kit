@@ -35,12 +35,16 @@ import yaml
 from agent_audit_kit.models import Finding
 
 from ._helpers import (
+    CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
     declares_mcp_sdk,
     find_line_number,
     in_skip_dir,
     iter_mcp_servers,
+    load_yaml,
     loads_jsonc,
     make_finding,
+    read_text_capped,
 )
 
 _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs")
@@ -110,7 +114,7 @@ def _sampling_hits(project_root: Path) -> list[tuple[Path, int]]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         for pat in _SAMPLING_MARKERS:
@@ -132,7 +136,7 @@ def _has_consent_marker(project_root: Path) -> bool:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if any(p.search(text) for p in _CONSENT_MARKERS):
@@ -145,8 +149,8 @@ def _accepts_risk(project_root: Path) -> bool:
     if not cfg.is_file():
         return False
     try:
-        data = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(cfg, CONFIG_MAX_BYTES, errors="replace"), cfg) or {}
+    except (yaml.YAMLError, OSError):
         return False
     if not isinstance(data, dict):
         return False
@@ -166,11 +170,11 @@ def _config_sampling_findings(project_root: Path) -> tuple[list[Finding], set[st
         if not path.is_file():
             continue
         try:
-            raw = path.read_text(encoding="utf-8", errors="replace")
+            raw = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
         try:
-            data = loads_jsonc(raw)
+            data = loads_jsonc(raw, path)
         except json.JSONDecodeError:
             continue
         # `mcpServers`, and the `servers` map of VS Code's .vscode/mcp.json, a

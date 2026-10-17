@@ -16,7 +16,16 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    MANIFEST_MAX_BYTES,
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    loads_toml,
+    make_finding,
+    read_text_capped,
+)
 
 
 _KNOWN_UPSTREAMS = frozenset(
@@ -231,13 +240,13 @@ def _load_manifest(manifest_path: Path, rel: str) -> tuple[object, str, Finding 
     mark, which a strict UTF-8 decode left in front of the JSON, where it failed.
     """
     try:
-        raw = manifest_path.read_text(encoding="utf-8-sig")
+        raw = read_text_capped(manifest_path, CONFIG_MAX_BYTES, encoding="utf-8-sig")
     except UnicodeDecodeError:
         return None, "", _unreadable(rel, "is not UTF-8 text")
     except OSError as exc:
         return None, "", _unreadable(rel, f"could not be read ({exc.strerror or exc})")
     try:
-        return json.loads(raw), raw, None
+        return loads_json(raw, manifest_path), raw, None
     except json.JSONDecodeError as exc:
         why = f"is not valid JSON ({exc.msg} at line {exc.lineno}, column {exc.colno})"
         return None, "", _unreadable(rel, why, line_number=exc.lineno)
@@ -275,11 +284,6 @@ def _check_mcp_security_md(
 ) -> list[Finding]:
     """Fire AAK-SEC-MD-001 if this repo advertises itself as an MCP server
     but has no SECURITY.md + no security_contact manifest field."""
-    try:
-        import tomllib  # type: ignore[import-not-found]  # Python 3.11+
-    except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
-        import tomli as tomllib  # type: ignore[import-not-found, no-redef]
-
     # Detect whether this repo identifies as an MCP server.
     name = ""
     keywords: list[str] = []
@@ -289,7 +293,7 @@ def _check_mcp_security_md(
     if pyproject.is_file():
         scanned.add("pyproject.toml")
         try:
-            data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+            data = loads_toml(read_text_capped(pyproject, MANIFEST_MAX_BYTES, errors="replace"), pyproject)
             project = data.get("project", {})
             name = str(project.get("name") or name)
             keywords = [str(k) for k in project.get("keywords", []) if k]
@@ -305,20 +309,22 @@ def _check_mcp_security_md(
     if pkg_json.is_file():
         scanned.add("package.json")
         try:
-            data = json.loads(pkg_json.read_text(encoding="utf-8"))
+            data = loads_json(read_text_capped(pkg_json, MANIFEST_MAX_BYTES, errors="replace"), pkg_json)
+            if not isinstance(data, dict):
+                data = {}
             if not name:
                 name = str(data.get("name") or "")
             keywords = keywords or [str(k) for k in data.get("keywords", []) if k]
             if "security_contact" in data or "securityContact" in data:
                 security_contact_declared = True
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, OSError):
             pass
 
     marketplace = project_root / ".claude-plugin" / "marketplace.json"
     if marketplace.is_file():
         market: object = None
         try:
-            market = json.loads(marketplace.read_text(encoding="utf-8-sig"))
+            market = loads_json(read_text_capped(marketplace, CONFIG_MAX_BYTES, encoding="utf-8-sig"), marketplace)
         except (json.JSONDecodeError, UnicodeDecodeError, OSError):
             pass  # AAK-MARKETPLACE-005 already reports a manifest that cannot be read.
         if isinstance(market, dict):

@@ -33,7 +33,12 @@ import re
 import string
 from typing import Any, Callable, Iterable, Iterator, NamedTuple
 
-from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
+from agent_audit_kit.scanners._helpers import (
+    blank_js_comments,
+    host_ip,
+    parse_python,
+    url_readings,
+)
 from agent_audit_kit.scanners.taint_analysis import (
     _get_param_names,
     _is_call_tool_handler,
@@ -1801,7 +1806,7 @@ def _scopes(tree: ast.Module) -> dict[int, _Scope]:
 def analyze_python(text: str) -> list[Reach]:
     """Outbound call sites in a Python source, with what each one reaches."""
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, None)
     except (SyntaxError, ValueError):
         return []
 

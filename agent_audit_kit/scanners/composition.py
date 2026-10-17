@@ -73,6 +73,7 @@ from agent_audit_kit.scanners._helpers import (
     make_finding,
     mcp_server_maps,
     newline_line,
+    read_text_capped,
     strip_jsonc,
 )
 from agent_audit_kit.scanners.mcp_config import _find_mcp_configs
@@ -255,10 +256,10 @@ def _skill_nodes(project_root: Path) -> list[_Node]:
         if skill is None:
             continue
         try:
-            raw = path.read_text(encoding="utf-8", errors="replace")
+            raw = read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
         except OSError:
             continue
-        fm = _parse_frontmatter(raw)
+        fm = _parse_frontmatter(raw, path)
         body = raw.split("---", 2)[-1] if raw.startswith("---") else raw
 
         declared = frozenset(skill.caps)
@@ -372,8 +373,8 @@ def _mcp_nodes(project_root: Path) -> list[_Node]:
         try:
             if config_path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            raw = config_path.read_text(encoding="utf-8", errors="replace")
-            data = loads_jsonc(raw)
+            raw = read_text_capped(config_path, _MAX_FILE_BYTES, errors="replace")
+            data = loads_jsonc(raw, config_path)
         except (OSError, json.JSONDecodeError):
             continue
         # Both server maps: VS Code keeps its servers under `servers` in

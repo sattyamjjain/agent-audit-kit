@@ -28,7 +28,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, make_finding, read_text_capped
 
 
 _DOCSGPT_HINT_RE = re.compile(
@@ -109,7 +109,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for path in _config_candidates(project_root):
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if not _DOCSGPT_HINT_RE.search(text):

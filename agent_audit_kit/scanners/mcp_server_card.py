@@ -40,7 +40,15 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, placed, url_readings
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    placed,
+    read_text_capped,
+    url_readings,
+)
 
 # Reuse the tool-poisoning detectors — do NOT duplicate the regexes.
 from agent_audit_kit.scanners.tool_poisoning import (
@@ -242,7 +250,7 @@ def fetch_card(base_url: str, timeout: int = 15) -> dict | None:
     try:
         req = urllib.request.Request(url, headers={"Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (opt-in)
-            data = json.loads(resp.read().decode("utf-8", errors="ignore"))
+            data = loads_json(resp.read().decode("utf-8", errors="ignore"), url)
         return data if isinstance(data, dict) else None
     except Exception:
         return None
@@ -276,7 +284,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > 1_000_000:
                 continue
-            raw = path.read_text(encoding="utf-8", errors="ignore")
+            raw = read_text_capped(path, 1_000_000, errors="ignore")
         except OSError:
             continue
 
@@ -285,7 +293,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if not named and "serverInfo" not in raw and '"tools"' not in raw:
             continue
         try:
-            data = json.loads(raw)
+            data = loads_json(raw, path)
         except ValueError:
             continue
         if not (named and isinstance(data, dict)) and not _looks_like_card(data):

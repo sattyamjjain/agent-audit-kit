@@ -17,7 +17,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
+from ._helpers import CONFIG_MAX_BYTES, find_line_number, in_skip_dir, load_yaml, make_finding, read_text_capped
 
 
 _TOKEN_SOURCETYPE_RE = re.compile(
@@ -53,9 +53,9 @@ def _is_splunk_mcp_path(path: Path, project_root: Path) -> bool:
     return name in {"inputs.conf", "splunk-mcp.yaml", "splunk-mcp.yml", "splunk_mcp.yaml", "splunk_mcp.yml"}
 
 
-def _yaml_routes_token_to_internal(text: str) -> bool:
+def _yaml_routes_token_to_internal(text: str, path: Path) -> bool:
     try:
-        data = yaml.safe_load(text)
+        data = load_yaml(text, path)
     except yaml.YAMLError:
         return False
     if not isinstance(data, dict):
@@ -87,14 +87,14 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if not _is_splunk_mcp_path(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
 
         rel = str(path.relative_to(project_root))
         suspicious = False
         if path.suffix in (".yaml", ".yml"):
-            suspicious = _yaml_routes_token_to_internal(text)
+            suspicious = _yaml_routes_token_to_internal(text, path)
         # Always run the line-pair regex too — picks up inputs.conf and
         # mixed YAML files where keys aren't structured.
         if not suspicious:

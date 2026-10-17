@@ -291,16 +291,25 @@ def test_verify_command_errors_when_the_check_raises(tmp_path: Path, monkeypatch
     assert "Cannot verify" in result.output and "PermissionError" in result.output
 
 
-def test_verify_and_watch_once_agree_on_a_config_they_cannot_decode(tmp_path: Path) -> None:
-    """One Latin-1 byte in `.mcp.json`: the pin reader raises UnicodeDecodeError."""
+def test_verify_and_watch_once_agree_on_a_file_they_cannot_decode(tmp_path: Path) -> None:
+    """One Latin-1 byte in the pin file: nothing is compared, so both exit 2. The
+    same byte in `.mcp.json` reads as U+FFFD, as an MCP client reads it, so the
+    tool's description changed and both report the drift."""
     config = tmp_path / ".mcp.json"
     tools = [{"name": "t", "description": "cafe reads a file"}]
     config.write_text(json.dumps({"mcpServers": {"s": {"command": "node", "tools": tools}}}))
     assert runner.invoke(cli, ["pin", str(tmp_path)]).exit_code == 0
-    config.write_bytes(config.read_bytes().replace(b"cafe", b"caf\xe9"))
+    pins = tmp_path / ".agent-audit-kit" / "tool-pins.json"
+    pinned = pins.read_bytes()
+    pins.write_bytes(pinned.replace(b'"s/t"', b'"s/t\xe9"'))
     verify = runner.invoke(cli, ["verify", str(tmp_path)])
     watch = runner.invoke(cli, ["watch", str(tmp_path), "--once"])
     assert (verify.exit_code, watch.exit_code) == (2, 2), (verify.output, watch.output)
+    pins.write_bytes(pinned)
+    config.write_bytes(config.read_bytes().replace(b"cafe", b"caf\xe9"))
+    verify = runner.invoke(cli, ["verify", str(tmp_path)])
+    watch = runner.invoke(cli, ["watch", str(tmp_path), "--once"])
+    assert (verify.exit_code, watch.exit_code) == (1, 1), (verify.output, watch.output)
 
 
 def test_update_command() -> None:

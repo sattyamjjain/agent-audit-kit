@@ -5,11 +5,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     ZCODE_WORKSPACE_CONFIG_NAMES,
     is_zcode_workspace_config,
     iter_hook_handlers,
+    loads_json,
     loads_jsonc,
     mcp_server_maps,
+    read_text_capped,
 )
 
 
@@ -135,8 +138,8 @@ def discover_agents(
                     zcode = is_zcode_workspace_config(fp)
                     is_mcp_config = "mcp" in fp.name.lower()
                     try:
-                        text = fp.read_text()
-                        data = loads_jsonc(text) if is_mcp_config else json.loads(text)
+                        text = read_text_capped(fp, CONFIG_MAX_BYTES, encoding=None, errors="replace")
+                        data = loads_jsonc(text, fp) if is_mcp_config else loads_json(text, fp)
                     except (json.JSONDecodeError, OSError):
                         continue
 

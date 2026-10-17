@@ -13,6 +13,12 @@ Three separate defects had to line up for that, and each is pinned here:
 2. nothing mapped "a scanner crashed" onto a non-zero exit;
 3. ``files_scanned`` counted rule ids, so the run also claimed to have read
    files it never opened, which made the empty result look substantiated.
+
+The reported input no longer crashes anything: since 2026-10-17 a JSON config is
+decoded as Node decodes it, a bad byte becoming U+FFFD, so the scanners read it
+as the client does (`test_the_reported_utf8_input_is_read_not_crashed`). The
+tests of the reporting path stage the crash with a registered scanner that
+raises the same UnicodeDecodeError (`crashing_scanner`).
 """
 
 from __future__ import annotations
@@ -20,6 +26,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from agent_audit_kit.cli import cli
@@ -31,6 +38,22 @@ runner = CliRunner()
 # The reported inputs, byte for byte.
 BAD_UTF8 = b'{"mcpServers": {"a": "\xff\xfe bad"}}'
 BAD_ARGS = '{"mcpServers": {"a": {"command": "node", "args": 42}}}'
+
+
+@pytest.fixture
+def crashing_scanner(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every scan also runs a scanner that dies the way the reported four did."""
+    from agent_audit_kit import engine
+
+    real = engine._get_registry
+
+    def boom(project_root: Path) -> tuple[list, set[str]]:
+        raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")
+
+    def registry(strict_loading: bool = False) -> list:
+        return [*real(strict_loading), engine.ScannerRegistration("Crashing test scanner", boom, [])]
+
+    monkeypatch.setattr(engine, "_get_registry", registry)
 
 
 def _project(tmp_path: Path, name: str, content: bytes | str) -> Path:
@@ -90,7 +113,7 @@ def test_no_scanner_returns_a_rule_id_as_a_scanned_path(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_scanner_failure_survives_the_default_severity_floor(tmp_path: Path) -> None:
+def test_scanner_failure_survives_the_default_severity_floor(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     result = run_scan(project_root=project)
     assert result.scanner_failures, "expected the UTF-8 crash to be recorded"
@@ -117,13 +140,24 @@ def test_floor_exemption_does_not_leak_other_info_findings(tmp_path: Path) -> No
 # ---------------------------------------------------------------------------
 
 
-def test_utf8_crash_exits_non_zero(tmp_path: Path) -> None:
+def test_the_reported_utf8_input_is_read_not_crashed(tmp_path: Path) -> None:
+    """One bad byte took down mcp_config, tool_poisoning and transport_security,
+    and every finding they make on every config with them. It is decoded as
+    Node decodes it now, so the scanners read the file as the client does."""
+    from agent_audit_kit.scanners import mcp_config
+
+    project = _project(tmp_path, ".mcp.json", BAD_UTF8)
+    assert run_scan(project_root=project).scanner_failures == []
+    assert mcp_config.scan(project)[1] == {".mcp.json"}
+
+
+def test_utf8_crash_exits_non_zero(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     res = runner.invoke(cli, ["scan", str(project)])
     assert res.exit_code != 0, "a run with four dead scanners exited 0"
 
 
-def test_utf8_crash_is_visible_at_default_severity(tmp_path: Path) -> None:
+def test_utf8_crash_is_visible_at_default_severity(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     out = tmp_path / "out.json"
     runner.invoke(cli, ["scan", str(project), "--format", "json", "-o", str(out)])
@@ -134,7 +168,7 @@ def test_utf8_crash_is_visible_at_default_severity(tmp_path: Path) -> None:
     assert SCANNER_FAIL_RULE_ID in reported, "no --severity info was passed"
 
 
-def test_allow_scanner_failure_opts_back_into_exit_zero(tmp_path: Path) -> None:
+def test_allow_scanner_failure_opts_back_into_exit_zero(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     res = runner.invoke(cli, ["scan", str(project), "--allow-scanner-failure"])
     assert res.exit_code == 0
@@ -148,7 +182,7 @@ def test_the_opt_out_is_a_flag_not_the_default() -> None:
     assert flag.is_flag and flag.default is False
 
 
-def test_sarif_marks_the_run_unsuccessful(tmp_path: Path) -> None:
+def test_sarif_marks_the_run_unsuccessful(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     out = tmp_path / "o.sarif"
     runner.invoke(cli, ["scan", str(project), "--format", "sarif", "-o", str(out)])
@@ -161,14 +195,14 @@ def test_sarif_marks_the_run_unsuccessful(tmp_path: Path) -> None:
     assert any(r["ruleId"] == SCANNER_FAIL_RULE_ID for r in run["results"])
 
 
-def test_score_output_does_not_read_as_a_clean_bill_of_health(tmp_path: Path) -> None:
+def test_score_output_does_not_read_as_a_clean_bill_of_health(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     res = runner.invoke(cli, ["scan", str(project), "--score"])
     assert "100/100" in res.output
     assert "UNRELIABLE" in res.output
 
 
-def test_score_subcommand_warns_and_exits_non_zero(tmp_path: Path) -> None:
+def test_score_subcommand_warns_and_exits_non_zero(tmp_path: Path, crashing_scanner: None) -> None:
     project = _project(tmp_path, ".mcp.json", BAD_UTF8)
     res = runner.invoke(cli, ["score", str(project)])
     assert res.exit_code != 0

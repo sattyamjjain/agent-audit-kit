@@ -33,7 +33,11 @@ from agent_audit_kit.scanners._dependency_pins import (
     read_manifest,
     read_text,
 )
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+)
 
 
 # A stated version only: the old pattern needed one, so an unpinned line was
@@ -102,7 +106,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         rel = str(py.relative_to(project_root))
         scanned.add(rel)
-        text = read_text(py)
+        text = read_text(py, 512_000)
         if text is None:
             continue
         if "neo4j" in text.lower() or "apoc" in text.lower():

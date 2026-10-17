@@ -443,7 +443,7 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
     # .vscode/mcp.json, and reading `mcpServers` alone passed every literal there.
     if suffix == ".json" and file_path.name != ".mcp.json":
         try:
-            data = loads_jsonc(content)
+            data = loads_jsonc(content, file_path)
         except json.JSONDecodeError:
             data = None
         unplaced: list[tuple[Finding, str]] = []

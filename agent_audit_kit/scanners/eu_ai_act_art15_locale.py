@@ -53,7 +53,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import CONFIG_MAX_BYTES, in_skip_dir, load_yaml, loads_json, make_finding, read_text_capped
 
 # --------------------------------------------------------------------------
 # Locale detection
@@ -236,18 +236,18 @@ def _is_user_facing(data: Any, raw_text: str) -> bool:
 
 def _parse_config(path: Path) -> tuple[Any, str] | None:
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        raw = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
     except OSError:
         return None
     if path.suffix in {".yaml", ".yml"}:
         try:
-            data = yaml.safe_load(raw)
+            data = load_yaml(raw, path)
         except yaml.YAMLError:
             return None
     elif path.suffix == ".json":
         import json as _json
         try:
-            data = _json.loads(raw)
+            data = loads_json(raw, path)
         except _json.JSONDecodeError:
             return None
     else:
@@ -296,8 +296,8 @@ def _accepts_risk(project_root: Path) -> bool:
     if not cfg.is_file():
         return False
     try:
-        data = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(cfg, CONFIG_MAX_BYTES, errors="replace"), cfg) or {}
+    except (yaml.YAMLError, OSError):
         return False
     if not isinstance(data, dict):
         return False

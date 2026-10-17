@@ -52,7 +52,15 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import declares_mcp_sdk, in_skip_dir, make_finding
+from ._helpers import (
+    CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
+    declares_mcp_sdk,
+    in_skip_dir,
+    load_yaml,
+    make_finding,
+    read_text_capped,
+)
 
 _LANG_EXTS = (".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".java", ".kt", ".rs")
 _INFRA_EXTS = (".yaml", ".yml", ".conf", ".toml")
@@ -63,8 +71,8 @@ def _accepts_risk(project_root: Path) -> bool:
     if not cfg.is_file():
         return False
     try:
-        data = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(cfg, CONFIG_MAX_BYTES, errors="replace"), cfg) or {}
+    except (yaml.YAMLError, OSError):
         return False
     if not isinstance(data, dict):
         return False
@@ -95,7 +103,7 @@ def _scan_001_session_id(source_files: list[Path]) -> list[tuple[Path, int]]:
     hits: list[tuple[Path, int]] = []
     for path in source_files:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         m = _SESSION_ID_RE.search(text) or _SESSION_ID_CONST_RE.search(text)
@@ -122,7 +130,7 @@ def _scan_002_tasks_list(source_files: list[Path]) -> list[tuple[Path, int]]:
     hits: list[tuple[Path, int]] = []
     for path in source_files:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         m = _TASKS_LIST_LITERAL_RE.search(text) or _TASKS_LIST_CALL_RE.search(text)
@@ -190,7 +198,7 @@ def _scan_003_sticky(
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
 
@@ -261,7 +269,7 @@ def _scan_004_no_cache(source_files: list[Path]) -> list[tuple[Path, int]]:
     hits: list[tuple[Path, int]] = []
     for path in source_files:
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         calls = list(_TOOLS_LIST_CALL_RE.finditer(text))

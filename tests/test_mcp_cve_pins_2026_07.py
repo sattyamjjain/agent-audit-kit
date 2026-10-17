@@ -3001,9 +3001,9 @@ def test_a_lockfile_is_parsed_once_for_the_whole_table(
     calls: list[str] = []
     real = pins._lockfile_index
 
-    def counting(text: str, filename: str) -> dict:
+    def counting(text: str, filename: str, path: Path | None = None) -> dict:
         calls.append(filename)
-        return real(text, filename)
+        return real(text, filename, path)
 
     monkeypatch.setattr(pins, "_lockfile_index", counting)
     lock = "packages:\n  /repomix@1.0.0:\n    resolution: {integrity: a}\n"

@@ -5,7 +5,14 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    find_line_number,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    read_text_capped,
+)
 
 # ---- AAK-LEGAL-001: Copyleft / restrictive license patterns ----
 _COPYLEFT_RE = re.compile(
@@ -139,10 +146,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for pkg_path in _find_package_jsons(project_root):
         try:
-            raw_text = pkg_path.read_text(encoding="utf-8")
+            raw_text = read_text_capped(pkg_path, CONFIG_MAX_BYTES, errors="replace")
             if len(raw_text) > 1_000_000:
                 continue
-            data = json.loads(raw_text)
+            data = loads_json(raw_text, pkg_path)
         except (json.JSONDecodeError, OSError):
             continue
 

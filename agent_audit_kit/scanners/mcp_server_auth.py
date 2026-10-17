@@ -21,7 +21,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import MANIFEST_MAX_BYTES, SOURCE_MAX_BYTES, in_skip_dir, loads_json, make_finding, read_text_capped
 
 
 _PY_MCP_ROUTE_RE = re.compile(
@@ -86,14 +86,14 @@ def _is_azure_mcp_repo(project_root: Path) -> bool:
         if not p.is_file():
             continue
         try:
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(p, MANIFEST_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if _AZURE_HINT_RE.search(text):
             return True
         if name == "package.json":
             try:
-                data = json.loads(text)
+                data = loads_json(text, p)
             except json.JSONDecodeError:
                 data = {}
             if isinstance(data, dict):
@@ -118,7 +118,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         suffix = path.suffix
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if suffix == ".py":

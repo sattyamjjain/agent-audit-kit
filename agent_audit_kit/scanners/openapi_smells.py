@@ -29,7 +29,7 @@ from pathlib import Path
 import yaml
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding
+from agent_audit_kit.scanners._helpers import CONFIG_MAX_BYTES, load_yaml, loads_json, make_finding, read_text_capped
 
 
 _OPENAPI_FILENAMES: frozenset[str] = frozenset({
@@ -81,14 +81,14 @@ def _candidate_files(project_root: Path) -> list[Path]:
 
 def _load(path: Path) -> dict | None:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
     except OSError:
         return None
     try:
         if path.suffix.lower() == ".json":
-            data = json.loads(text)
+            data = loads_json(text, path)
         else:
-            data = yaml.safe_load(text)
+            data = load_yaml(text, path)
     except (json.JSONDecodeError, yaml.YAMLError):
         return None
     if not isinstance(data, dict):

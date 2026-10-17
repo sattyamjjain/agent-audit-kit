@@ -34,12 +34,14 @@ from typing import Iterable
 
 from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     INTERPOLATION_RE,
-    in_skip_dir,
     find_line_numbers,
+    in_skip_dir,
     loads_jsonc,
     make_finding,
     placed,
+    read_text_capped,
 )
 
 _VSCODE_DIR = ".vscode"
@@ -160,11 +162,11 @@ def _iter_config_files(project_root: Path, name: str) -> Iterable[Path]:
 def _parse(path: Path, rel: str) -> tuple[object | None, Finding | None]:
     """Return (data, None) on success, or (None, parse-failure finding)."""
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        raw = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
     except OSError:
         return None, None
     try:
-        return loads_jsonc(raw), None
+        return loads_jsonc(raw, path), None
     except (json.JSONDecodeError, ValueError) as exc:
         return None, _finding(
             "AAK-IDE-TASK-004",

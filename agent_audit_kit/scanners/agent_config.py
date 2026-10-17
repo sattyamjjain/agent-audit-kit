@@ -6,7 +6,15 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import finditer_up_to_last, host_ip, line_at, make_finding, url_hosts
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    finditer_up_to_last,
+    host_ip,
+    line_at,
+    make_finding,
+    read_text_capped,
+    url_hosts,
+)
 
 # ---- Target files to scan (relative to project root) ----
 _AGENT_CONFIG_FILES: list[str] = [
@@ -1198,7 +1206,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for config_path in _find_agent_config_files(project_root):
         try:
-            content = config_path.read_text(encoding="utf-8", errors="ignore")
+            content = read_text_capped(config_path, CONFIG_MAX_BYTES, errors="ignore")
             if len(content) > 1_000_000:
                 continue
         except OSError:

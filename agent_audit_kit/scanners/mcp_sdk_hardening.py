@@ -28,7 +28,15 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import declares_mcp_sdk, in_skip_dir, make_finding
+from ._helpers import (
+    CONFIG_MAX_BYTES,
+    SOURCE_MAX_BYTES,
+    declares_mcp_sdk,
+    in_skip_dir,
+    load_yaml,
+    make_finding,
+    read_text_capped,
+)
 
 _STDIO_MARKERS = (
     "StdioServerTransport",
@@ -100,7 +108,7 @@ def _uses_stdio(project_root: Path) -> list[Path]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if any(m in text for m in _STDIO_MARKERS) and _constructs_stdio(text):
@@ -119,7 +127,7 @@ def _has_sanitizer_or_optout(path: Path) -> bool:
     here, so the file that imports it is still reported.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
     except OSError:
         return False
     if _STDIO_OPT_OUT_RE.search(text):
@@ -132,8 +140,8 @@ def _accepts_risk(project_root: Path) -> bool:
     if not cfg.is_file():
         return False
     try:
-        data = yaml.safe_load(cfg.read_text(encoding="utf-8")) or {}
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(cfg, CONFIG_MAX_BYTES, errors="replace"), cfg) or {}
+    except (yaml.YAMLError, OSError):
         return False
     if not isinstance(data, dict):
         return False

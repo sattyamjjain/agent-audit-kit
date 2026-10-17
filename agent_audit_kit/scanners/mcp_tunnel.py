@@ -66,9 +66,12 @@ import yaml
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
-    in_skip_dir,
+    CONFIG_MAX_BYTES,
     find_line_number,
+    in_skip_dir,
+    load_yaml_all,
     make_finding,
+    read_text_capped,
 )
 
 
@@ -140,7 +143,7 @@ def _unwrap_proxy_config(data: Any) -> dict[str, Any] | None:
     return None
 
 
-def _proxy_configs(raw: str) -> list[dict[str, Any]]:
+def _proxy_configs(raw: str, path: Path) -> list[dict[str, Any]]:
     """The proxy configs in every YAML document of `raw`, Helm wrapper removed.
 
     This was `yaml.safe_load`, which raises on a stream of more than one
@@ -154,7 +157,7 @@ def _proxy_configs(raw: str) -> list[dict[str, Any]]:
     still not checked; the AAK-MCP-TUNNEL-001 limitation says so.
     """
     try:
-        documents = list(yaml.safe_load_all(raw))
+        documents = load_yaml_all(raw, path)
     except yaml.YAMLError:
         return []
     return [cfg for cfg in map(_unwrap_proxy_config, documents) if cfg is not None]
@@ -179,12 +182,12 @@ def _find_tunnel_proxy_configs(project_root: Path) -> list[Path]:
         if p.name.lower() not in _TUNNEL_PROXY_FILENAMES and not _path_hints_tunnel(p, project_root):
             continue
         try:
-            raw = p.read_text(encoding="utf-8")
+            raw = read_text_capped(p, CONFIG_MAX_BYTES)
         except (OSError, UnicodeDecodeError):
             continue
         if len(raw) > 1_000_000:
             continue
-        if _proxy_configs(raw):
+        if _proxy_configs(raw, p):
             found.append(p)
     return found
 
@@ -344,7 +347,7 @@ def _check_ci_for_tunnel_tokens(
             if not p.is_file():
                 continue
             try:
-                raw = p.read_text(encoding="utf-8")
+                raw = read_text_capped(p, CONFIG_MAX_BYTES)
             except (OSError, UnicodeDecodeError):
                 continue
             if len(raw) > 1_000_000:
@@ -425,7 +428,7 @@ def _check_committed_k8s_tunnel_secrets(project_root: Path) -> list[Finding]:
         if in_skip_dir(p, project_root):
             continue
         try:
-            raw = p.read_text(encoding="utf-8")
+            raw = read_text_capped(p, CONFIG_MAX_BYTES)
         except (OSError, UnicodeDecodeError):
             continue
         if len(raw) > 1_000_000:
@@ -433,7 +436,7 @@ def _check_committed_k8s_tunnel_secrets(project_root: Path) -> list[Finding]:
         if "kind: Secret" not in raw and "kind: \"Secret\"" not in raw:
             continue
         try:
-            docs = list(yaml.safe_load_all(raw))
+            docs = load_yaml_all(raw, p)
         except yaml.YAMLError:
             continue
         rel = str(p.relative_to(project_root))
@@ -490,10 +493,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     # Proxy-config detections (rules -001 and -002).
     for cfg_path in _find_tunnel_proxy_configs(project_root):
         try:
-            raw = cfg_path.read_text(encoding="utf-8")
+            raw = read_text_capped(cfg_path, CONFIG_MAX_BYTES)
         except (OSError, UnicodeDecodeError):
             continue
-        configs = _proxy_configs(raw)
+        configs = _proxy_configs(raw, cfg_path)
         if not configs:
             continue
         rel = str(cfg_path.relative_to(project_root))

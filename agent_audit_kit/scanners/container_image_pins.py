@@ -95,7 +95,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, make_finding, strip_jsonc
+from ._helpers import SKIP_DIRS, compose_yaml_all, make_finding, read_text_capped, strip_jsonc
 
 _Ver = tuple[int, int, int]
 
@@ -505,11 +505,11 @@ def _inline_hit(text: str, kind: str, pin: _ImagePin) -> tuple[str, int] | None:
     return None
 
 
-def _helm_refs(text: str) -> Iterator[tuple[str, str, int]]:
+def _helm_refs(text: str, path: Path) -> Iterator[tuple[str, str, int]]:
     """(repository, tag, line) for every mapping that pairs the two, as Helm
     values do. Composed, not loaded: node values are the strings as written."""
     try:
-        roots = [n for n in yaml.compose_all(text, Loader=yaml.SafeLoader) if n is not None]
+        roots = compose_yaml_all(text, path)
     except yaml.YAMLError:
         return
     seen: set[int] = set()
@@ -554,7 +554,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
         except OSError:
             continue
         rel = str(path.relative_to(project_root))
@@ -572,7 +572,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         pins = [pin for pin in _PINS if _NEEDLES[pin.image] in lowered]
         if not pins:
             continue
-        helm = list(_helm_refs(text)) if kind == "yaml" else []
+        helm = list(_helm_refs(text, path)) if kind == "yaml" else []
         for pin in pins:
             hit = _inline_hit(text, kind, pin)
             if hit is None:

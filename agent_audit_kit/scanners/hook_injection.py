@@ -15,7 +15,9 @@ from agent_audit_kit.scanners._helpers import (
     in_skip_dir,
     is_loopback_url,
     iter_hook_handlers,
+    loads_json,
     make_finding,
+    read_text_capped,
     url_readings,
 )
 from agent_audit_kit.scanners._launchers import shell_words
@@ -202,26 +204,28 @@ def _hook_sources(
     """
     for path in _find_settings(project_root, include_user_config):
         try:
-            raw_text = path.read_text(encoding="utf-8")
+            raw_text = read_text_capped(path, _MAX_HOOK_FILE_CHARS, errors="replace")
             if len(raw_text) > _MAX_HOOK_FILE_CHARS:
                 continue
-            data = json.loads(raw_text)
+            data = loads_json(raw_text, path)
         except (json.JSONDecodeError, OSError):
             continue
         rel_path = _relative(path, project_root)
         scanned_files.add(rel_path)
+        if not isinstance(data, dict):
+            continue
         yield rel_path, raw_text, data.get("hooks", {})
     plugin_files, skill_files = _plugin_and_skill_files(project_root)
     for path in plugin_files:
-        # RecursionError: json.loads recurses, so 20,000 nested `[` in 40 KB
-        # raised it, and it is no JSONDecodeError. One hostile plugin file took
-        # the whole scanner down, and the settings findings with it.
+        # `loads_json` refuses a file nested past the recursion limit (20,000
+        # nested `[` in 40 KB), which used to take the whole scanner down, and
+        # the settings findings with it; the refusal is reported against it.
         try:
             if path.stat().st_size > _MAX_PLUGIN_OR_SKILL_BYTES:
                 continue
-            raw_text = path.read_text(encoding="utf-8")
-            data = json.loads(raw_text)
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError, RecursionError):
+            raw_text = read_text_capped(path, _MAX_PLUGIN_OR_SKILL_BYTES, errors="replace")
+            data = loads_json(raw_text, path)
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
             continue
         rel_path = _relative(path, project_root)
         scanned_files.add(rel_path)
@@ -231,12 +235,12 @@ def _hook_sources(
         try:
             if path.stat().st_size > _MAX_PLUGIN_OR_SKILL_BYTES:
                 continue
-            raw_text = path.read_text(encoding="utf-8", errors="replace")
+            raw_text = read_text_capped(path, _MAX_PLUGIN_OR_SKILL_BYTES, errors="replace")
         except OSError:
             continue
         rel_path = _relative(path, project_root)
         scanned_files.add(rel_path)
-        yield rel_path, raw_text, _parse_frontmatter(raw_text).get("hooks", {})
+        yield rel_path, raw_text, _parse_frontmatter(raw_text, path).get("hooks", {})
 
 
 _find_line_number = find_line_number

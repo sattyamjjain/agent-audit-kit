@@ -17,7 +17,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow
 
 
 # The imported names stop at the next `from langgraph.prebuilt import` on the
@@ -39,7 +39,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     if not _TOOLNODE_IMPORT_RE.search(text):
         return []
     try:
-        tree = ast.parse(text, str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
     findings: list[Finding] = []
@@ -91,8 +91,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
-        findings.extend(_walk_python(text, path, project_root, scanned))
+        with refusing_overflow(path):
+            findings.extend(_walk_python(text, path, project_root, scanned))
     return findings, scanned

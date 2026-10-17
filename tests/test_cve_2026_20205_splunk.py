@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from agent_audit_kit.rules.builtin import RULES
+from agent_audit_kit.scanners import log_token_leak
 from agent_audit_kit.scanners.log_token_leak import scan
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cves" / "cve-2026-20205"
@@ -359,12 +360,21 @@ def test_a_call_past_the_argument_window_is_not_read_and_the_rule_says_so(tmp_pa
     assert "past 4,000 characters" in RULES[_RULE].limitations
 
 
-def test_a_call_is_read_only_if_its_arguments_end_within_the_budget(tmp_path: Path) -> None:
+def test_a_call_is_read_only_if_its_arguments_end_within_the_budget(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The budget counts the arguments of nested calls once per call around them,
+    # so a file under the 512 KB source cap can spend it. Flat calls spend no more
+    # than the file holds, so this measures the boundary against a smaller one;
+    # the budget the scanner ships, which the rule text states, is pinned here.
+    assert log_token_leak._FILE_ARGS_BUDGET == 2_000_000
+    budget = 200_000
+    monkeypatch.setattr(log_token_leak, "_FILE_ARGS_BUDGET", budget)
     benign = 'logger.info("' + "y" * 3_986 + '")\n'  # 3,988 characters of arguments
-    count = 2_000_000 // 3_988
+    count = budget // 3_988
     used = count * 3_988
-    ending_at_the_budget = benign * count + _leak_call(2_000_000 - used)
-    straddling_it = benign * count + _leak_call(2_000_000 - used + 1)
+    ending_at_the_budget = benign * count + _leak_call(budget - used)
+    straddling_it = benign * count + _leak_call(budget - used + 1)
     assert _leaks(tmp_path / "within", "auth.py", ending_at_the_budget) == [count + 1]
     assert _leaks(tmp_path / "straddling", "auth.py", straddling_it) == []
     assert "end within the file's first 2,000,000 characters" in RULES[_RULE].limitations

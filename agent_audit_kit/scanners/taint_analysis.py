@@ -5,7 +5,7 @@ import string
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python
 
 # ---- Tool decorator names to recognise ----
 _TOOL_DECORATORS: frozenset[str] = frozenset({
@@ -1327,7 +1327,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
         # Parse AST
         try:
-            tree = ast.parse(source, filename=rel_path)
+            tree = parse_python(source, py_path, rel_path)
         except SyntaxError:
             continue
 

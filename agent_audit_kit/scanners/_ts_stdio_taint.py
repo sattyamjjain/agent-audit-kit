@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import functools
 import re
-from typing import Any
+from typing import Any, Iterator
 
 _SINK_CTORS = ("StdioClientTransport", "StdioServerTransport")
 _SINK_PROPS = ("command", "args")
@@ -66,10 +66,15 @@ def _text(node: Any, src: bytes) -> str:
     return src[node.start_byte:node.end_byte].decode("utf-8", errors="replace")
 
 
-def _walk(node: Any):
-    yield node
-    for child in node.children:
-        yield from _walk(child)
+def _walk(node: Any) -> Iterator[Any]:
+    """Every node under `node`, itself first, in document order. Iterative: a
+    `yield from` per level took a deeply nested file past the recursion limit
+    (`[taint]` installs only), and the scanner down with it."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        yield current
+        stack.extend(reversed(current.children))
 
 
 def _is_taint_source(expr: str) -> bool:

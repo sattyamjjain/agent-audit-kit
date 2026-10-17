@@ -521,9 +521,9 @@ def test_a_lockfile_is_indexed_once_for_both_ssrf_pins(tmp_path: Path, monkeypat
     built: list[str] = []
     real = _dependency_pins._lockfile_index
 
-    def counting(text: str, filename: str) -> dict:
+    def counting(text: str, filename: str, path: Path | None = None) -> dict:
         built.append(filename)
-        return real(text, filename)
+        return real(text, filename, path)
 
     monkeypatch.setattr(_dependency_pins, "_lockfile_index", counting)
     findings = [f for module in (ssrf_redirect, ssrf_toctou) for f in module.scan(tmp_path)[0]]

@@ -24,7 +24,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, sub_up_to_last
 
 _RULE_ID = "AAK-MCP-TOOLGATE-ASYMMETRY-001"
 
@@ -93,12 +93,12 @@ def _gate_in_body(fn: ast.AST) -> bool:
     return False
 
 
-def _scan_python(text: str) -> bool:
+def _scan_python(text: str, path: Path) -> bool:
     """Return True if a discovery-gated-but-not-exec-gated asymmetry is found."""
     if not _MCP_HINT_RE.search(text):
         return False
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, path)
     except SyntaxError:
         return False
 
@@ -217,7 +217,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
 
         if path.suffix in _PY_SUFFIXES:
-            asymmetric = _scan_python(text)
+            asymmetric = _scan_python(text, path)
         else:
             asymmetric = _scan_ts(text)
 

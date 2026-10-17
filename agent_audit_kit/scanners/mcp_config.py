@@ -9,16 +9,19 @@ from typing import Any
 from agent_audit_kit.models import Finding
 from agent_audit_kit.redaction import shown_arg
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     ZCODE_SERVER_KEY,
     find_line_number,
     host_ip,
     in_skip_dir,
     is_loopback_url,
     is_zcode_workspace_config,
+    loads_json,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
     placed,
+    read_text_capped,
     strip_vscode_variables,
     url_hosts,
     zcode_workspace_configs,
@@ -472,12 +475,14 @@ def scan(project_root: Path, include_user_config: bool = False) -> tuple[list[Fi
     for config_path in configs:
         zcode = is_zcode_workspace_config(config_path)
         try:
-            raw_text = config_path.read_text(encoding="utf-8")
+            # Decoded as Node decodes it (a bad byte becomes U+FFFD): a client
+            # still loads the file, so a stray byte must not hide it.
+            raw_text = read_text_capped(config_path, CONFIG_MAX_BYTES, errors="replace")
             if len(raw_text) > 1_000_000:
                 continue
             # ZCode parses its config with JSON.parse and skips a file with a
             # comment in it, servers and all, so such a file is not read here.
-            data = json.loads(raw_text) if zcode else loads_jsonc(raw_text)
+            data = loads_json(raw_text, config_path) if zcode else loads_jsonc(raw_text, config_path)
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -648,7 +653,7 @@ def _host_has_attestation(data: Any) -> bool:
     # Some hosts carry the well-known URI as a top-level setting.
     try:
         host_blob = json.dumps(data, default=str).lower()
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RecursionError):
         return False
     return _WELL_KNOWN_TOKEN in host_blob
 
@@ -670,7 +675,7 @@ def _server_has_attestation(server_cfg: Any) -> bool:
     # Well-known URI named anywhere in the server entry.
     try:
         server_blob = json.dumps(server_cfg, default=str).lower()
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, RecursionError):
         return False
     return _WELL_KNOWN_TOKEN in server_blob
 

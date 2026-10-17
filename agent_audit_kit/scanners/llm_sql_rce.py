@@ -46,7 +46,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, sub_up_to_last
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, sub_up_to_last
 
 _RULE_ID = "AAK-LLM-SQL-RCE-001"
 
@@ -195,10 +195,10 @@ def _collect_tainted(tree: ast.AST) -> set[str]:
     return tainted
 
 
-def _arm_a_python(text: str) -> int | None:
+def _arm_a_python(text: str, path: Path) -> int | None:
     """Return the line of the first LLM-tainted SQL execution, else None."""
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, path)
     except SyntaxError:
         return None
     if _has_validation_py(tree):
@@ -315,7 +315,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel_path = str(path.relative_to(project_root))
 
         if path.suffix in _PY_SUFFIXES:
-            flow_line = _arm_a_python(text)
+            flow_line = _arm_a_python(text, path)
         else:
             flow_line = _arm_a_ts(text)
         priv = _arm_b(text)

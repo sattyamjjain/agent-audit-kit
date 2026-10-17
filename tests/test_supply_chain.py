@@ -279,7 +279,7 @@ def test_supply_003_reports_a_script_too_long_to_judge(tmp_path: Path) -> None:
     one costs the scan."""
     import time
 
-    script = "tsc " + "a" * 2_000_000
+    script = "tsc " + "a" * 1_000_000
     started = time.perf_counter()
     assert _supply_003(tmp_path, script) == [f"scripts.postinstall: {script}"]
     assert time.perf_counter() - started < 5.0
@@ -936,7 +936,9 @@ def test_a_pin_checks_lockfile_over_the_limit_is_not_read(
     assert rule_id in {f.rule_id for f in scanner.scan(tmp_path)[0]}, "the lockfile is reportable"
     monkeypatch.setattr(limited, "MAX_LOCKFILE_BYTES", len(text.encode()) - 1)
     assert rule_id not in {f.rule_id for f in scanner.scan(tmp_path)[0]}
-    assert get_rule(rule_id).limitations.endswith("A lockfile over 32 MiB is not read.")
+    # The pins #1035 rewrote state the manifest cap in a sentence of its own.
+    assert get_rule(rule_id).limitations.endswith(
+        ("or a lockfile over 32 MiB, is not read.", "A lockfile over 32 MiB is not read."))
 
 
 def test_the_lockfile_index_reads_each_format() -> None:

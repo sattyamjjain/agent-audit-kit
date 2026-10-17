@@ -11,7 +11,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners import _ssrf_reach
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, make_finding, refusing_overflow
 
 
 _SCAN_EXTS = {".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go", ".rs"}
@@ -91,7 +91,9 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     rel = str(path.relative_to(project_root))
 
     is_python = path.suffix.lower() == ".py"
-    sites = _ssrf_reach.analyze(text, is_python=is_python)
+    sites: list[_ssrf_reach.Reach] = []
+    with refusing_overflow(path):
+        sites = _ssrf_reach.analyze(text, is_python=is_python)
     if not sites:
         return findings
 

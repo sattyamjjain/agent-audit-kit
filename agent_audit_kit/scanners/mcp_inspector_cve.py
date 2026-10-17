@@ -34,13 +34,20 @@ skip list applies, minus `vendor/` and `node_modules/`, so a copy inside a
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SKIP_DIRS, in_skip_dir, make_finding
+from ._helpers import (
+    MANIFEST_MAX_BYTES,
+    SKIP_DIRS,
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    loads_json,
+    make_finding,
+    read_text_capped,
+)
 
 
 # Override SKIP_DIRS for this scanner: detecting vendored copies in
@@ -80,9 +87,9 @@ def _stated_version(root: Path) -> tuple[tuple[int, int, int], str, int] | None:
     `@mcpjam/inspector`, or None when nothing says which release the copy is."""
     manifest = root / "package.json"
     try:
-        text = manifest.read_text(encoding="utf-8-sig")
-        data = json.loads(text)
-    except (OSError, UnicodeDecodeError, ValueError, RecursionError):
+        text = read_text_capped(manifest, MANIFEST_MAX_BYTES, encoding="utf-8-sig")
+        data = loads_json(text, manifest)
+    except (OSError, UnicodeDecodeError, ValueError):
         return None
     if not isinstance(data, dict) or str(data.get("name", "")).lower() != _PACKAGE:
         return None
@@ -168,7 +175,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         rel = str(rel_path)
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         # Outside a copy only the call shape counts. A file whose own name holds

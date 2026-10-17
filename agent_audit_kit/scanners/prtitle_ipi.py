@@ -27,7 +27,15 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import MatchSpans, PatternSpans, in_skip_dir, make_finding
+from ._helpers import (
+    MatchSpans,
+    PatternSpans,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+)
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -269,7 +277,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     if _title_start(joined, 0, len(joined)) is None or not _LLM_SINK_RE.search(joined):
         return []
     try:
-        tree = ast.parse(text, str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
     findings: list[Finding] = []
@@ -351,13 +359,12 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            if path.stat().st_size > _MAX_BYTES:
-                continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, _MAX_BYTES, errors="replace")
         except OSError:
             continue
         if suffix == ".py":
-            findings.extend(_walk_python(text, path, project_root, scanned))
+            with refusing_overflow(path):
+                findings.extend(_walk_python(text, path, project_root, scanned))
         else:
             findings.extend(_walk_ts(text, path, project_root, scanned))
     return findings, scanned

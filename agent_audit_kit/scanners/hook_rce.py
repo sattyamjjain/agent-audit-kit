@@ -24,11 +24,15 @@ from typing import Iterable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     INTERPOLATION_RE,
+    SOURCE_MAX_BYTES,
     find_line_number,
-    make_finding,
     in_skip_dir,
+    loads_json,
+    make_finding,
     placed,
+    read_text_capped,
 )
 
 
@@ -101,20 +105,32 @@ def _iter_hook_files(project_root: Path) -> Iterable[Path]:
 
 def _load_json(path: Path) -> dict | None:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return loads_json(read_text_capped(path, CONFIG_MAX_BYTES, errors="replace"), path)
     except (json.JSONDecodeError, OSError):
         return None
 
 
 def _walk_hook_commands(data: object) -> Iterable[str]:
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if key in {"command", "cmd", "run", "script"} and isinstance(value, str):
-                yield value
-            yield from _walk_hook_commands(value)
-    elif isinstance(data, list):
-        for item in data:
-            yield from _walk_hook_commands(item)
+    """Every string under a command-like key, in document order. Iterative:
+    `json.loads` accepts nesting deeper than Python's recursion limit, and the
+    recursive walk this was took the scanner down on one such file."""
+    stack: list[object] = [data] if isinstance(data, (dict, list)) else []
+    while stack:
+        node = stack.pop()
+        if isinstance(node, str):
+            yield node
+            continue
+        parts: list[object] = []
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if isinstance(value, str):
+                    if key in {"command", "cmd", "run", "script"}:
+                        parts.append(value)
+                elif isinstance(value, (dict, list)):
+                    parts.append(value)
+        elif isinstance(node, list):
+            parts.extend(item for item in node if isinstance(item, (dict, list)))
+        stack.extend(reversed(parts))
 
 
 def _check_json_settings(path: Path, project_root: Path) -> list[Finding]:
@@ -141,7 +157,7 @@ def _check_json_settings(path: Path, project_root: Path) -> list[Finding]:
 def _check_hook_script(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
     except OSError:
         return findings
     rel = str(path.relative_to(project_root))

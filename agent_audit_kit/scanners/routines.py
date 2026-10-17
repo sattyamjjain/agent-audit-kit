@@ -21,7 +21,14 @@ except ImportError:
     yaml = None  # type: ignore[assignment]
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    find_line_number,
+    load_yaml,
+    loads_json,
+    make_finding,
+    read_text_capped,
+)
 
 
 _BROAD_PERMS = (
@@ -45,18 +52,18 @@ def _iter_routine_files(project_root: Path) -> list[Path]:
 
 def _load(path: Path) -> tuple[dict | None, str]:
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
     except OSError:
         return None, ""
     if path.suffix == ".json":
         try:
-            return json.loads(raw), raw
+            return loads_json(raw, path), raw
         except json.JSONDecodeError:
             return None, raw
     if yaml is None:
         return None, raw
     try:
-        data = yaml.safe_load(raw)
+        data = load_yaml(raw, path)
         if isinstance(data, dict):
             return data, raw
     except yaml.YAMLError:

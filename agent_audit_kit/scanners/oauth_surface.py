@@ -39,7 +39,17 @@ except ImportError:
     yaml = None  # type: ignore[assignment]
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    MANIFEST_MAX_BYTES,
+    find_line_number,
+    find_line_numbers,
+    load_yaml,
+    loads_json,
+    loads_toml,
+    make_finding,
+    read_text_capped,
+)
 
 
 _BROAD_SCOPE_RE = re.compile(
@@ -99,8 +109,8 @@ def _load_trust_allowlist(project_root: Path) -> set[str]:
     if not path.is_file() or yaml is None:
         return set()
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    except yaml.YAMLError:
+        data = load_yaml(read_text_capped(path, CONFIG_MAX_BYTES, errors="replace"), path)
+    except (yaml.YAMLError, OSError):
         return set()
     trusted = data.get("trusted_client_ids") if isinstance(data, dict) else None
     if not isinstance(trusted, list):
@@ -126,7 +136,7 @@ def _check_config_file(
     trusted: set[str],
 ) -> list[Finding]:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(path, CONFIG_MAX_BYTES, errors="replace")
     except OSError:
         return []
     scopes = list(_BROAD_SCOPE_RE.finditer(text))
@@ -171,15 +181,17 @@ def _detect_package(manifest: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     rel = str(manifest.relative_to(project_root))
     try:
-        text = manifest.read_text(encoding="utf-8", errors="replace")
+        text = read_text_capped(manifest, MANIFEST_MAX_BYTES, errors="replace")
     except OSError:
         return findings
 
     deps: dict[str, str] = {}
     if manifest.name == "package.json":
         try:
-            data = json.loads(text)
+            data = loads_json(text, manifest)
         except json.JSONDecodeError:
+            return findings
+        if not isinstance(data, dict):
             return findings
         for section in ("dependencies", "devDependencies", "peerDependencies"):
             got = data.get(section) or {}
@@ -187,7 +199,7 @@ def _detect_package(manifest: Path, project_root: Path) -> list[Finding]:
                 deps.update({str(k): str(v) for k, v in got.items()})
     elif manifest.name == "pyproject.toml":
         try:
-            data = tomllib.loads(text)
+            data = loads_toml(text, manifest)
         except (tomllib.TOMLDecodeError, ValueError):
             return findings
         project = data.get("project", {}) or {}

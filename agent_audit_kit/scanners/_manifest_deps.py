@@ -52,7 +52,6 @@ read installs nothing, so there is no version in it to report.
 
 from __future__ import annotations
 
-import json
 import re
 from collections import deque
 from dataclasses import dataclass, replace
@@ -66,7 +65,15 @@ except ImportError:  # Python < 3.11
 
 import yaml
 
-from agent_audit_kit.scanners._helpers import loads_jsonc, strip_jsonc
+from agent_audit_kit.scanners._helpers import (
+    compose_yaml_all,
+    load_yaml,
+    loads_json,
+    loads_jsonc,
+    loads_toml,
+    refuse,
+    strip_jsonc,
+)
 from agent_audit_kit.scanners._launchers import (
     Launched,
     basename,
@@ -575,17 +582,26 @@ def declarations(path: Path, text: str) -> list[Declaration]:
         if name.startswith("requirements") and name.endswith(".txt"):
             return requirements_declarations(text)
         if name == "pyproject.toml":
-            return pyproject_declarations(tomllib.loads(text))
+            return pyproject_declarations(loads_toml(text, path))
         if name == "pipfile":
-            return pipfile_declarations(tomllib.loads(text))
+            return pipfile_declarations(loads_toml(text, path))
         if name == "package.json":
-            data = json.loads(text)
+            data = loads_json(text, path)
             return package_json_declarations(data) if isinstance(data, dict) else []
         if name.endswith((".yaml", ".yml")):
-            return mcp_config_declarations(yaml.safe_load(text))
+            # `_command_entries` reads each container once, so a document that
+            # contains itself ends there and is read, not refused.
+            return mcp_config_declarations(load_yaml(text, path, cycles_ok=True))
         if name.endswith(".json"):
-            return mcp_config_declarations(loads_jsonc(text))
-    except (ValueError, tomllib.TOMLDecodeError, yaml.YAMLError, RecursionError):
+            return mcp_config_declarations(loads_jsonc(text, path))
+    except (ValueError, tomllib.TOMLDecodeError, yaml.YAMLError):
+        return []
+    except RecursionError:
+        # A dependency table nested past the recursion limit (npm `overrides`,
+        # a Poetry list of alternatives) is refused, not read as no
+        # dependencies: the parse helpers already refuse a file the parser
+        # cannot take, and this is the same file seen one step later.
+        refuse(path, "dependency table nested too deep to read (RecursionError)")
         return []
     return []
 
@@ -614,7 +630,7 @@ _JSON_TOKEN_RE = re.compile(r'"(?:[^"\\]|\\.)*"?|[{}\[\]:,]')
 
 def _json_key(token: str) -> str:
     try:
-        key = json.loads(token)
+        key = loads_json(token, None)
     except ValueError:
         return token[1:-1]
     return key if isinstance(key, str) else token[1:-1]
@@ -871,9 +887,10 @@ def _toml_positions(text: str) -> dict[tuple[str | int, ...], int]:
 def _yaml_positions(text: str) -> dict[tuple[str | int, ...], int]:
     """The line of every node of a YAML document, by path (scalar keys only)."""
     try:
-        root = yaml.compose(text, Loader=yaml.SafeLoader)
+        roots = compose_yaml_all(text, None)
     except (yaml.YAMLError, RecursionError):
         return {}
+    root = roots[0] if len(roots) == 1 else None  # `yaml.compose` takes one document
     positions: dict[tuple[str | int, ...], int] = {}
     # Breadth first in document order, as `_command_entries` walks the loaded
     # document, so a node an alias shares gets the path that walk records for it.

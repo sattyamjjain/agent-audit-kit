@@ -28,8 +28,8 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding
-from .supply_chain import _lockfile_over_limit, _semver3
+from ._helpers import SOURCE_MAX_BYTES, find_line_number, in_skip_dir, make_finding, read_text_capped
+from .supply_chain import _lockfile_over_limit, _read_capped, _semver3
 
 
 _ATLASSIAN_HINT_RE = re.compile(
@@ -118,7 +118,7 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
         try:
             if _lockfile_over_limit(path):
                 continue
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = _read_capped(path)
         except OSError:
             continue
         m = _PIN_RE.search(text)
@@ -148,7 +148,7 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         if not _ATLASSIAN_HINT_RE.search(text):
@@ -232,7 +232,7 @@ def _check_attachment_traversal(project_root: Path, scanned: set[str]) -> list[F
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         code = _strip_py_prose(text)

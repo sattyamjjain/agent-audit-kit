@@ -7,10 +7,13 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     find_line_number,
     in_skip_dir,
+    loads_json,
     make_finding,
     placed,
+    read_text_capped,
     url_readings,
 )
 
@@ -348,10 +351,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for card_path in _find_agent_cards(project_root):
         try:
-            raw_text = card_path.read_text(encoding="utf-8")
+            raw_text = read_text_capped(card_path, CONFIG_MAX_BYTES, errors="replace")
             if len(raw_text) > 1_000_000:
                 continue
-            data = json.loads(raw_text)
+            data = loads_json(raw_text, card_path)
         except (json.JSONDecodeError, OSError):
             continue
 

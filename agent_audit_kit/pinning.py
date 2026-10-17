@@ -6,7 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import iter_mcp_servers, loads_jsonc, make_finding
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    iter_mcp_servers,
+    loads_jsonc,
+    make_finding,
+    read_text_capped,
+)
 
 
 def _hash_tool(name: str, description: str, input_schema: str) -> str:
@@ -57,7 +63,7 @@ def _discover_tools(project_root: Path) -> dict[str, dict]:
         if not config_path.is_file():
             continue
         try:
-            data = loads_jsonc(config_path.read_text())
+            data = loads_jsonc(read_text_capped(config_path, CONFIG_MAX_BYTES, encoding=None, errors="replace"), config_path)
         except (json.JSONDecodeError, OSError):
             continue
 

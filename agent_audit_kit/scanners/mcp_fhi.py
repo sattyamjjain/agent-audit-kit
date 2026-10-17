@@ -24,7 +24,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, read_text_capped
 
 
 _DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -125,7 +125,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         suffix = path.suffix
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
 

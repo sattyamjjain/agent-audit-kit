@@ -51,7 +51,13 @@ from ._dependency_pins import (
     read_manifest,
     read_text,
 )
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import (
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+)
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
 
@@ -148,7 +154,7 @@ def _is_redirect_disabled(call: ast.Call) -> bool:
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     try:
-        tree = ast.parse(text, str(path))
+        tree = parse_python(text, path, str(path))
     except SyntaxError:
         return []
 
@@ -239,11 +245,12 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
             continue
         suffix = path.suffix
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, 1_000_000, errors="replace")
         except OSError:
             continue
         if suffix == ".py":
-            findings.extend(_walk_python(text, path, project_root, scanned))
+            with refusing_overflow(path):
+                findings.extend(_walk_python(text, path, project_root, scanned))
         elif suffix in (".ts", ".tsx", ".js", ".mjs", ".cjs"):
             findings.extend(_walk_ts(text, path, project_root, scanned))
     return findings
@@ -316,7 +323,7 @@ def _check_lmdeploy_vl(project_root: Path, scanned: set[str]) -> list[Finding]:
     for path in project_root.rglob("*.py"):
         if in_skip_dir(path, project_root):
             continue
-        text = read_text(path)
+        text = read_text(path, 1_000_000)
         if text is None:
             continue
         if not _LMDEPLOY_HINT_RE.search(text):

@@ -25,7 +25,7 @@ import yaml
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import make_finding, placed
+from ._helpers import CONFIG_MAX_BYTES, load_yaml, make_finding, placed, read_text_capped
 
 _WORKFLOWS_DIR = ".github/workflows"
 _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -82,11 +82,11 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         rel = str(wf.relative_to(project_root))
         scanned.add(rel)
         try:
-            text = wf.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(wf, CONFIG_MAX_BYTES, errors="replace")
         except OSError:
             continue
         try:
-            doc = yaml.safe_load(text)
+            doc = load_yaml(text, wf)
         except yaml.YAMLError:
             continue
 

@@ -38,6 +38,7 @@ Detector contract:
 """
 from __future__ import annotations
 
+import io
 import re
 from pathlib import Path
 
@@ -73,17 +74,16 @@ _SOURCE_SUFFIXES: frozenset[str] = frozenset({
 
 # Cap how many lines per file we inspect — banner is always at the top.
 _BANNER_SEARCH_LINES = 8
+# The head those lines are taken from. A file was read a line at a time, and a
+# file with no line break is one line, so a 200 MB one was read whole (52 s).
+_BANNER_HEAD_CHARS = 1_000_000
 
 
 def _file_has_banner(path: Path) -> tuple[bool, int | None, str]:
     """Return (banner_present, line_number, matched_text)."""
     try:
         with path.open("r", encoding="utf-8", errors="replace") as fh:
-            head = []
-            for i, line in enumerate(fh):
-                if i >= _BANNER_SEARCH_LINES:
-                    break
-                head.append(line)
+            head = io.StringIO(fh.read(_BANNER_HEAD_CHARS)).readlines()[:_BANNER_SEARCH_LINES]
     except OSError:
         return False, None, ""
     blob = "".join(head)

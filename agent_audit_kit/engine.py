@@ -211,6 +211,42 @@ def _scanner_fail_finding(scanner_name: str, exc: BaseException) -> Finding:
     )
 
 
+def _refused_file_findings(scanner_name: str, refused: dict[str, str], project_root: Path) -> list[Finding]:
+    """One INFO finding per file a scanner refused (see
+    `scanners._helpers.refuse`), filed against that file.
+
+    The scanner-failure rule, not a new one: the condition is the scanner not
+    evaluating its rules on that file, which is what the rule records, and the
+    rule carries what makes that impossible to miss. It is kept through
+    `--rules` filters and severity floors, and `aak scan` exits 1 as
+    INCOMPLETE unless `--allow-scanner-failure`. The evidence starts
+    `scanner='<name>' error=`, the prefix the JSON report reads the scanner's
+    name back from, and names the file and the reason.
+    """
+    from agent_audit_kit.scanners._helpers import _parts_below
+
+    rule = get_rule(SCANNER_FAIL_RULE_ID)
+    findings: list[Finding] = []
+    for path, reason in refused.items():
+        parts = _parts_below(Path(path), project_root)
+        shown = "/".join(parts) if parts else path
+        findings.append(Finding(
+            rule_id=rule.rule_id,
+            title=rule.title,
+            description=rule.description,
+            severity=Severity.INFO,
+            category=Category.AGENT_CONFIG,
+            file_path=shown,
+            line_number=None,
+            evidence=(
+                f"scanner={scanner_name!r} error=RefusedFile: {shown}: {reason}; "
+                "the rules it owns were not evaluated on this file"
+            ),
+            remediation=rule.remediation,
+        ))
+    return findings
+
+
 def run_scan(
     project_root: Path,
     include_user_config: bool = False,
@@ -240,6 +276,11 @@ def run_scan(
         "ignore_paths": ignore_paths,
     }
 
+    # A file a scanner's parser refuses (nested too deep, YAML aliases grown too
+    # large) costs that file alone: the scanner goes on, and each refusal is
+    # reported against its file (see `scanners._helpers.refuse`).
+    from agent_audit_kit.scanners._helpers import collecting_refusals
+
     for reg in _get_registry(strict_loading=strict_loading):
         _log(f"Scanning {reg.name}...")
         scanner_kwargs: dict[str, Any] = {"project_root": project_root}
@@ -247,15 +288,19 @@ def run_scan(
             if key in kwargs_map:
                 scanner_kwargs[key] = kwargs_map[key]
         try:
-            findings, files = reg.scan_fn(**scanner_kwargs)
+            with collecting_refusals() as refused:
+                findings, files = reg.scan_fn(**scanner_kwargs)
         except Exception as exc:  # noqa: BLE001 — intentional broad catch; see docstring
             _log(f"  {reg.name}: CRASHED ({type(exc).__name__}: {exc})")
             _log(traceback.format_exc())
             all_findings.append(_scanner_fail_finding(reg.name, exc))
             continue
         all_findings.extend(findings)
+        all_findings.extend(_refused_file_findings(reg.name, refused, project_root))
         all_scanned_files.update(files)
         _log(f"  {reg.name}: {len(files)} files, {len(findings)} findings")
+        for path, reason in refused.items():
+            _log(f"  {reg.name}: refused {path}: {reason}")
 
     # Apply global ignore_paths filter. Historically ignore_paths was
     # threaded only into secret_exposure (the only scanner that took

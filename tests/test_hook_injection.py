@@ -686,14 +686,18 @@ def test_a_hostile_plugin_or_skill_file_does_not_cost_the_settings_findings(
     assert {"AAK-HOOK-001", "AAK-HOOK-004"} <= _settings_ids(tmp_path)
 
 
-def test_a_hostile_skill_fails_no_scanner_that_reads_frontmatter(tmp_path: Path) -> None:
+def test_a_hostile_skill_is_refused_per_file_and_costs_no_scanner_its_findings(tmp_path: Path) -> None:
+    """Each scanner that reads frontmatter refuses the skill and reports that
+    against the file, never as a scanner-wide failure, so the settings findings
+    survive. A client may load what AAK refused, so the refusal is not silent."""
     from agent_audit_kit.engine import run_scan
 
     _write(tmp_path, ".claude/settings.json", _SETTINGS_EVIL)
     _write(tmp_path, "skills/x/SKILL.md", "---\nname: x\nmeta: " + "[" * 2000 + "]" * 2000 + "\n---\n")
     result = run_scan(project_root=tmp_path)
-    failed = [f.evidence for f in result.findings if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
-    assert failed == []
+    failed = [f for f in result.findings if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
+    assert failed and {f.file_path for f in failed} == {"skills/x/SKILL.md"}
+    assert all("YAML nested deeper than 100 levels" in f.evidence for f in failed)
     assert "AAK-HOOK-001" in {f.rule_id for f in result.findings if f.file_path == ".claude/settings.json"}
 
 

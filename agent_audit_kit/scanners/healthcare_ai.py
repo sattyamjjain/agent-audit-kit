@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Iterable
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, in_skip_dir, loads_json, make_finding, read_text_capped
 
 
 _SCAN_EXTS = {".md", ".json", ".yaml", ".yml", ".txt"}
@@ -200,28 +200,42 @@ def _iter_files(project_root: Path) -> Iterable[Path]:
         yield path
 
 
+_TEXT_KEYS = frozenset({
+    "description", "system_prompt", "systemprompt", "persona", "prompt",
+    "instructions", "tagline", "summary", "greeting",
+})
+
+
 def _collect_text_from_json(obj: object) -> str:
-    """Pull description-like text values out of a loaded MCP/agent-card config."""
+    """Pull description-like text values out of a loaded MCP/agent-card config.
+
+    Every string in it, in document order, with a description-like value
+    twice. Iterative: `json.loads` accepts nesting thousands of levels deeper
+    than Python's recursion limit, and the recursive walk this was took the
+    scanner down on one such file, with its findings on every other.
+    """
     out: list[str] = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            if isinstance(value, str) and key.lower() in {
-                "description", "system_prompt", "systemprompt", "persona", "prompt",
-                "instructions", "tagline", "summary", "greeting",
-            }:
-                out.append(value)
-            out.append(_collect_text_from_json(value))
-    elif isinstance(obj, list):
-        for item in obj:
-            out.append(_collect_text_from_json(item))
-    elif isinstance(obj, str):
-        return obj
-    return "\n".join(s for s in out if s)
+    stack: list[object] = [obj]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, str):
+            if node:
+                out.append(node)
+        elif isinstance(node, dict):
+            parts: list[object] = []
+            for key, value in node.items():
+                if isinstance(value, str) and key.lower() in _TEXT_KEYS:
+                    parts.append(value)
+                parts.append(value)
+            stack.extend(reversed(parts))
+        elif isinstance(node, list):
+            stack.extend(reversed(node))
+    return "\n".join(out)
 
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        raw = read_text_capped(path, _MAX_FILE_BYTES, errors="replace")
     except OSError:
         return []
     findings: list[Finding] = []
@@ -231,7 +245,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     scan_body = raw
     if path.suffix.lower() == ".json":
         try:
-            data = json.loads(raw)
+            data = loads_json(raw, path)
             extracted = _collect_text_from_json(data)
             if extracted:
                 scan_body = raw + "\n" + extracted

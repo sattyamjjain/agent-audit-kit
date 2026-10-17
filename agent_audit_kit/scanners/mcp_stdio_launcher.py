@@ -32,11 +32,13 @@ from typing import Any
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
     make_finding,
     placed,
+    read_text_capped,
     strip_vscode_variables,
 )
 
@@ -164,10 +166,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
     for config_path in _find_mcp_configs(project_root):
         try:
-            raw_text = config_path.read_text(encoding="utf-8", errors="ignore")
+            raw_text = read_text_capped(config_path, CONFIG_MAX_BYTES, errors="ignore")
             if len(raw_text) > 1_000_000:
                 continue
-            data = loads_jsonc(raw_text)
+            data = loads_jsonc(raw_text, config_path)
         except (json.JSONDecodeError, OSError):
             continue
 

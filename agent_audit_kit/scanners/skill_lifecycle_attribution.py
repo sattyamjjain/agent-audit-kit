@@ -32,7 +32,7 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped
 
 
 # Heuristic: a function is treated as a Skill execute() if it is
@@ -137,7 +137,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root, skip_dirs):
             continue
         try:
-            src = path.read_text(encoding="utf-8", errors="replace")
+            src = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         # Cheap pre-filter: if the file has no skill hints AND no path
@@ -146,7 +146,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if "skill" not in src_lower and not _is_skill_path(path):
             continue
         try:
-            tree = ast.parse(src, filename=str(path))
+            tree = parse_python(src, path, str(path))
         except SyntaxError:
             continue
         rel = str(path.relative_to(project_root))

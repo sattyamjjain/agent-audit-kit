@@ -28,13 +28,19 @@ same way). Treat a finding as a prompt to look, not a verdict.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import yaml
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding
+from agent_audit_kit.scanners._helpers import (
+    CONFIG_MAX_BYTES,
+    in_skip_dir,
+    load_yaml,
+    loads_json,
+    make_finding,
+    read_text_capped,
+)
 from agent_audit_kit.scanners.skill_composition import (
     _DEFAULT_BOUNDARIES,
     _PROJECT_OVERRIDE,
@@ -67,7 +73,7 @@ def _load_session_config(project_root: Path) -> tuple[list[str], set[str]]:
     override = project_root / _PROJECT_OVERRIDE
     src = override if override.is_file() else _DEFAULT_BOUNDARIES
     try:
-        data = yaml.safe_load(src.read_text(encoding="utf-8")) or {}
+        data = load_yaml(read_text_capped(src, CONFIG_MAX_BYTES, errors="replace"), src) or {}
     except (OSError, yaml.YAMLError):
         data = {}
     if not isinstance(data, dict):
@@ -104,7 +110,7 @@ def _transcripts(project_root: Path) -> list[tuple[str, list[dict]]]:
         try:
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            raw = loads_json(read_text_capped(path, _MAX_FILE_BYTES), path)
         except (OSError, ValueError):
             continue
         calls = _calls(raw)

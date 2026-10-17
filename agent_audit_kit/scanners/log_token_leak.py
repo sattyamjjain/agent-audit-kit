@@ -30,7 +30,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, read_text_capped
 
 # A log-level call on any receiver; `_is_logger_receiver` decides whether the receiver
 # is a logger. The receiver used to be part of this pattern, as `\b(?:logger|logging|
@@ -443,7 +443,7 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
         budget = _FILE_ARGS_BUDGET

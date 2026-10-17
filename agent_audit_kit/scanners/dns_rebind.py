@@ -59,7 +59,15 @@ from xml.etree import ElementTree
 from agent_audit_kit.models import Finding
 
 from ._dependency_pins import DependencyPin, pinned_dependency, read_manifest
-from ._helpers import in_skip_dir, find_line_number, make_finding, sub_comments
+from ._helpers import (
+    MANIFEST_MAX_BYTES,
+    SOURCE_MAX_BYTES,
+    find_line_number,
+    in_skip_dir,
+    make_finding,
+    read_text_capped,
+    sub_comments,
+)
 
 _PY_PATCHED = (1, 23, 0)
 _TS_PATCHED = (1, 21, 1)
@@ -239,7 +247,7 @@ def _check_java_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
         rel = str(p.relative_to(project_root))
         scanned.add(rel)
         try:
-            text = p.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(p, MANIFEST_MAX_BYTES, errors="replace")
         except OSError:
             continue
         for m in re.finditer(
@@ -302,7 +310,7 @@ def _check_streamable_pattern(project_root: Path, scanned: set[str]) -> list[Fin
         if in_skip_dir(path, project_root):
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
+            text = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
         except OSError:
             continue
 

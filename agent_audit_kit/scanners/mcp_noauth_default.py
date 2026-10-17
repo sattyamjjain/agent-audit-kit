@@ -32,7 +32,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python
 
 _RULE_ID = "AAK-MCP-NOAUTH-DEFAULT"
 
@@ -166,11 +166,11 @@ def _env_default(call: ast.Call) -> ast.expr | None:
     return None
 
 
-def _scan_python(text: str) -> list[tuple[int, str]]:
+def _scan_python(text: str, path: Path) -> list[tuple[int, str]]:
     if not _MCP_HINT_RE.search(text):
         return []
     try:
-        tree = ast.parse(text)
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
 
@@ -391,7 +391,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
 
         hits = (
-            _scan_python(text) if path.suffix in _PY_SUFFIXES
+            _scan_python(text, path) if path.suffix in _PY_SUFFIXES
             else _scan_config(text)
         )
         if not hits:

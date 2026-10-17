@@ -965,6 +965,7 @@ _r(
         "`user_consent`, `human_in_the_loop`, `human-in-the-loop` or `humanintheloop` "
         "in any case, `confirmSampling`, `approveSampling`, `samplingConsent` or "
         "`human_approval`) clears every one of those findings, whatever it guards."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -1029,6 +1030,7 @@ _r(
         "`setup.py`, and a manifest in a subdirectory (`svc/package.json`) do not "
         "count. When it runs, it looks in source files for the header text "
         "`Mcp-Session-Id` (any case) or the constant `MCP_SESSION_ID`."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -1055,6 +1057,7 @@ _r(
         "a form AAK-MCP-STATELESS-001 recognises, and matches the quoted method name "
         "`tasks/list` and calls spelled `tasks.list(` or `tasks_list(`. An SDK call "
         "named `listTasks()` is not matched."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -1085,6 +1088,7 @@ _r(
         "`state_by_session` or `per_session_state` indexed by `session_id`, `sid` or "
         "`mcp_session_id`. Pinning clients some other way, such as nginx `hash "
         "$http_mcp_session_id consistent;`, is not matched."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -1115,6 +1119,7 @@ _r(
         "`functools.cache`. A single `tools/list` call inside a per-request handler is "
         "not counted, and neither are calls made through the TypeScript SDK's "
         "`client.listTools()`."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -1298,9 +1303,11 @@ _r(
         "a plugin's `hooks/hooks.json` (where the plugin's directory holds "
         "`.claude-plugin/` or sits under a marketplace's "
         "`.claude-plugin/marketplace.json`) and the frontmatter of a `SKILL.md`. A "
-        "plugin or skill file over 512,000 bytes or nested too deeply to parse is not "
-        "read, and neither is a frontmatter block that YAML aliases expand past twice "
-        "its length. "
+        "plugin or skill file over 512,000 bytes is not read. One nested too deeply to "
+        "parse (past 100 levels of YAML, or past what Python's JSON parser takes), or a "
+        "frontmatter block that YAML aliases expand past twice its length plus 1,000 "
+        "and past 200,000 nodes, is not read either, and the refusal is reported "
+        "against the file as AAK-INTERNAL-SCANNER-FAIL. "
         "Hooks a plugin declares in `.claude-plugin/plugin.json` and hooks in a "
         "subagent's frontmatter are not read."
     ),
@@ -1963,6 +1970,7 @@ _r(
         "those four is not read, whether another fetcher (`pnpm dlx "
         "some-mcp-server`) or npx behind a shell (`cmd /c npx -y some-mcp-server`), "
         "nor is a `docker run` image tagged `latest`."
+        " An MCP config over 1 MB is not read."
     ),
 )
 
@@ -2044,6 +2052,7 @@ _r(
         "4,096 characters, is reported without being read. The install scripts of "
         "dependencies (a lockfile entry marked `hasInstallScript`) and of a "
         "workspace package.json in a sub-directory are not read."
+        " A package.json over 2 MB is not read."
     ),
 )
 
@@ -2123,6 +2132,7 @@ _r(
         "empty placeholder 0.0.1. The same package in package.json, in "
         "claude_desktop_config.json or in a sub-project's .mcp.json is not reported, "
         "and neither is a package that states no version."
+        " An MCP config over 1 MB is not read."
     ),
 )
 
@@ -4208,6 +4218,7 @@ _r(
         "wrapper such as `execute(...)` does not count. The same script kept outside "
         "`.claude/hooks/` (`scripts/guard.sh`) or under another extension "
         "(`guard.zsh`) is not read, and a plain `$cmd` filled from `jq` is not matched."
+        " A settings file over 1 MB, or a hook script over 512 KB, is not read."
     ),
 )
 
@@ -4236,6 +4247,7 @@ _r(
         "}`), `shell: true` passed to `execFile` or to `exec` called by its bare "
         "name, `subprocess.check_call`, and `os.system` and `os.popen`, which always "
         "use a shell, are not matched."
+        " A settings file over 1 MB, or a hook script over 512 KB, is not read."
     ),
 )
 
@@ -4303,6 +4315,7 @@ _r(
         "Reads the `tasks` array of `.vscode/tasks.json` for `runOptions.runOn: "
         "folderOpen`. A task declared in the `tasks` block of a workspace file "
         "(`*.code-workspace`) is not read."
+        " A `tasks.json` or `launch.json` over 1 MB is not read."
     ),
 )
 
@@ -4335,6 +4348,7 @@ _r(
         "through a runner (`npm run setup`) or after a flag (`bash -x "
         "./scripts/setup.sh`), and a quoted path (`bash "
         "\"${workspaceFolder}/scripts/setup.sh\"`), are not followed."
+        " A `tasks.json` or `launch.json` over 1 MB is not read."
     ),
 )
 
@@ -4358,6 +4372,7 @@ _r(
         "AAK-IDE-TASK-001 or AAK-IDE-TASK-002 flagged in the `tasks.json` next to it. "
         "A `preLaunchTask` that names a compound task (`dependsOn: [\"setup\"]`) "
         "reaches the same script but is not matched, and `postDebugTask` is not read."
+        " A `tasks.json` or `launch.json` over 1 MB is not read."
     ),
 )
 
@@ -4378,6 +4393,7 @@ _r(
         "folder. A broken `.vscode/settings.json`, or a `.code-workspace` file, "
         "which can carry a `tasks` block of its own, is not parsed and never "
         "reported."
+        " A `tasks.json` or `launch.json` over 1 MB is not read."
     ),
 )
 
@@ -4651,6 +4667,7 @@ _r(
         "bare (dotted) name or an f-string with a `{}` placeholder. An argument "
         "that is a call (`os.path.join(PROMPTS, name)`), a concatenation "
         "(`\"prompts/\" + name`) or a keyword (`path=name`) is not matched."
+        " A requirements file or pyproject.toml over 2 MB is not read."
     ),
 )
 
@@ -4677,6 +4694,7 @@ _r(
         "to 0.3.80 and 1.0.0 to 1.2.4 are affected and not reported. Every version "
         "below 0.3.14 is also below AAK-LANGCHAIN-001's 1.2.22, which does report it. "
         "LangChain.js has a separate advisory, which no rule cites."
+        " A requirements file or pyproject.toml over 2 MB is not read."
     ),
 )
 
@@ -4712,6 +4730,7 @@ _r(
         "\"TODO\"` passes. Plugins listed as an object instead of a list are not read, "
         "and a manifest that is not valid JSON is not checked for a signature at "
         "all: AAK-MARKETPLACE-005 reports that it could not be read."
+        " A `marketplace.json` over 1 MB is not read, and AAK-MARKETPLACE-005 reports it as unreadable."
     ),
 )
 
@@ -4739,6 +4758,7 @@ _r(
         "six (`*:read` reads every scope but is not one), a string with no colon "
         "(`network`), and permissions declared in a plugin's own "
         "`.claude-plugin/plugin.json` are not reported."
+        " A `marketplace.json` over 1 MB is not read, and AAK-MARKETPLACE-005 reports it as unreadable."
     ),
 )
 
@@ -4763,6 +4783,7 @@ _r(
         "adjacent swap away. A name that extends an upstream (`claude-code-pro`, "
         "`anthropic-official`) or sits two edits away (`antrhopik`) is not "
         "reported."
+        " A `marketplace.json` over 1 MB is not read, and AAK-MARKETPLACE-005 reports it as unreadable."
     ),
 )
 
@@ -4786,6 +4807,7 @@ _r(
         "at all, which follows the default branch, a source written as a string "
         "(`github:acme/tool@main`) and an all-digit tag such as `20260101`, which "
         "reads as a short commit hash, are not reported."
+        " A `marketplace.json` over 1 MB is not read, and AAK-MARKETPLACE-005 reports it as unreadable."
     ),
 )
 
@@ -4810,6 +4832,7 @@ _r(
     # files, and LOW for the same reason: visible at the default reporting floor,
     # without failing `--fail-on medium` over a file the client cannot load either.
     owasp_agentic_references=["ASI04"],
+    limitations="A `marketplace.json` over 1 MB is reported here as unreadable.",
 )
 
 # ---------------------------------------------------------------------------
@@ -4846,6 +4869,7 @@ _r(
         "`network:*`, `credentials:*`, `env:*` or `*:*`. Other spellings of the "
         "same breadth (`shell:*`, `Bash(*)`, `*`) are not reported, and neither is "
         "a `permissions` block written as a mapping (`allow: [...]`)."
+        " A routine file over 1 MB is not read."
     ),
 )
 
@@ -4868,6 +4892,7 @@ _r(
         "hides an interpolated `trigger` beside it. A `trigger` written as a "
         "mapping (`type: webhook` with a `url` holding `${TENANT}`), a webhook URL "
         "in a key of its own, and `$(...)` substitution are not read."
+        " A routine file over 1 MB is not read."
     ),
 )
 
@@ -4888,6 +4913,7 @@ _r(
         "Looks for the key `audit_log`, `audit`, `log` or `output_log` and not at "
         "its value, so `audit_log: false` or an empty `log:` counts as an audit "
         "trail."
+        " A routine file over 1 MB is not read."
     ),
 )
 
@@ -5269,6 +5295,7 @@ _r(
         "CLI with `npm install -g notes-cli`\"), a download saved and then run "
         "(`curl ... -o install.sh && sh install.sh`), `npx -y <package>`, and a "
         "script shipped beside the skill (`scripts/install.sh`)."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -5292,6 +5319,7 @@ _r(
         "Other invisible code points are not matched, such as the word joiner "
         "(U+2060) and the variation selectors (U+FE0F, U+E0100 to U+E01EF) that can "
         "carry smuggled text."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -5317,6 +5345,7 @@ _r(
         "`.netrc`) anywhere else in it; the two are not tied together. A "
         "credential file off that list is not reported (`curl -T ~/.kube/config "
         "...`), and neither is exfiltration through `httpx.post` or `scp`."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -5342,6 +5371,7 @@ _r(
         "is not matched, nor is a skill named exactly `pdf` that shadows the "
         "first-party one, and a description that says to use the skill instead of "
         "`pdf` is never compared."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -5365,6 +5395,7 @@ _r(
         "now`, `disregard prior` and `system:`. The same instruction in other words "
         "(`ignore all previous instructions`, `disregard all prior rules`) is not "
         "matched, and the body of the skill is not read by this rule."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -6006,6 +6037,7 @@ _r(
         "recognises 30 two-letter language codes (`ta` and `te` are not among them) "
         "and finds agent configs by file name (`agent.yaml`, `crew.yaml`, "
         "`manifest.yaml` and a few more; `config.yaml` is not read)."
+        " A config file over 1 MB is not read."
     ),
 )
 
@@ -6119,6 +6151,7 @@ _r(
         "them too. The source arm needs `read_only = "
         "True` and a `CALL apoc.` or `runWrite` reference in the same Python file, "
         "so a query kept in another module is not matched."
+        " A requirements file over 2 MB is not read."
     ),
 )
 
@@ -6237,6 +6270,7 @@ _r(
         "`acme-tools` package whose keyword is `model-context-protocol` and which "
         "depends on the SDK), one declared in Cargo.toml or go.mod, and a "
         "package.json in a sub-directory are not recognised."
+        " A pyproject.toml or package.json over 2 MB is not read."
     ),
 )
 
@@ -6364,6 +6398,7 @@ _r(
         "reads `.flowise/*.json`, `flows/*.json` and `flows/**/*.json` that mention "
         "MCP and carry a `customFunction`, `runCode` or `executeCommand` key, so an "
         "export saved as `chatflows/export.json` is not reported."
+        " A package.json over 2 MB, or a flow file over 1 MB, is not read."
     ),
 )
 
@@ -6399,6 +6434,7 @@ _r(
         "cloud-platform, drive, gmail.modify, gmail.send and directory.*. Scopes "
         "written in source code (`SCOPES = [...]` in a `.py` file) and "
         "`https://mail.google.com/` are not matched."
+        " A config file over 1 MB is not read."
     ),
 )
 
@@ -6431,6 +6467,7 @@ _r(
         "extras (`mcp[cli]>=1.2.0`), another capitalisation (`Langfuse`), "
         "`[project.optional-dependencies]` or Poetry tables, a lockfile and a "
         "sub-directory manifest are not reported."
+        " A package.json or pyproject.toml over 2 MB is not read."
     ),
 )
 
@@ -6478,6 +6515,7 @@ _r(
         " The version pin judges a git reference, a tarball and a `workspace:` spec by "
         "the release they name, with releases compared on their first three numbers, so a pre-release of the fix (`#v0.2.22-rc.1`) "
         "reads as the fix, and it does not read a `package.json` over 2 MB."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -6577,6 +6615,7 @@ _r(
         "one of those names (`import { ALLOWED_COMMANDS } from './allow'`); one "
         "imported under another name (`import { safeArgv } from './guard'`) is not "
         "seen, so the file is still reported."
+        " A source file over 512 KB, a config file over 1 MB or a manifest over 2 MB is not read."
     ),
 )
 
@@ -6647,6 +6686,7 @@ _r(
         "transport. One Host allow-list anywhere in the project clears every "
         "candidate, whatever it protects: a Django `ALLOWED_HOSTS` in an unrelated app "
         "counts."
+        " A manifest over 2 MB, or a source file over 512 KB, is not read."
     ),
 )
 
@@ -6693,6 +6733,7 @@ _r(
         "in one requirements file) admit nothing and are not reported; pip refuses to "
         "install them too. A lockfile (uv.lock, package-lock.json), a pyproject.toml "
         "that does not parse, and a manifest in a sub-directory or over 2 MB are not read."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -6746,6 +6787,7 @@ _r(
         "no such project, and npm's (0.1.1, published 2026-03-09 with no repository) is "
         "an unrelated MCP server for Splunk's REST API. NVD's record (published "
         "2026-04-15, still awaiting analysis, with no CPE) cites only SVD-2026-0407."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -6786,6 +6828,7 @@ _r(
         "action (`.github/actions/setup/action.yml`) is not read, and neither is an "
         "`actions/` or `github/` action pinned to a branch "
         "(`actions/checkout@main`) or a `docker://` image tag."
+        " A workflow file over 1 MB is not read."
     ),
 )
 
@@ -6867,6 +6910,7 @@ _r(
         "(`#v0.4.15-rc.1`) reads as the fix. The same dependency declared "
         "in a workspace package's own `package.json` (`apps/web/package.json`) is "
         "not read, and neither is a `package.json` over 2 MB."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -6923,8 +6967,8 @@ _r(
         "Declarations of one install that no release "
         "satisfies together (`langchain-text-splitters==1.1.2` beside "
         "`langchain-text-splitters==1.1.1` in one requirements file) admit nothing and "
-        "are not reported; pip refuses to install them too. A pyproject.toml that does "
-        "not parse and a manifest over 2 MB are not read."
+        "are not reported; pip refuses to install them too. A source file over 1 MB, a "
+        "pyproject.toml that does not parse and a manifest over 2 MB are not read."
         " A lockfile over 32 MiB is not read."
     ),
 )
@@ -6986,8 +7030,8 @@ _r(
         "Declarations of one install that no release "
         "satisfies together (`langchain-openai==1.1.14` beside `langchain-openai==1.1.13` "
         "in one requirements file) admit nothing and are not reported; pip refuses to "
-        "install them too. A pyproject.toml that does not parse and a manifest over "
-        "2 MB are not read."
+        "install them too. A Python file over 1 MB, a pyproject.toml that does not parse "
+        "and a manifest over 2 MB are not read."
         " A lockfile over 32 MiB is not read."
     ),
 )
@@ -7032,6 +7076,7 @@ _r(
         "api-key, apikey), azure_ad (also azure-ad, azuread), bearer_token or "
         "x-functions-key anywhere in the file, in any case. An unauthenticated Azure "
         "server beside any server that carries an `Authorization` header passes."
+        " A file over 2 MB is not read."
     ),
 )
 
@@ -7070,6 +7115,7 @@ _r(
         "whose read tool is `read_text_file`, is no source. A decorator with arguments "
         "(`@tool(\"read_file\")`, `@mcp.tool(name=...)`), a TypeScript "
         "`server.tool(...)` and a skill under `.claude/skills/` declare no tool."
+        " A Python file over 512 KB, or an MCP config or trust file over 1 MB, is not read."
     ),
 )
 
@@ -7138,6 +7184,7 @@ _r(
         "A value that arrives through any other parameter name (`def build(spec)` "
         "called with `request.json()`), through a helper's return value or through "
         "an attribute stored on `self` is not followed."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -7181,6 +7228,7 @@ _r(
         "long file, is missed. The fallback reads a `/` right after a block's closing brace "
         "as a division (`if (a) {} /'/.test(s)`), as it reads one after an object's, so a "
         "quote in such a regex can hide the `command` and `args` after it."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -7211,6 +7259,7 @@ _r(
         "`ObjectMapper` read or `System.getenv` call in the preceding 2 KB or in "
         "the chain. The MCP Java SDK's own `ServerParameters.builder(command)` is "
         "not matched, and neither is the same code in a Kotlin file."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -7247,6 +7296,7 @@ _r(
         "`actix_web::web::Json` or `axum::extract::Json` in the 2 KB before "
         "`Command::new`; a command taken from `std::env::args()` is not one of "
         "them."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -7292,6 +7342,7 @@ _r(
         "session.get(url)`) or in a different function is not seen. TypeScript: "
         "needs `await fetch(` within 2 KB before a `new Stdio*Transport`, so "
         "`axios.get` and `fetch(...).then(...)` are not matched."
+        " A source file over 512 KB, or a trust file over 1 MB, is not read."
     ),
 )
 
@@ -7338,6 +7389,7 @@ _r(
         "a marker, so a server that only uses its own credential to call Azure, and "
         "authenticates nobody who calls it, passes, and so does a route on an object "
         "with another name, such as a Flask blueprint called `bp`."
+        " A source file over 512 KB, or a manifest over 2 MB, is not read."
     ),
 )
 
@@ -7378,6 +7430,7 @@ _r(
         "`lmdeploy.serve.vl_engine.VLEngine` path, and skips the file if it contains "
         "an SSRF guard name, `ALLOWED_HOSTS` or `TrustedHostMiddleware`. The argument "
         "has to begin with `url`: `load_image(image_url)` is not matched."
+        " A Python file over 1 MB is not read."
     ),
 )
 
@@ -7417,6 +7470,7 @@ _r(
         "`splunk-mcp-server`). A YAML file is read as structure only when `inputs` "
         "or `sourcetypes` is a top-level list, so the same entries nested under "
         "another key, such as `splunk:`, are not reported."
+        " A file over 1 MB is not read."
     ),
 )
 
@@ -7510,6 +7564,7 @@ _r(
         "`#[mcp_tool]`. A TypeScript `registerTool(name, { description })` call, a "
         "template-literal description and a description kept in a constant are not "
         "read, and `ignore all previous instructions` is not matched."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -7555,7 +7610,8 @@ _r(
         " The `ghcr.io/sooperset/mcp-atlassian` image is read at a version tag (a "
         "`docker run` argument in an MCP config, an `image:` value, a Dockerfile "
         "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
-        "reported. A lockfile over 32 MiB is not read."
+        "reported. A Python file over 512 KB, a manifest over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -7590,7 +7646,8 @@ _r(
         " The `ghcr.io/sooperset/mcp-atlassian` image is read at a version tag (a "
         "`docker run` argument in an MCP config, an `image:` value, a Dockerfile "
         "`FROM` or Helm values); an untagged, `latest` or digest reference is not "
-        "reported. A lockfile over 32 MiB is not read."
+        "reported. A Python file over 512 KB, a manifest over 2 MB, or a lockfile "
+        "over 32 MiB, is not read."
     ),
 )
 
@@ -7628,6 +7685,7 @@ _r(
         "where `.*` does not cross a line. The same payload in `.jsonl`, `.html` or "
         "`.j2` (RAG seed corpora and prompt templates), in a `.MD` file, or split "
         "over two lines, is not matched."
+        " A file over 1 MB is not read."
     ),
 )
 
@@ -7670,6 +7728,7 @@ _r(
         "launcher, so `@mcpjam/inspector` 1.4.2 declared as a dependency, the case "
         "the remediation tells you to bump, is not reported when the code is not in "
         "the scanned tree."
+        " A TS/JS file over 512 KB is not read."
     ),
 )
 
@@ -7708,6 +7767,7 @@ _r(
         "or a model passed inside `**params`, is not matched), and the module must "
         "import `stripe`, `shopify`, `medusa` or `commercetools` or have `pricing/` "
         "or `commerce/` in its path; a file under `marketplace/` is out of scope."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7737,6 +7797,7 @@ _r(
         "multi-line import, `from langgraph.prebuilt.tool_node import ToolNode`, "
         "and an argument that is an attribute or a call (`ToolNode(self.tools)`) "
         "are not matched."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7834,6 +7895,7 @@ _r(
         "`aak.review.human_in_loop(`, `human_in_the_loop(`, `require_approval(` or "
         "`needs_review(`. A reply sent through an instance (`await "
         "message.reply(text)`) is not matched."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7877,6 +7939,7 @@ _r(
         "split across two modules are never reported as the chain, and a comment "
         "that mentions `assert_codeinterp_safe_mode(` removes one shape from the "
         "count."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7907,6 +7970,7 @@ _r(
         "setting is not read, and the guard is looked for as text in the enclosing "
         "function, so a comment that mentions `assert_codeinterp_safe_mode(` "
         "silences it."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7934,6 +7998,7 @@ _r(
         "`request.form`, `event`, `user_input`, `agent.kickoff(`, ...). "
         "`request.get_json()`, or a path that arrives as a function parameter, is "
         "not a source, so the call is not reported."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7969,6 +8034,7 @@ _r(
         "and the RAG tool resolves it again to fetch, so a name whose DNS answer "
         "changes in between (DNS rebinding) passes the check and is fetched at a "
         "private address."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -7996,6 +8062,7 @@ _r(
         "`docker_required=True` and no `require_docker_liveness(` in the enclosing "
         "function. That text is matched as source, so a comment that mentions "
         "`require_docker_liveness(` silences it."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8029,6 +8096,7 @@ _r(
         "as a guard although it normalises the path and does not confine it to a "
         "directory. A file that imports `from langchain_core.prompts.loading import "
         "load_prompt` is skipped."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8075,7 +8143,7 @@ _r(
         "inside the call on `db`, `client`, `conn`, `connection`, `pool`, `cursor`, "
         "`database`, `sqlite` or `knex`, so a query built in a variable first "
         "(`const sql = \"SELECT ...\" + id; db.query(sql)`) is not reported."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8111,6 +8179,7 @@ _r(
         "`write_bytes`, `save`, `dump`, `persist`, `commit`, `post`, `put`, "
         "`patch`, `delete` and a few others, so `open(path, \"w\")` followed by "
         "`handle.write(text)` is not one."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8147,6 +8216,7 @@ _r(
         "that mentions a name such as `Lock` or `acquire` counts as locking, so "
         "`with threading.Lock():`, which makes a new lock on every call and "
         "excludes nothing, clears it."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8226,6 +8296,7 @@ _r(
         "listed sink calls. Wrapped in a dict or an f-string "
         "(`messages.append({\"role\": \"user\", \"content\": refusal})`) it is not "
         "reported, and a variable called `refused` is never tracked."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8258,6 +8329,7 @@ _r(
         "named `format`, `append`, `extend`, `add_message`, `build_prompt` and the "
         "like. Putting it into an f-string (`f\"Your last draft scored {score}\"`), "
         "or into a dict passed to `append`, is not reported."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8296,6 +8368,7 @@ _r(
         "parameter's bare name. A helper that does the `eval` (`return "
         "_evaluate(expression)`) and a transformed argument "
         "(`eval(expression.strip())`) are not reported."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -8382,6 +8455,7 @@ _r(
         "`*.openapi.*`) or under a top-level `api/`, `openapi/`, `spec/` or "
         "`docs/api/` folder; `backend/openapi.yaml` and `docs/openapi.yaml` are not "
         "found. A `summary` of 40 or more characters counts as the description."
+        " A spec over 1 MB is not read."
     ),
 )
 
@@ -8411,6 +8485,7 @@ _r(
         "level, are not counted, and the spec must be at the project root or under "
         "a top-level `api/`, `openapi/`, `spec/` or `docs/api/` folder "
         "(`backend/openapi.yaml` is not found)."
+        " A spec over 1 MB is not read."
     ),
 )
 
@@ -8438,6 +8513,7 @@ _r(
         "`remove`): `GET /users/create` is reported, but `GET /createUser` and "
         "`POST /users/get-by-email` are not. More than four methods on one path is "
         "the other test."
+        " A spec over 1 MB is not read."
     ),
 )
 
@@ -8479,7 +8555,7 @@ _r(
         "poetry.lock and uv.lock are opened but never match, because the name and "
         "the version sit on separate lines, so a version that reaches the project "
         "only through a lockfile is not reported."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8520,7 +8596,7 @@ _r(
         "reported. Pipfile.lock, poetry.lock and uv.lock are opened but never "
         "match, because the name and the version sit on separate lines, so a "
         "version that reaches the project only through a lockfile is not reported."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8571,7 +8647,7 @@ _r(
         "is not read, and neither is a Yarn 2+ yarn.lock, a sub-directory "
         "package.json or a versioned `npx` reference in .mcp.json. Claude "
         "Desktop, which shares the plugin install flow, is in no file AAK reads."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8630,7 +8706,7 @@ _r(
         "(`stdio_fallback`, `transport_override`, `permit_transport_override` or a "
         "`transports` list that includes stdio); the same settings in "
         "`deploy/gpt-researcher.config.json` are not reported."
-        " A lockfile over 32 MiB is not read."
+        " A config file over 1 MB, a manifest over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8689,7 +8765,7 @@ _r(
         "`transport_override`, `permit_transport_override` or a `transports` list "
         "that includes stdio); the same settings in `deploy/docsgpt.config.json` "
         "are not reported."
-        " A lockfile over 32 MiB is not read."
+        " A config file over 1 MB, a manifest over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8726,7 +8802,7 @@ _r(
         "or mirror under another GitHub organisation (`\"gpt\": "
         "\"github:acme/chatgpt-mcp-server\"`) and an `npx` launcher that fetches the "
         "repository from GitHub in .mcp.json are not read."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -8768,7 +8844,7 @@ _r(
         "tag below 1.0. An `agent0ai/agent-zero` image tag in a compose file or "
         "Dockerfile, a `git clone` in a script and a reference in a sub-directory "
         "manifest are not read."
-        " A lockfile over 32 MiB is not read."
+        " A file over 2 MB, or a lockfile over 32 MiB, is not read."
     ),
 )
 
@@ -11543,6 +11619,7 @@ _r(
         "another name (`abs_path = os.path.abspath(file_path)`, then `open(abs_path, "
         "\"rb\")`) is not reported. A file over 2 MB, or a lockfile over 32 MiB, is "
         "not read."
+        " A Python file over 512 KB is not read."
     ),
 )
 
@@ -12926,6 +13003,7 @@ _r(
         "KB, unless its first argument is a string literal. A literal program with "
         "the request in the arguments, such as `exec.Command(\"sh\", \"-c\", "
         "req.Command)`, is therefore not reported."
+        " A source file over 512 KB is not read."
     ),
 )
 
@@ -12966,6 +13044,7 @@ _r(
         "files were approved` is no trigger, and a credential file off the list "
         "(`~/.kube/config`) is not recognised as a secret. The same text hidden in "
         "a link reference (`[//]: # (...)`) is not read."
+        " A SKILL.md over 512 KB is not read."
     ),
 )
 
@@ -13011,7 +13090,12 @@ _r(
     "The pin-drift scanner also reports here, against the file, when "
     "`.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull "
     "check with no readable baseline has checked nothing, and the evidence "
-    "says why the file could not be used.",
+    "says why the file could not be used. So does any scanner, against one "
+    "file, when it refuses that file: one nested deeper than Python's JSON, "
+    "TOML or Python parser takes, or YAML nested past 100 levels or grown by "
+    "its aliases past their bound. The refusal costs that file alone; the "
+    "scanner went on with every other file, and the evidence names the "
+    "scanner, the file and the reason.",
     Severity.INFO,
     Category.AGENT_CONFIG,
     "If the evidence names an input file, repair it. For the tool-pin file, "

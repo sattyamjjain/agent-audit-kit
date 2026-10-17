@@ -26,7 +26,14 @@ import ast
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import (
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+)
 
 
 _MCP_TOOL_DECORATOR_NAMES: frozenset[str] = frozenset({
@@ -118,14 +125,14 @@ class _UnsafeEvalVisitor(ast.NodeVisitor):
 def _scan_python_file(path: Path, rel: str) -> list[Finding]:
     findings: list[Finding] = []
     try:
-        src = path.read_text(encoding="utf-8", errors="replace")
+        src = read_text_capped(path, SOURCE_MAX_BYTES, errors="replace")
     except OSError:
         return findings
     if "@mcp.tool" not in src and "@server.tool" not in src and "@app.tool" not in src \
             and "@fastmcp.tool" not in src and "@tool" not in src:
         return findings
     try:
-        tree = ast.parse(src, filename=str(path))
+        tree = parse_python(src, path, str(path))
     except SyntaxError:
         return findings
 
@@ -160,7 +167,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if in_skip_dir(path, project_root, skip_dirs):
             continue
         rel = str(path.relative_to(project_root))
-        fires = _scan_python_file(path, rel)
+        fires: list[Finding] = []
+        with refusing_overflow(path):
+            fires = _scan_python_file(path, rel)
         if fires:
             scanned.add(rel)
             findings.extend(fires)
