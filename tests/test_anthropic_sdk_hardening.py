@@ -160,3 +160,80 @@ def test_the_execfile_hint_reads_a_crafted_file_in_linear_time() -> None:
     started = time.perf_counter()
     mcp_sdk_hardening._SANITIZER_HINTS[1].search("execFile(" * 110_000)
     assert time.perf_counter() - started < 5.0
+
+
+# --------------------------------------------------------------------------
+# A sanitizer or opt-out guards its own file. The evidence of every STDIO
+# file in the project used to be pooled, so one `ALLOWED_*` name or HTTP
+# setting anywhere cleared an unguarded STDIO transport in another file.
+# --------------------------------------------------------------------------
+
+_UNGUARDED_PY = (
+    "from mcp.client.stdio import stdio_client, StdioServerParameters\n\n\n"
+    "async def connect(command, args):\n"
+    "    params = StdioServerParameters(command=command, args=args)\n"
+    "    async with stdio_client(params) as (read, write):\n"
+    "        return read, write\n"
+)
+_GUARDED_PY = (
+    "from mcp.client.stdio import stdio_client, StdioServerParameters\n\n"
+    'ALLOWED_COMMANDS = {"uvx", "npx"}\n\n\n'
+    "async def connect_safe(command, args):\n"
+    "    if command not in ALLOWED_COMMANDS:\n"
+    "        raise ValueError(command)\n"
+    "    params = StdioServerParameters(command=command, args=args)\n"
+    "    async with stdio_client(params) as (read, write):\n"
+    "        return read, write\n"
+)
+
+
+def _reported(root: Path, files: dict[str, str]) -> list[str]:
+    (root / "requirements.txt").write_text("mcp==1.25.0\n", encoding="utf-8")
+    for rel, text in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text, encoding="utf-8")
+    findings, _ = mcp_sdk_hardening.scan(root)
+    return sorted(f.file_path for f in findings if f.rule_id == "AAK-ANTHROPIC-SDK-001")
+
+
+def test_an_allow_list_in_another_stdio_file_does_not_clear_this_one(tmp_path: Path) -> None:
+    files = {"svc1/server_a.py": _UNGUARDED_PY, "svc2/server_b.py": _GUARDED_PY}
+    assert _reported(tmp_path, files) == ["svc1/server_a.py"]
+
+
+def test_an_unrelated_allow_list_in_another_file_does_not_clear_this_one(tmp_path: Path) -> None:
+    """The limitation's old blind spot: `ALLOWED_ORIGINS` in src/cors.ts."""
+    (tmp_path / "package.json").write_text(
+        '{"dependencies": {"@modelcontextprotocol/sdk": "^1.0.0"}}', encoding="utf-8"
+    )
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "cors.ts").write_text(
+        "import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';\n\n"
+        "export const ALLOWED_ORIGINS = ['https://example.test'];\n"
+        "export const child = new StdioClientTransport({ command: 'node', args: ['child.js'] });\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "src" / "server.ts").write_text(
+        "import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';\n\n"
+        "await server.connect(new StdioServerTransport());\n",
+        encoding="utf-8",
+    )
+    findings, _ = mcp_sdk_hardening.scan(tmp_path)
+    assert sorted(f.file_path for f in findings) == ["src/server.ts"]
+
+
+def test_an_http_setting_in_another_stdio_file_does_not_clear_this_one(tmp_path: Path) -> None:
+    files = {
+        "http_server.py": 'class StdioServerTransport: pass\ntransports = ["http"]\n',
+        "stdio_server.py": _UNGUARDED_PY,
+    }
+    assert _reported(tmp_path, files) == ["stdio_server.py"]
+
+
+def test_each_guarded_stdio_file_is_cleared_by_its_own_guard(tmp_path: Path) -> None:
+    files = {
+        "a.py": _GUARDED_PY,
+        "b.py": _UNGUARDED_PY.replace("    params", "    command = shlex.quote(command)\n    params"),
+        "c.py": 'class StdioServerTransport: pass\ntransports = ["sse"]\n',
+    }
+    assert _reported(tmp_path, files) == []

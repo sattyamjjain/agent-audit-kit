@@ -9,12 +9,14 @@ STDIO transport must add its own argv sanitizer. This scanner fires when:
    (Python / TS / Java / Rust), read by `_helpers.declares_mcp_sdk`, the gate
    AAK-MCP-STATELESS-001..004 and AAK-MCP-SAMPLING-001 share.
 2. A repo file uses a STDIO-transport API from the SDK.
-3. None of the opt-outs are present:
+3. That file carries none of the opt-outs, and the project has not accepted
+   the risk:
    - `shlex.quote` / `shlex.split` call (Python) or `execFile([...])` (Node).
    - An allow-list function (`ALLOWED_`, `WHITELIST`, `VALID_TOOLS`, ...).
    - A config opts out of STDIO (`transports=['http']` / `stdio_disabled`).
    - `.agent-audit-kit.yml` carries `accepts_stdio_risk: true` with a
-     non-empty `justification:` field (documented risk acceptance).
+     non-empty `justification:` field (documented risk acceptance, the one
+     opt-out that covers the whole project).
 """
 
 from __future__ import annotations
@@ -82,19 +84,23 @@ def _uses_stdio(project_root: Path) -> list[Path]:
     return hits
 
 
-def _has_sanitizer_or_optout(stdio_files: list[Path]) -> bool:
-    # Global sanitizer/opt-out markers reachable anywhere in the repo.
-    for path in stdio_files:
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        if _STDIO_OPT_OUT_RE.search(text):
-            return True
-        for pat in _SANITIZER_HINTS:
-            if pat.search(text):
-                return True
-    return False
+def _has_sanitizer_or_optout(path: Path) -> bool:
+    """A sanitizer or STDIO opt-out named in this file.
+
+    This used to pool the evidence of every STDIO file in the project, so one
+    name anywhere cleared every STDIO transport, whatever the name guarded: an
+    `ALLOWED_ORIGINS` list in `src/cors.ts` silenced an unguarded
+    `StdioServerTransport` in `src/server.ts`. A guard now counts for the file
+    it is written in. A sanitizer kept in another module is not seen from
+    here, so the file that imports it is still reported.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    if _STDIO_OPT_OUT_RE.search(text):
+        return True
+    return any(pat.search(text) for pat in _SANITIZER_HINTS)
 
 
 def _accepts_risk(project_root: Path) -> bool:
@@ -133,11 +139,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         scanned.add(".agent-audit-kit.yml")
         return [], scanned
 
-    if _has_sanitizer_or_optout(stdio_files):
-        return [], scanned
-
     findings: list[Finding] = []
     for path in stdio_files:
+        if _has_sanitizer_or_optout(path):
+            continue
         rel = str(path.relative_to(project_root))
         scanned.add(rel)
         findings.append(make_finding(

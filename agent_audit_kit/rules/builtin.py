@@ -6196,12 +6196,13 @@ _r(
     incident_references=["OX-MCP-2026-04-15"],
     aicm_references=["AIS-07", "STA-08"],
     limitations=(
-        "Recognises a sanitizer or opt-out by name in any file that uses a STDIO "
+        "Recognises a sanitizer or opt-out by name in the file that uses the STDIO "
         "transport: a `shlex.quote(` or `shlex.split(` call, an `ALLOWED_*`, "
         "`WHITELIST_*` or `VALID_TOOLS` constant, or an HTTP-only transport "
-        "setting. One such file clears every STDIO file in the project, whatever "
-        "the name guards: an `ALLOWED_ORIGINS` list in `src/cors.ts` silences an "
-        "unguarded `StdioServerTransport` in `src/server.ts`."
+        "setting. Such a name clears its own file, whatever it guards: an "
+        "`ALLOWED_ORIGINS` list in `src/server.ts` silences an unguarded "
+        "`StdioServerTransport` in the same file. A sanitizer kept in another "
+        "module is not seen, so the file that imports it is still reported."
     ),
 )
 
