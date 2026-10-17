@@ -322,12 +322,14 @@ def _parse(
     package_options: frozenset[str],
     extra_options: frozenset[str],
     command_only: bool = False,
-) -> tuple[list[Launched], int]:
+) -> tuple[list[Launched], int, int | None]:
     """Read one invocation from `tokens[start:]`.
 
-    Returns the packages it fetches and the index just past the positional
+    Returns the packages it fetches, the index just past the positional
     argument (the package, or the command when an option named the package), so
-    the caller resumes scanning in that command's own arguments.
+    the caller resumes scanning in that command's own arguments, and the index
+    of that positional when it is a command the launcher runs rather than the
+    package it fetches (`npx -p pkg cmd`, `uv run cmd`), else None.
     """
     found: list[Launched] = []
     named_by_option = False
@@ -336,7 +338,7 @@ def _parse(
     while i < n:
         token = tokens[i]
         if token in _CONTROL:
-            return found, i
+            return found, i, None
         if not end_of_options and token == "--":
             end_of_options = True
             i += 1
@@ -358,8 +360,9 @@ def _parse(
             continue
         if not (command_only or named_by_option):
             found.append(Launched(ecosystem, token, launcher))
-        return found, i + 1
-    return found, i
+            return found, i + 1, None
+        return found, i + 1, i
+    return found, i, None
 
 
 def _uv_subcommand(tokens: list[str], start: int) -> tuple[str, int] | None:
@@ -375,7 +378,7 @@ def _uv_subcommand(tokens: list[str], start: int) -> tuple[str, int] | None:
     return None
 
 
-def _launch_at(tokens: list[str], i: int) -> tuple[list[Launched], int] | None:
+def _launch_at(tokens: list[str], i: int) -> tuple[list[Launched], int, int | None] | None:
     """Parse a launcher that starts at `tokens[i]`, or None when none does."""
     word = basename(tokens[i]).lower()
     nxt = tokens[i + 1].lower() if i + 1 < len(tokens) else ""
@@ -420,6 +423,25 @@ def invocation_packages(tokens: list[str]) -> list[Launched]:
     return hit[0] if hit else []
 
 
+def invocation(tokens: list[str]) -> tuple[list[Launched], list[str]]:
+    """The packages the launcher at `tokens[0]` fetches, and the command it runs.
+
+    The command is the argv after the packages when an option named them
+    (`npx -p pkg sh ./x.sh`, `npm exec --package=pkg -- cmd`, `uvx --from pkg
+    cmd`) or the launcher runs a command of the project's own (`uv run cmd`);
+    it is empty when the positional argument is the package itself, whose own
+    command runs (`npx pkg args`). Read as argv, as `invocation_packages` is.
+    """
+    hit = _launch_at(tokens, 0) if tokens else None
+    if hit is None:
+        return [], []
+    packages, _resume, command_at = hit
+    if command_at is None:
+        return packages, []
+    end = next((j for j in range(command_at, len(tokens)) if tokens[j] in _CONTROL), len(tokens))
+    return packages, tokens[command_at:end]
+
+
 def launched_packages(tokens: list[str], _depth: int = 0) -> list[Launched]:
     """Every package any launcher in `tokens` fetches, in order.
 
@@ -434,7 +456,7 @@ def launched_packages(tokens: list[str], _depth: int = 0) -> list[Launched]:
     while i < len(tokens):
         hit = _launch_at(tokens, i)
         if hit is not None:
-            packages, resume = hit
+            packages, resume, _command_at = hit
             found.extend(packages)
             i = max(resume, i + 1)
             continue

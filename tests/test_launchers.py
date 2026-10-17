@@ -6,6 +6,7 @@ import pytest
 
 from agent_audit_kit.scanners._launchers import (
     basename,
+    invocation,
     launched_packages,
     npm_spec,
     py_spec,
@@ -61,6 +62,29 @@ def _specs(argv: list[str]) -> list[tuple[str, str, bool]]:
 ])
 def test_launched_packages(argv: list[str], expected: list) -> None:
     assert _specs(argv) == expected
+
+
+@pytest.mark.parametrize(("argv", "packages", "command"), [
+    # The positional is the package, whose own command runs.
+    (["npx", "husky", "install"], [("js", "husky", False)], []),
+    # An option named the package, so the positional is the command it runs.
+    (["npx", "-p", "husky", "sh", "./evil.sh"], [("js", "husky", False)], ["sh", "./evil.sh"]),
+    (["npm", "exec", "--package=husky", "--", "sh", "./evil.sh"], [("js", "husky", False)],
+     ["sh", "./evil.sh"]),
+    (["uvx", "--from", "x==1.0", "x", "--port", "1"], [("py", "x==1.0", False)], ["x", "--port", "1"]),
+    # `uv run` runs the project's own command; only `--with` fetches.
+    (["uv", "run", "--with", "requests", "--directory", "../serena", "serena-mcp-server"],
+     [("py", "requests", True)], ["serena-mcp-server"]),
+    # The command ends at a control operator.
+    (["npx", "-p", "a", "cmd", "&&", "sh", "x"], [("js", "a", False)], ["cmd"]),
+    (["node", "x.js"], [], []),
+])
+def test_invocation_reads_the_command_a_launcher_runs(
+    argv: list[str], packages: list, command: list[str],
+) -> None:
+    found, runs = invocation(argv)
+    assert [(x.ecosystem, x.spec, x.extra) for x in found] == packages
+    assert runs == command
 
 
 def test_launcher_detection_and_basename() -> None:

