@@ -1477,6 +1477,12 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
         "\t" * level + "@mcp.tool()\n" + "\t" * level + f"def t{level}(p{level}: str) -> str:\n"
         for level in range(97)) + "\t" * 97 + "u = 'https://'" + " + 'a'" * 200 + "\n"
         + ("\t" * 97 + "requests.get(u + q)\n") * 4_252, False),
+    # 255 names of 250 pieces each, all ending in one name nested 45 deep, so
+    # past the nesting bound, and each read at 38 depths in its own fetch: a
+    # verdict the bound cut was worked out again at every depth.
+    "cut-names": (lambda: _TOOL_HEAD + "    D = " + _wrapped(45, "'a'") + "\n"
+        + "".join(f"    K{k} = 'a'" + " + 'a'" * 248 + " + D\n" for k in range(255)) + "".join(
+            "    requests.get('https://' + " + f"str(K{k} + " * 38 + "p" + ")" * 38 + ")\n" for k in range(255)), True),
 }
 
 

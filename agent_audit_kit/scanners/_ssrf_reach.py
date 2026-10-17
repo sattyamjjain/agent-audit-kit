@@ -886,7 +886,7 @@ class _Scope:
     # ids of the tuples `_mapping` makes for a key's value or what can replace
     # it, whose parts are judged one by one, each once
     _either: set[int]
-    _cut_memo: dict[tuple[int, Any, int], Any]
+    _cut_memo: dict[tuple[int, Any], tuple[int, Any]]
 
     def __init__(self, node: ast.AST, parent: _Scope | None, params: set[str], caller: set[str]) -> None:
         self.node = node
@@ -1014,12 +1014,20 @@ class _Scope:
         and handed to every later read: `u = p` first read 40 levels deep
         cleared `requests.get(u)`, and a module base spelled 37 levels deep in
         one tool cleared `BASE + host` in another. A result is kept in `table`
-        only when no stop fired under it; otherwise it is kept for this depth
-        of nesting alone, and whatever reads it is marked the same way."""
-        cut_key = (id(table), key, nest)
-        if cut_key in self._cut_memo:
+        only when no stop fired under it; otherwise it is kept with the depth
+        of nesting it was worked out at, handed only to a read at that depth
+        or deeper, and whatever reads it is marked the same way. A deeper read
+        would stop at least as soon, so it gets an answer that read no less of
+        the code, as one no stop touched is handed to every read.
+
+        It was kept for its own depth alone, so a name read at 38 depths, each
+        reading a name past the bound, was worked out 38 times: 255 such names
+        took 6 seconds, where they now take 1.5."""
+        cut_key = (id(table), key)
+        kept = self._cut_memo.get(cut_key)
+        if kept is not None and kept[0] <= nest:
             self._cuts[0] += 1
-            return self._cut_memo[cut_key]
+            return kept[1]
         cuts = self._cuts[0]
         table[key] = pending
         value = work()
@@ -1027,7 +1035,7 @@ class _Scope:
             table[key] = value
         else:
             del table[key]
-            self._cut_memo[cut_key] = value
+            self._cut_memo[cut_key] = (nest, value)
         return value
 
     def _cut(self, value: Any) -> Any:
