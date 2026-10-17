@@ -3388,15 +3388,47 @@ _r(
 _r(
     "AAK-MCP-016",
     "Unbounded prompt/argument size on MCP endpoint",
-    "An MCP server endpoint accepts request bodies without a maximum-size "
-    "limit. This enables token-cost denial-of-service and memory exhaustion.",
+    "An MCP endpoint written in Go (net/http, gin, echo, chi) or Python "
+    "(FastAPI/Starlette, Flask) reads the whole request body (`io.ReadAll(r.Body)`, "
+    "`json.NewDecoder(r.Body)`, gin's `ShouldBindJSON`, echo's `Bind`, "
+    "`await request.json()`, `request.get_json()`) and nothing in the server limits "
+    "its size. None of these frameworks sets a limit of its own, so one request can "
+    "hold as much memory as it likes, and the prompt or tool arguments it carries "
+    "reach the model at any length (token-cost denial of service).",
     Severity.MEDIUM,
     Category.MCP_CONFIG,
-    "Set a per-endpoint max body size (e.g. 1 MiB by default) and reject "
-    "requests that exceed it.",
+    "Bound the body before reading it. In Go, `r.Body = http.MaxBytesReader(w, r.Body, "
+    "1<<20)` in the handler or `http.MaxBytesHandler(mux, 1<<20)` where the server is "
+    "built (echo: `middleware.BodyLimit(\"1M\")`; chi: `middleware.RequestSize(1<<20)`). "
+    "In Flask, set `app.config[\"MAX_CONTENT_LENGTH\"]`. Starlette and FastAPI have no "
+    "setting: add a middleware that answers 413 when Content-Length is over the limit "
+    "and counts the bytes of a chunked body. A limit set only in a reverse proxy "
+    "(nginx `client_max_body_size`) covers only traffic that passes through it; if that "
+    "is where yours lives, accept the finding under `exclude-rules` in "
+    "`.agent-audit-kit.yml`.",
     sarif_name="McpUnboundedPayload",
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-DOS-01"],
+    limitations=(
+        "Reads Go handlers (a function taking `*http.Request`, `*gin.Context` or "
+        "`echo.Context`) and Python functions registered as FastAPI, Starlette or Flask "
+        "routes, and only those that serve MCP: registered in the same file on a route "
+        "whose path ends in an `mcp` segment (`/mcp`, `/api/v1/mcp`, `/mcp/message`, "
+        "`/mcp/tools/call`), or dispatching on an MCP method (`case \"tools/call\":`, "
+        "`method == \"initialize\"`). It is silent when the handler tests Content-Length or "
+        "the length of what it read, or calls a helper named for a body limit, and when the "
+        "project's non-test code sets a limit anywhere (`http.MaxBytesReader`, "
+        "`http.MaxBytesHandler`, echo `BodyLimit`, chi `RequestSize`, Flask "
+        "`MAX_CONTENT_LENGTH`, a Starlette middleware that answers 413 or compares "
+        "Content-Length), so a limit on another route, or in another project of a "
+        "monorepo, silences it too. Not read: TypeScript and JavaScript servers (Express "
+        "and Fastify parse bodies with a default limit; Hono and Next.js depend on the "
+        "runtime), a body read in a helper the handler calls, a server that hands the "
+        "request to a library that reads it whole (mark3labs/mcp-go's "
+        "`StreamableHTTPServer` reads it with `io.ReadAll` and no limit), test files and "
+        "mock or fake servers, and a limit enforced only by a reverse proxy or the hosting "
+        "platform (nginx `client_max_body_size`, an ingress annotation)."
+    ),
 )
 
 _r(
