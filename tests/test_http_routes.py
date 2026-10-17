@@ -154,6 +154,21 @@ def test_an_unclosed_literal_full_of_escaped_quotes_reads_in_linear_time(tmp_pat
     assert _seconds_in_child(tmp_path, text, go) < 5.0
 
 
+# Each `/` after a `[` opens a regex literal, and here every class closes, so
+# each `/` read the whole 512-character window: at 511 KB, 2 to 9 seconds
+# against under 0.1 for the same text with no `/`.
+_CLOSED_CLASSES = ("[/]", "[/]xx", "[/]xxx", "[(/]x")
+
+
+@pytest.mark.parametrize("unit", _CLOSED_CLASSES)
+def test_regex_literals_full_of_closed_classes_read_in_linear_time(tmp_path: Path, unit: str) -> None:
+    text = "(/" + unit * (511_000 // len(unit)) + "\n"
+    t_text = _seconds_in_child(tmp_path, text)
+    t_plain = _seconds_in_child(tmp_path, text.replace("/", "x"))
+    assert t_text < 5.0
+    assert t_text < 8 * t_plain + 0.25, (t_plain, t_text)
+
+
 @pytest.mark.parametrize("opener", ['"', "'", "`"])
 def test_the_code_after_an_unclosed_literal_is_still_read(opener: str) -> None:
     """A literal that never closes is no literal: its quote is skipped, and so are

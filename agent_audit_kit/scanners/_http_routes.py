@@ -29,11 +29,10 @@ from dataclasses import dataclass
 _TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|["'`]""")
 _JS_TOKEN_RE = re.compile(r"""[()\[\]{},]|//|/\*|/|["'`]""")
 # A regex literal is read up to a fixed window: escapes, classes (in which `/`
-# does not close it), then flags. Outside a class each step jumps to the next
-# character that matters; a class is read by one pattern whose alternatives
-# start with different characters.
+# does not close it), then flags. Each step jumps to the next character that
+# matters, outside a class and inside one.
 _REGEX_STOP_RE = re.compile(r"[/\\\[\n]")
-_CLASS_BODY_RE = re.compile(r"(?:[^\]\\\n]|\\.)*\]")
+_CLASS_STOP_RE = re.compile(r"[\[\]\\\n]")
 _REGEX_FLAGS_RE = re.compile(r"[A-Za-z]*")
 _REGEX_WINDOW = 512
 # A `/` after one of these starts an expression, so it opens a regex literal:
@@ -108,39 +107,109 @@ def is_mcp_endpoint_path(path: str) -> bool:
     return False
 
 
-def _regex_literal_end(text: str, at: int, unclosed: list[int]) -> int | None:
-    """The end of the regex literal whose `/` is at ``at``, or None when none
-    closes on its line within `_REGEX_WINDOW` characters.
+class _RegexReader:
+    """Where the TS/JS regex literal opened by a `/` ends, with each character
+    read a bounded number of times however many `/` share it.
 
-    ``unclosed`` holds how far the last class that never closed was read. A
-    class opened before that point cannot close before it either (the escapes
-    after a `[` pair up the same way whichever `[` the reading started from),
-    so it is given up on at once: otherwise every `/[` of a long run of them
-    would reread the same window.
+    A read walks from stop to stop: past a `\\` and the character it escapes,
+    past a class (`[...]`, in which `/` does not close the literal), to the `/`
+    that closes it, or to the end of the line, where it gives up. Where a walk
+    goes from a point depends on that point alone, not on the `/` it started
+    from, so every point a walk passes keeps where it closed: a later walk that
+    reaches one stops there. Classes are kept the same way. A `[` inside a class
+    is a literal character there, but a walk that lands on it reads a class
+    that ends where the outer one does, since both readings stand at the
+    character after it, so each `[` a class read passes keeps that class's end.
+    Before this, each `/` after a `[` of a long run of closed classes read the
+    whole window again, 512 characters per `/`.
+
+    The window still decides: a literal ends only if its `/` closes within
+    `_REGEX_WINDOW` characters, so a walk keeps where it closed and each read
+    compares that with its own window. A literal that does not close on its
+    line within the window is division after all.
     """
-    limit = min(len(text), at + _REGEX_WINDOW)
-    pos = at + 1
-    while True:
-        stop = _REGEX_STOP_RE.search(text, pos, limit)
-        if stop is None or stop.group() == "\n":
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+        # Walk point -> the `/` the walk from it closes at, or -1.
+        self._closes: dict[int, int] = {}
+        # A `[` -> the position after the `]` that closes its class, or -1.
+        self._classes: dict[int, int] = {}
+
+    def end(self, at: int) -> int | None:
+        """The end of the literal whose `/` is at ``at``, flags included, or None."""
+        text = self._text
+        limit = min(len(text), at + _REGEX_WINDOW)
+        close = self._walk(at + 1)
+        if close < 0 or close >= limit:
             return None
-        pos = stop.end()
-        if stop.group() == "/":
-            flags = _REGEX_FLAGS_RE.match(text, pos, limit)
-            return flags.end() if flags else pos
-        if stop.group() == "\\":
-            if pos >= limit or text[pos] == "\n":
-                return None
-            pos += 1
-            continue
-        if pos < unclosed[0]:
-            return None
-        body = _CLASS_BODY_RE.match(text, pos, limit)
-        if body is None:
-            newline = text.find("\n", pos, limit)
-            unclosed[0] = limit if newline < 0 else newline
-            return None
-        pos = body.end()
+        flags = _REGEX_FLAGS_RE.match(text, close + 1, limit)
+        return flags.end() if flags else close + 1
+
+    def _walk(self, point: int) -> int:
+        text = self._text
+        passed: list[int] = []
+        while True:
+            known = self._closes.get(point)
+            if known is not None:
+                close = known
+                break
+            passed.append(point)
+            stop = _REGEX_STOP_RE.search(text, point)
+            if stop is None or stop.group() == "\n":
+                close = -1
+                break
+            at = stop.start()
+            if stop.group() == "/":
+                close = at
+                break
+            if stop.group() == "\\":
+                if at + 1 >= len(text) or text[at + 1] == "\n":
+                    close = -1
+                    break
+                point = at + 2
+                continue
+            point = self._class_end(at)
+            if point < 0:
+                close = -1
+                break
+        for p in passed:
+            self._closes[p] = close
+        return close
+
+    def _class_end(self, bracket: int) -> int:
+        known = self._classes.get(bracket)
+        if known is not None:
+            return known
+        text = self._text
+        inside = [bracket]
+        pos = bracket + 1
+        while True:
+            stop = _CLASS_STOP_RE.search(text, pos)
+            if stop is None or stop.group() == "\n":
+                end = -1
+                break
+            at = stop.start()
+            if stop.group() == "]":
+                end = at + 1
+                break
+            if stop.group() == "\\":
+                if at + 1 >= len(text) or text[at + 1] == "\n":
+                    end = -1
+                    break
+                if text[at + 1] == "[":
+                    inside.append(at + 1)
+                pos = at + 2
+                continue
+            known = self._classes.get(at)
+            if known is not None:
+                end = known
+                break
+            inside.append(at)
+            pos = at + 1
+        for p in inside:
+            self._classes[p] = end
+        return end
 
 
 class CodeIndex:
@@ -165,7 +234,7 @@ class CodeIndex:
         # The last token that is not a comment, and where it ends: whether a
         # `/` opens a regex literal depends on what precedes it.
         prev_tok, prev_end = "", 0
-        unclosed = [0]
+        regex = _RegexReader(text)
         # Per quote, where a literal that never closed gave up. Every quote of
         # that kind before it is an escaped one inside that literal, and a
         # literal opened there reads on from it with the same escapes, so it
@@ -193,7 +262,7 @@ class CodeIndex:
                 pos = end
                 continue
             if tok == "/":
-                literal = _regex_literal_end(text, at, unclosed) if self._opens_regex(at, prev_tok, prev_end) else None
+                literal = regex.end(at) if self._opens_regex(at, prev_tok, prev_end) else None
                 if literal is not None:
                     self._mask(at, literal)
                     prev_tok, prev_end = "re", literal
