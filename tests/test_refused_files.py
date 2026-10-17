@@ -55,6 +55,13 @@ from agent_audit_kit.scanners._helpers import (
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
 DEEP_JSON = "[" * 100_000 + "]" * 100_000
+# 3.9 to 3.13 refuse DEEP_JSON at a fixed recursion limit. 3.14 bounds the C
+# JSON decoder by the stack the thread has left instead, so the outcome depends
+# on that stack: 3.14.8 on macOS reads about 116,000 levels on its 16 MB
+# main-thread stack, and a thread with an 8 MB stack refuses 100,000. From 3.14
+# a deep JSON file is either refused or read in full, and either way no scanner
+# crashes on it.
+DEEP_JSON_MAY_BE_READ = sys.version_info >= (3, 14)
 
 # A project with findings from the config, hook, A2A, supply-chain and Python
 # scanners, so a scanner that loses its run loses something visible.
@@ -82,7 +89,7 @@ def _alias_bomb(levels: int = 9, width: int = 9) -> str:
 _PY_HINTS = "import requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('x')\n"
 
 HOSTILE = {
-    # C: JSON nested past every version's parser.
+    # C: JSON nested past the parser of 3.9 to 3.13 (see `DEEP_JSON_MAY_BE_READ`).
     ".mcp.json": DEEP_JSON,
     ".claude/settings.json": DEEP_JSON,
     "package.json": DEEP_JSON,
@@ -159,15 +166,25 @@ def test_every_hostile_file_costs_that_file_alone(
     lost = _findings(baseline) - _findings(result)
     assert not lost, f"a hostile file cost another file its findings: {sorted(lost)[:10]}"
     refused = _refused(result)
-    assert set(HOSTILE) <= set(refused), sorted(set(HOSTILE) - set(refused))
-    # The always-on scanners that read the deep MCP config each report it.
-    assert {"MCP configuration", "Supply chain"} <= refused[".mcp.json"]
-    assert {"Hook injection", "Trust boundary"} <= refused[".claude/settings.json"]
+    # From 3.14 a scanner may read a deep JSON file in full instead; refused or
+    # read, nothing crashed on it (above).
+    may_be_read = {rel for rel, text in HOSTILE.items() if text == DEEP_JSON} if DEEP_JSON_MAY_BE_READ else set()
+    must_refuse = set(HOSTILE) - may_be_read
+    assert must_refuse <= set(refused), sorted(must_refuse - set(refused))
+    if not DEEP_JSON_MAY_BE_READ:
+        # The always-on scanners that read the deep MCP config each report it.
+        assert {"MCP configuration", "Supply chain"} <= refused[".mcp.json"]
+        assert {"Hook injection", "Trust boundary"} <= refused[".claude/settings.json"]
 
 
 def test_a_refusal_is_reported_against_the_file_with_scanner_file_and_reason(tmp_path: Path) -> None:
     _write(tmp_path, {".mcp.json": DEEP_JSON})
-    failure = next(f for f in run_scan(tmp_path).scanner_failures if "MCP configuration" in f.evidence)
+    result = run_scan(tmp_path)
+    failure = next((f for f in result.scanner_failures if "MCP configuration" in f.evidence), None)
+    if failure is None and DEEP_JSON_MAY_BE_READ:
+        assert not _crashed(result)  # read in full, see `DEEP_JSON_MAY_BE_READ`
+        return
+    assert failure is not None
     assert failure.file_path == ".mcp.json"
     assert failure.evidence == (
         "scanner='MCP configuration' error=RefusedFile: .mcp.json: JSON nested too deep for "
@@ -179,11 +196,15 @@ def test_a_refusal_keeps_the_scan_incomplete_as_a_crash_did(tmp_path: Path) -> N
     _write(tmp_path, {".mcp.json": DEEP_JSON})
     runner = CliRunner()
     res = runner.invoke(cli, ["scan", str(tmp_path)])
-    assert res.exit_code == 1
-    assert "INCOMPLETE" in res.output
     out = tmp_path / "r.json"
     runner.invoke(cli, ["scan", str(tmp_path), "--format", "json", "-o", str(out)])
     summary = json.loads(out.read_text())["summary"]
+    if summary["complete"] and DEEP_JSON_MAY_BE_READ:
+        # Read in full (see `DEEP_JSON_MAY_BE_READ`): nothing was refused, so the scan passes.
+        assert res.exit_code == 0 and "INCOMPLETE" not in res.output
+        return
+    assert res.exit_code == 1
+    assert "INCOMPLETE" in res.output
     assert summary["complete"] is False and summary["scannerFailures"] >= 1
     assert runner.invoke(cli, ["scan", str(tmp_path), "--allow-scanner-failure"]).exit_code == 0
 
@@ -218,19 +239,25 @@ def test_an_ignored_path_drops_its_refusal_too(tmp_path: Path) -> None:
 
 
 def test_each_parse_helper_records_a_refusal_and_raises_the_error_its_readers_catch() -> None:
-    cases: list[tuple[Callable[[], object], type[Exception]]] = [
-        (lambda: loads_json(DEEP_JSON, "a.json"), json.JSONDecodeError),
-        (lambda: loads_jsonc(DEEP_JSON, "b.json"), json.JSONDecodeError),
-        (lambda: loads_toml("x = " + "[" * 3000 + "]" * 3000, "c.toml"), ValueError),
-        (lambda: load_yaml("a: " + "[" * 200 + "]" * 200, "d.yaml"), yaml.YAMLError),
-        (lambda: load_yaml_all("---\na: 1\n---\n" + _alias_bomb(), "e.yaml"), yaml.YAMLError),
-        (lambda: compose_yaml_all("b: " + "{a: " * 200 + "1" + "}" * 200, "f.yaml"), yaml.YAMLError),
+    cases: list[tuple[str, Callable[[str], object], type[Exception]]] = [
+        ("a.json", lambda path: loads_json(DEEP_JSON, path), json.JSONDecodeError),
+        ("b.json", lambda path: loads_jsonc(DEEP_JSON, path), json.JSONDecodeError),
+        ("c.toml", lambda path: loads_toml("x = " + "[" * 3000 + "]" * 3000, path), ValueError),
+        ("d.yaml", lambda path: load_yaml("a: " + "[" * 200 + "]" * 200, path), yaml.YAMLError),
+        ("e.yaml", lambda path: load_yaml_all("---\na: 1\n---\n" + _alias_bomb(), path), yaml.YAMLError),
+        ("f.yaml", lambda path: compose_yaml_all("b: " + "{a: " * 200 + "1" + "}" * 200, path), yaml.YAMLError),
     ]
+    read: list[str] = []
     with collecting_refusals() as refused:
-        for call, caught_as in cases:
-            with pytest.raises(caught_as):
-                call()
-    assert list(refused) == ["a.json", "b.json", "c.toml", "d.yaml", "e.yaml", "f.yaml"]
+        for path, call, caught_as in cases:
+            try:
+                call(path)
+            except caught_as:
+                continue
+            # Only a deep JSON text, and only from 3.14 (see `DEEP_JSON_MAY_BE_READ`).
+            assert DEEP_JSON_MAY_BE_READ and path.endswith(".json"), f"{path} was read, not refused"
+            read.append(path)
+    assert list(refused) == [path for path, _, _ in cases if path not in read]
 
 
 def test_the_refusal_types_are_the_errors_each_reader_already_catches() -> None:
@@ -242,11 +269,14 @@ def test_the_refusal_types_are_the_errors_each_reader_already_catches() -> None:
 
 def test_without_a_path_an_overflow_propagates_rather_than_vanishing(monkeypatch: pytest.MonkeyPatch) -> None:
     """A caller that has no path contains the overflow itself; a refusal is never
-    lost to a missing path, because it never turns into a parse error."""
-    with pytest.raises(RecursionError):
-        loads_json(DEEP_JSON, None)
-    with pytest.raises(RecursionError):
-        loads_jsonc(DEEP_JSON)
+    lost to a missing path, because it never turns into a parse error. From 3.14
+    the deep JSON may be read in full instead (see `DEEP_JSON_MAY_BE_READ`)."""
+    for read in (lambda: loads_json(DEEP_JSON, None), lambda: loads_jsonc(DEEP_JSON)):
+        try:
+            read()
+        except RecursionError:
+            continue
+        assert DEEP_JSON_MAY_BE_READ, "a deep JSON text was read, not refused"
     monkeypatch.setattr(_helpers, "_ast_parse", lambda s, f: (_ for _ in ()).throw(MemoryError()))
     with pytest.raises(MemoryError):
         parse_python("x = 1", None)
