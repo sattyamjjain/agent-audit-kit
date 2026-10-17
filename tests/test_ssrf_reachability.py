@@ -298,6 +298,12 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     # httpx, curl and urlsplit keep a backslash inside the authority, so the
     # caller can still write `@evil.example` after it.
     'def proxy(user: str) -> str:\n    return requests.get("https://api.example.com\\\\" + user).text\n',
+    # A mapping the caller hands over fills keyed fields: `%(host)s` reads
+    # `arguments["host"]`, as `{host}` does through `**arguments`.
+    'def proxy(arguments: dict) -> str:\n    return requests.get("https://%(host)s/x" % arguments).text\n',
+    'def proxy(arguments: dict) -> str:\n    return requests.get("https://%(host)s/x" % {**arguments}).text\n',
+    'def proxy(arguments: dict) -> str:\n    return requests.get("https://{host}/x".format(**arguments)).text\n',
+    'def proxy(arguments: dict) -> str:\n    return requests.get("https://{0[host]}/x".format(arguments)).text\n',
     # A base built with `+=` and no trailing `/`, here and at module level:
     # the caller's path still extends its host.
     'def proxy(path: str) -> str:\n    url = "https://"\n    url += "api.example.com"\n'
@@ -320,6 +326,9 @@ def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> No
     'def item(path: str) -> str:\n    return requests.get(API + path).text\nAPI = "https://"\nAPI += "api.example.com/"\n',
     'def item(path: str) -> str:\n    parts = [BASE, path]\n    return requests.get("/".join(parts)).text\n',
     'def item(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/v1/" + path)).text\n',
+    # Keyed fields after a fixed host, and a mapping the code fixed.
+    'def item(arguments: dict) -> str:\n    return requests.get("https://api.example.com/%(path)s" % arguments).text\n',
+    'def item(path: str) -> str:\n    return requests.get("https://%(host)s/" % REGIONS + path).text\n',
 ])
 def test_the_host_test_still_leaves_a_fixed_host_alone(tmp_path: Path, body: str) -> None:
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body) & _SSRF_RULES == set()

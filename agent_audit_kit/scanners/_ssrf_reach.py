@@ -530,20 +530,30 @@ _PERCENT_FIELD_RE = re.compile(r"%(?:\(([^()%]*)\))?[-#0 +*.\d]*([A-Za-z%])")
 
 def _percent_pieces(template: str, values: ast.expr) -> list[str | ast.AST]:
     """`template % values` as the text and the values it puts in each field, in
-    order. A tuple fills the fields by position and a dict literal by `(key)`;
-    a field nothing fills, a `**` key or a key that is not a string constant,
-    reads as text the code does not spell out."""
+    order. A tuple fills the fields by position and a dict literal by `(key)`.
+    Any other operand is the value of a positional field and the mapping a
+    keyed one reads, so `"https://%(host)s/" % arguments` puts
+    `arguments["host"]` in the host; a dict literal's `**` entries and entries
+    under a computed key may fill a key it does not write out. A field nothing
+    fills reads as text the code does not spell out."""
     positional: list[ast.expr] = []
     keyed: dict[str, ast.expr] = {}
+    mapping: ast.expr | None = None
     if isinstance(values, ast.Tuple):
         positional = list(values.elts)
     elif isinstance(values, ast.Dict):
+        others: list[ast.expr] = []
         for dict_key, dict_value in zip(values.keys, values.values):
             name = _str_constant(dict_key) if dict_key is not None else None
-            if name is not None:
+            if name is None:
+                others.append(dict_value)
+            else:
                 keyed[name] = dict_value
+        if others:
+            mapping = others[0] if len(others) == 1 else ast.Tuple(elts=others, ctx=ast.Load())
     else:
         positional = [values]
+        mapping = values
     pieces: list[str | ast.AST] = []
     pos = index = 0
     for field in _PERCENT_FIELD_RE.finditer(template):
@@ -555,7 +565,7 @@ def _percent_pieces(template: str, values: ast.expr) -> list[str | ast.AST]:
             continue
         filled: ast.expr | None
         if field_key is not None:
-            filled = keyed.get(field_key)
+            filled = keyed.get(field_key, mapping)
         else:
             filled = positional[index] if index < len(positional) else None
             index += 1
