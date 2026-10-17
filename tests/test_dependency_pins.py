@@ -419,6 +419,9 @@ _NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
     ("workspace range, fixed", "workspace:^{f}", False),
     ("workspace, any", "workspace:*", None),
     ("commit", "github:o/r#4f2c1d9e8b7a", None),
+    ("file: tarball", "file:../vendor/{b}-{a}.tgz", True),
+    ("file: tarball, fixed", "file:../vendor/{b}-{f}.tgz", False),
+    ("file: directory", "file:../vendor/{b}", None),
 )
 
 

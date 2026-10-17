@@ -42,10 +42,11 @@ two cannot drift apart:
   merges them; an override (npm `overrides`, uv `override-dependencies`)
   replaces the regular entries; and a patched pin in another section does not
   clear a range in this one.
-- A git reference, an archive URL and a workspace spec are judged by the
-  release their tag, file name or range names (`_with_referenced_version`).
+- A git reference, an archive (a URL or a local `file:` tarball) and a
+  workspace spec are judged by the release their tag, file name or range
+  names (`_with_referenced_version`).
 - A declaration that states no version AAK can read (a bare name, `*`,
-  `latest`, a file reference, a git reference to a commit or a branch) is
+  `latest`, a local directory, a git reference to a commit or a branch) is
   reported only by a rule that always reported one (`report_unversioned`).
 
 One finding per rule per file, on the line of the declaration that decided it.
@@ -237,7 +238,7 @@ def _npm_reference(spec: str) -> str | None:
             return fragment[len("semver:"):] or None
         release = _tag_release(fragment)
         return _dotted(release) if release else None
-    if spec.startswith(("http://", "https://")):
+    if spec.startswith(("http://", "https://", "file:")):  # a tarball, local or not
         release = _archive_release(spec)
         return _dotted(release) if release else None
     return None
@@ -294,16 +295,17 @@ def _poetry_reference(declaration: Declaration, document: object) -> str | None:
 def _with_referenced_version(declaration: Declaration, document: object) -> Declaration:
     """`declaration`, with the version the reference it names states, if it names one.
 
-    A git reference, an archive URL and a workspace spec state a release: in
-    the tag (`github:o/r#v1.20.0`, `git+https://host/o/r@v1.1.13`, the LangChain
+    A git reference, an archive and a workspace spec state a release: in the
+    tag (`github:o/r#v1.20.0`, `git+https://host/o/r@v1.1.13`, the LangChain
     monorepo's `@langchain-openai==1.1.14`, a Poetry `tag`), in the file name
-    (`sdk-1.20.0.tgz`, a Poetry `url`), or in the range after `workspace:`. The first-number
-    readers took the version from there, and read as stating none,
-    AAK-DNS-REBIND-002 (HIGH) lost every one, while the two langchain SSRF
-    pins, which report an unversioned reference, reported a git requirement at
-    the patched release as stating no version, which no upgrade could clear. A
-    reference that names no release (a commit, a branch, `workspace:*`) still
-    states no version. The text stays as written, for the evidence and the line.
+    (`sdk-1.20.0.tgz` at a URL or behind `file:`, a Poetry `url`), or in the
+    range after `workspace:`. The first-number readers took the version from
+    there, and read as stating none, AAK-DNS-REBIND-002 (HIGH) lost every one,
+    while the two langchain SSRF pins, which report an unversioned reference,
+    reported a git requirement at the patched release as stating no version,
+    which no upgrade could clear. A reference that names no release (a commit,
+    a branch, `workspace:*`, a local directory) still states no version. The
+    text stays as written, for the evidence and the line.
     """
     if declaration.dialect == "npm":
         version = _npm_reference(declaration.version)

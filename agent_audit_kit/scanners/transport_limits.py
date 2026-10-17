@@ -28,7 +28,7 @@ from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_fin
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
 
-# An unreadable spec (`latest`, `*`, a file reference, a git reference to a
+# An unreadable spec (`latest`, `*`, a local directory, a git reference to a
 # commit or a branch) is reported, as the first-number reader always reported one.
 _MCPFRAME_PIN = DependencyPin(("mcp-framework",), _MCPFRAME_PATCHED, ecosystem="js", report_unversioned=True)
 _NEXT_AI_DRAW_PIN = DependencyPin(("next-ai-draw-io",), _NEXT_AI_DRAW_PATCHED, ecosystem="js",
