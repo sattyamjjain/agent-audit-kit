@@ -3515,9 +3515,10 @@ _r(
     owasp_agentic_references=["ASI07"],
     adversa_references=["ADV-TRANSPORT-01"],
     limitations=(
-        "Examines only files that contain createServer, McpServer, createMcpHandler, "
-        "mcp.ServeHTTP, FastMCP or Server.run_streamable_http. In them it looks for a "
-        "call to listen, bind or serve whose first argument is an `http://` URL that "
+        "Examines only files that contain `@tool`, createServer, McpServer, "
+        "createMcpHandler, mcp.ServeHTTP, FastMCP or Server.run_streamable_http. In "
+        "them it looks for a call to listen, bind or serve whose first argument is an "
+        "`http://` URL that "
         "contains a digit or a dot. A server started the usual way, without a URL "
         "string (`uvicorn.run(app, host=\"0.0.0.0\", port=8080)`, `app.listen(8080)`), "
         "and the same call in a file that names none of those, are not matched."
@@ -3682,20 +3683,60 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-01"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`; in Python a fetch's URL counts as "
-        "caller input only when it is, or is assigned somewhere in the file from, an "
-        "expression rooted at input, args, params, kwargs, request, req, event, "
-        "tool_input, arguments, payload, body or query, so a tool's own `url` "
-        "parameter, or a value handed to a helper that calls `requests.get`, is not "
-        "followed. A fetch is `requests.get/post/put/delete/head/request`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
+        "`mcp.tool` or `Server.run_streamable_http`. In Python a fetch's URL counts as "
+        "caller input only inside a function read as a tool the way AAK-TAINT-001 reads "
+        "one (decorated `@tool`, `@mcp.tool`, `@server.tool`, `@langchain.tools.tool`, "
+        "`@crewai.tool` or `@autogen.tool`, or a low-level `@<server>.call_tool()` "
+        "handler), or decorated `@function_tool`, or passed to `add_tool(...)`, as "
+        "`func=` or to `from_function(...)`, or the `_run`, `_arun`, `run` or `arun` "
+        "method of a class whose bases reach `BaseTool` or `StructuredTool` in the same "
+        "file (through the file's own classes, a name it imports or assigns the base "
+        "as, or a subscripted base; a base another file defines is not followed), or a "
+        "function or method called `call_tool` or ending in `_call_tool` (where only "
+        "`arguments`, `args`, `params`, `input`, `tool_input`, `kwargs`, `payload`, "
+        "`body`, `query`, `request`, `req` and `event` count), when one of its "
+        "parameters, or a local bound from one there, can set the URL's host. So a "
+        "FastMCP instance under another name (`@app.tool()`) is skipped, a value "
+        "handed to a helper that calls `requests.get` is not followed, "
+        "nor is one a helper hands back (`base = resolve_base(host)`), and a caller's "
+        "value after a host the code wrote out (`f\"https://api.example.com/{path}\"`, "
+        "or `BASE + path` with `BASE` read from the environment) is not reported. "
+        "A `+=` extends the value bound above it in source order, whatever branch "
+        "either sits in, so `url = \"https://\"`, then `url += \"eu.example.com/\"` "
+        "under an `if`, then `url += path` reads the host as fixed, although when the "
+        "`if` is not taken the caller's `path` names it. "
+        "A built URL is read only to its 256th piece (an f-string's text or value, a "
+        "`+` operand, an item of a list it joins or the separator between two), a list "
+        "joined by name to its own 256th, URLs built one inside another (a list joined "
+        "inside a list, or a `+` inside a call inside a `+`) 40 deep, and a `%` or "
+        "`.format` template to its 16th field (an escaped `%%`, `{{` or `}}` counting "
+        "as one), so a host written after that is missed. Its text is read to the "
+        "512th character, so a template field after that is not filled, and a "
+        "caller's value after an authority the code wrote out longer than that is "
+        "taken for the host. "
+        "A value is followed through four names (`url = a`, `a = b`, `b = c`, `c = "
+        "<value>`), so one only a fifth name holds is not read, whether a base, a "
+        "caller's value, or the template a `%`, `.format` or `string.Template` fills. "
+        "A name is read in the scope that binds it, as Python reads it, for the "
+        "bindings the rule reads (`=`, an augmented assignment (`+=`, `-=` and the "
+        "rest), an annotated `=` with a value, `for`, a comprehension, `:=`, "
+        "parameters, `global` and `nonlocal`); a name only an import, a `def` or "
+        "`class`, a `with ... as` or `except ... as` target, a `match` capture, a "
+        "`del` or a bare annotation binds is not taken as the scope's own, so the "
+        "same name around it is read instead. "
+        "A fetch is `requests.get/post/put/delete/head/request`, "
         "`httpx.get/post/put/delete/request/stream`, `urllib.request.urlopen`, "
-        "`aiohttp.request`, or `get`/`post` on something called `session` or `client`, "
-        "so `http.get(...)` and `requests.patch(...)` are missed, and a `urlparse(` "
-        "call, a `startswith(\"https` or `scheme != \"https` check, a `scheme = "
-        "\"https` assignment or an allow-list name from AAK-SSRF-005 anywhere in the "
-        "file counts as validation, although an https prefix still allows internal "
-        "hosts. In TypeScript only `req.query`, `req.body`, `req.params`, "
+        "`aiohttp.request`, or `get`, `post` or `request` on something called `session` "
+        "or `client` (and a client's `stream`), and its URL is the first argument, the "
+        "second after the method for `request` and `stream`, or `url=`. So "
+        "`http.get(...)` and `requests.patch(...)` are missed. A `urlparse(` call, a "
+        "`startswith(\"https`, a `scheme == \"https` or `scheme != \"https` comparison "
+        "or an allow-list name from AAK-SSRF-005 anywhere in the file counts as "
+        "validation, although an https prefix still allows internal hosts, while "
+        "`urlsplit(...)` with a hostname comparison and `startswith` on a variable do "
+        "not, so a URL checked that way is still reported. In TypeScript only "
+        "`req.query`, `req.body`, `req.params`, "
         "`request.json`, `event.body`, `tool_input`, `arguments`, `input`, and "
         "`params[` or `args[` directly followed by a letter, digit or underscore "
         "(`args[key]`), count as caller input, so `fetch(args.url)` and "
@@ -3711,8 +3752,10 @@ _r(
     Severity.HIGH,
     Category.MCP_CONFIG,
     "Take the loopback or private address out of the outbound call's URL: use the real "
-    "public host, or read the target from configuration. The rule matches `localhost`, "
-    "`127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to `172.31.x` and `192.168.x`. "
+    "public host, or read the target from configuration. The rule matches `localhost` "
+    "and names under `.localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, `10.x`, `172.16.x` to "
+    "`172.31.x` and `192.168.x`, also in a URL that writes the address another way "
+    "(`http://2130706433/` is 127.0.0.1). "
     "Where the URL can also come from the caller, resolve the host and refuse loopback, "
     "private and link-local results before connecting.",
     sarif_name="SsrfLoopbackReachable",
@@ -3720,15 +3763,18 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-02"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It looks for the text 127.0.0.1, "
-        "localhost, ::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address in a "
-        "string that reaches a recognised fetch call. Other spellings of loopback and "
-        "private space (`127.0.0.2`, the decimal form `http://2130706433/`, an IPv6 "
-        "unique-local address such as `[fd12:3456::7]`) are not matched, and a file "
-        "gets one finding, for the first matching call (in `ast.walk` order in "
-        "Python), so a loopback fetch that follows a metadata fetch is reported as "
-        "AAK-SSRF-003 alone."
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
+        "`mcp.tool` or `Server.run_streamable_http`. It reads each string that reaches "
+        "a recognised fetch call as a URL and reports a host of localhost, 127.0.0.1, "
+        "::1, 0.0.0.0 or a 10.x, 172.16-31.x or 192.168.x address, in any spelling a "
+        "client reads as one (`http://2130706433/`, `http://0x7f.1/`). A string with no "
+        "scheme counts only when it starts with such a host written out (`127.0.0.1:8080`, "
+        "`[::1]`), so a host assembled from pieces, as in `\"http://\" + HOST` with "
+        "`HOST = \"2130706433\"`, is missed. Other loopback and private addresses "
+        "(`127.0.0.2`, an IPv6 unique-local address such as `[fd12:3456::7]`) are not "
+        "matched, and a file gets one finding, for the first matching call (in "
+        "`ast.walk` order in Python), so a loopback fetch that follows a metadata fetch "
+        "is reported as AAK-SSRF-003 alone."
     ),
 )
 
@@ -3747,9 +3793,10 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-03"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
-        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254` "
-        "and `metadata.google.internal` only. Other cloud credential endpoints "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
+        "`mcp.tool` or `Server.run_streamable_http`. It recognises `169.254.169.254`, "
+        "in any spelling a client reads as it (`http://0xa9fea9fe/`), and "
+        "`metadata.google.internal` only. Other cloud credential endpoints "
         "(`169.254.170.2`, `100.100.100.200`) are not matched, and a file gets one "
         "finding, for the first matching call (in `ast.walk` order in Python), so a "
         "metadata fetch that follows a loopback fetch is reported as AAK-SSRF-002 "
@@ -3772,7 +3819,7 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-04"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It fires on an explicit "
         "`follow_redirects=True`, `allow_redirects=True` or `redirect: \"follow\"` in "
         "a file with a recognised fetch call. A client left at its default, which "
@@ -3797,9 +3844,10 @@ _r(
     owasp_agentic_references=["ASI02"],
     adversa_references=["ADV-SSRF-05"],
     limitations=(
-        "Reads only files that contain `createTool`, `McpServer`, `FastMCP`, "
+        "Reads only files that contain `@tool`, `createTool`, `McpServer`, `FastMCP`, "
         "`mcp.tool` or `Server.run_streamable_http`. It fires on a recognised fetch "
-        "call whose URL derives from caller input, in a file that never writes "
+        "call whose URL caller input reaches, read as AAK-SSRF-001 reads it, in a file "
+        "that never writes "
         "ALLOW_HOST, ALLOW_HOSTS, ALLOWED_HOST, ALLOWED_HOSTS or URL_ALLOW_LIST (upper "
         "case), `allowed_hosts =` or `allowlist =` (lower case). Declaring one of "
         "those names is enough: nothing checks that the list is applied to the URL."
@@ -7916,7 +7964,10 @@ _r(
         "parameter (`def search(website_url)`) carries no marker and is not reported. "
         "`validate_rag_url` itself refuses a URL whose host Node, requests and Rust's "
         "`url` crate read differently from curl, httpx and urlsplit, which keep a "
-        "backslash inside the authority."
+        "backslash inside the authority. It resolves the host to check its addresses "
+        "and the RAG tool resolves it again to fetch, so a name whose DNS answer "
+        "changes in between (DNS rebinding) passes the check and is fetched at a "
+        "private address."
     ),
 )
 
@@ -8289,7 +8340,7 @@ _r(
     limitations=(
         "Reads `.ts`, `.tsx`, `.mts` and `.cts` files that carry a tool-call marker "
         "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
-        "`server.tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
+        "`server.tool`, `@tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
         "that call `setRequestHandler(CallToolRequestSchema, ...)` or carry "
         "`handleToolCall`, `server.tool` or `@tool`: in JavaScript a client sends "
         "`tools/call`, registers handlers of its own with `setRequestHandler` and "

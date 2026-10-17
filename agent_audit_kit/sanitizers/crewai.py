@@ -16,19 +16,77 @@ import + call shape).
 """
 from __future__ import annotations
 
+import ipaddress
 import socket
 from pathlib import Path
 from urllib.parse import urlparse
 
-from agent_audit_kit.scanners._helpers import url_hosts
+from agent_audit_kit.scanners._helpers import host_ip, url_hosts
 
 
-_PRIVATE_NETS: tuple[str, ...] = (
-    "10.", "127.", "169.254.", "172.16.", "172.17.", "172.18.", "172.19.",
-    "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
-    "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
-    "192.168.", "0.0.0.0",
-)
+#: RFC 6598's shared address space. `ipaddress` calls it neither private nor
+#: global, so no property names it; carrier-grade NAT and Alibaba Cloud's
+#: metadata service (100.100.100.200) sit in it.
+_SHARED_ADDRESS_SPACE = ipaddress.IPv4Network("100.64.0.0/10")
+#: RFC 6052's well-known NAT64 prefix: a DNS64 resolver answers an IPv4-only
+#: host with its address in the last 32 bits.
+_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
+#: RFC 8215's local-use NAT64 prefix, read in RFC 6052's /48 form.
+_NAT64_LOCAL = ipaddress.IPv6Network("64:ff9b:1::/48")
+#: The deprecated IPv4-compatible block, `::a.b.c.d`.
+_IPV4_COMPATIBLE = ipaddress.IPv6Network("::/96")
+
+
+def _carried_ipv4(address: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
+    """The IPv4 address an IPv6 one carries: NAT64 (`64:ff9b::/96`), local-use
+    NAT64 (`64:ff9b:1::/48`), 6to4 (`2002::/16`, `.sixtofour`) or
+    IPv4-compatible (`::/96`).
+
+    In the /48 form the IPv4 address sits in bits 48-63 and 72-87, with the
+    `u` octet (bits 64-71) and the suffix (bits 88-127) zero, so
+    `64:ff9b:1:808:8:800::` carries 8.8.8.8. A network may use a longer prefix
+    inside the /48, which puts the address elsewhere; an address that is not
+    in the /48 form is not read, so it stays reserved and refused rather than
+    being judged by bits that may belong to the prefix."""
+    if address in _NAT64 or address in _IPV4_COMPATIBLE:
+        return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    if address in _NAT64_LOCAL:
+        value = int(address)
+        if (value >> 56) & 0xFF or value & ((1 << 40) - 1):
+            return None
+        return ipaddress.IPv4Address(((value >> 64) & 0xFFFF) << 16 | (value >> 40) & 0xFFFF)
+    return address.sixtofour
+
+
+def _is_internal(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """Whether an address is anywhere but the public internet.
+
+    The check was a list of IPv4 prefixes (`10.`, `127.`, `169.254.`,
+    `172.16.` to `172.31.`, `192.168.`, `0.0.0.0`): no IPv6 address at all
+    (`::1`, `fd00::/8`, `fe80::/10`) and no shared address space. `ipaddress`
+    knows the special-purpose blocks for both families; an IPv4-mapped IPv6
+    address is judged as the IPv4 address it maps to (`host_ip`), which is
+    where a dual-stack socket sends it.
+
+    An IPv6 address that carries an IPv4 one is judged as that IPv4 address
+    (`_carried_ipv4`). NAT64's 64:ff9b::/96 sits inside ::/8, which `ipaddress`
+    calls reserved, so on a DNS64 network every IPv4-only host was refused, and
+    whether a 6to4 address counted as private depended on the interpreter
+    (refused on 3.12, allowed on 3.9).
+    """
+    if isinstance(address, ipaddress.IPv6Address):
+        carried = _carried_ipv4(address)
+        if carried is not None:
+            address = carried
+    return (
+        address.is_private
+        or address.is_loopback
+        or address.is_link_local
+        or address.is_reserved
+        or address.is_multicast
+        or address.is_unspecified
+        or (isinstance(address, ipaddress.IPv4Address) and address in _SHARED_ADDRESS_SPACE)
+    )
 
 
 class CrewAIGuardError(ValueError):
@@ -79,14 +137,23 @@ def validate_jsonloader_path(path: str | Path, *, root: str | Path) -> Path:
 def validate_rag_url(url: str, *, allowlist: list[str]) -> str:
     """CVE-2026-2286 — RagTool / WebsiteSearchTool SSRF guard.
 
-    Rejects URLs that resolve to private networks or whose hostname is
-    not in `allowlist`. Returns the URL unchanged on success.
+    Rejects URLs whose hostname is not in `allowlist`, or that resolve to an
+    address off the public internet (`_is_internal`). Every address the host
+    resolves to is checked, IPv4 and IPv6, so a name with a public A record
+    and a private AAAA record is refused. Returns the URL unchanged on success.
 
     A URL whose host URL parsers read differently is rejected too. `urlparse`
     keeps a backslash inside the authority, so it read
     `http://evil.example\\@docs.example/` as docs.example and passed it, while
     requests (urllib3) ends the authority at the backslash and fetches
     evil.example. A guard has to hold whichever client does the fetch.
+
+    It does not close the time-of-check to time-of-use gap. The host is
+    resolved here and again by the client that fetches it, so a name whose
+    answer changes in between (DNS rebinding, a zero TTL) passes this check
+    on a public address and is fetched on a private one. Closing it needs the
+    fetch to connect to the address checked here, through a pinned resolver
+    or transport, which this helper does not provide.
     """
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"}:
@@ -104,16 +171,19 @@ def validate_rag_url(url: str, *, allowlist: list[str]) -> str:
             f"RagTool host {host!r} not in allowlist (CVE-2026-2286)."
         )
     try:
-        ip = socket.gethostbyname(host)
-    except OSError as exc:
+        answers = socket.getaddrinfo(host, None)
+    except (OSError, UnicodeError) as exc:
         raise CrewAIGuardError(
             f"RagTool: DNS resolution failed for {host!r}: {exc}"
         ) from exc
-    if any(ip.startswith(p) for p in _PRIVATE_NETS):
-        raise CrewAIGuardError(
-            f"RagTool: {host!r} resolves to private IP {ip} "
-            "(CVE-2026-2286 SSRF)."
-        )
+    for *_, sockaddr in answers:
+        ip = str(sockaddr[0])
+        address = host_ip(ip.partition("%")[0])
+        if address is None or _is_internal(address):
+            raise CrewAIGuardError(
+                f"RagTool: {host!r} resolves to private IP {ip} "
+                "(CVE-2026-2286 SSRF)."
+            )
     return url
 
 

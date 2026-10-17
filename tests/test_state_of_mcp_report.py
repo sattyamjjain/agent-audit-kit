@@ -288,10 +288,24 @@ _SUPERSEDED_ALLOWLIST = (
 )
 
 
+def _superseded_patterns() -> list[re.Pattern[str]]:
+    """Each literal, read only as a number of its own. `\b748\b` matched the
+    tail of a grouped number, so README's test count reading 3,748 was flagged as
+    the superseded 748-config corpus."""
+    return [re.compile(rf"(?<![\d.,]){p}(?!\d|[.,]\d)") for p in _SUPERSEDED_LITERALS]
+
+
+def test_a_superseded_literal_is_not_read_inside_a_larger_number() -> None:
+    patterns = _superseded_patterns()
+    assert any(rx.search("the 748-config readiness scan") for rx in patterns)
+    assert any(rx.search("a 26.1% critical rate") for rx in patterns)
+    assert not any(rx.search("3,748 test functions, 31,374 lines, 126.1 ms, 2.664") for rx in patterns)
+
+
 def test_every_publication_surface_matches_results() -> None:
     d = _results()
     n_str = f"{d['distinct_configs_scanned']:,}"
-    superseded = [re.compile(p) for p in _SUPERSEDED_LITERALS]
+    superseded = _superseded_patterns()
 
     missing_n: list[str] = []
     stale: list[str] = []

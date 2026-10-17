@@ -47,8 +47,12 @@ _JS_EXTS = {".ts", ".tsx", ".js", ".jsx", ".mjs"}
 _MAX_FILE_BYTES = 512_000
 
 
+# `@tool` sits outside the leading `\b` here and in `_JS_MCP_HINT_RE`: a
+# boundary before `@` needs a word character in front, so inside it a `@tool`
+# decorator at the start of a line never matched, and a file whose only marker
+# it was went unread.
 _PY_MCP_HINT_RE = re.compile(
-    r"\b(?:StdioServerParameters|FastMCP|@tool|McpServer|Server\.run_streamable_http|mcp\.server)\b"
+    r"(?:\b(?:StdioServerParameters|FastMCP|McpServer|Server\.run_streamable_http|mcp\.server)|@tool)\b"
 )
 
 # Taint sources: things that make an argument "attacker-controlled" in the
@@ -307,7 +311,7 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
 # ---- TS / JS side ----
 
 _JS_MCP_HINT_RE = re.compile(
-    r"\b(?:StdioServerParameters|createServer|McpServer|@tool|stdio\s*:|mcp\.server)\b",
+    r"(?:\b(?:StdioServerParameters|createServer|McpServer|stdio\s*:|mcp\.server)|@tool)\b",
     re.IGNORECASE,
 )
 

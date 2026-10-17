@@ -3,6 +3,12 @@
 It globbed `*.ts` and `*.tsx` only, though it is described as a TypeScript and
 JavaScript scanner and AAK-MCP-TOOL-ARG-OSCMD-001 says so, so a repository of
 `.js`, `.mjs` or `.cjs` MCP servers had no file read at all.
+
+The TypeScript gates, the MCP-server one in front of the AAK-TAINT-* sink
+patterns and the tool-handler one in front of AAK-MCP-TOOL-ARG-OSCMD-001, wrote
+`\\b(...|@tool)\\b`. A word boundary before `@` needs a word character in
+front of it, so a TypeScript file whose only marker was a `@tool` decorator was
+never read.
 """
 
 from __future__ import annotations
@@ -644,3 +650,31 @@ def test_the_tree_is_walked_once_and_a_skipped_directory_not_at_all(
                        os.path.join("src", "lib", "types.d.ts")}
     assert listed and max(listed.values()) == 1, listed
     assert not any("node_modules" in path for path in listed), listed
+
+
+def _ids(tmp_path: Path, decorator: str, body: str) -> set[str]:
+    (tmp_path / "tools.ts").write_text(
+        "import { exec } from 'node:child_process';\n\n"
+        f"export class Tools {{\n  {decorator}\n  {body}\n}}\n",
+        encoding="utf-8",
+    )
+    return {f.rule_id for f in scan(tmp_path)[0]}
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool()", True),
+    ("@Tool({ name: 'calc' })", True),
+    ("@toolbox()", False),
+])
+def test_a_tool_decorator_alone_marks_an_mcp_server_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    ids = _ids(tmp_path, decorator, "calc(expr: string) { return eval(expr); }")
+    assert ("AAK-TAINT-002" in ids) is read
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool()", True),
+    ("@toolbox()", False),
+])
+def test_a_tool_decorator_alone_marks_a_tool_handler_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    ids = _ids(tmp_path, decorator, "convert(format: string) { exec(`ffmpeg -f ${format} out`); }")
+    assert ("AAK-MCP-TOOL-ARG-OSCMD-001" in ids) is read

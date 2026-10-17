@@ -131,6 +131,41 @@ def test_low_level_call_tool_arguments_are_caller_input(tmp_path: Path) -> None:
     assert "AAK-STDIO-001" in _stdio(tmp_path, source)
 
 
+# A file whose only MCP marker is a `@tool` decorator was never read: both gates
+# wrote `\b(?:...|@tool|...)\b`, and a word boundary before `@` needs a word
+# character in front of it.
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool", True),
+    ("@tool()", True),
+    ("@toolbox", False),
+])
+def test_a_tool_decorator_alone_marks_a_python_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    source = (
+        "import subprocess\n\n\n"
+        f"{decorator}\ndef run(payload: str) -> str:\n"
+        "    return subprocess.run(payload, shell=True, capture_output=True, text=True).stdout\n"
+    )
+    assert ("AAK-STDIO-001" in _stdio(tmp_path, source)) is read
+
+
+@pytest.mark.parametrize(("decorator", "read"), [
+    ("@tool()", True),
+    ("@Tool({ name: 'run' })", True),
+    ("@toolbox()", False),
+])
+def test_a_tool_decorator_alone_marks_a_ts_file(tmp_path: Path, decorator: str, read: bool) -> None:
+    (tmp_path / "tools.ts").write_text(
+        "import { execa } from 'execa';\n\n"
+        f"export class Tools {{\n  {decorator}\n"
+        "  run(req: any) { return execa(req.body.cmd, { shell: true }); }\n}\n",
+        encoding="utf-8",
+    )
+    findings, _ = stdio_injection.scan(tmp_path)
+    assert any(f.rule_id == "AAK-STDIO-001" for f in findings) is read
+
+
 def test_os_execvp_of_a_tool_parameter_fires(tmp_path: Path) -> None:
     source = (
         "import os\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('shell')\n\n\n"

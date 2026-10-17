@@ -145,11 +145,19 @@ def _same_tool_runs(calls: list[dict]) -> list[list[tuple[int, dict]]]:
     return runs
 
 
+def _fqdn_host(dest: str) -> str:
+    """`skill_composition._host` without a root dot: `attacker.example.` is the
+    fully qualified spelling of attacker.example, and a client connects to the
+    same host. A reassembled URL whose host ended in a dot used to be skipped,
+    so a splice could finish its host with one and go unreported."""
+    return _host(dest).rstrip(".")
+
+
 def _complete_external_url(frag: str, allowlist: set[str]) -> bool:
     if "://" not in frag:
         return False
-    host = _host(frag)
-    return bool(host) and "." in host and not host.endswith(".") and host not in allowlist
+    host = _fqdn_host(frag)
+    return bool(host) and "." in host and host not in allowlist
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
@@ -184,10 +192,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             else:  # net
                 if "://" not in reassembled:
                     continue
-                host = _host(reassembled)
-                if not host or "." not in host or host.endswith(".") or host in allowlist:
+                host = _fqdn_host(reassembled)
+                if not host or "." not in host or host in allowlist:
                     continue
-                if any(_complete_external_url(f, allowlist) and _host(f) == host for f in frags):
+                if any(_complete_external_url(f, allowlist) and _fqdn_host(f) == host for f in frags):
                     continue
                 findings.append(_finding(rel, run, tool, reassembled, f"non-allowlisted host {host!r}", frags))
 
