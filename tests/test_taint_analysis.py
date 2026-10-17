@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 import ast
+import functools
+import itertools
+import random
+import re
+import string
 import sys
 import textwrap
 import time
+import unicodedata
+import warnings
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Iterable
 
 import pytest
 
 from agent_audit_kit.scanners.taint_analysis import scan
+
+try:  # Python's own regular-expression parser: `re._parser` from 3.11, `sre_parse` before
+    from re import _parser as _regex_parser  # type: ignore[attr-defined]
+except ImportError:
+    import sre_parse as _regex_parser
 
 
 # ---------------------------------------------------------------------------
@@ -1503,3 +1515,522 @@ def test_a_local_allow_list_is_read_in_no_other_nested_scope(
 ) -> None:
     body = f"allowed = set('0123456789+-')\n{check}\n    raise ValueError\nresult = eval(expression)\n{after}return result"
     assert _calc(tmp_path, body) == (["AAK-TAINT-002"] if reported else [])
+
+
+# ---------------------------------------------------------------------------
+# The allow-list classifier, checked by brute force against Python itself.
+#
+# The skip is safe only if every check it accepts admits nothing but ASCII
+# digits, ASCII punctuation other than `_`, and ASCII whitespace (the six
+# characters of `string.whitespace`; `\x1c` to `\x1f`, which `str.isspace` also
+# accepts, are not among them). So these tests do not trust the scanner's
+# reading of a literal or a pattern. They run the check a tool would run on
+# every code point from 0 to 0x10FFFF (a Python str holds a lone surrogate, so
+# none is skipped), and wherever the scanner leaves the `eval` unreported,
+# every character the check admits must be one of those.
+#
+# What a check admits of single characters settles what it admits of strings:
+# an allow-list check reads one character at a time, and Python's own regular
+# expression parser must read an accepted pattern as one character's test
+# repeated, so a pattern that admits `0a0` but no single letter still fails.
+# Probes inside admitted strings confirm both against the check as written.
+#
+# A check the scanner reports although it admits nothing else is labelled
+# `conservative`: the scanner reads no flags, escape codes or other shapes of
+# pattern, and no literal but strings. Each scan runs once per pattern or
+# allow-list and is cached.
+# ---------------------------------------------------------------------------
+
+_ARITHMETIC = frozenset(string.digits + string.punctuation.replace("_", "") + string.whitespace)
+_ARITHMETIC_TEXT = "".join(sorted(_ARITHMETIC))
+#: Characters a check must turn away: every other ASCII character (the letters,
+#: `_` and the controls), then letters and digits of other scripts, forms that
+#: NFKC folds to a letter, digit, `_` or operator (fullwidth, letterlike,
+#: mathematical, a Roman numeral, a superscript), letters that IGNORECASE folds
+#: to ASCII ones, a combining mark, and spaces and format characters outside
+#: ASCII.
+_PROBES = "".join(ch for ch in map(chr, range(128)) if ch not in _ARITHMETIC) + "\x85" + "".join(
+    map(unicodedata.lookup, (
+        "LATIN SMALL LETTER E WITH ACUTE", "CYRILLIC SMALL LETTER ZHE", "GREEK SMALL LETTER ALPHA",
+        "CJK UNIFIED IDEOGRAPH-4E2D", "ARABIC LETTER ALEF", "ARABIC-INDIC DIGIT THREE", "DEVANAGARI DIGIT ONE",
+        "NKO DIGIT ONE", "FULLWIDTH LATIN CAPITAL LETTER A", "FULLWIDTH DIGIT ONE", "FULLWIDTH LOW LINE",
+        "FULLWIDTH PLUS SIGN", "MATHEMATICAL BOLD DIGIT ZERO", "KELVIN SIGN", "SCRIPT SMALL L",
+        "ROMAN NUMERAL TWELVE", "SUPERSCRIPT TWO", "LATIN SMALL LETTER LONG S", "LATIN SMALL LETTER DOTLESS I",
+        "LATIN CAPITAL LETTER I WITH DOT ABOVE", "COMBINING ACUTE ACCENT", "ZERO WIDTH SPACE", "NO-BREAK SPACE",
+        "IDEOGRAPHIC SPACE",
+    ))
+)
+#: A flags argument as a tool writes it after the text, and the flags it passes.
+_FLAGS = {
+    "": 0, ", 0": 0, ", re.I": re.I, ", flags=re.IGNORECASE": re.I, ", re.A": re.A, ", re.U": re.U,
+    ", re.I | re.A": re.I | re.A,
+}
+
+
+@functools.lru_cache(maxsize=None)
+def _outside_arithmetic() -> str:
+    """Every code point from 0 to 0x10FFFF but the arithmetic ones, in order."""
+    every = "".join(map(chr, range(sys.maxunicode + 1)))
+    return every.translate(dict.fromkeys(map(ord, _ARITHMETIC)))
+
+
+def _admits(test: Callable[[str], object]) -> tuple[frozenset[str], tuple[str, ...]]:
+    """What a check admits of every code point: the arithmetic characters, and
+    the first eight others in code point order, which are none for a check the
+    skip may accept. Stopping at eight keeps a scan short where a check admits
+    nearly everything."""
+    return frozenset(filter(test, _ARITHMETIC_TEXT)), tuple(itertools.islice(filter(test, _outside_arithmetic()), 8))
+
+
+def _named(characters: Iterable[str]) -> list[str]:
+    """`characters` by code point and name, for a failure message."""
+    return [f"U+{ord(ch):04X} {unicodedata.name(ch, '<unnamed>')}" for ch in characters]
+
+
+def _assert_sound(
+    case: object, admitted: tuple[frozenset[str], tuple[str, ...]], passes: Callable[[str], bool]
+) -> None:
+    """For a check the scanner accepted: it admits no code point outside the
+    arithmetic ones, the check as written passes each one it admits, and it
+    turns away every probe, alone or inside a string it would pass."""
+    inside, outside = admitted
+    assert not outside, (case, _named(outside))
+    assert all(map(passes, inside)), case
+    first, last = (min(inside), max(inside)) if inside else ("", "")
+    assert not inside or passes(first + last + first), case
+    for probe in _PROBES:
+        for text in (probe, first + probe, probe + last, first + probe + last):
+            assert not passes(text), (case, text)
+
+
+@functools.lru_cache(maxsize=None)
+def _compiled(pattern: str, flags: int) -> re.Pattern[str] | None:
+    """`pattern` as `re.fullmatch(pattern, x, flags)` compiles it, or None
+    where that raises, so the check passes nothing."""
+    with warnings.catch_warnings():
+        # A possible nested set or set operation, and flags mid-pattern on 3.9 and 3.10.
+        warnings.simplefilter("ignore")
+        try:
+            return re.compile(pattern, flags)
+        except re.error:
+            return None
+
+
+@functools.lru_cache(maxsize=None)
+def _pattern_admits(pattern: str, flags: int) -> tuple[frozenset[str], tuple[str, ...]]:
+    """What `re.fullmatch(pattern, c, flags)` accepts of every code point c."""
+    compiled = _compiled(pattern, flags)
+    return (frozenset(), ()) if compiled is None else _admits(compiled.fullmatch)
+
+
+def _pattern_passes(pattern: str, flags: int) -> Callable[[str], bool]:
+    """`re.fullmatch(pattern, x, flags)` as a test of x."""
+    compiled = _compiled(pattern, flags)
+    return lambda text: compiled is not None and compiled.fullmatch(text) is not None
+
+
+def _one_character_repeated(pattern: str, flags: int) -> bool:
+    """Whether Python's own parser reads `pattern` as one character's test
+    repeated, at least once or from none, between optional anchors at its
+    ends. `re.fullmatch` then passes a string exactly when it passes each of
+    its characters, so the code point scan settles every string."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # as in `_compiled`
+        items = [(op.name, value) for op, value in _regex_parser.parse(pattern, flags)]
+    if items and items[0][0] == "AT" and items[0][1].name in ("AT_BEGINNING", "AT_BEGINNING_STRING"):
+        items.pop(0)
+    if items and items[-1][0] == "AT" and items[-1][1].name in ("AT_END", "AT_END_STRING"):
+        items.pop()
+    if len(items) != 1 or items[0][0] not in ("MAX_REPEAT", "MIN_REPEAT"):
+        return False
+    low, high, repeated = items[0][1]
+    return low <= 1 <= high and [op.name for op, _ in repeated] in (["IN"], ["LITERAL"], ["NOT_LITERAL"], ["ANY"])
+
+
+def _assert_pattern_sound(case: object, pattern: str, flags: int) -> None:
+    """`_assert_sound` for a pattern, once Python's parser has shown that its
+    single characters settle it. A pattern that does not compile makes the
+    check raise before the call, which is safe."""
+    if _compiled(pattern, flags) is not None:
+        assert _one_character_repeated(pattern, flags), case
+        _assert_sound(case, _pattern_admits(pattern, flags), _pattern_passes(pattern, flags))
+
+
+#: The builtins the allow-lists here are built with: the scanner reads `set()`
+#: and `frozenset()` of a literal, and not `tuple()` or `list()`.
+_CONSTRUCTORS: dict[str, Callable[..., Any]] = {"set": set, "frozenset": frozenset, "tuple": tuple, "list": list}
+
+
+def _value(node: ast.expr) -> Any:
+    """An allow-list's value as Python builds it: a literal, or one of
+    `_CONSTRUCTORS` called on one."""
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _CONSTRUCTORS:
+        return _CONSTRUCTORS[node.func.id](*map(_value, node.args))
+    return ast.literal_eval(node)
+
+
+@functools.lru_cache(maxsize=None)
+def _allow_list(source: str) -> Any:
+    return _value(ast.parse(source, mode="eval").body)
+
+
+def _allow_list_passes(source: str, form: str) -> Callable[[str], bool]:
+    """The check as a tool writes it, `all(c in A for c in x)` or `set(x) <= A`,
+    as a test of x. A check that raises passes nothing."""
+    value = _allow_list(source)
+
+    def passes(text: str) -> bool:
+        try:
+            return all(c in value for c in text) if form == "all" else set(text) <= value
+        except TypeError:
+            return False
+
+    return passes
+
+
+@functools.lru_cache(maxsize=None)
+def _allow_list_admits(source: str, form: str) -> tuple[frozenset[str], tuple[str, ...]]:
+    """What the check admits of every code point.
+
+    On a one-character x, `all(c in A for c in x)` is `x in A`, run here as the
+    value's own `__contains__`, and `set(x) <= A` is `{x} <= A`, which is
+    `x in A` for a set or frozenset and raises for anything else. On bytes,
+    `in` raises for every string. `_assert_sound` runs each check as written
+    on what this admits and on every probe.
+    """
+    value = _allow_list(source)
+    if form == "set" and not isinstance(value, (set, frozenset)):
+        return frozenset(), ()
+    try:
+        value.__contains__("0")
+    except TypeError:
+        return frozenset(), ()
+    return _admits(value.__contains__)
+
+
+@pytest.mark.parametrize(("pattern", "flags", "verdict"), [
+    # Skipped, and brute force finds only arithmetic characters.
+    ("[0-9+*/() -]+", "", "skip"),
+    ("^[0-9.\\-+*/()\\t ]+$", "", "skip"),
+    ("[0-9]*", "", "skip"),
+    ("[.]+", "", "skip"),
+    ("[\\--/]+", "", "skip"),
+    ("[!-/0-9]+", "", "skip"),
+    ("[ -@]+", "", "skip"),
+    ("[\\n-\\r0-9]+", "", "skip"),
+    ("[\\f\\v0-9]+", "", "skip"),
+    ("[\\]\\[\\\\0-9]+", "", "skip"),
+    ("[-0-9^]+$", "", "skip"),
+    ("[+--]+", "", "skip"),
+    # Reported, and brute force finds a character outside the set.
+    ("[\\d+]+", "", "unsafe"),
+    ("[\\s0-9]+", "", "unsafe"),
+    ("[\\w+]+", "", "unsafe"),
+    ("[^a-z]+", "", "unsafe"),
+    ("[^0-9]+", "", "unsafe"),
+    ("[+-~]+", "", "unsafe"),
+    ("[ -A]+", "", "unsafe"),
+    (".+", "", "unsafe"),
+    ("[0-9]+|[a-z]+", "", "unsafe"),
+    ("[0-9\\137]+", "", "unsafe"),
+    ("[0-9\\x5f]+", "", "unsafe"),
+    ("[0-9\\N{LOW LINE}]+", "", "unsafe"),
+    ("[0-9\\u0663]+", "", "unsafe"),
+    ("[\\u2160-\\u216b]+", "", "unsafe"),
+    ("[\\uff10-\\uff19]+", "", "unsafe"),
+    # `str.isspace` accepts `\x1c`, `string.whitespace` does not, and neither
+    # does Python's tokenizer.
+    ("[\\x1c0-9]+", "", "unsafe"),
+    ("[0-9a-f]+", ", re.I", "unsafe"),
+    ("[k]+", ", re.I", "unsafe"),
+    ("[\\w+]+", ", re.A", "unsafe"),
+    # Reported although brute force finds only arithmetic characters.
+    ("[0-9+]+", ", re.I", "conservative"),
+    ("[0-9+]+", ", flags=re.IGNORECASE", "conservative"),
+    ("[0-9+]+", ", re.A", "conservative"),
+    ("[0-9+]+", ", re.U", "conservative"),
+    ("[0-9+]+", ", re.I | re.A", "conservative"),
+    ("[0-9+]+", ", 0", "conservative"),
+    ("[\\d+]+", ", re.A", "conservative"),
+    ("[\\s0-9]+", ", re.A", "conservative"),
+    ("(?i)[0-9+]+", "", "conservative"),
+    ("(?a)[\\d+]+", "", "conservative"),
+    ("[\\x30-\\x39]+", "", "conservative"),
+    ("[\\060-\\071]+", "", "conservative"),
+    ("[0-9\\ ]+", "", "conservative"),
+    ("[]0-9]+", "", "conservative"),
+    ("[0-9[]+", "", "conservative"),
+    ("[^\\x00-/:-\\U0010ffff]+", "", "conservative"),
+    ("[0-9]{1,9}", "", "conservative"),
+    ("[0-9]+\\Z", "", "conservative"),
+])
+def test_a_pattern_is_skipped_only_when_every_code_point_it_admits_is_arithmetic(
+    tmp_path: Path, pattern: str, flags: str, verdict: str
+) -> None:
+    body = f"if not re.fullmatch({pattern!r}, expression{flags}):\n    raise ValueError\nreturn eval(expression)"
+    skipped = _calc(tmp_path, body) == []
+    admitted = _pattern_admits(pattern, _FLAGS[flags])
+    if skipped:
+        _assert_pattern_sound(pattern, pattern, _FLAGS[flags])
+    found = "skip" if skipped else "unsafe" if admitted[1] else "conservative"
+    assert found == verdict, _named(admitted[1])
+    # A conservative label claims the check admits no string with another
+    # character, which the code point scan shows only for one character's test.
+    assert found != "conservative" or _one_character_repeated(pattern, _FLAGS[flags]), pattern
+
+
+@pytest.mark.parametrize("form", ["all", "set"])
+@pytest.mark.parametrize("binding", ["inline", "local", "module"])
+@pytest.mark.parametrize(("source", "verdict"), [
+    # Skipped, and brute force finds only arithmetic characters.
+    ('"0123456789+-*/(). "', "skip"),
+    ('set("0123456789+-*/(). ")', "skip"),
+    ('frozenset("0123456789+")', "skip"),
+    ('("1", "2", "+", " ")', "skip"),
+    ('["0", "1"]', "skip"),
+    ('{"1", "+"}', "skip"),
+    ('("12", "+")', "skip"),
+    ('set(("1", "+"))', "skip"),
+    ('frozenset(["1", "2"])', "skip"),
+    ('"\\N{DIGIT ONE}\\x2b"', "skip"),
+    ('"12" "+-"', "skip"),
+    ('""', "skip"),
+    ("()", "skip"),
+    # Reported, and brute force finds a character outside the set.
+    ('"0123456789abcdef"', "unsafe"),
+    ('"0123456789_"', "unsafe"),
+    ('"\\x5f"', "unsafe"),
+    ('"12" "ab"', "unsafe"),
+    ('"0123\\u0663"', "unsafe"),
+    ('("1", "\\N{FULLWIDTH DIGIT ONE}")', "unsafe"),
+    ('set("0123\\u00b2")', "unsafe"),
+    ('{"1", "\\u212a"}', "unsafe"),
+    ('["1", "\\N{COMBINING ACUTE ACCENT}"]', "unsafe"),
+    ('frozenset("01\\u200b")', "unsafe"),
+    ('"0123\\u00a0"', "unsafe"),
+    ('"0123\\x1c"', "unsafe"),
+    # Reported although brute force finds only arithmetic characters.
+    ('("12", "ab")', "conservative"),
+    ('{"1": 0, "+": 1}', "conservative"),
+    ('set(set("12"))', "conservative"),
+    ('tuple("12")', "conservative"),
+    ("[1, 2]", "conservative"),
+    ('b"0123"', "conservative"),
+    ("set()", "conservative"),
+])
+def test_an_allow_list_is_skipped_only_when_every_code_point_it_admits_is_arithmetic(
+    tmp_path: Path, source: str, verdict: str, binding: str, form: str
+) -> None:
+    allow = {"inline": source, "local": "allowed", "module": "ALLOWED"}[binding]
+    check = f"all(c in {allow} for c in expression)" if form == "all" else f"set(expression) <= {allow}"
+    body = (f"allowed = {source}\n" if binding == "local" else "") + f"if not {check}:\n    raise ValueError\nreturn eval(expression)"
+    skipped = _calc(tmp_path, body, f"ALLOWED = {source}\n" if binding == "module" else "") == []
+    admitted = _allow_list_admits(source, form)
+    if skipped:
+        _assert_sound(source, admitted, _allow_list_passes(source, form))
+    found = "skip" if skipped else "unsafe" if admitted[1] else "conservative"
+    # `set(x) <= A` raises for an A that is not a set, so on a string, list or
+    # tuple that check passes nothing, and reporting it is conservative.
+    if form == "set" and verdict == "unsafe" and not isinstance(_allow_list(source), (set, frozenset)):
+        verdict = "conservative"
+    assert found == verdict, _named(admitted[1])
+
+
+def _skipped(tmp_path: Path, tools: list[tuple[str, str]]) -> list[bool]:
+    """Scan one file holding a tool per (module code, body before the call),
+    each ending in `return eval(expression)`, and say for each whether that
+    call was left unreported."""
+    lines = ["import re", "", "from mcp.server.fastmcp import FastMCP", "", 'mcp = FastMCP("demo")']
+    lines += [module for module, _ in tools if module]
+    calls: list[int] = []
+    for index, (_, body) in enumerate(tools):
+        lines += ["", "", "@mcp.tool()", f"def calc_{index}(expression: str) -> object:"]
+        lines += [f"    {line}" for line in body.splitlines()] + ["    return eval(expression)"]
+        calls.append(len(lines))
+    (tmp_path / "server.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    reported = {f.line_number for f in scan(tmp_path)[0] if f.rule_id == "AAK-TAINT-002"}
+    assert reported <= set(calls)
+    return [line not in reported for line in calls]
+
+
+def _in_class(ch: str) -> str:
+    """`ch` written inside a character class."""
+    return "\\" + ch if ch in "]\\^-[" else ch
+
+
+#: The runs of consecutive arithmetic code points: a range inside one holds
+#: nothing else, and the second, from space to `@`, sits below the capitals.
+_ARITHMETIC_RUNS = [
+    "".join(run) for inside, run in itertools.groupby(map(chr, range(128)), _ARITHMETIC.__contains__) if inside
+]
+#: Class items one step past what the scanner reads.
+_CLASS_ESCAPES = ("\\d", "\\D", "\\s", "\\S", "\\w", "\\W", "\\b", "\\a", "\\0")
+_CODE_ESCAPES = (
+    "\\x30", "\\x5f", "\\x41", "\\060", "\\101", "\\137", "\\u0030", "\\u00b2", "\\u0663", "\\uff3f",
+    "\\N{DIGIT ONE}", "\\N{LOW LINE}", "\\U0001d7ce", "\\ ", "\\q",
+)
+
+
+def _risky(rng: random.Random) -> str:
+    """A character a check must turn away: `_` a quarter of the time, as the
+    one ASCII punctuation character a name can hold, otherwise any probe."""
+    return "_" if rng.random() < 0.25 else rng.choice(_PROBES)
+
+
+def _clean_item(rng: random.Random) -> str:
+    """A character class item the scanner reads."""
+    roll = rng.random()
+    if roll < 0.55:
+        return _in_class(rng.choice(_ARITHMETIC_TEXT))
+    if roll < 0.80:
+        run = rng.choice(_ARITHMETIC_RUNS)
+        low, high = sorted((rng.choice(run), rng.choice(run)))
+        return _in_class(low) + "-" + _in_class(high)
+    if roll < 0.92:
+        return "\\" + rng.choice(string.punctuation.replace("_", ""))
+    return rng.choice(["\\t", "\\n", "\\r", "\\f", "\\v"])
+
+
+def _risky_item(rng: random.Random) -> str:
+    """A character class item one step past what the scanner reads."""
+    roll = rng.random()
+    if roll < 0.25:
+        return _in_class(_risky(rng))
+    if roll < 0.35:
+        low, high = sorted((rng.choice(_ARITHMETIC_TEXT), _risky(rng)))
+        return _in_class(low) + "-" + _in_class(high)
+    if roll < 0.45:
+        # Both ends arithmetic, and the capital letters between them.
+        return _in_class(rng.choice(_ARITHMETIC_RUNS[1])) + "-" + _in_class(rng.choice("".join(_ARITHMETIC_RUNS[2:])))
+    if roll < 0.50:
+        return "\\_"
+    if roll < 0.68:
+        return rng.choice(_CLASS_ESCAPES)
+    if roll < 0.92:
+        return rng.choice(_CODE_ESCAPES)
+    return rng.choice("[]")
+
+
+def _random_pattern(rng: random.Random) -> tuple[str, str]:
+    """A small pattern the scanner reads, or one step past it in one way, and
+    the flags argument written after it."""
+    items = [_clean_item(rng) for _ in range(rng.randint(1, 4))]
+    negation, quantifier, flags = "", rng.choice(["+", "+", "*"]), ""
+    step = rng.choices(["none", "item", "negation", "quantifier", "shape", "flags"], [5, 55, 6, 8, 14, 12])[0]
+    if step == "item":
+        items.insert(rng.randint(0, len(items)), _risky_item(rng))
+    elif step == "negation":
+        negation = "^"
+    elif step == "quantifier":
+        quantifier = rng.choice(["+?", "*?", "?", "{1,3}", "{2,}", ""])
+    elif step == "flags":
+        flags = rng.choice([", 0", ", re.I", ", re.A", ", re.U", ", re.I | re.A"])
+    pattern = "[" + negation + "".join(items) + "]" + quantifier
+    if step == "shape":
+        pattern = rng.choice([
+            pattern + "|[" + _clean_item(rng) + "]+",
+            "(" + pattern + ")",
+            pattern + rng.choice([".", "\\b", "\\Z"]),
+            rng.choice(["(?i)", "(?a)", "(?u)", "(?x)", "\\A"]) + pattern,
+            _risky(rng) + pattern,
+            "[" + _clean_item(rng) + "]" + rng.choice(["", ".", "|"]) + pattern,
+        ])
+    return ("^" if rng.random() < 0.25 else "") + pattern + ("$" if rng.random() < 0.25 else ""), flags
+
+
+def _written(rng: random.Random, text: str) -> str:
+    """`text` as a string literal, each character written plainly or as an
+    escape, which Python decodes before the scanner reads the value."""
+    out = []
+    for ch in text:
+        code, roll = ord(ch), rng.random()
+        if roll < 0.12 and code < 0x100:
+            out.append(f"\\x{code:02x}")
+        elif roll < 0.22 and unicodedata.name(ch, ""):
+            out.append("\\N{" + unicodedata.name(ch) + "}")
+        elif roll < 0.32 or not ch.isprintable() or ch in "\"\\":
+            out.append(f"\\u{code:04x}" if code < 0x10000 else f"\\U{code:08x}")
+        else:
+            out.append(ch)
+    return '"' + "".join(out) + '"'
+
+
+def _random_allow_list(rng: random.Random) -> str:
+    """An allow-list the scanner reads, or one step past it in one way: a
+    character that is not arithmetic, or a shape the scanner does not read."""
+    constructor = rng.choice(["set", "frozenset"])
+
+    def clean(longest: int) -> str:
+        return "".join(rng.choice(_ARITHMETIC_TEXT) for _ in range(rng.randint(1, longest)))
+
+    step = rng.choices(["none", "character", "shape"], [15, 70, 15])[0]
+    if step == "shape":
+        return rng.choice([
+            "{" + f"{_written(rng, clean(1))}: 0, {_written(rng, clean(1))}: 1" + "}",
+            f"{constructor}({rng.choice(['set', 'frozenset'])}({_written(rng, clean(6))}))",
+            f"{rng.choice(['tuple', 'list'])}({_written(rng, clean(6))})",
+            f"(({_written(rng, clean(1))},),)",
+            repr(clean(6).encode()),
+            "(1, 2)", "[0.5]", "(None,)", "{}", "set()", "frozenset()",
+        ])
+    kind = rng.choice(["str", "str", "call", "display", "call of display", "concatenation"])
+    if kind in ("display", "call of display"):
+        texts = [clean(rng.choice([1, 1, 1, 3])) for _ in range(rng.randint(1, 4))]
+    else:
+        texts = [clean(6) for _ in range(2 if kind == "concatenation" else 1)]
+    if step == "character":
+        index = rng.randrange(len(texts))
+        if kind in ("display", "call of display") and rng.random() < 0.5:
+            texts.insert(index, _risky(rng))
+        else:
+            position = rng.randint(0, len(texts[index]))
+            texts[index] = texts[index][:position] + _risky(rng) + texts[index][position:]
+    written = [_written(rng, text) for text in texts]
+    if kind == "str":
+        return written[0]
+    if kind == "concatenation":
+        return " ".join(written)
+    if kind == "call":
+        return f"{constructor}({written[0]})"
+    display = rng.choice(["({},)", "[{}]", "{{{}}}"]).format(", ".join(written))
+    return display if kind == "display" else f"{constructor}({display})"
+
+
+def test_random_patterns_are_skipped_only_when_every_code_point_they_admit_is_arithmetic(tmp_path: Path) -> None:
+    """400 patterns, each one the scanner reads or one step past it in one way
+    (a class item, a negation, a quantifier, a shape or a flags argument), as
+    tools in one file."""
+    rng = random.Random(20261017)
+    cases = [_random_pattern(rng) for _ in range(400)]
+    skipped = _skipped(tmp_path, [
+        ("", f"if not re.fullmatch({pattern!r}, expression{flags}):\n    raise ValueError") for pattern, flags in cases
+    ])
+    for (pattern, flags), skip in zip(cases, skipped):
+        if skip:
+            _assert_pattern_sound((pattern, flags), pattern, _FLAGS[flags])
+    # Enough are skipped for the brute force to mean something, and most are
+    # reported, since most sit one step past what the scanner reads.
+    assert 10 <= sum(skipped) <= len(cases) // 2, sum(skipped)
+
+
+def test_random_allow_lists_are_skipped_only_when_every_code_point_they_admit_is_arithmetic(tmp_path: Path) -> None:
+    """300 allow-lists, each one the scanner reads or one step past it (a
+    character outside the set, or a shape it does not read), inline, local or
+    module-level, in either check, as tools in one file."""
+    rng = random.Random(20261017)
+    cases: list[tuple[str, str]] = []
+    tools: list[tuple[str, str]] = []
+    for index in range(300):
+        source, binding, form = _random_allow_list(rng), rng.choice(["inline", "local", "module"]), rng.choice(["all", "set"])
+        allow = {"inline": source, "local": "allowed", "module": f"ALLOWED_{index}"}[binding]
+        check = f"all(c in {allow} for c in expression)" if form == "all" else f"set(expression) <= {allow}"
+        tools.append((
+            f"ALLOWED_{index} = {source}" if binding == "module" else "",
+            (f"allowed = {source}\n" if binding == "local" else "") + f"if not {check}:\n    raise ValueError",
+        ))
+        cases.append((source, form))
+    skipped = _skipped(tmp_path, tools)
+    for (source, form), skip in zip(cases, skipped):
+        if skip:
+            _assert_sound((source, form), _allow_list_admits(source, form), _allow_list_passes(source, form))
+    assert 25 <= sum(skipped) <= len(cases) // 2, sum(skipped)
