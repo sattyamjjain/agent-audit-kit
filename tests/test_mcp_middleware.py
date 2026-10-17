@@ -507,3 +507,37 @@ def test_same_named_handlers_scan_in_linear_time(tmp_path: Path) -> None:
     t_distinct, _ = _scan_in_child(tmp_path, "distinct", _methods_and_routes(8_500, same=False))
     assert t_same < 5.0
     assert t_same < 4 * t_distinct + 0.25, (t_distinct, t_same)
+
+
+# ---------------------------------------------------------------------------
+# AAK-MCP-019: handlers registered as method values and through a receiver
+# ---------------------------------------------------------------------------
+
+METHOD_VALUE = GATEWAY.replace(
+    "func Register(r *gin.Engine, store AdapterStore) {\n\tadapters := r.Group(\"/api/v1/adapters\")\n"
+    "\tadapters.GET(\"/:name/tools\", func(c *gin.Context) {\n\t\tlistMCPTools(c, store)\n\t})\n}\n",
+    "type Server struct{ store AdapterStore }\n\nfunc (s *Server) Register(r *gin.Engine) {\n"
+    "\tadapters := r.Group(\"/api/v1/adapters\")\n\tadapters.GET(\"/:name/tools\", s.listMCPTools)\n}\n",
+).replace(
+    "func listMCPTools(c *gin.Context, store AdapterStore) {\n",
+    "func (s *Server) listMCPTools(c *gin.Context) {\n\tstore := s.store\n",
+)
+RECEIVER_DELEGATE = GATEWAY.replace("\t\tlistMCPTools(c, store)\n", "\t\th.listMCPTools(c, store)\n")
+
+
+@pytest.mark.parametrize(("text", "line"), [(METHOD_VALUE, 22), (RECEIVER_DELEGATE, 21)],
+                         ids=["method-value", "receiver-delegate"])
+def test_a_handler_registered_as_a_method_value_or_through_a_receiver_is_read(
+    tmp_path: Path, text: str, line: int,
+) -> None:
+    """The usual Go idiom for a struct-based server, `adapters.GET(path,
+    s.listMCPTools)`, keyed the route as `s.listMCPTools`, which no handler is
+    named, so the handler was never read."""
+    assert text != GATEWAY
+    assert _lookups(tmp_path, "gateway.go", text) == [("gateway.go", line)]
+
+
+def test_a_method_value_on_an_authenticated_route_is_quiet(tmp_path: Path) -> None:
+    text = METHOD_VALUE.replace('adapters.GET("/:name/tools", s.listMCPTools)',
+                                'adapters.GET("/:name/tools", requireAuth(), s.listMCPTools)')
+    assert _lookups(tmp_path, "gateway.go", text) == []

@@ -1125,26 +1125,21 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
     by_at: dict[int, list[_Reg]] = {}
     for reg in regs:
         if reg.handler is not None:
-            by_name.setdefault(reg.handler, []).append(reg)
+            by_name.setdefault(_handler_name(reg.handler), []).append(reg)
         by_at.setdefault(reg.handler_at, []).append(reg)
     # Whether every route naming a handler is open, decided once per name: Go
     # methods on different receivers share names (every `ServeHTTP`), and
     # checking a name's routes for each method of that name made 8,500 methods
     # named `h` take 6.5 seconds.
-    open_names: dict[str, bool] = {}
+    open_names = {name: _all_open(routes, covered) for name, routes in by_name.items()}
     mentions = [m.start() for m in _MCP_MENTION_RE.finditer(text)]
     findings: list[Finding] = []
     for handler in go_handlers(index):
         if handler.name is None:
             if not _all_open(by_at.get(handler.start, []), covered):
                 continue
-        else:
-            if handler.name not in open_names:
-                open_names[handler.name] = _all_open(
-                    by_name.get(handler.name, []) + by_name.get("delegate:" + handler.name, []), covered,
-                )
-            if not open_names[handler.name]:
-                continue
+        elif not open_names.get(handler.name):
+            continue
         near = bisect_right(mentions, handler.body_end) - bisect_right(mentions, handler.body_start)
         if not near and not (handler.name and _MCP_MENTION_RE.search(handler.name)):
             continue
@@ -1162,6 +1157,16 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
             line_number=index.line_of(offset),
         ))
     return findings
+
+
+def _handler_name(identity: str) -> str:
+    """The name a route's handler has where it is defined: the last part of a
+    method value or a call through a receiver (`s.listMCPTools`,
+    `delegate:h.listMCPTools`), as AAK-MCP-016 matches a handler by any word of
+    its route. Keyed as written, a struct-based server's routes reached no
+    handler at all."""
+    identity = identity.split(":", 1)[-1]
+    return identity.rsplit(".", 1)[-1] if _DOTTED_RE.fullmatch(identity) else identity
 
 
 def _all_open(routes: list[_Reg], covered: _Scopes) -> bool:
