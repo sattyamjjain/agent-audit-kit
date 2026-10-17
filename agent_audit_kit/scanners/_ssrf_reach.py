@@ -31,7 +31,7 @@ import ast
 import ipaddress
 import re
 import string
-from typing import Callable, Iterator, NamedTuple
+from typing import Callable, Iterable, Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
 from agent_audit_kit.scanners.taint_analysis import (
@@ -373,6 +373,9 @@ _PREFIX_CAP = 512
 #: Real URL expressions nest a few levels; the bound keeps a crafted file from
 #: exhausting the interpreter's stack.
 _PY_MAX_NEST = 40
+#: How many pieces of one built URL are read. Its host is in the first few; the
+#: bound keeps a crafted run of empty pieces from costing more than this.
+_PIECE_CAP = 256
 
 
 #: Functions that return a URL built from the arguments they are given, so
@@ -458,20 +461,47 @@ def _is_built(node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | Non
     )
 
 
+def _joined_name(node: ast.AST) -> str | None:
+    """The name a `"sep".join(name)` reads its items from."""
+    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join"
+            and len(node.args) == 1 and isinstance(node.args[0], ast.Name)):
+        return node.args[0].id
+    return None
+
+
 def _pieces(
     node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None
-) -> list[str | ast.AST]:
+) -> Iterator[str | ast.AST]:
     """A built string as the literal text and expressions it joins, in order:
     an f-string's parts, a `+` chain flattened left to right (with an explicit
     stack, as a chain can be thousands long), and a literal `.join` with its
-    separator between the items."""
-    out: list[str | ast.AST] = []
+    separator between the items, read lazily so a caller can stop once the
+    host is settled, and never more than `_PIECE_CAP` of them.
+
+    A named list is expanded once per URL. A join that comes back to a list
+    already read reads as text the code does not spell out: `parts =
+    ["https://", "".join(parts)]` looped for ever when every join was expanded
+    again, and thirty lists that each join the one before twice would have
+    read 2**30 pieces."""
+    expanded: set[str] = set()
     stack: list[str | ast.AST] = [node]
+    count = 0
     while stack:
+        if count >= _PIECE_CAP:
+            yield _UNKNOWN
+            return
         cur = stack.pop()
         if isinstance(cur, str):
-            out.append(cur)
+            count += 1
+            yield cur
             continue
+        name = _joined_name(cur) if lists is not None else None
+        if name is not None:
+            if name in expanded:
+                count += 1
+                yield _UNKNOWN
+                continue
+            expanded.add(name)
         joined = _literal_join(cur, lists)
         if joined is not None:
             sep, items = joined
@@ -483,12 +513,13 @@ def _pieces(
             stack.extend((cur.right, cur.left))
         elif isinstance(cur, ast.JoinedStr):
             stack.extend(reversed(cur.values))
-        elif isinstance(cur, ast.FormattedValue):
-            out.append(cur.value)
         else:
-            text = _str_constant(cur)
-            out.append(cur if text is None else text)
-    return out
+            count += 1
+            if isinstance(cur, ast.FormattedValue):
+                yield cur.value
+            else:
+                text = _str_constant(cur)
+                yield cur if text is None else text
 
 
 #: A `%` conversion: an optional `(key)`, flags, width and precision in one
@@ -721,6 +752,9 @@ class _CallerInput:
         key = (id(node), depth)
         hit = self._sets.get(key)
         if hit is None:
+            # Reached again while it is being worked out, an expression adds
+            # nothing to its own answer: the cycle ends here.
+            self._sets[key] = False
             hit = self._sets[key] = self._sets_host(node, depth, nest)
         return hit
 
@@ -818,7 +852,7 @@ class _CallerInput:
             return [receiver, call.args[0]]
         return [receiver]
 
-    def _built_sets_host(self, pieces: list[str | ast.AST], depth: int, nest: int) -> bool:
+    def _built_sets_host(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> bool:
         prefix = ""
         for piece in pieces:
             if _authority_closed(prefix):
@@ -841,6 +875,7 @@ class _CallerInput:
         key = (id(node), depth)
         text = self._text.get(key)
         if text is None:
+            self._text[key] = _UNKNOWN  # spelling it again while spelling it ends the cycle
             text = self._text[key] = self._spell(node, depth, nest)[:_PREFIX_CAP]
         return text
 

@@ -14,6 +14,10 @@ and genuine data flow must still fire.
 from __future__ import annotations
 
 import ast
+import json
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Callable
@@ -388,6 +392,79 @@ def test_a_scheme_comparison_is_validation_and_an_assignment_is_not(
     ids = _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body)
     assert ("AAK-SSRF-001" not in ids) is silenced
     assert "AAK-SSRF-005" in ids
+
+
+# --- a binding that comes back to itself ends --------------------------------
+#
+# The host test follows a name to what it is bound to, a named list into the
+# join that reads it, and a template into its fields. A binding that comes back
+# to itself must end: a list that joined itself looped for ever inside one
+# expansion, with no depth bound to stop it, and the engine has no scanner
+# timeout. Each shape runs in a child process, so a regression fails here
+# instead of hanging the run.
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_CYCLE_HEAD = "import requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('d')\n"
+
+
+def _analyze_in_child(source: str) -> tuple[list[tuple[object, ...]], float]:
+    """analyze_python's sites for `source` and its CPU time, from a child."""
+    code = (
+        "import json, sys, time\n"
+        "from agent_audit_kit.scanners._ssrf_reach import analyze_python\n"
+        "source = sys.stdin.read()\n"
+        "started = time.process_time()\n"
+        "sites = analyze_python(source)\n"
+        "print(json.dumps([[list(s) for s in sites], time.process_time() - started]))\n"
+    )
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join(filter(None, [str(_REPO_ROOT), os.environ.get("PYTHONPATH")])))
+    proc = subprocess.run(
+        [sys.executable, "-c", code], input=source, capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    sites, seconds = json.loads(proc.stdout)
+    return [tuple(site) for site in sites], seconds
+
+
+_CYCLES = {
+    # A list that joins itself, two lists that join each other, and the same
+    # at module level, read through the file-wide bindings.
+    "list-self": ("    parts = ['https://', ''.join(parts)]\n    return requests.get(''.join(parts)).text\n", False),
+    "list-pair": ("    a = ['x', ''.join(b)]\n    b = ['y', ''.join(a)]\n    return requests.get(''.join(a)).text\n", False),
+    "list-module": ("    return requests.get('/'.join(PARTS) + host).text\nPARTS = ['https://', '/'.join(PARTS)]\n", True),
+    # A self-join reached again through a call each time, twice per level.
+    "list-through-call": (
+        "    parts = ['https://', str(''.join(parts)), str(''.join(parts))]\n"
+        "    return requests.get(''.join(parts)).text\n", False),
+    # Names bound to each other, with and without a caller value among them.
+    "names": ("    a = b\n    b = a\n    return requests.get(a).text\n", False),
+    "names-with-caller": ("    a = b\n    b = a\n    b = host\n    return requests.get(a).text\n", True),
+    # `x += x`, after a value and with none before it.
+    "augmented-self": ("    x = 'https://'\n    x += x\n    return requests.get(x).text\n", False),
+    "augmented-param": ("    host += host\n    return requests.get(host).text\n", True),
+    # f-strings and templates that read each other.
+    "fstrings": ("    a = f'https://{b}'\n    b = f'{a}/x'\n    return requests.get(a).text\n", False),
+    "percent": ("    t = 'https://%s' % t\n    return requests.get(t).text\n", False),
+    "format": ("    t = '{}/x'.format(t)\n    return requests.get(t).text\n", False),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CYCLES))
+def test_a_binding_that_comes_back_to_itself_ends(shape: str) -> None:
+    body, tainted = _CYCLES[shape]
+    sites, seconds = _analyze_in_child(_CYCLE_HEAD + "@mcp.tool()\ndef f(host: str) -> str:\n" + body)
+    assert [site[2] for site in sites] == [tainted]
+    assert seconds < 2.0
+
+
+def test_lists_that_each_join_the_last_twice_do_not_double() -> None:
+    """Thirty lists, each joining the one before it twice: expanding every
+    join again would read 2**30 pieces. A list is expanded once per URL."""
+    lines = ["    l0 = ['https://']\n"] + [f"    l{i} = [''.join(l{i - 1}), ''.join(l{i - 1})]\n" for i in range(1, 31)]
+    body = "".join(lines) + "    return requests.get(''.join(l30) + host).text\n"
+    sites, seconds = _analyze_in_child(_CYCLE_HEAD + "@mcp.tool()\ndef f(host: str) -> str:\n" + body)
+    assert len(sites) == 1
+    assert seconds < 2.0
 
 
 # --- a method-first call reads its URL second -------------------------------
