@@ -286,6 +286,36 @@ def test_deepseek_v4_the_description_can_be_built_several_ways(tmp_path: Path, s
     assert deepseek_scan(tmp_path)[0] == []
 
 
+# Verification of the AST reader (Low): its text says a substitution counts when
+# its result is assigned to a name the description uses, but only `=` and an
+# annotated `=` were read, so unpacking `subn`, a walrus and `+=` left a cleaned
+# description reported.
+@pytest.mark.parametrize("line", [
+    '    clean, n = re.subn(ROUTE_TOKEN_RE, "", doc)',
+    '    clean, _ = _ROUTE.subn("", doc)',
+    '    clean, other = re.sub(ROUTE_TOKEN_RE, "", doc), path',
+    '    if (clean := re.sub(ROUTE_TOKEN_RE, "", doc)):\n        pass',
+    '    clean = ""\n    clean += _ROUTE.sub("", doc)',
+])
+def test_deepseek_v4_a_cleaned_name_can_be_unpacked_or_appended(tmp_path: Path, line: str) -> None:
+    src = _DESCRIBE.replace("@@LINE@@", line).replace('"description": doc', '"description": clean')
+    (tmp_path / "agent.py").write_text(src, encoding="utf-8")
+    assert deepseek_scan(tmp_path)[0] == []
+
+
+@pytest.mark.parametrize("line", [
+    # `re.sub` gives one string; unpacking it gives its characters.
+    '    clean, n = re.sub(ROUTE_TOKEN_RE, "", doc)',
+    # Only the first name `subn` unpacks into gets the new string.
+    '    n, clean = re.subn(ROUTE_TOKEN_RE, "", doc)',
+    '    clean = doc\n    clean -= _ROUTE.sub("", doc)',
+])
+def test_deepseek_v4_other_unpacking_cleans_no_name(tmp_path: Path, line: str) -> None:
+    src = _DESCRIBE.replace("@@LINE@@", line).replace('"description": doc', '"description": clean')
+    (tmp_path / "agent.py").write_text(src, encoding="utf-8")
+    assert [f.rule_id for f in deepseek_scan(tmp_path)[0]] == ["AAK-DEEPSEEK-V4-MOE-TOOL-INJ-001"]
+
+
 def test_deepseek_v4_no_deepseek_hint_passes(tmp_path: Path) -> None:
     """No deepseek base_url / import → scope gate excludes."""
     (tmp_path / "x.py").write_text(

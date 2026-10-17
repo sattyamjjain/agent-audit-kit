@@ -115,14 +115,40 @@ def _sub_pattern(call: ast.Call, lookup: Callable[[str], str | None]) -> str | N
 
 
 def _assigned_names(node: ast.AST) -> list[tuple[str, ast.expr]]:
-    """The names a statement assigns, `name = value` or `name: T = value`, each with the value it gets."""
+    """The names a statement or expression assigns, each with the value it gets.
+
+    `name = value`, `name: T = value`, `name += value` and `(name := value)`
+    give the name its value; unpacking gives each name the matching item of a
+    tuple written out, and gives the first name all of a `subn(...)` call, whose
+    first item is the new string (`clean, n = re.subn(...)`). Only `=` and an
+    annotated `=` used to count, so the other three left a cleaned description
+    reported.
+    """
     if isinstance(node, ast.Assign):
         targets, value = node.targets, node.value
     elif isinstance(node, ast.AnnAssign) and node.value is not None:
         targets, value = [node.target], node.value
+    elif isinstance(node, ast.NamedExpr):
+        targets, value = [node.target], node.value
+    elif isinstance(node, ast.AugAssign) and isinstance(node.op, ast.Add):
+        targets, value = [node.target], node.value
     else:
         return []
-    return [(target.id, value) for target in targets if isinstance(target, ast.Name)]
+    out: list[tuple[str, ast.expr]] = []
+    for target in targets:
+        if isinstance(target, ast.Name):
+            out.append((target.id, value))
+        elif isinstance(target, (ast.Tuple, ast.List)) and target.elts:
+            if isinstance(value, (ast.Tuple, ast.List)) and len(value.elts) == len(target.elts):
+                out += [(t.id, v) for t, v in zip(target.elts, value.elts) if isinstance(t, ast.Name)]
+            elif (
+                isinstance(target.elts[0], ast.Name)
+                and isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Attribute)
+                and value.func.attr == "subn"
+            ):
+                out.append((target.elts[0].id, value))
+    return out
 
 
 def _functions(tree: ast.Module) -> list[tuple[ast.FunctionDef | ast.AsyncFunctionDef, int]]:
