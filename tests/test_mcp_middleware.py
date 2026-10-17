@@ -137,6 +137,42 @@ func R(r *gin.Engine) {
     assert _one(tmp_path, "router.go", text) == []
 
 
+def _group_chain(depth: int) -> str:
+    """An authenticated group, `depth` groups made below it one from another, and
+    a route on the last; the same handler is authenticated on another route."""
+    groups = "".join(f'\tg{i} := g{i - 1}.Group("/b{i}")\n' for i in range(1, depth + 1))
+    return (
+        'package main\n\nimport "github.com/gin-gonic/gin"\n\n// mcp server\nfunc main() {\n\tr := gin.New()\n'
+        '\tr.POST("/mcp", AuthRequired(), handleMCP)\n\tg0 := r.Group("/a", AuthRequired())\n'
+        f'{groups}\tg{depth}.GET("/mcp", handleMCP)\n}}\n'
+    )
+
+
+@pytest.mark.parametrize("depth", [4, 5, 30])
+def test_group_auth_reaches_routes_at_any_depth(tmp_path: Path, depth: int) -> None:
+    """Group auth was passed down four levels, so a route five groups below an
+    authenticated one was reported though auth covers it."""
+    assert _one(tmp_path, "router.go", _group_chain(depth)) == []
+
+
+def test_groups_made_from_each_other_in_a_cycle_end(tmp_path: Path) -> None:
+    text = (
+        'package main\n\nimport "github.com/gin-gonic/gin"\n\n// mcp server\nfunc main() {\n\tr := gin.New()\n'
+        '\tr.POST("/mcp", AuthRequired(), handleMCP)\n\tg := g.Group("/x")\n\ta := b.Group("/y")\n'
+        '\tb := a.Group("/z")\n\tb.GET("/mcp", handleMCP)\n}\n'
+    )
+    assert _one(tmp_path, "router.go", text) == [("router.go", 12)]
+
+
+@pytest.mark.parametrize("depth", [4, 5, 9])
+def test_auth_wrappers_are_unwrapped_at_any_depth(tmp_path: Path, depth: int) -> None:
+    """A handler behind five auth wrappers kept the fifth in its identity, so it
+    was not the same handler as on its open route."""
+    wrapped = "".join(f"auth{i}(" for i in range(depth)) + "handler" + ")" * depth
+    text = f'package x\nfunc R(mux *http.ServeMux) {{\n\tmux.Handle("/mcp", {wrapped})\n\tmux.Handle("/mcp/", handler)\n}}\n'
+    assert _one(tmp_path, "router.go", text) == [("router.go", 4)]
+
+
 def test_a_mux_handed_to_an_auth_wrapper_is_covered(tmp_path: Path) -> None:
     text = '''package x
 func main() {
@@ -606,6 +642,12 @@ def test_handlers_with_no_arrow_after_their_parentheses_scan_in_linear_time(tmp_
     t_large, _ = _scan_in_child(tmp_path, "large", _arrowless_handlers(511_000), name="server.js")
     assert t_large < 5.0
     assert t_large < 25 * t_small + 0.25, (t_small, t_large)
+
+
+def test_a_long_chain_of_groups_resolves_in_linear_time(tmp_path: Path) -> None:
+    """Auth passed down a chain of 15,000 groups (468 KB) reaches its last route."""
+    seconds, count = _scan_in_child(tmp_path, "chain", _group_chain(15_000))
+    assert count == 0 and seconds < 5.0
 
 
 def _methods_and_routes(k: int, same: bool) -> str:

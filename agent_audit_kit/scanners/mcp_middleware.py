@@ -659,8 +659,9 @@ def _handler_identity(index: CodeIndex, start: int, end: int, go: bool) -> tuple
         return (_delegate(index, *body, params) if body else None), None
     if end - start > _NAME_WINDOW:
         return None, None
+    # Each step unwraps one call and leaves a shorter span, so the loop ends.
     wrapper: str | None = None
-    for _ in range(4):
+    while True:
         callee = _DOTTED_RE.match(text, start, end)
         if callee is None or callee.end() >= end or text[callee.end()] != "(":
             break
@@ -782,13 +783,31 @@ def _go_registrations(index: CodeIndex, echo: bool) -> tuple[list[_Reg], list[_S
         for s, e in index.args(m.end() - 1) or []:
             if e - s <= _NAME_WINDOW and _DOTTED_RE.fullmatch(text[s:e]):
                 scopes.append((text[s:e], None, m.group(1)))
-    for _ in range(4):
-        authed = {receiver: auth for receiver, _prefix, auth in scopes}
-        inherited = [(g, None, authed[p]) for g, p in parents.items() if p in authed and g not in authed]
-        if not inherited:
-            break
-        scopes.extend(inherited)
+    scopes.extend(_inherited_group_auth(scopes, parents))
     return regs, scopes
+
+
+def _inherited_group_auth(scopes: list[_Scope], parents: dict[str, str]) -> list[_Scope]:
+    """The groups made, at any depth, from a router or group with scope auth,
+    each with that auth. Each group's chain of parents is walked until it meets
+    an authenticated receiver, a group already resolved, or a cycle
+    (`g := g.Group(...)`), and every group on the way takes the answer, so each
+    is resolved once. Passing auth down a fixed four levels reported a route
+    five groups below an authenticated one."""
+    authed = {receiver: auth for receiver, _prefix, auth in scopes}
+    resolved: dict[str, str | None] = {}
+    for group in parents:
+        chain: list[str] = []
+        on_chain: set[str] = set()
+        node = group
+        while node not in resolved and node not in authed and node in parents and node not in on_chain:
+            chain.append(node)
+            on_chain.add(node)
+            node = parents[node]
+        auth = resolved[node] if node in resolved else authed.get(node)
+        for g in chain:
+            resolved[g] = auth
+    return [(g, None, auth) for g, auth in resolved.items() if auth is not None]
 
 
 class _Scopes:
