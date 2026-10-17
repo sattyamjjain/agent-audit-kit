@@ -395,11 +395,12 @@ def test_a_bare_host_next_to_punctuation(literal: str, address: str | None) -> N
 
 
 def test_another_function_s_loop_lends_a_call_no_address() -> None:
-    """The address walk reads names file-wide, so the bindings the host test
-    now reads (a `for`, an unpacking, `+=`) would lend one function's loopback
-    loop to another function's call of the same name: on a real server, a
-    login URL built from a parameter took a probe loop's address four names
-    away. The walk reads `=` and an annotated `=` only, as before."""
+    """The address walk reads `=` and an annotated `=` only, as before.
+    Reading the bindings the host test now reads (a `for`, an unpacking, `+=`)
+    as well added two real loopback calls on the code-search samples and one
+    false one of this shape, a login URL built from a parameter that took
+    another function's probe loop address four names away: too small a gain
+    for the noise."""
     source = (
         "import requests\n"
         "def login(server_url):\n"

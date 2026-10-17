@@ -1033,11 +1033,10 @@ def analyze_python(text: str) -> list[Reach]:
         return []
 
     # name -> assigned expressions, file-wide, for the address walk: `=` and an
-    # annotated `=` only. The walk reads a name wherever it is bound, so the
-    # loop and unpacking bindings the host test reads would lend one
-    # function's addresses to another function's call of the same name; on
-    # the two code-search samples they added two real loopback calls and one
-    # login URL that took a probe loop's address four names away.
+    # annotated `=` only. Reading the loop, unpacking and `+=` bindings the host
+    # test reads as well added two real loopback calls on the two code-search
+    # samples and one false one (a login URL that took a probe loop's address
+    # four names away), too small a gain for the noise.
     assigns: dict[str, list[ast.AST]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
