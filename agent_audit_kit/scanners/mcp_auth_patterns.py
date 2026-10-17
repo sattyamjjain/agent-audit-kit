@@ -1,9 +1,9 @@
 """Scanner for 2026 MCP authentication-bypass patterns.
 
-Fires AAK-MCP-011..020. Walks Python/TS/JS source files that look like MCP
-server implementations plus relevant config files, matching against regex
-patterns drawn from CVE-2026-33032 (Nginx-UI, CVSS 9.8) and the 30+ MCP
-CVEs disclosed in Jan–Feb 2026.
+Fires AAK-MCP-011 to -015, -017 and -018. Walks Python/TS/JS source files
+that look like MCP server implementations plus relevant config files,
+matching against regex patterns drawn from CVE-2026-33032 (Nginx-UI, CVSS
+9.8) and the 30+ MCP CVEs disclosed in Jan–Feb 2026.
 
 Pattern-based, not taint-based. See `typescript_pattern_scan.py` for the
 caveats on what regex detection can and cannot prove.
