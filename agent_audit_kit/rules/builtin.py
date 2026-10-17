@@ -6136,10 +6136,14 @@ _r(
     adversa_references=["ADV-LOG-01"],
     limitations=(
         "Reads the arguments of `print` (to stdout, or with `file=` set to "
-        "`sys.stdout`, `sys.stderr` or `None`), of a level method (`info`, `exception` and "
-        "the rest) of `logger`, `log` or the `logging` module, of any `sys.stdout` or "
-        "`sys.stderr` method and of `console.<log|info|warn|error>`, in functions "
-        "whose decorator name ends in `tool`. A logger held as an attribute "
+        "`sys.stdout`, `sys.stderr`, a bare `stdout` or `stderr` or `None`), of a level "
+        "method (`info`, `exception` and the rest) of `logger`, `log` or the `logging` "
+        "module, of any `sys.stdout` or `sys.stderr` method and of "
+        "`console.<log|info|warn|error>`, in functions whose decorator name ends in "
+        "`tool` and the functions nested in them. A call inside a tool function nested "
+        "in another is read for the innermost one only, with its parameters, so a "
+        "nested tool that logs a parameter of the tool around it is not reported. A "
+        "logger held as an attribute "
         "(`self.logger.info(...)`) is not read: measured on 9,137 Python files from "
         "GitHub code searches for MCP servers, it would add 69 findings, only 44 of "
         "them (64%) a "

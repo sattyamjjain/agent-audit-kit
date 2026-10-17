@@ -27,10 +27,11 @@ from __future__ import annotations
 
 import ast
 import re
+from collections import deque
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import MatchSpans, make_finding, in_skip_dir
 
 
 # Every level method of a stdlib logger. `logger` lacked `exception`, `warn`
@@ -42,14 +43,18 @@ _LOG_LEVELS = frozenset({
 _LOGGER_NAMES = frozenset({"logger", "log"})
 _STD_STREAMS = frozenset({"sys.stdout", "sys.stderr", "stdout", "stderr"})
 _CONSOLE_METHODS = frozenset({"log", "info", "warn", "error"})
-# What sanitising code looks like where it is written in the function.
-_SANITIZERS = re.compile(
-    r"""re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]|
-        \.replace\s*\(\s*['"]\\r['"]|
-        \.replace\s*\(\s*['"]\\n['"]|
-        \.encode\s*\(\s*['"]ascii['"]\s*,\s*['"]ignore['"]""",
-    re.VERBOSE | re.IGNORECASE,
+# What sanitising code looks like where it is written in the function, one
+# pattern per form so that every match of each is found.
+_SANITIZERS = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"""re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]""",
+        r"""\.replace\s*\(\s*['"]\\r['"]""",
+        r"""\.replace\s*\(\s*['"]\\n['"]""",
+        r"""\.encode\s*\(\s*['"]ascii['"]\s*,\s*['"]ignore['"]""",
+    )
 )
+_FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 # The name of a sanitising function, read from what a call calls. These words
 # were matched as text anywhere in the function, in any case, so a docstring
 # saying "Logs the unsanitized note." cleared a raw `print(note)`.
@@ -147,12 +152,30 @@ def _callee_name(func: ast.expr) -> str:
     return ""
 
 
-def _func_is_sanitizing(calls: list[ast.Call], text: str, start: int, end: int) -> bool:
-    """Whether a call in the function is to a sanitising function, by its name, or
-    `text[start:end]`, the function's source, holds sanitising code."""
-    if any(_SANITIZER_NAME_RE.search(_callee_name(call.func)) for call in calls):
-        return True
-    return bool(_SANITIZERS.search(text, start, end))
+def _own_calls(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, nested_tools: list[ast.FunctionDef | ast.AsyncFunctionDef]
+) -> list[ast.Call]:
+    """The calls a tool function reads: those in its body and in the functions
+    nested in it, in the order `ast.walk` meets them, up to a nested tool
+    function, which reads its own and is added to `nested_tools`.
+
+    Every tool function walked its whole subtree, nested tool functions
+    included, so a call inside 99 nested tools was read 99 times and reported
+    once for each tool around it: 68.5 s at 494 KB, and 99 findings for one
+    `print`. Each call is read once now, for the innermost tool function
+    around it.
+    """
+    calls: list[ast.Call] = []
+    queue: deque[ast.AST] = deque(ast.iter_child_nodes(func))
+    while queue:
+        node = queue.popleft()
+        if isinstance(node, _FUNCTIONS) and _is_tool_decorated(node):
+            nested_tools.append(node)
+            continue
+        if isinstance(node, ast.Call):
+            calls.append(node)
+        queue.extend(ast.iter_child_nodes(node))
+    return calls
 
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
@@ -175,21 +198,33 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     line_starts = [0]
     for line in lines:
         line_starts.append(line_starts[-1] + len(line) + 1)
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        if not _is_tool_decorated(node):
-            continue
+    tools = [node for node in ast.walk(tree) if isinstance(node, _FUNCTIONS) and _is_tool_decorated(node)]
+    own_calls: dict[ast.AST, list[ast.Call]] = {}
+    nested: dict[ast.AST, list[ast.FunctionDef | ast.AsyncFunctionDef]] = {}
+    for node in tools:
+        nested[node] = []
+        own_calls[node] = _own_calls(node, nested[node])
+    # A tool function calls a sanitiser when it, or a function nested in it, does
+    # by name: `ast.walk` meets a nested tool after the one around it, so the
+    # nested ones are settled first walking back.
+    calls_sanitiser: dict[ast.AST, bool] = {}
+    for node in reversed(tools):
+        calls_sanitiser[node] = any(
+            _SANITIZER_NAME_RE.search(_callee_name(call.func)) for call in own_calls[node]
+        ) or any(calls_sanitiser[inner] for inner in nested[node])
+    # Sanitising code is found once per file; a tool function's source holds it
+    # when a match lies wholly inside the function's lines.
+    sanitising_code = MatchSpans(m.span() for pattern in _SANITIZERS for m in pattern.finditer(joined))
+    for node in tools:
         params = {a.arg for a in node.args.args} | {a.arg for a in node.args.kwonlyargs}
         if not params:
             continue
-        calls = [c for c in ast.walk(node) if isinstance(c, ast.Call)]
         first = min(node.lineno - 1, len(lines))
         last = min(node.end_lineno or node.lineno, len(lines))
         start = line_starts[first]
-        if _func_is_sanitizing(calls, joined, start, max(start, line_starts[last] - 1)):
+        if calls_sanitiser[node] or sanitising_code.within(start, max(start, line_starts[last] - 1)):
             continue
-        for call in calls:
+        for call in own_calls[node]:
             target = _log_target(call)
             if target is None:
                 continue

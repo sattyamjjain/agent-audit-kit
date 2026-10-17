@@ -10,11 +10,15 @@ Covers:
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.scanners import (
     agent_config,
     log_injection,
@@ -233,6 +237,8 @@ def test_loginj_reads_print_and_every_logger_level(tmp_path: Path, stmt: str, vi
     ('print("adding", text, file=sys.stderr, flush=True)', True),
     # `file=None` is print's default, stdout.
     ('print("adding", text, file=None)', True),
+    # A stream imported bare (`from sys import stderr`).
+    ('print("adding", text, file=stderr)', True),
     # A file handle is a data file, not a log stream or the protocol channel.
     ('print(text, ",", count, file=out)', False),
     ("print(text, file=handle.stream)", False),
@@ -318,6 +324,103 @@ def test_loginj_many_tool_functions_read_in_linear_time(tmp_path: Path) -> None:
     small, large = timings
     assert large < 30 * small + 1.0, (small, large)
     assert large < 5.0, large
+
+
+# Verification of a323344c (2026-10-17, Medium, pre-existing): each tool function
+# walked its whole subtree, nested tool functions included, and searched its
+# whole range for sanitising code, so a call inside 99 nested tools was read 99
+# times and reported 99 times, once per tool around it: 68.5 s at 494 KB. A call
+# is read once now, for the innermost tool function around it, and sanitising
+# code is found once per file.
+_LOGINJ_CHILD = (
+    "import json, sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners.log_injection import scan\n"
+    "started = time.perf_counter()\n"
+    "findings, _ = scan(Path(sys.argv[1]))\n"
+    "print(json.dumps([time.perf_counter() - started, [[f.line_number, f.evidence] for f in findings]]))\n"
+)
+
+
+def _loginj_in_child(root: Path) -> tuple[float, list[list[object]]]:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _LOGINJ_CHILD, str(root)], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, findings = json.loads(done.stdout)
+    return elapsed, findings
+
+
+def _nested_tools(depth: int, statements: int) -> str:
+    lines = ["from mcp.server.fastmcp import FastMCP", "mcp = FastMCP('x')"]
+    for level in range(depth):
+        lines += [" " * level + "@mcp.tool()", " " * level + f"def f{level}(event, client, t):"]
+    lines.append(" " * depth + "a=t;" * statements + "print(t)")
+    return "\n".join(lines) + "\n"
+
+
+def test_loginj_nested_tool_functions_read_in_linear_time(tmp_path: Path) -> None:
+    text = _nested_tools(99, 120_000)
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / "server.py").write_text(text, encoding="utf-8")
+    elapsed, findings = _loginj_in_child(tmp_path)
+    assert [line for line, _ in findings] == [text.count("\n")]
+    assert "'f98'" in str(findings[0][1])
+    assert elapsed < 5.0, elapsed
+
+
+_LOGINJ_NESTED = """import logging
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("notes")
+logger = logging.getLogger(__name__)
+
+
+@mcp.tool()
+def outer(query: str) -> str:
+    def helper(text):
+        logger.info("helper %s", query)
+
+    @mcp.tool()
+    def inner(note: str) -> str:
+        print(note)
+        print(query)
+        return note
+
+    helper(query)
+    return query
+"""
+
+
+def test_loginj_reads_a_call_for_the_innermost_tool_around_it(tmp_path: Path) -> None:
+    """A call in a nested helper is the tool's around it, as before. A call in a
+    nested tool is that tool's alone, read with its parameters: `print(query)`
+    there names the outer tool's parameter and is not reported (stated in the
+    limitation), where the outer tool used to report it."""
+    (tmp_path / "server.py").write_text(_LOGINJ_NESTED, encoding="utf-8")
+    findings, _ = log_injection.scan(tmp_path)
+    assert sorted((f.line_number, f.evidence.split("'")[1]) for f in findings) == [(12, "outer"), (16, "inner")]
+
+
+@pytest.mark.parametrize("cleaning", [
+    "        return sanitize(note)",
+    '        return note.replace("\\r", "")',
+])
+def test_loginj_a_nested_tool_that_sanitises_clears_the_one_around_it(tmp_path: Path, cleaning: str) -> None:
+    """A function's sanitising calls and code include the functions nested in it,
+    tool functions too, as before."""
+    src = (
+        "from mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('notes')\n\n\n"
+        "@mcp.tool()\ndef outer(query: str) -> str:\n"
+        "    @mcp.tool()\n    def inner(note: str) -> str:\n"
+        f"{cleaning}\n\n"
+        "    print(query)\n    return query\n"
+    )
+    (tmp_path / "server.py").write_text(src, encoding="utf-8")
+    assert log_injection.scan(tmp_path)[0] == []
 
 
 def test_loginj_non_tool_function_ignored(tmp_path: Path) -> None:
