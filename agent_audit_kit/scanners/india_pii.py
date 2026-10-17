@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir
 
 
 _SCAN_EXTS = {
@@ -79,6 +79,13 @@ def _upi_matches(text: str) -> Iterator[re.Match[str]]:
         if match is not None:
             resume = match.end()
             yield match
+
+def _placed_texts(text: str) -> Iterator[str]:
+    """Every match the checks below place by its own text, for one batch lookup."""
+    for pattern in (_AADHAAR_RE, _PAN_RE, _IFSC_RE, _PHONE_RE, _VEHICLE_RE):
+        yield from (m.group(0) for m in pattern.finditer(text))
+    yield from (m.group(0) for m in _upi_matches(text))
+
 
 # IFSC: 4 letters + 0 + 6 alnum (bank code + reserved 0 + branch).
 _IFSC_RE = re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")
@@ -160,6 +167,8 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     except OSError:
         return findings
     rel = str(path.relative_to(project_root))
+    # Every match's line in one pass over the file, not one search of it per match.
+    find_line_numbers(text, _placed_texts(text))
 
     for m in _AADHAAR_RE.finditer(text):
         digits_only = re.sub(r"[ -]", "", m.group(0))

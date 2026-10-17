@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir
 
 _RULE_ID = "AAK-AGENT-SHARED-RES-AUTHZ-001"
 
@@ -246,6 +246,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         _iter_tool_descriptors(data, 0, descriptors)
 
         seen: set[str] = set()
+        # Every tool's line in one pass over the file, not one search of it per tool.
+        find_line_numbers(raw_text, (name for name, _, _ in descriptors))
         for name, description, schema in descriptors:
             if not _is_mutating(name, description):
                 continue

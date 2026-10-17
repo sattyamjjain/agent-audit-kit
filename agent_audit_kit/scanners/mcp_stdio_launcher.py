@@ -33,6 +33,7 @@ from typing import Any
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    find_line_numbers,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
@@ -178,6 +179,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         )
         scanned_files.add(rel_path)
 
+        # Every server's line in one pass over the file, not one search of it per server.
+        find_line_numbers(raw_text, (name for name, _ in iter_mcp_servers(data)))
         # `mcpServers` (Claude, Cursor, ...) and VS Code's `servers`.
         for server_name, cfg in iter_mcp_servers(data):
             # stdio transport only: an entry with a `url` (and no `command`)

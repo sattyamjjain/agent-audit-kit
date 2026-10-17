@@ -26,6 +26,7 @@ from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     find_line_number,
+    find_line_numbers,
     make_finding,
     in_skip_dir,
 )
@@ -123,6 +124,8 @@ def _check_json_settings(path: Path, project_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     rel = str(path.relative_to(project_root))
     raw = path.read_text(encoding="utf-8", errors="replace")
+    # Every command's line in one pass over the file, not one search of it per command.
+    find_line_numbers(raw, (cmd[:60] for cmd in _walk_hook_commands(data)))
     for cmd in _walk_hook_commands(data):
         if _INTERPOLATION_RE.search(cmd):
             findings.append(

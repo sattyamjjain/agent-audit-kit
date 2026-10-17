@@ -39,7 +39,7 @@ except ImportError:
     yaml = None  # type: ignore[assignment]
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding
+from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding
 
 
 _BROAD_SCOPE_RE = re.compile(
@@ -138,6 +138,8 @@ def _check_config_file(
     untrusted_ids = {cid for cid in client_ids if cid not in trusted and not any(cid.startswith(p) for p in _TRUSTED_CLIENT_ID_PREFIXES)}
     scope_list = sorted({m.group(0) for m in scopes})
     if untrusted_ids:
+        # Every client's line in one pass over the file, not one search of it per client.
+        find_line_numbers(text, untrusted_ids)
         for cid in sorted(untrusted_ids):
             findings.append(make_finding(
                 "AAK-OAUTH-SCOPE-001",

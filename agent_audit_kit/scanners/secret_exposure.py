@@ -9,6 +9,7 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
     find_line_number,
+    find_line_numbers,
     in_skip_dir,
     iter_mcp_servers,
     loads_jsonc,
@@ -445,6 +446,9 @@ def _scan_file_for_secrets(file_path: Path, project_root: Path) -> list[Finding]
             data = loads_jsonc(content)
         except json.JSONDecodeError:
             data = None
+        # Every variable's line in one pass over the file, not one search of it per variable.
+        envs = (cfg.get("env") for _, cfg in iter_mcp_servers(data))
+        find_line_numbers(content, (key for env in envs if isinstance(env, dict) for key in env))
         for server_name, server_cfg in iter_mcp_servers(data):
             env = server_cfg.get("env", {})
             if not isinstance(env, dict):

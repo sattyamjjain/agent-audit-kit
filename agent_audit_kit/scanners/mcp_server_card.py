@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir, url_readings
+from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir, url_readings
 
 # Reuse the tool-poisoning detectors — do NOT duplicate the regexes.
 from agent_audit_kit.scanners.tool_poisoning import (
@@ -109,6 +109,8 @@ def _audit_card(data: dict, rel_path: str, raw_text: str) -> list[Finding]:
     # ---- (a) AAK-MCP-CARD-001: tool-description poisoning (reused detectors)
     tools = data.get("tools")
     if isinstance(tools, list):
+        # Every tool's line in one pass over the file, not one search of it per tool.
+        find_line_numbers(raw_text, (str(t.get("name", "?")) for t in tools if isinstance(t, dict)))
         for tool in tools:
             if not isinstance(tool, dict):
                 continue

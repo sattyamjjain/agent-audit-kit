@@ -249,6 +249,10 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
         # Try lockfile v1 format, which has no entry for the root package
         packages = data.get("dependencies", {})
         dep_count = len(packages)
+    # Every typosquat's line in one pass over the file, not one search of it per
+    # package: a lockfile may name thousands of packages under a misspelt scope.
+    names = (p.split("node_modules/")[-1] if "node_modules/" in p else p for p in packages if isinstance(p, str))
+    find_line_numbers(raw, (name for name in names if any(p.search(name) for p in TYPOSQUAT_PATTERNS)))
 
     for pkg_path, pkg_info in packages.items():
         if not isinstance(pkg_info, dict):
