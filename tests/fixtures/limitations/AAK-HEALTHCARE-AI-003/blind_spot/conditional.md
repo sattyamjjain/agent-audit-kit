@@ -1,3 +1,3 @@
 # Coverage bot
 
-When no adjuster is free, the AI alone decides coverage.
+If not reviewed, the AI alone decides coverage.

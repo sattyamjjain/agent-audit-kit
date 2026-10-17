@@ -37,12 +37,13 @@ _MAX_FILE_BYTES = 512_000
 # The item asked for the inflected forms of each rule's words. Each was measured
 # on 632 healthcare READMEs and docs from GitHub code search (pinned, every
 # finding read) and kept only if the findings it added were at least 80% real.
-# -001's contraction (`I'm your therapist`), `acts as` / `acting as`, `provides`
-# / `providing therapy` and `delivers` / `delivering psychotherapy` added 351
-# findings, 22 of them an AI's claim: they were mostly people describing
-# themselves or their work. -002's -s and -ing verbs and plural objects added
-# 6, none an AI deciding medical necessity. Those stay unmatched. `replacing`,
-# -003's plural objects and -004's plurals added none, and ship.
+# With the negation guard below, -001's contraction (`I'm your therapist`),
+# `acts as` / `acting as`, `provides` / `providing therapy` and `delivers` /
+# `delivering psychotherapy` added 469 findings, 24 of them an AI's claim: they
+# were mostly people describing themselves or their work. -002's -s and -ing
+# verbs and plural objects added 15, none an AI deciding medical necessity.
+# Those stay unmatched. `replacing`, -003's plural objects and -004's plurals
+# added none, and ship.
 
 # AAK-HEALTHCARE-AI-001: explicit mental-health-professional claim (TN SB 1580).
 # Intentionally strict: the TN bill targets explicit claims, not generic wellness help.
@@ -114,23 +115,33 @@ _CRISIS_RESPONSE_RE = re.compile(
 
 
 # Compliance text says what a product does not do: "does not automatically deny
-# claims", "never acts as your counselor", "No AI alone denies claims". The
-# inflected forms matched that at CRITICAL and HIGH, where the base forms had
-# matched none of it, so a claim is skipped when not / never / no / n't comes
-# before it in its sentence. A sentence ends at `.`, `!` or `?` before
-# whitespace, at a blank line, or where a list item, heading or table row
-# starts; a soft-wrapped line continues it. The look-back is a fixed window.
-_SENTENCE_END_RE = re.compile(r"[.!?](?=\s)|\n[ \t]*(?:\n|[-*+][ \t]|\d+[.)][ \t]|#|\|)")
-_NEGATION_RE = re.compile(r"\b(?:not|never|no)\b|n['\u2019]t\b", re.IGNORECASE)
-_SENTENCE_SPAN = 400
+# claims", "No AI alone denies claims". A claim is skipped when not, never, no
+# or n't stands among the four words before it, in its clause: the negation of
+# the claim sits right before it. Read across a whole sentence, the guard also
+# silenced claims a sentence states while negating something else: "With no
+# human in the loop, the system will automatically approve ...", "There is no
+# human review; the system will automatically deny coverage", "not only will
+# automatically approve", and a YAML `summary: Does not store PHI` above
+# `prompt: You will automatically deny coverage`. So the clause ends at a
+# sentence end, `;`, `:` or a line break (each YAML or JSON key is its own
+# statement; on 632 healthcare docs a line break never separated a claim from
+# the negation of it), and `no human`, `no clinician`, `no physician`, `no
+# doctor` and `not only` never count.
+_CLAUSE_END_RE = re.compile(r"[.!?;:](?=\s)|\n")
+_NOT_A_NEGATION_RE = re.compile(r"\bno\s+(?:human|clinician|physician|doctor)s?\b|\bnot\s+only\b", re.IGNORECASE)
+_WORD_RE = re.compile(r"[A-Za-z]+(?:['\u2019][A-Za-z]+)*")
+_NEGATION_WORD_RE = re.compile(r"not|never|no|[A-Za-z]+n['\u2019]t", re.IGNORECASE)
+_NEGATION_WORDS = 4
+_LOOK_BACK = 200
 
 
 def _negated(text: str, start: int) -> bool:
-    window = text[max(0, start - _SENTENCE_SPAN):start]
+    window = text[max(0, start - _LOOK_BACK):start]
     last = None
-    for last in _SENTENCE_END_RE.finditer(window):
+    for last in _CLAUSE_END_RE.finditer(window):
         pass
-    return bool(_NEGATION_RE.search(window[last.end():] if last else window))
+    clause = _NOT_A_NEGATION_RE.sub(" ", window[last.end():] if last else window)
+    return any(_NEGATION_WORD_RE.fullmatch(w) for w in _WORD_RE.findall(clause)[-_NEGATION_WORDS:])
 
 
 def _first_claim(pattern: re.Pattern[str], text: str) -> re.Match[str] | None:

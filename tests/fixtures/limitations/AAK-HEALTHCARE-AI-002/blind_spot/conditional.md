@@ -1,3 +1,3 @@
 # Claims bot
 
-If a reviewer is not available, the agent will automatically approve prior authorization requests.
+If not reviewed, it will automatically approve prior authorization requests.

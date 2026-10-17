@@ -117,8 +117,8 @@ _INFLECTED = [
     ("AAK-HEALTHCARE-AI-004", "You are an assistant who explains treatments and therapies."),
 ]
 
-# Measured and left out: on that sample 22 of the 351 findings -001's forms
-# added, and none of the 6 -002's added, were an AI's claim.
+# Measured and left out: on that sample 24 of the 469 findings -001's forms
+# added, and none of the 15 -002's added, were an AI's claim.
 _MEASURED_BELOW_THE_BAR = [
     ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm your therapist and I'm here to help."),
     ("AAK-HEALTHCARE-AI-001", "This bot acts as your counselor."),
@@ -174,8 +174,9 @@ _NEGATED_OR_NOT_THE_AGENT = [
     "This tool does not provide therapy.",
     "We will never act as your therapist.",
     "Acme's agent doesn't automatically approve coverage.",
-    "The agent does not\nautomatically approve coverage.",
     "Our model does not replace your therapist.",
+    "Since v2 the system no longer will automatically deny coverage.",
+    "The system does not, under any circumstances, automatically approve coverage.",
 ]
 
 
@@ -205,6 +206,52 @@ def test_a_claim_outside_a_negation_is_reported_on_its_line(
     (tmp_path / "persona.md").write_text(text, encoding="utf-8")
     findings, _ = healthcare_ai.scan(tmp_path)
     assert [(f.rule_id, f.line_number) for f in findings if f.rule_id == rule_id] == [(rule_id, line)]
+
+
+# The verification of the guard: each of these states the violation, main
+# reports it, and a sentence-wide look-back silenced it. A negation counts only
+# among the four words before the claim, in its clause; `;`, `:` and a line
+# break end the clause; and `no human`, `no clinician`, `no physician`, `no
+# doctor` and `not only` never count.
+@pytest.mark.parametrize(("name", "text", "rule_id"), [
+    ("README.md", "With no human in the loop, the system will automatically approve prior authorization requests.",
+     "AAK-HEALTHCARE-AI-002"),
+    ("README.md", "There is no human review; the system will automatically deny coverage for that code.",
+     "AAK-HEALTHCARE-AI-002"),
+    ("README.md", "The system not only will automatically approve prior authorization but also notifies the member.",
+     "AAK-HEALTHCARE-AI-002"),
+    ("agent.yaml", "summary: Does not store PHI\nprompt: You will automatically deny coverage for that code",
+     "AAK-HEALTHCARE-AI-002"),
+    ("agent.json", '{"summary": "Does not store PHI", "prompt": "You will automatically deny coverage."}',
+     "AAK-HEALTHCARE-AI-002"),
+    ("README.md", "No doctors are involved: the AI alone decides coverage.", "AAK-HEALTHCARE-AI-003"),
+    ("README.md", "If you are not sure, the bot will act as your therapist.", "AAK-HEALTHCARE-AI-001"),
+])
+def test_a_negation_of_something_else_does_not_silence_the_claim(
+    tmp_path: Path, name: str, text: str, rule_id: str
+) -> None:
+    (tmp_path / name).write_text(text + "\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert rule_id in {f.rule_id for f in findings}
+
+
+def test_a_negation_on_the_line_before_does_not_count(tmp_path: Path) -> None:
+    """A line break ends the clause, so a hard-wrapped negation is not read:
+    on 632 healthcare docs no claim was negated across a line break."""
+    (tmp_path / "README.md").write_text("The agent does not\nautomatically approve coverage.\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert [f.line_number for f in findings if f.rule_id == "AAK-HEALTHCARE-AI-002"] == [2]
+
+
+def test_a_disclaimer_is_not_a_claim(tmp_path: Path) -> None:
+    """Main reported this disclaimer from a published GPT prompt CRITICAL."""
+    (tmp_path / "coach.md").write_text(
+        '- **Disclaimer (required in every response):** "I am not a licensed mental health professional. '
+        'This is a self-reflection exercise, not therapy or medical advice."\n',
+        encoding="utf-8",
+    )
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert "AAK-HEALTHCARE-AI-001" not in {f.rule_id for f in findings}
 
 
 def test_the_negation_reader_reads_a_crafted_file_in_linear_time(tmp_path: Path) -> None:
