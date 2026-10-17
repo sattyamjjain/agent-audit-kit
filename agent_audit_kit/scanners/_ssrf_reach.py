@@ -359,8 +359,11 @@ def _py_addr_here(node: ast.AST) -> str | None:
 # written, and it sends nothing to a host the caller chooses. So a URL counts
 # when caller input can set its host (`_CallerInput.sets_host`).
 
-#: Where an authority ends: WHATWG also stops at a backslash.
-_AUTHORITY_END_RE = re.compile(r"[/\\?#]")
+#: Where every reader ends an authority. WHATWG also ends one at a backslash,
+#: but curl, httpx and urlsplit keep it inside, so after `https://api.example.com\\`
+#: the caller can still write `@evil.example`. A host is taken as fixed only
+#: when every reading agrees (#1019).
+_AUTHORITY_END_RE = re.compile(r"[/?#]")
 #: Text the code does not spell out (a configured base URL, `self.base`, a call).
 _UNKNOWN = "\x00"
 #: How much of a URL's leading text is read: no host is longer.
@@ -388,17 +391,21 @@ def _authority_closed(prefix: str) -> bool:
 
     `prefix` is the URL's text up to a caller-controlled piece, each piece the
     code does not spell out written as `_UNKNOWN`. The authority has ended once
-    `/`, `?`, `#` or `\\` follows at least one character of it, counted after
-    the `://` when the text has one (`https://api.example.com/`) and from the
-    start otherwise (`{BASE}/items/`, `api.example.com/`). A path that starts
-    with one `/` (for a client holding a `base_url`) has no authority to change,
-    and nor does a leading piece the code does not spell out, which is a base
-    URL with its own host. Until then the caller's text can still name the
-    host: `https://` + host, `"https://api.example.com"` + `@evil.example` or
-    `.evil.example`, or `http://localhost:` + a port and an `@`.
+    `/`, `?` or `#` follows at least one character of it, counted after the
+    `://` when the text has one (`https://api.example.com/`), after a leading
+    `//` (scheme-relative), and from the start otherwise (`api.example.com/`).
+    A path that starts with one `/` and a segment (`/items/`, for a client
+    holding a `base_url`) has no authority to change, and nor does a leading
+    piece the code does not spell out, which is a base URL with its own host.
+    Until then the caller's text can still name the host: `https://` + host,
+    `"https://api.example.com"` + `@evil.example` or `.evil.example`,
+    `http://localhost:` + a port and an `@`, or `/` + `/evil.example/x`.
     """
-    if prefix.startswith("/") and not prefix.startswith("//"):
-        return True
+    if prefix[:1] in ("/", "\\") and prefix[1:2] not in ("/", "\\"):
+        # A path on the client's base URL holds its host once the first segment
+        # has begun. A bare `/` does not: the caller can write the second one,
+        # and `urljoin(BASE, "/" + "/evil.example/x")` is https://evil.example/x.
+        return len(prefix) > 1
     scheme = prefix.find("://")
     if prefix.startswith(_UNKNOWN) and scheme < 0:
         # A base the code does not spell out (`{BASE}`, `os.getenv(...)`,
@@ -407,7 +414,12 @@ def _authority_closed(prefix: str) -> bool:
         # read from the environment). AAK-SSRF-001's limitation names the
         # base without a trailing `/` that this lets through.
         return True
-    authority = prefix[scheme + 3:] if scheme >= 0 else prefix
+    if scheme >= 0:
+        authority = prefix[scheme + 3:]
+    elif prefix[:1] in ("/", "\\"):
+        authority = prefix[2:]  # scheme-relative: `//host/...`
+    else:
+        authority = prefix
     end = _AUTHORITY_END_RE.search(authority)
     return end is not None and end.start() > 0
 

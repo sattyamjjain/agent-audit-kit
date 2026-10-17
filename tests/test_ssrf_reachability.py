@@ -267,6 +267,27 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
 # read as validation, and the address walk, which keeps its old bindings.
 
 
+@pytest.mark.parametrize("body", [
+    # A bare leading `/` lets the caller write the second one: `"/" +
+    # "/evil.example/x"` is scheme-relative, and urljoin takes its host.
+    'def proxy(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/" + path)).text\n',
+    'async def proxy(path: str) -> str:\n    async with httpx.AsyncClient(base_url=BASE) as client:\n'
+    '        return (await client.get(f"/{path}")).text\n',
+    # httpx, curl and urlsplit keep a backslash inside the authority, so the
+    # caller can still write `@evil.example` after it.
+    'def proxy(user: str) -> str:\n    return requests.get("https://api.example.com\\\\" + user).text\n',
+])
+def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> None:
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body)
+
+
+@pytest.mark.parametrize("body", [
+    'def item(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/v1/" + path)).text\n',
+])
+def test_the_host_test_still_leaves_a_fixed_host_alone(tmp_path: Path, body: str) -> None:
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body) & _SSRF_RULES == set()
+
+
 @pytest.mark.parametrize(("literal", "address"), [
     ("hosts: localhost, 10.0.0.5,", "localhost"),
     ("(127.0.0.1)", "127.0.0.1"),
