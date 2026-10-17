@@ -501,7 +501,8 @@ def _scan_file(
 
 # TypeScript and JavaScript, as the rules this module emits describe. Only the
 # first two were globbed, so a JavaScript MCP server had no file read at all.
-_SOURCE_GLOBS = ("*.ts", "*.tsx", "*.js", "*.jsx", "*.mjs", "*.cjs")
+# `.mts` and `.cts`, TypeScript's module files, are TypeScript to the gates.
+_SOURCE_GLOBS = ("*.ts", "*.tsx", "*.mts", "*.cts", "*.js", "*.jsx", "*.mjs", "*.cjs")
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

@@ -2629,7 +2629,7 @@ _r(
         "an ASCII digit, punctuation other than `_`, or whitespace. Such a call "
         "still evaluates the caller's arithmetic, which can hold the process "
         "(`9**9**9`). The "
-        "TypeScript arm reads `.ts` and `.tsx` files only: "
+        "TypeScript arm reads `.ts`, `.tsx`, `.mts` and `.cts` files only: "
         "the same `eval(...)` in a `.js` file is not read. JavaScript is read for "
         "the other rules but not for this one: in JavaScript MCP servers from code "
         "search, 1 of 12 `eval(` matches was an eval call, the rest strings, "
@@ -8252,7 +8252,7 @@ _r(
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
-        "Reads `.ts` and `.tsx` files that carry a tool-call marker "
+        "Reads `.ts`, `.tsx`, `.mts` and `.cts` files that carry a tool-call marker "
         "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
         "`server.tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
         "that call `setRequestHandler(CallToolRequestSchema, ...)` or carry "

@@ -48,7 +48,7 @@ _EXEC_SERVER = (
     "});\n"
 )
 
-EXTENSIONS = ("ts", "tsx", "js", "jsx", "mjs", "cjs")
+EXTENSIONS = ("ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs")
 
 
 @pytest.mark.parametrize("ext", EXTENSIONS)
@@ -68,7 +68,7 @@ def test_eval_is_reported_in_typescript_only(tmp_path: Path, ext: str) -> None:
     regular expressions, or named a method `eval`."""
     (tmp_path / f"server.{ext}").write_text(_EVAL_SERVER, encoding="utf-8")
     findings, scanned = scan(tmp_path)
-    expected = [("AAK-TAINT-002", 6)] if ext in ("ts", "tsx") else []
+    expected = [("AAK-TAINT-002", 6)] if ext in ("ts", "tsx", "mts", "cts") else []
     assert [(f.rule_id, f.line_number) for f in findings] == expected
     assert scanned == {f"server.{ext}"}
 
@@ -80,7 +80,7 @@ def test_a_composed_shell_command_is_read_in_every_extension(tmp_path: Path, ext
     assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCP-TOOL-ARG-OSCMD-001", 4)]
 
 
-@pytest.mark.parametrize("name", ["server.py", "server.mts", "server.js.map", "server.json"])
+@pytest.mark.parametrize("name", ["server.py", "server.js.map", "server.json", "server.mjs.map"])
 def test_other_files_are_not_read(tmp_path: Path, name: str) -> None:
     (tmp_path / name).write_text(_EVAL_SERVER, encoding="utf-8")
     assert scan(tmp_path) == ([], set())
