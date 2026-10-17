@@ -230,10 +230,11 @@ class _Scope:
     `patterns` holds the names an assignment here binds to a written-out
     pattern, with whether it names the routing tokens; `cleaned` the names this
     scope binds that an assignment here, or in a nested function through
-    `nonlocal`, gives a routing substitution; `bound` every name the body binds.
-    A name is looked up here, then in the functions around this one, then (for a
-    pattern) in the module, as Python resolves it. `sanitised` and `described`
-    hold what `_read` found, judged once every scope is read.
+    `nonlocal`, gives a routing substitution; `bound` every name the body binds
+    (`_names_bound`). A name is the variable of the nearest scope that binds it,
+    this one first, then the functions around it, then (for a pattern) the
+    module, as Python resolves it (`binder`). `sanitised` and `described` hold
+    what `_read` found, judged once every scope is read.
     """
 
     __slots__ = ("parent", "patterns", "cleaned", "bound", "nonlocals", "sanitised", "described", "cleared")
@@ -254,17 +255,61 @@ class _Scope:
             yield scope
             scope = scope.parent
 
+    def binder(self, name: str) -> _Scope | None:
+        """The scope whose variable `name` is, read here: the nearest, this one
+        first, that binds the name itself (a `nonlocal` declaration passes it on
+        to the functions around), or None for a name no function binds.
+
+        A described name was looked for in every function around this one, so a
+        nested function binding its own `clean`, by an assignment or as a
+        parameter, borrowed the outer function's cleaning of another variable.
+        """
+        for scope in self.chain():
+            if name in scope.bound and name not in scope.nonlocals:
+                return scope
+        return None
+
+    def cleans(self, name: str) -> bool:
+        """Whether the variable `name` reads here is assigned a routing substitution."""
+        binder = self.binder(name)
+        return binder is not None and name in binder.cleaned
+
     def owner(self, name: str) -> _Scope:
         """The scope whose binding of `name` an assignment here sets: this one,
         or for a `nonlocal` name the nearest function around it that binds the
         name itself. A helper that cleans its caller's name through `nonlocal`
         used to clean a name of its own, so the caller reported."""
-        if name not in self.nonlocals or self.parent is None:
-            return self
-        for scope in self.parent.chain():
-            if name in scope.bound and name not in scope.nonlocals:
-                return scope
+        if name in self.nonlocals and self.parent is not None:
+            return self.parent.binder(name) or self
         return self
+
+
+def _names_bound(node: ast.AST) -> list[str]:
+    """The names a node binds in the function body it sits in.
+
+    A name stored or deleted, a nested function or class, an exception caught
+    `as` a name, an import, a match capture, and a lambda's parameters. The
+    names a class body, a comprehension or a lambda binds belong to a scope of
+    their own in Python; they count here too, which can only make a name a
+    function's own and so leave it uncleaned and reported.
+    """
+    if isinstance(node, ast.Name):
+        return [node.id] if isinstance(node.ctx, (ast.Store, ast.Del)) else []
+    if isinstance(node, (*_FUNCTIONS, ast.ClassDef)):
+        return [node.name]
+    if isinstance(node, ast.ExceptHandler):
+        return [node.name] if node.name else []
+    if isinstance(node, ast.alias):
+        return [] if node.name == "*" else [node.asname or node.name.split(".")[0]]
+    if isinstance(node, ast.Lambda):
+        args = node.args
+        return [a.arg for a in (*args.posonlyargs, *args.args, *args.kwonlyargs, args.vararg, args.kwarg) if a]
+    # Python 3.10's match captures, read by name: the classes do not exist on 3.9.
+    kind = type(node).__name__
+    if kind in ("MatchAs", "MatchStar", "MatchMapping"):
+        name = getattr(node, "rest" if kind == "MatchMapping" else "name", None)
+        return [name] if name else []
+    return []
 
 
 def _read(func: ast.FunctionDef | ast.AsyncFunctionDef, scope: _Scope, module_patterns: dict[str, bool]) -> None:
@@ -290,10 +335,14 @@ def _read(func: ast.FunctionDef | ast.AsyncFunctionDef, scope: _Scope, module_pa
     14.8 s and many constants with many functions grew with their product.
     """
     def lookup(name: str) -> bool | None:
+        # The nearest scope binding the name decides, whether or not it binds a
+        # pattern; one that assigns it through `nonlocal` holds its own verdict.
         for s in scope.chain():
             verdict = s.patterns.get(name)
             if verdict is not None:
                 return verdict
+            if name in s.bound and name not in s.nonlocals:
+                return None
         return module_patterns.get(name)
 
     args = func.args
@@ -312,16 +361,14 @@ def _read(func: ast.FunctionDef | ast.AsyncFunctionDef, scope: _Scope, module_pa
         queue.append(child)
     while queue:
         node = queue.popleft()
+        scope.bound.update(_names_bound(node))
         if isinstance(node, _FUNCTIONS):
-            scope.bound.add(node.name)
             continue
         order.append(node)
         marked = node in in_description
         if isinstance(node, ast.Name):
             if marked:
                 described.add(node.id)
-            if isinstance(node.ctx, ast.Store):
-                scope.bound.add(node.id)
         elif isinstance(node, ast.Nonlocal):
             scope.nonlocals.update(node.names)
         elif isinstance(node, ast.Dict):
@@ -384,9 +431,7 @@ def _cleared(functions: list[tuple[ast.FunctionDef | ast.AsyncFunctionDef, int]]
         _read(func, scope, module_patterns)
         scopes.append(scope)
     for scope in scopes:
-        scope.cleared = scope.sanitised or any(
-            name in s.cleaned for name in scope.described for s in scope.chain()
-        )
+        scope.cleared = scope.sanitised or any(scope.cleans(name) for name in scope.described)
     for index in range(len(functions) - 1, -1, -1):
         parent = functions[index][1]
         if parent >= 0 and scopes[index].cleared:

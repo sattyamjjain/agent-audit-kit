@@ -648,6 +648,52 @@ def test_deepseek_v4_a_nested_name_cleans_only_its_own_binding(tmp_path: Path, b
     assert [f.line_number for f in deepseek_scan(tmp_path)[0]] == [4]
 
 
+# Verification of e1cc1f9e (2026-10-17): a described name was looked up in every
+# function around the one judged, so a nested function binding its own `clean`,
+# by an assignment or as a parameter, borrowed the outer function's cleaning of
+# another variable and was cleared where main reports it. A name is looked up as
+# Python resolves it now: the nearest function that binds it decides, for a
+# pattern's name too.
+@pytest.mark.parametrize(("body", "lines"), [
+    ('''
+def outer(request):
+    clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", request.json["a"])
+    def inner(request):
+        clean = request.json["b"]
+        return client.chat.completions.create(tools=[{"description": clean}])
+    return inner
+''', [4, 6]),
+    ('''
+def outer(request):
+    clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", request.json["a"])
+    def inner(clean):
+        body = request.json
+        return client.chat.completions.create(tools=[{"description": clean}])
+    return inner
+''', [4, 6]),
+    ('''
+def outer(request):
+    P = r"\\[ROUTE:[^\\]]*\\]"
+    def inner(P):
+        doc = re.sub(P, "", request.json["doc"])
+        return client.chat.completions.create(tools=[{"description": doc}])
+    return inner
+''', [4, 6]),
+    # Control: the nested function sends the outer function's cleaned `clean`.
+    ('''
+def outer(request):
+    clean = re.sub(r"\\[ROUTE:[^\\]]*\\]", "", request.json["a"])
+    def inner():
+        body = request.json
+        return client.chat.completions.create(tools=[{"description": clean}])
+    return inner
+''', []),
+])
+def test_deepseek_v4_a_name_is_the_variable_python_resolves(tmp_path: Path, body: str, lines: list[int]) -> None:
+    (tmp_path / "app.py").write_text(_CLEANED_ELSEWHERE_HEAD + body.lstrip("\n"), encoding="utf-8")
+    assert sorted(f.line_number for f in deepseek_scan(tmp_path)[0]) == lines
+
+
 # -------------------- AAK-TIKTOK-AGENT-HIJACK-001 --------------------
 
 def test_tiktok_agent_hijack_unsafe_fires(tmp_path: Path) -> None:
