@@ -367,17 +367,18 @@ def find_line_number(raw: str, key: object) -> int | None:
 # Aho-Corasick pass, whose Python loop is several hundred times slower per
 # character than `str.find` but reads the text once for every key. Measured on a
 # loaded machine: `str.find` 0.6 ns a character, up to 4 ns on text built to
-# defeat it; building the automaton 0.6 us a key character, scanning 0.05 us a
-# text character. A pass is chosen once the keys outnumber
+# defeat it; building the automaton about 0.5 us a key character, scanning
+# 0.05 us a text character. A pass is chosen once the keys outnumber
 # `12 + 150 x key characters / text characters`, which keeps either path within
 # about one pass of the other on any input.
 _ONE_PASS_KEYS = 12
 _ONE_PASS_KEY_CHARS = 150
-# The automaton holds about 270 bytes a node, so it is built from as many keys as
-# fit in this many nodes, with one pass over the text per batch; keys that share a
-# prefix share its nodes. A key longer than `_ONE_PASS_LONGEST` is searched for on
-# its own instead: a text holds few of them, and one could fill a batch alone.
-_ONE_PASS_NODES = 1 << 17
+# The automaton keeps about 32 bytes a node (arrays for a node's only child,
+# a dict only where it branches), so it is built from as many keys as fit in
+# this many nodes, with one pass over the text per batch; keys that share a
+# prefix share its nodes. A key longer than `_ONE_PASS_LONGEST` is searched for
+# on its own instead: a text holds few of them, and one could fill a batch alone.
+_ONE_PASS_NODES = 1 << 21
 _ONE_PASS_LONGEST = 4096
 
 
@@ -435,71 +436,152 @@ def _first_offsets(text: str, keys: list[str]) -> list[int]:
     offsets: list[int] = []
     start = 0
     while start < len(keys):
-        children: list[dict[str, int]] = [{}]
-        key_at = [-1]
+        trie = _Trie()
         stop = start
-        while stop < len(keys) and len(children) < _ONE_PASS_NODES:
-            node = 0
-            for char in keys[stop]:
-                nxt = children[node].get(char)
-                if nxt is None:
-                    nxt = len(children)
-                    children[node][char] = nxt
-                    children.append({})
-                    key_at.append(-1)
-                node = nxt
-            key_at[node] = stop - start
+        while stop < len(keys) and trie.size() < _ONE_PASS_NODES:
+            trie.add(keys[stop], stop - start)
             stop += 1
-        offsets.extend(_one_pass(text, keys[start:stop], children, key_at))
+        offsets.extend(trie.first_offsets(text, [len(key) for key in keys[start:stop]]))
         start = stop
     return offsets
 
 
-def _one_pass(text: str, keys: list[str], children: list[dict[str, int]], key_at: list[int]) -> list[int]:
-    """Aho-Corasick: where each key in the trie `children` first occurs in `text`.
+# A node's character when it has more than one child: two characters, so it never
+# equals the one being looked for.
+_BRANCHES = "\0\0"
 
-    The keys are distinct and non-empty, and `key_at[node]` is the index of the
-    key that ends at a node, or -1. A key is reported where it first ends, which
-    for a key of fixed length is also where it first starts, and the scan stops
-    once every key has been seen. Reaching a key already seen ends the walk along
-    the suffix links, since every shorter key on that walk is a suffix of it and
-    was seen where it was.
+
+class _Trie:
+    """The keys of one Aho-Corasick batch, a node's only child kept in arrays.
+
+    Most nodes of a trie built from file contents have one child, a run of a
+    key no other key shares, so a dict per node would cost eight times the
+    memory (273 MB against 34 MB for a million such nodes) and an eighth of
+    the keys per pass.
     """
-    fail = [0] * len(children)
-    # The nearest node on the fail chain that ends a key (0: none).
-    next_key = [0] * len(children)
-    queue = list(children[0].values())
-    for node in queue:
-        for char, child in children[node].items():
-            back = fail[node]
-            while back and char not in children[back]:
-                back = fail[back]
-            target = children[back].get(char, 0)
-            fail[child] = target
-            next_key[child] = target if key_at[target] >= 0 else next_key[target]
-            queue.append(child)
 
-    offsets = [-1] * len(keys)
-    lengths = [len(key) for key in keys]
-    left = len(keys)
-    node = 0
-    for end, char in enumerate(text):
-        nxt = children[node].get(char)
-        while nxt is None and node:
-            node = fail[node]
-            nxt = children[node].get(char)
-        node = nxt or 0
-        hit = node if key_at[node] >= 0 else next_key[node]
-        while hit:
-            index = key_at[hit]
-            if offsets[index] >= 0:
+    def __init__(self) -> None:
+        self.char = [""]  # the only child's character, "" for none, _BRANCHES for several
+        self.child = array("i", [0])  # the only child
+        self.branches: dict[int, dict[str, int]] = {}
+        self.key_at = array("i", [-1])  # the key that ends at a node, or -1
+
+    def size(self) -> int:
+        return len(self.char)
+
+    def step(self, node: int, char: str) -> int:
+        """The child of `node` along `char`, or 0 (the root is no one's child)."""
+        mine = self.char[node]
+        if mine == char:
+            return self.child[node]
+        if mine is _BRANCHES:
+            return self.branches[node].get(char, 0)
+        return 0
+
+    def children(self, node: int) -> Iterable[tuple[str, int]]:
+        mine = self.char[node]
+        if not mine:
+            return ()
+        if mine is _BRANCHES:
+            return self.branches[node].items()
+        return ((mine, self.child[node]),)
+
+    def add(self, key: str, index: int) -> None:
+        char_of, child_of, branches, key_at = self.char, self.child, self.branches, self.key_at
+        node = 0
+        for char in key:
+            mine = char_of[node]
+            if mine == char:
+                node = child_of[node]
+                continue
+            if mine is _BRANCHES:
+                nxt = branches[node].get(char)
+                if nxt is not None:
+                    node = nxt
+                    continue
+            nxt = len(char_of)
+            char_of.append("")
+            child_of.append(0)
+            key_at.append(-1)
+            if not mine:
+                char_of[node] = char
+                child_of[node] = nxt
+            elif mine is _BRANCHES:
+                branches[node][char] = nxt
+            else:
+                branches[node] = {mine: child_of[node], char: nxt}
+                char_of[node] = _BRANCHES
+            node = nxt
+        key_at[node] = index
+
+    def first_offsets(self, text: str, lengths: list[int]) -> list[int]:
+        """Aho-Corasick: where each key first occurs in `text`, or -1.
+
+        `lengths[i]` is the length of the key whose index is i. A key is
+        reported where it first ends, which for a key of fixed length is also
+        where it first starts, and the scan stops once every key has been seen.
+        Reaching a key already seen ends the walk along the suffix links, since
+        every shorter key on that walk is a suffix of it and was seen where it
+        was.
+        """
+        size = len(self.char)
+        fail = array("i", bytes(4 * size))
+        # The nearest node on the fail chain that ends a key (0: none).
+        next_key = array("i", bytes(4 * size))
+        key_at = self.key_at
+        queue = array("i", (child for _, child in self.children(0)))
+        head = 0
+        while head < len(queue):
+            node = queue[head]
+            head += 1
+            for char, child in self.children(node):
+                back = fail[node]
+                target = self.step(back, char)
+                while back and not target:
+                    back = fail[back]
+                    target = self.step(back, char)
+                fail[child] = target
+                next_key[child] = target if key_at[target] >= 0 else next_key[target]
+                queue.append(child)
+
+        char_of, child_of, branches = self.char, self.child, self.branches
+        # Most characters start no key, so the root's step is one dict lookup and
+        # a character that leaves the scan at the root cannot end a key.
+        root = dict(self.children(0))
+        offsets = [-1] * len(lengths)
+        left = len(lengths)
+        node = 0
+        for end, char in enumerate(text):
+            if not node:
+                node = root.get(char, 0)
+                if not node:
+                    continue
+            else:
+                while True:
+                    mine = char_of[node]
+                    if mine == char:
+                        node = child_of[node]
+                        break
+                    if mine is _BRANCHES:
+                        nxt = branches[node].get(char)
+                        if nxt is not None:
+                            node = nxt
+                            break
+                    node = fail[node]
+                    if not node:
+                        node = root.get(char, 0)
+                        break
+            hit = node if key_at[node] >= 0 else next_key[node]
+            while hit:
+                index = key_at[hit]
+                if offsets[index] >= 0:
+                    break
+                offsets[index] = end - lengths[index] + 1
+                left -= 1
+                hit = next_key[hit]
+            if not left:
                 break
-            offsets[index] = end - lengths[index] + 1
-            left -= 1
-            hit = next_key[hit]
-        if not left:
-            break
-    return offsets
+        return offsets
 
 
 def line_at(text: str, offset: int) -> int:
