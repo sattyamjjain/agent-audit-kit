@@ -209,6 +209,12 @@ def _join_chains(k: int) -> dict[str, str]:
     return {"server.py": _PY_HEAD + "".join(f"def f{i}():\n    return x" + ".join(a)" * k + "\n" for i in range(40))}
 
 
+def _call_chains(k: int) -> dict[str, str]:
+    """Forty functions in an MCP server module, each returning `f()()...`, `k` calls
+    (Python 3.11's parser takes about 2,000)."""
+    return {"server.py": _PY_HEAD + "".join(f"def f{i}():\n    return f" + "()" * k + "\n" for i in range(40))}
+
+
 def _quoted_server_name(k: int) -> dict[str, str]:
     """One server named `x","x",...,"x` (`k + 1` `x`s), then a `pad` array of `2k` `"x"`
     strings, in which the name's quoted form occurs at nearly every element and never
@@ -280,6 +286,11 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # Each call's receiver walked the chain of calls below it: a 1 MB file of 1,000-call
     # `.join(a)` chains took 56 s in mcp_destination_guard on main.
     "join-chains": (mcp_destination_guard.scan, _join_chains, 100, False),
+    # Each call's dotted name was read down to the chain's root: 1 MB of 480-call
+    # `f()()...` chains took 18.6 s on main, whose function walk raised RecursionError
+    # on longer ones; with the walk's own stack, 1 MB of 4,000-call chains took 120 s.
+    "join-chains-stdio-params": (mcp_stdio_params.scan, _join_chains, 100, False),
+    "call-chains-stdio-params": (mcp_stdio_params.scan, _call_chains, 150, False),
 }
 
 
@@ -827,6 +838,68 @@ def test_the_remembered_receiver_walk_finds_the_root_the_full_walk_found() -> No
                 assert mcp_destination_guard._callee(node, roots) == _old_callee(node), ast.dump(node)[:200]
                 calls += 1
     assert calls > 20_000, calls
+
+
+# ---------------------------------------------------------------------------
+# mcp_stdio_params: the checks that read a call's outermost parts answer as the
+# ones that read its whole dotted chain did.
+# ---------------------------------------------------------------------------
+
+
+def _old_is_stdio_server_params_call(call: ast.Call) -> bool:
+    """`mcp_stdio_params._is_stdio_server_params_call` as it was through 0.6.22."""
+    chain = mcp_stdio_params._attr_chain(call.func)
+    if not chain:
+        return False
+    return chain.split(".")[-1] == "StdioServerParameters"
+
+
+def _old_spawn_argv(call: ast.Call) -> ast.expr | None:
+    """`mcp_stdio_params._spawn_argv` as it was through 0.6.22."""
+    if mcp_stdio_params._attr_chain(call.func) not in mcp_stdio_params._PY_SPAWN_CHAINS:
+        return None
+    kw = {k.arg: k.value for k in call.keywords if k.arg}
+    if "args" in kw:
+        return kw["args"]
+    if not call.args:
+        return None
+    first = call.args[0]
+    return first.value if isinstance(first, ast.Starred) else first
+
+
+def _old_is_shlex_split(node: ast.AST) -> bool:
+    """`mcp_stdio_params._is_shlex_split` as it was through 0.6.22."""
+    return isinstance(node, ast.Call) and mcp_stdio_params._attr_chain(node.func) == "shlex.split" and bool(node.args)
+
+
+_SPAWN_RECEIVERS = ["subprocess", "asyncio", "shlex", "Popen", "StdioServerParameters", "mcp.client.stdio",
+                    "create_subprocess_exec", "x", "f()", "d[0]", "(await s)", "'u'"]
+_SPAWN_LINKS = [".Popen", ".run", ".split", ".shlex", ".subprocess", ".StdioServerParameters",
+                ".create_subprocess_exec", ".check_output", ".x"]
+
+
+def test_the_outermost_parts_answer_as_the_whole_chain_did() -> None:
+    rng = random.Random(18)
+    trees = _chain_trees(rng, _SPAWN_RECEIVERS, _SPAWN_LINKS)
+    nodes_checked = 0
+    hits = [0, 0, 0]
+    for tree in trees:
+        nodes = list(ast.walk(tree))
+        for order in (nodes, rng.sample(nodes, len(nodes))):
+            below: dict[int, ast.AST] = {}
+            for node in order:
+                assert mcp_stdio_params._is_shlex_split(node, below) == _old_is_shlex_split(node), ast.dump(node)[:200]
+                hits[0] += _old_is_shlex_split(node)
+                if not isinstance(node, ast.Call):
+                    continue
+                stdio = _old_is_stdio_server_params_call(node)
+                assert mcp_stdio_params._is_stdio_server_params_call(node, below) == stdio, ast.dump(node)[:200]
+                argv = _old_spawn_argv(node)
+                assert mcp_stdio_params._spawn_argv(node, below) is argv, ast.dump(node)[:200]
+                hits[1] += stdio
+                hits[2] += argv is not None
+                nodes_checked += 1
+    assert nodes_checked > 20_000 and min(hits) > 100, (nodes_checked, hits)
 
 
 # ---------------------------------------------------------------------------

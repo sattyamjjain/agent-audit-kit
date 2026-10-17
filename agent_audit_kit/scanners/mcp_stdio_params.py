@@ -95,12 +95,55 @@ def _attr_chain(node: ast.AST) -> str:
     return ".".join(reversed(parts))
 
 
-def _is_stdio_server_params_call(call: ast.Call) -> bool:
-    chain = _attr_chain(call.func)
-    if not chain:
-        return False
-    # Match `StdioServerParameters(...)` directly or as `mcp.client.stdio.StdioServerParameters`
-    return chain.split(".")[-1] == "StdioServerParameters"
+def _under_calls(call: ast.Call, below: dict[int, ast.AST]) -> ast.AST:
+    """The first node under `call`, following each call's `func`, that is not a
+    call: `f` for `f()()()`. `below` keeps it for every call a walk passed, by
+    `id`, for the one file being analysed, so a walk stops at the first call it
+    has seen before."""
+    passed: list[ast.Call] = []
+    cur: ast.AST = call
+    while isinstance(cur, ast.Call):
+        known = below.get(id(cur))
+        if known is not None:
+            cur = known
+            break
+        passed.append(cur)
+        cur = cur.func
+    for seen in passed:
+        below[id(seen)] = cur
+    return cur
+
+
+def _outer_parts(node: ast.AST, limit: int, below: dict[int, ast.AST]) -> list[str]:
+    """The first `limit` parts `_attr_chain(node)` collects, outermost first.
+
+    `_attr_chain` reads a chain down to its root, so asking it about every call of
+    a chain such as `x.join(a).join(a)...` or `f()()()...` read the chain below each
+    call again, N * N / 2 steps for N calls: 1 MB of 480-call `f()()()` chains took
+    18.6 s. The checks below compare a call's chain with a name of at most two
+    parts, which its outermost three parts decide: fewer than three are the whole
+    chain, and three, joined, match no such name.
+    """
+    parts: list[str] = []
+    cur: ast.AST = node
+    while len(parts) < limit:
+        if isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        elif isinstance(cur, ast.Name):
+            parts.append(cur.id)
+            break
+        elif isinstance(cur, ast.Call):
+            cur = _under_calls(cur, below)
+        else:
+            break
+    return parts
+
+
+def _is_stdio_server_params_call(call: ast.Call, below: dict[int, ast.AST]) -> bool:
+    # Match `StdioServerParameters(...)` directly or as `mcp.client.stdio.StdioServerParameters`:
+    # the last part of the call's chain.
+    return _outer_parts(call.func, 1, below) == ["StdioServerParameters"]
 
 
 # Function parameters whose *name* strongly implies untrusted, network-shaped
@@ -199,9 +242,9 @@ _PY_SPAWN_CHAINS = frozenset({
 _ALLOWLIST_NAME_RE = re.compile(r"allow|permit|whitelist|approved", re.IGNORECASE)
 
 
-def _spawn_argv(call: ast.Call) -> ast.expr | None:
+def _spawn_argv(call: ast.Call, below: dict[int, ast.AST]) -> ast.expr | None:
     """The argv a process-spawn call runs, or None if it is not one."""
-    if _attr_chain(call.func) not in _PY_SPAWN_CHAINS:
+    if ".".join(reversed(_outer_parts(call.func, 3, below))) not in _PY_SPAWN_CHAINS:
         return None
     kw = {k.arg: k.value for k in call.keywords if k.arg}
     if "args" in kw:
@@ -212,8 +255,8 @@ def _spawn_argv(call: ast.Call) -> ast.expr | None:
     return first.value if isinstance(first, ast.Starred) else first
 
 
-def _is_shlex_split(node: ast.AST) -> bool:
-    return isinstance(node, ast.Call) and _attr_chain(node.func) == "shlex.split" and bool(node.args)
+def _is_shlex_split(node: ast.AST, below: dict[int, ast.AST]) -> bool:
+    return isinstance(node, ast.Call) and _outer_parts(node.func, 3, below) == ["split", "shlex"] and bool(node.args)
 
 
 def _reads_stored_command(node: ast.AST) -> bool:
@@ -239,12 +282,12 @@ def _split_source(call: ast.Call, facts: _FunctionFacts) -> ast.expr | None:
     argv assigned from anything else, such as a validator, is not followed:
     that is exactly what the upstream fix looks like.
     """
-    argv = _spawn_argv(call)
+    argv = _spawn_argv(call, facts.below)
     if argv is None:
         return None
     if isinstance(argv, ast.Name):
         argv = facts.assigned_value(argv.id, call.lineno)
-    if not isinstance(argv, ast.Call) or not _is_shlex_split(argv):
+    if not isinstance(argv, ast.Call) or not _is_shlex_split(argv, facts.below):
         return None
     source = argv.args[0]
     if _is_static(source) or not _reads_stored_command(source):
@@ -362,9 +405,13 @@ class _FunctionFacts:
     its MCP words and its allowlist checks.
     """
 
-    def __init__(self, func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str) -> None:
+    def __init__(
+        self, func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str, below: dict[int, ast.AST] | None = None
+    ) -> None:
         self.func = func
         self.class_name = class_name
+        # `_under_calls`'s memo, shared by every function of one file.
+        self.below: dict[int, ast.AST] = {} if below is None else below
         self._assignments: dict[str, _Assignments] | None = None
         self._tainted: set[str] | None = None
         self._manages: bool | None = None
@@ -437,6 +484,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     except SyntaxError:
         return []
     findings: list[Finding] = []
+    below: dict[int, ast.AST] = {}
 
     def _launcher_finding(call: ast.Call, facts: _FunctionFacts) -> Finding | None:
         source = _split_source(call, facts)
@@ -464,9 +512,9 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             (n for n in ast.walk(func) if isinstance(n, ast.Call)),
             key=lambda c: (c.lineno, c.col_offset),
         )
-        facts = _FunctionFacts(func, class_name)
+        facts = _FunctionFacts(func, class_name, below)
         for call in calls:
-            if not _is_stdio_server_params_call(call):
+            if not _is_stdio_server_params_call(call, below):
                 launcher = _launcher_finding(call, facts)
                 if launcher is not None:
                     findings.append(launcher)
