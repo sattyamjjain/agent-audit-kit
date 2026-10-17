@@ -585,6 +585,10 @@ def _fix_litellm_version(path: Path, project_root: Path, dry_run: bool) -> FixAc
         new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
         if count == 0:
             return FixAction(rule_id, str(path), "No matching litellm pin", False)
+        if new_text == text:
+            # Every pin it matched already reads >=1.83.7, and the one the rule reports
+            # is a form it does not match (`litellm[proxy]==1.50.0`): no change to write.
+            return FixAction(rule_id, str(path), f"Nothing in {path.name} this recipe can rewrite", False)
         if not dry_run:
             refused = _write_inside_project(path, _as_written(new_text), project_root)
             if refused is not None:
@@ -673,6 +677,8 @@ def _fix_dependency_floor(path: Path, rule_id: str, project_root: Path, dry_run:
         new_text, count = pin_re.subn(rf"\1\2>={min_version}", text)
         if count == 0:
             return FixAction(rule_id, str(path), f"No matching {label} pin", False)
+        if new_text == text:
+            return FixAction(rule_id, str(path), f"Nothing in {path.name} this recipe can rewrite", False)
         if not dry_run:
             refused = _write_inside_project(path, _as_written(new_text), project_root)
             if refused is not None:

@@ -96,6 +96,7 @@ NON_MECHANICAL: tuple[tuple[str, str], ...] = (
 )
 
 _BRANCH_SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+_FIX_LOG = ".agent-audit-kit/fix-log.json"
 
 
 @dataclass
@@ -250,10 +251,23 @@ def open_auto_pr(project_root: Path, plan: AutoPrPlan, base: str | None = None) 
     _run(["git", "checkout", "-b", plan.branch], project_root)
 
     applied = run_fixes(project_root, dry_run=False)
-    if not any(f.writes for f in applied):  # pragma: no cover - dry-run and live disagree
-        _run(["git", "checkout", base_ref], project_root)
+    # What the live run changed, from git rather than from the recipes' word: a recipe
+    # that reports a write it did not make would otherwise push a branch whose commit
+    # holds only the fix log. The tree was clean before the run, so putting it back
+    # discards nothing but what the run wrote.
+    changed = [
+        name
+        for args in (["git", "diff", "--name-only", "HEAD"], ["git", "ls-files", "--others", "--exclude-standard"])
+        for name in _run(args, project_root).splitlines()
+    ]
+    if not any(f.writes for f in applied) or all(name == _FIX_LOG for name in changed):
+        _run(["git", "checkout", "-f", base_ref], project_root)
+        _run(["git", "clean", "-f", "--", _FIX_LOG], project_root)
         _run(["git", "branch", "-D", plan.branch], project_root)
-        raise AutoPrError("fixes resolved in dry-run but applied nothing; aborted.")
+        raise AutoPrError(
+            "the fixes changed no file besides the fix log; nothing was committed or pushed, "
+            "and the working tree is as it was."
+        )
 
     _run(["git", "add", "-A"], project_root)
     _run(["git", "commit", "-m", plan.title, "-m", plan.body], project_root)

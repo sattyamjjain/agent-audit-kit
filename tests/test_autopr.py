@@ -189,6 +189,28 @@ def test_a_mixed_plan_pushes_only_the_fix_that_writes(tmp_path: Path, monkeypatc
     assert "AAK-TRUST-001" not in plan.body
 
 
+def test_a_live_run_that_changes_nothing_but_the_fix_log_commits_nothing(repo: Path, monkeypatch) -> None:
+    """A recipe that says it writes but changes nothing would still have pushed a branch
+    whose commit held only the fix log. Before `git add`, the live run's changes are
+    listed; nothing besides the fix log puts the tree back and raises."""
+    claimed = FixAction(_LITELLM, str(repo / "requirements.txt"), "Bumped 1 litellm pin(s)", True, writes=True)
+
+    def live_run(root: Path, dry_run: bool = False) -> list[FixAction]:
+        (root / ".agent-audit-kit").mkdir(exist_ok=True)
+        (root / ".agent-audit-kit" / "fix-log.json").write_text("{}\n")
+        return [claimed]
+
+    monkeypatch.setattr("agent_audit_kit.autopr.run_fixes", live_run)
+    base = _branches(repo)
+    plan = AutoPrPlan(fixes=[claimed], branch="aak/autofix/x", title="t", body="b")
+
+    with pytest.raises(AutoPrError, match=r"changed no file besides the fix log; nothing was committed"):
+        open_auto_pr(repo, plan)
+
+    assert _branches(repo) == base
+    assert subprocess.run(["git", "status", "--porcelain"], cwd=repo, capture_output=True, text=True).stdout == ""
+
+
 def test_a_rule_off_the_allow_list_blocks_the_pr_even_when_its_fix_writes_nothing(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -270,6 +292,10 @@ _WRITES_NOTHING = {
     "not-rewritten": (
         {"pyproject.toml": '[project]\nname = "x"\nversion = "0.1.0"\ndependencies = ["litellm==1.80.0"]\n'},
         {}, _LITELLM, "pyproject.toml", _NOT_REWRITTEN.description,
+    ),
+    "rewritten-as-it-was": (
+        {"requirements.txt": 'litellm>=1.83.7; python_version >= "3.10"\nlitellm[proxy]==1.50.0; python_version < "3.10"\n'},
+        {}, _LITELLM, "requirements.txt", "Nothing in requirements.txt this recipe can rewrite",
     ),
 }
 

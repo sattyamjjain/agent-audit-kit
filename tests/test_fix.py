@@ -694,6 +694,16 @@ _UNCHANGED = [
         b"click\n", "No matching litellm pin",
     ),
     _Unchanged(
+        "litellm-rewritten-as-it-was", "AAK-LITELLM-CVE-2026-30623-PIN-001", "_fix_litellm_version",
+        "requirements.txt",
+        b'litellm>=1.83.7; python_version >= "3.10"\nlitellm[proxy]==1.50.0; python_version < "3.10"\n',
+        "Nothing in requirements.txt this recipe can rewrite",
+    ),
+    _Unchanged(
+        "flowise-rewritten-as-it-was", "AAK-FLOWISE-001", "_fix_dependency_floor", "requirements.txt",
+        b"flowise>=3.1.3\nflowise[extra]==3.0.0\n", "Nothing in requirements.txt this recipe can rewrite",
+    ),
+    _Unchanged(
         "flowise-bad-json", "AAK-FLOWISE-001", "_fix_dependency_floor", "package.json", b"{not json",
         "package.json is not valid JSON",
     ),
