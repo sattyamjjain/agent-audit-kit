@@ -1104,12 +1104,16 @@ def test_a_version_pin_still_needs_a_stated_version(tmp_path: Path, rule_id: str
     assert rule_id not in _pin_ids(tmp_path, "requirements.txt", f"{name}\n")
 
 
+# A git requirement in each form pip reads: plain, editable, and PEP 508.
+_GIT_REQUIREMENTS = [
+    "git+https://github.com/{repo}{ref}#egg={name}",
+    "-e git+https://github.com/{repo}.git{ref}#egg={name}",
+    "{name} @ git+https://github.com/{repo}.git{ref} ; python_version >= '3.10'",
+]
+
+
 @pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
-@pytest.mark.parametrize("template", [
-    "git+https://github.com/{repo}@v{version}#egg={name}",
-    "-e git+https://github.com/{repo}.git@v{version}#egg={name}",
-    "{name} @ git+https://github.com/{repo}.git@v{version} ; python_version >= '3.10'",
-])
+@pytest.mark.parametrize("template", _GIT_REQUIREMENTS)
 def test_an_older_pin_reads_the_tag_of_a_git_requirement(
     tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, template: str
 ) -> None:
@@ -1117,20 +1121,34 @@ def test_an_older_pin_reads_the_tag_of_a_git_requirement(
     installs. The gateway-registry and Serena checks reported a patched tag as
     unpinned, and the other three did not read a tag below the fix."""
     def line(version: str) -> str:
-        return template.format(repo=_REPOS[rule_id], version=version, name=name) + "\n"
+        return template.format(repo=_REPOS[rule_id], ref=f"@v{version}", name=name) + "\n"
 
     assert rule_id in _pin_ids(tmp_path / "bad", "requirements.txt", line(below))
     assert rule_id not in _pin_ids(tmp_path / "good", "requirements.txt", line(fixed))
 
 
 @pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
-@pytest.mark.parametrize("ref", ["", "@main", "@3f2a9c1"])
+@pytest.mark.parametrize("template", _GIT_REQUIREMENTS)
+@pytest.mark.parametrize("ref", [
+    "", "@main", "@v2",  # no ref, a branch, a tag that is no dotted release
+    # A commit, which pip's parser read as a release when it began with digits:
+    # `@1a2b3c4` as 1.0.0 and `@0e1f2a3` as 0.0.0. Short and full, from a digit,
+    # from 0, and all digits.
+    "@1a2b3c4", "@1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+    "@0e1f2a3", "@0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f",
+    "@1234567", "@1234567890123456789012345678901234567890",
+    "@3f2a9c1",
+])
 def test_a_git_requirement_without_a_version_tag_states_no_version(
-    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, ref: str
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, template: str, ref: str
 ) -> None:
-    line = f"git+https://github.com/{_REPOS[rule_id]}{ref}#egg={name}\n"
-    unpinned_reported = rule_id in (_GATEWAY, _SERENA)
-    assert (rule_id in _pin_ids(tmp_path, "requirements.txt", line)) is unpinned_reported
+    line = template.format(repo=_REPOS[rule_id], ref=ref, name=name)
+    (tmp_path / "requirements.txt").write_text(line + "\n", encoding="utf-8")
+    evidence = [f.evidence for f in scan(tmp_path)[0] if f.rule_id == rule_id]
+    if rule_id in (_GATEWAY, _SERENA):  # these two report what states no version
+        assert len(evidence) == 1 and " referenced at unpinned " in evidence[0], (line, evidence)
+    else:
+        assert evidence == [], line
 
 
 def test_a_git_requirement_below_the_fix_is_reported_at_its_tag(tmp_path: Path) -> None:

@@ -1054,8 +1054,8 @@ def _with_vcs_version(declaration: Declaration) -> Declaration:
     version, but its tag names the release it installs. Read as unversioned,
     it made the gateway-registry and Serena checks, which report an unpinned
     reference, report the patched tag, and the other three, which report only
-    a stated version, miss a tag below the fix. A branch or a commit names no
-    release, so such a requirement stays unversioned.
+    a stated version, miss a tag below the fix. A branch, a commit or a tag
+    with no dot names no release, so such a requirement stays unversioned.
     """
     if declaration.version or declaration.dialect != "pep440":
         return declaration
@@ -1063,12 +1063,23 @@ def _with_vcs_version(declaration: Declaration) -> Declaration:
     return declaration if tag is None else dataclasses.replace(declaration, version="==" + tag)
 
 
+# A release tag: dotted numbers after an optional `v` (`v1.5.2`, `1.83.7-stable`).
+_RELEASE_TAG_RE = re.compile(r"[vV]?[0-9]+(?:\.[0-9]+)+")
+# A commit id, short or full. It has no dot, so it is never a release tag, but
+# it can begin with digits.
+_COMMIT_ID_RE = re.compile(r"[0-9a-fA-F]{7,40}")
+
+
 def _vcs_tag_version(requirement: str) -> str | None:
     """The version a VCS requirement's ref names, or None.
 
     pip takes the ref after the last `@` of the URL's last path segment, so the
     `git@` of an ssh URL is never read as one; the `#egg=` fragment and an
-    environment marker are not part of it.
+    environment marker are not part of it. Only a dotted release tag names a
+    version: the version parser alone read a commit id that begins with digits
+    as a release (`@1a2b3c4` as 1.0.0, `@0e1f2a3` as 0.0.0), so a pin reported
+    a commit-pinned requirement as below its fix. A tag with no dot (`@v2`)
+    names no release either.
     """
     url = requirement.split(";", 1)[0].partition("#")[0].strip()
     if "://" not in url:
@@ -1077,6 +1088,8 @@ def _vcs_tag_version(requirement: str) -> str | None:
     if "@" not in segment:
         return None
     ref = segment.rsplit("@", 1)[1]
+    if _COMMIT_ID_RE.fullmatch(ref) or not _RELEASE_TAG_RE.match(ref):
+        return None
     ref = ref[1:] if ref[:1] in ("v", "V") else ref
     return ref if parse_version(ref) is not None else None
 
