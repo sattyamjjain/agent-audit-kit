@@ -100,6 +100,54 @@ def test_healthcare_mcp_json_with_mental_health_claim(tmp_path: Path) -> None:
     assert "AAK-HEALTHCARE-AI-001" in ids
 
 
+# The patterns matched one literal form each: a singular noun, a base-form
+# verb, `I am` but not `I'm`. So `patients` gave -004 no healthcare context,
+# `claims` did not satisfy -003, `approves` did not satisfy -002, and
+# `I'm your therapist` did not match -001, the CRITICAL Tennessee SB 1580 rule.
+_INFLECTED = [
+    ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm your therapist and I'm here to help."),
+    ("AAK-HEALTHCARE-AI-001", "I\u2019m a licensed psychologist."),
+    ("AAK-HEALTHCARE-AI-001", "This bot acts as your counselor."),
+    ("AAK-HEALTHCARE-AI-001", "It keeps acting as your therapist between sessions."),
+    ("AAK-HEALTHCARE-AI-001", "This service provides licensed therapy."),
+    ("AAK-HEALTHCARE-AI-001", "The app delivers psychotherapy."),
+    ("AAK-HEALTHCARE-AI-002", "The agent automatically approves prior authorization requests."),
+    ("AAK-HEALTHCARE-AI-002", "It autonomously denies claims."),
+    ("AAK-HEALTHCARE-AI-002", "Here no human determines coverage."),
+    ("AAK-HEALTHCARE-AI-002", "The bot is automatically approving prior authorizations."),
+    ("AAK-HEALTHCARE-AI-003", "The AI solely approves claims without human review."),
+    ("AAK-HEALTHCARE-AI-003", "The AI solely denies benefits."),
+    ("AAK-HEALTHCARE-AI-003", "The algorithm alone determines reimbursements."),
+    ("AAK-HEALTHCARE-AI-003", "The model only decides policies."),
+    ("AAK-HEALTHCARE-AI-004", "You are a friendly assistant for a clinic. Help patients with questions "
+                              "about their symptoms or medications."),
+    ("AAK-HEALTHCARE-AI-004", "You are an assistant who answers questions about medications."),
+    ("AAK-HEALTHCARE-AI-004", "You are an assistant who explains treatments and therapies."),
+]
+
+
+@pytest.mark.parametrize(("rule_id", "text"), _INFLECTED)
+def test_an_inflected_form_fires(tmp_path: Path, rule_id: str, text: str) -> None:
+    (tmp_path / "prompt.md").write_text(text + "\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert rule_id in {f.rule_id for f in findings}
+
+
+@pytest.mark.parametrize(("rule_id", "text"), [
+    ("AAK-HEALTHCARE-AI-001", "You are a calm assistant. I'm not your therapist; please see one."),
+    ("AAK-HEALTHCARE-AI-001", "I am an assistant, and your therapist knows you best."),
+    ("AAK-HEALTHCARE-AI-002", "A physician approves every prior authorization request."),
+    ("AAK-HEALTHCARE-AI-002", "CI automatically approves pull requests from bots."),
+    ("AAK-HEALTHCARE-AI-003", "The AI solely approves pull requests."),
+    ("AAK-HEALTHCARE-AI-004", "You are an assistant that diagnoses build failures and suggests fixes."),
+    ("AAK-HEALTHCARE-AI-004", "You are a coding assistant. Describe the bug's symptoms before you change code."),
+])
+def test_a_near_miss_stays_silent(tmp_path: Path, rule_id: str, text: str) -> None:
+    (tmp_path / "prompt.md").write_text(text + "\n", encoding="utf-8")
+    findings, _ = healthcare_ai.scan(tmp_path)
+    assert rule_id not in {f.rule_id for f in findings}
+
+
 # ---------------------------------------------------------------------------
 # State privacy
 # ---------------------------------------------------------------------------

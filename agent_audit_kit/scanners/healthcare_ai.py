@@ -34,35 +34,50 @@ _SCAN_EXTS = {".md", ".json", ".yaml", ".yml", ".txt"}
 _MAX_FILE_BYTES = 512_000
 
 
+# Rules 001-004 matched one literal form of each word: a singular noun, a
+# base-form verb, `I am` but not `I'm`. So `I'm your therapist` missed the
+# CRITICAL Tennessee rule, `approves` missed 002, `claims` missed 003, and a
+# persona about `patients` gave 004 no healthcare context. Each now takes the
+# inflected forms of the words it already had (plural nouns; -s and -ing verbs;
+# the contraction), and nothing else.
+_PROFESSIONAL = r"(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)"
+
 # AAK-HEALTHCARE-AI-001: explicit mental-health-professional claim (TN SB 1580).
 # Intentionally strict: the TN bill targets explicit claims, not generic wellness help.
 _MENTAL_HEALTH_CLAIM_RE = re.compile(
-    r"""\b(?:
-        I\s+am\s+(?:a|your)\s+(?:licensed\s+)?(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)|
-        act\s+as\s+(?:a|your)\s+(?:licensed\s+)?(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist|mental[- ]health\s+professional)|
+    rf"""\b(?:
+        I(?:\s+am|['\u2019]m)\s+(?:a|your)\s+(?:licensed\s+)?{_PROFESSIONAL}|
+        act(?:s|ing)?\s+as\s+(?:a|your)\s+(?:licensed\s+)?{_PROFESSIONAL}|
         (?:qualified|licensed)\s+mental[- ]health\s+professional|
         replace[sd]?\s+(?:a|your)\s+(?:therapist|counsel(?:or|lor)|psychologist|psychiatrist)|
-        provide\s+(?:licensed\s+)?therapy|
-        deliver\s+(?:licensed\s+)?psychotherapy
+        provid(?:e|es|ing)\s+(?:licensed\s+)?therapy|
+        deliver(?:s|ing)?\s+(?:licensed\s+)?psychotherapy
     )\b""",
     re.IGNORECASE | re.VERBOSE,
 )
 
 # AAK-HEALTHCARE-AI-002: AI makes prior-auth / medical-necessity decisions
 _PRIOR_AUTH_AI_RE = re.compile(
-    r"\b(?:automatically|autonomously|without\s+physician|no\s+(?:human|clinician|physician))\s+(?:approve|deny|determine|decide|issue)\s+(?:prior[- ]authorization|medical[- ]necessity|coverage|claim)\b",
+    r"\b(?:automatically|autonomously|without\s+physician|no\s+(?:human|clinician|physician))\s+"
+    r"(?:approv(?:e|es|ing)|den(?:y|ies|ying)|determin(?:e|es|ing)|decid(?:e|es|ing)|issu(?:e|es|ing))\s+"
+    r"(?:prior[- ]authorizations?|medical[- ]necessity|coverage|claims?)\b",
     re.IGNORECASE,
 )
 
 # AAK-HEALTHCARE-AI-003: AI-only insurance coverage decision
 _INSURANCE_AI_RE = re.compile(
-    r"\b(?:AI|algorithm|model)\s+(?:only|solely|alone)\s+(?:determines?|decides?|approves?|denies?)\s+(?:coverage|claim|benefit|policy|reimbursement)\b",
+    r"\b(?:AI|algorithm|model)\s+(?:only|solely|alone)\s+(?:determines?|decides?|approves?|denies?)\s+"
+    r"(?:coverage|claims?|benefits?|polic(?:y|ies)|reimbursements?)\b",
     re.IGNORECASE,
 )
 
-# AAK-HEALTHCARE-AI-004: missing disclosure that user is talking to AI (in healthcare context)
+# AAK-HEALTHCARE-AI-004: missing disclosure that user is talking to AI (in healthcare context).
+# Not `diagnoses`, which is also a verb ("an assistant that diagnoses build
+# failures"), and not `symptoms`: on the 892-repo instruction-file benchmark slice
+# its only match was engineering prose ("bugs whose symptoms only surface in the
+# rendered DOM"), so it did not clear the precision bar a widening needs.
 _HEALTHCARE_CONTEXT_RE = re.compile(
-    r"\b(?:patient|clinical|medical|mental[- ]?health|therapy|diagnosis|symptom|treatment|medication)\b",
+    r"\b(?:patients?|clinical|medical|mental[- ]?health|therap(?:y|ies)|diagnosis|symptom|treatments?|medications?)\b",
     re.IGNORECASE,
 )
 _AI_DISCLOSURE_RE = re.compile(

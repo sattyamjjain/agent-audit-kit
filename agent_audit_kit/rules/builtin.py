@@ -5229,12 +5229,14 @@ _r(
     owasp_agentic_references=["ASI09"],
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches a short "
-        "phrase list: `I am a/your therapist`, `act as a/your counselor`, `provide "
-        "therapy`, `deliver psychotherapy`, `replace your therapist` and `licensed "
-        "mental health professional`. The contraction `I'm your therapist`, `acting "
-        "as your counselor` and the third-person `provides licensed therapy` or "
-        "`delivers psychotherapy` are not matched, and neither is a persona written "
-        "in a `.py` file."
+        "phrase list, with its verb in the base, -s or -ing form and `I am` "
+        "contracted or not: `I am a/your therapist` (`I'm your therapist`), `act as "
+        "a/your counselor` (`acting as your counselor`), `provide therapy` "
+        "(`provides licensed therapy`), `deliver psychotherapy`, `replace your "
+        "therapist` and `licensed mental health professional`. A claim in the second "
+        "person, the way a system prompt is written (`You are a licensed "
+        "therapist`), is not matched, and neither is a persona written in a `.py` "
+        "file."
     ),
 )
 
@@ -5253,12 +5255,12 @@ _r(
     sarif_name="HealthcareAiPriorAuthSolo",
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches an "
-        "adverb or a `no human` phrase, a verb in its base form and a decision "
-        "object, as in `automatically approve prior authorization`. The same "
-        "decision in the third person or another form (`automatically approves "
-        "prior authorization requests`, `auto-denies medical necessity appeals`, "
-        "`with no physician review`) is not matched, and neither is a rule written "
-        "in a `.py` file."
+        "adverb or a `no human` phrase, a decision verb in its base, -s or -ing form "
+        "and a decision object, as in `automatically approves prior authorization "
+        "requests`. A prefixed verb (`auto-denies medical necessity appeals`) and a "
+        "missing review stated after the object (`approves prior authorization "
+        "requests with no physician review`) are not matched, and neither is a rule "
+        "written in a `.py` file."
     ),
 )
 
@@ -5277,10 +5279,9 @@ _r(
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files and matches `AI`, "
         "`algorithm` or `model`, then `only`, `solely` or `alone`, a decision verb "
-        "and a singular object, as in `AI solely determines coverage`. `AI solely "
-        "denies claims` (a plural object), `AI-only coverage decisions` (a hyphen) "
-        "and `the model alone decides whether a benefit applies` (a clause in "
-        "between) are not matched."
+        "and an object, singular or plural, as in `AI solely denies claims`. "
+        "`AI-only coverage decisions` (a hyphen) and `the model alone decides "
+        "whether a benefit applies` (a clause in between) are not matched."
     ),
 )
 
@@ -5298,10 +5299,12 @@ _r(
     sarif_name="HealthcareAiNoDisclosure",
     limitations=(
         "Reads `.md`, `.json`, `.yaml`, `.yml` and `.txt` files. Healthcare context "
-        "is one of nine whole words (`patient`, `clinical`, `medical`, `mental "
-        "health`, `therapy`, `diagnosis`, `symptom`, `treatment`, `medication`), so "
-        "plurals do not count: a persona about `symptoms` and `medications` is "
-        "skipped, as is one about a nurse, a prescription or a dosage."
+        "is one of nine words (`patient`, `clinical`, `medical`, `mental health`, "
+        "`therapy`, `diagnosis`, `symptom`, `treatment`, `medication`) or its "
+        "plural, except `diagnoses`, which is also a verb, and `symptoms`: on the "
+        "892-repo instruction-file slice its only match was engineering prose. A "
+        "persona about a nurse, a prescription or a dosage is skipped, as is one "
+        "that names only `diagnoses` or `symptoms`."
     ),
 )
 
