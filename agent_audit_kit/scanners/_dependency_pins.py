@@ -87,6 +87,7 @@ from agent_audit_kit.scanners._versions import (
 )
 from agent_audit_kit.scanners.mcp_cve_pins_2026_07 import (
     _admits_affected,
+    _canonical,
     _deciding_declaration,
     _names_match,
     _Pin,
@@ -327,6 +328,29 @@ class Manifest:
         """The line each declaration is written on, its positions read once."""
         return declaration_lines(self.path, self.text)
 
+    @cached_property
+    def _positions_by_name(self) -> dict[str, list[int]]:
+        """Where each package is declared: every spelling `_names_match` could
+        accept for a declaration -> its positions, filed once per file."""
+        index: dict[str, list[int]] = {}
+        for position, declaration in enumerate(self.declarations):
+            ecosystems = ("py", "js") if declaration.ecosystem is None else (declaration.ecosystem,)
+            for key in {_canonical(declaration.name, ecosystem) for ecosystem in ecosystems}:
+                index.setdefault(key, []).append(position)
+        return index
+
+    def naming(self, names: tuple[str, ...]) -> list[Declaration]:
+        """The declarations that may name one of `names`, in file order.
+
+        Each pin used to filter every declaration of the file, so on a 1.9 MB
+        pyproject.toml of 100,000 dependencies the six pins cost more than the
+        parse. This is a superset of what `_deciding_declaration` keeps, as in
+        the pin table's own index, so no verdict changes.
+        """
+        keys = {_canonical(name, ecosystem) for name in names for ecosystem in ("py", "js")}
+        index = self._positions_by_name
+        return [self.declarations[i] for i in sorted({i for key in keys for i in index.get(key, ())})]
+
 
 # Parsed manifests are kept, keyed by path and content, so the modules that
 # read one root pyproject.toml (and a package.json, and a requirements file)
@@ -392,7 +416,7 @@ def pinned_dependency(manifest: Manifest, pin: DependencyPin) -> PinnedDependenc
         The deciding declaration and its line, or None when the file declares
         no affected release of the package.
     """
-    declaration = _deciding_declaration(pin.as_table_pin(), list(manifest.declarations))
+    declaration = _deciding_declaration(pin.as_table_pin(), manifest.naming(pin.names))
     if declaration is None:
         return None
     return PinnedDependency(declaration, manifest.line_of(declaration), pin.fixed)

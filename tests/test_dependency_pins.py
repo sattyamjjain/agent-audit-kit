@@ -358,6 +358,28 @@ def test_one_pyproject_is_parsed_once_for_every_module(tmp_path: Path, monkeypat
     assert {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-DNS-REBIND-002"} <= fired
 
 
+def test_each_pin_reads_only_the_declarations_of_its_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each pin filtered every declaration of the file by name, so on the same 1.9 MB
+    file the six pins cost more than the parse. A manifest files its declarations by
+    package name once, as the pin table does, and a pin reads only its own package's."""
+    from agent_audit_kit.scanners import _dependency_pins
+
+    (tmp_path / "pyproject.toml").write_text(_big_pyproject(100_000), encoding="utf-8")
+    seen: list[int] = []
+    real = _dependency_pins._deciding_declaration
+
+    def counting(pin: object, found: list) -> object:
+        seen.append(len(found))
+        return real(pin, found)
+
+    monkeypatch.setattr(_dependency_pins, "_deciding_declaration", counting)
+    fired = {f.rule_id for module in _PYPROJECT_MODULES for f in module.scan(tmp_path)[0]}
+    assert len(seen) == 6 and max(seen) == 1
+    assert {"AAK-LANGCHAIN-001", "AAK-LANGCHAIN-003", "AAK-DNS-REBIND-002"} <= fired
+
+
 def test_a_manifest_over_the_limit_is_not_read(tmp_path: Path) -> None:
     """A manifest over 2 MB, the CVE pin table's limit, is skipped unread, so a
     crafted 8 MB pyproject.toml costs nothing (19 s across these modules before)."""
