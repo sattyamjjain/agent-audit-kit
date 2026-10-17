@@ -1354,6 +1354,31 @@ def _separator(index: int) -> str:
     return text
 
 
+@pytest.mark.parametrize(("items", "open_sep", "closed_sep"), [
+    # `https:/` and the caller's host, against `http :/`, which is no URL.
+    ("'http', ':/' + host", "s", " "),
+    # `s:/` and the caller's host, against `1:/`, whose scheme cannot start
+    # with a digit.
+    ("'', ':/' + host", "s", "1"),
+])
+@pytest.mark.parametrize("open_first", [True, False])
+def test_a_join_is_judged_by_the_kind_of_each_separator_character(
+    items: str, open_sep: str, closed_sep: str, open_first: bool
+) -> None:
+    """A join's verdict is kept for every separator the authority test cannot
+    tell from it. That was any separator of the same length without a `:`,
+    `/`, `?`, `#`, `\\` or `@`, so `"s"` and `" "`, or `"s"` and `"1"`, shared
+    one verdict, and whichever join was read first decided the other: a
+    false finding one way round, a missed host the other."""
+    joins = [(open_sep, True), (closed_sep, False)]
+    if not open_first:
+        joins.reverse()
+    body = f"    parts = [{items}]\n" + "".join(f"    requests.get({sep!r}.join(parts))\n" for sep, _ in joins)
+    source = _TOOL_HEAD.replace("p: str", "host: str") + body + "    return ''\n"
+    sites = sorted(analyze_python(source), key=lambda site: site.line)
+    assert [site.tainted for site in sites] == [tainted for _, tainted in joins]
+
+
 @pytest.mark.parametrize("shape", sorted(_SHARED))
 def test_a_shared_binding_is_read_once_per_scope(shape: str) -> None:
     build, tainted = _SHARED[shape]

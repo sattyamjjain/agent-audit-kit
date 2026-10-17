@@ -486,23 +486,33 @@ def _is_built(node: ast.AST) -> bool:
     )
 
 
-#: What a join's separator can hold that the authority test reads: the end
-#: of an authority (`/`, `?`, `#`), a backslash, a scheme's `:`, and `@` and
-#: text the code does not spell out.
-_SEPARATOR_MARKS = frozenset(":/?#\\@" + _UNKNOWN)
+#: The characters of a join's separator the authority test reads one by one:
+#: the end of an authority (`/`, `?`, `#`), a backslash, a scheme's `:`, `@`
+#: and text the code does not spell out. Any other character is read only as
+#: a letter, as one of the rest of a scheme's characters, or as neither.
+_SEPARATOR_OTHER_RE = re.compile(r"[^A-Za-z0-9+.\-:/?#\\@\x00]")
+_SEPARATOR_KINDS = str.maketrans(string.ascii_letters + string.digits + "+.-", "a" * 52 + "0" * 13)
 #: A separator `_pieces` passes through as itself, so the text between the
 #: separators of a join can be read once for every separator it is joined with.
 _SEPARATOR = "".join(["\x00", "separator"])
 
 
-def _separator_class(sep: str) -> str | int:
-    """A join's separator as far as the authority test can tell: itself when it
-    is empty or holds one of `_SEPARATOR_MARKS`, else its length alone. Two
-    separators of one length with none of those characters leave the
-    authority open, or end it, at the same pieces of a join."""
-    if not sep or any(char in _SEPARATOR_MARKS for char in sep):
-        return sep
-    return len(sep)
+def _separator_class(sep: str) -> str:
+    """A join's separator as far as the authority test can tell, a character
+    for each of its own: `:`, `/`, `?`, `#`, `\\`, `@` and text the code does
+    not spell out as themselves, a letter as `a`, a digit, `+`, `.` or `-` as
+    `0`, and anything else as a space. Two separators of one class leave the
+    authority open, or end it, at the same pieces of a join: the test reads a
+    character only for whether it is one of those marks, whether it can start
+    a scheme and whether it can carry one on.
+
+    The class used to be the separator's length alone, when it held none of
+    the marks. A letter carries a scheme on and a space breaks it, so
+    `"s".join(["http", ":/" + host])`, which is `https:/` and the caller's
+    host, and `" ".join(...)` of the same list, which is no URL, shared one
+    verdict, as did `"s"` and `"1"` before `":/" + host`, a digit being no
+    start of a scheme, and whichever join was read first decided the other."""
+    return _SEPARATOR_OTHER_RE.sub(" ", sep).translate(_SEPARATOR_KINDS)
 
 
 class _Run(NamedTuple):
@@ -908,7 +918,7 @@ class _CallerInput:
         self.file = file
         self._sets: dict[tuple[int, int], bool] = {}
         self._name_sets: dict[tuple[str, int], bool] = {}
-        self._joined_sets: dict[tuple[str | int, str, int], bool] = {}
+        self._joined_sets: dict[tuple[str, str, int], bool] = {}
         self._joined_callers: dict[tuple[str, int], bool] = {}
         self._keys_sets: dict[tuple[str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
