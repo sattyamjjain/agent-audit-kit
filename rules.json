@@ -3087,15 +3087,15 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "An MCP server endpoint accepts request bodies without a maximum-size limit. This enables token-cost denial-of-service and memory exhaustion.",
+      "description": "An MCP endpoint written in Go (net/http, gin, echo, chi) or Python (FastAPI/Starlette, Flask) reads the whole request body (`io.ReadAll(r.Body)`, `json.NewDecoder(r.Body)`, gin's `ShouldBindJSON`, echo's `Bind`, `await request.json()`, `request.get_json()`) and nothing in the server limits its size. None of these frameworks sets a limit of its own, so one request can hold as much memory as it likes, and the prompt or tool arguments it carries reach the model at any length (token-cost denial of service).",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads Go handlers (a function taking `*http.Request`, `*gin.Context` or `echo.Context`) and Python functions registered as FastAPI, Starlette or Flask routes, and only those that serve MCP: registered in the same file on a route whose path ends in an `mcp` segment (`/mcp`, `/api/v1/mcp`, `/mcp/message`, `/mcp/tools/call`) with no settings segment before it (`/admin/mcp` and `/api/config/mcp`, under `admin`, `config`, `configs`, `configuration`, `settings`, `setting` or `preferences`, are taken for a settings API and not read), or dispatching on a method only MCP has (`case \"tools/call\":`, `method == \"resources/read\"`; in a Go `case` list the method's string must start within 160 characters of `case`). A handler that dispatches only on `initialize` or `notifications/initialized`, which a language server's handshake shares, counts only in a file that names one of those methods too, so a bridge that answers the handshake and forwards every other method is missed. It is silent when the handler tests Content-Length or calls a helper named for a body limit, when a Python handler tests the length of what it read (a Go handler that compares `len(body)` after reading the whole body is still reported), and when the project's non-test code sets a limit anywhere (`http.MaxBytesReader`, `http.MaxBytesHandler`, echo `BodyLimit`, chi `RequestSize`, gin's `RequestSizeLimiter`, a `.Body =` reassignment through `io.LimitReader`, a Go `ContentLength >` test whose `{` opens on the comparison's own line within 80 characters and answers 413 within 300 characters after it with no `}` between, so a 413 written after a map literal (`writeJSON(w, map[string]string{...}, 413)`) does not count, Flask `MAX_CONTENT_LENGTH`, a Starlette middleware that answers 413 or compares Content-Length), so a limit on another route, or in another project of a monorepo, silences it too. Not read: TypeScript and JavaScript servers (Express and Fastify parse bodies with a default limit; Hono and Next.js depend on the runtime), a Python file that imports aiohttp, Django, Tornado, Quart, Sanic, Litestar, Falcon or Bottle, even one that uses it only as a client (a FastAPI server that calls an API through aiohttp), a body read in a helper the handler calls, a server that hands the request to a library that reads it whole (mark3labs/mcp-go's `StreamableHTTPServer` reads it with `io.ReadAll` and no limit), test files and mock or fake servers, files over 1,000,000 bytes, and a limit enforced only by a reverse proxy or the hosting platform (nginx `client_max_body_size`, an ingress annotation).",
       "owasp_agentic_references": [
         "ASI02"
       ],
       "owasp_ast_references": [],
       "owasp_mcp_references": [],
-      "remediation": "Set a per-endpoint max body size (e.g. 1 MiB by default) and reject requests that exceed it.",
+      "remediation": "Bound the body before reading it. In Go, `r.Body = http.MaxBytesReader(w, r.Body, 1<<20)` in the handler or `http.MaxBytesHandler(mux, 1<<20)` where the server is built (echo: `middleware.BodyLimit(\"1M\")`; chi: `middleware.RequestSize(1<<20)`). In Flask, set `app.config[\"MAX_CONTENT_LENGTH\"]`. Starlette and FastAPI have no setting: add a middleware that answers 413 when Content-Length is over the limit and counts the bytes of a chunked body. A limit set only in a reverse proxy (nginx `client_max_body_size`) covers only traffic that passes through it; if that is where yours lives, accept the finding under `exclude-rules` in `.agent-audit-kit.yml`.",
       "rule_id": "AAK-MCP-016",
       "sarif_name": "McpUnboundedPayload",
       "severity": "medium",
@@ -3159,9 +3159,9 @@
       "auto_fixable": false,
       "category": "mcp-config",
       "cve_references": [],
-      "description": "An MCP handler performs work (e.g. db lookups, external calls) before verifying authentication. This reveals existence/shape of protected resources via timing and error channels.",
+      "description": "A Go MCP HTTP handler looks a resource up by something the caller sent (a path, query or form parameter), answers a miss with \"not found\" straight away, and checks the caller's credential only after that, answering 401 or 403. A caller with no credential tells the two answers apart and learns which resources exist, and the lookup runs for every caller.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads Go handlers only (net/http, gin, echo); TypeScript, JavaScript and Python handlers are not read. It reports one form of the claim: a lookup on a receiver (`store.Get`, `db.QueryRow`, `repo.FindByID`) among the handler's own statements, whose argument is a path, query or form parameter the handler read from the request (seen in the argument's first 200 characters), answered \"not found\", with a `return`, by the `if` that holds it or the `if` on the next line, before one of the handler's top-level `if` statements calls a function named for authentication with the request and answers 401 or 403; the call may sit in an `if` nested inside it. Each `if` is read for its first 1,000 characters, so a not-found answer, a `return`, an auth call or a 401 or 403 further into one is not seen. Other work before the check (dispatching the MCP request, an outbound call, a write) is not reported, nor is a miss answered with another status, a key taken from the request body, a lookup inside a nested block or a helper, a gate that is not a top-level `if` (one inside a `for`, `switch` or plain `else` block, or in a helper), or a credential compared inline rather than through a function. An `if` counts only when its keyword starts the line that holds its `{` within 400 characters before it, and the `if` on the next line answers the miss only when the lookup starts within 200 characters of its line's start, only blanks follow it on its line and that line ends within 200 characters of its `)`, and the `if` starts within 200 characters after that line ends. The handler must be registered in the same file, on a route with no auth middleware or wrapper and no group or router-wide auth, so one registered in another file is not read, and the handler's name or body must mention MCP: `mcp` in any case, or `tools/call` or `tools/list` (a JSON-RPC handler that does neither is not read). A route's middleware and handler arguments are read for their first 200 characters; an inline handler that only calls a named handler is matched to it only when its `{` opens within 200 characters of its parameter list, while one that does the lookup itself is read wherever its `{` opens on its line; a Go group counts only when it is assigned (`g := r.Group(...)`) within 200 characters before the call, and files over 512,000 bytes are not read.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3169,11 +3169,11 @@
       "owasp_mcp_references": [
         "MCP07:2025"
       ],
-      "remediation": "Enforce authentication as the first step of every handler. Do not branch on caller input before the auth check.",
+      "remediation": "Check the caller's credential before the handler looks up anything the request names. Where the credential to check depends on that resource (a per-adapter auth setting), answer an unknown name and a refused credential the same way, with one status and body, so the response does not reveal which names exist.",
       "rule_id": "AAK-MCP-019",
-      "sarif_name": "McpAuthAfterSideEffect",
-      "severity": "high",
-      "title": "MCP auth check runs after side-effect"
+      "sarif_name": "McpAuthAfterResourceLookup",
+      "severity": "medium",
+      "title": "MCP auth check runs after a resource lookup"
     },
     {
       "adversa_references": [
@@ -3185,9 +3185,9 @@
       "cve_references": [
         "CVE-2026-33032"
       ],
-      "description": "Two MCP HTTP routes share a single handler but only one is wrapped in auth middleware. The second route inherits the tool surface without the auth check. This is the CVE-2026-33032 bypass pattern.",
+      "description": "Two HTTP routes registered in the same Go or TypeScript/JavaScript file reach the same MCP handler, and only one of them applies authentication: an auth middleware on the route, or the handler wrapped in an auth function. The other route serves every tool the first one protects, with no credential. This is the CVE-2026-33032 bypass: nginx-ui's `/mcp_message` ran the same `mcp.ServeHTTP` as `/mcp`, behind an IP allowlist that was empty by default and nothing else.",
       "incident_references": [],
-      "limitations": "",
+      "limitations": "Reads gin, echo, chi and net/http routes in Go, and Express-style route calls (`app.post(path, ...middleware, handler)` and its `get`, `put`, `patch`, `delete` and `all` siblings, as Express, Hono and Koa Router write them) in TypeScript and JavaScript; Python servers are not read. Two routes are paired only when they sit in the same file and the same block, have different methods or paths, run the same handler value (or inline functions whose only statement is the same call handing on the request), and one path is an MCP endpoint (`/mcp`, `/api/v1/mcp`, `/mcp/message`) or an SSE or message path in a file that builds an MCP server. So routes registered in two files or two functions are not paired, a path held in a constant (`app.get(MCP_PATH, h)`) is not read, and inline handlers that do more than delegate are not compared. An unauthenticated route that carries a middleware the check cannot name (auth, a body parser, CORS, logging, rate limiting or an IP allowlist) is skipped, since that middleware may be the authentication, and auth on a whole router anywhere in the file (`app.use(auth)`, `r.Use(auth)`, a group made with auth, the mux handed to an auth wrapper) covers every route on it, whatever the registration order. Test files and mock servers are not read. A route AAK-MCPWN-001 reports is left to that rule, so a scan restricted to AAK-MCP-020 does not list it. Bounds that keep it linear: files over 512,000 bytes are not read; a middleware argument is read for its first 200 characters (an auth word further in is not seen), a handler argument longer than 200 characters that is not an inline function is not compared, and an inline function counts only when its `=>` or `{` comes within 200 characters of its parameter list; a Go group counts only when it is assigned (`g := r.Group(...)`) within 200 characters before the call; and in TypeScript and JavaScript a regex literal must close within 512 characters of its `/`, or it is read as division and a backtick in it can hide the routes after it.",
       "owasp_agentic_references": [
         "ASI03"
       ],
@@ -3195,7 +3195,7 @@
       "owasp_mcp_references": [
         "MCP07:2025"
       ],
-      "remediation": "Apply auth middleware at the router level, not per-route. Or, wrap the shared handler in the auth check.",
+      "remediation": "Put the authentication where no route can miss it: on the router or group every MCP route is registered on (`r.Use(AuthRequired())`, a gin group made with the middleware, `app.use(\"/mcp\", requireAuth)`), or inside the shared handler. If another route has to stay open, such as a health check, give it a handler of its own that reaches no tool.",
       "rule_id": "AAK-MCP-020",
       "sarif_name": "McpSharedHandlerAuthGap",
       "severity": "critical",
@@ -8727,7 +8727,7 @@
       "incident_references": [
         "MCPWN-2026-04-16"
       ],
-      "limitations": "Compares MCP routes inside one file: it fires on an unauthenticated route (`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only when another MCP route in the same file has an auth marker from a fixed list. Twin routes placed in two modules are not paired, a path such as `/mcp/sse` is not recognised as an MCP route, an auth dependency that is not on the list (`Depends(verify_api_key)`) does not count as auth, and a FastAPI route written with single quotes (`@router.post('/mcp')`) is not read.",
+      "limitations": "Compares MCP routes inside one file: it fires on an unauthenticated route (`/mcp`, `/mcp_message`, `/mcp-messages`, `/mcp/invoke` and a few more) only when another MCP route in the same file has an auth marker from a fixed list. Twin routes placed in two modules are not paired, a path such as `/mcp/sse` is not recognised as an MCP route, an auth dependency that is not on the list (`Depends(verify_api_key)`) does not count as auth, and a FastAPI route written with single quotes (`@router.post('/mcp')`) is not read. A Gin or Express route's middleware arguments are read for auth markers in their first 200 characters, and its handler up to its first `)` within 200; in TypeScript and JavaScript a regex literal must close within 512 characters of its `/`, or it is read as division and a backtick in it can hide the routes after it.",
       "owasp_agentic_references": [
         "ASI03"
       ],
