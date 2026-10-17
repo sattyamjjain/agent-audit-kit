@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Iterator
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import find_line_number, find_line_numbers, make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir, placed
 
 
 _SCAN_EXTS = {
@@ -79,12 +79,6 @@ def _upi_matches(text: str) -> Iterator[re.Match[str]]:
         if match is not None:
             resume = match.end()
             yield match
-
-def _placed_texts(text: str) -> Iterator[str]:
-    """Every match the checks below place by its own text, for one batch lookup."""
-    for pattern in (_AADHAAR_RE, _PAN_RE, _IFSC_RE, _PHONE_RE, _VEHICLE_RE):
-        yield from (m.group(0) for m in pattern.finditer(text))
-    yield from (m.group(0) for m in _upi_matches(text))
 
 
 # IFSC: 4 letters + 0 + 6 alnum (bank code + reserved 0 + branch).
@@ -161,14 +155,12 @@ def _masked(value: str) -> str:
 
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
-    findings: list[Finding] = []
+    unplaced: list[tuple[Finding, str]] = []
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return findings
+        return []
     rel = str(path.relative_to(project_root))
-    # Every match's line in one pass over the file, not one search of it per match.
-    find_line_numbers(text, _placed_texts(text))
 
     for m in _AADHAAR_RE.finditer(text):
         digits_only = re.sub(r"[ -]", "", m.group(0))
@@ -183,67 +175,68 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             if not _AADHAAR_CONTEXT_RE.search(window):
                 continue
         masked = f"{digits_only[:4]}****{digits_only[-4:]}"
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-001",
                 rel,
                 f"Aadhaar number (Verhoeff-valid): {masked}",
-                line_number=find_line_number(text, m.group(0)),
-            )
-        )
+            ),
+            m.group(0),
+        ))
 
     for m in _PAN_RE.finditer(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-002",
                 rel,
                 f"PAN detected: {_masked(m.group(0))}",
-                line_number=find_line_number(text, m.group(0)),
-            )
-        )
+            ),
+            m.group(0),
+        ))
 
     for m in _upi_matches(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-003",
                 rel,
                 f"UPI ID detected: {m.group(0).split('@')[0][:3]}***@{m.group(0).split('@')[1]}",
-                line_number=find_line_number(text, m.group(0)),
-            )
-        )
+            ),
+            m.group(0),
+        ))
 
     for m in _IFSC_RE.finditer(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-004",
                 rel,
                 f"IFSC code detected: {_masked(m.group(0))}",
-                line_number=find_line_number(text, m.group(0)),
-            )
-        )
+            ),
+            m.group(0),
+        ))
 
     for m in _PHONE_RE.finditer(text):
         raw = m.group(0)
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-005",
                 rel,
                 f"Indian mobile number: +91 {raw[-4:]}",
-                line_number=find_line_number(text, raw),
-            )
-        )
+            ),
+            raw,
+        ))
 
     for m in _VEHICLE_RE.finditer(text):
-        findings.append(
+        unplaced.append((
             make_finding(
                 "AAK-INDIA-PII-006",
                 rel,
                 f"Indian vehicle registration: {_masked(m.group(0))}",
-                line_number=find_line_number(text, m.group(0)),
-            )
-        )
+            ),
+            m.group(0),
+        ))
 
-    return findings
+    # Every finding's line in one pass over the file, not one search of it per match.
+    return placed(text, unplaced)
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:

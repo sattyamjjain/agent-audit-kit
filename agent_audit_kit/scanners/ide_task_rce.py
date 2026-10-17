@@ -40,6 +40,7 @@ from agent_audit_kit.scanners._helpers import (
     find_line_numbers,
     loads_jsonc,
     make_finding,
+    placed,
 )
 
 _VSCODE_DIR = ".vscode"
@@ -270,7 +271,7 @@ def _scan_launch(
     configs = data.get("configurations")
     if not isinstance(configs, list):
         return []
-    find_line_numbers(raw, (cfg.get("preLaunchTask") for cfg in configs if isinstance(cfg, dict)))
+    unplaced: list[tuple[Finding, str]] = []
     for cfg in configs:
         if not isinstance(cfg, dict):
             continue
@@ -279,15 +280,19 @@ def _scan_launch(
             name = cfg.get("name")
             name_str = name if isinstance(name, str) else "(unnamed)"
             where = f" (flagged in {tasks_rel})" if tasks_rel else ""
-            findings.append(
+            unplaced.append((
                 _finding(
                     "AAK-IDE-TASK-003",
                     rel,
                     f"launch config {name_str!r} preLaunchTask {pre!r} chains to a "
                     f"flagged auto-exec task{where}",
-                    line_number=find_line_number(raw, pre) or 1,
-                )
-            )
+                ),
+                pre,
+            ))
+    # Every chained task's line in one pass over the file, not one search of it per config.
+    for finding in placed(raw, unplaced):
+        finding.line_number = finding.line_number or 1  # not found: the file's first line
+        findings.append(finding)
     return findings
 
 
