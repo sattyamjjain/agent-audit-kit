@@ -451,29 +451,39 @@ def test_the_rule_states_what_it_reads() -> None:
 
 
 # A child process scans each crafted file, so a quadratic path fails the test on
-# its timeout instead of stalling the suite. It reports the seconds `scan` took,
-# the AAK-MCP-016 findings and the peak memory, in megabytes.
+# its timeout instead of stalling the suite. It prints the seconds `scan` took
+# and the AAK-MCP-016 findings, and with "memory" scans once more under
+# tracemalloc and prints the peak the scan allocated, in megabytes. The child's
+# own peak RSS will not do: on Linux a process that subprocess starts keeps its
+# parent's high-water mark through exec, so under pytest it reported the test
+# worker's memory, 475 MB on CI, before the scan allocated anything.
 _CHILD = (
-    "import resource, sys, time\n"
+    "import sys, time, tracemalloc\n"
     "from pathlib import Path\n"
     "from agent_audit_kit.scanners import transport_limits\n"
+    "root = Path(sys.argv[1])\n"
     "started = time.perf_counter()\n"
-    "findings, _ = transport_limits.scan(Path(sys.argv[1]))\n"
+    "findings, _ = transport_limits.scan(root)\n"
     "seconds = time.perf_counter() - started\n"
-    "peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**20 if sys.platform == 'darwin' else 2**10)\n"
+    "peak = 0.0\n"
+    "if sys.argv[2:] == ['memory']:\n"
+    "    tracemalloc.start()\n"
+    "    transport_limits.scan(root)\n"
+    "    peak = tracemalloc.get_traced_memory()[1] / 2**20\n"
     "print(seconds, sum(f.rule_id == 'AAK-MCP-016' for f in findings), peak)\n"
 )
 
 
-def _scan_in_child(tmp_path: Path, name: str, text: str) -> tuple[float, int, float]:
-    root = tmp_path / "project"
+def _scan_in_child(
+    tmp_path: Path, name: str, text: str, memory: bool = False, label: str = "project",
+) -> tuple[float, int, float]:
+    root = tmp_path / label
     root.mkdir()
     (root / name).write_text(text, encoding="utf-8")
     package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
     env = {**os.environ, "PYTHONPATH": str(package_root)}
-    done = subprocess.run(
-        [sys.executable, "-c", _CHILD, str(root)], capture_output=True, text=True, timeout=60, env=env,
-    )
+    command = [sys.executable, "-c", _CHILD, str(root)] + (["memory"] if memory else [])
+    done = subprocess.run(command, capture_output=True, text=True, timeout=60, env=env)
     assert done.returncode == 0, done.stderr
     seconds, count, peak = done.stdout.split()
     return float(seconds), int(count), float(peak)
@@ -501,19 +511,25 @@ def test_nested_func_types_scan_in_linear_time(tmp_path: Path) -> None:
     assert count == 0 and seconds < 5.0
 
 
-def test_nested_route_calls_scan_in_linear_time_and_memory(tmp_path: Path) -> None:
-    """Every route copied the text of its arguments, and an inline handler's
-    holds every route nested in it: 23,000 nested routes (999 KB) copied 11.6
-    GB and took 5 to 12 seconds, peaking at 1.3 to 3.2 GB on macOS, which
-    compresses memory. They now take about 0.3 seconds and 60 MB."""
-    k = 23_000
-    text = (
+def _nested_routes(k: int) -> str:
+    return (
         _GO_HEAD + "func main() {\n\tg := gin.New()\n" + '\tg.POST("/mcp", func(c *gin.Context) {\n' * k
         + "\t\tc.BindJSON(nil)\n" + "\t})\n" * k + "}\n"
     )
+
+
+def test_nested_route_calls_scan_in_linear_time_and_memory(tmp_path: Path) -> None:
+    """Every route copied the text of its arguments, and an inline handler's
+    holds every route nested in it: 23,000 nested routes (999 KB) copied 11.6
+    GB and took 5 to 12 seconds; they now take under a second. Memory is
+    measured on a smaller file, as the peak tracemalloc sees during the scan:
+    8,000 nested routes (344 KB) peaked at 1.3 GB and now at about 13 MB."""
+    text = _nested_routes(23_000)
     assert len(text) < 1_000_000
-    seconds, count, peak = _scan_in_child(tmp_path, "main.go", text)
-    assert count == 1 and seconds < 5.0 and peak < 400, (seconds, peak)
+    seconds, count, _peak = _scan_in_child(tmp_path, "main.go", text, label="time")
+    assert count == 1 and seconds < 5.0
+    _seconds, count, peak = _scan_in_child(tmp_path, "main.go", _nested_routes(8_000), memory=True, label="memory")
+    assert count == 1 and peak < 200, peak
 
 
 def _distinct_request_names(n: int, gin: bool) -> str:
