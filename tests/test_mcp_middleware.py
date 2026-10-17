@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -208,6 +209,71 @@ def test_a_crafted_route_file_scans_in_linear_time(tmp_path: Path, name: str) ->
     started = time.perf_counter()
     mcp_middleware.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+def _grows_linearly(tmp_path: Path, name: str, build: Callable[[int], str], count: int) -> None:
+    """``build(count)`` and ``build(10 * count)``: the second reports ten times
+    the routes and must not take a hundred times as long."""
+    roots = []
+    for label, n in (("small", count), ("large", 10 * count)):
+        root = tmp_path / label
+        root.mkdir()
+        text = build(n)
+        assert len(text) < 512_000, "under the scanner's 512 KB cap"
+        (root / name).write_text(text, encoding="utf-8")
+        roots.append(root)
+    assert len(_hits(roots[0])) == count and len(_hits(roots[1])) == 10 * count
+    t_small, t_large = _seconds(lambda: mcp_middleware.scan(roots[0])), _seconds(lambda: mcp_middleware.scan(roots[1]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+_GIN_HEAD = 'package main\nimport "github.com/gin-gonic/gin"\nfunc h(c *gin.Context) {}\nfunc main() {\n\tr := gin.New()\n'
+
+
+def _twins_on_one_path(n: int) -> str:
+    """n open and n authenticated routes of one handler on one method and path,
+    then one authenticated on another: each open route searched the whole
+    authenticated list for a twin. 8,300 routes took 6.6 seconds."""
+    return (
+        _GIN_HEAD + '\tr.GET("/mcp/rpc", h)\n' * n + '\tr.GET("/mcp/rpc", authRequired(), h)\n' * n
+        + '\tr.POST("/mcp", authRequired(), h)\n}\n'
+    )
+
+
+def _many_scopes(n: int) -> str:
+    """n open routes and n auth calls on other receivers: each route was
+    checked against every scope."""
+    routes = "".join(f'\tr.GET("/mcp/v{i}", h)\n' for i in range(n))
+    scopes = "".join(f"\tauthRequired(router{i})\n" for i in range(n))
+    return _GIN_HEAD + routes + '\tr.POST("/mcp", authRequired(), h)\n' + scopes + "}\n"
+
+
+def _many_prefixes(n: int) -> str:
+    """n auth prefixes on one app and n open routes outside all of them."""
+    scopes = "".join(f"app.use('/p{i}', requireAuth);\n" for i in range(n))
+    routes = "".join(f"app.get('/mcp/v{i}', handleMcp);\n" for i in range(n))
+    return "const app = express();\n" + scopes + "app.post('/mcp', requireAuth, handleMcp);\n" + routes
+
+
+@pytest.mark.parametrize(("name", "build", "count"), [
+    ("twins.go", _twins_on_one_path, 800),
+    ("scopes.go", _many_scopes, 900),
+    ("prefixes.ts", _many_prefixes, 700),
+])
+def test_a_large_route_table_pairs_in_linear_time(
+    tmp_path: Path, name: str, build: Callable[[int], str], count: int,
+) -> None:
+    _grows_linearly(tmp_path, name, build, count)
 
 
 def test_the_rule_states_what_it_reads() -> None:

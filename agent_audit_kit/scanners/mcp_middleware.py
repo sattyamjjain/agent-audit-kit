@@ -38,7 +38,7 @@ import re
 from bisect import bisect_right
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Any, Iterable, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
@@ -782,26 +782,83 @@ def _go_registrations(index: CodeIndex, echo: bool) -> tuple[list[_Reg], list[_S
     return regs, scopes
 
 
-def _covered(reg: _Reg, scopes: list[_Scope]) -> bool:
-    for receiver, prefix, _auth in scopes:
-        if receiver != reg.receiver:
-            continue
-        if prefix is None:
+class _Scopes:
+    """Scope auth, indexed by receiver, so a route is checked in time linear in
+    its path rather than against every scope in the file.
+
+    A scope with no prefix, or one that strips to nothing (`app.use("/*",
+    auth)`), covers its receiver whole. Any other covers a route whose path is
+    the prefix or continues it past a `/`; the prefixes of one receiver sit in
+    a character trie, walked once along the route's path.
+    """
+
+    def __init__(self, scopes: list[_Scope]) -> None:
+        self._whole: set[str] = set()
+        self._tries: dict[str, dict[str, Any]] = {}
+        for receiver, prefix, _auth in scopes:
+            base = None if prefix is None else prefix.rstrip("*").rstrip("/")
+            if not base:
+                self._whole.add(receiver)
+                continue
+            node = self._tries.setdefault(receiver, {})
+            for ch in base:
+                node = node.setdefault(ch, {})
+            node[""] = True
+
+    def cover(self, reg: _Reg) -> bool:
+        if reg.receiver in self._whole:
             return True
-        base = prefix.rstrip("*").rstrip("/")
-        if not base or reg.path == base or reg.path.startswith(base + "/"):
-            return True
-    return False
+        node: dict[str, Any] | None = self._tries.get(reg.receiver)
+        if node is None:
+            return False
+        for ch in reg.path:
+            if ch == "/" and "" in node:
+                return True
+            node = node.get(ch)
+            if node is None:
+                return False
+        return "" in node
+
+
+class _Twins:
+    """The first of a group's authenticated routes and the first after it on
+    another (method, path): between them, the first twin for any route."""
+
+    def __init__(self, routes: list[_Reg]) -> None:
+        self._first = routes[0] if routes else None
+        key = (routes[0].method, routes[0].path) if routes else None
+        self._other = next((r for r in routes if (r.method, r.path) != key), None)
+
+    def twin_for(self, reg: _Reg) -> _Reg | None:
+        if self._first is None or (self._first.method, self._first.path) != (reg.method, reg.path):
+            return self._first
+        return self._other
 
 
 def _shared_handler_findings(index: CodeIndex, rel: str, mcpwn_lines: set[int]) -> list[Finding]:
+    """AAK-MCP-020 in one file, in time linear in its routes.
+
+    Each open route takes the first authenticated route of its group on another
+    (method, path), where at least one of the two is an MCP endpoint. Searching
+    the group's authenticated routes for each open one took 6.6 seconds on
+    8,300 routes of one handler; the first such route is one of two fixed
+    candidates (`_Twins`), among all of them or among those on an MCP endpoint.
+    """
     text = index.text
     go = rel.endswith(".go")
     if go:
         regs, scopes = _go_registrations(index, echo='"github.com/labstack/echo' in text)
     else:
         regs, scopes = _js_registrations(index)
+    covered = _Scopes(scopes)
     server_file = bool(_MCP_SERVER_HINT_RE.search(text))
+    mcp_paths: dict[str, bool] = {}
+
+    def mcp_side(path: str) -> bool:
+        if path not in mcp_paths:
+            mcp_paths[path] = is_mcp_endpoint_path(path) or bool(server_file and _SSE_PATH_RE.search(path))
+        return mcp_paths[path]
+
     groups: dict[tuple[str, int], list[_Reg]] = {}
     for reg in regs:
         if reg.handler is not None:
@@ -811,19 +868,14 @@ def _shared_handler_findings(index: CodeIndex, rel: str, mcpwn_lines: set[int]) 
         authed = [r for r in members if r.auth is not None]
         if not authed:
             continue
+        any_twin = _Twins(authed)
+        mcp_twin = _Twins([r for r in authed if mcp_side(r.path)])
         for open_reg in members:
             if open_reg.auth is not None or open_reg.unknown or open_reg.line in mcpwn_lines:
                 continue
-            if _covered(open_reg, scopes):
+            if covered.cover(open_reg):
                 continue
-            twin = next((
-                t for t in authed
-                if (t.method, t.path) != (open_reg.method, open_reg.path)
-                and any(
-                    is_mcp_endpoint_path(p) or (server_file and _SSE_PATH_RE.search(p))
-                    for p in (t.path, open_reg.path)
-                )
-            ), None)
+            twin = (any_twin if mcp_side(open_reg.path) else mcp_twin).twin_for(open_reg)
             if twin is None:
                 continue
             shown = handler.split(":", 1)[-1] if handler.startswith("delegate:") else handler
@@ -1062,6 +1114,7 @@ def _lookup_before_auth(index: CodeIndex, handler: GoHandler) -> tuple[int, str,
 def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
     text = index.text
     regs, scopes = _go_registrations(index, echo='"github.com/labstack/echo' in text)
+    covered = _Scopes(scopes)
     by_name: dict[str, list[_Reg]] = {}
     by_at: dict[int, list[_Reg]] = {}
     for reg in regs:
@@ -1075,7 +1128,7 @@ def _lookup_before_auth_findings(index: CodeIndex, rel: str) -> list[Finding]:
             routes = by_at.get(handler.start, [])
         else:
             routes = by_name.get(handler.name, []) + by_name.get("delegate:" + handler.name, [])
-        if not routes or any(r.auth is not None or _covered(r, scopes) for r in routes):
+        if not routes or any(r.auth is not None or covered.cover(r) for r in routes):
             continue
         near = bisect_right(mentions, handler.body_end) - bisect_right(mentions, handler.body_start)
         if not near and not (handler.name and _MCP_MENTION_RE.search(handler.name)):
