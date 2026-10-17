@@ -295,3 +295,24 @@ def test_a_crafted_exclusion_list_reads_in_linear_time(tmp_path: Path, pin: _Pin
     started = time.perf_counter()
     assert pin.fires(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize(("rule_id", "module", "text", "line"), [
+    # A patched dev group above the affected main entry: the line is the main entry's.
+    ("AAK-DNS-REBIND-002", dns_rebind,
+     '[tool.poetry.group.dev.dependencies]\nmcp = "1.23.0"\n\n[tool.poetry.dependencies]\nmcp = "1.22.0"\n', 5),
+    # A longer name that holds the same text, one line above.
+    ("AAK-DNS-REBIND-002", dns_rebind,
+     '[project]\nname = "x"\ndependencies = [\n  "fastmcp==1.22.0",\n  "mcp==1.22.0",\n]\n', 5),
+    ("AAK-LANGCHAIN-001", langchain_vuln,
+     '[project]\nname = "x"\ndependencies = [\n  "my-langchain-core==0.3.13",\n  "langchain-core==0.3.13",\n]\n', 5),
+])
+def test_a_finding_is_on_the_line_of_the_declaration_that_decides_it(
+    tmp_path: Path, rule_id: str, module: ModuleType, text: str, line: int
+) -> None:
+    """The line used to be found by searching the text, so a longer name holding the
+    declaration (`fastmcp==1.22.0`) or the same key in an earlier table took it. The
+    lines now come from where each declaration sits in the parsed document."""
+    (tmp_path / "pyproject.toml").write_text(text, encoding="utf-8")
+    findings, _ = module.scan(tmp_path)
+    assert [f.line_number for f in findings if f.rule_id == rule_id] == [line]

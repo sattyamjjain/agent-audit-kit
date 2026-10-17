@@ -57,7 +57,7 @@ from pathlib import Path
 
 from agent_audit_kit.scanners._manifest_deps import (
     Declaration,
-    declaration_line,
+    declaration_lines,
     declarations,
     package_json_declarations,
     requirements_declarations,
@@ -173,7 +173,7 @@ def pinned_dependency(
     declaration = _deciding_declaration(pin.as_table_pin(), found)
     if declaration is None:
         return None
-    return PinnedDependency(declaration, declaration_line(text, declaration, path.name), pin.fixed)
+    return PinnedDependency(declaration, declaration_lines(path, text)(declaration), pin.fixed)
 
 
 def locked_affected_versions(path: Path, text: str, pin: DependencyPin) -> list[Ver]:
@@ -237,12 +237,13 @@ def raise_to_fix(path: Path, text: str, pin: DependencyPin) -> Raised:
     ]
     if not targets:
         return Raised(text, 0)
-    # Lines are counted in `\n`s, as `declaration_line` counts them; splitlines()
-    # also breaks on rarer separators.
+    # Lines are counted in `\n`s, as `declaration_lines` counts them; splitlines()
+    # also breaks on rarer separators. The positions are read once for the file.
+    line_of = declaration_lines(path, text)
     lines = text.split("\n")
     refused: list[tuple[int | None, str]] = []
     for declaration in targets:
-        number = declaration_line(text, declaration, path.name)
+        number = line_of(declaration)
         if number is None:
             refused.append((None, f"{declaration.text!r} is not written where AAK read it"))
             continue
