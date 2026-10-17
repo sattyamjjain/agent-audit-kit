@@ -202,8 +202,13 @@ def _detect_package(manifest: Path, project_root: Path) -> list[Finding]:
             data = loads_toml(text, manifest)
         except (tomllib.TOMLDecodeError, ValueError):
             return findings
-        project = data.get("project", {}) or {}
-        for name_spec in project.get("dependencies", []) or []:
+        # A TOML document is always a table, but `[project]` need not be, nor
+        # its dependencies a list; `.get` and the loop raised on either. PEP 621
+        # makes both an error, so they are skipped, as the shared reader behind
+        # `declares_mcp_sdk` skips them.
+        project = data.get("project")
+        listed = project.get("dependencies") if isinstance(project, dict) else None
+        for name_spec in listed if isinstance(listed, list) else []:
             name = re.split(r"[<>=!~\s]", str(name_spec), maxsplit=1)[0].strip()
             if name:
                 deps[name] = str(name_spec)

@@ -810,15 +810,88 @@ def test_a_replacement_character_in_evidence_keeps_json_and_sarif_valid(tmp_path
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("rel", [".claude/settings.json", "package.json", ".claude/routines/r.json"])
+@pytest.mark.parametrize("rel", [".claude/settings.json", "package.json", "package-lock.json",
+                                 ".claude/routines/r.json"])
 @pytest.mark.parametrize("top", ["[1]", '"x"', "null", "7"])
 def test_a_json_top_level_that_is_not_an_object_is_skipped_not_a_crash(tmp_path: Path, rel: str, top: str) -> None:
     """`data.get` on a list or a string raised AttributeError in hook_injection
     and trust_boundary (settings), and in supply_chain, marketplace_manifest and
-    oauth_surface (package.json). No client reads hooks or dependencies from a
-    value that is not an object, so the file is skipped silently."""
+    oauth_surface (package.json), and in supply_chain again (package-lock.json).
+    No client reads hooks or dependencies from a value that is not an object, so
+    the file is skipped silently."""
     _write(tmp_path, {rel: top, "pyproject.toml": "[project]\nname = 'x'\ndependencies = ['mcp']\n"})
     assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
+
+
+def _lock(version_key: str, table: object) -> str:
+    return json.dumps({"lockfileVersion": 3 if version_key == "packages" else 1, version_key: table})
+
+
+@pytest.mark.parametrize("lockfile", [
+    # The package table, `packages` (lockfile v2 and v3) or `dependencies` (v1),
+    # is not an object: `.items()` raised on a list or a string, `len()` on the rest.
+    *(_lock("packages", bad) for bad in ([1], "x", 7, 1.5, True)),
+    *(_lock("dependencies", bad) for bad in ([1], "x", 7, None, True)),
+    # The version of a package in the vulnerable table is not a string: the
+    # range check split it.
+    *(_lock("packages", {"node_modules/axios": {"version": bad}}) for bad in (7, [1], {"a": 1}, True)),
+    *(_lock("dependencies", {"axios": {"version": bad}}) for bad in (7, [1], {"a": 1}, True)),
+])
+def test_a_package_lock_value_of_the_wrong_type_is_skipped_not_a_crash(tmp_path: Path, lockfile: str) -> None:
+    """supply_chain read package-lock.json's package table and each version as
+    the types npm writes, so one value of another type took down a scanner that
+    always runs, with every finding it makes on every file."""
+    _write(tmp_path, {"package-lock.json": lockfile})
+    assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
+
+
+def test_a_package_lock_entry_of_the_wrong_type_costs_that_entry_alone(tmp_path: Path) -> None:
+    lockfile = _lock("packages", {"node_modules/axios": {"version": 7},
+                                  "node_modules/a/node_modules/axios": {"version": "1.7.2"}})
+    _write(tmp_path, {"package-lock.json": lockfile})
+    result = run_scan(tmp_path, strict_loading=True)
+    assert result.scanner_failures == []
+    assert [f.evidence for f in result.findings if f.rule_id == "AAK-SUPPLY-002"] == [
+        "axios@1.7.2 — Claude Code supply chain compromise (March 31 2026)"]
+
+
+@pytest.mark.parametrize("pipfile_lock", [
+    *(json.dumps(bad) for bad in ([1], "x", None, 7)),
+    *(json.dumps({"default": {"requests": {"version": bad}}}) for bad in (None, 7, [1], {"a": 1}, True)),
+])
+def test_a_pipfile_lock_of_the_wrong_shape_is_skipped_not_a_crash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pipfile_lock: str
+) -> None:
+    """The Pipfile.lock reader runs only once the vulnerable table has a Python
+    row (it has none as shipped), and then a top level that is not an object
+    raised, as did any package's version that is not a string."""
+    from agent_audit_kit.scanners import supply_chain
+
+    monkeypatch.setitem(supply_chain.KNOWN_VULNERABLE_PACKAGES, "python",
+                        {"requests": {"affected": "<2.32.0", "description": "test row"}})
+    _write(tmp_path, {"Pipfile.lock": pipfile_lock})
+    assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
+    _write(tmp_path, {"Pipfile.lock": json.dumps({"default": {"requests": {"version": "==2.31.0"},
+                                                              "x": {"version": 7}}})})
+    result = run_scan(tmp_path, strict_loading=True)
+    assert result.scanner_failures == []
+    assert [f.evidence for f in result.findings if f.rule_id == "AAK-SUPPLY-002"] == [
+        "requests==2.31.0 — test row"]
+
+
+@pytest.mark.parametrize("pyproject", [
+    *(f"project = {bad}\n" for bad in ('"x"', "7", "1.5", "true", "[1]")),
+    *(f"[project]\nname = 'x'\ndependencies = {bad}\n" for bad in ("7", "1.5", "true")),
+])
+def test_a_pyproject_project_table_of_the_wrong_type_is_skipped_not_a_crash(tmp_path: Path, pyproject: str) -> None:
+    """A TOML document is always a table, but its `[project]` need not be, nor
+    its dependencies a list: oauth_surface called `.get` on the one and iterated
+    the other. PEP 621 makes both an error, so the value is skipped, as the
+    shared reader behind the MCP SDK gate skips it."""
+    _write(tmp_path, {"pyproject.toml": pyproject})
+    assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
+    _write(tmp_path, {"pyproject.toml": "[project]\nname = 'x'\ndependencies = ['langfuse>=2']\n"})
+    assert "AAK-OAUTH-3P-001" in {f.rule_id for f in run_scan(tmp_path, strict_loading=True).findings}
 
 
 @pytest.mark.parametrize("rel", [".aak-toxic-flow-trust.yml", ".aak/composition-boundaries.yaml",

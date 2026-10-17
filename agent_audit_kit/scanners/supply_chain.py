@@ -242,16 +242,24 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
         data = loads_json(raw, lockfile)
     except (json.JSONDecodeError, OSError):
         return findings
+    # npm writes an object, its package table as an object and each version as
+    # a string. A value of another type raised here and took the whole scanner
+    # down; npm cannot install from such a file, so it is read as far as it
+    # has the right shape.
+    if not isinstance(data, dict):
+        return findings
 
     rel_path = str(lockfile.relative_to(project_root))
 
     # Check packages in lockfile v2/v3 format
-    packages = data.get("packages", {})
-    if packages:
+    packages = data.get("packages")
+    if isinstance(packages, dict) and packages:
         dep_count = sum(1 for key, info in packages.items() if _is_npm_dependency(key, info))
     else:
         # Try lockfile v1 format, which has no entry for the root package
-        packages = data.get("dependencies", {})
+        packages = data.get("dependencies")
+        if not isinstance(packages, dict):
+            packages = {}
         dep_count = len(packages)
     # Every typosquat's line in one pass over the file, not one search of it per
     # package: a lockfile may name thousands of packages under a misspelt scope.
@@ -268,7 +276,7 @@ def _scan_npm_lockfile(project_root: Path) -> list[Finding]:
 
         version = pkg_info.get("version", "")
         npm_vulns = KNOWN_VULNERABLE_PACKAGES.get("npm", {})
-        if pkg_name in npm_vulns and version:
+        if pkg_name in npm_vulns and isinstance(version, str) and version:
             vuln_info = npm_vulns[pkg_name]
             if _version_in_range(version, vuln_info["affected"]):
                 findings.append(_make_finding(
@@ -685,13 +693,16 @@ def _scan_python_deps(project_root: Path) -> list[Finding]:
                 data = loads_json(raw, pipfile_lock)
                 rel_path = str(pipfile_lock.relative_to(project_root))
                 for section in ["default", "develop"]:
-                    pkgs = data.get(section, {})
+                    # A top level that is not an object, or a version that is
+                    # not a string, raised here (see `_scan_npm_lockfile`).
+                    pkgs = data.get(section, {}) if isinstance(data, dict) else None
                     if not isinstance(pkgs, dict):
                         continue
                     for pkg_name, pkg_info in pkgs.items():
-                        if not isinstance(pkg_info, dict):
+                        stated = pkg_info.get("version", "") if isinstance(pkg_info, dict) else None
+                        if not isinstance(stated, str):
                             continue
-                        version = pkg_info.get("version", "").lstrip("=")
+                        version = stated.lstrip("=")
                         name_lower = pkg_name.lower()
                         if name_lower in python_vulns and version:
                             vuln_info = python_vulns[name_lower]
