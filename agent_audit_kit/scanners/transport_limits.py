@@ -259,6 +259,11 @@ _PY_ANY_READ_RE = re.compile(r"\.(?:json|body)\s*\(\s*\)|\bget_json\b|\bget_data
 _GO_LIMIT_CALL_RE = re.compile(r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(")
 _GO_CONTENT_LENGTH_RE = re.compile(r"\.ContentLength\b")
 
+# What `ast.parse` raises on a file it cannot build a tree for: besides a syntax
+# error, MemoryError on deep nesting and RecursionError on a long flat
+# expression. The file is skipped; letting one escape lost every finding of
+# the scan. (Python 3.9 and 3.10 crash on some such files instead.)
+_PY_PARSE_ERRORS = (SyntaxError, ValueError, RecursionError, MemoryError)
 # Flask's (Werkzeug's) limit, set in code or config.
 _PY_PROJECT_CAP_RE = re.compile(r"\bMAX_CONTENT_LENGTH\b|\bmax_content_length\b")
 # A file that may hold a size-limiting middleware, before parsing it.
@@ -345,7 +350,7 @@ def _py_size_middleware(text: str) -> bool:
         return False
     try:
         tree = ast.parse(text)
-    except (SyntaxError, ValueError):
+    except _PY_PARSE_ERRORS:
         return False
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _is_middleware(node) and _checks_size(node):
@@ -631,7 +636,7 @@ def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Findi
         scanned.add(rel)
         try:
             tree = ast.parse(text)
-        except (SyntaxError, ValueError):
+        except _PY_PARSE_ERRORS:
             continue
         routes = py_routes(tree)
         if not routes:

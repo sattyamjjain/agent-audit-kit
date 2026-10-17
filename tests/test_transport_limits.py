@@ -572,6 +572,70 @@ def test_a_framework_request_content_length_counts(tmp_path: Path, cap: str, cap
     assert _hits(_write(tmp_path, {"api.go": text})) == ([] if capped else [("api.go", 8)])
 
 
+# A file the parser cannot build a tree for: `ast.parse` raises MemoryError on
+# deep unary nesting (Python 3.9 to 3.12) and RecursionError on a long flat
+# expression (3.11 and later; 3.9 and 3.10 crash on it instead). Either escaped
+# `scan()`, losing every AAK-MCP-016 and AAK-MCPFRAME-001 finding of the project.
+_DEEP = "x = " + "-" * 140_000 + "1\n"
+_FLAT = "x = " + "a+" * 140_000 + "a\n"
+_SIZE_HINTS = "# a middleware that answers 413\n"
+_HANDLER_HEAD = "from fastapi import FastAPI, Request\napp = FastAPI()\n"
+
+
+@pytest.mark.parametrize("error", [RecursionError, MemoryError])
+def test_a_file_the_parser_gives_up_on_is_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: type[BaseException],
+) -> None:
+    real_parse = transport_limits.ast.parse
+    # Built here, not written out: pytest parses this file to report a failure,
+    # and must not meet the marker while the patch is in place.
+    marker = "# give " + "up"
+
+    def parse(source: str, *args: object, **kwargs: object) -> object:
+        if marker in source:
+            raise error()
+        return real_parse(source, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(transport_limits.ast, "parse", parse)
+    root = _write(tmp_path, {
+        "server.py": FASTAPI,
+        "size_mw.py": _SIZE_HINTS + marker + "\n",
+        "other.py": _HANDLER_HEAD + marker + "\nasync def h(request: Request):\n    return await request.json()\n",
+    })
+    # Caught here so that a regression fails the test plainly: pytest cannot
+    # format a RecursionError's traceback, and stops the whole run.
+    escaped = None
+    try:
+        hits = _hits(root)
+    except (RecursionError, MemoryError) as exc:
+        escaped = type(exc).__name__
+    assert escaped is None, f"{escaped} escaped scan()"
+    assert hits == [("server.py", 8)]
+
+
+@pytest.mark.parametrize("shape", [
+    "deep",
+    pytest.param("flat", marks=pytest.mark.skipif(sys.version_info < (3, 11), reason="the parser crashes before 3.11")),
+])
+def test_a_crafted_file_the_parser_gives_up_on_leaves_the_rest_of_the_scan(tmp_path: Path, shape: str) -> None:
+    expression = _DEEP if shape == "deep" else _FLAT
+    root = tmp_path / "project"
+    for name, text in {
+        "server.py": FASTAPI,
+        "size_mw.py": _SIZE_HINTS + expression,
+        "other.py": _HANDLER_HEAD + "async def h(request: Request):\n    return await request.json()\n" + expression,
+    }.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text, encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(root)], capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.split()[1] == "1"
+
+
 def _segments_reference(path: str) -> bool:
     """The rule as first written: every `mcp` segment rescans the ones before it."""
     segments = [s for s in path.rsplit(" ", 1)[-1].split("/") if s]
