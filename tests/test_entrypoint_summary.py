@@ -62,7 +62,7 @@ def test_a_crashed_scanner_is_reported_as_incomplete(tmp_path: Path) -> None:
     proc, summary = _run(tmp_path, [_result("AAK-INTERNAL-SCANNER-FAIL")], exit_code=1)
 
     assert proc.returncode == 1
-    assert "Result: INCOMPLETE (1 scanner(s) crashed" in proc.stdout
+    assert "Result: INCOMPLETE (1 scanner failure(s): a crash or a refused file" in proc.stdout
     assert "**Result: INCOMPLETE**" in summary
     assert "findings exceed" not in proc.stdout
 

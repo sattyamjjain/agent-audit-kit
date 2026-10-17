@@ -140,10 +140,10 @@ except Exception:
     print(0)
 ")
 
-    # A crashed scanner also exits 1, so exit 1 alone cannot tell "findings
-    # over the threshold" from "the scan did not finish" (#743). The crash is
-    # always in the SARIF as an AAK-INTERNAL-SCANNER-FAIL result, which no
-    # --severity or --rules filter drops, so count it here.
+    # A scanner that crashed, or refused a file, also exits 1, so exit 1 alone
+    # cannot tell "findings over the threshold" from "the scan did not finish"
+    # (#743). Either is always in the SARIF as an AAK-INTERNAL-SCANNER-FAIL
+    # result, which no --severity or --rules filter drops, so count it here.
     INCOMPLETE_COUNT=$(python3 -c "
 import json
 try:
@@ -203,7 +203,7 @@ echo "========================================="
 if [ "${SCAN_EXIT}" -eq 0 ]; then
     echo "  Result: PASSED"
 elif [ "${SCAN_EXIT}" -eq 1 ] && [ "${INCOMPLETE_COUNT}" -gt 0 ]; then
-    echo "  Result: INCOMPLETE (${INCOMPLETE_COUNT} scanner(s) crashed; see the scan log)"
+    echo "  Result: INCOMPLETE (${INCOMPLETE_COUNT} scanner failure(s): a crash or a refused file; see the scan log)"
 elif [ "${SCAN_EXIT}" -eq 1 ]; then
     echo "  Result: FAILED (findings exceed --fail-on ${INPUT_FAIL_ON} threshold)"
 else
@@ -228,7 +228,7 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         if [ "${SCAN_EXIT}" -eq 0 ]; then
             echo "**Result: PASSED**"
         elif [ "${SCAN_EXIT}" -eq 1 ] && [ "${INCOMPLETE_COUNT}" -gt 0 ]; then
-            echo "**Result: INCOMPLETE** -- ${INCOMPLETE_COUNT} scanner(s) crashed, so the rules they own did not run (see the scan log)"
+            echo "**Result: INCOMPLETE** -- ${INCOMPLETE_COUNT} scanner failure(s), a crash or a refused file, so the rules they own did not run on everything (see the scan log)"
         elif [ "${SCAN_EXIT}" -eq 1 ]; then
             echo "**Result: FAILED** -- findings exceed \`--fail-on ${INPUT_FAIL_ON}\` threshold"
         else

@@ -70,8 +70,9 @@ __all__ = ["scan_cmd"]
     is_flag=True,
     default=False,
     help=(
-        "Exit 0 even when a scanner crashed. Off by default: a run whose "
-        "scanners died is incomplete, and an incomplete scan that exits 0 is "
+        "Exit 0 even when a scanner did not finish every file, whether it "
+        "crashed or refused a file it could not parse safely. Off by default: "
+        "such a run is incomplete, and an incomplete scan that exits 0 is "
         "indistinguishable from a clean one (issue #743)."
     ),
 )
@@ -491,15 +492,17 @@ def _run_scan(
     if failures and not allow_scanner_failure:
         click.echo("", err=True)
         click.echo(
-            f"INCOMPLETE: {len(failures)} scanner(s) crashed; the rules they own "
-            f"were not evaluated. This scan cannot show a clean result.",
+            f"INCOMPLETE: {len(result.failed_scanners)} scanner(s) did not finish every file "
+            "(a crash or a refused file); the rules they own may be missing findings. "
+            "This scan cannot show a clean result.",
             err=True,
         )
         for f in failures:
             click.echo(f"  {f.evidence}", err=True)
         click.echo(
-            "  Pass --allow-scanner-failure to exit 0 anyway, and please file "
-            "the crash at https://github.com/sattyamjjain/agent-audit-kit/issues",
+            "  Pass --allow-scanner-failure to exit 0 anyway. A refused file is named "
+            "with the reason; please file a crash at "
+            "https://github.com/sattyamjjain/agent-audit-kit/issues",
             err=True,
         )
         sys.exit(EXIT_FINDINGS)

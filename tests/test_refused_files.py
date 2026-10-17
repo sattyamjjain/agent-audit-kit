@@ -188,6 +188,25 @@ def test_a_refusal_keeps_the_scan_incomplete_as_a_crash_did(tmp_path: Path) -> N
     assert runner.invoke(cli, ["scan", str(tmp_path), "--allow-scanner-failure"]).exit_code == 0
 
 
+def test_the_incomplete_message_counts_scanners_and_names_a_refused_file(
+    tmp_path: Path, forced_parser_overflow: None
+) -> None:
+    """A scanner that refuses two files fails twice; the message counts it once,
+    and says a refused file as well as a crash leaves the scan incomplete."""
+    body = _PY_HINTS + _OVERFLOW_MARKER + "\n"
+    _write(tmp_path, {"a.py": body, "b.py": body})
+    result = run_scan(tmp_path, strict_loading=True)
+    scanners = result.failed_scanners
+    assert scanners and len(result.scanner_failures) == 2 * len(scanners)
+    res = CliRunner().invoke(cli, ["scan", str(tmp_path)])
+    assert res.exit_code == 1
+    assert (
+        f"INCOMPLETE: {len(scanners)} scanner(s) did not finish every file (a crash or a refused file); "
+        "the rules they own may be missing findings."
+    ) in res.output
+    assert f"INCOMPLETE SCAN: {len(scanners)} scanner(s) did not finish every file" in res.output
+
+
 def test_an_ignored_path_drops_its_refusal_too(tmp_path: Path) -> None:
     _write(tmp_path, {"vendored/evil-mcp.json": DEEP_JSON})
     assert run_scan(tmp_path, ignore_paths=["vendored"]).scanner_failures == []

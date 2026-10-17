@@ -354,13 +354,14 @@ def format_results(
 
 
 def _scanner_failure_notification(finding) -> dict:
-    """A SARIF `notification` object (§3.58) for one crashed scanner."""
+    """A SARIF `notification` object (§3.58) for one scanner failure: a
+    scanner that crashed, or one file a scanner refused."""
     return {
         "level": "error",
         "message": {
             "text": (
-                f"Scanner crashed; the rules it owns were not evaluated. "
-                f"{finding.evidence}"
+                f"Scanner did not finish (a crash or a refused file); the rules it "
+                f"owns were not evaluated where it stopped. {finding.evidence}"
             )
         },
         "descriptor": {"id": finding.rule_id},

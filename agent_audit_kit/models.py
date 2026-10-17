@@ -187,5 +187,23 @@ class ScanResult:
 
     @property
     def scanner_failures(self) -> list[Finding]:
-        """Findings recording a scanner that raised during this run."""
+        """Findings recording a scanner that did not finish every file: one that
+        raised, or one file it refused (each refused file is a finding of its own)."""
         return [f for f in self.findings if f.rule_id == SCANNER_FAIL_RULE_ID]
+
+    @property
+    def failed_scanners(self) -> list[str]:
+        """Each scanner behind `scanner_failures` once, in the order they failed.
+
+        A scanner that refuses three files has three failures, so a count of
+        failures is not a count of scanners. The name is read back from the
+        evidence, which the engine starts `scanner='<name>' error=`.
+        """
+        names: dict[str, None] = {}
+        for f in self.scanner_failures:
+            evidence = f.evidence or ""
+            if evidence.startswith("scanner=") and " error=" in evidence:
+                names.setdefault(evidence[len("scanner="):evidence.index(" error=")].strip("'\""), None)
+            else:
+                names.setdefault("unknown", None)
+        return list(names)

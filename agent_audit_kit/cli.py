@@ -280,8 +280,9 @@ def score_cmd(path: str, badge: bool, aivss: bool, output_file: str | None) -> N
     if failures:
         click.echo(
             click.style(
-                f"WARNING: {len(failures)} scanner(s) crashed during this scan, so "
-                f"this grade is an upper bound, not a measurement.",
+                f"WARNING: {len(result.failed_scanners)} scanner(s) did not finish every "
+                "file during this scan (a crash or a refused file), so this grade is an "
+                "upper bound, not a measurement.",
                 fg="red",
                 bold=True,
             ),
