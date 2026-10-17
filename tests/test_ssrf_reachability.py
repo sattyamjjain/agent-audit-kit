@@ -1406,6 +1406,52 @@ def test_lists_joined_inside_one_another_are_read_forty_deep() -> None:
     assert [s.tainted for s in analyze_python(_join_chain(40))] == [False]
 
 
+def _built_inside(levels: int) -> str:
+    """The caller's `host` in the innermost of `levels` URLs built one inside
+    another: `'https://' + ('' + host + '').strip()` is two."""
+    inner = "host"
+    for _ in range(levels - 1):
+        inner = f"('' + {inner} + '').strip()"
+    return f"'https://' + {inner}"
+
+
+@pytest.mark.parametrize(("levels", "tainted"), [(40, True), (41, False)])
+def test_urls_built_inside_one_another_are_read_forty_deep(levels: int, tainted: bool) -> None:
+    """Not only joined lists: each URL built inside another, here through a
+    call on it, is read a level further down, and the reader stops 40 levels
+    down, so the caller's host in the 40th is read and in the 41st reads as
+    text the code does not spell out. AAK-SSRF-001's limitation states it."""
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    return requests.get({_built_inside(levels)}).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
+@pytest.mark.parametrize(("length", "tainted"), [(503, False), (504, True)])
+def test_an_authority_is_read_to_its_512th_character(length: int, tainted: bool) -> None:
+    """AAK-SSRF-001's limitation states the bound: a URL's text is read to its
+    512th character. With the `/` that ends the authority as the 512th, the
+    caller's value after it is in the path; a character later the `/` is not
+    read, the authority reads as still open, and the value is taken for the
+    host."""
+    url = "'https://" + "a" * length + "/' + host"
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    return requests.get({url}).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
+@pytest.mark.parametrize(("length", "tainted"), [(502, True), (504, False)])
+@pytest.mark.parametrize("form", ["%", "format"])
+def test_a_template_field_after_its_512th_character_is_not_filled(form: str, length: int, tainted: bool) -> None:
+    """The same bound in a `%` or `.format` template: with the host's field as
+    the 511th and 512th characters of the template it is filled and read;
+    starting at the 513th it is not filled, so the caller's host there is
+    missed."""
+    if form == "%":
+        url = "'https://" + "a" * length + "%s' % host"
+    else:
+        url = "'https://" + "a" * length + "{}'.format(host)"
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    return requests.get({url}).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
 def _wrapped(levels: int, inner: str) -> str:
     """`inner` inside `levels` of `"a" + (...).strip()`."""
     for _ in range(levels):
