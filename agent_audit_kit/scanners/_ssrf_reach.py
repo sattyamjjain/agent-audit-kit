@@ -374,8 +374,15 @@ _PREFIX_CAP = 512
 #: exhausting the interpreter's stack.
 _PY_MAX_NEST = 40
 #: How many pieces of one built URL are read. Its host is in the first few; the
-#: bound keeps a crafted run of empty pieces from costing more than this.
+#: bound keeps a crafted run of empty pieces from costing more than this. A list
+#: joined by name is one piece of the URL that joins it, and is read to its own
+#: `_PIECE_CAP` pieces (`_CallerInput._joined_sets_host`).
 _PIECE_CAP = 256
+#: How many fields of a `%` or `.format` template are read; the rest of it is
+#: text the code does not spell out. A template a name holds is read again at
+#: every use, so a template of 255 fields read at 20,414 call sites took 9
+#: seconds; its host is in the first few fields.
+_FIELD_CAP = 16
 
 
 #: Functions that return a URL built from the arguments they are given, so
@@ -434,57 +441,66 @@ def _str_constant(node: ast.AST) -> str | None:
     return None
 
 
-def _literal_join(
-    node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None
-) -> tuple[str, list[ast.expr]] | None:
-    """``(separator, items)`` for `"/".join([a, b])` over a literal list, or over
-    a name `lists` reads back to one (`parts = ["https://", host]`, then
-    `"".join(parts)`)."""
+def _join_parts(node: ast.AST) -> tuple[str, ast.expr] | None:
+    """``(separator, items)`` for `"sep".join(items)` with a constant separator."""
     if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
         return None
     sep = _str_constant(node.func.value)
     if node.func.attr != "join" or sep is None or len(node.args) != 1 or node.keywords:
         return None
-    items = node.args[0]
-    if isinstance(items, ast.Name) and lists is not None:
-        elts = lists(items.id)
-        return None if elts is None else (sep, elts)
-    return (sep, list(items.elts)) if isinstance(items, (ast.List, ast.Tuple)) else None
+    return sep, node.args[0]
 
 
-def _is_built(node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None) -> bool:
-    """An f-string, a `+` or a literal `.join`: a URL put together from pieces."""
+def _literal_join(node: ast.AST) -> tuple[str, list[ast.expr]] | None:
+    """``(separator, items)`` for `"/".join([a, b])` over a literal list or tuple."""
+    joined = _join_parts(node)
+    if joined is None or not isinstance(joined[1], (ast.List, ast.Tuple)):
+        return None
+    return joined[0], joined[1].elts
+
+
+def _named_join(node: ast.AST) -> tuple[str, str] | None:
+    """``(separator, name)`` for `"".join(parts)`, a join over a name."""
+    joined = _join_parts(node)
+    if joined is None or not isinstance(joined[1], ast.Name):
+        return None
+    return joined[0], joined[1].id
+
+
+def _is_built(node: ast.AST) -> bool:
+    """An f-string, a `+` or a literal `.join`: a URL put together from pieces
+    the expression itself writes."""
     return (
         isinstance(node, ast.JoinedStr)
         or (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add))
-        or _literal_join(node, lists) is not None
+        or _literal_join(node) is not None
     )
 
 
-def _joined_name(node: ast.AST) -> str | None:
-    """The name a `"sep".join(name)` reads its items from."""
-    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "join"
-            and len(node.args) == 1 and isinstance(node.args[0], ast.Name)):
-        return node.args[0].id
-    return None
+class _Run(NamedTuple):
+    """The items of a joined list still to read, from `start`, with the
+    separator between them. `_pieces` keeps one of these on its stack rather
+    than every item, so a reader that settles the host early reads no more."""
+    items: list[ast.expr]
+    start: int
+    sep: str
 
 
-def _pieces(
-    node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None
-) -> Iterator[str | ast.AST]:
+def _pieces(root: ast.AST | _Run) -> Iterator[str | ast.AST]:
     """A built string as the literal text and expressions it joins, in order:
     an f-string's parts, a `+` chain flattened left to right (with an explicit
     stack, as a chain can be thousands long), and a literal `.join` with its
     separator between the items, read lazily so a caller can stop once the
-    host is settled, and never more than `_PIECE_CAP` of them.
+    host is settled, and never more than `_PIECE_CAP` of them. `root` is an
+    expression, or a `_Run` over a list's items.
 
-    A named list is expanded once per URL. A join that comes back to a list
-    already read reads as text the code does not spell out: `parts =
-    ["https://", "".join(parts)]` looped for ever when every join was expanded
-    again, and thirty lists that each join the one before twice would have
-    read 2**30 pieces."""
-    expanded: set[str] = set()
-    stack: list[str | ast.AST] = [node]
+    A join over a name is one piece, which the reader judges and spells once
+    per list (`_CallerInput._joined_sets_host`), the way it reads a name. It
+    used to be read out item by item into every URL that joined it, so a list
+    of 39,000 items joined by 10,000 fetches took 16 seconds, 8,000 lists that
+    each joined the next took 60, and a list that joined itself had to be
+    stopped with a record of the lists each URL had read."""
+    stack: list[str | ast.AST | _Run] = [root]
     count = 0
     while stack:
         if count >= _PIECE_CAP:
@@ -495,20 +511,16 @@ def _pieces(
             count += 1
             yield cur
             continue
-        name = _joined_name(cur) if lists is not None else None
-        if name is not None:
-            if name in expanded:
-                count += 1
-                yield _UNKNOWN
-                continue
-            expanded.add(name)
-        joined = _literal_join(cur, lists)
+        if isinstance(cur, _Run):
+            if cur.start + 1 < len(cur.items):
+                stack.append(_Run(cur.items, cur.start + 1, cur.sep))
+                stack.append(cur.sep)
+            if cur.start < len(cur.items):
+                stack.append(cur.items[cur.start])
+            continue
+        joined = _literal_join(cur)
         if joined is not None:
-            sep, items = joined
-            for index in range(len(items) - 1, -1, -1):
-                stack.append(items[index])
-                if index:
-                    stack.append(sep)
+            stack.append(_Run(joined[1], 0, joined[0]))
         elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Add):
             stack.extend((cur.right, cur.left))
         elif isinstance(cur, ast.JoinedStr):
@@ -540,7 +552,8 @@ def _percent_pieces(
     under a computed key, or the operand itself). Any operand but a tuple or a
     dict literal is the value of a positional field too, so `"https://%(host)s/"
     % arguments` puts `arguments["host"]` in the host. A field nothing fills
-    reads as text the code does not spell out."""
+    reads as text the code does not spell out, and so does the template after
+    its `_FIELD_CAP`th field."""
     positional: list[ast.expr] = []
     keyed: dict[str, ast.expr] = {}
     rest: ast.expr | None = None
@@ -552,8 +565,11 @@ def _percent_pieces(
             positional = [values]
     pieces: list[str | ast.AST] = []
     pos = index = 0
-    for field in _PERCENT_FIELD_RE.finditer(template):
+    for number, field in enumerate(_PERCENT_FIELD_RE.finditer(template)):
         pieces.append(template[pos:field.start()])
+        if number == _FIELD_CAP:
+            pieces.append(_UNKNOWN)
+            return pieces
         pos = field.end()
         field_key: str | None = field.group(1)
         if field.group(2) == "%" and field_key is None:
@@ -573,7 +589,9 @@ def _percent_pieces(
 def _format_pieces(template: str, call: ast.Call) -> list[str | ast.AST] | None:
     """`template.format(...)` as the text and the argument each field takes, in
     order (`{}`, `{0}`, `{host}`, `{0.netloc}`), or None when the arguments are
-    unpacked (`*args`, `**kwargs`) or the template does not parse."""
+    unpacked (`*args`, `**kwargs`) or the template does not parse. The template
+    after its `_FIELD_CAP`th field, an escaped `{{` or `}}` counting as one,
+    reads as text the code does not spell out."""
     if any(isinstance(arg, ast.Starred) for arg in call.args) or any(kw.arg is None for kw in call.keywords):
         return None
     try:
@@ -583,8 +601,12 @@ def _format_pieces(template: str, call: ast.Call) -> list[str | ast.AST] | None:
     keywords = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
     pieces: list[str | ast.AST] = []
     auto = 0
-    for literal, name, _spec, _conversion in fields:
+    for number, (literal, name, _spec, _conversion) in enumerate(fields):
         pieces.append(literal)
+        if number == _FIELD_CAP:
+            if name is not None or number + 1 < len(fields):
+                pieces.append(_UNKNOWN)
+            return pieces
         if name is None:
             continue
         head = name.partition(".")[0].partition("[")[0]
@@ -709,49 +731,90 @@ def _bind_parts(
 
 class _CallerInput:
     """One tool function's caller input: what it is, and whether it can set the
-    host of a URL built in that function."""
+    host of a URL built in that function.
+
+    The file's own bindings are read through one of these too, with no caller
+    input (`of_file`), which every tool's scope hands a name it does not bind.
+    What that scope spells, and how it judges a list joined by name, is worked
+    out once for the whole file. Each tool used to spell the file's bindings
+    again in a scope of its own, so a module-level `+=` chain read by 4,368
+    tools took 24 seconds, and a binding fanning out to 128 names of 128
+    names, read by 2,000 tools, 42."""
 
     def __init__(
         self,
-        func: ast.FunctionDef | ast.AsyncFunctionDef,
-        module_values: dict[str, list[ast.AST]],
-        module_parts: dict[str, list[ast.AST]],
-        only: frozenset[str] | None = None,
+        params: set[str],
+        values: dict[str, list[ast.AST]],
+        elements: dict[str, list[ast.AST]],
+        file: _CallerInput | None,
     ) -> None:
-        self.params = _get_param_names(func) - _injected_params(func)
-        if only is not None:
-            self.params &= only
+        self.params = params
         # name -> what it is bound to here: `=`, an annotated `=`, `:=`, and an
         # augmented `+=` read as the value before it plus the operand ...
-        self.values: dict[str, list[ast.AST]] = {}
+        self.values = values
         # ... and what it holds a part of: the iterable of a `for` or a
         # comprehension, and the value an unpacking assignment splits, whose
         # every part is the caller's when the whole is.
-        self.elements: dict[str, list[ast.AST]] = {}
-        _collect_bindings(func, self.values, self.elements)
-        # The same, file-wide, for a name this function does not bind.
-        self.module_values = module_values
-        self.module_parts = module_parts
+        self.elements = elements
+        # The file's scope, for a name this function does not bind; None in
+        # the file's scope itself, whose bindings are file-wide.
+        self.file = file
         self._sets: dict[tuple[int, int], bool] = {}
         self._name_sets: dict[tuple[str, int], bool] = {}
+        self._joined_sets: dict[tuple[str, str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
+        self._joined_texts: dict[tuple[str, str, int], str] = {}
         self._mappings: dict[int, tuple[ast.Dict, dict[str, ast.expr], ast.expr | None]] = {}
+
+    @classmethod
+    def of_file(cls, tree: ast.AST) -> _CallerInput:
+        """The file's bindings, file-wide, holding no caller input."""
+        values: dict[str, list[ast.AST]] = {}
+        elements: dict[str, list[ast.AST]] = {}
+        _collect_bindings(tree, values, elements)
+        return cls(set(), values, elements, None)
+
+    @classmethod
+    def of_tool(
+        cls,
+        func: ast.FunctionDef | ast.AsyncFunctionDef,
+        file: _CallerInput,
+        only: frozenset[str] | None = None,
+    ) -> _CallerInput:
+        """A tool function's scope: its parameters, less what a framework fills
+        in (and only those `only` names, when given), and its bindings."""
+        params = _get_param_names(func) - _injected_params(func)
+        if only is not None:
+            params &= only
+        values: dict[str, list[ast.AST]] = {}
+        elements: dict[str, list[ast.AST]] = {}
+        _collect_bindings(func, values, elements)
+        return cls(params, values, elements, file)
+
+    def _owner(self, name: str) -> _CallerInput:
+        """The scope whose binding of `name` this one reads: its own, or the
+        file's for a name it does not bind."""
+        if self.file is None or self.values.get(name):
+            return self
+        return self.file
 
     def _bound(self, name: str) -> list[ast.AST]:
         """What `name` is bound to here, or else in the file. A name the file
         unpacks or loops over holds a part of a value, not the value: none."""
-        local = self.values.get(name)
-        if local:
-            return local
-        if name in self.module_parts:
+        owner = self._owner(name)
+        if owner is not self:
+            return owner._bound(name)
+        if self.file is None and name in self.elements:
             return []
-        return self.module_values.get(name, [])
+        return self.values.get(name, [])
 
     def _list_of(self, name: str) -> list[ast.expr] | None:
-        """The items of the list or tuple literal `name` is bound to, once."""
+        """The items of the list or tuple literal `name` is bound to, once. The
+        items are the literal's own, never copied: every join of the list used
+        to copy them twice."""
         bound = self._bound(name)
         if len(bound) == 1 and isinstance(bound[0], (ast.List, ast.Tuple)):
-            return list(bound[0].elts)
+            return bound[0].elts
         return None
 
     def sets_host(self, node: ast.AST, depth: int = 0, nest: int = 0) -> bool:
@@ -762,11 +825,12 @@ class _CallerInput:
         one, a local bound from one), or when the URL is built (an f-string,
         `+`, a literal `.join`, `%`, `.format`, `.replace`) and a piece of caller
         input comes before the text the code wrote has ended the authority
-        (`_authority_closed`). Each (expression, depth) and each (name, depth)
-        is worked out once, as `_py_addr_reach` does, so names that read each
-        other do not multiply the work.
+        (`_authority_closed`). Each (expression, depth), each (name, depth) and
+        each (list joined by name, depth) is worked out once, as
+        `_py_addr_reach` does, so names that read each other do not multiply
+        the work. A scope with no caller input, the file's, has none to find.
         """
-        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+        if not self.params or depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
             return False
         key = (id(node), depth)
         hit = self._sets.get(key)
@@ -779,8 +843,9 @@ class _CallerInput:
 
     def _sets_host(self, node: ast.AST, depth: int, nest: int) -> bool:
         # Read and attribute chains can be thousands long, so the parts of one
-        # expression are walked with a stack; only a built URL, or a name's
-        # binding one assignment down, is a call of its own.
+        # expression are walked with a stack; only a built URL, a name's
+        # binding one assignment down, or a list joined by name is a call of
+        # its own.
         stack = [node]
         while stack:
             cur = stack.pop()
@@ -790,8 +855,8 @@ class _CallerInput:
             elif isinstance(cur, (ast.Subscript, ast.Attribute, ast.Starred, ast.Await, ast.NamedExpr)):
                 # `URLS[region]` reads a URL the code fixed: only the container counts.
                 stack.append(cur.value)
-            elif _is_built(cur, self._list_of):
-                if self._built_sets_host(_pieces(cur, self._list_of), depth, nest + 1):
+            elif _is_built(cur):
+                if self._built_sets_host(_pieces(cur), depth, nest + 1):
                     return True
             elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Mod):
                 # A template the caller hands over is theirs whatever it holds;
@@ -808,6 +873,11 @@ class _CallerInput:
             elif isinstance(cur, ast.BinOp):
                 stack.extend((cur.left, cur.right))
             elif isinstance(cur, ast.Call):
+                joined = self._joined_list(cur)
+                if joined is not None:
+                    if self._joined_sets_host(joined[0], joined[1], depth, nest):
+                        return True
+                    continue
                 func = cur.func
                 pieces = None
                 if isinstance(func, ast.Attribute) and func.attr == "format":
@@ -843,6 +913,58 @@ class _CallerInput:
             bound = self.values.get(name, []) + self.elements.get(name, [])
             hit = self._name_sets[key] = any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound)
         return hit
+
+    def _joined_list(self, node: ast.AST) -> tuple[str, str] | None:
+        """``(separator, name)`` when `node` joins a list or tuple literal that
+        a name is bound to (`parts = ["https://", host]`, `"".join(parts)`)."""
+        joined = _named_join(node)
+        if joined is None or self._list_of(joined[1]) is None:
+            return None
+        return joined
+
+    def _joined_sets_host(self, sep: str, name: str, depth: int, nest: int) -> bool:
+        """Whether caller input can set the host of `sep.join(name)`, read as a
+        URL of its own, its items at this depth, once per list, separator and
+        depth. A list the file binds is the file scope's, where no caller input
+        is. A join reached again while it is being worked out, a list that
+        joins itself, adds nothing to its own answer.
+
+        The list used to be read out into each URL that joined it, so in
+        `BASE + "".join(parts)` its pieces followed the base's. A join is now
+        judged like a name, on its own, so a list whose text starts with a bare
+        `/` (`parts = ["/", path]`) leaves a host open after a base that has no
+        `/` of its own. Lists joined inside one another are read a call per
+        list, so past forty of them (`_PY_MAX_NEST`) the rest reads as text the
+        code does not spell out."""
+        owner = self._owner(name)
+        if owner is not self:
+            return owner._joined_sets_host(sep, name, depth, nest)
+        if not self.params or depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+            return False
+        key = (sep, name, depth)
+        hit = self._joined_sets.get(key)
+        if hit is None:
+            self._joined_sets[key] = False
+            items = self._list_of(name) or []
+            hit = self._joined_sets[key] = self._built_sets_host(_pieces(_Run(items, 0, sep)), depth, nest + 1)
+        return hit
+
+    def _joined_text(self, sep: str, name: str, depth: int, nest: int) -> str:
+        """The text `sep.join(name)` spells, once per list, separator and depth;
+        a list the file binds is spelled by the file's scope, and a list that
+        joins itself spells that join as text the code does not spell out."""
+        owner = self._owner(name)
+        if owner is not self:
+            return owner._joined_text(sep, name, depth, nest)
+        if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
+            return _UNKNOWN
+        key = (sep, name, depth)
+        text = self._joined_texts.get(key)
+        if text is None:
+            self._joined_texts[key] = _UNKNOWN
+            items = self._list_of(name) or []
+            text = self._joined_texts[key] = self._spell_pieces(_pieces(_Run(items, 0, sep)), depth, nest + 1)
+        return text
 
     def _mapping(self, node: ast.expr) -> tuple[dict[str, ast.expr], ast.expr | None]:
         """What a keyed `%` field can read in `node`: the entries a dict literal
@@ -922,9 +1044,12 @@ class _CallerInput:
 
     def _built_sets_host(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> bool:
         prefix = ""
+        open_prefix = None  # the text last found to leave the authority open
         for piece in pieces:
-            if _authority_closed(prefix):
-                return False
+            if prefix != open_prefix:
+                if _authority_closed(prefix):
+                    return False
+                open_prefix = prefix
             if isinstance(piece, str):
                 prefix = (prefix + piece)[:_PREFIX_CAP]
             elif self.sets_host(piece, depth, nest):
@@ -954,15 +1079,14 @@ class _CallerInput:
         if isinstance(node, ast.Name):
             if node.id in self.params or node.id in self.elements:
                 return _UNKNOWN
-            bound = self._bound(node.id)
-            return self._spelled(bound[0], depth + 1, nest + 1) if len(bound) == 1 else _UNKNOWN
-        if _is_built(node, self._list_of):
-            text = ""
-            for piece in _pieces(node, self._list_of):
-                text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
-                if len(text) >= _PREFIX_CAP:
-                    break
-            return text
+            owner = self._owner(node.id)
+            bound = owner._bound(node.id)
+            return owner._spelled(bound[0], depth + 1, nest + 1) if len(bound) == 1 else _UNKNOWN
+        joined = self._joined_list(node)
+        if joined is not None:
+            return self._joined_text(joined[0], joined[1], depth, nest)
+        if _is_built(node):
+            return self._spell_pieces(_pieces(node), depth, nest + 1)
         pieces: list[str | ast.AST] | None = None
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
             pieces = _percent_pieces(self._spelled(node.left, depth, nest + 1), node.right, self._mapping)
@@ -970,9 +1094,13 @@ class _CallerInput:
             pieces = _format_pieces(self._spelled(node.func.value, depth, nest + 1), node)
         if pieces is None:
             return _UNKNOWN
+        return self._spell_pieces(pieces, depth, nest + 1)
+
+    def _spell_pieces(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> str:
+        """The text of a run of pieces, read to `_PREFIX_CAP` characters."""
         text = ""
         for piece in pieces:
-            text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
+            text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest)
             if len(text) >= _PREFIX_CAP:
                 break
         return text
@@ -1052,9 +1180,7 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     """
     registered = _registered_tools(tree)
     class_tools = _class_tool_methods(tree)
-    module_values: dict[str, list[ast.AST]] = {}
-    module_parts: dict[str, list[ast.AST]] = {}
-    _collect_bindings(tree, module_values, module_parts)
+    file_scope = _CallerInput.of_file(tree)
     around: dict[int, list[_CallerInput]] = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1065,7 +1191,7 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
             if node.name != "call_tool":
                 continue
             only = _CALL_TOOL_INPUTS
-        scope = _CallerInput(node, module_values, module_parts, only)
+        scope = _CallerInput.of_tool(node, file_scope, only)
         for sub in ast.walk(node):
             if isinstance(sub, ast.Call):
                 around.setdefault(id(sub), []).append(scope)

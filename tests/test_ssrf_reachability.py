@@ -1046,6 +1046,81 @@ def test_a_name_bound_or_read_many_times_is_judged_once_per_depth(shape: str) ->
     assert seconds < 5.0
 
 
+# What a binding outside the tool spells, and what a list joined by name holds,
+# were read again by every tool and at every call site, and a template a name
+# holds was read to its end at every use. Each shape is just under the
+# scanner's 512,000-byte cap, and took, before the fix: a module-level `+=`
+# chain read by 4,368 tools 24 s, a list of 39,000 items joined by 10,188
+# fetches 16 s (in the tool or at module level), 8,000 lists each joining the
+# next 60 s, a list of 30,000 empty f-strings joined by 10,310 fetches 13 s, a
+# binding fanning out to 128 names of 128 names read by 2,000 tools 42 s, and a
+# 255-field template read by 20,414 fetches 9 s (`%`) or 17,599 fetches 7 s
+# (`.format`). Each takes about a second now.
+
+
+def _filled(head: str, unit: str) -> str:
+    """`head`, then `unit` as often as fits under the scanner's file cap."""
+    return head + unit * ((511_000 - len(head)) // len(unit))
+
+
+_TOOL_HEAD = _CYCLE_HEAD + "@mcp.tool()\ndef t(p: str) -> str:\n"
+_FANOUT = (
+    "".join(f"M{i} = ''\n" for i in range(128))
+    + "".join(f"N{i} = ''" + "".join(f" + M{j}" for j in range(128)) + "\n" for i in range(128))
+    + "B0 = ''" + "".join(f" + N{i}" for i in range(128)) + "\n"
+)
+_SHARED: dict[str, tuple[Callable[[], str], bool]] = {
+    "module-augmented-chain": (lambda: _filled(
+        _CYCLE_HEAD + "BASE = 'https://'\n" + "BASE += 'a'\n" * 16_000,
+        "@mcp.tool()\ndef t(p: str) -> str:\n    return requests.get(BASE + p).text\n"), True),
+    "module-list": (lambda: _filled(
+        _CYCLE_HEAD + "BIG = ['https://', 'api.example.com/', " + "'a', " * 39_000 + "]\n"
+        "@mcp.tool()\ndef t(p: str) -> str:\n", "    requests.get(''.join(BIG))\n"), False),
+    "local-list": (lambda: _filled(
+        _TOOL_HEAD + "    big = ['https://', 'api.example.com/', " + "'a', " * 39_000 + "]\n",
+        "    requests.get(''.join(big))\n"), False),
+    "join-chain": (lambda: _filled(
+        _TOOL_HEAD + "".join(f"    l{i} = [''.join(l{i + 1})]\n" for i in range(8_000)) + "    l8000 = ['https://']\n",
+        "    requests.get(''.join(l0) + p)\n"), False),
+    "empty-fstrings": (lambda: _filled(
+        _TOOL_HEAD + "    big = ['https://', " + "f'', " * 30_000 + "]\n", "    requests.get(''.join(big) + p)\n"), True),
+    "fanout": (lambda: _CYCLE_HEAD + _FANOUT + (
+        "@mcp.tool()\ndef t(p: str) -> str:\n    return requests.get(B0 + p).text\n" * 2_000), True),
+    "percent-template": (lambda: _filled(
+        _CYCLE_HEAD + "T = 'x" + "%s" * 255 + "'\n@mcp.tool()\ndef t(p: str) -> str:\n",
+        "    requests.get(T % ())\n"), False),
+    "format-template": (lambda: _filled(
+        _CYCLE_HEAD + "T = 'x" + "{}" * 255 + "'\n@mcp.tool()\ndef t(p: str) -> str:\n",
+        "    requests.get(T.format())\n"), False),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_SHARED))
+def test_a_shared_binding_is_read_once_per_scope(shape: str) -> None:
+    build, tainted = _SHARED[shape]
+    source = build()
+    assert len(source) < 512_000
+    sites, seconds = _analyze_in_child(source, timeout=30)
+    assert sites and all(site[2] is tainted for site in sites)
+    assert seconds < 5.0
+
+
+def _join_chain(lists: int) -> str:
+    """A tool whose URL joins the first of `lists` lists that each join the next."""
+    chain = "".join(f"    l{i} = [''.join(l{i + 1})]\n" for i in range(lists)) + f"    l{lists} = ['https://']\n"
+    return _TOOL_HEAD + chain + "    return requests.get(''.join(l0) + p).text\n"
+
+
+def test_lists_joined_inside_one_another_are_read_forty_deep() -> None:
+    """A list joined by name is judged and spelled once, the way a name is, a
+    call per list, so lists that each join the next are read 39 lists below
+    the one the URL joins; the 40th and those under it read as text the code
+    does not spell out, which is taken to carry its own host. The 8,000-list
+    chain above is one of those."""
+    assert [s.tainted for s in analyze_python(_join_chain(39))] == [True]
+    assert [s.tainted for s in analyze_python(_join_chain(40))] == [False]
+
+
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
     js = "let a = b + c;\nlet b = a;\nlet c = req.body.target;\nfetch(a);\n"
     assert [tuple(s) for s in analyze_js(js)] == [("fetch", 4, True, None)]
