@@ -16,7 +16,7 @@ open.
 > issue. The per-CVE latency figures in the tables are **measurements recorded at
 > the time**, kept as dated facts, not a standing promise.
 
-## 2026-10-16 (v0.6.23): the Claude Agent SDK passes a session id to the Claude CLI as its own argument, one new rule on two registries
+## 2026-10-17 (v0.6.23): the Claude Agent SDK passes a session id to the Claude CLI as its own argument, one new rule on two registries
 
 The watcher opened one `cve-response` issue at 21:08Z on 2026-10-16 (#1026), `sev/unknown`.
 NVD has not analysed the record (vulnStatus Received), but the record carries GitHub's
@@ -78,7 +78,7 @@ never resume a session id a client supplies.
 CVSS is the CVSS 4.0 score that NVD's record carries from GitHub's advisory, marked (4.0);
 NVD has not scored the record itself.
 
-Dispositioned at 2026-10-16T21:37:45Z.
+Dispositioned at 2026-10-17T00:43:34Z.
 
 ## 2026-10-16 (v0.6.23): ZCode starts a cloned repository's MCP servers on open, a new rule and a new platform
 
