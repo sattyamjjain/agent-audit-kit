@@ -397,7 +397,7 @@ def _check_unbounded_go(project_root: Path, scanned: set[str]) -> list[Finding]:
         if "httptest" in text and GO_TEST_SERVER_RE.search(text):
             continue
         scanned.add(rel)
-        index = CodeIndex(text)
+        index = CodeIndex(text, go=True)
         handlers = go_handlers(index)
         if not handlers:
             continue

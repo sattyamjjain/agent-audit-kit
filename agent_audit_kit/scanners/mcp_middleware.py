@@ -2,8 +2,8 @@
 
 CVE-2026-33032 / MCPwn (nginx-ui, CVSS 9.8, KEV-listed 2026-04-13) was
 caused by two routes sharing a handler but only one being wrapped in an
-auth middleware. We detect that shape — "one route is authed, its twin
-isn't" — across three stacks:
+auth middleware. AAK-MCPWN-001 detects that shape by path — "one MCP route
+is authed, its twin isn't" — across three stacks:
 
 - **Go / Gin**: `router.POST("/mcp", AuthRequired(), h)` vs
   `router.POST("/mcp_message", h)`.
@@ -12,11 +12,12 @@ isn't" — across three stacks:
 - **Node / Express**: `app.post("/mcp", authMw, h)` vs
   `app.post("/mcp_message", h)`.
 
-The detection is pragmatic (regex, not full AST): the shape is shallow
-enough that a tree-sitter pass would buy little. False-positive rate
-stays low because we only fire when two routes matching the MCP endpoint
-pattern live in the same file and one has a recognised auth marker while
-the other doesn't.
+Gin and Express routes are read with the bracket reader in `_http_routes`, so
+a route's middleware is every argument between its path and its handler; a
+FastAPI route is its decorators up to the `def`. False-positive rate stays
+low because we only fire when two routes matching the MCP endpoint pattern
+live in the same file and one has a recognised auth marker while the other
+doesn't.
 
 References:
 - NVD: https://nvd.nist.gov/vuln/detail/CVE-2026-33032
@@ -36,6 +37,7 @@ from typing import Iterable, Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
+from agent_audit_kit.scanners._http_routes import CodeIndex, find_calls
 
 
 _SCAN_EXTS = {".go", ".py", ".ts", ".tsx", ".js", ".mjs"}
@@ -97,33 +99,64 @@ class _RouteHit:
 # ---------------------------------------------------------------------------
 
 
-# The Gin, Express and group patterns start at a word run. A start inside the
-# run reads the same run to the same end, so it fails wherever the run's first
-# character failed; `(?<!\w)` keeps the matches and stops a long word with no
-# `.` after it from being read once per character (20,000 characters took 1.05
-# seconds, and the time grew with the square of the run). Each also reads its
-# arguments to a `)`, so they run only up to the last `)` in the file: past it
-# no match can end, and every call there read on to the end of the file.
-_GIN_LINE_RE = re.compile(
-    r"""(?<!\w)(?P<router>\w+)\.(?:Handle|POST|GET|PUT|DELETE|PATCH|Any)\s*\(
-        \s*(?:"[A-Z]+"\s*,\s*)?                # optional HTTP method literal
-        "(?P<route>/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?)"
-        \s*,\s*(?P<mw_and_handler>[^)]+)\)""",
-    re.VERBOSE,
-)
+# Routes are read through the shared bracket reader (`_http_routes.CodeIndex`),
+# so a route's middleware is every argument between its path and its handler.
+# The patterns this replaced read each route's arguments only to the first `)`:
+# on nginx-ui's router, the file CVE-2026-33032 was found in, `r.Any("/mcp",
+# middleware.IPWhiteList(), middleware.AuthRequired(), func(c *gin.Context) {...})`
+# read as far as `middleware.IPWhiteList(`, neither route looked authenticated,
+# and the rule named for that CVE was silent on it. The handler, the last
+# argument, is still read only to its first `)`, as before, so an auth wrapper
+# (`requireAuth(h)`) still counts and an inline handler's body does not.
+#
+# Each argument is read for at most `_MARKER_WINDOW` characters: a middleware
+# name is short, and nested route calls would otherwise reread the text below
+# them once per level. The heads start at a word run (`(?<!\w)`), so a long word
+# with no `.` after it is read once, not once per character.
+_GIN_HEAD_RE = re.compile(r"(?<!\w)(\w+)\.(Handle|POST|GET|PUT|DELETE|PATCH|Any)\s*\(")
+_GIN_GROUP_HEAD_RE = re.compile(r"(?<!\w)(\w+)\s*:=\s*\w+\.Group\s*\(")
+_EXPRESS_HEAD_RE = re.compile(r"(?<!\w)(\w+)\.(post|get|put|patch|delete|use|all)\s*\(")
+_MCP_ROUTE_VALUE_RE = re.compile(r"/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?")
+_METHOD_LITERAL_RE = re.compile(r'"[A-Z]+"')
+_MARKER_WINDOW = 200
+
+
+def _route_parts(index: CodeIndex, spans: list[tuple[int, int]]) -> list[str]:
+    """The text read for auth markers: each middleware argument, and the
+    handler (the last argument) up to its first `)`."""
+    text = index.text
+    parts = [text[s:min(e, s + _MARKER_WINDOW)] for s, e in spans[:-1]]
+    start, end = spans[-1]
+    end = min(end, start + _MARKER_WINDOW)
+    close = text.find(")", start, end)
+    parts.append(text[start:close if close >= 0 else end])
+    return parts
+
+
+def _route_hits(index: CodeIndex, go: bool) -> list[_RouteHit]:
+    """MCP routes registered with Gin (`go`) or Express-style calls. A Gin path
+    is a double-quoted literal, an Express one a single- or double-quoted one."""
+    text = index.text
+    quotes = '"' if go else "\"'"
+    hits: list[_RouteHit] = []
+    for call in find_calls(index, _GIN_HEAD_RE if go else _EXPRESS_HEAD_RE):
+        spans = [s for s in call.args if s[0] < s[1]]
+        if go and spans and _METHOD_LITERAL_RE.fullmatch(text[spans[0][0]:spans[0][1]]):
+            spans = spans[1:]
+        if len(spans) < 2 or text[spans[0][0]] not in quotes:
+            continue
+        route = index.string_literal(*spans[0])
+        if route is None or not _MCP_ROUTE_VALUE_RE.fullmatch(route):
+            continue
+        parts = _route_parts(index, spans[1:])
+        has_auth = any(marker in part for part in parts for marker in _AUTH_MARKERS)
+        shown = text[spans[1][0]:min(spans[-1][1], spans[1][0] + _MARKER_WINDOW)]
+        hits.append(_RouteHit(route, index.line_of(call.start), shown, has_auth))
+    return hits
 
 
 def _extract_gin(text: str) -> list[_RouteHit]:
-    hits: list[_RouteHit] = []
-    lineno, counted = 1, 0
-    for m in _GIN_LINE_RE.finditer(text, 0, text.rfind(")") + 1):
-        mw_segment = m.group("mw_and_handler")
-        has_auth = any(marker in mw_segment for marker in _AUTH_MARKERS)
-        line_text = text[m.start(): m.end()]
-        lineno += text.count("\n", counted, m.start())
-        counted = m.start()
-        hits.append(_RouteHit(m.group("route"), lineno, line_text, has_auth))
-    return hits
+    return _route_hits(CodeIndex(text, go=True), go=True)
 
 
 _FASTAPI_ROUTE_RE = re.compile(
@@ -217,54 +250,8 @@ def _extract_fastapi(text: str) -> list[_RouteHit]:
     return hits
 
 
-_EXPRESS_HEAD_RE = re.compile(
-    r"""(?<!\w)(?P<app>\w+)\.(?:post|get|put|patch|delete|use|all)\s*\(
-        \s*["'](?P<route>/mcp(?:[_\-/](?:messages?|invoke|tool|msg))?)["']
-        \s*,(?P<pad>\s*)""",
-    re.VERBOSE,
-)
-
-
-def _express_routes(text: str) -> Iterator[tuple[int, str, str]]:
-    """(start, route, middleware and handler) of each Express MCP route: the
-    matches of `<head>\\s*,\\s*(?P<mw_and_handler>[^;]+?)\\)`.
-
-    The arguments run to the first `)` that no `;` precedes. A call with a `;`
-    first fails, and so does every call between it and that `;`, which the
-    pattern read to the same `;` once per call. Backing off the whitespace
-    after the comma rescues only `, )`, which keeps the last space.
-    """
-    end = text.rfind(")") + 1
-    pos = 0
-    while True:
-        m = _EXPRESS_HEAD_RE.search(text, pos, end)
-        if m is None:
-            return
-        args = m.end()
-        semi = text.find(";", args, end)
-        stop = semi if semi >= 0 else end
-        close = text.find(")", args + 1, stop)
-        if close >= 0:
-            yield m.start(), m.group("route"), text[args:close]
-            pos = close + 1
-        elif m.group("pad") and text.startswith(")", args):
-            yield m.start(), m.group("route"), text[args - 1:args]
-            pos = args + 1
-        elif semi >= 0:
-            pos = semi + 1
-        else:
-            return
-
-
 def _extract_express(text: str) -> list[_RouteHit]:
-    hits: list[_RouteHit] = []
-    lineno, counted = 1, 0
-    for start, route, mw_segment in _express_routes(text):
-        has_auth = any(marker in mw_segment for marker in _AUTH_MARKERS)
-        lineno += text.count("\n", counted, start)
-        counted = start
-        hits.append(_RouteHit(route, lineno, mw_segment, has_auth))
-    return hits
+    return _route_hits(CodeIndex(text), go=False)
 
 
 def _normalize_pair(route: str) -> str:
@@ -343,14 +330,15 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     if "/mcp" not in text:
         return []
     rel = str(path.relative_to(project_root))
-
     suffix = path.suffix.lower()
-    if suffix == ".go":
-        hits = _extract_gin(text)
-    elif suffix == ".py":
-        hits = _extract_fastapi(text)
-    else:
-        hits = _extract_express(text)
+    if suffix == ".py":
+        return _asymmetry_findings(_extract_fastapi(text), rel, text)
+    go = suffix == ".go"
+    return _mcpwn_findings(CodeIndex(text, go=go), go, rel)
+
+
+def _mcpwn_findings(index: CodeIndex, go: bool, rel: str) -> list[Finding]:
+    hits = _route_hits(index, go)
     if not hits:
         return []
 
@@ -359,8 +347,8 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     # whenever its twin /mcp appears within ~5 lines — exactly the
     # MCPwn shape we want to detect. Gin's `router.Group("/x", mw)`
     # pattern is handled separately below.
-    if suffix == ".go":
-        group_prefixes = _gin_grouped_auth_prefixes(text)
+    if go:
+        group_prefixes = _gin_grouped_auth_prefixes(index)
         if group_prefixes:
             for i, hit in enumerate(hits):
                 if hit.has_auth:
@@ -371,21 +359,14 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
                 ):
                     hits[i] = _RouteHit(hit.route, hit.line, hit.line_text, True)
 
-    return _asymmetry_findings(hits, rel, text)
+    return _asymmetry_findings(hits, rel, index.text)
 
 
-_GIN_GROUP_AUTHED_RE = re.compile(
-    r"""(?<!\w)(?P<varname>\w+)\s*:=\s*\w+\.Group\s*\(\s*
-        "(?P<prefix>[^"]*)"\s*,\s*(?P<mw>[^)]+)\)""",
-    re.VERBOSE,
-)
+def _gin_grouped_auth_prefixes(index: CodeIndex) -> list[str]:
+    """Return URL prefixes declared by a `g := router.Group(prefix, mw...)`
+    call whose middleware arguments contain one of our auth markers.
 
-
-def _gin_grouped_auth_prefixes(text: str) -> list[str]:
-    """Return URL prefixes declared by a `router.Group(prefix, mw)`
-    call whose middleware argument contains one of our auth markers.
-
-    Catches the nginx-ui 2.3.4 patched shape:
+    Catches the group form of a fix:
 
         mcpGroup := router.Group("/", AuthRequired())
         mcpGroup.POST("/mcp", h)
@@ -393,11 +374,20 @@ def _gin_grouped_auth_prefixes(text: str) -> list[str]:
 
     which is safe and should not fire AAK-MCPWN-001.
     """
+    text = index.text
     prefixes: list[str] = []
-    for m in _GIN_GROUP_AUTHED_RE.finditer(text, 0, text.rfind(")") + 1):
-        mw = m.group("mw")
-        if any(marker in mw for marker in _AUTH_MARKERS):
-            prefixes.append(m.group("prefix") or "/")
+    for m in _GIN_GROUP_HEAD_RE.finditer(text):
+        if not index.in_code(m.start()):
+            continue
+        spans = [s for s in index.args(m.end() - 1) or [] if s[0] < s[1]]
+        if len(spans) < 2 or text[spans[0][0]] != '"':
+            continue
+        prefix = index.string_literal(*spans[0])
+        if prefix is None:
+            continue
+        parts = [text[s:min(e, s + _MARKER_WINDOW)] for s, e in spans[1:]]
+        if any(marker in part for part in parts for marker in _AUTH_MARKERS):
+            prefixes.append(prefix or "/")
     return prefixes
 
 
