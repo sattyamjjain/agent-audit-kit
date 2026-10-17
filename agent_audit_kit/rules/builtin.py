@@ -5241,10 +5241,11 @@ _r(
 _r(
     "AAK-HEALTHCARE-AI-002",
     "AI makes prior-authorization / medical-necessity decisions alone",
-    "Code or prompt describes an AI system making prior-authorization "
-    "or medical-necessity decisions without licensed-physician review. "
-    "Kansas, Washington, and Utah 2026 laws require a clinician in the "
-    "loop for these decisions.",
+    "A prompt, tool description, SKILL.md body or agent card in a "
+    "Markdown, JSON, YAML or text file describes an AI system making "
+    "prior-authorization or medical-necessity decisions without "
+    "licensed-physician review. Kansas, Washington, and Utah 2026 laws "
+    "require a clinician in the loop for these decisions.",
     Severity.HIGH,
     Category.LEGAL_COMPLIANCE,
     "Route every prior-auth / medical-necessity output through a "
@@ -5264,9 +5265,10 @@ _r(
 _r(
     "AAK-HEALTHCARE-AI-003",
     "AI-only insurance coverage decision",
-    "Code / prompt describes an AI system approving or denying insurance "
-    "coverage without a human in the loop. Georgia and Iowa 2026 laws "
-    "restrict AI-only coverage / benefit determinations.",
+    "A prompt, tool description, SKILL.md body or agent card in a "
+    "Markdown, JSON, YAML or text file describes an AI system approving or "
+    "denying insurance coverage without a human in the loop. Georgia and "
+    "Iowa 2026 laws restrict AI-only coverage / benefit determinations.",
     Severity.HIGH,
     Category.LEGAL_COMPLIANCE,
     "Require human sign-off on coverage decisions; disclose AI "

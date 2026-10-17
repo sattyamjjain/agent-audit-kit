@@ -8,14 +8,17 @@ Apr-2026 regulatory wave per:
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from agent_audit_kit.cli import cli
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.output.pdf_report import _FRAMEWORK_TITLES, _text_report
+from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners import healthcare_ai, state_privacy
 
 FIX = Path(__file__).parent / "fixtures" / "cves"
@@ -48,6 +51,27 @@ def test_healthcare_safe_is_quiet(tmp_path: Path) -> None:
         "AAK-HEALTHCARE-AI-005",
     ):
         assert rid not in ids
+
+
+_CODE_EXTS = {".py", ".ts", ".tsx", ".js", ".mjs", ".cjs"}
+
+
+@pytest.mark.parametrize("rule_id", [f"AAK-HEALTHCARE-AI-00{n}" for n in range(1, 6)])
+def test_a_rule_text_claims_code_only_when_code_is_read(rule_id: str) -> None:
+    """-002 and -003 said "Code or prompt" and "Code / prompt", while the
+    scanner reads Markdown, JSON, YAML and text files only, so a prompt in a
+    `.py` file is never seen."""
+    says_code = re.search(r"\bcode\b", RULES[rule_id].description, re.IGNORECASE)
+    assert not says_code or healthcare_ai._SCAN_EXTS & _CODE_EXTS
+
+
+def test_a_prompt_in_a_python_file_is_not_read(tmp_path: Path) -> None:
+    (tmp_path / "agent.py").write_text(
+        'SYSTEM_PROMPT = "The agent will automatically approve prior authorization requests."\n',
+        encoding="utf-8",
+    )
+    findings, scanned = healthcare_ai.scan(tmp_path)
+    assert findings == [] and scanned == set()
 
 
 def test_healthcare_mcp_json_with_mental_health_claim(tmp_path: Path) -> None:
