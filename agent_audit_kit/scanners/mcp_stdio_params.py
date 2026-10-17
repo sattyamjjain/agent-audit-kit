@@ -38,7 +38,15 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 
 from . import _ts_stdio_taint
-from ._helpers import blank_js_comments, in_skip_dir, make_finding
+from ._helpers import (
+    _JS_IDENT_CHARS,
+    _JS_OPERAND,
+    _js_regex_allowed,
+    _js_skip_regex,
+    blank_js_comments,
+    in_skip_dir,
+    make_finding,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -404,14 +412,21 @@ def _ts_sink_members(text: str, start: int, stop: int) -> list[str]:
     """The top-level members of the options object a transport call opens.
 
     Reads from `start`, just after `new StdioClientTransport(`, to the `)` that
-    closes the call, and never past `stop`. Strings and template literals are
-    skipped whole and brackets nest, so a `,` inside `args: [a, b]` does not end
-    the member.
+    closes the call, and never past `stop`. Strings, template literals and regex
+    literals are skipped whole and brackets nest, so a `,` inside `args: [a, b]`
+    does not end the member. A regex literal is told from a division the way
+    `_helpers.blank_js_comments` tells them apart, by the token before the `/`:
+    a quote inside one (`u.replace(/'/g, '')`) used to open a string that hid
+    every member after it.
     """
     members: list[str] = []
     depth = 0
     member_start = -1
     quote = ""
+    # The last significant character, where it is, and where the word it ends
+    # starts (-1: it ends none). The word is sliced only at a `/`, so a long
+    # identifier is not rebuilt character by character.
+    prev, last, word_start = "", -1, -1
     i = start
     while i < stop:
         ch = text[i]
@@ -420,7 +435,20 @@ def _ts_sink_members(text: str, start: int, stop: int) -> list[str]:
                 i += 1
             elif ch == quote:
                 quote = ""
-        elif ch in "\"'`":
+                prev, word_start = _JS_OPERAND, -1
+            i += 1
+            continue
+        if ch == "/" and _js_regex_allowed(prev, text[word_start:last + 1] if word_start >= 0 else ""):
+            i = _js_skip_regex(text, i, stop)
+            prev, word_start = _JS_OPERAND, -1
+            continue
+        if not ch.isspace():
+            if ch not in _JS_IDENT_CHARS:
+                word_start = -1
+            elif not (last == i - 1 and prev in _JS_IDENT_CHARS and word_start >= 0):
+                word_start = i
+            prev, last = ch, i
+        if ch in "\"'`":
             quote = ch
         elif ch in "([{":
             depth += 1

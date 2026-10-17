@@ -938,18 +938,20 @@ def _js_skip_quoted(text: str, start: int) -> int:
             return m.start() + 1
 
 
-def _js_skip_regex(text: str, start: int) -> int:
+def _js_skip_regex(text: str, start: int, stop: int | None = None) -> int:
     """Index just past the regex literal (and its flags) opened at `start`.
 
     `[...]` is a class, inside which `/` does not close. A newline before the
     closing `/` means the slash was a division after all: stop there, having
-    blanked nothing, and let the caller carry on.
+    blanked nothing, and let the caller carry on. With `stop`, the scan ends
+    there at the latest: a caller reading a bounded span would otherwise read
+    to the end of the file from an unclosed `[`, once per span.
     """
-    n = len(text)
+    n = len(text) if stop is None else stop
     i = start + 1
     in_class = False
     while True:
-        m = _JS_REGEX_SPECIAL_RE.search(text, i)
+        m = _JS_REGEX_SPECIAL_RE.search(text, i, n)
         if m is None:
             return n
         c, at = m.group(), m.start()

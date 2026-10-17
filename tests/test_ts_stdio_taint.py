@@ -266,6 +266,17 @@ _BOTH_PATHS = [
     ("lower-case-env-name", "export function h() {\n"
                             "  return new StdioClientTransport({ command: process.env.mcpCommand, args: [] });\n}\n",
      True),
+    # A quote inside a regex literal opened a phantom string in the options
+    # reader; a `/` after an operand is a division, not a regex.
+    ("regex-literal-with-a-quote", "export function h(req: any, u: string) {\n"
+                                   "  return new StdioClientTransport({ args: [u.replace(/'/g, '')], command: req.body.cmd });\n}\n",
+     True),
+    ("division-before-command", "export function h(req: any, a: number, b: number) {\n"
+                                "  return new StdioClientTransport({ args: [String(a / b)], command: req.body.cmd });\n}\n",
+     True),
+    ("regex-literal-constant-command", "export function h(u: string) {\n"
+                                       "  return new StdioClientTransport({ args: [u.replace(/\"/g, '')], command: 'node' });\n}\n",
+     False),
 ]
 
 
@@ -314,6 +325,7 @@ _CRAFTED = {
     "bracket-members": lambda k: ("new StdioClientTransport({ command: [" + "(" * 50 + "\n") * (k // 3),
     "unclosed-comment": lambda k: "new StdioClientTransport({ /* " * k,
     "unclosed-string": lambda k: "new StdioClientTransport({ command: '" * k,
+    "unclosed-regex": lambda k: "new StdioClientTransport({ args: [x, /'" * k,
 }
 
 
