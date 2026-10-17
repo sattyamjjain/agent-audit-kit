@@ -720,8 +720,11 @@ class _CallerInput:
         func: ast.FunctionDef | ast.AsyncFunctionDef,
         module_values: dict[str, list[ast.AST]],
         module_parts: dict[str, list[ast.AST]],
+        only: frozenset[str] | None = None,
     ) -> None:
         self.params = _get_param_names(func) - _injected_params(func)
+        if only is not None:
+            self.params &= only
         # name -> what it is bound to here: `=`, an annotated `=`, `:=`, and an
         # augmented `+=` read as the value before it plus the operand ...
         self.values: dict[str, list[ast.AST]] = {}
@@ -957,16 +960,51 @@ def _is_function_tool(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+#: The base a class-based tool extends (LangChain's and CrewAI's `BaseTool`),
+#: and the methods it runs the caller's input through.
+_TOOL_CLASS_BASE = "BaseTool"
+_TOOL_CLASS_METHODS = frozenset({"_run", "_arun"})
+#: The parameters of a `call_tool` method that are the caller's: the names the
+#: old list held. A client's bridge takes the server it was configured with
+#: too (`call_tool(self, server, tool_name, arguments)`), which is not.
+_CALL_TOOL_INPUTS = frozenset({
+    "input", "args", "params", "kwargs", "request", "req", "event", "tool_input", "arguments", "payload",
+    "body", "query",
+})
+
+
+def _class_tool_methods(tree: ast.AST) -> set[int]:
+    """ids of the `_run` and `_arun` methods of the file's `BaseTool`
+    subclasses (`class Fetch(BaseTool)`, `class Fetch(tools.BaseTool)`)."""
+    found: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        if not any(_py_callee_name(base).rpartition(".")[2] == _TOOL_CLASS_BASE for base in node.bases):
+            continue
+        found.update(
+            id(item) for item in node.body
+            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in _TOOL_CLASS_METHODS
+        )
+    return found
+
+
 def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     """id(call) -> the caller input of each tool function the call sits in.
 
     A tool is what taint_analysis reads as one, a function decorated
-    `@function_tool`, or one the file registers by a call (`_registered_tools`).
-    Without the last two, `mcp.add_tool(fetch)` and the OpenAI Agents SDK's
-    tools had no caller input, where the old name list fired on them when the
-    parameter was called `query` or `params`.
+    `@function_tool`, one the file registers by a call (`_registered_tools`),
+    a `BaseTool` subclass's `_run` or `_arun`, or a function or method called
+    `call_tool`, the shape a low-level server or a dispatcher written as a
+    class takes (`async def call_tool(self, name, arguments)`), whose caller
+    input is only its `arguments` and the other `_CALL_TOOL_INPUTS`. Without
+    these, `mcp.add_tool(fetch)`, the OpenAI Agents SDK's tools, LangChain's
+    and CrewAI's class tools and a class's `call_tool` had no caller input,
+    where the old name list fired on them when the parameter was called
+    `query`, `params` or `arguments`.
     """
     registered = _registered_tools(tree)
+    class_tools = _class_tool_methods(tree)
     module_values: dict[str, list[ast.AST]] = {}
     module_parts: dict[str, list[ast.AST]] = {}
     _collect_bindings(tree, module_values, module_parts)
@@ -974,10 +1012,13 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if not (_is_tool_function(node) or _is_call_tool_handler(node)
-                or _is_function_tool(node) or node.name in registered):
-            continue
-        scope = _CallerInput(node, module_values, module_parts)
+        only: frozenset[str] | None = None
+        if not (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
+                or node.name in registered or id(node) in class_tools):
+            if node.name != "call_tool":
+                continue
+            only = _CALL_TOOL_INPUTS
+        scope = _CallerInput(node, module_values, module_parts, only)
         for sub in ast.walk(node):
             if isinstance(sub, ast.Call):
                 around.setdefault(id(sub), []).append(scope)

@@ -340,11 +340,20 @@ def test_the_host_test_still_leaves_a_fixed_host_alone(tmp_path: Path, body: str
     '@function_tool(name_override="fetch")\ndef fetch(url: str) -> str:\n    return requests.get(url).text\n',
     "def fetch(url: str) -> str:\n    return requests.get(url).text\n\nTOOL = StructuredTool.from_function(func=fetch)\n",
     'def fetch(url: str) -> str:\n    return requests.get(url).text\n\nTOOL = Tool(name="fetch", func=fetch, description="x")\n',
+    # A tool written as a class: a LangChain or CrewAI `BaseTool` runs the
+    # caller's input through `_run` or `_arun`, and a low-level server written
+    # as a class, or a dispatcher, takes it in `call_tool`.
+    "class Fetch(BaseTool):\n    name: str = 'fetch'\n    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "class Fetch(tools.BaseTool):\n    async def _arun(self, url: str) -> str:\n        return requests.get(url).text\n",
+    "class Tools:\n    async def call_tool(self, name, arguments):\n        return requests.get(arguments['url']).text\n",
+    "async def call_tool(name, arguments):\n    return requests.get(arguments['url']).text\n",
 ])
 def test_a_function_registered_as_a_tool_is_one(tmp_path: Path, registration: str) -> None:
-    """`mcp.add_tool(fetch)`, the OpenAI Agents SDK's `@function_tool` and a
+    """`mcp.add_tool(fetch)`, the OpenAI Agents SDK's `@function_tool`, a
     function handed to `func=` (`StructuredTool.from_function`, LangChain's
-    `Tool`) register a tool without a decorator taint_analysis knows."""
+    `Tool`), a `BaseTool` subclass's `_run` and a `call_tool` method make a
+    tool without a decorator taint_analysis knows. The old name list fired on
+    the last two through `query` and `arguments`."""
     assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + registration)
 
 
@@ -353,6 +362,20 @@ def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
         "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"
         "RESULT = list(map(fetch, URLS))\n"
         "thread = threading.Thread(target=fetch, args=(BASE,))\n"
+        "class Worker(threading.Thread):\n    def _run(self, url: str) -> str:\n        return requests.get(url).text\n"
+    )
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
+
+
+def test_a_call_tool_method_reads_only_the_caller_s_arguments(tmp_path: Path) -> None:
+    """A `call_tool` method is often a client's bridge to a server it was
+    configured with (`call_tool(self, server, tool_name, arguments)`): its
+    caller input is `arguments` and the other names the old list held, not
+    the server it is handed. Seen on a real Docker bridge, which fetched
+    `f"http://127.0.0.1:{server.port}/"`."""
+    body = (
+        "class Bridge:\n    async def call_tool(self, server, tool_name, arguments):\n"
+        "        return requests.post(f'http://127.0.0.1:{server.port}/', json=arguments).text\n"
     )
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
 
