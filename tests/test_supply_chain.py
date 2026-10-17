@@ -199,6 +199,23 @@ def test_supply_003_trusts_the_native_builders_not_the_binary_downloaders(
     assert bool(_supply_003(tmp_path, script)) is reported
 
 
+@pytest.mark.parametrize(("script", "deps"), [
+    ("ts-node scripts/postinstall.ts", {}),
+    ("tsx scripts/postinstall.ts", {}),
+    ("node_modules/.bin/ts-node scripts/postinstall.ts", {}),
+    ("npx ts-node scripts/postinstall.ts", {"devDependencies": {"ts-node": "^10.9.2"}}),
+    ("npx tsx scripts/postinstall.ts", {"devDependencies": {"tsx": "^4.19.0"}}),
+    # Undeclared, a runner on the safe list passes under npx, as `npx tsc` does.
+    ("npx ts-node scripts/postinstall.ts", {}),
+    ("npx tsx scripts/postinstall.ts", {}),
+])
+def test_supply_003_trusts_a_typescript_runner_as_it_trusts_node(
+    tmp_path: Path, script: str, deps: dict
+) -> None:
+    """`node <script>` passes, so a TypeScript runner for the same script does."""
+    assert _supply_003(tmp_path, script, **deps) == []
+
+
 @pytest.mark.parametrize(("script", "reported"), [
     ("npm run build", False),
     ("npm run build:css", False),  # npm-run-all's `build:<name>` family
