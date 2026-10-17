@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 from unittest.mock import patch
 
+import agent_audit_kit
 from agent_audit_kit.fix import (
     FixAction,
     _apply_fix,
@@ -18,6 +22,7 @@ from agent_audit_kit.fix import (
     _fix_missing_deny,
     _fix_secret_env_ref,
     _write_fix_log,
+    _write_inside_project,
     run_fixes,
 )
 from agent_audit_kit.models import Category, Finding, ScanResult, Severity
@@ -184,7 +189,161 @@ class TestFixEnvGitignoreAgreesWithTheRule:
 
         assert fix.applied is True
         written = (tmp_path / ".gitignore").read_bytes()
-        assert written == original.rstrip() + b"\n\n# Environment files\n.env\n.env.*\n!.env.example\n"
+        assert written == original + b"\n# Environment files\n.env\n.env.*\n!.env.example\n"
+
+    @pytest.mark.parametrize(
+        "original",
+        [b"node_modules/\nsecret\\ \n", b"node_modules/\nsecret\t\n", b"node_modules/\nsecret\\ ", b"secret\t"],
+    )
+    def test_the_fix_leaves_the_last_line_as_it_was(self, tmp_path: Path, original: bytes) -> None:
+        """`rstrip()` before appending turned `secret\\ ` into `secret\\` and `secret<tab>`
+        into `secret`, which changes what git ignores. Only a missing newline is added."""
+        (tmp_path / ".env").write_text("A=1\n")
+        (tmp_path / ".gitignore").write_bytes(original)
+
+        assert _fix_env_gitignore(tmp_path, dry_run=False).applied is True
+
+        separator = b"\n" if original.endswith(b"\n") else b"\n\n"
+        assert (tmp_path / ".gitignore").read_bytes() == original + separator + b"# Environment files\n.env\n.env.*\n"
+
+
+# A child process runs the fix, so a write that blocks on a FIFO fails the test on its
+# timeout instead of hanging the suite.
+_CHILD = (
+    "import sys\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.fix import _fix_env_gitignore, _write_inside_project\n"
+    "root = Path(sys.argv[1])\n"
+    "if sys.argv[2] == 'fix':\n"
+    "    print(_fix_env_gitignore(root, dry_run=False).description)\n"
+    "else:\n"
+    "    print(_write_inside_project(root / '.gitignore', b'x\\n', root, mode='append'))\n"
+)
+
+
+def _run_in_child(project: Path, what: str) -> str:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(project), what], capture_output=True, text=True, timeout=30, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    return done.stdout.strip()
+
+
+class TestFixEnvGitignoreWritesOnlyInsideTheProject:
+    """A scanned repository controls its `.gitignore` and the env file names that make the
+    fix run. Written through `Path.write_text`, a `.gitignore` linked to a file outside the
+    project had the fix's lines appended to that file, a dangling link created it, and a
+    FIFO named `.gitignore` blocked `aak fix` forever."""
+
+    def _project(self, tmp_path: Path) -> Path:
+        project = tmp_path / "proj"
+        project.mkdir()
+        (project / ".env").write_text("A=1\n")
+        return project
+
+    def test_a_symlinked_gitignore_is_refused_and_its_target_left_alone(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path)
+        outside = tmp_path / "outside.txt"
+        outside.write_bytes(b"do not touch\n")
+        (project / ".gitignore").symlink_to(outside)
+
+        fix = _fix_env_gitignore(project, dry_run=False)
+
+        assert fix.applied is False and fix.description.startswith("Failed to fix: ")
+        assert outside.read_bytes() == b"do not touch\n"
+
+    def test_a_dangling_symlink_creates_nothing(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path)
+        target = tmp_path / "created-by-fix.txt"
+        (project / ".gitignore").symlink_to(target)
+
+        fix = _fix_env_gitignore(project, dry_run=False)
+
+        assert fix.applied is False and fix.description.startswith("Failed to fix: ")
+        assert not target.exists()
+
+    def test_a_directory_named_gitignore_is_refused(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path)
+        (project / ".gitignore").mkdir()
+
+        fix = _fix_env_gitignore(project, dry_run=False)
+
+        assert fix.applied is False and fix.description.startswith("Failed to fix: ")
+
+    def test_a_dry_run_reports_the_refusal_too(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path)
+        (project / ".gitignore").symlink_to(tmp_path / "elsewhere")
+
+        assert _fix_env_gitignore(project, dry_run=True).description.startswith("Failed to fix: ")
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+    def test_a_fifo_named_gitignore_is_refused_without_blocking(self, tmp_path: Path) -> None:
+        project = self._project(tmp_path)
+        os.mkfifo(project / ".gitignore")
+
+        assert _run_in_child(project, "fix").startswith("Failed to fix: ")
+
+
+class TestWriteInsideProject:
+    """The one write path `aak fix` should use: a regular file, or a missing one, whose path
+    and directory resolve inside the project, opened without following a link. It returns
+    None once written, or the reason it refused, and never raises for a refusal."""
+
+    def test_it_appends_replaces_and_creates(self, tmp_path: Path) -> None:
+        target = tmp_path / "notes.txt"
+        target.write_bytes(b"a\n")
+
+        assert _write_inside_project(target, b"b\n", tmp_path, mode="append") is None
+        assert target.read_bytes() == b"a\nb\n"
+        assert _write_inside_project(target, b"c\n", tmp_path, mode="replace") is None
+        assert target.read_bytes() == b"c\n"
+        assert _write_inside_project(tmp_path / "new.txt", b"d\n", tmp_path, mode="append") is None
+        assert (tmp_path / "new.txt").read_bytes() == b"d\n"
+
+    def test_it_refuses_a_symlink_even_to_a_file_inside(self, tmp_path: Path) -> None:
+        (tmp_path / "real.txt").write_bytes(b"keep\n")
+        (tmp_path / "link.txt").symlink_to(tmp_path / "real.txt")
+
+        reason = _write_inside_project(tmp_path / "link.txt", b"x\n", tmp_path, mode="replace")
+
+        assert reason is not None and "symlink" in reason
+        assert (tmp_path / "real.txt").read_bytes() == b"keep\n"
+
+    def test_it_refuses_a_path_under_a_symlinked_directory(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (project / "sub").symlink_to(outside, target_is_directory=True)
+
+        reason = _write_inside_project(project / "sub" / "settings.json", b"{}\n", project, mode="replace")
+
+        assert reason is not None and "outside the project" in reason
+        assert not (outside / "settings.json").exists()
+
+    def test_it_refuses_a_path_outside_the_project(self, tmp_path: Path) -> None:
+        project = tmp_path / "proj"
+        project.mkdir()
+
+        reason = _write_inside_project(project / ".." / "escaped.txt", b"x\n", project, mode="replace")
+
+        assert reason is not None and "outside the project" in reason
+        assert not (tmp_path / "escaped.txt").exists()
+
+    def test_it_refuses_a_directory(self, tmp_path: Path) -> None:
+        (tmp_path / "folder").mkdir()
+
+        reason = _write_inside_project(tmp_path / "folder", b"x\n", tmp_path, mode="append")
+
+        assert reason is not None and "not a regular file" in reason
+
+    @pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+    def test_it_refuses_a_fifo_without_blocking(self, tmp_path: Path) -> None:
+        os.mkfifo(tmp_path / ".gitignore")
+
+        assert "not a regular file" in _run_in_child(tmp_path, "helper")
 
 
 # ---------------------------------------------------------------------------

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import datetime
 import json
+import os
 import re
+import stat
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from agent_audit_kit.engine import run_scan
 from agent_audit_kit.rules.builtin import RULES
@@ -86,6 +89,93 @@ def _write_fix_log(project_root: Path, fixes: list[FixAction]) -> None:
         ],
     }
     log_file.write_text(json.dumps(log_data, indent=2) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Writing inside the scanned project
+#
+# `aak fix` writes into the repository it scanned, and that repository decides what sits
+# at each path. Through `Path.write_text`, a `.gitignore` linked to a file outside the
+# project, such as a shell rc, had the fix's lines appended to that file, a dangling
+# link created the file it named, and a FIFO blocked the fix forever. A fix writes
+# through `_write_inside_project` instead; the other write paths here still need moving.
+# ---------------------------------------------------------------------------
+
+
+def _is_inside(path: Path, root: Path) -> bool:
+    return path == root or root in path.parents
+
+
+def _write_refusal(path: Path, project_root: Path) -> str | None:
+    """Why ``path`` must not be written, or None when it may be: it must be a regular
+    file or missing, and it and its directory must resolve inside ``project_root``.
+
+    The test reads the path itself (`os.lstat`), so a symlink is refused even when it
+    points inside the project, and so is a FIFO, a socket, a device or a directory.
+    """
+    try:
+        name = str(path.relative_to(project_root))
+    except ValueError:
+        name = str(path)
+    root = project_root.resolve()
+    if not _is_inside(path.parent.resolve(), root):
+        return f"{name} is in a directory outside the project"
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError:
+        info = None
+    except OSError as exc:
+        return f"{name} could not be examined ({exc.strerror or exc})"
+    if info is not None and stat.S_ISLNK(info.st_mode):
+        return f"{name} is a symlink"
+    if info is not None and not stat.S_ISREG(info.st_mode):
+        return f"{name} is not a regular file"
+    if not _is_inside(path.resolve(), root):
+        return f"{name} resolves outside the project"
+    return None
+
+
+def _write_inside_project(
+    path: Path, data: bytes, project_root: Path, mode: Literal["append", "replace"] = "replace"
+) -> str | None:
+    """Write ``data`` to ``path`` when `_write_refusal` allows it, appended to the file or
+    in place of its content. Returns None once written, or why it refused; a refusal or
+    an OS error is reported, never raised.
+
+    The file is opened without following a link (O_NOFOLLOW where the OS has one) and
+    without waiting (O_NONBLOCK), and its descriptor must still be a regular file before
+    a byte is written, so a link or a FIFO put in its place after the check is refused
+    too.
+
+    Args:
+        path: The file to write.
+        data: The bytes to write.
+        project_root: The scanned project, which the write must stay inside.
+        mode: ``"append"`` adds ``data`` at the end; ``"replace"`` truncates first.
+
+    Returns:
+        None when written, otherwise the reason it was not.
+    """
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return refused
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_APPEND if mode == "append" else os.O_TRUNC)
+    flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(path, flags, 0o666)
+    except OSError as exc:
+        return f"{path.name} could not be opened ({exc.strerror or exc})"
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return f"{path.name} is not a regular file"
+        view = memoryview(data)
+        while view:
+            view = view[os.write(fd, view):]
+    except OSError as exc:
+        return f"{path.name} could not be written ({exc.strerror or exc})"
+    finally:
+        os.close(fd)
+    return None
 
 
 def _apply_fix(
@@ -550,9 +640,12 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
     patterns go at the end, where the last match decides, so a template the file took
     back with `!` (`!.env.example`) is taken back again after them.
 
-    The decision uses the rule's read; the write appends to the whole file, byte for
-    byte. Rewritten from that read, bounded to 1,000,000 bytes and decoded with
-    replacement, a longer file lost its tail and a byte that is not UTF-8 became U+FFFD.
+    The decision uses the rule's read; the write appends to the file through
+    `_write_inside_project`, leaving every byte already there as it was. Rewritten from
+    that read, bounded to 1,000,000 bytes and decoded with replacement, a longer file lost
+    its tail, and `rstrip()` turned a last line `secret\\ ` into `secret\\`, which git
+    reads differently. A `.gitignore` that is a link, a FIFO or anything but a regular
+    file is refused, and so reported in a dry run too.
     """
     from agent_audit_kit.scanners.secret_exposure import (
         _ENV_TEMPLATE_SUFFIXES,
@@ -567,16 +660,21 @@ def _fix_env_gitignore(project_root: Path, dry_run: bool) -> FixAction:
         names = [path.name for path in _root_env_files(project_root)] or [".env"]
         rules = _gitignore_rules(_read_gitignore(project_root) or "")
         if not all(_gitignore_ignores(rules, name) for name in names):
+            refused = _write_refusal(gitignore, project_root)
+            if refused is not None:
+                return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
             raw = gitignore.read_bytes() if gitignore.is_file() else b""
             templates = tuple(suffix.encode() for suffix in _ENV_TEMPLATE_SUFFIXES)
             kept = [
                 line.strip() for line in raw.splitlines()
                 if line.strip().startswith(b"!") and line.strip().lower().endswith(templates)
             ]
-            new_content = raw.rstrip() + b"\n\n# Environment files\n.env\n.env.*\n"
-            new_content += b"".join(line + b"\n" for line in kept)
+            block = b"" if not raw else b"\n" if raw.endswith(b"\n") else b"\n\n"
+            block += b"# Environment files\n.env\n.env.*\n" + b"".join(line + b"\n" for line in kept)
             if not dry_run:
-                gitignore.write_bytes(new_content.lstrip(b"\n"))
+                refused = _write_inside_project(gitignore, block, project_root, mode="append")
+                if refused is not None:
+                    return FixAction("AAK-SECRET-006", ".gitignore", f"Failed to fix: {refused}", False)
         return FixAction(
             "AAK-SECRET-006",
             ".gitignore",
