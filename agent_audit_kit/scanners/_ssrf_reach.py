@@ -1228,10 +1228,12 @@ def _is_function_tool(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
-#: The base a class-based tool extends (LangChain's and CrewAI's `BaseTool`),
-#: and the methods it runs the caller's input through.
-_TOOL_CLASS_BASE = "BaseTool"
-_TOOL_CLASS_METHODS = frozenset({"_run", "_arun"})
+#: The bases a class-based tool extends, LangChain's and CrewAI's `BaseTool`
+#: and LangChain's `StructuredTool`, and the methods it runs the caller's input
+#: through: `_run` and `_arun`, which a tool writes, and `run` and `arun`,
+#: which it may override.
+_TOOL_CLASS_BASES = frozenset({"BaseTool", "StructuredTool"})
+_TOOL_CLASS_METHODS = frozenset({"_run", "_arun", "run", "arun"})
 #: The parameters of a `call_tool` method that are the caller's: the names the
 #: old list held. A client's bridge takes the server it was configured with
 #: too (`call_tool(self, server, tool_name, arguments)`), which is not.
@@ -1241,19 +1243,69 @@ _CALL_TOOL_INPUTS = frozenset({
 })
 
 
+def _is_call_tool_name(name: str) -> bool:
+    """`call_tool`, or a name ending in `_call_tool` (`handle_call_tool`, a
+    client's `_call_tool`): the low-level server's handler and a dispatcher's
+    method, written without the `@<server>.call_tool()` decorator."""
+    return name == "call_tool" or name.endswith("_call_tool")
+
+
+def _base_name(node: ast.AST) -> str:
+    """The name a class base is written as: `Base`, `tools.Base`, with a
+    subscript dropped (`BaseTool[dict]`). A tool base read through a module
+    keeps only its last part, so `langchain.tools.BaseTool` is `BaseTool`."""
+    if isinstance(node, ast.Subscript):
+        node = node.value
+    name = _py_callee_name(node)
+    last = name.rpartition(".")[2]
+    return last if last in _TOOL_CLASS_BASES else name
+
+
 def _class_tool_methods(tree: ast.AST) -> set[int]:
-    """ids of the `_run` and `_arun` methods of the file's `BaseTool`
-    subclasses (`class Fetch(BaseTool)`, `class Fetch(tools.BaseTool)`)."""
-    found: set[int] = set()
+    """ids of the tool methods of the file's class tools: the classes whose
+    bases reach `BaseTool` or `StructuredTool`, named in place (`BaseTool`,
+    `tools.BaseTool`, `BaseTool[dict]`), under a name the file imports or
+    assigns it as (`from langchain.tools import BaseTool as LCTool`, `LCTool =
+    tools.BaseTool`), or through classes the file defines (`class Search(Base)`
+    with `class Base(BaseTool)`).
+
+    Only a class whose own bases named `BaseTool` used to count, so an
+    indirect subclass, a `StructuredTool` subclass and an aliased or
+    subscripted base had no caller input, where the old name list fired on
+    their `query`. A base another file defines is not followed. The names
+    the file's classes and aliases build on are walked once, out from the
+    tool bases, so classes that each extend the last cost no more than their
+    number, and classes that extend each other end."""
+    classes: list[ast.ClassDef] = []
+    # a name -> the classes and aliases the file writes on top of it
+    built_on: dict[str, list[str]] = {}
     for node in ast.walk(tree):
-        if not isinstance(node, ast.ClassDef):
-            continue
-        if not any(_py_callee_name(base).rpartition(".")[2] == _TOOL_CLASS_BASE for base in node.bases):
-            continue
-        found.update(
-            id(item) for item in node.body
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in _TOOL_CLASS_METHODS
-        )
+        if isinstance(node, ast.ClassDef):
+            classes.append(node)
+            for base in node.bases:
+                built_on.setdefault(_base_name(base), []).append(node.name)
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                if alias.asname:
+                    built_on.setdefault(alias.name, []).append(alias.asname)
+        elif isinstance(node, ast.Assign) and isinstance(node.value, (ast.Name, ast.Attribute)):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    built_on.setdefault(_base_name(node.value), []).append(target.id)
+    tool_names = set(_TOOL_CLASS_BASES)
+    stack = list(_TOOL_CLASS_BASES)
+    while stack:
+        for name in built_on.get(stack.pop(), []):
+            if name not in tool_names:
+                tool_names.add(name)
+                stack.append(name)
+    found: set[int] = set()
+    for node in classes:
+        if any(_base_name(base) in tool_names for base in node.bases):
+            found.update(
+                id(item) for item in node.body
+                if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name in _TOOL_CLASS_METHODS
+            )
     return found
 
 
@@ -1262,9 +1314,10 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
 
     A tool is what taint_analysis reads as one, a function decorated
     `@function_tool`, one the file registers by a call (`_registered_tools`),
-    a `BaseTool` subclass's `_run` or `_arun`, or a function or method called
-    `call_tool`, the shape a low-level server or a dispatcher written as a
-    class takes (`async def call_tool(self, name, arguments)`), whose caller
+    a class tool's `_run`, `_arun`, `run` or `arun` (`_class_tool_methods`),
+    or a function or method called `call_tool` or ending in `_call_tool`, the
+    shape a low-level server or a dispatcher written as a class takes (`async
+    def call_tool(self, name, arguments)`, `handle_call_tool`), whose caller
     input is only its `arguments` and the other `_CALL_TOOL_INPUTS`. Without
     these, `mcp.add_tool(fetch)`, the OpenAI Agents SDK's tools, LangChain's
     and CrewAI's class tools and a class's `call_tool` had no caller input,
@@ -1281,7 +1334,7 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
         only: frozenset[str] | None = None
         if not (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
                 or node.name in registered or id(node) in class_tools):
-            if node.name != "call_tool":
+            if not _is_call_tool_name(node.name):
                 continue
             only = _CALL_TOOL_INPUTS
         scope = _CallerInput.of_tool(node, file_scope, only)

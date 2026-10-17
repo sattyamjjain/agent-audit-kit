@@ -357,6 +357,67 @@ def test_a_function_registered_as_a_tool_is_one(tmp_path: Path, registration: st
     assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + registration)
 
 
+@pytest.mark.parametrize("registration", [
+    # A class that reaches `BaseTool` or `StructuredTool` through the file's own
+    # classes, an alias the file imports or assigns, or a subscripted base.
+    "class Base(BaseTool):\n    pass\n\nclass Search(Base):\n"
+    "    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "from langchain.tools import BaseTool as LCTool\n\nclass Search(LCTool):\n"
+    "    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "LCTool = tools.BaseTool\n\nclass Search(LCTool):\n"
+    "    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "class Search(StructuredTool):\n    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "class Search(BaseTool[dict]):\n    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "class Base(BaseTool[str]):\n    pass\n\nclass Search(Mixin, Base):\n"
+    "    def _run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    # The public `run` and `arun` a class tool may override.
+    "class Search(BaseTool):\n    def run(self, query: str) -> str:\n        return requests.get(query).text\n",
+    "class Search(BaseTool):\n    async def arun(self, query: str) -> str:\n        return requests.get(query).text\n",
+    # A `call_tool` handler under another name, undecorated.
+    "async def handle_call_tool(name, arguments):\n    return requests.get(arguments['url']).text\n",
+    "class Client:\n    async def _call_tool(self, name, arguments):\n        return requests.get(arguments['url']).text\n",
+])
+def test_a_class_tool_or_handler_however_the_file_names_it_is_one(tmp_path: Path, registration: str) -> None:
+    """Each fired on main, through the old name list, and was silent once only
+    a class whose own bases name `BaseTool` counted, and only `call_tool`."""
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + registration)
+
+
+@pytest.mark.parametrize("body", [
+    "class Base:\n    pass\n\nclass Search(Base):\n    def _run(self, url: str) -> str:\n        return requests.get(url).text\n",
+    # Classes that name each other end, and reach no tool.
+    "class A(B):\n    pass\n\nclass B(A):\n    def _run(self, url: str) -> str:\n        return requests.get(url).text\n",
+    "class Search(BaseTool):\n    def fetch(self, url: str) -> str:\n        return requests.get(url).text\n",
+    "async def recall_tool(name, arguments):\n    return requests.get(arguments['url']).text\n",
+    # A base another file defines is not followed.
+    "from .base import ToolBase\n\nclass Search(ToolBase):\n"
+    "    def _run(self, url: str) -> str:\n        return requests.get(url).text\n",
+])
+def test_a_class_or_function_that_reaches_no_tool_is_none(tmp_path: Path, body: str) -> None:
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
+
+
+def test_class_tools_are_found_in_one_walk() -> None:
+    """The classes that reach `BaseTool` are found by one walk out from the
+    tool bases, so 15,000 classes that each extend the last are read in a
+    fraction of a second, where a walk up from every class would take the
+    square of that, and classes that extend each other end. In a child, so
+    a loop fails here instead of hanging the run."""
+    chain = "class C0(BaseTool):\n    pass\n" + "".join(
+        f"class C{i}(C{i - 1}):\n    pass\n" for i in range(1, 15_000)
+    )
+    tools = (
+        "class Search(C14999):\n    def _run(self, url: str) -> str:\n        return requests.get(url).text\n"
+        "class A(B):\n    pass\n"
+        "class B(A):\n    def _run(self, url: str) -> str:\n        return requests.get(url).text\n"
+    )
+    source = _CYCLE_HEAD + chain + tools
+    assert len(source) < 512_000
+    sites, seconds = _analyze_in_child(source, timeout=30)
+    assert [site[2] for site in sorted(sites, key=lambda site: site[1])] == [True, False]
+    assert seconds < 5.0
+
+
 def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
     body = (
         "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"
