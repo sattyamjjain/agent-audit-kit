@@ -24,6 +24,7 @@ import pytest
 from agent_audit_kit.scanners import (
     dns_rebind,
     langchain_vuln,
+    mcp_cve_pins_2026_07,
     neo4j_cve,
     ssrf_redirect,
     ssrf_toctou,
@@ -93,6 +94,9 @@ _REQUIREMENTS: tuple[tuple[str, str, bool | None], ...] = (
     ("hash option", "{p}=={a} --hash=sha256:0123abcd", True),
     ("one install, intersected", "{p}>={a}\n{p}=={f}", False),
     ("PEP 503 spelling", "{u}=={a}", True),
+    ("prefix match on the affected release", "{p}=={a}.*", True),
+    ("prefix match on the fix", "{p}=={f}.*", False),
+    ("prefix exclusion of the fix", "{p}>=0.1,!={f}.*", True),
     ("bare name", "{p}", None),
 )
 
@@ -437,3 +441,15 @@ def test_a_token_in_a_git_url_stays_out_of_the_evidence(tmp_path: Path) -> None:
     [finding] = [f for f in findings if f.rule_id == "AAK-SSRF-TOCTOU-001"]
     assert secret not in finding.evidence
     assert "states no version" not in finding.evidence
+
+
+@pytest.mark.parametrize(("spec", "fires"), [
+    ("mcp==1.22.0.*", True),
+    ("mcp>=1.0,!=1.22.0.*", True),
+    ("mcp==99.0.0.*", False),
+])
+def test_the_pin_table_reads_a_prefix_match_too(tmp_path: Path, spec: str, fires: bool) -> None:
+    """The CVE pin table reads ranges with the same reader, so it gains `==X.Y.Z.*` too."""
+    (tmp_path / "requirements.txt").write_text(spec + "\n", encoding="utf-8")
+    fired = {f.rule_id for f in mcp_cve_pins_2026_07.scan(tmp_path)[0]}
+    assert ("AAK-MCP-SDK-CVE-2026-52869-001" in fired) is fires

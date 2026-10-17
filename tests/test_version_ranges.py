@@ -64,6 +64,20 @@ def test_specifier_admits(spec: str, dialect: str, expected: list) -> None:
     assert list(parse_range(spec, dialect) or ()) == expected
 
 
+@pytest.mark.parametrize(("spec", "dialect", "expected"), [
+    ("==1.22.0.*", "pep440", [((1, 22, 0), (1, 22, 1))]),
+    ("==1.22.0.1.*", "pep440", [((1, 22, 0), (1, 22, 1))]),     # a fourth component folds
+    ("!=1.22.0.*", "pep440", [((0, 0, 0), (1, 22, 0)), ((1, 22, 1), TOP)]),
+    (">=1.0,!=1.22.0.*", "pep440", [((1, 0, 0), (1, 22, 0)), ((1, 22, 1), TOP)]),
+    ("1.22.0.*", "poetry", [((1, 22, 0), (1, 22, 1))]),
+])
+def test_a_prefix_match_after_a_full_release(spec: str, dialect: str, expected: list) -> None:
+    """PEP 440 allows `.*` after any number of release components. The reader took one
+    only after one or two, so `mcp==1.22.0.*` and `mcp>=1.0,!=1.22.0.*` read as no
+    version, and a pin that reports only a stated version was silent on them."""
+    assert list(parse_range(spec, dialect) or ()) == expected
+
+
 def test_bound_order_does_not_change_a_range() -> None:
     """`<2.0.0,>=1.0.0` read as 2.0.0 and `>=1.0.0,<2.0.0` as 1.0.0."""
     assert parse_range("<2.0.0,>=1.0.0", "pep440") == parse_range(">=1.0.0,<2.0.0", "pep440")
@@ -82,6 +96,8 @@ def test_an_upper_bound_admits_everything_below_it() -> None:
     ("", "npm"), ("*", "npm"), ("latest", "npm"), ("canary", "npm"),
     ("workspace:^1.0.0", "npm"), ("file:../x", "npm"), ("github:o/r#abc1234", "npm"),
     ("1..2", "npm"), ("v", "npm"), ("1.2.3-", "npm"),
+    ("==1.22.0rc1.*", "pep440"),    # PEP 440 allows a wildcard only after the release
+    ("==1.22.0.*.1", "pep440"), ("==1.22.0.**", "pep440"), ("==1.22.0.", "pep440"),
     ("^1.0", "pep440"),          # not PEP 440
     ("1.0 || 2.0", "pep440"),    # PEP 440 has no "or"
 ])

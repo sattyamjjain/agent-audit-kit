@@ -90,6 +90,10 @@ def _partial(token: str) -> tuple[list[int], bool] | None:
     `1.2.3` is ([1, 2, 3], False), `1.2` is ([1, 2], False), `1.x` is ([1], True)
     and `*` is ([], True). A wildcard ends the numeric components, so `1.x.3` is
     `1.x`. A fourth component or a pre-release tail is accepted and ignored.
+    PEP 440 allows `.*` after any number of release components, so `1.2.3.*` and
+    `1.2.3.4.*` are ([1, 2, 3], True). The wildcard used to count only among the
+    first three, so `==1.22.0.*` was no version at all, and `mcp>=1.0,!=1.22.0.*`
+    read as unpinned.
     """
     text = token
     if not text or len(text) > _MAX_TOKEN:
@@ -119,6 +123,15 @@ def _partial(token: str) -> tuple[list[int], bool] | None:
         if i == start:
             return None
         parts.append(int(text[start:i]))
+    if not wild:
+        j = i
+        while j + 1 < n and text[j] == "." and _is_digit(text[j + 1]):
+            j += 1
+            while j < n and _is_digit(text[j]):
+                j += 1
+        if text[j:] == ".*":
+            wild = True
+            i = n
     if not parts and not wild:
         return None
     if not _valid_tail(text[i:]):
