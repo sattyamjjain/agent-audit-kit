@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Iterator
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
@@ -51,10 +52,33 @@ _AADHAAR_CONTEXT_RE = re.compile(r"aadhaar|aadhar|uidai|\buid\b|आधार", r
 _PAN_RE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")
 
 # UPI ID: <handle>@<psp>  where psp is oksbi, okhdfcbank, paytm, upi, ybl, axl, ...
-_UPI_RE = re.compile(
-    r"\b[a-zA-Z0-9.\-_]{2,}@(?:oksbi|okhdfcbank|okicici|okaxis|paytm|ybl|axl|ibl|apl|upi|hdfcbank|axisbank|icici|sbi|fbl)\b",
-    re.IGNORECASE,
-)
+_UPI_PSP = r"@(?:oksbi|okhdfcbank|okicici|okaxis|paytm|ybl|axl|ibl|apl|upi|hdfcbank|axisbank|icici|sbi|fbl)\b"
+_UPI_RE = re.compile(r"\b[a-zA-Z0-9.\-_]{2,}" + _UPI_PSP, re.IGNORECASE)
+_UPI_HANDLE_RUN_RE = re.compile(r"[a-zA-Z0-9.\-_]+", re.IGNORECASE)
+_UPI_PSP_RE = re.compile(_UPI_PSP, re.IGNORECASE)
+
+
+def _upi_matches(text: str) -> Iterator[re.Match[str]]:
+    """`_UPI_RE.finditer(text)`, reading each run of handle characters once.
+
+    No handle character is `@`, so a match can only start in a run of them that
+    ends right at an `@`. `finditer` tried the pattern from every word boundary
+    of every run and read the run to its end each time before failing, so a
+    long dotted run with no `@` (`a.b.a.b...`) cost the square of its length:
+    60 KB took 14 seconds. Here the pattern is tried only in a run followed by
+    `@<psp>`, from where `finditer` would have resumed, and no further than the
+    character after the `<psp>` that its trailing `\\b` reads, so it returns the
+    same matches.
+    """
+    resume = 0
+    for run in _UPI_HANDLE_RUN_RE.finditer(text):
+        psp = _UPI_PSP_RE.match(text, run.end())
+        if psp is None:
+            continue
+        match = _UPI_RE.search(text, max(run.start(), resume), psp.end() + 1)
+        if match is not None:
+            resume = match.end()
+            yield match
 
 # IFSC: 4 letters + 0 + 6 alnum (bank code + reserved 0 + branch).
 _IFSC_RE = re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")
@@ -169,7 +193,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
             )
         )
 
-    for m in _UPI_RE.finditer(text):
+    for m in _upi_matches(text):
         findings.append(
             make_finding(
                 "AAK-INDIA-PII-003",
