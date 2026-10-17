@@ -362,13 +362,15 @@ def _nested_tools(depth: int, statements: int) -> str:
 
 
 def test_loginj_nested_tool_functions_read_in_linear_time(tmp_path: Path) -> None:
+    """The bound is 10 s, not 5: parsing and walking the 600,000 nodes of 120,000
+    statements takes 1.2 s here and more on a loaded runner, against 68.5 s before."""
     text = _nested_tools(99, 120_000)
     assert len(text.encode("utf-8")) <= 512_000
     (tmp_path / "server.py").write_text(text, encoding="utf-8")
     elapsed, findings = _loginj_in_child(tmp_path)
     assert [line for line, _ in findings] == [text.count("\n")]
     assert "'f98'" in str(findings[0][1])
-    assert elapsed < 5.0, elapsed
+    assert elapsed < 10.0, elapsed
 
 
 _LOGINJ_NESTED = """import logging
