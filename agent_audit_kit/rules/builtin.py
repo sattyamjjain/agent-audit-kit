@@ -6576,7 +6576,7 @@ _r(
         "not disable redirects. A guard under another name (`assert_public_url`), or a "
         "guard and a fetch in two separate, non-nested Python functions, is not "
         "matched."
-        " A manifest over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
@@ -6631,7 +6631,7 @@ _r(
         "on `fast-mcp-telegram` the rule reads code and also fires on 0.30.1's "
         "own source: that release resolves inside the guard, but the fetch "
         "resolves the name again."
-        " A manifest over 2 MB, or a lockfile over 32 MiB, is not read."
+        " A manifest over 2 MB is not read. A lockfile over 32 MiB is not read."
     ),
 )
 
