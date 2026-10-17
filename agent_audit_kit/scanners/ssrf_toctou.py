@@ -49,7 +49,13 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._dependency_pins import DependencyPin, locked_affected_versions, pinned_dependency, read_manifest
+from ._dependency_pins import (
+    DependencyPin,
+    locked_affected_versions,
+    pinned_dependency,
+    read_lockfile,
+    read_manifest,
+)
 from ._helpers import in_skip_dir, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
@@ -277,16 +283,9 @@ def _check_pin(project_root: Path, scanned: set[str]) -> list[Finding]:
             _fire(rel, f"referenced as {hit.quoted}", hit.line)
 
     for lock_name in ("poetry.lock", "Pipfile.lock", "uv.lock"):
-        lock = project_root / lock_name
-        if not lock.is_file():
-            continue
-        try:
-            if lock.stat().st_size > MAX_LOCKFILE_BYTES:
-                continue  # unread, as the pin table skips one (see MAX_LOCKFILE_BYTES)
-            text = lock.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        affected = locked_affected_versions(lock, text, _PIN)
+        # None when absent, unreadable or over MAX_LOCKFILE_BYTES, which the pin table skips too.
+        lockfile = read_lockfile(project_root / lock_name, MAX_LOCKFILE_BYTES)
+        affected = locked_affected_versions(lockfile, _PIN) if lockfile is not None else []
         if affected:
             scanned.add(lock_name)
             _fire(lock_name, f"pinned at {'.'.join(str(n) for n in affected[0])!r}", None)

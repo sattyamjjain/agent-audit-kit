@@ -70,6 +70,7 @@ except ImportError:  # Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef,import-not-found]
 
 from agent_audit_kit.scanners._manifest_deps import (
+    MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
     Declaration,
     declaration_lines,
@@ -378,6 +379,23 @@ _MANIFESTS_TEXT_BUDGET = 8_000_000
 _MANIFESTS_LOCK = threading.Lock()
 
 
+def _read(path: Path, limit: int) -> tuple[tuple[str, bytes], bytes] | None:
+    """`path`'s bytes and their cache key, or None when it is missing, unreadable
+    or over `limit` bytes. The key is the absolute path and a digest of the bytes."""
+    try:
+        if path.stat().st_size > limit:
+            return None
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    return (str(path.absolute()), hashlib.blake2b(raw, digest_size=16).digest()), raw
+
+
+def _decoded(raw: bytes) -> str:
+    """The text as the modules always read a file: UTF-8 with replacement, universal newlines."""
+    return raw.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+
+
 def read_manifest(path: Path) -> Manifest | None:
     """`path` read and parsed, or None when it is missing, unreadable or too large.
 
@@ -393,19 +411,16 @@ def read_manifest(path: Path) -> Manifest | None:
         The manifest, shared with every other caller that reads the same file
         content during the process, or None.
     """
-    try:
-        if path.stat().st_size > MAX_MANIFEST_BYTES:
-            return None
-        raw = path.read_bytes()
-    except OSError:
+    read = _read(path, MAX_MANIFEST_BYTES)
+    if read is None:
         return None
-    key = (str(path.absolute()), hashlib.blake2b(raw, digest_size=16).digest())
+    key, raw = read
     with _MANIFESTS_LOCK:
         cached = _MANIFESTS.get(key)
         if cached is not None:
             _MANIFESTS.move_to_end(key)
             return cached
-    text = raw.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    text = _decoded(raw)
     manifest = Manifest(path, text, tuple(manifest_declarations(path, text)))
     with _MANIFESTS_LOCK:
         _MANIFESTS[key] = manifest
@@ -434,17 +449,73 @@ def pinned_dependency(manifest: Manifest, pin: DependencyPin) -> PinnedDependenc
     return PinnedDependency(declaration, manifest.line_of(declaration), pin.fixed)
 
 
-def locked_affected_versions(path: Path, text: str, pin: DependencyPin) -> list[Ver]:
+@dataclass(frozen=True)
+class Lockfile:
+    """One lockfile as the version pins read it: every package it resolves, by name."""
+
+    path: Path
+    index: dict[str, list[Ver]]
+    size: int  # its bytes, which the cache's budget counts
+
+
+# Lockfile indexes are kept the same way, by path and content. Each SSRF pin
+# used to index every lockfile again, so a 31 MiB uv.lock cost 2.4 s of CPU
+# across the two where one index costs 1.2 s, and the line search it replaced
+# took 1.0 s. An index holds every package the file resolves, about 80 MB for
+# that uv.lock, so the least recently used go once more than 4 are kept or
+# their files pass 64 MiB: room for a root's three lockfiles at ordinary sizes,
+# and for two at the 32 MiB limit.
+_LOCKFILES: OrderedDict[tuple[str, bytes], Lockfile] = OrderedDict()
+_LOCKFILES_KEPT = 4
+_LOCKFILES_BYTE_BUDGET = 2 * MAX_LOCKFILE_BYTES
+_LOCKFILES_LOCK = threading.Lock()
+
+
+def read_lockfile(path: Path, limit: int = MAX_LOCKFILE_BYTES) -> Lockfile | None:
+    """`path` read and indexed, or None when it is missing, unreadable or too large.
+
+    A lockfile over MAX_LOCKFILE_BYTES (32 MiB), the CVE pin table's limit, is
+    not read. The index is the pin table's (`supply_chain._lockfile_index`), so
+    Pipfile.lock's JSON, the `[[package]]` blocks of poetry.lock and uv.lock,
+    and a PEP 503 spelling of a name all read as the pins read them.
+
+    Args:
+        path: The lockfile; its name selects the format.
+        limit: The largest file read, in bytes. The size is checked before the
+            cache is, so a cached index never outlives a lower limit.
+
+    Returns:
+        The lockfile, shared with every other caller that reads the same file
+        content during the process, or None.
+    """
+    read = _read(path, limit)
+    if read is None:
+        return None
+    key, raw = read
+    with _LOCKFILES_LOCK:
+        cached = _LOCKFILES.get(key)
+        if cached is not None:
+            _LOCKFILES.move_to_end(key)
+            return cached
+    lockfile = Lockfile(path, _lockfile_index(_decoded(raw), path.name.lower()), len(raw))
+    with _LOCKFILES_LOCK:
+        _LOCKFILES[key] = lockfile
+        held = sum(entry.size for entry in _LOCKFILES.values())
+        while len(_LOCKFILES) > 1 and (len(_LOCKFILES) > _LOCKFILES_KEPT or held > _LOCKFILES_BYTE_BUDGET):
+            _, dropped = _LOCKFILES.popitem(last=False)
+            held -= dropped.size
+    return lockfile
+
+
+def locked_affected_versions(lockfile: Lockfile, pin: DependencyPin) -> list[Ver]:
     """The affected versions a lockfile resolves the package to, lowest first.
 
-    Read with the CVE pin table's lockfile reader (`supply_chain._lockfile_index`),
-    so Pipfile.lock's JSON, the `[[package]]` blocks of poetry.lock and uv.lock,
-    and a PEP 503 spelling of the name all read as the pins read them. The
-    pattern this replaced wanted a TOML `name =` line followed by a `version =`
-    line, so it never matched a Pipfile.lock, though both modules listed one.
+    The pattern this replaced wanted a TOML `name =` line followed by a
+    `version =` line, so it never matched a Pipfile.lock, though both modules
+    listed one.
     """
-    filename = path.name.lower()
-    resolved = _lockfile_lookup(_lockfile_index(text, filename), filename, pin.names)
+    filename = lockfile.path.name.lower()
+    resolved = _lockfile_lookup(lockfile.index, filename, pin.names)
     return [v for v in resolved if v < pin.fixed]
 
 

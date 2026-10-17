@@ -499,3 +499,51 @@ def test_the_pin_table_reads_a_prefix_match_too(tmp_path: Path, spec: str, fires
     (tmp_path / "requirements.txt").write_text(spec + "\n", encoding="utf-8")
     fired = {f.rule_id for f in mcp_cve_pins_2026_07.scan(tmp_path)[0]}
     assert ("AAK-MCP-SDK-CVE-2026-52869-001" in fired) is fires
+
+
+def test_a_lockfile_is_indexed_once_for_both_ssrf_pins(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lockfiles skipped the manifests' cache, so each SSRF pin indexed every lockfile
+    again: a 31 MiB uv.lock cost 7.5 s of CPU across the two. The index is kept by path
+    and content, as a manifest's parse is, so a scan builds each one once."""
+    from agent_audit_kit.scanners import _dependency_pins
+
+    (tmp_path / "uv.lock").write_text(
+        'version = 1\n\n[[package]]\nname = "langchain-openai"\nversion = "1.1.13"\n\n'
+        '[[package]]\nname = "langchain-text-splitters"\nversion = "1.1.1"\n', encoding="utf-8")
+    (tmp_path / "poetry.lock").write_text(
+        '[[package]]\nname = "langchain-openai"\nversion = "1.1.14"\n', encoding="utf-8")
+    built: list[str] = []
+    real = _dependency_pins._lockfile_index
+
+    def counting(text: str, filename: str) -> dict:
+        built.append(filename)
+        return real(text, filename)
+
+    monkeypatch.setattr(_dependency_pins, "_lockfile_index", counting)
+    findings = [f for module in (ssrf_redirect, ssrf_toctou) for f in module.scan(tmp_path)[0]]
+    assert sorted(built) == ["poetry.lock", "uv.lock"]
+    assert {(f.rule_id, f.file_path) for f in findings} >= {
+        ("AAK-LANGCHAIN-SSRF-REDIR-001", "uv.lock"), ("AAK-SSRF-TOCTOU-001", "uv.lock")}
+
+
+@pytest.mark.parametrize(("name", "before", "after", "module", "rule_id"), [
+    ("requirements.txt", "mcp==1.22.0\n", "mcp==1.24.0\n", dns_rebind, "AAK-DNS-REBIND-002"),
+    ("uv.lock", '[[package]]\nname = "langchain-openai"\nversion = "1.1.13"\n',
+     '[[package]]\nname = "langchain-openai"\nversion = "1.1.14"\n', ssrf_toctou, "AAK-SSRF-TOCTOU-001"),
+])
+def test_a_rewrite_of_the_same_size_and_time_is_read_again(
+    tmp_path: Path, name: str, before: str, after: str, module: ModuleType, rule_id: str
+) -> None:
+    """The caches are keyed by content, not by size and modification time, which a
+    coarse filesystem clock leaves unchanged when `aak fix` rewrites a pin in place."""
+    import os
+
+    path = tmp_path / name
+    path.write_text(before, encoding="utf-8")
+    assert any(f.rule_id == rule_id for f in module.scan(tmp_path)[0])
+    stat = path.stat()
+    path.write_text(after, encoding="utf-8")
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    assert path.stat().st_size == stat.st_size
+    assert not any(f.rule_id == rule_id for f in module.scan(tmp_path)[0])
+
