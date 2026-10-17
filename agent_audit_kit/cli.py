@@ -520,6 +520,8 @@ def suggest_cmd(
         plan = plan_auto_pr(Path(project_path))
         for fix in plan.fixes:
             click.echo(f"  + {fix.rule_id}  {fix.file_path}", err=True)
+        for fix in plan.unchanged:
+            click.echo(f"  = {fix.rule_id}  {fix.file_path}  (changes nothing: {fix.description})", err=True)
         for fix in plan.blocked:
             click.echo(f"  - {fix.rule_id}  {fix.file_path}  (not allow-listed)", err=True)
         if dry_run:
