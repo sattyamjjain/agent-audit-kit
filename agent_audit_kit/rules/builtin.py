@@ -2552,7 +2552,12 @@ _r(
     "AAK-TAINT-002",
     "Tool parameter flows to eval/exec",
     "A @tool function parameter flows to eval(), exec(), or compile() enabling "
-    "arbitrary code execution.",
+    "arbitrary code execution. In a @tool function, a call is not reported when, "
+    "earlier in straight-line code, the parameter itself has passed a check against "
+    "a literal allow-list that admits only ASCII digits, punctuation other than `_`, "
+    "and whitespace, as a calculator's digits-and-operators check does: without a "
+    "letter or an underscore the expression can name nothing, so it can call "
+    "nothing.",
     Severity.CRITICAL,
     Category.TAINT_ANALYSIS,
     "Never pass user-controlled input to eval/exec. Use safe parsing alternatives.",
@@ -2568,7 +2573,32 @@ _r(
         "reported only when the argument is a parameter or an item read from one "
         "(`arguments[\"expr\"]`), so `eval(expression.strip())` and `exec(\"result = \" "
         "+ code)` are not, and neither is a local holding one, even in a "
-        "`call_tool` handler (`expr = arguments[\"expr\"]`, then `eval(expr)`). The "
+        "`call_tool` handler (`expr = arguments[\"expr\"]`, then `eval(expr)`). In a "
+        "`@tool` function a call is also not reported when all of the following "
+        "hold, and is reported as before when any does not; a `call_tool` handler is "
+        "not read. Its first argument is a parameter by name, no other argument "
+        "reads a parameter, and the function never rebinds that parameter, assigns "
+        "it to another name, or reads or writes an attribute or item of it. A check "
+        "on the parameter itself, `all(c in A for c in x)`, `set(x) <= A` or "
+        "`re.fullmatch(P, x)`, comes before the call in straight-line code: `if not "
+        "<check>:` whose body ends in `raise` or `return`, earlier in the same "
+        "block, or `if <check>:` with the call in its branch. The block may be the "
+        "function body, that branch or a `try` body: a call in an `except`, `else` "
+        "or `finally`, or after the `try` that holds the check, is reported, and no "
+        "loop, `try`, `with`, comprehension, lambda, nested `def` or `class`, "
+        "`await` or `yield` may sit between the check and the call. A check on a "
+        "normalised copy (`x.strip()`, `str(x)`) is not counted, so the call after "
+        "it is reported, and neither is a check in a helper (`if not is_safe(x)`) "
+        "or an `assert`. The allow-list A is a literal, a string, a list, tuple or "
+        "set of strings, or `set()` or `frozenset()` of one, written inline, bound "
+        "once to a local earlier in the same straight-line code, or bound once at "
+        "module level, and only ever read as an operand of a comparison; a local "
+        "that a nested `def`, lambda, class or comprehension other than the check's "
+        "own generator reads does not count. The pattern P is one character class "
+        "repeated (`[0-9+*/() -]+`) with no flags. Every character A or P admits is "
+        "an ASCII digit, punctuation other than `_`, or whitespace. Such a call "
+        "still evaluates the caller's arithmetic, which can hold the process "
+        "(`9**9**9`). The "
         "TypeScript arm reads `.ts` and `.tsx` files only: "
         "the same `eval(...)` in a `.js` file is not read."
     ),

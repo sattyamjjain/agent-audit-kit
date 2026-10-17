@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import string
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
@@ -309,9 +310,20 @@ def _fixed_target(node: ast.Call, callee: tuple[str | None, str]) -> bool:
 # either way and is included with them. AAK-TAINT-002 (24 of 38, 14 false
 # positives from calculator tools that allowlist the expression before `eval`)
 # and AAK-TAINT-005 (32 of 44, the rest read-only SQL tools and SELECT-prefix
-# checks) are left out pending a decision. `@tool` functions keep the behaviour
-# they had: across those repositories the pass added a single finding in one,
-# and it was unclear.
+# checks) were left out. `@tool` functions keep the behaviour they had: across
+# those repositories the pass added a single finding in one, and it was unclear.
+#
+# Both were measured again on 7,915 tool and handler files, and both stay out.
+# AAK-TAINT-002 added 27 findings and 16 were true (59%). Of the 11 false
+# positives, 7 are calculator handlers that allow-list the expression before
+# `eval`, which the allow-list skip below does not read in a handler, and 3 are
+# `compile()` calls that only check syntax: not following a local to
+# `compile()`, which runs nothing, gives 16 of 24 (67%). AAK-TAINT-005 added 36
+# and 26 were true (72%), the rest tools that run only reads (a SELECT prefix on
+# a driver that runs one statement, a read-only connection or transaction) and
+# a REPL whose `session.execute` is not SQL. Following both, and the `compile()`
+# exclusion, are kept with their tests on the local, unpushed branch
+# `wip/taint-locals-formatted`.
 _ALIAS_FOLLOWED_RULES: frozenset[str] = frozenset(
     {"AAK-TAINT-001", "AAK-TAINT-003", "AAK-TAINT-004", "AAK-TAINT-006"}
 )
@@ -609,6 +621,440 @@ class _HandlerFlow:
         return self.locals.join(outcomes)
 
 
+# ---- An `eval` behind an allow-list check (AAK-TAINT-002) ----
+#
+# A calculator tool that admits only digits and operators before `eval` hands
+# the sink nothing it can run: Python source needs a letter or an underscore to
+# name anything, and without a name it can call nothing. So in a `@tool`
+# function (not a `call_tool` handler) an `eval`, `exec` or `compile` call is
+# not reported when all of the following hold, and is reported as before when
+# any one does not:
+#
+# - Its first argument is a parameter, by name, and no other argument reads a
+#   parameter. That parameter is bound nowhere else in the function: not
+#   assigned, augmented or deleted, not a `for`, `with`, `except`, `:=`,
+#   import, comprehension or `match` target, not declared global or nonlocal,
+#   and not a parameter of a nested function or lambda. It is never assigned
+#   to another name, and no attribute or item of it is read or written.
+# - Earlier in the same straight-line code, a check on that parameter guards
+#   the call: `if not <check>:` whose body ends in `raise` or `return`, before
+#   the call in the same block, or `if <check>:` with the call in its body. The
+#   check is `all(c in A for c in x)`, `set(x) <= A` or `re.fullmatch(P, x)`,
+#   on the parameter itself, so a check on a copy (`x.strip()`) does not count.
+# - The block may be the function's body, the branch the check guards, or the
+#   body of a `try` (a raise in the check leaves the body, so the call runs
+#   only after the check passed). No loop, `with`, `try`, comprehension,
+#   generator, lambda, `def`, `class`, `match`, `await` or `yield` may sit
+#   between the check and the call, and none may hold the call: in a loop, an
+#   `except`, `else` or `finally`, or a comprehension, generator or lambda, it
+#   is reported. A check inside a `try` or `with` guards nothing after it.
+# - The allow-list A is a string literal, a list, tuple or set of them, or
+#   `set()` or `frozenset()` of one, written inline or bound to a name: a local
+#   bound once, earlier in the same straight-line code, or a module-level
+#   assignment. The name is bound nowhere else, in the function for a local and
+#   anywhere in the file for a module name (so an enclosing function cannot
+#   shadow it), and it is only ever read as an operand of a comparison, so no
+#   call can add to it. A local is read in no nested scope either: not by a
+#   nested `def`, lambda or class, and by no comprehension or generator but the
+#   check's own (`all(c in allowed for c in x)` reads it from its generator). The pattern P is a string literal of one character
+#   class repeated (`[0-9+*/() -]+`), with no flags and no escape class (`\d`,
+#   `\w`, `\s`).
+# - Every character A or P admits is an ASCII digit, punctuation other than
+#   `_`, or whitespace. An allow-list that admits a letter or an underscore,
+#   however tightly, leaves the call reported.
+# - `all`, `set`, `frozenset`, `eval`, `exec` and `compile` are bound nowhere
+#   in the file, `re` only by a module-level `import re`, nothing assigns an
+#   attribute of `re`, and the file has no star import.
+#
+# Each piece is read in one pass over the function and the file, so the cost
+# is linear, and a function too deep to read leaves every call reported.
+
+#: What an allow-list may admit. A name needs a letter or an underscore.
+_ARITHMETIC_CHARS: frozenset[str] = frozenset(
+    string.digits + string.punctuation.replace("_", "") + " \t\n\r\x0b\x0c"
+)
+#: The escapes a pattern's character class may use besides escaped punctuation.
+_CLASS_ESCAPES: dict[str, str] = {"t": "\t", "n": "\n", "r": "\r", "f": "\f", "v": "\v"}
+#: `try`, and from 3.11 `try`/`except*`, which has the same fields.
+_TRY_STATEMENTS: tuple[type[ast.Try], ...] = (ast.Try,) + tuple(
+    getattr(ast, name) for name in ("TryStar",) if hasattr(ast, name)
+)
+#: Statements whose bodies are not read, and that guard nothing after them.
+_OPAQUE_STATEMENTS: tuple[type[ast.stmt], ...] = (
+    ast.For, ast.AsyncFor, ast.While, ast.With, ast.AsyncWith, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+) + tuple(getattr(ast, name) for name in ("Match",) if hasattr(ast, name))
+#: Expressions that run their body later, or not where they are written.
+_DEFERRED: tuple[type[ast.expr], ...] = (ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+#: Nodes whose body is a scope of its own inside the function.
+_NESTED_SCOPES: tuple[type[ast.AST], ...] = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef) + _DEFERRED
+#: What may not sit between a check and the call it guards.
+_BARRIERS: tuple[type[ast.AST], ...] = (
+    _TRY_STATEMENTS + _OPAQUE_STATEMENTS + _DEFERRED + (ast.Await, ast.Yield, ast.YieldFrom)
+)
+_CAPTURES: tuple[type[ast.AST], ...] = (ast.ExceptHandler,) + tuple(
+    getattr(ast, name) for name in ("MatchAs", "MatchStar", "TypeVar", "ParamSpec", "TypeVarTuple") if hasattr(ast, name)
+)
+
+
+def _names_bound(node: ast.AST) -> list[str]:
+    """The names `node` binds or declares: a store or `del` target, a
+    parameter, an import (`*` for a star import), a `def` or `class`, an
+    `except` or `match` capture, a type parameter, a `global` or `nonlocal`."""
+    if isinstance(node, ast.Name):
+        return [node.id] if isinstance(node.ctx, (ast.Store, ast.Del)) else []
+    if isinstance(node, ast.arg):
+        return [node.arg]
+    if isinstance(node, ast.alias):
+        return [node.asname or node.name.split(".")[0]]
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return [node.name]
+    if isinstance(node, (ast.Global, ast.Nonlocal)):
+        return list(node.names)
+    if isinstance(node, _CAPTURES):
+        captured = getattr(node, "name", None)
+    else:
+        captured = getattr(node, "rest", None)  # a mapping pattern's `**rest`
+    return [captured] if isinstance(captured, str) else []
+
+
+class _NameUses:
+    """How each name is bound and used in a subtree, from one walk."""
+
+    def __init__(self, root: ast.AST) -> None:
+        self.bindings: dict[str, int] = {}
+        self.loads: dict[str, int] = {}
+        #: Loads inside a nested scope below `root`: a `def`, lambda, class,
+        #: comprehension or generator.
+        self.nested_loads: dict[str, int] = {}
+        #: Loads that are an operand of a comparison, which reads a builtin
+        #: collection without changing it.
+        self.compared: dict[str, int] = {}
+        #: Names with an attribute or item read or written (`x.y`, `x[0]`).
+        self.subscripted: set[str] = set()
+        #: Names with an attribute or item written or deleted.
+        self.stored_into: set[str] = set()
+        #: Names assigned to another name (`y = x`, `a, b = x, 1`, `with x as y`).
+        self.aliased: set[str] = set()
+        stack: list[tuple[ast.AST, bool]] = [(root, False)]
+        while stack:
+            node, nested = stack.pop()
+            inner = nested or (node is not root and isinstance(node, _NESTED_SCOPES))
+            stack.extend((child, inner) for child in ast.iter_child_nodes(node))
+            for name in _names_bound(node):
+                self.bindings[name] = self.bindings.get(name, 0) + 1
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
+                self.loads[node.id] = self.loads.get(node.id, 0) + 1
+                if nested:
+                    self.nested_loads[node.id] = self.nested_loads.get(node.id, 0) + 1
+            elif isinstance(node, ast.Compare):
+                for operand in (node.left, *node.comparators):
+                    if isinstance(operand, ast.Name):
+                        self.compared[operand.id] = self.compared.get(operand.id, 0) + 1
+            elif isinstance(node, (ast.Attribute, ast.Subscript)) and isinstance(node.value, ast.Name):
+                self.subscripted.add(node.value.id)
+                if not isinstance(node.ctx, ast.Load):
+                    self.stored_into.add(node.value.id)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) and node.value is not None:
+                self._alias(node.value)
+            elif isinstance(node, ast.withitem):
+                self._alias(node.context_expr)
+
+    def _alias(self, value: ast.expr) -> None:
+        for part in value.elts if isinstance(value, (ast.Tuple, ast.List)) else [value]:
+            if isinstance(part, ast.Name):
+                self.aliased.add(part.id)
+
+
+class _FileFacts:
+    """What the allow-list skip needs from a whole file. Read on first use,
+    when a `@tool` function first reaches an `eval`, `exec` or `compile`."""
+
+    def __init__(self, tree: ast.Module) -> None:
+        self._tree = tree
+        self._uses: _NameUses | None = None
+        self._module_values: dict[str, ast.expr] = {}
+        self._re_imported = False
+        self._constants: dict[str, bool] = {}
+        self._patterns: dict[str, bool] = {}
+
+    @property
+    def uses(self) -> _NameUses:
+        if self._uses is None:
+            self._uses = _NameUses(self._tree)
+            for st in self._tree.body:
+                bound = _single_target(st)
+                if bound is not None:
+                    self._module_values[bound[0]] = bound[1]
+                elif isinstance(st, ast.Import) and any(a.name == "re" and a.asname in (None, "re") for a in st.names):
+                    self._re_imported = True
+        return self._uses
+
+    def unbound(self, name: str) -> bool:
+        """True when nothing in the file binds `name`, so it is the builtin."""
+        uses = self.uses
+        return name not in uses.bindings and "*" not in uses.bindings
+
+    @property
+    def re_module(self) -> bool:
+        """True when `re` is the standard module and nothing replaces its functions."""
+        uses = self.uses
+        return self._re_imported and uses.bindings.get("re") == 1 and "re" not in uses.stored_into
+
+    def constant(self, name: str) -> bool:
+        """True when `name` is a module-level allow-list that nothing in the file can change."""
+        if name not in self._constants:
+            uses, value = self.uses, self._module_values.get(name)
+            self._constants[name] = (
+                value is not None and uses.bindings.get(name) == 1
+                and uses.loads.get(name, 0) == uses.compared.get(name, 0)
+                and _arithmetic_allow_list(value, self)
+            )
+        return self._constants[name]
+
+    def pattern(self, pattern: str) -> bool:
+        if pattern not in self._patterns:
+            self._patterns[pattern] = _arithmetic_pattern(pattern)
+        return self._patterns[pattern]
+
+
+def _single_target(st: ast.stmt) -> tuple[str, ast.expr] | None:
+    """(name, value) for `name = value` or `name: T = value`."""
+    if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name):
+        return st.targets[0].id, st.value
+    if isinstance(st, ast.AnnAssign) and isinstance(st.target, ast.Name) and st.value is not None:
+        return st.target.id, st.value
+    return None
+
+
+def _arithmetic_allow_list(value: ast.expr, facts: _FileFacts) -> bool:
+    """A string literal, a list, tuple or set of them, or `set()` / `frozenset()`
+    of one, admitting only `_ARITHMETIC_CHARS`."""
+    if (
+        isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id in ("set", "frozenset")
+        and len(value.args) == 1 and not value.keywords and facts.unbound(value.func.id)
+    ):
+        value = value.args[0]
+    parts = value.elts if isinstance(value, (ast.List, ast.Tuple, ast.Set)) else [value]
+    return all(
+        isinstance(part, ast.Constant) and isinstance(part.value, str) and _ARITHMETIC_CHARS.issuperset(part.value)
+        for part in parts
+    )
+
+
+def _class_item(body: str, index: int) -> tuple[str | None, int]:
+    """The character a pattern's class names at `index`, and where the next
+    item starts. None for an escape class or code (`\\d`, `\\x41`) or a bracket."""
+    char = body[index]
+    if char == "\\":
+        escaped = body[index + 1:index + 2]
+        if escaped in _CLASS_ESCAPES:
+            return _CLASS_ESCAPES[escaped], index + 2
+        return (escaped if escaped and escaped in string.punctuation else None), index + 2
+    return (None if char in "[]" else char), index + 1
+
+
+def _arithmetic_pattern(pattern: str) -> bool:
+    """True for one character class repeated, `[...]+` or `[...]*`, optionally
+    between `^` and `$`, that names only `_ARITHMETIC_CHARS`: literal
+    characters, ranges between them, and escaped punctuation or `\\t`, `\\n`,
+    `\\r`, `\\f`, `\\v`. One pass, so a crafted pattern costs its length."""
+    start = 1 if pattern.startswith("^") else 0
+    end = len(pattern) - 1 if pattern.endswith("$") else len(pattern)
+    if end - start < 4 or pattern[start] != "[" or pattern[end - 2:end] not in ("]+", "]*"):
+        return False
+    body = pattern[start + 1:end - 2]
+    if body.startswith("^"):
+        return False
+    index = 0
+    while index < len(body):
+        first, index = _class_item(body, index)
+        if first is None or first not in _ARITHMETIC_CHARS:
+            return False
+        if index + 1 < len(body) and body[index] == "-":
+            last, index = _class_item(body, index + 1)
+            if last is None or last not in _ARITHMETIC_CHARS or last < first:
+                return False
+            if not _ARITHMETIC_CHARS.issuperset(map(chr, range(ord(first), ord(last) + 1))):
+                return False
+    return True
+
+
+def _allow_list(
+    node: ast.expr, facts: _FileFacts, uses: _NameUses, bound: set[str], own_generator: bool = False
+) -> bool:
+    """True for an allow-list nothing can change (see the block comment above).
+
+    `own_generator` is True when `node` is read from the check's generator,
+    the one nested read a local may have.
+    """
+    if not isinstance(node, ast.Name):
+        return _arithmetic_allow_list(node, facts)
+    if node.id in bound:
+        return (
+            uses.bindings.get(node.id) == 1 and uses.loads.get(node.id, 0) == uses.compared.get(node.id, 0)
+            and uses.nested_loads.get(node.id, 0) == (1 if own_generator else 0)
+        )
+    return facts.constant(node.id)
+
+
+def _checked_name(test: ast.expr, facts: _FileFacts, uses: _NameUses, bound: set[str]) -> str | None:
+    """The name `test` proves holds only allow-listed characters when it is true."""
+    if isinstance(test, ast.Call) and not test.keywords:
+        func, args = test.func, test.args
+        if (
+            isinstance(func, ast.Name) and func.id == "all" and len(args) == 1
+            and isinstance(args[0], ast.GeneratorExp) and len(args[0].generators) == 1 and facts.unbound("all")
+        ):
+            elt, comp = args[0].elt, args[0].generators[0]
+            if (
+                not comp.ifs and not comp.is_async and isinstance(comp.target, ast.Name)
+                and isinstance(comp.iter, ast.Name) and isinstance(elt, ast.Compare) and len(elt.ops) == 1
+                and isinstance(elt.ops[0], ast.In) and isinstance(elt.left, ast.Name)
+                and elt.left.id == comp.target.id
+                and _allow_list(elt.comparators[0], facts, uses, bound, own_generator=True)
+            ):
+                return comp.iter.id
+            return None
+        if (
+            isinstance(func, ast.Attribute) and func.attr == "fullmatch" and isinstance(func.value, ast.Name)
+            and func.value.id == "re" and len(args) == 2 and isinstance(args[0], ast.Constant)
+            and isinstance(args[0].value, str) and isinstance(args[1], ast.Name)
+            and facts.re_module and facts.pattern(args[0].value)
+        ):
+            return args[1].id
+        return None
+    if (
+        isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.LtE)
+        and isinstance(test.left, ast.Call) and isinstance(test.left.func, ast.Name)
+        and test.left.func.id == "set" and len(test.left.args) == 1 and not test.left.keywords
+        and isinstance(test.left.args[0], ast.Name) and facts.unbound("set")
+        and _allow_list(test.comparators[0], facts, uses, bound)
+    ):
+        return test.left.args[0].id
+    return None
+
+
+def _barrier_statements(func_def: ast.FunctionDef | ast.AsyncFunctionDef) -> set[int]:
+    """The statements in `func_def` that are or hold one of `_BARRIERS`.
+
+    Each barrier climbs to the function through its ancestors, and a climb
+    stops at a node an earlier one passed, so every node is climbed once.
+    """
+    parents: dict[int, ast.AST] = {}
+    barriers: list[ast.AST] = []
+    for node in ast.walk(func_def):
+        for child in ast.iter_child_nodes(node):
+            parents[id(child)] = node
+        if node is not func_def and isinstance(node, _BARRIERS):
+            barriers.append(node)
+    held: set[int] = set()
+    climbed: set[int] = set()
+    for barrier in barriers:
+        current: ast.AST | None = barrier
+        while current is not None and current is not func_def and id(current) not in climbed:
+            climbed.add(id(current))
+            if isinstance(current, ast.stmt):
+                held.add(id(current))
+            current = parents.get(id(current))
+    return held
+
+
+def _mark_guarded_calls(expr: ast.expr, guarded: set[str], param_names: set[str], marked: set[int]) -> None:
+    """Add to `marked` each call in `expr`, outside a lambda or comprehension,
+    whose first argument is a name in `guarded` and whose other arguments read
+    no parameter. The caller applies it to `eval`, `exec` and `compile` only."""
+    stack: list[ast.AST] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, _DEFERRED):
+            continue
+        stack.extend(ast.iter_child_nodes(node))
+        if not isinstance(node, ast.Call) or not node.args:
+            continue
+        first = node.args[0]
+        if not isinstance(first, ast.Name) or first.id not in guarded:
+            continue
+        rest = [*node.args[1:], *(keyword.value for keyword in node.keywords)]
+        if not any(isinstance(n, ast.Name) and n.id in param_names for part in rest for n in ast.walk(part)):
+            marked.add(id(node))
+
+
+def _allow_listed_sinks(func_def: ast.FunctionDef | ast.AsyncFunctionDef, facts: _FileFacts) -> frozenset[int]:
+    """The `eval`, `exec` and `compile` calls in a `@tool` function that an
+    allow-list check guards (see the block comment above), by node id.
+
+    A function too deep to read gives none, so every call is reported as
+    before and the rest of the file is still scanned.
+    """
+    try:
+        return _read_allow_listed_sinks(func_def, facts)
+    except RecursionError:
+        return frozenset()
+
+
+def _read_allow_listed_sinks(func_def: ast.FunctionDef | ast.AsyncFunctionDef, facts: _FileFacts) -> frozenset[int]:
+    if not all(facts.unbound(name) for name in ("eval", "exec", "compile")):
+        return frozenset()
+    uses = _NameUses(func_def)
+    args = func_def.args
+    candidates = {
+        arg.arg for arg in args.posonlyargs + args.args + args.kwonlyargs
+        if uses.bindings.get(arg.arg) == 1 and arg.arg not in uses.subscripted and arg.arg not in uses.aliased
+    }
+    if not candidates:
+        return frozenset()
+    param_names = _get_param_names(func_def)
+    barriers = _barrier_statements(func_def)
+    marked: set[int] = set()
+    # Each block is read once, in order, with the parameters a check has
+    # guarded and the allow-list locals bound so far on the way to it.
+    work: list[tuple[list[ast.stmt], frozenset[str], frozenset[str]]] = [(func_def.body, frozenset(), frozenset())]
+    while work:
+        block, guarded_before, bound_before = work.pop()
+        guarded, bound = set(guarded_before), set(bound_before)
+        for st in block:
+            if isinstance(st, _TRY_STATEMENTS):
+                work.append((st.body, frozenset(guarded), frozenset(bound)))
+                guarded.clear()
+                bound.clear()
+                continue
+            if isinstance(st, _OPAQUE_STATEMENTS):
+                guarded.clear()
+                bound.clear()
+                continue
+            if isinstance(st, ast.If):
+                test, negated = st.test, False
+                if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+                    test, negated = test.operand, True
+                checked = _checked_name(test, facts, uses, bound)
+                if checked is not None and checked in candidates:
+                    exits = isinstance(st.body[-1], (ast.Return, ast.Raise))
+                    if not negated:
+                        work.append((st.body, frozenset(guarded | {checked}), frozenset(bound)))
+                    elif exits:
+                        work.append((st.orelse, frozenset(guarded | {checked}), frozenset(bound)))
+                        guarded.add(checked)
+                    # What reaches the statements after the `if`: both branches,
+                    # or only `else` when the body of an `if not` exits.
+                    reaching = st.orelse if negated and exits else st.body + st.orelse
+                    if any(id(inner) in barriers for inner in reaching):
+                        guarded.clear()
+                        bound.clear()
+                    continue
+                _mark_guarded_calls(st.test, guarded, param_names, marked)
+            else:
+                for child in ast.iter_child_nodes(st):
+                    if isinstance(child, ast.expr):
+                        _mark_guarded_calls(child, guarded, param_names, marked)
+                local = _single_target(st)
+                if local is not None and _arithmetic_allow_list(local[1], facts):
+                    bound.add(local[0])
+            if id(st) in barriers:
+                guarded.clear()
+                bound.clear()
+    return frozenset(marked)
+
+
 def _alias_flow_findings(
     func_def: ast.FunctionDef | ast.AsyncFunctionDef, rel_path: str, param_names: set[str]
 ) -> list[Finding]:
@@ -622,6 +1068,7 @@ def _analyse_tool_function(
     func_def: ast.FunctionDef | ast.AsyncFunctionDef,
     rel_path: str,
     call_tool_handler: bool = False,
+    file_facts: _FileFacts | None = None,
 ) -> list[Finding]:
     """Perform taint analysis on a single @tool function.
 
@@ -636,6 +1083,10 @@ def _analyse_tool_function(
             dispatcher: its signature is the SDK's and its schema comes from
             `list_tools`, so on it they would report the SDK's shape, not a
             tool's. The flow rules, 001 to 006, apply to it as to any tool.
+        file_facts: The file's facts for the allow-list skip, given for a
+            `@tool` function only: it leaves out an AAK-TAINT-002 call an
+            allow-list check guards (see `_allow_listed_sinks`). None, as for a
+            `call_tool` handler, reads no checks.
     """
     findings: list[Finding] = []
     param_names = _get_param_names(func_def)
@@ -643,6 +1094,7 @@ def _analyse_tool_function(
 
     # Track which rule categories have dangerous sinks (for AAK-TAINT-008)
     triggered_categories: set[str] = set()
+    guarded: frozenset[int] | None = None
 
     # Walk function body for Call nodes
     for node in ast.walk(func_def):
@@ -663,6 +1115,11 @@ def _analyse_tool_function(
         # Check if any argument is a tainted parameter, unless the call's
         # target is a literal (see `_fixed_target`)
         if param_names and _call_uses_param(node, param_names) and not _fixed_target(node, callee):
+            if rule_id == "AAK-TAINT-002" and file_facts is not None:
+                if guarded is None:
+                    guarded = _allow_listed_sinks(func_def, file_facts)
+                if id(node) in guarded:
+                    continue
             sink_label = f"{callee[0]}.{callee[1]}" if callee[0] else callee[1]
             line = getattr(node, "lineno", func_def.lineno)
             findings.append(make_finding(
@@ -741,12 +1198,13 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
 
         scanned_files.add(rel_path)
+        file_facts = _FileFacts(tree)
 
         # Walk top-level and nested function definitions
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if _is_tool_function(node):
-                    findings.extend(_analyse_tool_function(node, rel_path))
+                    findings.extend(_analyse_tool_function(node, rel_path, file_facts=file_facts))
                 elif _is_call_tool_handler(node):
                     findings.extend(_analyse_tool_function(node, rel_path, call_tool_handler=True))
 

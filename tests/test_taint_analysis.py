@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import ast
 import sys
 import textwrap
+import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -654,3 +657,849 @@ def test_an_item_read_from_a_tool_parameter_is_the_parameter(tmp_path: Path) -> 
         "    return subprocess.run(options['cmd'], shell=True).returncode\n"
     )
     assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-001"]
+
+
+# ---------------------------------------------------------------------------
+# AAK-TAINT-002 is not reported for a calculator `@tool` whose expression has
+# passed, in straight-line code before the call, an allow-list check that
+# admits no letter or underscore (see the block comment above
+# `_allow_listed_sinks`). Every other shape is reported as before, and each
+# reported case below is kept so by one condition of that reading.
+# ---------------------------------------------------------------------------
+
+_CALC_HEAD = '''\
+import contextlib
+import re
+
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("demo")
+OPERATORS = set("0123456789+-*/(). ")
+'''
+_CALC_DEF = '''
+
+@mcp.tool()
+def calc(expression: str, more: list, extra: str = "") -> object:
+'''
+_CHECK = 'if not set(expression) <= OPERATORS:\n    raise ValueError(expression)\n'
+
+
+def _calc(tmp_path: Path, body: str, module: str = "") -> list[str]:
+    """Rule ids for `calc(expression, more, extra)` with `body`, after `module` code."""
+    body = textwrap.indent(textwrap.dedent(body).strip("\n"), "    ")
+    source = _CALC_HEAD + textwrap.dedent(module) + _CALC_DEF + body + "\n"
+    (tmp_path / "server.py").write_text(source)
+    return [f.rule_id for f in scan(tmp_path)[0]]
+
+
+_SILENCED = {
+    "inline string": """
+        if not all(c in "0123456789+-*/(). " for c in expression):
+            raise ValueError(expression)
+        return eval(expression)
+    """,
+    "local set": """
+        allowed = set("0123456789+-*/(). ")
+        if not all(c in allowed for c in expression):
+            return "invalid characters"
+        return eval(expression)
+    """,
+    "module constant": """
+        if not all(c in OPERATORS for c in expression):
+            return None
+        return eval(expression)
+    """,
+    "set inclusion": """
+        allowed = set("0123456789+-*/(). ")
+        if not set(expression) <= allowed:
+            return "invalid characters"
+        return eval(expression, {"__builtins__": {}}, {})
+    """,
+    "full match": """
+        if not re.fullmatch(r"[0-9.\\-+*/()\\t ]+", expression):
+            raise ValueError("only arithmetic")
+        return eval(expression)
+    """,
+    "anchored full match": """
+        if not re.fullmatch(r"^[0-9+*/() -]*$", expression):
+            raise ValueError("only arithmetic")
+        return eval(expression)
+    """,
+    "call in the passing branch": """
+        allowed_chars = "0123456789+-*/(). "
+        if all(c in allowed_chars for c in expression):
+            return str(eval(expression))
+        return "invalid characters"
+    """,
+    "call in the else of a check that exits": """
+        if not set(expression) <= OPERATORS:
+            raise ValueError(expression)
+        else:
+            return eval(expression)
+    """,
+    "one try body holding both": """
+        try:
+            allowed_chars = set("0123456789+-*/.() ")
+            if not all(c in allowed_chars for c in expression):
+                raise ValueError("invalid characters")
+            return eval(expression)
+        except Exception as exc:
+            return str(exc)
+    """,
+    "check first, call in a later try": """
+        allowed = set("0123456789+-*/(). %")
+        if not set(expression) <= allowed:
+            return "invalid characters"
+        try:
+            return str(eval(expression, {"__builtins__": {}}, {}))
+        except Exception as exc:
+            return str(exc)
+    """,
+    "exec and compile": """
+        if not all(c in OPERATORS for c in expression):
+            return None
+        exec(expression)
+        return compile(expression, "<calc>", "eval")
+    """,
+    "frozenset local": """
+        digits = frozenset("0123456789+")
+        if not all(c in digits for c in expression):
+            return None
+        return eval(expression)
+    """,
+    "tuple local": """
+        symbols = ("1", "2", "+", " ")
+        if not all(c in symbols for c in expression):
+            return None
+        return eval(expression)
+    """,
+    "annotated local": """
+        allowed: set = set("0123456789+")
+        if not set(expression) <= allowed:
+            return None
+        return eval(expression)
+    """,
+    "empty allow-list": """
+        if not all(c in [] for c in expression):
+            return None
+        return eval(expression)
+    """,
+    "call in another if's test": """
+        if not set(expression) <= OPERATORS:
+            raise ValueError(expression)
+        if eval(expression) > 100:
+            return "large"
+        return "small"
+    """,
+    "check in the branch of another check": """
+        if all(c in OPERATORS for c in extra):
+            if not set(expression) <= OPERATORS:
+                raise ValueError(expression)
+            return eval(expression)
+        return None
+    """,
+}
+
+
+@pytest.mark.parametrize("body", list(_SILENCED.values()), ids=list(_SILENCED))
+def test_eval_behind_an_arithmetic_allow_list_is_not_reported(tmp_path: Path, body: str) -> None:
+    assert _calc(tmp_path, body) == []
+
+
+def test_the_same_call_without_the_check_is_reported(tmp_path: Path) -> None:
+    assert _calc(tmp_path, "return eval(expression)") == ["AAK-TAINT-002"]
+
+
+# The review of the first version of this skip, which read every path through
+# the function: each tool reached `eval` with unchecked input while the rule
+# stayed silent. All of them are reported again.
+_REVIEW_REPROS = {
+    "comprehension rebinds the parameter": ("", """
+        if not re.fullmatch(r"[0-9+*/() -]+", expression):
+            raise ValueError("bad")
+        return [eval(expression) for expression in more]
+    """),
+    "loop back-edge": ("", """
+        if not re.fullmatch(r"[0-9+*/() -]+", expression):
+            raise ValueError("bad")
+        out = []
+        for item in more:
+            out.append(eval(expression))
+            expression = item
+        return out
+    """),
+    "while test": ("", """
+        if not re.fullmatch(r"[0-9+*/() -]+", expression):
+            raise ValueError("bad")
+        while eval(expression):
+            expression = more.pop()
+        return None
+    """),
+    "with suppress swallows the check": ("", """
+        with contextlib.suppress(ValueError):
+            if not re.fullmatch(r"[0-9+*/() -]+", expression):
+                raise ValueError("bad")
+        return eval(expression)
+    """),
+    "finally after a failed check": ("", """
+        try:
+            if not re.fullmatch(r"[0-9+*/() -]+", expression):
+                raise ValueError("bad")
+        finally:
+            result = eval(expression)
+        return result
+    """),
+    "except after a rebinding": ("", """
+        if not re.fullmatch(r"[0-9+*/() -]+", expression):
+            raise ValueError("bad")
+        try:
+            expression = extra
+            if not re.fullmatch(r"[0-9+*/() -]+", expression):
+                raise ValueError("bad fallback")
+            result = eval(expression)
+        except ValueError:
+            result = eval(expression)
+        return result
+    """),
+    "compiled pattern with pos and endpos": ("SAFE = re.compile(r'[0-9+*/() -]+')\n", """
+        if not SAFE.fullmatch(expression, 0, 1):
+            raise ValueError("bad")
+        return eval(expression)
+    """),
+    "allow-list rebound by another tool": ('''
+
+        @mcp.tool()
+        def set_allowed(chars: str) -> None:
+            global OPERATORS
+            OPERATORS = set(chars)
+    ''', """
+        if not set(expression) <= OPERATORS:
+            raise ValueError("bad")
+        return eval(expression)
+    """),
+    "allow-list widened by the caller": ("", """
+        OPERATORS.update(extra)
+        if not set(expression) <= OPERATORS:
+            raise ValueError("bad")
+        return eval(expression)
+    """),
+    "local allow-list widened by the caller": ("", """
+        allowed = set("0123456789+-*/(). ")
+        allowed.update(extra)
+        if not set(expression) <= allowed:
+            raise ValueError("bad")
+        return eval(expression)
+    """),
+    "is not None on a bool": ("", """
+        if expression.isdigit() is not None:
+            return eval(expression)
+        return None
+    """),
+    "walrus rebinding inside the check": ("", """
+        if re.fullmatch(r"[0-9+*/() -]+", expression) and (expression := extra):
+            return eval(expression)
+        return None
+    """),
+    "multiline flag through a name": ("FLAGS = re.M\n", """
+        if not re.match(r"^[0-9+*/() -]+$", expression, FLAGS):
+            raise ValueError("bad")
+        exec(expression)
+    """),
+    "verbose comment hides the anchor": ("", """
+        if not re.match(r"^[0-9+*/() -]+  # digits and operators only$", expression, re.X):
+            raise ValueError("bad")
+        return eval(expression)
+    """),
+    "negated non-space search": ("", """
+        if re.search(r"[^\\S]", expression):
+            raise ValueError("no whitespace")
+        return eval(expression)
+    """),
+    "generator consumed after a rebinding": ("", """
+        if not re.fullmatch(r"[0-9+*/() -]+", expression):
+            raise ValueError("bad")
+        pending = (eval(expression) for _ in range(1))
+        expression = extra
+        return list(pending)
+    """),
+}
+
+
+@pytest.mark.parametrize(("module", "body"), list(_REVIEW_REPROS.values()), ids=list(_REVIEW_REPROS))
+def test_the_review_repros_are_reported(tmp_path: Path, module: str, body: str) -> None:
+    findings = _calc(tmp_path, body, module)
+    assert findings and set(findings) == {"AAK-TAINT-002"}
+
+
+def test_an_enclosing_function_that_shadows_the_allow_list_is_reported(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(_CALC_HEAD + textwrap.dedent('''
+
+        def build(config: dict) -> FastMCP:
+            OPERATORS = set(config["chars"])
+
+            @mcp.tool()
+            def calc(expression: str) -> object:
+                if not set(expression) <= OPERATORS:
+                    raise ValueError("bad")
+                return eval(expression)
+
+            return mcp
+    '''))
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-002"]
+
+
+_HANDLER = '''\
+import re
+
+from mcp.server.lowlevel import Server
+
+server = Server("demo")
+P = r"[0-9+*/() -]+"
+
+
+@server.call_tool()
+async def handle(name: str, arguments: dict) -> list:
+'''
+
+
+@pytest.mark.parametrize("body", [
+    # A `call_tool` handler is not read at all, so a clean check is reported too.
+    """
+    if not re.fullmatch(P, arguments["expr"]):
+        raise ValueError("only arithmetic")
+    return [eval(arguments["expr"])]
+    """,
+    # The review's handler repros.
+    """
+    if not re.fullmatch(P, arguments.get("expr", "")):
+        raise ValueError("only arithmetic")
+    arguments["expr"] = arguments["other"]
+    return [eval(arguments["expr"])]
+    """,
+    """
+    if not re.fullmatch(P, arguments.get("expr", "")):
+        raise ValueError("only arithmetic")
+    arguments.update(arguments.get("overrides", {}))
+    return [eval(arguments["expr"])]
+    """,
+    """
+    if not re.fullmatch(P, arguments.get("expr", "")):
+        raise ValueError("only arithmetic")
+    params = arguments
+    params["expr"] = params["other"]
+    return [eval(arguments["expr"])]
+    """,
+    """
+    if not re.fullmatch(r"[0-9+*/() -]*", arguments.get("expr", "")):
+        raise ValueError("only arithmetic")
+    return [eval(arguments.get("expr", arguments["fallback"]))]
+    """,
+], ids=["clean check", "item assigned", "dict updated", "alias item assigned", "different default"])
+def test_a_call_tool_handler_is_not_read_by_the_skip(tmp_path: Path, body: str) -> None:
+    (tmp_path / "server.py").write_text(_HANDLER + textwrap.indent(textwrap.dedent(body).strip("\n"), "    ") + "\n")
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-002"]
+
+
+_MATCH_NEEDS_310 = pytest.mark.skipif(sys.version_info < (3, 10), reason="match needs Python 3.10")
+
+# Each body is reported for one reason, named by its id, that the reading
+# above requires. `_CHECK` is a check the skip reads.
+_GUARDS = {
+    # Where the call is.
+    "call in a list comprehension": _CHECK + "return [eval(expression) for _ in more]",
+    "call in a generator": _CHECK + "return list(eval(expression) for _ in more)",
+    "call in a lambda": _CHECK + "return (lambda: eval(expression))()",
+    "call in a loop body": _CHECK + "for _ in more:\n    eval(expression)",
+    "call in a while test": _CHECK + "while eval(expression):\n    break",
+    "call in a with body": _CHECK + "with contextlib.suppress():\n    return eval(expression)",
+    "call in an except": _CHECK + "try:\n    return len(more)\nexcept Exception:\n    return eval(expression)",
+    "call in a try's else": _CHECK + "try:\n    n = len(more)\nexcept Exception:\n    n = 0\nelse:\n    return eval(expression)",
+    "call in a finally": _CHECK + "try:\n    n = len(more)\nfinally:\n    eval(expression)",
+    "call in a default of a nested def": _CHECK + "def later(value=eval(expression)):\n    return value",
+    "call in the failing branch": "if not set(expression) <= OPERATORS:\n    return eval(expression)",
+    "call in the else of a passing check": (
+        "if set(expression) <= OPERATORS:\n    pass\nelse:\n    return eval(expression)"
+    ),
+    "call in another if": _CHECK + "if extra:\n    return eval(expression)",
+    "a passing check whose body falls through": (
+        "if all(c in OPERATORS for c in expression):\n    pass\nreturn eval(expression)"
+    ),
+    "call before the check": "result = eval(expression)\n" + _CHECK + "return result",
+    "a parameter that was not checked": _CHECK + "return eval(extra)",
+    "another argument reads a parameter": _CHECK + 'return eval(expression, {"more": more})',
+    "a keyword reads a parameter": _CHECK + 'return compile(expression, "<calc>", "eval", dont_inherit=bool(more))',
+    # Where the check is.
+    "check body falls through": "if not set(expression) <= OPERATORS:\n    print('bad')\nreturn eval(expression)",
+    "check inside another if": "if extra:\n" + textwrap.indent(_CHECK, "    ") + "return eval(expression)",
+    "check in a try, call after it": (
+        "try:\n" + textwrap.indent(_CHECK, "    ") + "except ValueError:\n    pass\nreturn eval(expression)"
+    ),
+    # What sits between them.
+    "a loop between": _CHECK + "for _ in more:\n    pass\nreturn eval(expression)",
+    "a try between": _CHECK + "try:\n    n = len(more)\nexcept Exception:\n    n = 0\nreturn eval(expression)",
+    "a with between": _CHECK + "with contextlib.suppress():\n    pass\nreturn eval(expression)",
+    "a comprehension between": _CHECK + "sizes = [len(m) for m in more]\nreturn eval(expression)",
+    "a lambda between": _CHECK + "key = lambda m: m\nreturn eval(expression)",
+    "a def between": _CHECK + "def helper():\n    return 1\nreturn eval(expression)",
+    "a class between": _CHECK + "class Box:\n    pass\nreturn eval(expression)",
+    "a yield between": _CHECK + "yield None\nyield eval(expression)",
+    "a loop inside an if between": _CHECK + "if extra:\n    for _ in more:\n        pass\nreturn eval(expression)",
+    "a loop in a passing branch between": (
+        _CHECK + "if all(c in OPERATORS for c in extra):\n    for _ in more:\n        pass\nreturn eval(expression)"
+    ),
+    "a loop in the else of a passing check": (
+        _CHECK + "if all(c in OPERATORS for c in extra):\n    pass\nelse:\n    for _ in more:\n        pass\n"
+        "return eval(expression)"
+    ),
+    "a loop in the else of a check that exits": (
+        "if not set(expression) <= OPERATORS:\n    raise ValueError(expression)\nelse:\n"
+        "    for _ in more:\n        pass\nreturn eval(expression)"
+    ),
+    # The parameter, bound or used again anywhere, here after the call.
+    "assigned": _CHECK + "result = eval(expression)\nexpression = extra\nreturn result",
+    "augmented": _CHECK + "result = eval(expression)\nexpression += extra\nreturn result",
+    "annotated": _CHECK + "result = eval(expression)\nexpression: str = extra\nreturn result",
+    "deleted": _CHECK + "result = eval(expression)\ndel expression\nreturn result",
+    "a for target": _CHECK + "result = eval(expression)\nfor expression in more:\n    pass\nreturn result",
+    "a with target": (
+        _CHECK + "result = eval(expression)\nwith contextlib.suppress() as expression:\n    pass\nreturn result"
+    ),
+    "an except name": (
+        _CHECK + "result = eval(expression)\ntry:\n    pass\nexcept Exception as expression:\n    pass\nreturn result"
+    ),
+    "a walrus target": _CHECK + "result = eval(expression)\n(expression := extra)\nreturn result",
+    "a comprehension target": _CHECK + "result = eval(expression)\n[1 for expression in more]\nreturn result",
+    "an import": _CHECK + "result = eval(expression)\nimport os as expression\nreturn result",
+    "a def name": _CHECK + "result = eval(expression)\ndef expression():\n    pass\nreturn result",
+    "a class name": _CHECK + "result = eval(expression)\nclass expression:\n    pass\nreturn result",
+    "a nested function's parameter": (
+        _CHECK + "result = eval(expression)\ndef helper(expression):\n    return expression\nreturn result"
+    ),
+    "a lambda parameter": _CHECK + "result = eval(expression)\nkey = lambda expression: expression\nreturn result",
+    "nonlocal in a nested function": (
+        _CHECK + "result = eval(expression)\ndef widen():\n    nonlocal expression\n    expression = extra\n"
+        "return result"
+    ),
+    "a match capture": pytest.param(
+        _CHECK + "result = eval(expression)\nmatch extra:\n    case expression:\n        pass\nreturn result",
+        marks=_MATCH_NEEDS_310,
+    ),
+    "a match star capture": pytest.param(
+        _CHECK + "result = eval(expression)\nmatch more:\n    case [*expression]:\n        pass\nreturn result",
+        marks=_MATCH_NEEDS_310,
+    ),
+    "a match mapping rest": pytest.param(
+        _CHECK + "result = eval(expression)\nmatch more:\n    case {**expression}:\n        pass\nreturn result",
+        marks=_MATCH_NEEDS_310,
+    ),
+    "a type parameter": pytest.param(
+        _CHECK + "result = eval(expression)\nclass Box[expression]:\n    pass\nreturn result",
+        marks=pytest.mark.skipif(sys.version_info < (3, 12), reason="type parameters need Python 3.12"),
+    ),
+    "assigned to another name": _CHECK + "result = eval(expression)\nalias = expression\nreturn result",
+    "unpacked to another name": _CHECK + "result = eval(expression)\nfirst, second = expression, extra\nreturn result",
+    "a with item": _CHECK + "result = eval(expression)\nwith expression:\n    pass\nreturn result",
+    "a method called on it": _CHECK + "result = eval(expression)\nprint(expression.upper())\nreturn result",
+    "an item read": _CHECK + "result = eval(expression)\nprint(expression[0])\nreturn result",
+    # The check.
+    "a check on a copy": "if not all(c in OPERATORS for c in str(expression)):\n    raise ValueError\nreturn eval(expression)",
+    "a set of a copy": "if not set(str(expression)) <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "a full match on a copy": (
+        "if not re.fullmatch(r'[0-9+]+', str(expression)):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a check on a stripped copy": (
+        "if not all(c in OPERATORS for c in expression.strip()):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "any() of a negated test": "if any(c not in OPERATORS for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "issubset": "if not set(expression).issubset(OPERATORS):\n    raise ValueError\nreturn eval(expression)",
+    "isdigit": "if not expression.isdigit():\n    raise ValueError\nreturn eval(expression)",
+    "membership of the whole value": "if expression not in ('1+1', '2*3'):\n    raise ValueError\nreturn eval(expression)",
+    "double negation": "if not not all(c in OPERATORS for c in expression):\n    return eval(expression)\nreturn None",
+    "a filtered generator": (
+        "if not all(c in OPERATORS for c in expression if c != ' '):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "two for clauses": (
+        "if not all(c in OPERATORS for c in expression for _ in more):\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a list in all()": "if not all([c in OPERATORS for c in expression]):\n    raise ValueError\nreturn eval(expression)",
+    "all() with a keyword": (
+        "if not all((c in OPERATORS for c in expression), **{}):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a target that is not a name": (
+        "if not all(c in OPERATORS for c, in expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "an element other than the target": (
+        "if not all(extra in OPERATORS for c in expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "the target as the allow-list": "if not all(c in c for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "not in": "if not all(c not in OPERATORS for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a chained comparison": (
+        "if not all(c in OPERATORS != more for c in expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a proper subset": "if not set(expression) < OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "a chained set comparison": "if not set(expression) <= OPERATORS <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "frozenset of the value": "if not frozenset(expression) <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "set() with a keyword": "if not set(expression, **{}) <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "a full match with flags": (
+        "if not re.fullmatch(r'[0-9+]+', expression, re.ASCII):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a full match by keyword": (
+        "if not re.fullmatch(r'[0-9+]+', string=expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "re.match": "if not re.match(r'[0-9+]+$', expression):\n    raise ValueError\nreturn eval(expression)",
+    "re.search": "if not re.search(r'^[0-9+]+$', expression):\n    raise ValueError\nreturn eval(expression)",
+    "another module's fullmatch": (
+        "if not contextlib.fullmatch(r'[0-9+]+', expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a pattern held in a name": (
+        "if not re.fullmatch(OPERATORS, expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a bytes pattern": "if not re.fullmatch(rb'[0-9+]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a full match with a flags keyword": (
+        "if not re.fullmatch(r'[0-9+]+', expression, flags=re.A):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a method of a compiled pattern": (
+        "if not re.compile(r'[0-9+]+').fullmatch(expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "any() of a membership test": (
+        "if not any(c in OPERATORS for c in expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "all() with two arguments": (
+        "if not all((c in OPERATORS for c in expression), extra):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "an element that is not a comparison": "if not all(c for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a constant on the left": "if not all('1' in c for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "the value compared itself": "if not expression <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "an attribute's set()": "if not builtins.set(expression) <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "set() of nothing": "if not set() <= OPERATORS:\n    raise ValueError\nreturn eval(expression)",
+    "a set compared with a parameter's": (
+        "if not set(expression) <= set(extra):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    # The allow-list.
+    "a parameter as the allow-list": "if not all(c in extra for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a local bound twice": (
+        "allowed = set('0123')\nallowed = set('0123456789')\n"
+        "if not set(expression) <= allowed:\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local bound in another if": (
+        "if extra:\n    allowed = set('0123')\nif not set(expression) <= allowed:\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a local passed to a call": (
+        "allowed = set('0123')\nprint(allowed)\nif not set(expression) <= allowed:\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a local built from a parameter": (
+        "allowed = set(extra)\nif not set(expression) <= allowed:\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local joined with a parameter": (
+        "allowed = '0123' + extra\nif not all(c in allowed for c in expression):\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a local set() with a keyword": (
+        "allowed = set('0123', **{})\nif not set(expression) <= allowed:\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local declared global": (
+        "global allowed\nallowed = set('0123')\nif not set(expression) <= allowed:\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a local rebound by a nested function": (
+        "allowed = set('0123')\nif not set(expression) <= allowed:\n    raise ValueError\nresult = eval(expression)\n"
+        "def widen():\n    nonlocal allowed\n    allowed = set(extra)\nreturn result"
+    ),
+    "a local built by another call": (
+        "allowed = load('0123')\nif not set(expression) <= allowed:\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local set() of two strings": (
+        "allowed = set('0123', '4')\nif not set(expression) <= allowed:\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local bound with another name": (
+        "allowed = alias = set('0123')\nalias.add(extra)\nif not set(expression) <= allowed:\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    "a local reached past a comprehension": (
+        "allowed = set('0123')\nsizes = [len(m) for m in more]\nif not set(expression) <= allowed:\n"
+        "    raise ValueError\nreturn eval(expression)"
+    ),
+    "a local reached past a loop": (
+        "allowed = set('0123')\nfor _ in more:\n    pass\nif not set(expression) <= allowed:\n    raise ValueError\n"
+        "return eval(expression)"
+    ),
+    # What the allow-list admits.
+    "letters": "if not all(c in '0123456789abcdef' for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "an underscore": "if not all(c in '0123456789_' for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a non-ASCII digit": (
+        "if not all(c in '0123456789\\u0663' for c in expression):\n    raise ValueError\nreturn eval(expression)"
+    ),
+    "a letter in a set": "if not all(c in {'1', 'x'} for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a number in a set": "if not all(c in {'1', 2} for c in expression):\n    raise ValueError\nreturn eval(expression)",
+    "a word class": "if not re.fullmatch(r'[\\w+]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a digit class": "if not re.fullmatch(r'[\\d+]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "an escape code": "if not re.fullmatch(r'[\\x30-\\x39]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a range over letters": "if not re.fullmatch(r'[+-~]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a range ending in a letter": "if not re.fullmatch(r'[0-z]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a reversed range": "if not re.fullmatch(r'[9-0]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a letter range": "if not re.fullmatch(r'[a-f0-9]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a negated class": "if not re.fullmatch(r'[^a-z]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a class opening with ]": "if not re.fullmatch(r'[]0-9]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a bracket inside the class": "if not re.fullmatch(r'[0-9[]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "two classes": "if not re.fullmatch(r'[0-9]+[*]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "no repeat": "if not re.fullmatch(r'[0-9+]', expression):\n    raise ValueError\nreturn eval(expression)",
+    "an alternation": "if not re.fullmatch(r'[0-9]+|[a-z]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "an escaped dollar": "if not re.fullmatch(r'[0-9]+\\$', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a trailing backslash": "if not re.fullmatch(r'[0-9\\]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "an octal escape": "if not re.fullmatch(r'[0-9\\137]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a letter in the class": "if not re.fullmatch(r'[0-9a]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a negated class of digits": "if not re.fullmatch(r'[^0-9]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "no opening bracket": "if not re.fullmatch(r'x0-9]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a group around the class": "if not re.fullmatch(r'([0-9]+)', expression):\n    raise ValueError\nreturn eval(expression)",
+    "an empty class": "if not re.fullmatch(r'[]+', expression):\n    raise ValueError\nreturn eval(expression)",
+    "a range to an escape code": "if not re.fullmatch(r'[0-\\x39]+', expression):\n    raise ValueError\nreturn eval(expression)",
+}
+
+
+@pytest.mark.parametrize("body", list(_GUARDS.values()), ids=list(_GUARDS))
+def test_a_shape_the_skip_does_not_read_is_reported(tmp_path: Path, body: str) -> None:
+    findings = _calc(tmp_path, body)
+    assert findings and set(findings) == {"AAK-TAINT-002"}
+
+
+# Module code that can change what a check means, with the check forms it
+# keeps reported. Every other form is still read, so the guard is no broader.
+_MODULE_GUARDS = {
+    "constant bound twice": ("OPERATORS = set('0123456789+-*/')\n", {"all", "set"}),
+    "constant declared global in a function": ("\n\ndef reset() -> None:\n    global OPERATORS\n", {"all", "set"}),
+    "constant mutated in a function": ("\n\ndef widen(chars: str) -> None:\n    OPERATORS.add(chars)\n", {"all", "set"}),
+    "constant read outside a comparison": ("PRINTABLE = sorted(OPERATORS)\n", {"all", "set"}),
+    "a star import": ("from helpers import *\n", {"all", "set", "fullmatch"}),
+    "all rebound": ("all = any\n", {"all"}),
+    "set rebound": ("set = frozenset\n", {"all", "set"}),
+    "eval rebound": ("\n\ndef eval(source: str) -> str:\n    return source\n", {"all", "set", "fullmatch"}),
+    "re rebound": ("re = None\n", {"fullmatch"}),
+    "a function of re replaced": ("re.fullmatch = lambda pattern, string: True\n", {"fullmatch"}),
+}
+_CHECK_FORMS = {
+    "all": "if not all(c in OPERATORS for c in expression):",
+    "set": "if not set(expression) <= OPERATORS:",
+    "fullmatch": "if not re.fullmatch(r'[0-9+*/() -]+', expression):",
+}
+
+
+@pytest.mark.parametrize("form", list(_CHECK_FORMS))
+@pytest.mark.parametrize("guard", list(_MODULE_GUARDS))
+def test_module_code_that_can_change_a_check_keeps_it_reported(tmp_path: Path, guard: str, form: str) -> None:
+    module, affected = _MODULE_GUARDS[guard]
+    findings = _calc(tmp_path, f"{_CHECK_FORMS[form]}\n    raise ValueError\nreturn eval(expression)", module)
+    assert findings == (["AAK-TAINT-002"] if form in affected else [])
+
+
+def test_a_module_constant_that_admits_letters_is_reported(tmp_path: Path) -> None:
+    body = "if not all(c in HEX for c in expression):\n    raise ValueError\nreturn eval(expression)"
+    assert _calc(tmp_path, body, "HEX = '0123456789abcdef'\n") == ["AAK-TAINT-002"]
+    assert _calc(tmp_path, body, "HEX = '0123456789+-'\n") == []
+
+
+@pytest.mark.parametrize(("signature", "reported"), [
+    ("def calc(*, expression: str) -> object:", False),
+    ("def calc(expression: str, /) -> object:", False),
+    ("def calc(*expression: str) -> object:", True),
+], ids=["keyword-only", "positional-only", "varargs"])
+def test_which_parameters_the_skip_reads(tmp_path: Path, signature: str, reported: bool) -> None:
+    (tmp_path / "server.py").write_text(
+        _CALC_HEAD + "\n\n@mcp.tool()\n" + signature + "\n"
+        "    if not all(c in OPERATORS for c in expression):\n        raise ValueError\n"
+        "    return eval(expression)\n"
+    )
+    assert ("AAK-TAINT-002" in [f.rule_id for f in scan(tmp_path)[0]]) is reported
+
+
+def test_an_async_tool_is_read_but_not_an_async_generator_check(tmp_path: Path) -> None:
+    head = _CALC_HEAD + "\n\n@mcp.tool()\nasync def calc(expression: str) -> object:\n"
+    check = "    if not all(c in OPERATORS {}for c in expression):\n        raise ValueError\n    return eval(expression)\n"
+    (tmp_path / "server.py").write_text(head + check.format(""))
+    assert scan(tmp_path)[0] == []
+    (tmp_path / "server.py").write_text(head + check.format("async "))
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-002"]
+
+
+def test_re_imported_only_inside_the_tool_is_not_read(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "from mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef calc(expression: str) -> object:\n    import re\n"
+        "    if not re.fullmatch(r'[0-9+*/() -]+', expression):\n        raise ValueError\n"
+        "    return eval(expression)\n"
+    )
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-002"]
+
+
+def test_the_skip_leaves_the_other_rules_alone(tmp_path: Path) -> None:
+    """Only AAK-TAINT-002 reads the check: an allow-listed path still reaches `open`."""
+    assert _calc(tmp_path, _CHECK + "return open(expression).read()") == ["AAK-TAINT-003"]
+
+
+def test_a_function_too_deep_to_read_is_reported_and_the_scan_goes_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from agent_audit_kit.scanners import taint_analysis
+
+    def too_deep(*_args: object) -> frozenset[int]:
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(taint_analysis, "_read_allow_listed_sinks", too_deep)
+    (tmp_path / "other.py").write_text(
+        "import subprocess\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\n\n\n"
+        "@mcp.tool()\ndef run(command: str) -> int:\n    return subprocess.run(command, shell=True).returncode\n"
+    )
+    findings = _calc(tmp_path, _CHECK + "return eval(expression)")
+    assert sorted(findings) == ["AAK-TAINT-001", "AAK-TAINT-002"]
+
+
+# Past the 1,000-frame recursion limit, so a recursive walk would raise, and
+# inside what every supported Python parses: 3.11 builds an AST three levels per
+# frame left under that limit, about 2,600 levels from where pytest runs a test.
+_EVERY_PARSER_DEPTH = 2_000
+
+
+@pytest.mark.parametrize(("shape", "depth"), [
+    ("not", _EVERY_PARSER_DEPTH),
+    ("plus", _EVERY_PARSER_DEPTH),
+    # Deeper than 3.11 parses; 3.9, 3.10 and 3.12 build both.
+    ("not", 3_000),
+    ("plus", 5_000),
+])
+def test_a_crafted_check_does_not_exhaust_the_stack(tmp_path: Path, shape: str, depth: int) -> None:
+    """Neither shape needs brackets, so the parser's 200-deep limit does not stop
+    them. The skip reads one `not` and no `+` chain, so the call is reported as
+    before, and nothing on the way walks the check by recursion."""
+    if shape == "not":
+        test_expr = "not " * depth + "set(expression) <= OPERATORS"
+    else:
+        test_expr = "expression in " + " + ".join(['"0123456789"'] * depth)
+    body = f"if {test_expr}:\n    return eval(expression)"
+    assert depth > sys.getrecursionlimit()
+    if depth > _EVERY_PARSER_DEPTH:
+        try:
+            ast.parse(_CALC_HEAD + _CALC_DEF + textwrap.indent(body, "    "))
+        except (RecursionError, MemoryError):
+            pytest.skip(
+                "this Python's parser refuses the input; the scanner's parse-level "
+                "RecursionError is handled by the crash-containment batch"
+            )
+    assert _calc(tmp_path, body) == ["AAK-TAINT-002"]
+
+
+def test_unrelated_elif_arms_between_the_check_and_the_call_do_not_exhaust_the_stack(tmp_path: Path) -> None:
+    """1,500 arms that check nothing. The first version of this skip ran out of
+    stack at about 400, which lost every taint finding in the run."""
+    chain = "if extra == 'o0':\n    pass\n" + "\n".join(f"elif extra == 'o{i}':\n    pass" for i in range(1, 1_500))
+    assert _calc(tmp_path, chain + "\nreturn eval(expression)") == ["AAK-TAINT-002"]
+    assert _calc(tmp_path, _CHECK + chain + "\nreturn eval(expression)") == []
+
+
+def test_a_long_elif_chain_of_checks_is_read_without_recursion(tmp_path: Path) -> None:
+    """Each arm is a check whose `else` holds the next: 1,500 blocks deep, read
+    from a work list, where recursion would give up and report the call."""
+    arms = "\n".join(f"elif not set(extra) <= OPERATORS:\n    raise ValueError({i})" for i in range(1, 1_500))
+    body = "if not set(expression) <= OPERATORS:\n    raise ValueError(0)\n" + arms + "\nreturn eval(expression)"
+    assert _calc(tmp_path, body) == []
+
+
+# The skip reads each function and file once, and remembers each module
+# constant and pattern it has judged: the first version re-read a name's value
+# at every reference, so four names each a chain of 100 references to the next
+# (1,985 bytes) took 67 seconds. Each test runs a crafted file at two sizes,
+# best of three, and allows the larger 40 times the smaller's CPU time for 10
+# times the work, plus a fixed slack, under an absolute bound loose for CI.
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.process_time()
+        run()
+        best = min(best, time.process_time() - started)
+    return best
+
+
+def _grows_linearly(tmp_path: Path, source: Callable[[int], str], count: int) -> None:
+    """`source(count)` and `source(10 * count)`, each under the 1 MB file cap."""
+    small, large = tmp_path / "small", tmp_path / "large"
+    for root, n in ((small, count), (large, 10 * count)):
+        root.mkdir()
+        text = source(n)
+        assert len(text.encode()) < 1_000_000
+        (root / "server.py").write_text(text)
+    t_small, t_large = _seconds(lambda: scan(small)), _seconds(lambda: scan(large))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+def _tool(body_lines: list[str], module: str = "") -> str:
+    return _CALC_HEAD + module + _CALC_DEF + "".join(f"    {line}\n" for line in body_lines)
+
+
+def test_the_reviewers_name_chain_scans_in_linear_time(tmp_path: Path) -> None:
+    chain = "A = " + " + ".join(['"0"'] * 100) + "\n" + "".join(
+        f"{name} = " + " + ".join([below] * 100) + "\n" for below, name in (("A", "B"), ("B", "C"), ("C", "D"))
+    )
+    check = ["if not all(c in D for c in expression):", "    raise ValueError(expression)"]
+    _grows_linearly(tmp_path, lambda n: _tool(check * n + ["return eval(expression)"], chain), 100)
+
+
+def test_a_long_pattern_checked_many_times_scans_in_linear_time(tmp_path: Path) -> None:
+    check = ["if not re.fullmatch(r'[" + "0-9" * 300 + "]+', expression):", "    raise ValueError(expression)"]
+    _grows_linearly(tmp_path, lambda n: _tool(check * n + ["return eval(expression)"]), 100)
+
+
+def test_many_checks_and_calls_scan_in_linear_time(tmp_path: Path) -> None:
+    unit = ["if not set(expression) <= OPERATORS:", "    raise ValueError(expression)", "eval(expression)"]
+    _grows_linearly(tmp_path, lambda n: _tool(unit * n + ["return None"]), 500)
+
+
+def test_a_long_elif_chain_scans_in_linear_time(tmp_path: Path) -> None:
+    def source(n: int) -> str:
+        arms = [f"elif not set(extra) <= OPERATORS:\n        raise ValueError({i})" for i in range(n)]
+        return _tool(["if not set(expression) <= OPERATORS:", "    raise ValueError(expression)", *arms, "return eval(expression)"])
+
+    _grows_linearly(tmp_path, source, 100)
+
+
+def test_re_bound_by_something_other_than_its_import_is_not_read(tmp_path: Path) -> None:
+    (tmp_path / "server.py").write_text(
+        "import re as regex\nfrom mcp.server.fastmcp import FastMCP\n\nmcp = FastMCP('demo')\nre = regex.compile('x')\n\n\n"
+        "@mcp.tool()\ndef calc(expression: str) -> object:\n"
+        "    if not re.fullmatch(r'[0-9+*/() -]+', expression):\n        raise ValueError\n"
+        "    return eval(expression)\n"
+    )
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-TAINT-002"]
+
+
+def test_a_rebound_set_keeps_an_inline_set_check_reported(tmp_path: Path) -> None:
+    body = "if not set(expression) <= {'1', '+'}:\n    raise ValueError\nreturn eval(expression)"
+    assert _calc(tmp_path, body) == []
+    assert _calc(tmp_path, body, "set = lambda value: frozenset()\n") == ["AAK-TAINT-002"]
+
+
+@pytest.mark.parametrize("check", [
+    "if not all(c in allowed for c in expression):",
+    "if not set(expression) <= allowed:",
+], ids=["all", "set"])
+@pytest.mark.parametrize(("after", "reported"), [
+    # Nothing else reads the local: the `all()` check reads it from its own
+    # generator, the one nested read a local may have.
+    ("", False),
+    # Any other nested scope that reads it, even only to compare, after the
+    # call so that nothing else about the call changes.
+    ("def matches(c):\n    return c in allowed\n", True),
+    ("matches = lambda c: c in allowed\n", True),
+    ("class Box:\n    plus = '+' in allowed\n", True),
+    ("flags = [c in allowed for c in more]\n", True),
+    ("found = any(c in allowed for c in more)\n", True),
+], ids=["no other reader", "a nested def", "a lambda", "a class body", "a list comprehension", "another generator"])
+def test_a_local_allow_list_is_read_in_no_other_nested_scope(
+    tmp_path: Path, check: str, after: str, reported: bool
+) -> None:
+    body = f"allowed = set('0123456789+-')\n{check}\n    raise ValueError\nresult = eval(expression)\n{after}return result"
+    assert _calc(tmp_path, body) == (["AAK-TAINT-002"] if reported else [])
