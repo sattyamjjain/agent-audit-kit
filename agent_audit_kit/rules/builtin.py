@@ -6123,8 +6123,14 @@ _r(
         "GitHub code searches for MCP servers, it would add 69 findings, only 44 of "
         "them (64%) a "
         "raw string parameter. Nor is a logger under another name "
-        "(`_logger.info(...)`), and a `.replace(\"\\n\", ...)` or a `sanitize` call "
-        "anywhere in the function clears it, whichever value that touches."
+        "(`_logger.info(...)`). A call to a function whose name contains "
+        "`sanitize`, `strip_control` or `escape_controls` anywhere in the function "
+        "clears it, whichever value that touches, and so does sanitising code "
+        "written anywhere in it, a comment included: `.replace(\"\\r\"` or "
+        "`.replace(\"\\n\"`, `.encode(\"ascii\", \"ignore\")`, or an `re.sub(` whose "
+        "pattern begins with an escape such as `\\r` or `\\x1b`. The word "
+        "`sanitize` in a docstring, a comment or a name that is not called does "
+        "not."
     ),
 )
 

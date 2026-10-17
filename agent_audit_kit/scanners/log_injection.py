@@ -15,7 +15,8 @@ Detection is pragmatic:
     * `.replace('\\r', '').replace('\\n', '')`, or
     * `.encode('ascii', 'ignore').decode()`, or
     * a call to `re.sub` with a control-character class, or
-    * a call to a function whose name contains `sanitize` / `strip_control`.
+    * a call to a function whose name contains `sanitize`, `strip_control`
+      or `escape_controls`.
 
 References:
 - CVE-2026-6494: https://nvd.nist.gov/vuln/detail/CVE-2026-6494
@@ -41,13 +42,18 @@ _LOG_LEVELS = frozenset({
 _LOGGER_NAMES = frozenset({"logger", "log"})
 _STD_STREAMS = frozenset({"sys.stdout", "sys.stderr", "stdout", "stderr"})
 _CONSOLE_METHODS = frozenset({"log", "info", "warn", "error"})
+# What sanitising code looks like where it is written in the function.
 _SANITIZERS = re.compile(
-    r"""sanitize|strip_control|escape_controls|re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]|
+    r"""re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]|
         \.replace\s*\(\s*['"]\\r['"]|
         \.replace\s*\(\s*['"]\\n['"]|
         \.encode\s*\(\s*['"]ascii['"]\s*,\s*['"]ignore['"]""",
     re.VERBOSE | re.IGNORECASE,
 )
+# The name of a sanitising function, read from what a call calls. These words
+# were matched as text anywhere in the function, in any case, so a docstring
+# saying "Logs the unsanitized note." cleared a raw `print(note)`.
+_SANITIZER_NAME_RE = re.compile(r"sanitize|strip_control|escape_controls", re.IGNORECASE)
 
 
 def _decorator_name(node: ast.expr) -> str:
@@ -132,8 +138,20 @@ def _arg_refs_param(node: ast.AST, param_names: set[str]) -> bool:
     return False
 
 
-def _func_is_sanitizing(text: str, start: int, end: int) -> bool:
-    """Whether `text[start:end]`, a function's source, holds sanitising code."""
+def _callee_name(func: ast.expr) -> str:
+    """The last name of what a call calls: `sanitize` for `utils.sanitize(...)`."""
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    if isinstance(func, ast.Name):
+        return func.id
+    return ""
+
+
+def _func_is_sanitizing(calls: list[ast.Call], text: str, start: int, end: int) -> bool:
+    """Whether a call in the function is to a sanitising function, by its name, or
+    `text[start:end]`, the function's source, holds sanitising code."""
+    if any(_SANITIZER_NAME_RE.search(_callee_name(call.func)) for call in calls):
+        return True
     return bool(_SANITIZERS.search(text, start, end))
 
 
@@ -165,12 +183,13 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         params = {a.arg for a in node.args.args} | {a.arg for a in node.args.kwonlyargs}
         if not params:
             continue
+        calls = [c for c in ast.walk(node) if isinstance(c, ast.Call)]
         first = min(node.lineno - 1, len(lines))
         last = min(node.end_lineno or node.lineno, len(lines))
         start = line_starts[first]
-        if _func_is_sanitizing(joined, start, max(start, line_starts[last] - 1)):
+        if _func_is_sanitizing(calls, joined, start, max(start, line_starts[last] - 1)):
             continue
-        for call in (c for c in ast.walk(node) if isinstance(c, ast.Call)):
+        for call in calls:
             target = _log_target(call)
             if target is None:
                 continue

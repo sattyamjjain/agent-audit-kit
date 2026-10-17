@@ -280,6 +280,24 @@ def test_loginj_static_text_and_other_calls_stay_silent(tmp_path: Path, stmt: st
     assert _loginj(tmp_path, _LOGINJ_FN, stmt) == []
 
 
+# Verification (Low): `sanitize` was matched as text anywhere in the function, in
+# any case, so a docstring saying "Logs the unsanitized note." cleared a raw
+# print. A sanitising call is read by the name of what it calls now.
+@pytest.mark.parametrize(("stmt", "reported"), [
+    ('"""Logs the unsanitized note."""\n    print(text)', True),
+    ("# sanitize this later\n    print(text)", True),
+    ("sanitized = False\n    print(text)", True),
+    ("names = list(map(sanitize, [text]))\n    print(text)", True),
+    ("text = sanitize(text)\n    print(text)", False),
+    ("text = notes._sanitize_for_log(text)\n    print(text)", False),
+    ("text = utils.strip_control_chars(text)\n    print(text)", False),
+    ("text = escape_controls(text)\n    print(text)", False),
+    ("text = Sanitizer().clean(text)\n    print(text)", False),
+])
+def test_loginj_a_sanitising_call_is_read_by_its_name(tmp_path: Path, stmt: str, reported: bool) -> None:
+    assert bool(_loginj(tmp_path, _LOGINJ_FN, stmt)) is reported
+
+
 def test_loginj_many_tool_functions_read_in_linear_time(tmp_path: Path) -> None:
     """Each tool function's body was cut from a fresh split of the whole file, so
     6,000 tool functions took 3.1 s, growing with the square of their number."""
