@@ -197,14 +197,15 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
 # that binds MCP settings reads a body too. Any limit silences it,
 # however it is written, because a limit the check does not understand should
 # cost a missed finding, not a false one: `http.MaxBytesReader` or
-# `io.LimitReader` in the handler, a Content-Length test, a length test on what
-# was read (the body is already in memory then, but the developer chose a
-# size), and anywhere in the project `http.MaxBytesHandler`, a `.Body =`
-# reassignment through a limiting reader, echo's `BodyLimit`, chi's
-# `RequestSize`, gin's size limiter, Flask's `MAX_CONTENT_LENGTH` or a Starlette
-# middleware that names a body size. Frameworks with a default limit (Express's
-# body parsers, Fastify, aiohttp, Django, Quart, Fiber) are not read, and test
-# files serve no endpoint.
+# `io.LimitReader` in the handler, a Content-Length test, in Python a length
+# test on what was read (the body is already in memory then, but the developer
+# chose a size; Go reads no such test), and anywhere in the project
+# `http.MaxBytesHandler`, a `.Body =` reassignment through a limiting reader,
+# echo's `BodyLimit`, chi's `RequestSize`, gin's size limiter, Flask's
+# `MAX_CONTENT_LENGTH` or a Starlette middleware that names a body size.
+# Frameworks with a default limit (Express's body parsers, Fastify, aiohttp,
+# Django, Quart, Fiber) are not read: a Python file that imports one is skipped,
+# even when it only uses it as a client. Test files serve no endpoint.
 
 _MCP016 = "AAK-MCP-016"
 _MCP016_MAX_BYTES = 1_000_000

@@ -445,6 +445,9 @@ def test_nested_handlers_scan_in_linear_time(tmp_path: Path) -> None:
 def test_the_rule_states_what_it_reads() -> None:
     limitations = RULES[RULE].limitations
     assert "helper" in limitations and "reverse proxy" in limitations
+    # Each bound and skip, pinned by a test in this file.
+    for stated in ("1,000,000 bytes", "160 characters", "aiohttp", "settings segment", "compares `len(body)`"):
+        assert stated in limitations, stated
 
 
 # A child process scans each crafted file, so a quadratic path fails the test on
@@ -634,6 +637,57 @@ def test_a_crafted_file_the_parser_gives_up_on_leaves_the_rest_of_the_scan(tmp_p
     )
     assert done.returncode == 0, done.stderr
     assert done.stdout.split()[1] == "1"
+
+
+# ---------------------------------------------------------------------------
+# Stated bounds and skips, each pinned on both sides
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("size", "read"), [(1_000_000, True), (1_000_001, False)])
+def test_files_over_a_million_bytes_are_not_read(tmp_path: Path, size: int, read: bool) -> None:
+    text = GO_NETHTTP + "//"
+    text += "x" * (size - len(text) - 1) + "\n"
+    assert len(text.encode()) == size
+    assert _hits(_write(tmp_path, {"server.go": text})) == ([("server.go", 14)] if read else [])
+
+
+def _case_list(gap: int) -> str:
+    """A handler on no route that dispatches on `tools/call` in a `case` list,
+    the method's string starting ``gap`` characters after `case `."""
+    before = '"' + "x" * (gap - 4) + '", '
+    assert len(before) == gap
+    return (
+        'package mcp\n\nimport (\n\t"io"\n\t"net/http"\n)\n\n'
+        "func ServeHTTP(w http.ResponseWriter, r *http.Request) {\n\tbody, _ := io.ReadAll(r.Body)\n"
+        f'\tswitch method(body) {{\n\tcase {before}"tools/call", "z":\n\t}}\n}}\n'
+    )
+
+
+@pytest.mark.parametrize(("gap", "read"), [(160, True), (161, False)])
+def test_a_case_names_an_mcp_method_within_160_characters(tmp_path: Path, gap: int, read: bool) -> None:
+    assert _hits(_write(tmp_path, {"mcp.go": _case_list(gap)})) == ([("mcp.go", 9)] if read else [])
+
+
+GO_LEN = GO_NETHTTP.replace(
+    '\tvar req rpcRequest\n\tif err := json.NewDecoder(r.Body).Decode(&req); err != nil {\n',
+    '\tbody, err := io.ReadAll(r.Body)\n\tif err != nil || len(body) > maxBody {\n',
+)
+
+
+def test_a_go_length_test_after_the_read_is_still_reported(tmp_path: Path) -> None:
+    """Only Python counts a length test on what was read as a limit (the rule's
+    limitation says so); a Go handler that compares `len(body)` after reading
+    it whole is reported."""
+    assert GO_LEN != GO_NETHTTP
+    assert _hits(_write(tmp_path, {"server.go": GO_LEN})) == [("server.go", 13)]
+
+
+def test_a_python_file_that_imports_another_framework_as_a_client_is_skipped(tmp_path: Path) -> None:
+    """The skip is by import, not by what the file serves: a FastAPI server that
+    calls an upstream API through aiohttp is not read (stated in the limitation)."""
+    text = FASTAPI.replace("from fastapi import FastAPI, Request\n", "from fastapi import FastAPI, Request\nimport aiohttp\n")
+    assert _hits(_write(tmp_path, {"server.py": text})) == []
 
 
 def _segments_reference(path: str) -> bool:
