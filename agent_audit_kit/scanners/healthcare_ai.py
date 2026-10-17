@@ -136,7 +136,17 @@ _LOOK_BACK = 200
 
 
 def _negated(text: str, start: int) -> bool:
-    window = text[max(0, start - _LOOK_BACK):start]
+    """Whether not, never, no or n't stands among the four words before `start`, in its clause.
+
+    It reads at most `_LOOK_BACK` characters back, so a crafted run of claims
+    stays linear. A word the window cuts in two is dropped: the tail of
+    `whenever` read as `never`, and the claim after it was skipped.
+    """
+    low = max(0, start - _LOOK_BACK)
+    window = text[low:start]
+    cut = _WORD_RE.match(window) if low and text[low - 1].isascii() and text[low - 1].isalpha() else None
+    if cut:
+        window = window[cut.end():]
     last = None
     for last in _CLAUSE_END_RE.finditer(window):
         pass

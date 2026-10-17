@@ -282,6 +282,16 @@ def test_the_negation_look_back_is_200_characters(tmp_path: Path) -> None:
         assert "within 200 characters" in RULES[rule_id].limitations, rule_id
 
 
+def test_a_word_the_look_back_cuts_in_two_is_not_read(tmp_path: Path) -> None:
+    """The window began inside `whenever`, so its tail read as `never` and the
+    claim was skipped."""
+    (tmp_path / "README.md").write_text(
+        "The agent runs whenever" + " " * 195 + "automatically approve prior authorization requests.\n",
+        encoding="utf-8",
+    )
+    assert [f.rule_id for f in healthcare_ai.scan(tmp_path)[0]] == ["AAK-HEALTHCARE-AI-002"]
+
+
 # ---------------------------------------------------------------------------
 # State privacy
 # ---------------------------------------------------------------------------
