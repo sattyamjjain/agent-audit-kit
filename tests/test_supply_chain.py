@@ -1016,6 +1016,16 @@ _OLD_PINS = (
 )
 
 
+# Each package's upstream repository, for git requirements.
+_REPOS = {
+    _DORIS: "apache/doris-mcp-server",
+    _GATEWAY: "agentic-community/mcp-gateway-registry",
+    _SERENA: "oraios/serena",
+    _EXCEL: "haris-musa/excel-mcp-server",
+    _LITELLM: "BerriAI/litellm",
+}
+
+
 def _pin_ids(root: Path, rel: str, text: str) -> set[str]:
     target = root / rel
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -1094,6 +1104,41 @@ def test_a_version_pin_still_needs_a_stated_version(tmp_path: Path, rule_id: str
     assert rule_id not in _pin_ids(tmp_path, "requirements.txt", f"{name}\n")
 
 
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+@pytest.mark.parametrize("template", [
+    "git+https://github.com/{repo}@v{version}#egg={name}",
+    "-e git+https://github.com/{repo}.git@v{version}#egg={name}",
+    "{name} @ git+https://github.com/{repo}.git@v{version} ; python_version >= '3.10'",
+])
+def test_an_older_pin_reads_the_tag_of_a_git_requirement(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, template: str
+) -> None:
+    """A git requirement states no version, but its tag names the release it
+    installs. The gateway-registry and Serena checks reported a patched tag as
+    unpinned, and the other three did not read a tag below the fix."""
+    def line(version: str) -> str:
+        return template.format(repo=_REPOS[rule_id], version=version, name=name) + "\n"
+
+    assert rule_id in _pin_ids(tmp_path / "bad", "requirements.txt", line(below))
+    assert rule_id not in _pin_ids(tmp_path / "good", "requirements.txt", line(fixed))
+
+
+@pytest.mark.parametrize(("rule_id", "name", "fixed", "below"), _OLD_PINS, ids=[p[0] for p in _OLD_PINS])
+@pytest.mark.parametrize("ref", ["", "@main", "@3f2a9c1"])
+def test_a_git_requirement_without_a_version_tag_states_no_version(
+    tmp_path: Path, rule_id: str, name: str, fixed: str, below: str, ref: str
+) -> None:
+    line = f"git+https://github.com/{_REPOS[rule_id]}{ref}#egg={name}\n"
+    unpinned_reported = rule_id in (_GATEWAY, _SERENA)
+    assert (rule_id in _pin_ids(tmp_path, "requirements.txt", line)) is unpinned_reported
+
+
+def test_a_git_requirement_below_the_fix_is_reported_at_its_tag(tmp_path: Path) -> None:
+    (tmp_path / "requirements.txt").write_text("git+https://github.com/oraios/serena@v1.5.0#egg=serena-agent\n")
+    evidence = [f.evidence for f in scan(tmp_path)[0] if f.rule_id == _SERENA]
+    assert len(evidence) == 1 and evidence[0].startswith("Serena MCP toolkit referenced at '1.5.0'")
+
+
 def test_every_mention_in_an_mcp_config_is_judged(tmp_path: Path) -> None:
     """The first mention decided: a patched launch above an unpinned one hid it."""
     config = {"mcpServers": {
@@ -1113,6 +1158,9 @@ def test_every_mention_in_an_mcp_config_is_judged(tmp_path: Path) -> None:
     (["--from", "git+https://github.com/oraios/serena@v1.5.0", "serena-mcp-server"], True),
     (["--from", "git+https://github.com/oraios/serena@v1.5.2", "serena-mcp-server"], False),
     (["run", "--directory", "/src/serena", "serena-mcp-server"], True),  # a checkout of unknown version
+    # `--with` fetches another package; the command is still the checkout's.
+    (["run", "--with", "requests", "--directory", "../serena", "serena-mcp-server"], True),
+    (["--with", "requests", "--from", "serena-agent==1.5.2", "serena-mcp-server"], False),
     (["--from", "serena-agent[dashboard]==1.5.2", "serena"], False),
     (["serena-agent<1.5.2"], True),
 ])
@@ -1120,6 +1168,27 @@ def test_serena_reads_its_git_and_checkout_launches(tmp_path: Path, args: list[s
     command = "uv" if args[0] == "run" else "uvx"
     config = {"mcpServers": {"serena": {"command": command, "args": args}}}
     assert (_SERENA in _pin_ids(tmp_path, ".mcp.json", json.dumps(config))) is fires
+
+
+@pytest.mark.parametrize(("command", "args", "fires"), [
+    ("docker", ["run", "-i", "--rm", "ghcr.io/agentic-community/mcp-gateway-registry:1.0.12"], True),
+    ("docker", ["run", "-i", "--rm", "ghcr.io/agentic-community/mcp-gateway-registry:1.0.13"], False),
+    ("docker", ["run", "-i", "--rm", "ghcr.io/agentic-community/mcp-gateway-registry"], True),
+    ("docker", ["run", "-i", "--rm", "ghcr.io/agentic-community/mcp-gateway-registry-ui:1.0.0"], False),
+    ("uvx", ["--from", "git+https://github.com/agentic-community/mcp-gateway-registry@v1.0.12",
+             "mcp-gateway-registry"], True),
+    ("uvx", ["--from", "git+https://github.com/agentic-community/mcp-gateway-registry@v1.0.13",
+             "mcp-gateway-registry"], False),
+    ("uv", ["run", "--with", "requests", "mcp-gateway-registry"], True),
+])
+def test_gateway_registry_reads_its_repository_and_image_references(
+    tmp_path: Path, command: str, args: list[str], fires: bool
+) -> None:
+    """As Serena reads `oraios/serena`: a git or image reference to the project's
+    repository carries its version in its tag, and one without a tag is
+    unpinned. The check had stopped reading them, so an affected image passed."""
+    config = {"mcpServers": {"gw": {"command": command, "args": args}}}
+    assert (_GATEWAY in _pin_ids(tmp_path, ".mcp.json", json.dumps(config))) is fires
 
 
 def test_a_crafted_mention_run_scans_in_linear_time(tmp_path: Path) -> None:

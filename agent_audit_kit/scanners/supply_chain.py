@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 from pathlib import Path
@@ -32,11 +33,12 @@ from agent_audit_kit.scanners._launchers import (
 from agent_audit_kit.scanners._manifest_deps import (
     MAX_LOCKFILE_BYTES,
     MAX_MANIFEST_BYTES,
+    Declaration,
     _argv,
     _command_entries,
     declarations,
 )
-from agent_audit_kit.scanners._versions import parse_range
+from agent_audit_kit.scanners._versions import parse_range, parse_version
 
 # Known vulnerable packages: ecosystem -> name -> affected version range
 # Covers npm, Python (PyPI), and Rust (crates.io)
@@ -1040,8 +1042,43 @@ def _affected_pin(
 
     pin = _Pin(rule_id="", display=names[0], names=names, floor=floor,
                requires_version=requires_version)
-    declaration = _deciding_declaration(pin, declarations(path, text))
+    found = [_with_vcs_version(d) for d in declarations(path, text)]
+    declaration = _deciding_declaration(pin, found)
     return None if declaration is None else _stated_version(declaration.version)
+
+
+def _with_vcs_version(declaration: Declaration) -> Declaration:
+    """A git requirement with the release its tag names, as `==<tag>`.
+
+    `git+https://github.com/oraios/serena@v1.5.2#egg=serena-agent` declares no
+    version, but its tag names the release it installs. Read as unversioned,
+    it made the gateway-registry and Serena checks, which report an unpinned
+    reference, report the patched tag, and the other three, which report only
+    a stated version, miss a tag below the fix. A branch or a commit names no
+    release, so such a requirement stays unversioned.
+    """
+    if declaration.version or declaration.dialect != "pep440":
+        return declaration
+    tag = _vcs_tag_version(declaration.text)
+    return declaration if tag is None else dataclasses.replace(declaration, version="==" + tag)
+
+
+def _vcs_tag_version(requirement: str) -> str | None:
+    """The version a VCS requirement's ref names, or None.
+
+    pip takes the ref after the last `@` of the URL's last path segment, so the
+    `git@` of an ssh URL is never read as one; the `#egg=` fragment and an
+    environment marker are not part of it.
+    """
+    url = requirement.split(";", 1)[0].partition("#")[0].strip()
+    if "://" not in url:
+        return None
+    segment = url.rsplit("/", 1)[-1]
+    if "@" not in segment:
+        return None
+    ref = segment.rsplit("@", 1)[1]
+    ref = ref[1:] if ref[:1] in ("v", "V") else ref
+    return ref if parse_version(ref) is not None else None
 
 
 def _stated_version(spec: str) -> str:
@@ -1095,6 +1132,11 @@ def _check_doris_mcp_pin(project_root: Path, scanned_files: set[str]) -> list[Fi
 
 _MCP_GATEWAY_REGISTRY_PATCHED = (1, 0, 13)
 _MCP_GATEWAY_REGISTRY_NAMES = ("mcp-gateway-registry",)
+# The project's repository, read as Serena's is (`_SERENA_REPO_RE`): a git URL
+# or an image under it carries its version in its tag.
+_MCP_GATEWAY_REGISTRY_REPO_RE = re.compile(
+    r"(?<![\w-])agentic-community/mcp-gateway-registry(?![\w-])", re.IGNORECASE
+)
 
 
 def _command_lines(path: Path, text: str) -> list[list[str]]:
@@ -1124,15 +1166,18 @@ def _runs_unversioned(path: Path, text: str, names: tuple[str, ...]) -> bool:
 
     `uv run --directory ../serena serena-mcp-server` runs the entry point of a
     checkout of unknown version, and a declaration cannot see it: `uv run`
-    fetches nothing. A command line that fetches a package is skipped, because
-    the command it then runs is that package's (`uvx --from <spec> serena`),
-    and the declarations judge `<spec>`. This replaces reading every mention of
-    the name in the text, which would report the command of a patched
-    `uvx --from x==1.0.13 x` as unpinned, and a server merely named `x`.
+    fetches nothing. A command line that fetches the package it runs is
+    skipped, because the command it then runs is that package's (`uvx --from
+    <spec> serena`), and the declarations judge `<spec>`. A package `--with`
+    adds is not the one that runs, so `uv run --with requests --directory
+    ../serena serena-mcp-server`, skipped for fetching `requests`, is read
+    again. This replaces reading every mention of the name in the text, which
+    would report the command of a patched `uvx --from x==1.0.13 x` as
+    unpinned, and a server merely named `x`.
     """
     wanted = {n.lower() for n in names}
     for argv in _command_lines(path, text):
-        if launched_packages(argv):
+        if any(not launched.extra for launched in launched_packages(argv)):
             continue
         words = [w for token in argv
                  for w in (shell_tokens(token) if any(c.isspace() for c in token) else [token])]
@@ -1173,8 +1218,12 @@ def _check_mcp_gateway_registry_pin(project_root: Path, scanned_files: set[str])
         if text is None:
             continue
         raw = _affected_pin(path, text, _MCP_GATEWAY_REGISTRY_NAMES, _MCP_GATEWAY_REGISTRY_PATCHED)
-        if raw is None and _runs_unversioned(path, text, _MCP_GATEWAY_REGISTRY_NAMES):
-            raw = ""
+        if raw is None and path.name.lower() not in _LOCKFILES:
+            raw = _repository_reference_below(
+                text, _MCP_GATEWAY_REGISTRY_REPO_RE, _MCP_GATEWAY_REGISTRY_PATCHED
+            )
+            if raw is None and _runs_unversioned(path, text, _MCP_GATEWAY_REGISTRY_NAMES):
+                raw = ""
         if raw is not None:
             rel = str(path.relative_to(project_root))
             scanned_files.add(rel)
@@ -1197,7 +1246,9 @@ _SERENA_NAMES = ("serena-agent", "serena-mcp-server")
 # one with no tag is unpinned. Bounded, so `oraios/serena-x` is another repo.
 _SERENA_REPO_RE = re.compile(r"(?<![\w-])oraios/serena(?![\w-])", re.IGNORECASE)
 # A reference's version, `@v1.5.2` or `:1.5.2`, read in a fixed window after it.
-_REFERENCE_VERSION_RE = re.compile(r"\s*(?:[@:]\s*)?v?([0-9][\w.\-]*)?")
+# A git URL may end the repository in `.git` before its tag (`serena.git@v1.5.2`),
+# which read as a reference with no tag.
+_REFERENCE_VERSION_RE = re.compile(r"(?:\.git)?\s*(?:[@:]\s*)?v?([0-9][\w.\-]*)?")
 
 
 def _repository_reference_below(
