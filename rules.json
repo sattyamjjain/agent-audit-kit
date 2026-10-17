@@ -9495,7 +9495,7 @@
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "Compares the tool definitions written in the MCP config files with `.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` at run time is never compared. The hash covers a tool's name, description and `inputSchema` only, so a change to its `annotations` (for example flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` is not a change here.",
+      "limitations": "Compares the tool definitions written in the MCP config files with `.agent-audit-kit/tool-pins.json`; what a server returns from `tools/list` at run time is never compared. The hash covers a tool's name, description and `inputSchema` only, so a change to its `annotations` (for example flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` is not a change here. A pin file over 1 MB, or one nested too deep for Python's JSON parser, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -9522,7 +9522,7 @@
       "incident_references": [
         "DEADBUGZ-2026-09"
       ],
-      "limitations": "Counts only tools declared in a server's `tools` array in a config file. A server added with just a `command`, whose tools arrive at run time through `tools/list`, adds no pinned tool, and neither does a tool listed under `toolDescriptions`, so a new server or a new tool of those shapes is not reported here.",
+      "limitations": "Counts only tools declared in a server's `tools` array in a config file. A server added with just a `command`, whose tools arrive at run time through `tools/list`, adds no pinned tool, and neither does a tool listed under `toolDescriptions`, so a new server or a new tool of those shapes is not reported here. A pin file over 1 MB, or one nested too deep for Python's JSON parser, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI02",
         "ASI04"
@@ -9547,7 +9547,7 @@
       "cve_references": [],
       "description": "A previously pinned tool was removed from an MCP server. This could indicate covering tracks after an attack.",
       "incident_references": [],
-      "limitations": "Counts only tools declared in a server's `tools` array in a config file, because nothing else is pinned. A server declared with just a `command`, whose tools arrive at run time through `tools/list`, has no pinned tool, and neither does a tool listed under `toolDescriptions`, so removing either is not reported here.",
+      "limitations": "Counts only tools declared in a server's `tools` array in a config file, because nothing else is pinned. A server declared with just a `command`, whose tools arrive at run time through `tools/list`, has no pinned tool, and neither does a tool listed under `toolDescriptions`, so removing either is not reported here. A pin file over 1 MB, or one nested too deep for Python's JSON parser, is not read: the scan reports it as incomplete and compares nothing.",
       "owasp_agentic_references": [
         "ASI04"
       ],

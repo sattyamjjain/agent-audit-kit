@@ -3231,6 +3231,8 @@ _r(
         "and `inputSchema` only, so a change to its `annotations` (for example "
         "flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` "
         "is not a change here."
+        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
 
@@ -3258,6 +3260,8 @@ _r(
         "`tools/list`, adds no pinned tool, and neither does a tool listed under "
         "`toolDescriptions`, so a new server or a new tool of those shapes is not "
         "reported here."
+        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
 
@@ -3282,6 +3286,8 @@ _r(
         "whose tools arrive at run time through `tools/list`, has no pinned tool, "
         "and neither does a tool listed under `toolDescriptions`, so removing "
         "either is not reported here."
+        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
 

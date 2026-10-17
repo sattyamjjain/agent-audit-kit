@@ -10,6 +10,7 @@ before opening, the size before reading, and never reads past the cap.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -130,28 +131,30 @@ _TARGETS = (
     "skills/b/skill.json", "hooks/hooks.json", ".aak/sessions/s.json", "x.session.json",
     "agent-card.json", ".agent-audit-kit.yml", ".aak/composition-boundaries.yaml",
     "flows/f.json", "Cargo.toml", ".claude/routines/r.json", "AGENTS.md", "CLAUDE.md",
+    ".agent-audit-kit/tool-pins.json",
 )
 
 _SCAN = textwrap.dedent("""
-    import resource, sys, time
+    import json, resource, sys, time
     from pathlib import Path
     from agent_audit_kit.engine import run_scan
     started = time.perf_counter()
     result = run_scan(Path(sys.argv[1]), strict_loading=True)
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-    print(time.perf_counter() - started, rss, len(result.scanner_failures))
+    print(json.dumps([time.perf_counter() - started, rss, [f.evidence for f in result.scanner_failures]]))
 """)
 
 
-def _scan_in_subprocess(project: Path, timeout: float) -> tuple[float, int, int]:
+def _scan_in_subprocess(project: Path, timeout: float) -> tuple[float, int, list[str]]:
     """Run a whole scan in a child, so a scanner that blocks fails the test on
-    the timeout instead of hanging the suite."""
+    the timeout instead of hanging the suite. Returns the scanner failures'
+    evidence."""
     env = {**os.environ, "PYTHONPATH": str(ROOT), "AAK_TOXIC_FLOW": "1"}
     out = subprocess.run([sys.executable, "-c", _SCAN, str(project)], capture_output=True,
                          text=True, timeout=timeout, env=env, cwd=project)
     assert out.returncode == 0, out.stderr[-2000:]
-    seconds, rss, failures = out.stdout.split()
-    return float(seconds), int(rss), int(failures)
+    seconds, rss, failures = json.loads(out.stdout)
+    return float(seconds), int(rss), failures
 
 
 def _link_everything(project: Path, target: Path) -> None:
@@ -168,7 +171,7 @@ def test_a_project_of_fifo_symlinks_scans_and_no_scanner_waits(tmp_path: Path) -
     project = tmp_path / "proj"
     _link_everything(project, fifo)
     seconds, _rss, failures = _scan_in_subprocess(project, timeout=240)
-    assert failures == 0
+    assert failures == []
     assert seconds < 60
 
 
@@ -183,6 +186,8 @@ def test_a_project_of_symlinks_to_a_200_mb_file_reads_none_of_it(tmp_path: Path)
     _link_everything(project, big)
     seconds, rss, failures = _scan_in_subprocess(project, timeout=240)
     rss_mb = rss / (1 << 20) if sys.platform == "darwin" else rss / (1 << 10)
-    assert failures == 0
+    # A file over its reader's cap is skipped silently, but the pin file is one
+    # the user made to be compared, so the pin-drift check reports it unread.
+    assert len(failures) == 1 and "PinFileError" in failures[0] and "larger than 1,000,000 bytes" in failures[0]
     assert rss_mb < 200, f"peak RSS {rss_mb:.0f} MB: a scanner read the file"
     assert seconds < 60

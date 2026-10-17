@@ -944,9 +944,11 @@ _PATH_TAKING_HELPERS = {"loads_json", "loads_jsonc", "loads_toml", "load_yaml", 
 def test_no_scanner_calls_a_recursive_parser_directly() -> None:
     """A scanner that calls one bypasses the refusal, so one crafted file takes
     the scanner down again. `parse_python` may take None from a caller that
-    contains the overflow itself with `refusing_overflow`."""
+    contains the overflow itself with `refusing_overflow`. pinning.py is read
+    by the pin-drift scanner during every scan with a pin file."""
     offenders: list[str] = []
-    for path in sorted((ROOT / "agent_audit_kit" / "scanners").glob("*.py")):
+    scanners = sorted((ROOT / "agent_audit_kit" / "scanners").glob("*.py"))
+    for path in [*scanners, ROOT / "agent_audit_kit" / "pinning.py"]:
         if path.name == "_helpers.py":
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
