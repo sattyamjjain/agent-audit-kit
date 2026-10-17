@@ -303,7 +303,7 @@ def test_the_rule_states_what_it_reads() -> None:
     assert "AAK-MCPWN-001 reports is left to that rule" in rule.limitations
     # Each bound, pinned by a test in this file or in test_http_routes.py.
     for stated in ("512,000 bytes", "first 200 characters", "longer than 200", "within 200 characters before",
-                   "512 characters of its `/`"):
+                   "512 characters of its `/`", "within 200 characters of its parameter list"):
         assert stated in rule.limitations, stated
 
 
@@ -422,7 +422,8 @@ def test_the_lookup_rule_states_what_it_reads() -> None:
     assert "TypeScript, JavaScript and Python handlers are not read" in rule.limitations
     # Each bound, pinned by a test in this file.
     for stated in ("512,000 bytes", "first 1,000", "within 400", "first 200 characters", "within 200 characters of",
-                   "within 200 characters after", "within 200 characters before", "top-level `if`"):
+                   "within 200 characters after", "within 200 characters before", "top-level `if`",
+                   "within 200 characters of its parameter list"):
         assert stated in rule.limitations, stated
 
 
@@ -528,10 +529,10 @@ _CHILD = (
 )
 
 
-def _scan_in_child(tmp_path: Path, label: str, text: str) -> tuple[float, int]:
+def _scan_in_child(tmp_path: Path, label: str, text: str, name: str = "router.go") -> tuple[float, int]:
     root = tmp_path / label
     root.mkdir()
-    (root / "router.go").write_text(text, encoding="utf-8")
+    (root / name).write_text(text, encoding="utf-8")
     assert len(text) < 512_000, "under the scanner's 512 KB cap"
     package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
     env = {**os.environ, "PYTHONPATH": str(package_root)}
@@ -563,6 +564,23 @@ def test_nested_handlers_with_a_late_not_found_scan_in_linear_time(tmp_path: Pat
     text = head + level * 4_250 + "c.JSON(404,nil)\nreturn}})\n" * 4_250 + "}\n"
     seconds, _count = _scan_in_child(tmp_path, "nested", text)
     assert seconds < 5.0
+
+
+def _arrowless_handlers(size: int) -> str:
+    """Nested route calls whose handler argument starts `(x)` with no `=>`."""
+    opener, closer = 'app.get("/mcp",(x)(', "))"
+    k = (size - 200) // (len(opener) + len(closer))
+    return "const app = express(); // mcp\n" + opener * k + "h" + closer * k + ";\napp.post('/mcp', requireAuth, h);\n"
+
+
+def test_handlers_with_no_arrow_after_their_parentheses_scan_in_linear_time(tmp_path: Path) -> None:
+    """Each handler argument starting `(x)` was searched for `=>` to its end, and
+    each one holds the routes nested in it: 511 KB took 5.8 seconds of CPU,
+    against 0.3 on main."""
+    t_small, _ = _scan_in_child(tmp_path, "small", _arrowless_handlers(51_000), name="server.js")
+    t_large, _ = _scan_in_child(tmp_path, "large", _arrowless_handlers(511_000), name="server.js")
+    assert t_large < 5.0
+    assert t_large < 25 * t_small + 0.25, (t_small, t_large)
 
 
 def _methods_and_routes(k: int, same: bool) -> str:
@@ -687,6 +705,39 @@ def test_a_group_assigned_200_characters_before_the_call_is_followed(
         f'\t{assign}r.Group("/", authRequired())\n\tg.GET("/mcp", h)\n}}\n'
     )
     assert _one(tmp_path, "router.go", text) == ([] if followed else [("router.go", 5)])
+
+
+@pytest.mark.parametrize(("gap", "fires"), [(198, True), (199, False)])
+def test_an_arrow_handler_is_inline_when_its_arrow_follows_within_200_characters(
+    tmp_path: Path, gap: int, fires: bool,
+) -> None:
+    """The `=>` starts ``gap`` characters after the parameter list's `)`: read as
+    an inline handler it delegates like its authenticated twin; past the window
+    it is a long expression, and that is not compared."""
+    annotation = ": " + "T" * (gap - 4) + " "
+    text = (
+        'const app = new Hono();\napp.post("/mcp", bearerAuth({ token }), (c) => transport.handleRequest(c));\n'
+        f'app.get("/mcp", (c){annotation}=> transport.handleRequest(c));\n'
+    )
+    line = text.splitlines()[2]
+    assert line.index("=>") - line.index(")") == gap
+    assert _one(tmp_path, "hono.ts", text) == ([("hono.ts", 3)] if fires else [])
+
+
+@pytest.mark.parametrize(("gap", "fires"), [(199, True), (200, False)])
+def test_a_func_literal_is_read_when_its_body_opens_within_200_characters(
+    tmp_path: Path, gap: int, fires: bool,
+) -> None:
+    """The `{` stands ``gap`` characters after the parameter list's `)`."""
+    result = " " + "T" * (gap - 3) + " "
+    text = (
+        'package x\nfunc R(r *gin.Engine) {\n\tr.POST("/mcp", AuthRequired(), func(c *gin.Context) {\n'
+        '\t\tmcp.ServeHTTP(c)\n\t})\n'
+        f'\tr.GET("/mcp", func(c *gin.Context){result}{{\n\t\tmcp.ServeHTTP(c)\n\t}})\n}}\n'
+    )
+    line = text.splitlines()[5]
+    assert line.index("{") - line.index(")") == gap
+    assert _one(tmp_path, "router.go", text) == ([("router.go", 6)] if fires else [])
 
 
 _MISS_IF = "\tif err != nil || adapter == nil {"

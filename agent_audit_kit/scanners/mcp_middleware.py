@@ -591,7 +591,10 @@ def _inline_body(
     Arrows and `function` expressions in TS/JS, func literals in Go. An arrow
     with an expression body (`(c) => transport.handleRequest(c)`) has that
     expression as its body. A literal whose brackets do not close is inline
-    with no body to read.
+    with no body to read. An arrow's `=>`, and a function's `{`, are looked for
+    within `_NAME_WINDOW` characters of its parameter list, where they stand
+    (a return type comes between): searching to the end of the argument read
+    the routes nested in it once per level, 5.8 seconds of CPU at 511 KB.
     """
     text = index.text
     pos = _skip_blank(text, start, end)
@@ -617,7 +620,7 @@ def _inline_body(
                 close = index.close.get(pos)
                 if close is None or close >= end:
                     return False, None, params
-                arrow = text.find("=>", close, end)
+                arrow = text.find("=>", close, min(end, close + _NAME_WINDOW))
                 between = text[close + 1:arrow] if arrow >= 0 else ""
                 if arrow < 0 or any(c in between for c in "({;"):
                     return False, None, params
@@ -636,7 +639,7 @@ def _inline_body(
             return True, ((pos + 1, body_close) if body_close is not None else None), params
     if close is None:
         return True, None, params
-    brace = text.find("{", close, end)
+    brace = text.find("{", close, min(end, close + _NAME_WINDOW))
     body_close = index.close.get(brace) if brace >= 0 else None
     return True, ((brace + 1, body_close) if body_close is not None else None), params
 
