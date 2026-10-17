@@ -20,7 +20,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, find_line_number, make_finding, sub_comments
+from ._helpers import blank_js_comments, in_skip_dir, find_line_number, make_finding, sub_comments
 
 _MCPFRAME_PATCHED = (0, 2, 22)
 _NEXT_AI_DRAW_PATCHED = (0, 4, 15)
@@ -55,12 +55,15 @@ _BODY_CONCAT_RE = re.compile(
 # ends the statement there: a `;`, a line break, or the `}` or `)` that closes
 # the handler. The `.toString(...)` arguments are one character class rather
 # than `[^)]*`, which read on to the next `)` from every `.toString(` and made a
-# file of them quadratic.
+# file of them quadratic. It is matched against the code with comments blanked
+# (a comment after the statement hid its line break, and a commented-out one
+# counted), and each name stands on its own, a leading underscore allowed
+# (`this._body`), so `metadata += chunk` is not `data += chunk`.
 _STR_ACCUMULATE_RE = re.compile(
     r"""
     (?:
-        (?:body|data|buf|chunks)\s*\+=\s*\w+(?:\.toString\([\w'".,\s-]*\))?[ \t]*(?:[;})\r\n]|$)  # body += chunk
-      | (?:body|data|buf|chunks)\.push\s*\(\s*\w+\s*\)                    # chunks.push(chunk)
+        (?<![\w$])_?(?:body|data|buf|chunks)\s*\+=\s*\w+(?:\.toString\([\w'".,\s-]*\))?[ \t]*(?:[;})\r\n]|$)  # body += chunk
+      | (?<![\w$])_?(?:body|data|buf|chunks)\.push\s*\(\s*\w+\s*\)                    # chunks.push(chunk)
     )
     """,
     re.VERBOSE,
@@ -150,7 +153,7 @@ def _check_body_accumulation(project_root: Path, scanned: set[str]) -> list[Find
             continue
         if "readRequestBody" not in text and not _BODY_CONCAT_RE.search(text):
             continue
-        if not _STR_ACCUMULATE_RE.search(text):
+        if not _STR_ACCUMULATE_RE.search(blank_js_comments(text)):
             continue
         # Check for size guard in code (not comments) — the documented
         # safe pattern. Strip // and /* */ comments so "no Content-Length

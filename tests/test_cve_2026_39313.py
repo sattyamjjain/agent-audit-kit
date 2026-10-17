@@ -77,6 +77,25 @@ def test_an_accumulation_without_a_semicolon_fires(tmp_path: Path, handler: str)
     assert any(f.rule_id == "AAK-MCPFRAME-001" for f in findings)
 
 
+@pytest.mark.parametrize(("handler", "fires"), [
+    # A comment after a semicolon-free accumulation hid its line break.
+    ("req.on('data', (chunk) => {\n    buf += chunk // keep appending\n  })", True),
+    ("req.on('data', (chunk) => {\n    body += chunk /* more to come */\n  })", True),
+    # A commented-out accumulation is not one.
+    ("req.on('data', (chunk) => {\n    // body += chunk\n    stream.write(chunk)\n  })", False),
+    # Only the names the limitation gives: `metadata` ends in `data`.
+    ("req.on('data', (chunk) => { metadata += chunk; })", False),
+    ("req.on('data', (chunk) => { metadata.push(chunk) })", False),
+    ("req.on('data', (chunk) => { this.chunks.push(chunk) })", True),
+    ("req.on('data', (chunk) => { this._body += chunk; })", True),
+    ("req.on('data', (chunk) => { meta_data += chunk; })", False),
+])
+def test_the_accumulation_is_read_as_code(tmp_path: Path, handler: str, fires: bool) -> None:
+    (tmp_path / "transport.ts").write_text(_READER.format(handler=handler), encoding="utf-8")
+    findings, _ = transport_limits.scan(tmp_path)
+    assert any(f.rule_id == "AAK-MCPFRAME-001" for f in findings) is fires
+
+
 def test_a_capped_reader_without_semicolons_is_quiet(tmp_path: Path) -> None:
     handler = (
         "req.on('data', (chunk) => {\n"
