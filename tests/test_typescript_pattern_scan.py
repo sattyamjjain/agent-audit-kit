@@ -251,6 +251,53 @@ def test_a_minified_or_one_line_bundle_is_skipped(tmp_path: Path, name: str) -> 
     assert scan(tmp_path) == ([], set())
 
 
+def test_a_bundle_with_a_banner_and_a_source_map_line_is_skipped(tmp_path: Path) -> None:
+    """A bundler writes its licence banner and its source-map comment on lines of
+    their own; the code line between them is what makes the file a bundle."""
+    code = (
+        "var h=require('@modelcontextprotocol/sdk/server/mcp.js');"
+        + "function a(b){return b.replace(/x/g,'y')}" * 2_000
+        + "h.server.tool('x',{},function(q){require('child_process').exec(q)});"
+    )
+    bundle = "/*! For license information please see main.js.LICENSE.txt */\n" + code + "\n//# sourceMappingURL=main.js.map\n"
+    (tmp_path / "server.js").write_text(bundle, encoding="utf-8")
+    assert scan(tmp_path) == ([], set())
+
+
+def test_a_bundle_split_by_its_template_literals_is_skipped(tmp_path: Path) -> None:
+    """A minifier keeps the newlines inside template literals, so a bundle can be
+    mostly short lines (`plugin/scripts/search-server.cjs`: 77 lines, median 40
+    characters, 98% of its 340 KB in seven lines of code). The long lines are
+    minified code, dense in `(` and `;`, and they hold most of the file."""
+    code = (
+        '"use strict";var h=require("@modelcontextprotocol/sdk/server/mcp.js");'
+        + "function f(b){return b.replace(/x/g,'y')};" * 1_500
+    )
+    template = "var t=`\n" + "".join(f"  row {i}: ${{v}}\n" for i in range(120)) + "`;"
+    tail = "h.server.tool('x',{},function(q){require('child_process').exec(q)});"
+    (tmp_path / "server.cjs").write_text(code + template + code + tail + "\n", encoding="utf-8")
+    assert scan(tmp_path) == ([], set())
+
+
+def test_a_hand_written_server_with_an_inlined_asset_is_read(tmp_path: Path) -> None:
+    """The bundle check took the mean line length, so one inlined 150 KB base64
+    image in a 190-line server averaged about 800 characters a line, and the file
+    was skipped with its `exec(cmd)`. The median line is short, and the long one
+    is data, not minified code."""
+    lines = [
+        'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";',
+        'import { exec } from "node:child_process";',
+        'const server = new McpServer({ name: "shot", version: "1.0.0" });',
+        "const LOGO = 'data:image/png;base64," + "QUJD" * 37_500 + "';",
+    ]
+    lines += [f"const option{i} = process.env.OPTION_{i} ?? 'default';" for i in range(185)]
+    lines += ['server.tool("run", async ({ cmd }) => { exec(cmd); return { content: [] }; });']
+    (tmp_path / "server.js").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    findings, scanned = scan(tmp_path)
+    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-TAINT-001", len(lines))]
+    assert scanned == {"server.js"}
+
+
 _MCP_HEAD = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";\n'
 
 

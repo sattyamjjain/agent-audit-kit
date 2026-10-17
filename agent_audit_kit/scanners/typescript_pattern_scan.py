@@ -256,13 +256,35 @@ def _child_process_sink(source: str) -> re.Pattern[str]:
 
 def _is_bundle(name: str, source: str) -> bool:
     """A minified file or a bundler's output, which no one wrote and no finding
-    in it can point anyone at: `*.min.js` and the like, or more than 10 KB with
-    lines over 500 characters long on average. `dist/`, `build/` and `out/` are
-    skipped already, but `public/js/server.bundle.min.js` was read, and its one
-    line gave AAK-TAINT-001 and -002."""
+    in it can point anyone at. `dist/`, `build/` and `out/` are skipped already,
+    but `public/js/server.bundle.min.js` was read, and its one line gave
+    AAK-TAINT-001 and -002. A file is a bundle when its name says so
+    (`*.min.js` and the like), or when it is over 10 KB and either its median
+    non-blank line is over 500 characters long or most of it is minified code:
+    lines over 5,000 characters, in which `(` and `;` make up at least 1%.
+
+    The check took the mean line length, so one inlined 150 KB base64 image in
+    a 190-line hand-written server averaged about 800 characters a line, and the
+    file lost its `exec(cmd)` finding. The median alone would miss a bundle whose
+    minifier kept the newlines inside template literals: 77 lines, median 40
+    characters, 98% of its 340 KB in seven lines of code. In the 4,971 files of
+    the JavaScript measurement, long lines of code ran 2.5% to 6% `(` and `;`,
+    and long lines of data at most 0.2%.
+    """
     if ".min." in name.lower():
         return True
-    return len(source) > 10_000 and len(source) > 500 * (source.count("\n") + 1)
+    if len(source) <= 10_000:
+        return False
+    lines = [line for line in source.splitlines() if line.strip()]
+    lengths = sorted(map(len, lines))
+    if lengths and lengths[len(lengths) // 2] > 500:
+        return True
+    long_lines = [line for line in lines if len(line) > 5_000]
+    long_size = sum(map(len, long_lines))
+    if long_size * 2 <= len(source):
+        return False
+    punctuation = sum(line.count("(") + line.count(";") for line in long_lines)
+    return punctuation * 100 >= long_size
 
 
 def _scan_file(
