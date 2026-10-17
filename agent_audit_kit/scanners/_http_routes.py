@@ -617,6 +617,9 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
     # the list finds.
     params = list(_GO_REQUEST_PARAM_RE.finditer(text))
     param_starts = [p.start() for p in params]
+    # Where each signature walk ended, kept for the points it passed: see
+    # `_go_body_open`.
+    walked: dict[int, int] = {}
     for m in _GO_FUNC_RE.finditer(text):
         if not index.in_code(m.start()):
             continue
@@ -646,7 +649,7 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
         if i == len(params) or param_starts[i] >= params_close:
             continue
         param = params[i]
-        body = _go_body_open(index, params_close + 1)
+        body = _go_body_open(index, params_close + 1, walked)
         if body is None:
             continue
         kind = _GO_KINDS[param.group(2).lstrip("*").strip().split(".")[0]]
@@ -654,27 +657,53 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
     return handlers
 
 
-def _go_body_open(index: CodeIndex, pos: int) -> int | None:
+def _go_body_open(index: CodeIndex, pos: int, walked: dict[int, int]) -> int | None:
+    """The `{` that opens the body of the signature whose parameter list ends
+    just before ``pos``: the walk to the end of the line steps over bracketed
+    groups (a result list) and gives up at `,`, `;`, `=` or a `(` that never
+    closes.
+
+    The walk from a point on a line always ends the same way, so ``walked``
+    keeps its end, as an offset or -1 for none, for each point it passed just
+    after a `)`, and a later walk stops at the first such point. Those are the
+    only points where two walks meet: a walk lands on a point another one
+    passed either where it starts, just after its parameter list's `)`, or
+    where one of the two jumped a group and the other stepped onto it, again
+    just after a `)`. So each character is walked once. Walking every
+    signature to the line end on its own stepped past every func literal after
+    it on that line: 10,700 bodiless literals on one 256 KB line took 26
+    seconds. The line end comes from the newline offsets by bisection;
+    searching the text for it from every literal read the rest of the line
+    once each as well (84,000 on one 4 MB line took 8.6 seconds).
+    """
     text = index.text
-    # The first newline at or after ``pos``, by bisection over the file's
-    # newlines: searching for it from every func literal on one long line read
-    # the rest of the line once per literal (84,000 on one 4 MB line took 8.6 s).
     i = bisect_left(index._newlines, pos)
     end = index._newlines[i] if i < len(index._newlines) else len(text)
+    passed: list[int] = []
+    found = -1
     while pos < end:
+        if text[pos - 1] == ")":
+            known = walked.get(pos)
+            if known is not None:
+                found = known
+                break
+            passed.append(pos)
         ch = text[pos]
         if ch == "{":
-            return pos if pos in index.close else None
+            found = pos if pos in index.close else -1
+            break
         if ch == "(":
             close = index.close.get(pos)
             if close is None:
-                return None
+                break
             pos = close + 1
             continue
         if ch in ",;=":
-            return None
+            break
         pos += 1
-    return None
+    for point in passed:
+        walked[point] = found
+    return found if found >= 0 else None
 
 
 # ---------------------------------------------------------------------------

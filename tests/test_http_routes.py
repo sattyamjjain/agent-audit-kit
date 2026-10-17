@@ -271,15 +271,23 @@ def _go_handlers_in_child(tmp_path: Path, text: str) -> tuple[float, int]:
     return float(seconds), int(found)
 
 
-def test_func_literals_on_one_line_find_their_bodies_in_linear_time(tmp_path: Path) -> None:
-    """Each func literal looked for the end of its line from where it stood, so a
-    line of them read the rest of the line once each: 84,000 on one line (4 MB)
-    took 8.6 seconds, against 0.6 one per line."""
-    unit = "func(w http.ResponseWriter, r *http.Request){},"
-    one_line = "package main\nvar hs = []interface{}{" + unit * 84_000 + "}\n"
-    t_line, found = _go_handlers_in_child(tmp_path, one_line)
-    t_lines, found_lines = _go_handlers_in_child(tmp_path, one_line.replace("{},", "{},\n"))
-    assert found == found_lines == 84_000
+@pytest.mark.parametrize(("unit", "k", "found"), [
+    ("func(w http.ResponseWriter, r *http.Request){},", 84_000, 84_000),
+    ("func(r *http.Request) T ", 10_700, 0),
+], ids=["bodies", "no-bodies"])
+def test_func_literals_on_one_line_find_their_bodies_in_linear_time(
+    tmp_path: Path, unit: str, k: int, found: int,
+) -> None:
+    """Each func literal looked for the end of its line from where it stood: 84,000
+    with bodies on one line (4 MB) took 8.6 seconds, against 0.6 one per line.
+    Without bodies the walk from each one's `)` toward the line end, which skips
+    bracketed groups and stops only at `{`, `,`, `;` or `=`, stepped past every
+    literal after it: 10,700 on one line (256 KB) took 26 seconds, against 0.02
+    one per line."""
+    one_line = "package main\nvar hs = []interface{}{" + unit * k + "}\n"
+    t_line, found_line = _go_handlers_in_child(tmp_path, one_line)
+    t_lines, found_lines = _go_handlers_in_child(tmp_path, one_line.replace(unit, unit + "\n"))
+    assert found_line == found_lines == found
     assert t_line < 5.0
     assert t_line < 4 * t_lines + 0.25, (t_lines, t_line)
 
