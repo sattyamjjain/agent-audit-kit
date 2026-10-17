@@ -446,7 +446,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _CYCLE_HEAD = "import requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('d')\n"
 
 
-def _analyze_in_child(source: str) -> tuple[list[tuple[object, ...]], float]:
+def _analyze_in_child(source: str, timeout: float = 60) -> tuple[list[tuple[object, ...]], float]:
     """analyze_python's sites for `source` and its CPU time, from a child."""
     code = (
         "import json, sys, time\n"
@@ -458,7 +458,7 @@ def _analyze_in_child(source: str) -> tuple[list[tuple[object, ...]], float]:
     )
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(filter(None, [str(_REPO_ROOT), os.environ.get("PYTHONPATH")])))
     proc = subprocess.run(
-        [sys.executable, "-c", code], input=source, capture_output=True, text=True, timeout=60, env=env,
+        [sys.executable, "-c", code], input=source, capture_output=True, text=True, timeout=timeout, env=env,
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     sites, seconds = json.loads(proc.stdout)
@@ -994,6 +994,31 @@ def test_an_augmented_chain_is_read_in_linear_time() -> None:
     assert 9.5 < len(_augmented(10_000)) / len(_augmented(1_000)) < 10.5
     assert [s.tainted for s in analyze_python(_augmented(3))] == [False]
     _grows_linearly(lambda: analyze_python(_augmented(1_000)), lambda: analyze_python(_augmented(10_000)))
+
+
+# A name bound many times, or read at many places. Every read of a name looped
+# over all of its bindings, once per read and depth, so a name bound n times and
+# read n times cost n squared. `url = url + part` 4,000 times (84 KB) took 7
+# seconds and 24,000 times (504 KB) more than six minutes.
+_REBOUND = {
+    "rebound": lambda n: "    part = 'x'\n    url = 'https://'\n" + "    url = url + part\n" * n,
+    "augmented-rebound": lambda n: (
+        "    part = 'x'\n    url = 'https://'\n" + "    url += part\n    url = url + part\n" * (n // 2)
+    ),
+    "loop-rebound": lambda n: "    url = 'https://'\n" + "    for url in [url]:\n        pass\n" * (n // 2),
+    "read-often": lambda n: "    url = 'https://a/'\n" * (n // 2) + "    requests.get(url)\n" * (n // 2),
+}
+_REBOUND_LINES = {"rebound": 8_000, "augmented-rebound": 12_000, "loop-rebound": 12_000, "read-often": 22_000}
+
+
+@pytest.mark.parametrize("shape", sorted(_REBOUND))
+def test_a_name_bound_or_read_many_times_is_judged_once_per_depth(shape: str) -> None:
+    body = _REBOUND[shape](_REBOUND_LINES[shape]) + "    return requests.get(url).text\n"
+    source = _CYCLE_HEAD + "@mcp.tool()\ndef t(host: str) -> str:\n" + body
+    assert len(source) < 512_000
+    sites, seconds = _analyze_in_child(source, timeout=30)
+    assert sites and not any(site[2] for site in sites)
+    assert seconds < 5.0
 
 
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:

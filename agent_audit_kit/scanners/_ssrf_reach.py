@@ -737,6 +737,7 @@ class _CallerInput:
         self.module_values = module_values
         self.module_parts = module_parts
         self._sets: dict[tuple[int, int], bool] = {}
+        self._name_sets: dict[tuple[str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
 
     def _bound(self, name: str) -> list[ast.AST]:
@@ -764,9 +765,9 @@ class _CallerInput:
         one, a local bound from one), or when the URL is built (an f-string,
         `+`, a literal `.join`, `%`, `.format`, `.replace`) and a piece of caller
         input comes before the text the code wrote has ended the authority
-        (`_authority_closed`). Each (expression, depth) is worked out
-        once, as `_py_addr_reach` does, so names that read each other do not
-        multiply the work.
+        (`_authority_closed`). Each (expression, depth) and each (name, depth)
+        is worked out once, as `_py_addr_reach` does, so names that read each
+        other do not multiply the work.
         """
         if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
             return False
@@ -787,10 +788,7 @@ class _CallerInput:
         while stack:
             cur = stack.pop()
             if isinstance(cur, ast.Name):
-                if cur.id in self.params:
-                    return True
-                bound = self.values.get(cur.id, []) + self.elements.get(cur.id, [])
-                if any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound):
+                if cur.id in self.params or self._name_sets_host(cur.id, depth, nest):
                     return True
             elif isinstance(cur, (ast.Subscript, ast.Attribute, ast.Starred, ast.Await, ast.NamedExpr)):
                 # `URLS[region]` reads a URL the code fixed: only the container counts.
@@ -829,6 +827,25 @@ class _CallerInput:
             elif isinstance(cur, ast.BoolOp):
                 stack.extend(cur.values)
         return False
+
+    def _name_sets_host(self, name: str, depth: int, nest: int) -> bool:
+        """Whether something `name` is bound to here can set the host, worked
+        out once per name and depth.
+
+        Every read of a name used to loop over all of its bindings, each read a
+        node of its own: a name bound n times and read n times cost n squared,
+        so `url = url + part` 24,000 times, each binding reading `url` again,
+        took more than six minutes. Which binding a read sees is not told
+        apart, so the answer is the same for every read of the name at one
+        depth. A name reached again while it is being worked out adds nothing
+        to its own answer."""
+        key = (name, depth)
+        hit = self._name_sets.get(key)
+        if hit is None:
+            self._name_sets[key] = False
+            bound = self.values.get(name, []) + self.elements.get(name, [])
+            hit = self._name_sets[key] = any(self.sets_host(rhs, depth + 1, nest + 1) for rhs in bound)
+        return hit
 
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
         """The parts of a call that can carry caller input into the URL it
