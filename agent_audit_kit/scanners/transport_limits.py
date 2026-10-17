@@ -235,15 +235,17 @@ _GO_PROJECT_CAP_RE = re.compile(
     # A Content-Length test that answers 413 (a size-limit middleware).
     r"|ContentLength\s*>[^\n{]{1,80}\{[^}]{0,300}?(?:StatusRequestEntityTooLarge|\b413\b)"
 )
+# The whole-body reads of each kind of handler, with the request's name
+# captured: one sweep per kind finds the reads of every handler of that kind.
 _GO_READS = {
-    "nethttp": r"\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Body\s*\)",
-    "gin": (
-        r"\b{n}\.(?:ShouldBindJSON|BindJSON|ShouldBind|Bind|ShouldBindBodyWith|GetRawData)\s*\("
-        r"|\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Request\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Request\.Body\s*\)"
+    "nethttp": re.compile(r"\b(?:io|ioutil)\.ReadAll\(\s*(\w+)\.Body\s*\)|\bjson\.NewDecoder\(\s*(\w+)\.Body\s*\)"),
+    "gin": re.compile(
+        r"\b(\w+)\.(?:ShouldBindJSON|BindJSON|ShouldBind|Bind|ShouldBindBodyWith|GetRawData)\s*\("
+        r"|\b(?:io|ioutil)\.ReadAll\(\s*(\w+)\.Request\.Body\s*\)|\bjson\.NewDecoder\(\s*(\w+)\.Request\.Body\s*\)"
     ),
-    "echo": (
-        r"\b{n}\.Bind\s*\("
-        r"|\b(?:io|ioutil)\.ReadAll\(\s*{n}\.Request\(\)\.Body\s*\)|\bjson\.NewDecoder\(\s*{n}\.Request\(\)\.Body\s*\)"
+    "echo": re.compile(
+        r"\b(\w+)\.Bind\s*\("
+        r"|\b(?:io|ioutil)\.ReadAll\(\s*(\w+)\.Request\(\)\.Body\s*\)|\bjson\.NewDecoder\(\s*(\w+)\.Request\(\)\.Body\s*\)"
     ),
 }
 # Any of the reads above, before the handler that makes them is known: a file
@@ -252,7 +254,10 @@ _GO_ANY_READ_RE = re.compile(
     r"\b(?:io|ioutil)\.ReadAll\(|\bjson\.NewDecoder\(|\.(?:ShouldBindJSON|BindJSON|ShouldBind|Bind|ShouldBindBodyWith|GetRawData)\s*\("
 )
 _PY_ANY_READ_RE = re.compile(r"\.(?:json|body)\s*\(\s*\)|\bget_json\b|\bget_data\b|\brequest\.(?:json|data)\b")
-_GO_HANDLER_CAP = r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(|\b{n}(?:\.Request(?:\(\))?)?\.ContentLength\b"
+# A limit in the handler: a limiting reader, or the request's Content-Length
+# (`r.ContentLength`, `c.Request.ContentLength`, `c.Request().ContentLength`).
+_GO_LIMIT_CALL_RE = re.compile(r"\bLimitReader\s*\(|\bMaxBytesReader\s*\(")
+_GO_CONTENT_LENGTH_RE = re.compile(r"\.ContentLength\b")
 
 # Flask's (Werkzeug's) limit, set in code or config.
 _PY_PROJECT_CAP_RE = re.compile(r"\bMAX_CONTENT_LENGTH\b|\bmax_content_length\b")
@@ -435,8 +440,10 @@ def _unbounded_go_reads(index: CodeIndex, handlers: list[GoHandler], rel: str) -
     dispatch = _Offsets(m.start() for m in _GO_MCP_DISPATCH_RE.finditer(text))
     names_mcp = _GO_MCP_LITERAL_RE.search(text) is not None
     handshake = _Offsets(m.start() for m in _GO_HANDSHAKE_DISPATCH_RE.finditer(text)) if names_mcp else _Offsets(())
-    caps: dict[str, _Offsets] = {}
+    # Limits are found once per file, and only when a read reaches the check.
     helpers: _Offsets | None = None
+    limits = _Offsets(())
+    caps: dict[str, _Offsets] = {}
     findings: list[Finding] = []
     reported: set[int] = set()
     reads = _innermost_reads(text, handlers)
@@ -450,13 +457,16 @@ def _unbounded_go_reads(index: CodeIndex, handlers: list[GoHandler], rel: str) -
             or handshake.any_in(handler.body_start, handler.body_end)
         ):
             continue
-        cap = caps.get(handler.request)
-        if cap is None:
-            cap_re = re.compile(_GO_HANDLER_CAP.format(n=re.escape(handler.request)))
-            cap = caps[handler.request] = _Offsets(c.start() for c in cap_re.finditer(text))
         if helpers is None:
             helpers = _Offsets(_limit_helper_calls(text))
-        if cap.any_in(handler.body_start, handler.body_end) or helpers.any_in(handler.body_start, pos):
+            limits = _Offsets(c.start() for c in _GO_LIMIT_CALL_RE.finditer(text))
+            caps = {name: _Offsets(at) for name, at in _content_length_reads(text).items()}
+        cap = caps.get(handler.request)
+        if (
+            limits.any_in(handler.body_start, handler.body_end)
+            or cap is not None and cap.any_in(handler.body_start, handler.body_end)
+            or helpers.any_in(handler.body_start, pos)
+        ):
             continue
         reported.add(id(handler))
         where = f"route {route!r}" if route else "a handler that serves MCP methods"
@@ -483,38 +493,76 @@ class _Offsets:
         return i < len(self._offsets) and self._offsets[i] < end
 
 
-def _innermost_reads(text: str, handlers: list[GoHandler]) -> dict[int, tuple[GoHandler, re.Match[str]]]:
-    """Each body read, with the innermost handler whose own pattern reads it.
+class _OpenBodies:
+    """The handlers of one kind and request name whose bodies are open at a
+    point, for points visited in order: each handler is pushed and popped once."""
 
-    A read is matched with the handler's request name (`io.ReadAll(r.Body)` in
-    a handler whose request is `r`), so handlers that share a kind and a
-    request name share a pattern. Each such group is swept once over the file,
-    with a stack of the group's bodies open at each read, and the innermost
-    handler of any group wins, as when every body was searched on its own.
+    def __init__(self, group: list[GoHandler]) -> None:
+        self._group = sorted(group, key=lambda h: h.body_start)
+        self._next = 0
+        self._stack: list[GoHandler] = []
+
+    def innermost(self, start: int, end: int) -> GoHandler | None:
+        """The innermost handler whose body holds ``start:end``."""
+        group, stack = self._group, self._stack
+        while self._next < len(group) and group[self._next].body_start < start:
+            while stack and stack[-1].body_end <= group[self._next].body_start:
+                stack.pop()
+            stack.append(group[self._next])
+            self._next += 1
+        while stack and stack[-1].body_end < end:
+            stack.pop()
+        return stack[-1] if stack else None
+
+
+def _innermost_reads(text: str, handlers: list[GoHandler]) -> dict[int, tuple[GoHandler, re.Match[str]]]:
+    """Each body read, with the innermost handler whose own reads it is.
+
+    A read belongs to a handler of its kind whose request it names
+    (`io.ReadAll(r.Body)` in a handler whose request is `r`). Each kind is
+    swept once, its pattern capturing the name, and each (kind, name) keeps
+    the bodies open at the read; the innermost handler of any kind wins, as
+    when every body was searched on its own. One pattern per request name,
+    swept from its first handler on, made a file of handlers with distinct
+    request names quadratic: 4,000 of them (452 KB) took 27 seconds.
     """
     groups: dict[tuple[str, str], list[GoHandler]] = {}
     for handler in handlers:
         groups.setdefault((handler.kind, handler.request), []).append(handler)
+    open_bodies = {key: _OpenBodies(group) for key, group in groups.items()}
     reads: dict[int, tuple[GoHandler, re.Match[str]]] = {}
-    for (kind, request), group in groups.items():
-        group.sort(key=lambda h: h.body_start)
-        read_re = re.compile(_GO_READS[kind].format(n=re.escape(request)))
-        stack: list[GoHandler] = []
-        nxt = 0
-        for m in read_re.finditer(text, group[0].body_start):
-            while nxt < len(group) and group[nxt].body_start < m.start():
-                while stack and stack[-1].body_end <= group[nxt].body_start:
-                    stack.pop()
-                stack.append(group[nxt])
-                nxt += 1
-            while stack and stack[-1].body_end < m.end():
-                stack.pop()
-            if not stack:
+    for kind in sorted({kind for kind, _name in groups}):
+        for m in _GO_READS[kind].finditer(text):
+            name = next(g for g in m.groups() if g is not None)
+            bodies = open_bodies.get((kind, name))
+            innermost = bodies.innermost(m.start(), m.end()) if bodies is not None else None
+            if innermost is None:
                 continue
             held = reads.get(m.start())
-            if held is None or held[0].body_start < stack[-1].body_start:
-                reads[m.start()] = (stack[-1], m)
+            if held is None or held[0].body_start < innermost.body_start:
+                reads[m.start()] = (innermost, m)
     return reads
+
+
+def _content_length_reads(text: str) -> dict[str, list[int]]:
+    """Where `<name>.ContentLength`, `<name>.Request.ContentLength` or
+    `<name>.Request().ContentLength` starts, by name, found once for every
+    handler. A name is a whole word: `xr.ContentLength` is not `r`'s. Reading
+    back from each `.ContentLength` gives both names of
+    `c.Request.ContentLength` (`c`, and a request named `Request`), as a
+    pattern per request name did."""
+    found: dict[str, list[int]] = {}
+    for m in _GO_CONTENT_LENGTH_RE.finditer(text):
+        for suffix in ("", ".Request", ".Request()"):
+            stop = m.start() - len(suffix)
+            if suffix and not text.startswith(suffix, stop):
+                continue
+            start = stop
+            while start > 0 and (text[start - 1].isalnum() or text[start - 1] == "_"):
+                start -= 1
+            if start < stop:
+                found.setdefault(text[start:stop], []).append(start)
+    return found
 
 
 def _limit_helper_calls(text: str) -> list[int]:
@@ -589,11 +637,17 @@ def _check_unbounded_python(project_root: Path, scanned: set[str]) -> list[Findi
         if not routes:
             continue
         names_mcp: bool | None = None
+        # The MCP route each name is registered on, once per name: listing and
+        # testing a name's routes for every function of that name made 10,000
+        # FastAPI functions named `h` take 32 seconds.
+        mcp_paths = {
+            name: next((r.path for r in regs if r.path is not None and is_mcp_endpoint_path(r.path)), None)
+            for name, regs in routes.items()
+        }
         for node in ast.walk(tree):
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name not in routes:
                 continue
-            paths = [r.path for r in routes[node.name] if r.path is not None]
-            mcp_path = next((p for p in paths if is_mcp_endpoint_path(p)), None)
+            mcp_path = mcp_paths[node.name]
             if mcp_path is None and not _py_dispatches_on(node, MCP_METHODS):
                 if not _py_dispatches_on(node, MCP_HANDSHAKE):
                     continue

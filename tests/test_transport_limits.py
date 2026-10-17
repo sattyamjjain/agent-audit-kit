@@ -513,6 +513,65 @@ def test_nested_route_calls_scan_in_linear_time_and_memory(tmp_path: Path) -> No
     assert count == 1 and seconds < 5.0 and peak < 400, (seconds, peak)
 
 
+def _distinct_request_names(n: int, gin: bool) -> str:
+    funcs, routes = [], []
+    for i in range(n):
+        if gin:
+            funcs.append(f"func h{i}(r{i} *gin.Context) {{ r{i}.BindJSON(nil) }}\n")
+            routes.append(f'\tg.POST("/mcp", h{i})\n')
+        else:
+            funcs.append(f"func h{i}(w http.ResponseWriter, r{i} *http.Request) {{ io.ReadAll(r{i}.Body) }}\n")
+            routes.append(f'\thttp.HandleFunc("/mcp", h{i})\n')
+    return _GO_HEAD + "".join(funcs) + "\nfunc main() {\n\tg := gin.New()\n" + "".join(routes) + "}\n"
+
+
+@pytest.mark.parametrize(("gin", "n"), [(False, 4_000), (True, 5_000)])
+def test_handlers_with_distinct_request_names_scan_in_linear_time(tmp_path: Path, gin: bool, n: int) -> None:
+    """Each request name got a read pattern of its own, swept from its first
+    handler to the end of the file, and a limit pattern swept over all of it:
+    4,000 net/http handlers named `r0`, `r1`, ... (452 KB) took 27 seconds,
+    5,000 gin handlers (386 KB) 30."""
+    seconds, count, _peak = _scan_in_child(tmp_path, "main.go", _distinct_request_names(n, gin))
+    assert count == n and seconds < 5.0
+
+
+def test_same_named_python_route_functions_scan_in_linear_time(tmp_path: Path) -> None:
+    """Each function listed and tested every route registered for its name: 5,000
+    FastAPI functions named `h` (280 KB) took 8 seconds, 10,000 about 32."""
+    unit = '@app.post("/x")\nasync def h(request: Request):\n    pass\n'
+    text = (
+        "from fastapi import FastAPI, Request\napp = FastAPI()\n"
+        "async def r(request: Request):\n    return await request.json()\n" + unit * 10_000
+    )
+    seconds, count, _peak = _scan_in_child(tmp_path, "app.py", text)
+    assert count == 0 and seconds < 5.0
+
+
+@pytest.mark.parametrize(("cap", "capped"), [
+    ("r.ContentLength", True),
+    ("r.Request.ContentLength", True),
+    ("Request.ContentLength", False),
+    ("xr.ContentLength", False),
+    ("r.ContentLengthX", False),
+    ("io.LimitReader(x, 1)", True),
+    ("http.MaxBytesReader(w, x, 1)", True),
+])
+def test_a_content_length_check_counts_only_on_the_handlers_request(tmp_path: Path, cap: str, capped: bool) -> None:
+    text = GO_NETHTTP.replace("\tvar req rpcRequest\n", f"\t_ = {cap}\n\tvar req rpcRequest\n")
+    assert _hits(_write(tmp_path, {"server.go": text})) == ([] if capped else [("server.go", 15)])
+
+
+@pytest.mark.parametrize(("cap", "capped"), [
+    ("c.Request.ContentLength", True),
+    ("c.ContentLength", True),
+    ("c.Request().ContentLength", True),
+    ("Request.ContentLength", False),
+])
+def test_a_framework_request_content_length_counts(tmp_path: Path, cap: str, capped: bool) -> None:
+    text = GO_GIN.replace("\tvar req map[string]any\n", f"\t_ = {cap}\n\tvar req map[string]any\n")
+    assert _hits(_write(tmp_path, {"api.go": text})) == ([] if capped else [("api.go", 8)])
+
+
 def _segments_reference(path: str) -> bool:
     """The rule as first written: every `mcp` segment rescans the ones before it."""
     segments = [s for s in path.rsplit(" ", 1)[-1].split("/") if s]
