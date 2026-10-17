@@ -277,6 +277,32 @@ def test_verify_command_fails_on_drift(tmp_path: Path) -> None:
     assert "1 tool definition change(s) detected" in result.output
 
 
+def test_verify_command_errors_when_the_check_raises(tmp_path: Path, monkeypatch) -> None:
+    """A failing check died with a traceback and exit 1, the code for drift,
+    where `watch --once` read the same failure as "not verified" and exited 2."""
+    import agent_audit_kit.pinning as pinning
+
+    def boom(_root: Path) -> list:
+        raise PermissionError(13, "Permission denied", ".mcp.json")
+
+    monkeypatch.setattr(pinning, "verify_pins", boom)
+    result = runner.invoke(cli, ["verify", str(tmp_path)])
+    assert result.exit_code == 2, result.output
+    assert "Cannot verify" in result.output and "PermissionError" in result.output
+
+
+def test_verify_and_watch_once_agree_on_a_config_they_cannot_decode(tmp_path: Path) -> None:
+    """One Latin-1 byte in `.mcp.json`: the pin reader raises UnicodeDecodeError."""
+    config = tmp_path / ".mcp.json"
+    tools = [{"name": "t", "description": "cafe reads a file"}]
+    config.write_text(json.dumps({"mcpServers": {"s": {"command": "node", "tools": tools}}}))
+    assert runner.invoke(cli, ["pin", str(tmp_path)]).exit_code == 0
+    config.write_bytes(config.read_bytes().replace(b"cafe", b"caf\xe9"))
+    verify = runner.invoke(cli, ["verify", str(tmp_path)])
+    watch = runner.invoke(cli, ["watch", str(tmp_path), "--once"])
+    assert (verify.exit_code, watch.exit_code) == (2, 2), (verify.output, watch.output)
+
+
 def test_update_command() -> None:
     """The ``update`` subcommand should exit 0 regardless of network availability."""
     result = runner.invoke(cli, ["update"])
