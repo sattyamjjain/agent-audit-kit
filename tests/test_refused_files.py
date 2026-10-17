@@ -571,16 +571,53 @@ def test_real_toml_keys_and_strings_full_of_dots_are_read() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_yaml_as_deep_as_real_kubernetes_crds_is_read() -> None:
-    """cert-manager's Issuer CRD, the deepest of 3,272 real files measured,
-    nests 37 block levels; the limit is 100, for block and flow alike."""
-    block = "".join(" " * i + f"k{i}:\n" for i in range(99)) + " " * 99 + "v: 1\n"
-    assert load_yaml(block, "crd.yaml") is not None
-    flow = "a: " + "[" * 99 + "1" + "]" * 99
-    assert load_yaml(flow, "deep.yaml") is not None
-    with collecting_refusals() as refused, pytest.raises(RefusedYAML):
-        load_yaml("a: " + "[" * 101 + "]" * 101, "deeper.yaml")
-    assert refused == {"deeper.yaml": "YAML nested deeper than 100 levels"}
+def _block(levels: int, leaf: str = "1") -> str:
+    """A mapping nested `levels` block levels deep, holding `leaf`."""
+    return "".join(" " * i + f"k{i}:\n" for i in range(levels - 1)) + " " * (levels - 1) + f"v: {leaf}\n"
+
+
+def test_yaml_as_deep_as_real_files_is_read() -> None:
+    """cert-manager's Issuer CRD nests 37 block levels, the deepest of the real
+    files measured, and an Envoy config dump in istio's test data nests 31
+    levels of brackets. Blocks are read to 100 levels and brackets, separately,
+    to 32, so a file holds both at once."""
+    assert load_yaml(_block(100), "crd.yaml") is not None
+    for flow in ("a: " + "[" * 32 + "1" + "]" * 32, "a: " + "{a: " * 32 + "1" + "}" * 32):
+        assert load_yaml(flow, "deep.yaml") is not None
+    value = load_yaml(_block(100, "[" * 32 + "1" + "]" * 32), "both.yaml")
+    for i in range(99):
+        value = value[f"k{i}"]
+    value = value["v"]
+    for _ in range(32):
+        assert isinstance(value, list) and len(value) == 1
+        value = value[0]
+    assert value == 1
+
+
+def test_yaml_past_the_block_or_the_bracket_limit_is_refused_per_file() -> None:
+    """Past 100 block levels, or 32 levels of `[ ]` or `{ }` (each refused
+    where the scanner meets it, so 990 KB of brackets costs no more than the
+    first unit past the limit)."""
+    flow = "a: " + "[" * 33 + "]" * 33
+    with collecting_refusals() as refused:
+        with pytest.raises(RefusedYAML):
+            load_yaml(_block(101), "deeper.yaml")
+        with pytest.raises(RefusedYAML):
+            load_yaml(flow, "brackets.yaml")
+        with pytest.raises(RefusedYAML):
+            load_yaml_all("a: " + "{a: " * 33 + "1" + "}" * 33, "mapping.yaml")
+        unit = "[" * 99 + "]" * 99
+        big = "x:\n" + "".join(f"  - {unit}\n" for _ in range(990_000 // (len(unit) + 5)))
+        started = time.process_time()
+        with pytest.raises(RefusedYAML):
+            load_yaml(big, "big.yaml")
+        assert time.process_time() - started < 2.0
+    assert refused == {
+        "deeper.yaml": "YAML nested deeper than 100 levels",
+        "brackets.yaml": "YAML [ ] or { } nested deeper than 32 levels",
+        "mapping.yaml": "YAML [ ] or { } nested deeper than 32 levels",
+        "big.yaml": "YAML [ ] or { } nested deeper than 32 levels",
+    }
 
 
 def test_a_compose_file_that_merges_a_shared_block_into_every_service_is_read() -> None:

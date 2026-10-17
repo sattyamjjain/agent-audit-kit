@@ -95,13 +95,13 @@ def _parse_frontmatter(text: str, path: Path | None = None) -> dict:
 
     The block opens with `---` at the start of the file and closes at the next
     line that is `---` alone. It is read with the shared bounded loader,
-    `_helpers.load_yaml`, so a block nested past `YAML_MAX_NESTING` levels, or
-    one that YAML aliases grow past its bound, is refused against `path` and
-    reads as no frontmatter, as invalid YAML does. The refusal is reported (a
-    client may load what AAK refused), while invalid YAML is not. PyYAML
-    composes recursively, and `RecursionError` is no YAMLError, so 2,000 `[`
-    used to take down every scanner that called this; the loader stops a
-    block long before that.
+    `_helpers.load_yaml`, so a block nested past `YAML_MAX_NESTING` levels
+    (`YAML_MAX_FLOW_NESTING` of brackets), or one that YAML aliases grow past
+    its bound, is refused against `path` and reads as no frontmatter, as
+    invalid YAML does. The refusal is reported (a client may load what AAK
+    refused), while invalid YAML is not. PyYAML composes recursively, and
+    `RecursionError` is no YAMLError, so 2,000 `[` used to take down every
+    scanner that called this; the loader stops a block long before that.
     """
     if not text.startswith("---"):
         return {}

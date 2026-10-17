@@ -2780,19 +2780,24 @@ def loads_toml(text: str, path: Path | str | None) -> dict[str, Any]:
         raise RefusedTOML(reason, text, 0) from None
 
 
-# How deep flow collections (`[`, `{`) and, separately, block indentation may
+# How deep block indentation, and separately flow collections (`[`, `{`), may
 # nest in a YAML file. The deepest of 3,272 real files measured on 2026-10-17
 # nests 37 block levels (cert-manager's Issuer CRD) and 5 flow levels: 1,523
 # from MCP repositories, and compose files, Kubernetes manifests and CRDs
 # (cert-manager, argo-cd, Gateway API, Crossplane and AWS controller CRDs), Helm
 # values, CloudFormation templates, workflows and OpenAPI specs from 50 other
-# projects. A JSON-style file nests flow collections as deep as a block file
-# nests indentation, so both get the same limit. PyYAML's scanner revisits every
-# open flow level on each token, so the cost of a deep structure grows with the
-# square of its depth, and its composer recurses about twice per level, which
-# meets the recursion limit near 300 levels. Counting in the scanner, rather
-# than in the text, keeps a `]` inside a quoted scalar from hiding a level.
+# projects. A second set, 11,640 files from 22 such projects, nests 38 block
+# levels (the same CRD in Bitnami's chart) and 31 flow levels, in an Envoy
+# config dump istio keeps as test data, which no scanner reads; the next
+# deepest nests 15. PyYAML's scanner revisits every open flow level on each
+# token, so a flow structure costs more the deeper it nests: 990 KB of brackets
+# nested 99 deep took 12.5 s to read as a workflow, 32 deep takes 8.2 s, and a
+# file nested deeper is refused in about a second. Its composer recurses about
+# twice per level, which meets the recursion limit near 300 levels. Counting in
+# the scanner, rather than in the text, keeps a `]` inside a quoted scalar from
+# hiding a level.
 YAML_MAX_NESTING = 100
+YAML_MAX_FLOW_NESTING = 32
 # How far aliases may grow a YAML stream: twice its length plus 1,000, and at
 # least this many nodes. A node counts 1, a scalar 1 more per character, and a
 # node an alias reaches counts again each time. Every reader of the result
@@ -2809,20 +2814,25 @@ _YAML_ALIAS_FLOOR = 200_000
 
 
 class _NestedTooDeep(ScannerError):
-    pass
+    def __init__(self, reason: str, mark: Any) -> None:
+        super().__init__(problem=reason, problem_mark=mark)
+        self.reason = reason
 
 
 class _BoundedLoader(yaml.SafeLoader):
-    """`yaml.SafeLoader` that refuses nesting past `YAML_MAX_NESTING` as it scans."""
+    """`yaml.SafeLoader` that refuses nesting past `YAML_MAX_NESTING` block
+    levels or `YAML_MAX_FLOW_NESTING` flow levels as it scans."""
 
     def fetch_flow_collection_start(self, TokenClass: type) -> None:
-        if self.flow_level >= YAML_MAX_NESTING:
-            raise _NestedTooDeep(problem="flow collections nested too deeply", problem_mark=self.get_mark())
+        if self.flow_level >= YAML_MAX_FLOW_NESTING:
+            raise _NestedTooDeep(
+                f"YAML [ ] or {{ }} nested deeper than {YAML_MAX_FLOW_NESTING} levels", self.get_mark()
+            )
         super().fetch_flow_collection_start(TokenClass)
 
     def add_indent(self, column: int) -> bool:
         if self.indent < column and len(self.indents) >= YAML_MAX_NESTING:
-            raise _NestedTooDeep(problem="block collections nested too deeply", problem_mark=self.get_mark())
+            raise _NestedTooDeep(f"YAML nested deeper than {YAML_MAX_NESTING} levels", self.get_mark())
         return super().add_indent(column)
 
 
@@ -2938,8 +2948,8 @@ def _yaml_documents(
                 yield loader, node
             if single:
                 return
-    except _NestedTooDeep:
-        raise _refused_yaml(path, f"YAML nested deeper than {YAML_MAX_NESTING} levels") from None
+    except _NestedTooDeep as exc:
+        raise _refused_yaml(path, exc.reason) from None
     except _OVERFLOW as exc:
         raise _yaml_overflow(path, exc) from None
     finally:
@@ -2948,7 +2958,8 @@ def _yaml_documents(
 
 def load_yaml(text: str, path: Path | str | None, cycles_ok: bool = False) -> Any:
     """`yaml.safe_load(text)`, refusing a text that nests too deep or that
-    aliases grow too large (see `YAML_MAX_NESTING` and `_YAML_ALIAS_FLOOR`).
+    aliases grow too large (see `YAML_MAX_NESTING`, `YAML_MAX_FLOW_NESTING`
+    and `_YAML_ALIAS_FLOOR`).
 
     The refusal is recorded against `path` and raised as `RefusedYAML`, a
     `yaml.YAMLError`, so the reader skips the file as it skips invalid YAML

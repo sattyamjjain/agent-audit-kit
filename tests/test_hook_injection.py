@@ -697,7 +697,7 @@ def test_a_hostile_skill_is_refused_per_file_and_costs_no_scanner_its_findings(t
     result = run_scan(project_root=tmp_path)
     failed = [f for f in result.findings if f.rule_id == "AAK-INTERNAL-SCANNER-FAIL"]
     assert failed and {f.file_path for f in failed} == {"skills/x/SKILL.md"}
-    assert all("YAML nested deeper than 100 levels" in f.evidence for f in failed)
+    assert all("YAML [ ] or { } nested deeper than 32 levels" in f.evidence for f in failed)
     assert "AAK-HOOK-001" in {f.rule_id for f in result.findings if f.file_path == ".claude/settings.json"}
 
 
