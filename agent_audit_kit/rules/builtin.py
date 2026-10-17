@@ -6791,8 +6791,10 @@ _r(
         "comments aside, or when a `req`, `request`, "
         "upper-case `process.env`, `JSON.parse` or awaited fetch or axios source "
         "appears anywhere in the 1024 characters before it, comments included, "
-        "whether or not it flows in. A source further back, such as a helper at "
-        "the top of a long file, is missed."
+        "whether or not it flows in. A source further back, such as a helper at the top of a "
+        "long file, is missed. The fallback reads a `/` right after a block's closing brace "
+        "as a division (`if (a) {} /'/.test(s)`), as it reads one after an object's, so a "
+        "quote in such a regex can hide the `command` and `args` after it."
     ),
 )
 

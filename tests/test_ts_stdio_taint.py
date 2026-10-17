@@ -277,6 +277,13 @@ _BOTH_PATHS = [
     ("regex-literal-constant-command", "export function h(u: string) {\n"
                                        "  return new StdioClientTransport({ args: [u.replace(/\"/g, '')], command: 'node' });\n}\n",
      False),
+    # After a postfix `++` or `--` a slash divides, as `blank_js_comments` reads it.
+    ("postfix-increment-before-a-slash", "export function h(req: any, i: number) {\n"
+                                         "  return new StdioClientTransport({ args: [String(i++ / 2), '/'], command: req.body.cmd });\n}\n",
+     True),
+    ("postfix-decrement-before-a-slash", "export function h(req: any, i: number) {\n"
+                                         "  return new StdioClientTransport({ args: [String(i-- / 2), '/'], command: req.body.cmd });\n}\n",
+     True),
 ]
 
 
@@ -309,6 +316,25 @@ def test_the_fallback_reads_the_first_1024_characters_of_the_call(tmp_path: Path
     assert RULE in _scan_source(inside, _long_first_member(986))  # closes at character 1,024
     assert RULE not in _scan_source(outside, _long_first_member(987))  # closes at 1,025
     assert "within the first 1,024 characters of the call" in RULES[RULE].limitations
+
+
+def test_a_regex_after_a_block_brace_is_read_as_a_division(tmp_path: Path, without_grammar: None) -> None:
+    """After a `}` the fallback reads a `/` as a division, as `blank_js_comments`
+    does: a block's brace and an object's are the same token. A quote in such a
+    regex then opens a string, which can hide the members after it, and the
+    limitation says so. The string ends at its line's end, as a quoted string
+    does, so a function body laid out over several lines loses nothing."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    head = "export function h(req: any, a: boolean, s: string) {\n  return new StdioClientTransport({\n"
+    tail = "    command: req.body.cmd, cwd: '/tmp' });\n}\n"
+    one_line, laid_out = tmp_path / "one-line", tmp_path / "laid-out"
+    one_line.mkdir()
+    laid_out.mkdir()
+    assert RULE not in _scan_source(one_line, head + "    args: [(() => { if (a) {} /'/.test(s); return ''; })()],\n" + tail)
+    assert RULE in _scan_source(laid_out, head + "    args: [(() => {\n      if (a) {} /'/.test(s)\n"
+                                          "      return []\n    })()],\n" + tail)
+    assert "right after a block's closing brace" in RULES[RULE].limitations
 
 
 def test_the_fallback_evidence_says_which_path_ran(tmp_path: Path, without_grammar: None) -> None:

@@ -417,7 +417,11 @@ def _ts_sink_members(text: str, start: int, stop: int) -> list[str]:
     does not end the member. A regex literal is told from a division the way
     `_helpers.blank_js_comments` tells them apart, by the token before the `/`:
     a quote inside one (`u.replace(/'/g, '')`) used to open a string that hid
-    every member after it.
+    every member after it. So a slash after a postfix `i++` or `i--` divides,
+    and so does one after any `}`: a block's brace and an object's are the same
+    token, and `if (a) {} /'/.test(s)` is read as a division. A quoted string
+    ends at an unescaped newline, as `_helpers._js_skip_quoted` ends it, so a
+    quote opened by such a misread hides only the rest of its line.
     """
     members: list[str] = []
     depth = 0
@@ -433,12 +437,13 @@ def _ts_sink_members(text: str, start: int, stop: int) -> list[str]:
         if quote:
             if ch == "\\":
                 i += 1
-            elif ch == quote:
+            elif ch == quote or (ch == "\n" and quote != "`"):
                 quote = ""
                 prev, word_start = _JS_OPERAND, -1
             i += 1
             continue
-        if ch == "/" and _js_regex_allowed(prev, text[word_start:last + 1] if word_start >= 0 else ""):
+        postfix = prev in "+-" and last > start and text[last - 1] == prev
+        if ch == "/" and not postfix and _js_regex_allowed(prev, text[word_start:last + 1] if word_start >= 0 else ""):
             i = _js_skip_regex(text, i, stop)
             prev, word_start = _JS_OPERAND, -1
             continue
