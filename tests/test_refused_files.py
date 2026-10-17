@@ -314,6 +314,13 @@ _DEEP_SHAPES: dict[str, Callable[[int], str]] = {
     "lambda_body": lambda n: "x = " + "lambda: " * n + "a\n",
     "fstring_field": lambda n: "x = f'{a" + "+a" * n + "}'\n",
     "elif_ladder": lambda n: "if a:\n    pass\n" + "elif a:\n    pass\n" * n,
+    # A backslash joins the next line before an LF, a CRLF or a CR alone, and
+    # inside a one-line string before a CRLF it continues the string.
+    "continued_lf": lambda n: "x = a \\\n" + "  + a \\\n" * n + "  + a\n",
+    "continued_crlf": lambda n: "x = a \\\r\n" + "  + a \\\r\n" * n + "  + a\r\n",
+    "continued_cr": lambda n: "x = a \\\r" + "  + a \\\r" * n + "  + a\r",
+    "string_continued_crlf": lambda n: "x = 'a\\\r\n' + a" + " + a" * n + "\n",
+    "fstring_continued_crlf": lambda n: "x = f'a\\\r\n' + a" + " + a" * n + "\n",
     # The tokenizer stops brackets at 200 levels, so this one never reaches the screen's limit.
     "nested_brackets": lambda n: "x = " + "(" * n + "a" + ")" * n + "\n",
 }

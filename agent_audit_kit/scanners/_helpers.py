@@ -2204,14 +2204,17 @@ _PARSE_ON_WORKER = sys.version_info < (3, 11)
 
 # One token of Python source, for the screen. A string is only opened here; its
 # end is found by `_py_string_end`. Numbers are spelled out so that `1..real`
-# leaves its attribute dots to be counted.
+# leaves its attribute dots to be counted. Python reads a CR, an LF and a CRLF
+# alike as a line break, so a backslash before any of them joins the next line:
+# read as a stray character and a new line, a 900-term chain joined with `\`
+# and CR alone was bounded at 9 levels for its 905.
 _PY_TOKEN_RE = re.compile(
     r"(?P<str>[rRbBuUfF]{0,2}(?:'''|\"\"\"|'|\"))"
     r"|(?P<name>[^\W\d]\w*)"
     r"|(?P<num>(?:0[xXoObB][0-9a-fA-F_]+|\d[\d_]*(?:\.[\d_]*)?(?:[eE][+-]?[\d_]+)?"
     r"|\.\d[\d_]*(?:[eE][+-]?[\d_]+)?)[jJ]?)"
     r"|(?P<comment>\#[^\r\n]*)"
-    r"|(?P<cont>\\\r?\n)"
+    r"|(?P<cont>\\(?:\r\n?|\n))"
     r"|(?P<nl>\r?\n|\r)"
     r"|(?P<blank>[ \t\f]+)"
     r"|(?P<open>[(\[{])"
@@ -2225,7 +2228,7 @@ _PY_TOKEN_RE = re.compile(
 # Keywords that join or wrap an expression, each a level at most.
 _PY_CHAIN_WORDS = frozenset({"and", "or", "not", "if", "else", "in", "is", "lambda", "await", "yield", "for", "async"})
 _PY_STRING_END_RE = {
-    quote: re.compile(r"\\.|" + re.escape(quote) + ("" if len(quote) == 3 else r"|\n"), re.DOTALL)
+    quote: re.compile(r"\\(?:\r\n|.)|" + re.escape(quote) + ("" if len(quote) == 3 else r"|\r|\n"), re.DOTALL)
     for quote in ("'''", '"""', "'", '"')
 }
 _FSTRING_FIELD_RE = re.compile(r"\{\{|\}\}|\{")
@@ -2233,7 +2236,11 @@ _FSTRING_FIELD_RE = re.compile(r"\{\{|\}\}|\{")
 
 def _py_string_end(src: str, start: int, quote: str, end: int) -> int:
     """Index past the string whose body starts at `start`. A backslash escapes
-    the next character, raw or not; a one-line string ends at a line break."""
+    the next character, or the CRLF after it, raw or not; a one-line string
+    ends at a line break, CR or LF. Read as an escaped CR followed by a line
+    break, a backslash and CRLF ended the string early, so its closing quote
+    opened another and the rest of the line went uncounted: 905 levels of
+    chain after `'a\\<CRLF>'` were bounded at 7."""
     pattern = _PY_STRING_END_RE[quote]
     while True:
         m = pattern.search(src, start, end)
