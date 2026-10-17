@@ -6,6 +6,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -89,11 +90,55 @@ def test_a_capped_reader_without_semicolons_is_quiet(tmp_path: Path) -> None:
     assert not any(f.rule_id == "AAK-MCPFRAME-001" for f in findings)
 
 
-def test_the_accumulation_pattern_reads_a_crafted_file_in_linear_time(tmp_path: Path) -> None:
-    """1 MB of `body+=x.toString(` with no `)`. The `.toString(` arm read to
-    the next `)` from every occurrence: 136 KB took 0.7 seconds and the time
-    grew with the square. The bound is loose for slow CI runners."""
-    (tmp_path / "transport.ts").write_text("readRequestBody\n" + "body+=x.toString(" * 60_000, encoding="utf-8")
-    started = time.perf_counter()
-    transport_limits.scan(tmp_path)
-    assert time.perf_counter() - started < 5.0
+# Two patterns read on to the next `)` from every place they started: the
+# request-body gate from each `req.on('data',`, and the `+=` arm from each
+# `.toString(`. A file of either with no `)` took time that grew with the square
+# of its size, 1 MB about 20 seconds. Each shape runs at two sizes, best of
+# three, and the larger may take 40 times the smaller's time for 10 times the
+# text (the old patterns needed 100 times) plus a fixed slack, under an absolute
+# bound that is loose for slow CI runners.
+_CRAFTED = {
+    "data-handlers": lambda k: "req.on('data'," * k,
+    "tostring-calls": lambda k: "readRequestBody\n" + "body+=x.toString(" * k,
+}
+
+
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED))
+def test_a_crafted_file_scans_in_linear_time(tmp_path: Path, shape: str) -> None:
+    roots = []
+    for name, k in (("small", 6_000), ("large", 60_000)):
+        root = tmp_path / name
+        root.mkdir()
+        (root / "transport.ts").write_text(_CRAFTED[shape](k), encoding="utf-8")
+        roots.append(root)
+    t_small = _seconds(lambda: transport_limits.scan(roots[0]))
+    t_large = _seconds(lambda: transport_limits.scan(roots[1]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
+
+
+def test_the_request_body_gate_still_reads_a_handler(tmp_path: Path) -> None:
+    """The gate looks for the handler's first `)` within 1,024 characters of
+    `req.on('data',`. On 88,502 TS/JS files it came at most 36 after the comma."""
+    rx = transport_limits._BODY_CONCAT_RE
+    for handler in (
+        "req.on('data', (chunk) => {",
+        'req.on("data", function onData(chunk) {',
+        "req.on('data', onData);",
+        "req.on( 'data' ,\n  chunk => { body += chunk; if (body.length > 9) req.destroy() })",
+        "for await (const chunk of req) {",
+        "for await (const part of req.body) {",
+    ):
+        assert rx.search(handler), handler
+    assert not rx.search("req.on('end', () => resolve(body))")
+    assert not rx.search("req.on('data'," + " " * 1_100 + "(chunk) => {")

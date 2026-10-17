@@ -32,10 +32,17 @@ _JS_EXTS = (".ts", ".tsx", ".js", ".mjs", ".cjs")
 # Readable loosely: any `.on('data', ...)` or `for await (... of req)`
 # block that concatenates into a string or an array without a running
 # size guard. Deliberately literal so false positives don't explode.
+#
+# The handler arm read `[^)]*` up to the next `)` from every `req.on('data',`,
+# so a file of them with no `)` read the rest of the file once per occurrence
+# and stalled the scan. It now looks for that `)` within a fixed window. In a
+# real handler it comes within a few characters (`(chunk) =>`, `function
+# (chunk)`, `onData)`): at most 36 on 88,502 TS/JS files, so 1,024 changes no
+# answer there and keeps the read per occurrence fixed.
 _BODY_CONCAT_RE = re.compile(
     r"""
     (?:
-        req\.on\(\s*['"]data['"]\s*,[^)]*\)\s*  # req.on('data', handler)
+        req\.on\(\s*['"]data['"]\s*,[^)]{0,1024}\)\s*  # req.on('data', handler)
       | for\s+await\s*\(\s*const\s+\w+\s+of\s+req(?:\.body)?\s*\)  # for await
     )
     """,

@@ -6114,7 +6114,10 @@ _r(
         "`.push(chunk)`, and has no size check. A comparison with `<`, `>`, `<=` or "
         "`>=` of total, length or size against a number literal anywhere in the file, "
         "such as `parts.length > 0`, counts as a size check, and an accumulator under "
-        "another name (`raw += chunk`) is not matched."
+        "another name (`raw += chunk`) is not matched. A `req.on('data', ...)` whose "
+        "first `)` comes more than 1,024 characters after the comma, as behind a long "
+        "comment in the handler, is not read as a body read; on 88,502 TS/JS files it "
+        "came at most 36 after."
     ),
 )
 
