@@ -100,17 +100,39 @@ _BRANCH_SAFE_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
 @dataclass
 class AutoPrPlan:
-    """What ``--auto-pr`` would do, resolved before anything is written."""
+    """What ``--auto-pr`` would do, resolved before anything is written.
+
+    ``fixes`` are the allow-listed fixes that write their file, ``unchanged`` the
+    allow-listed actions that write nothing (a refused file, nothing to change), and
+    ``blocked`` every action for a rule off the allow-list, written or not.
+    """
 
     fixes: list[FixAction] = field(default_factory=list)
     blocked: list[FixAction] = field(default_factory=list)
+    unchanged: list[FixAction] = field(default_factory=list)
     branch: str = ""
     title: str = ""
     body: str = ""
 
     @property
     def is_runnable(self) -> bool:
-        return bool(self.fixes) and not self.blocked
+        return self.refusal is None
+
+    @property
+    def refusal(self) -> str | None:
+        """Why `open_auto_pr` refuses this plan, or None when it goes ahead."""
+        if self.blocked:
+            return (
+                "refusing: "
+                + ", ".join(sorted({f.rule_id for f in self.blocked}))
+                + " is not on the auto-PR allow-list. Apply it with `aak fix` and "
+                "review the diff yourself."
+            )
+        if self.fixes:
+            return None
+        if self.unchanged:
+            return "nothing to do: no allow-listed fix would change a file here."
+        return "nothing to do: no allow-listed fix applies here."
 
 
 class AutoPrError(RuntimeError):
@@ -176,20 +198,34 @@ def _render_body(fixes: list[FixAction]) -> str:
 
 
 def plan_auto_pr(project_root: Path) -> AutoPrPlan:
-    """Resolve what would be pushed, without writing anything."""
+    """Resolve what would be pushed, without writing anything.
+
+    The plan comes from a dry run, whose actions all read ``applied=False``: a fix the
+    recipe would write, and a file it refused or had nothing to change in, alike. Every
+    allow-listed action counted as a fix, so a plan made only of refusals opened a draft
+    PR whose commit held just the fix log, and a mixed plan named the refused file in
+    the PR's branch, title and body as changed. Only an action that ``writes`` its file
+    is a fix now; the others go in ``unchanged``, out of the branch, title and body, and
+    a plan with no fix left is refused. A rule off the allow-list still blocks the PR
+    whether or not its fix writes, since the live run applies every auto-fixable fix.
+    """
     pending = run_fixes(project_root, dry_run=True)
     allowed = [f for f in pending if f.rule_id in AUTO_PR_ALLOWLIST]
-    blocked = [f for f in pending if f.rule_id not in AUTO_PR_ALLOWLIST]
-    plan = AutoPrPlan(fixes=allowed, blocked=blocked)
-    if allowed:
-        plan.branch = _branch_name(allowed)
-        rules = sorted({f.rule_id for f in allowed})
+    writing = [f for f in allowed if f.writes]
+    plan = AutoPrPlan(
+        fixes=writing,
+        blocked=[f for f in pending if f.rule_id not in AUTO_PR_ALLOWLIST],
+        unchanged=[f for f in allowed if not f.writes],
+    )
+    if writing:
+        plan.branch = _branch_name(writing)
+        rules = sorted({f.rule_id for f in writing})
         plan.title = (
             f"fix({rules[0]}): mechanical remediation"
             if len(rules) == 1
             else f"fix: mechanical remediation for {len(rules)} rules"
         )
-        plan.body = _render_body(allowed)
+        plan.body = _render_body(writing)
     return plan
 
 
@@ -200,15 +236,9 @@ def open_auto_pr(project_root: Path, plan: AutoPrPlan, base: str | None = None) 
     any precondition failure — this deliberately does not fall back to a partial
     outcome, because half of a push is worse than none.
     """
-    if plan.blocked:
-        raise AutoPrError(
-            "refusing: "
-            + ", ".join(sorted({f.rule_id for f in plan.blocked}))
-            + " is not on the auto-PR allow-list. Apply it with `aak fix` and "
-            "review the diff yourself."
-        )
-    if not plan.fixes:
-        raise AutoPrError("nothing to do: no allow-listed fix applies here.")
+    refusal = plan.refusal
+    if refusal is not None:
+        raise AutoPrError(refusal)
 
     if _run(["git", "status", "--porcelain"], project_root):
         raise AutoPrError(
@@ -220,7 +250,7 @@ def open_auto_pr(project_root: Path, plan: AutoPrPlan, base: str | None = None) 
     _run(["git", "checkout", "-b", plan.branch], project_root)
 
     applied = run_fixes(project_root, dry_run=False)
-    if not applied:  # pragma: no cover - dry-run and live disagree
+    if not any(f.writes for f in applied):  # pragma: no cover - dry-run and live disagree
         _run(["git", "checkout", base_ref], project_root)
         _run(["git", "branch", "-D", plan.branch], project_root)
         raise AutoPrError("fixes resolved in dry-run but applied nothing; aborted.")

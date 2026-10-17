@@ -54,8 +54,9 @@ def fix_recipe_count() -> int:
     return len(_auto_fixable_rules())
 
 
-def _dispatches(rule_id: str) -> bool:
-    """True when ``_apply_fix`` produces an action for a manifest this rule targets.
+def _dispatches(rule_id: str, writes: bool = False) -> bool:
+    """True when ``_apply_fix`` produces an action for a manifest this rule targets,
+    and with ``writes``, an action that would write it.
 
     Each recipe is handed a file of the kind it edits. A rule whose dispatch branch is
     missing returns None for every one of them, which is exactly the dead-entry
@@ -78,7 +79,8 @@ def _dispatches(rule_id: str) -> bool:
         for name, body in candidates.items():
             (root / name).write_text(body, encoding="utf-8")
         for name in candidates:
-            if fix_module._apply_fix(root, rule_id, name, dry_run=True) is not None:
+            action = fix_module._apply_fix(root, rule_id, name, dry_run=True)
+            if action is not None and (not writes or action.writes):
                 return True
     return False
 
@@ -96,10 +98,11 @@ def test_every_auto_fixable_rule_has_a_recipe_that_runs() -> None:
 def test_auto_pr_allowlist_is_reachable_from_run_fixes() -> None:
     """``--auto-pr`` cannot promise a rule that ``run_fixes`` never yields.
 
-    ``plan_auto_pr`` filters ``run_fixes(...)`` output by this allow-list, so an entry
-    with no dispatch is dead weight that reads as capability.
+    ``plan_auto_pr`` filters ``run_fixes(...)`` output by this allow-list, and keeps
+    only an action that writes its file, so an entry whose recipe never writes is
+    dead weight that reads as capability.
     """
-    dead = [rid for rid in sorted(AUTO_PR_ALLOWLIST) if not _dispatches(rid)]
+    dead = [rid for rid in sorted(AUTO_PR_ALLOWLIST) if not _dispatches(rid, writes=True)]
     assert not dead, (
         "AUTO_PR_ALLOWLIST entries have no recipe reachable from run_fixes, so "
         f"`suggest --auto-pr` can never act on them: {dead}"
