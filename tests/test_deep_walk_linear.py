@@ -149,13 +149,56 @@ def test_crewai_finds_the_function_it_did_for_every_call() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_stdio_injection_searches_a_sink_argument_in_linear_time(tmp_path: Path) -> None:
-    """Every node of a sink's argument searched the argument below it again,
-    whether or not it found a taint source in the end: four calls on a
-    3,000-level argument took 33 s."""
-    _assert_linear(tmp_path, "stdio_injection", lambda n: (
-        "from mcp.server.fastmcp import FastMCP\nimport os\n\n\n@mcp.tool()\ndef run(arg):\n"
-        + "".join(f"    os.system(x{'[0]' * n})\n" for _ in range(4))), 300)
+@pytest.mark.parametrize(("shape", "small"), [
+    # Every node of a sink's argument searched the argument below it again,
+    # whether or not it found a taint source in the end: four calls on a
+    # 3,000-level argument took 33 s.
+    (lambda n: "from mcp.server.fastmcp import FastMCP\nimport os\n\n\n@mcp.tool()\ndef run(arg):\n"
+     + "".join(f"    os.system(x{'[0]' * n})\n" for _ in range(4)), 300),
+    # Every one of 190 nested sinks searched the whole argument for taint and
+    # unparsed it whole for 200 characters of evidence: 4.0 s at 20,000 names.
+    (lambda n: "from mcp.server.fastmcp import FastMCP\nimport os\n\n\n@mcp.tool()\ndef run(cmd):\n    "
+     + "os.system(" * 190 + "(" + ", ".join(["cmd"] * n) + ")" + ")" * 190 + "\n", 3_000),
+], ids=["a deep argument", "nested sinks"])
+def test_stdio_injection_searches_a_sink_argument_in_linear_time(
+    tmp_path: Path, shape: Callable[[int], str], small: int
+) -> None:
+    _assert_linear(tmp_path, "stdio_injection", shape, small)
+
+
+def test_a_sink_snippet_is_the_start_of_its_unparsed_source_on_every_shape() -> None:
+    """The evidence keeps the first 200 characters of `ast.unparse(call)`, now
+    built from each inner call's own start: the same text on calls nested in
+    calls, keywords, starred arguments, lambdas, comprehensions and f-strings."""
+    from agent_audit_kit.scanners import stdio_injection
+
+    rng = random.Random(1021)
+    names = ["cmd", "x", "'a b'", "1.5", "b'\\x00'", "None"]
+
+    def expr(depth: int) -> str:
+        if depth <= 0 or rng.random() < 0.2:
+            return rng.choice(names)
+        inner = expr(depth - 1)
+        return rng.choice([
+            f"os.system({inner}, {expr(depth - 2)})", f"f({inner}, k={expr(depth - 2)})", f"g(*{inner})",
+            f"h(**{inner})", f"{inner}()", f"(lambda a={inner}: a)()", f"[{inner} for _ in {expr(depth - 2)}]",
+            f"f'{{{inner}!r}} {{{expr(depth - 2)}:>4}}'", f"{{{inner}: {expr(depth - 2)}}}", f"({inner}, {inner})",
+            f"{inner} + {expr(depth - 2)}", f"{inner}.attr", f"{inner}[0]", f"q({inner} for _ in y)",
+            "'" + "x" * rng.randrange(150, 260) + "'",
+        ])
+
+    checked = 0
+    for _ in range(3_000):
+        source = expr(7)
+        try:
+            tree = ast.parse(source)
+        except SyntaxError:  # an f-string nested in its own quotes, before 3.12
+            continue
+        heads: dict[int, str] = {}
+        for call in (n for n in ast.walk(tree) if isinstance(n, ast.Call)):
+            assert stdio_injection._call_head(call, heads)[:200] == ast.unparse(call)[:200], source
+            checked += 1
+    assert checked > 5_000
 
 
 def _old_node_references_taint(node: ast.AST) -> bool:
@@ -226,6 +269,11 @@ def test_the_stdio_taint_search_answers_as_it_did_on_every_shape() -> None:
         if (stdio_injection._node_references_taint(call) != _old_node_references_taint(call)
                 or stdio_injection._args_reference_taint(call, names) != _old_args_reference_taint(call, names)):
             differing.append(source)
+        # One memo for the file answers every call in it, outer and inner, in walk order.
+        holds = stdio_injection._taint_memo(names)
+        for inner in (n for n in ast.walk(call) if isinstance(n, ast.Call)):
+            if stdio_injection._args_reference_taint(inner, names, holds) != _old_args_reference_taint(inner, names):
+                differing.append(source)
     assert not differing, differing[:3]
 
 

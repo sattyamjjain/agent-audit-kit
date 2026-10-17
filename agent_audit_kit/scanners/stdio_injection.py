@@ -33,9 +33,10 @@ with `shell: true` plus a request-body interpolation.
 from __future__ import annotations
 
 import ast
+import copy
 import re
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from agent_audit_kit.models import Finding
 from agent_audit_kit.scanners._helpers import (
@@ -189,53 +190,142 @@ def _call_fqn(func: ast.expr) -> str:
     return ".".join(reversed(parts))
 
 
+def _taint_memo(names: set[str] | frozenset[str]) -> Callable[[ast.AST], bool]:
+    """A test of whether a subtree holds a name in `names` or a taint chain: an
+    attribute chain on a name with two neighbouring parts in
+    `_TAINT_ATTR_CHAINS` (`sys.stdin.read`).
+
+    A subtree holds one when its root is such a name or chain or a child's
+    subtree holds one, so each node's answer is worked out once, from its
+    children's, and kept for the file. A chain is judged from its outermost
+    attribute, as it always was: an attribute's chain has every pair of the
+    one below it, plus the pair it adds, and a chain on anything but a name has
+    none. Searching the whole argument again for every sink cost the product
+    of the sinks' nesting and the argument's size: 190 nested `os.system(`
+    around a tuple of names took 9.7 s at 162 KB.
+    """
+    held: dict[int, bool] = {}
+    # For an attribute: whether its chain, read down to a name, has a taint
+    # pair, or None when the chain does not end in a name.
+    chain_pair: dict[int, bool | None] = {}
+
+    def holds(root: ast.AST) -> bool:
+        stack: list[tuple[ast.AST, bool]] = [(root, False)]
+        while stack:
+            node, children_done = stack.pop()
+            if id(node) in held:
+                continue
+            if not children_done:
+                stack.append((node, True))
+                stack.extend((child, False) for child in ast.iter_child_nodes(node) if id(child) not in held)
+                continue
+            found = False
+            if isinstance(node, ast.Name):
+                found = node.id in names
+            elif isinstance(node, ast.Attribute):
+                below = node.value
+                pair: bool | None = None
+                if isinstance(below, ast.Name):
+                    pair = (below.id, node.attr) in _TAINT_ATTR_CHAINS
+                elif isinstance(below, ast.Attribute) and chain_pair[id(below)] is not None:
+                    pair = bool(chain_pair[id(below)]) or (below.attr, node.attr) in _TAINT_ATTR_CHAINS
+                chain_pair[id(node)] = pair
+                found = bool(pair)
+            held[id(node)] = found or any(held[id(child)] for child in ast.iter_child_nodes(node))
+        return held[id(root)]
+
+    return holds
+
+
 def _node_references_taint(node: ast.AST) -> bool:
     """Return True if an AST subtree references any known taint source: a name
     in `_TAINT_NAME`, or an attribute chain on a name with two neighbouring
-    parts in `_TAINT_ATTR_CHAINS` (`sys.stdin.read`).
-
-    In one walk. Each chain is read once, from its outermost attribute: the
-    chain of an attribute inside it is a prefix of its own, with no pair the
-    outer one lacks. It used to be read again from every attribute along it,
-    so a chain of n parts cost the square of n, and `json.loads(<arg>)` had its
-    argument searched again, though the argument lies inside `node` and the
-    walk reads it anyway (`json.loads(stdin.read())` is found by its `stdin`).
-    """
-    walked = list(ast.walk(node))
-    inner = {id(sub.value) for sub in walked if isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Attribute)}
-    for sub in walked:
-        if isinstance(sub, ast.Name) and sub.id in _TAINT_NAME:
-            return True
-        if isinstance(sub, ast.Attribute) and id(sub) not in inner:
-            chain = []
-            cur: ast.expr = sub
-            while isinstance(cur, ast.Attribute):
-                chain.append(cur.attr)
-                cur = cur.value
-            if isinstance(cur, ast.Name):
-                chain.append(cur.id)
-                chain.reverse()
-                if any(pair in _TAINT_ATTR_CHAINS for pair in zip(chain, chain[1:])):
-                    return True
-    return False
+    parts in `_TAINT_ATTR_CHAINS` (`sys.stdin.read`). `json.loads(<arg>)` needs
+    no search of its own: its argument lies inside the subtree
+    (`json.loads(stdin.read())` is found by its `stdin`)."""
+    return _taint_memo(_TAINT_NAME)(node)
 
 
-def _args_reference_taint(call: ast.Call, taint_names: set[str]) -> bool:
+def _args_reference_taint(
+    call: ast.Call, taint_names: set[str], holds: Callable[[ast.AST], bool] | None = None
+) -> bool:
     """True if a positional argument of `call` holds a name in `taint_names`
     (the file's tool parameters and the stock taint names) or references a
-    taint source (`_node_references_taint`).
-
-    That holds for a node whenever it holds for one inside it, so it is asked
-    once, of the whole argument. Asked of every node of it, it read the
-    argument once a level, which cost the square of a nested argument's depth:
-    a call on a 3,000-level chain took 6 s, for each such call in the file.
+    taint source (`_node_references_taint`). `holds` is the file's
+    `_taint_memo(taint_names)`, so that nested sinks share its answers.
     """
-    for arg in call.args:
-        if _node_references_taint(arg):
-            return True
-        if any(isinstance(sub, ast.Name) and sub.id in taint_names for sub in ast.walk(arg)):
-            return True
-    return False
+    if holds is None:
+        holds = _taint_memo(taint_names)
+    return any(holds(arg) for arg in call.args)
+
+
+# The longest snippet of a sink call an AAK-STDIO-001 finding quotes.
+_SNIPPET = 200
+
+
+def _call_head(call: ast.Call, heads: dict[int, str]) -> str:
+    """The first `_SNIPPET + 1` characters of `ast.unparse(call)`, worked out
+    once per call (`heads`), and for the whole file once per node.
+
+    Unparsing every sink to keep 200 characters read each nested sink's whole
+    argument again, at every level. A call is written the same wherever it sits
+    outside an f-string, so the calls inside one (outside f-strings) are left
+    as placeholders when it is unparsed, and each placeholder is filled with
+    that call's own head, up to the length kept. A placeholder is a name
+    holding NUL characters, which neither a source nor an unparsed string
+    holds. The inner calls are unparsed first, so no call waits on another.
+    """
+    found: list[tuple[ast.Call, list[str], list[ast.Call]]] = []
+    seen: set[int] = set()
+    todo = [call]
+    while todo:
+        current = todo.pop()
+        if id(current) in heads or id(current) in seen:
+            continue
+        seen.add(id(current))
+        parts, holes = _unparse_hollow(current)
+        found.append((current, parts, holes))
+        todo.extend(holes)
+    for current, parts, holes in reversed(found):  # each call after the calls inside it
+        out = parts[0]
+        for index in range(1, len(parts), 2):
+            if len(out) > _SNIPPET:
+                break
+            inner = heads[id(holes[int(parts[index])])]
+            out += inner
+            if len(inner) > _SNIPPET:
+                break
+            out += parts[index + 1]
+        heads[id(current)] = out[: _SNIPPET + 1]
+    return heads[id(call)]
+
+
+def _unparse_hollow(call: ast.Call) -> tuple[list[str], list[ast.Call]]:
+    """`ast.unparse(call)` with each call inside it, outside f-strings, written
+    as a placeholder: the text split at the placeholders, which alternate with
+    the indices of the calls they stand for, and those calls."""
+    holes: list[ast.Call] = []
+    pending: list[tuple[ast.AST, ast.AST]] = []
+
+    def hollow(node: ast.AST) -> ast.AST:
+        if isinstance(node, ast.Call) and node is not call:
+            holes.append(node)
+            return ast.Name(id=f"\0{len(holes) - 1}\0", ctx=ast.Load())
+        if isinstance(node, ast.JoinedStr):
+            return node  # an f-string writes what it holds its own way
+        dup = copy.copy(node)
+        pending.append((node, dup))
+        return dup
+
+    top = hollow(call)
+    while pending:
+        node, dup = pending.pop()
+        for field, value in ast.iter_fields(node):
+            if isinstance(value, ast.AST):
+                setattr(dup, field, hollow(value))
+            elif isinstance(value, list):
+                setattr(dup, field, [hollow(item) if isinstance(item, ast.AST) else item for item in value])
+    return unparse(top).split("\0"), holes
 
 
 def _python_hint_match(text: str) -> bool:
@@ -275,6 +365,8 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
                 tool_params.update(arg.arg for arg in node.args.kwonlyargs)
 
     taint_names_in_file = set(_TAINT_NAME) | tool_params
+    holds_taint = _taint_memo(taint_names_in_file)
+    heads: dict[int, str] = {}
     exec_modules, exec_functions = _exec_import_names(tree)
 
     for call in (n for n in ast.walk(tree) if isinstance(n, ast.Call)):
@@ -309,15 +401,15 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
             if (isinstance(first_arg, ast.BinOp) and isinstance(first_arg.op, ast.Add)
                     and isinstance(first_arg.left, (ast.List, ast.Tuple))):
                 continue
-        if not _args_reference_taint(call, taint_names_in_file):
+        if not _args_reference_taint(call, taint_names_in_file, holds_taint):
             continue
 
-        snippet = unparse(call)
+        snippet = _call_head(call, heads)
         findings.append(
             make_finding(
                 "AAK-STDIO-001",
                 rel,
-                f"STDIO command injection path: {snippet[:200]!r}"
+                f"STDIO command injection path: {snippet[:_SNIPPET]!r}"
                 + (" (shell=True)" if shell_true else ""),
                 line_number=call.lineno,
             )
