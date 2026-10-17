@@ -393,6 +393,55 @@ def test_taint_001_reads_a_typescript_import_equals(tmp_path: Path) -> None:
     assert [(f.rule_id, f.line_number) for f in scan(tmp_path)[0]] == [("AAK-TAINT-001", 3)]
 
 
+# Verification of the child_process sink: seven ways of binding the module that
+# main reported in TypeScript (it took any `.exec(`) and the branch had lost.
+# Each case gives the line the call is on, counted after _MCP_HEAD.
+_MORE_BINDINGS = {
+    "second declarator": ("const fs = require('fs'), cp = require('child_process');\ncp.exec(cmd);", 3),
+    "destructured from a bound name": (
+        "const cp = require('child_process');\nconst { exec } = cp;\nexec(cmd);", 4
+    ),
+    "declared, then assigned": ("let cp;\ncp = require('child_process');\ncp.exec(cmd);", 4),
+    "this property": ("this.cp = require('child_process');\nthis.cp.exec(cmd);", 3),
+    "awaited in parentheses": ("const cp = (await import('child_process'));\ncp.exec(cmd);", 3),
+    "a .then default item": ("import('child_process').then(({ default: cp }) => cp.exec(cmd));", 2),
+    "a call split before the dot": ("const cp = require('child_process');\ncp\n  .exec(cmd);", 4),
+    # The same split after the dot, on `this` and on the require itself.
+    "a call split after the dot": ("const cp = require('child_process');\ncp.\n  spawn(cmd);", 4),
+    "this, split": ("this.cp = require('child_process');\nthis.cp\n  ?.exec(cmd);", 4),
+    "require, split": ("require('child_process')\n  .execSync(cmd);", 3),
+    "a default import item": ("import { default as cp } from 'child_process';\ncp.spawn(cmd);", 3),
+    "a parenthesised import, called": ("(await import('child_process')).exec(cmd);", 2),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_MORE_BINDINGS))
+@pytest.mark.parametrize("ext", ["ts", "js"])
+def test_taint_001_reads_more_child_process_bindings(tmp_path: Path, case: str, ext: str) -> None:
+    code, line = _MORE_BINDINGS[case]
+    (tmp_path / f"server.{ext}").write_text(_MCP_HEAD + code + "\n", encoding="utf-8")
+    assert [(f.rule_id, f.line_number) for f in scan(tmp_path)[0]] == [("AAK-TAINT-001", line)]
+
+
+# Still not read, as the limitation says. A name only looks bound when nothing
+# binds it: `run.exec(cmd)` below calls a property of something else.
+_UNREAD_BINDINGS = {
+    "module.require": "const cp = module.require('child_process');\ncp.exec(cmd);",
+    "a default value in the list": "const { exec = null } = require('child_process');\nexec(cmd);",
+    "a member copied from a bound name": "const cp = require('child_process');\nconst run = cp.exec;\nrun(cmd);",
+    "another object's property": "deps.cp = require('child_process');\ndeps.cp.exec(cmd);",
+    "a comparison, not an assignment": "if (cp == require('child_process')) {}\ncp.exec(cmd);",
+    "a split call on an unbound name": "const cp = require('child_process');\nrun\n  .exec(cmd);",
+    "a property assigned on another name": "other.cp = require('child_process');\nthis.cp.exec(cmd);",
+}
+
+
+@pytest.mark.parametrize("case", sorted(_UNREAD_BINDINGS))
+def test_taint_001_does_not_read_other_bindings(tmp_path: Path, case: str) -> None:
+    (tmp_path / "server.ts").write_text(_MCP_HEAD + _UNREAD_BINDINGS[case] + "\n", encoding="utf-8")
+    assert [f.rule_id for f in scan(tmp_path)[0] if f.rule_id == "AAK-TAINT-001"] == []
+
+
 _HEAD = 'const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");\n'
 
 # Each case at a size and at ten times it, under the 1 MB the scanner reads.
@@ -502,6 +551,36 @@ def test_a_then_callback_without_a_parameter_reads_in_linear_time(tmp_path: Path
         root.mkdir()
         text = _HEAD + "const a = 1;\nconst b = 2;\nconst c = 3;\n" + prefix + filler * k + "!\n"
         (root / f"server.{ext}").write_text(text, encoding="utf-8")
+        timings.append(_scan_in_child(root))
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 10.0, large
+
+
+# The binding and call patterns added for the seven forms above, each on input
+# that keeps a match failing to the end: a run of blanks after a name being
+# assigned, a long run of assignments, and lines that each split a call at its
+# dot. Each builder takes a size in characters.
+_BINDING_SHAPES = {
+    "a name, then blanks": lambda k: "cp" + " " * k + "!",
+    "an assignment, then blanks": lambda k: "cp =" + " " * k + "!",
+    "an open parenthesis, then blanks": lambda k: "cp = (" + " " * k + "!",
+    "a this property, then blanks": lambda k: "this.cp =" + " " * k + "!",
+    "a destructuring, then blanks": lambda k: "const { exec } =" + " " * k + "!",
+    "a run of assignments": lambda k: "a=" * (k // 2) + "!",
+    "split calls": lambda k: "cp\n  .exec(cmd);\nrun.\n  spawn(cmd);\n" * (k // 36),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_BINDING_SHAPES))
+def test_the_binding_patterns_read_in_linear_time(tmp_path: Path, shape: str) -> None:
+    """At the 1 MB the scanner reads, and at a tenth of it."""
+    timings = []
+    for k in (99_000, 990_000):
+        root = tmp_path / str(k)
+        root.mkdir()
+        text = _HEAD + "const cp = require('child_process');\n" + _BINDING_SHAPES[shape](k) + "\n"
+        (root / "server.ts").write_text(text, encoding="utf-8")
         timings.append(_scan_in_child(root))
     small, large = timings
     assert large < 30 * small + 1.0, (small, large)

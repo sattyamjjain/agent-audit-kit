@@ -210,6 +210,8 @@ _JS_SUFFIXES = frozenset({".js", ".jsx", ".mjs", ".cjs"})
 _CP_MODULE = r"""['"](?:node:)?child_process['"]"""
 # `require('child_process')` or a dynamic `await import('child_process')`.
 _CP_LOAD = rf"(?:require|(?:await\s+)?import)\s*\(\s*{_CP_MODULE}\s*\)"
+# The same, or the same in parentheses: `(await import('child_process'))`.
+_CP_LOAD_P = rf"(?:\(\s*{_CP_LOAD}\s*\)|{_CP_LOAD})"
 _CP_METHODS = frozenset({"exec", "execSync", "spawn", "spawnSync"})
 # An import or destructuring list, its body bounded. `[^}]*` read to the end of
 # the file from every unclosed `let {` or `import a, {`, so 80,000 of them
@@ -228,26 +230,40 @@ _CP_THEN = (
     rf"\bimport\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*then\s*\(\s*"
     r"(?:async\b\s*)?(?:function\b\s*(?:[A-Za-z_$][\w$]*\s*)?)?"
 )
-# A name bound to the module: `const cp = require('child_process')` (not
-# `require(...).exec`), `const cp = await import(...)`, `import cp from ...`,
-# `import * as cp from ...`, TypeScript's `import cp = require(...)`, and the
-# parameter of a `.then` callback.
+# A name bound to the module. Any assignment of the module to a name binds it
+# (`require(...).exec` is a member, below): `const cp = require('child_process')`,
+# a second declarator (`const fs = require('fs'), cp = require(...)`), a name
+# declared first and assigned later (`let cp; cp = require(...)`), `await
+# import(...)` in parentheses or not, and TypeScript's `import cp = require(...)`.
+# Only a `const`, `let` or `var` declaration used to count. `==` and `=>` are not
+# assignments, and a property (`obj.cp = ...`) binds no name. Then `import cp
+# from ...`, `import * as cp from ...` and the parameter of a `.then` callback.
 _CP_ALIAS_RE = re.compile(
-    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}(?!\s*\??\.)"
+    rf"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=(?![=>])\s*{_CP_LOAD_P}(?!\s*\??\.)"
     rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^{{}}]{{0,2000}}\}}\s*)?from\s*{_CP_MODULE}"
-    rf"|\bimport\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*{_CP_MODULE}\s*\)"
     rf"|{_CP_THEN}(?:\(\s*)?(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
+)
+# `this.cp = require('child_process')`, called as `this.cp.exec(...)`. Another
+# object's property is not followed.
+_CP_THIS_ALIAS_RE = re.compile(
+    rf"\bthis\s*\.\s*([A-Za-z_$][\w$]*)\s*=(?![=>])\s*{_CP_LOAD_P}(?!\s*\??\.)"
 )
 # Names imported from it: `const { exec, spawn: run } = require(...)` or
 # `= await import(...)`, `import { execSync as sh } from ...`,
-# `import cp, { exec } from ...`, and `.then(({ exec }) => ...)`.
+# `import cp, { exec } from ...`, and `.then(({ exec }) => ...)`. A `default`
+# item binds the module itself: `.then(({ default: cp }) => ...)`.
 _CP_NAMED_RE = re.compile(
-    rf"\b(?:const|let|var)\s*{_CP_LIST}\s*=\s*{_CP_LOAD}"
+    rf"\b(?:const|let|var)\s*{_CP_LIST}\s*=\s*{_CP_LOAD_P}"
     rf"|\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?{_CP_LIST}\s*from\s*{_CP_MODULE}"
     rf"|{_CP_THEN}\(\s*{_CP_LIST}"
 )
+# A list destructured from a plain name, `const { exec } = cp`, read once the
+# names bound to the module are known.
+_CP_DESTRUCTURE_RE = re.compile(
+    rf"\b(?:const|let|var)\s*{_CP_LIST}\s*=\s*([A-Za-z_$][\w$]*)(?![\w$])(?!\s*(?:\??\.|\(|\[))"
+)
 _CP_MEMBER_RE = re.compile(
-    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}"
+    rf"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=(?![=>])\s*{_CP_LOAD_P}"
     r"\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\b"
 )
 # One item of such a list, matched stripped (`exec`, `spawn: run`,
@@ -256,15 +272,30 @@ _CP_MEMBER_RE = re.compile(
 _CP_ITEM_RE = re.compile(r"([A-Za-z_$][\w$]*)(?:\s*(?::|\bas\b)\s*([A-Za-z_$][\w$]*))?")
 # A call: a bare name, or a method on a name through `.` or `?.`.
 _CALL_RE = re.compile(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*(?:\??\.\s*([A-Za-z_$][\w$]*)\s*)?\(")
+# A method called on `this.<name>`.
+_THIS_CALL_RE = re.compile(r"\bthis\s*\.\s*([A-Za-z_$][\w$]*)\s*\??\.\s*([A-Za-z_$][\w$]*)\s*\(")
+# A call on the module itself, `require('child_process').exec(...)`, or on the
+# module in parentheses, `(await import('child_process')).exec(...)`.
 _CP_REQUIRE_CALL_RE = re.compile(
-    rf"\brequire\s*\(\s*{_CP_MODULE}\s*\)\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\s*\("
+    rf"(?:\brequire\s*\(\s*{_CP_MODULE}\s*\)|\(\s*{_CP_LOAD}\s*\))"
+    r"\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\s*\("
+)
+# A call split across two lines at its dot: the receiver ends one line and
+# `.exec(cmd)` starts the next (the layout formatters give a long chain), or
+# `cp.` ends one and `exec(cmd)` starts the next.
+_LEADING_DOT_CALL_RE = re.compile(r"\s*\??\.\s*(?:exec|execSync|spawn|spawnSync)\s*\(")
+_LEADING_CALL_RE = re.compile(r"\s*(?:exec|execSync|spawn|spawnSync)\s*\(")
+_TRAILING_RECEIVER_RE = re.compile(
+    rf"(?:(?<![\w$.])([A-Za-z_$][\w$]*)|\bthis\s*\.\s*([A-Za-z_$][\w$]*)"
+    rf"|\brequire\s*\(\s*{_CP_MODULE}\s*\))\Z"
 )
 
 
 class _ChildProcessSink:
     """AAK-TAINT-001's sink in one file: `exec`, `execSync`, `spawn` or `spawnSync`
-    called on `child_process`, on a name the file binds to that module, on
-    `require('child_process')` itself, or under a name imported from it.
+    called on `child_process`, on a name the file binds to that module (or on
+    `this.<name>` it assigns the module to), on `require('child_process')`
+    itself, or under a name imported from it.
 
     The pattern was any `exec(`, `.exec(` or `spawn(`, so a regular expression's
     `exec` (`/^\\/files\\/(.+)$/.exec(req.url)`) or a database's read as a
@@ -277,9 +308,10 @@ class _ChildProcessSink:
     bound names took 37 times as long as 1,000.
     """
 
-    def __init__(self, receivers: frozenset[str], names: frozenset[str]) -> None:
+    def __init__(self, receivers: frozenset[str], names: frozenset[str], this_receivers: frozenset[str]) -> None:
         self.receivers = receivers
         self.names = names
+        self.this_receivers = this_receivers
 
     def search(self, line: str) -> bool:
         if _CP_REQUIRE_CALL_RE.search(line):
@@ -291,23 +323,58 @@ class _ChildProcessSink:
                     return True
             elif method in _CP_METHODS and name in self.receivers:
                 return True
+        if self.this_receivers:
+            for m in _THIS_CALL_RE.finditer(line):
+                if m.group(2) in _CP_METHODS and m.group(1) in self.this_receivers:
+                    return True
         return False
+
+    def continues(self, before: str, line: str) -> bool:
+        """Whether `line` finishes a call the code line `before` began on a receiver:
+        `cp` then `.exec(cmd)`, or `cp.` then `exec(cmd)`."""
+        tail = before.rstrip()
+        if tail.endswith("."):
+            if not _LEADING_CALL_RE.match(line):
+                return False
+            tail = tail[:-1].rstrip("?").rstrip()
+        elif not _LEADING_DOT_CALL_RE.match(line):
+            return False
+        m = _TRAILING_RECEIVER_RE.search(tail)
+        if m is None:
+            return False
+        if m.group(1) is not None:
+            return m.group(1) in self.receivers
+        if m.group(2) is not None:
+            return m.group(2) in self.this_receivers
+        return True
 
 
 def _child_process_sink(source: str) -> _ChildProcessSink:
     """The names `source` binds to child_process, and to its exec and spawn calls."""
     receivers = {"child_process"}
     names: set[str] = set()
+
+    def take(body: str) -> None:
+        for item in body.split(","):
+            parts = _CP_ITEM_RE.fullmatch(item.strip())
+            if parts is None:
+                continue
+            name, alias = parts.group(1), parts.group(2)
+            if name in _CP_METHODS:
+                names.add(alias or name)
+            elif name == "default" and alias:
+                receivers.add(alias)
+
     for m in _CP_ALIAS_RE.finditer(source):
         receivers.add(next(g for g in m.groups() if g is not None))
     for m in _CP_NAMED_RE.finditer(source):
-        body = next(g for g in m.groups() if g is not None)
-        for item in body.split(","):
-            parts = _CP_ITEM_RE.fullmatch(item.strip())
-            if parts and parts.group(1) in _CP_METHODS:
-                names.add(parts.group(2) or parts.group(1))
+        take(next(g for g in m.groups() if g is not None))
     names.update(m.group(1) for m in _CP_MEMBER_RE.finditer(source))
-    return _ChildProcessSink(frozenset(receivers), frozenset(names))
+    for m in _CP_DESTRUCTURE_RE.finditer(source):
+        if m.group(2) in receivers:
+            take(m.group(1))
+    this_receivers = frozenset(m.group(1) for m in _CP_THIS_ALIAS_RE.finditer(source))
+    return _ChildProcessSink(frozenset(receivers), frozenset(names), this_receivers)
 
 
 def _is_bundle(name: str, source: str) -> bool:
@@ -409,11 +476,19 @@ def _scan_file(
         for pattern, rule_id, description in _DANGEROUS_SINKS
         if not (is_js and rule_id in _TS_ONLY_RULES)
     ]
+    # Lines that finish a child_process call the code line before them began.
+    continued: set[int] = set()
+    before = ""
+    for line_no, line in code:
+        if before and cp_sink.continues(before, line):
+            continued.add(line_no)
+        if line.strip():
+            before = line
     for line_no, line in code:
         for pattern, rule_id, description in sinks:
             if rule_id == _SUPERSEDED_RULE and line_no in owned:
                 continue
-            if pattern.search(line):
+            if pattern.search(line) or (pattern is cp_sink and line_no in continued):
                 findings.append(make_finding(
                     rule_id,
                     rel_path,
