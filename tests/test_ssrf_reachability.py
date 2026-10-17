@@ -310,6 +310,12 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     "    return requests.get(url + path).text\n",
     'def proxy(path: str) -> str:\n    return requests.get(API_HOST + path).text\n'
     'API_HOST = "https://"\nAPI_HOST += "api.example.com"\n',
+    # A scheme and its two slashes written apart: `https:/` has no authority
+    # yet, so it does not end one.
+    'def proxy(host: str) -> str:\n    return requests.get("/".join(["https:", "", host, "v1"])).text\n',
+    'def proxy(host: str) -> str:\n    parts = ["https:", "", host, "v1"]\n    return requests.get("/".join(parts)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("https:/" + "/" + host).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("https:" + "/" + "/" + host).text\n',
 ])
 def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> None:
     assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body)
@@ -326,6 +332,7 @@ def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> No
     'def item(path: str) -> str:\n    return requests.get(API + path).text\nAPI = "https://"\nAPI += "api.example.com/"\n',
     'def item(path: str) -> str:\n    parts = [BASE, path]\n    return requests.get("/".join(parts)).text\n',
     'def item(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/v1/" + path)).text\n',
+    'def item(path: str) -> str:\n    return requests.get("https:/" + "/api.example.com/" + path).text\n',
     # Keyed fields after a fixed host, and a mapping the code fixed.
     'def item(arguments: dict) -> str:\n    return requests.get("https://api.example.com/%(path)s" % arguments).text\n',
     'def item(path: str) -> str:\n    return requests.get("https://%(host)s/" % REGIONS + path).text\n',

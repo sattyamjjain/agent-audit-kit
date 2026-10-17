@@ -365,6 +365,10 @@ def _py_addr_here(node: ast.AST) -> str | None:
 #: the caller can still write `@evil.example`. A host is taken as fixed only
 #: when every reading agrees (#1019).
 _AUTHORITY_END_RE = re.compile(r"[/?#]")
+#: A scheme and its colon with at most one `/` or `\` after them (`https:`,
+#: `https:/`): text a URL passes through on its way to `https://`, written in
+#: pieces as `"/".join(["https:", "", host])` writes it. No authority has begun.
+_SCHEME_LEAD_RE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:[/\\]?")
 #: Text the code does not spell out (a configured base URL, `self.base`, a call).
 _UNKNOWN = "\x00"
 #: How much of a URL's leading text is read: no host is longer.
@@ -410,8 +414,13 @@ def _authority_closed(prefix: str) -> bool:
     piece the code does not spell out, which is a base URL with its own host.
     Until then the caller's text can still name the host: `https://` + host,
     `"https://api.example.com"` + `@evil.example` or `.evil.example`,
-    `http://localhost:` + a port and an `@`, or `/` + `/evil.example/x`.
+    `http://localhost:` + a port and an `@`, or `/` + `/evil.example/x`. A
+    scheme with one slash after it (`https:/`) has no authority yet: read as
+    a host and a path, it hid the caller's host in
+    `"/".join(["https:", "", host])`.
     """
+    if _SCHEME_LEAD_RE.fullmatch(prefix):
+        return False
     if prefix[:1] in ("/", "\\") and prefix[1:2] not in ("/", "\\"):
         # A path on the client's base URL holds its host once the first segment
         # has begun. A bare `/` does not: the caller can write the second one,
