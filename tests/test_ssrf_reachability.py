@@ -1292,6 +1292,16 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
     # reads its keys, which were read again at every join.
     "dict-join": (lambda: _TOOL_HEAD + "    d = {" + "".join(f"'k{i}': 0, " for i in range(23_070)) + "}\n"
         + "    requests.get(''.join(d))\n" * 7_690, False),
+    # A module `string.Template` made from an `or` of 23,769 names, substituted
+    # at 7,923 fetches in one tool, and one of 13,554 names substituted by 4,518
+    # tools: the template's text was walked again at every substitution.
+    "template-one-tool": (lambda: _CYCLE_HEAD + "from string import Template\nT = Template("
+        + " or ".join(f"x{i}" for i in range(23_769)) + ")\n@mcp.tool()\ndef t(p: str) -> str:\n"
+        + "    requests.get(T.substitute(h=p))\n" * 7_923, False),
+    "template-tools": (lambda: _CYCLE_HEAD + "from string import Template\nT = Template("
+        + " or ".join(f"x{i}" for i in range(13_554)) + ")\n" + "".join(
+            f"@mcp.tool()\ndef t{k}(p: str) -> str:\n    return requests.get(T.substitute(h=p)).text\n"
+            for k in range(4_518)), False),
 }
 
 

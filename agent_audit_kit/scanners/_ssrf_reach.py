@@ -1029,6 +1029,21 @@ class _CallerInput:
                         return True
                     stack.append(func.value)
                     continue
+                if isinstance(func, ast.Attribute) and func.attr in ("substitute", "safe_substitute"):
+                    reader = self._template(func.value, depth)
+                    if reader is not None:
+                        # A `string.Template` fills `$host` or `${host}` from
+                        # its mapping and keywords, as `.format(**m)` fills
+                        # `{host}`. Its text is judged and spelled by the scope
+                        # that binds it, once: walked again at every call, a
+                        # module template took 59 s for 7,923 substitutions.
+                        owner, source, level = reader
+                        if owner.sets_host(source, level, nest + 1):
+                            return True
+                        if not _authority_closed(_template_lead(owner._spelled(source, level, nest + 1))):
+                            stack.extend(cur.args)
+                            stack.extend(kw.value for kw in cur.keywords)
+                        continue
                 pieces = None
                 if isinstance(func, ast.Attribute) and func.attr == "format":
                     pieces = _format_pieces(self._spelled(func.value, depth, nest + 1), cur)
@@ -1170,18 +1185,23 @@ class _CallerInput:
             hit = self._mappings[id(target)] = (target, keyed, rest)
         return hit[1], hit[2]
 
-    def _template_source(self, node: ast.AST) -> ast.AST | None:
-        """The text a `string.Template` is made from: `Template(text)` or
-        `string.Template(text)`, written in place or bound to a name once."""
+    def _template(self, node: ast.AST, depth: int) -> tuple[_CallerInput, ast.AST, int] | None:
+        """For a `string.Template`: the scope that reads its text, the text, and
+        the depth to read it at. `Template(text)` or `string.Template(text)`
+        written in place is read here, at this depth; one bound once to a name
+        is read by the scope that binds the name, one level down, so a module
+        template is the file's, with no caller input in it."""
+        owner, level = self, depth
         if isinstance(node, ast.Name):
             if node.id in self.params or node.id in self.elements:
                 return None
-            bound = self._bound(node.id)
+            owner = self._owner(node.id)
+            bound = owner._bound(node.id)
             if len(bound) != 1:
                 return None
-            node = bound[0]
+            node, level = bound[0], depth + 1
         if isinstance(node, ast.Call) and node.args and _py_callee_name(node.func).rpartition(".")[2] == "Template":
-            return node.args[0]
+            return owner, node.args[0], level
         return None
 
     def _joined_mapping(self, node: ast.AST) -> str | None:
@@ -1247,15 +1267,6 @@ class _CallerInput:
             if _authority_closed(template.partition("{")[0]):
                 return [receiver]
             return [receiver, *call.args, *(kw.value for kw in call.keywords)]
-        if name in ("substitute", "safe_substitute"):
-            # A `string.Template` fills `$host` or `${host}` from its mapping
-            # and keywords, as `.format(**m)` fills `{host}`.
-            source = self._template_source(receiver)
-            if source is not None:
-                template = self._spelled(source, depth, nest + 1)
-                if _authority_closed(_template_lead(template)):
-                    return [source]
-                return [source, *call.args, *(kw.value for kw in call.keywords)]
         if name == "replace" and len(call.args) >= 2:
             template = self._spelled(receiver, depth, nest + 1)
             old = self._spelled(call.args[0], depth, nest + 1)
