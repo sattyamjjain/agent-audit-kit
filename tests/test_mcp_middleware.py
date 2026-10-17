@@ -407,6 +407,7 @@ def test_the_lookup_rule_states_what_it_reads() -> None:
     from agent_audit_kit.rules.builtin import RULES
 
     rule = RULES[LOOKUP]
+    assert rule.title == "MCP auth check runs after a resource lookup"
     assert "Go MCP HTTP handler" in rule.description
     assert "TypeScript, JavaScript and Python handlers are not read" in rule.limitations
 

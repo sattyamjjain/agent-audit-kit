@@ -3483,7 +3483,7 @@ _r(
 
 _r(
     "AAK-MCP-019",
-    "MCP auth check runs after side-effect",
+    "MCP auth check runs after a resource lookup",
     "A Go MCP HTTP handler looks a resource up by something the caller sent (a "
     "path, query or form parameter), answers a miss with \"not found\" straight "
     "away, and checks the caller's credential only after that, answering 401 or "

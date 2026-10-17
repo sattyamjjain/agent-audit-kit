@@ -2704,7 +2704,7 @@
       ],
       "rule_id": "AAK-MCP-019",
       "severity": "high",
-      "title": "MCP auth check runs after side-effect"
+      "title": "MCP auth check runs after a resource lookup"
     },
     {
       "category": "mcp-config",
