@@ -345,9 +345,13 @@ def _art15_locale_subsection(result: ScanResult) -> list[str]:
                     )
         declared_str = ", ".join(sorted(all_declared)) or "n/a"
         covered_str = ", ".join(sorted(all_covered)) if all_covered else "none"
+        # A `multilingual: true` declaration names fewer locales than it
+        # claims, so "1 locale(s) (en)" misread it as a single-language agent.
+        multilingual = any("multilingual: true" in (f.evidence or "") for f in findings)
         lines.append(
-            f"      multilingual-locale-declared: "
-            f"{len(all_declared)} locale(s) ({declared_str})"
+            "      multilingual-locale-declared: "
+            + ("multilingual: true, " if multilingual else "")
+            + f"{len(all_declared)} {'named ' if multilingual else ''}locale(s) ({declared_str})"
         )
         lines.append(
             f"      multilingual-eval-coverage: not evidenced — "

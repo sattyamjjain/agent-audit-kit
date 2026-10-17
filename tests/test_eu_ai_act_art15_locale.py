@@ -230,8 +230,24 @@ def test_named_locales_are_judged_as_before_when_the_flag_is_set(tmp_path: Path)
 
 
 def test_the_report_reads_a_multilingual_finding(tmp_path: Path) -> None:
+    """The line read "1 locale(s) (en)" for an agent that declared itself multilingual."""
     result = ScanResult()
     result.findings.extend(_locale_project(tmp_path, _MULTILINGUAL + "default_locale: en\n", ("welcome.en.yaml",)))
     out = compliance.format_results(result, "eu-ai-act")
-    assert "multilingual-locale-declared: 1 locale(s) (en)" in out
+    assert "multilingual-locale-declared: multilingual: true, 1 named locale(s) (en)" in out
     assert "multilingual-eval-coverage: not evidenced — covered=[en]" in out
+
+
+def test_a_tools_multilingual_flag_is_not_the_agents(tmp_path: Path) -> None:
+    """Read anywhere, a tool's own `multilingual: true` counted as the agent's."""
+    config = (
+        "name: support-bot\nrole: assistant\nuser_facing: true\ndefault_locale: en\n"
+        "tools:\n  - name: translate\n    multilingual: true\n"
+    )
+    assert _locale_project(tmp_path, config, ("welcome.en.yaml",)) == []
+
+
+def test_an_agent_entrys_multilingual_flag_counts(tmp_path: Path) -> None:
+    """A CrewAI-style entry: the flag sits beside the agent's own role."""
+    config = "support:\n  role: assistant\n  goal: help customers\n  multilingual: true\n"
+    assert len(_locale_project(tmp_path, config, ("welcome.en.yaml",))) == 1

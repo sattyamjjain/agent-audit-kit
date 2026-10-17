@@ -162,26 +162,38 @@ def _extract_declared_locales(data: Any) -> set[str]:
     return found
 
 
-def _declares_multilingual(data: Any) -> bool:
-    """A `multilingual: true` anywhere in the document, the way the locale keys
-    are read. The rule text and this module's docstring promised it, but the
-    key was never read, and a config naming fewer than two locales was
-    skipped, so `multilingual: true` with `default_locale: en` never fired."""
+# Keys that make a mapping the agent's own: the role and audience keys
+# `_is_user_facing` reads, and the locale-list keys. `locale` and `language`
+# are left out, since a tool may carry them (`language: python`).
+_AGENT_KEYS: frozenset[str] = frozenset({
+    "role", "user_facing", "userfacing", "is_user_facing", "surface", "audience",
+    "locales", "default_locale", "primary_locale", "supported_languages",
+})
 
-    def _visit(node: Any) -> bool:
+
+def _declares_multilingual(data: Any) -> bool:
+    """A `multilingual: true` that describes the agent: at the top of the
+    document, or in a mapping that also carries one of `_AGENT_KEYS` (a CrewAI
+    entry beside its `role`). The rule text and this module's docstring
+    promised the key, but it was never read, and a config naming fewer than two
+    locales was skipped, so `multilingual: true` with `default_locale: en` never
+    fired. Read anywhere, a tool's own `multilingual: true` counted as the
+    agent's."""
+
+    def _true(val: Any) -> bool:
+        return val is True or (isinstance(val, str) and val.strip().lower() in {"true", "yes", "1"})
+
+    def _visit(node: Any, top: bool) -> bool:
         if isinstance(node, dict):
-            for key, val in node.items():
-                if str(key).lower() == "multilingual" and (
-                    val is True or (isinstance(val, str) and val.strip().lower() in {"true", "yes", "1"})
-                ):
-                    return True
-                if _visit(val):
-                    return True
-        elif isinstance(node, list):
-            return any(_visit(item) for item in node)
+            keys = {str(k).lower(): v for k, v in node.items()}
+            if "multilingual" in keys and (top or keys.keys() & _AGENT_KEYS) and _true(keys["multilingual"]):
+                return True
+            return any(_visit(v, False) for v in node.values())
+        if isinstance(node, list):
+            return any(_visit(item, False) for item in node)
         return False
 
-    return _visit(data)
+    return _visit(data, True)
 
 
 def _is_user_facing(data: Any, raw_text: str) -> bool:
