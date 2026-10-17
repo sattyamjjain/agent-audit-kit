@@ -74,10 +74,10 @@ def _as_arguments(raw: Any) -> dict:
         text = raw.strip()
         if text.startswith("{"):
             try:
-                parsed = json.loads(text)
+                parsed = loads_json(text, None)
             except (ValueError, RecursionError, MemoryError):
-                # Not JSON, or nested past what JSON's parser reads: kept as
-                # the string it is, as an argument that does not parse was.
+                # Not JSON, or nested past `JSON_MAX_NESTING`: kept as the
+                # string it is, as an argument that does not parse was.
                 return {"arg": raw}
             if isinstance(parsed, dict):
                 return parsed
@@ -212,8 +212,8 @@ def from_langgraph(raw: Any) -> list[dict] | None:
 def from_jsonl(text: str, path: Path | None = None) -> list[dict] | None:
     """Raw JSONL of ``{tool, args, ts}`` → canonical calls.
 
-    A line nested past what JSON's parser reads is skipped, as an unparseable
-    one is, and refused against ``path`` when there is one, so a scan reports
+    A line nested past `JSON_MAX_NESTING` is skipped, as an unparseable one
+    is, and refused against ``path`` when there is one, so a scan reports
     the transcript it did not read in full.
     """
     rows: list[dict] = []

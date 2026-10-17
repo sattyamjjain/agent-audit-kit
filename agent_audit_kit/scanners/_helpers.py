@@ -1318,6 +1318,81 @@ def strip_jsonc(text: str) -> str:
     return "".join(parts)
 
 
+# The deepest a JSON or JSONC text may nest its arrays and objects. Python's
+# parser stops at a depth that differs by version (about 990 levels on 3.9 to
+# 3.11, about 9,970 on 3.12 and 3.13, and on 3.14 whatever the thread's stack
+# holds: about 116,000 on macOS's main thread, under 58,000 on an 8 MB stack),
+# and a reader that recursed over what it parsed met its own limit at 1,000
+# frames, so one file was read on one version and took a scanner down on
+# another. Every version now refuses JSON nested past this depth (see
+# `_parse_json`); real configs nest under 20.
+JSON_MAX_NESTING = 500
+
+# What the depth count steps over: a string, its closing quote optional, so an
+# unterminated one runs to the end and no bracket after it counts. Its runs and
+# escapes are disjoint, so each character is read once: a 37 MB lockfile is
+# counted in about 0.25 s, against 0.09 s for `json.loads`.
+_JSON_SKIP_RE = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"?', re.DOTALL)
+_NOT_A_BRACKET_RE = re.compile(r"[^\[\]{}]+")
+_BRACKET_STEP = {"[": 1, "{": 1, "]": -1, "}": -1}
+
+
+def _json_nesting(text: str) -> int:
+    """The deepest nesting of `[` and `{` in `text` outside strings: strings are
+    cut out, then everything but the brackets, and the running depth of what is
+    left is taken in C. On JSON, and on the part of a text `json.loads` read
+    before an error, it is the depth the parser descended to."""
+    brackets = _NOT_A_BRACKET_RE.sub("", _JSON_SKIP_RE.sub("", text))
+    return max(accumulate(map(_BRACKET_STEP.__getitem__, brackets)), default=0)
+
+
+def _json_past_limit(text: str) -> bool:
+    """Whether `text` nests past `JSON_MAX_NESTING`. A text with no more opening
+    brackets than the limit cannot, so most texts are not counted at all."""
+    return text.count("[") + text.count("{") > JSON_MAX_NESTING and _json_nesting(text) > JSON_MAX_NESTING
+
+
+def _too_deep(text: str, path: Path | str | None) -> Exception:
+    """The refusal of JSON nested past `JSON_MAX_NESTING`: recorded against
+    `path` and returned as a `RefusedJSON`, or, without a path, a RecursionError
+    (`_TooDeepToParse`, whose message is the reason), as the parser's own
+    overflow propagates."""
+    reason = f"JSON nested deeper than {JSON_MAX_NESTING} levels"
+    if path is None:
+        return _TooDeepToParse(reason)
+    refuse(path, reason)
+    return RefusedJSON(reason, text, 0)
+
+
+def _parse_json(text: str, path: Path | str | None) -> Any:
+    """`json.loads(text)`, refused when it nests past `JSON_MAX_NESTING`.
+
+    The parser reads first, and then how deep it went is counted: the whole
+    text when it read it, the part before the error when it stopped at one,
+    and the whole text when it ran out of stack. So every version refuses the
+    same texts, and a text that stops being JSON before the limit raises its
+    JSONDecodeError as before, however many brackets follow: 60,000
+    `capabilities: {` are no JSON from the first character, not JSON nested
+    60,000 deep. Without a path, an overflow the count does not explain (the
+    caller's own stack was deep) propagates as it did.
+    """
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        if _json_past_limit(text[: exc.pos]):
+            raise _too_deep(text, path) from None
+        raise
+    except _OVERFLOW as exc:
+        if _json_past_limit(text):
+            raise _too_deep(text, path) from None
+        if path is None:
+            raise
+        raise _refused_json(text, path, exc) from None
+    if _json_past_limit(text):
+        raise _too_deep(text, path)
+    return data
+
+
 def loads_jsonc(text: str, path: Path | str | None = None) -> Any:
     """Parse `text` as JSON or, when that fails, as JSONC (see `strip_jsonc`).
 
@@ -1326,24 +1401,18 @@ def loads_jsonc(text: str, path: Path | str | None = None) -> Any:
     this returns what it did for every file it could read before, and only
     stops skipping the ones with comments or trailing commas. A file that is
     invalid even as JSONC raises `json.JSONDecodeError` as before, with a
-    position that matches the raw text. One nested too deep for Python's
-    parser is refused against `path`, as `loads_json` refuses it, and without a
-    path the RecursionError propagates, as it did.
+    position that matches the raw text. One nested deeper than
+    `JSON_MAX_NESTING`, read either way, is refused against `path`, as
+    `loads_json` refuses it, and without a path a RecursionError propagates,
+    as it did.
     """
     try:
-        return json.loads(text)
+        return _parse_json(text, path)
+    except RefusedJSON:
+        raise
     except json.JSONDecodeError:
         pass
-    except (RecursionError, MemoryError) as exc:
-        if path is None:
-            raise
-        raise _refused_json(text, path, exc) from None
-    try:
-        return json.loads(strip_jsonc(text))
-    except (RecursionError, MemoryError) as exc:
-        if path is None:
-            raise
-        raise _refused_json(text, path, exc) from None
+    return _parse_json(strip_jsonc(text), path)
 
 
 #: The keys an MCP client config keeps its server map under. `mcpServers` is the
@@ -2064,20 +2133,16 @@ def _refused_json(text: str, path: Path | str, exc: BaseException) -> RefusedJSO
 
 
 def loads_json(text: str | bytes, path: Path | str | None) -> Any:
-    """`json.loads(text)`, refusing a text nested too deep for Python's parser.
+    """`json.loads(text)`, refusing a text nested deeper than
+    `JSON_MAX_NESTING` (see `_parse_json`), or too deep for Python's parser.
 
     The refusal is recorded against `path` and raised as `RefusedJSON`, a
     `json.JSONDecodeError`, so the reader skips the file as it skips invalid
-    JSON while `run_scan` reports it. Without a path the RecursionError
-    propagates (see `refuse`).
+    JSON while `run_scan` reports it. Without a path a RecursionError
+    propagates (see `refuse`). Bytes are decoded as `json.loads` decodes them.
     """
-    try:
-        return json.loads(text)
-    except _OVERFLOW as exc:
-        if path is None:
-            raise
-        doc = text if isinstance(text, str) else text.decode("utf-8", errors="replace")
-        raise _refused_json(doc, path, exc) from None
+    doc = text if isinstance(text, str) else text.decode(json.detect_encoding(text), "surrogatepass")
+    return _parse_json(doc, path)
 
 
 # A filename no file can have, for `ast.parse`. On a SyntaxError CPython reads

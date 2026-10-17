@@ -299,14 +299,13 @@ def test_cli_warns_when_no_transcript_is_readable(tmp_path: Path) -> None:
 # --- a hostile transcript -----------------------------------------------------
 #
 # A user passes --sessions a transcript an agent wrote, and an agent writes what
-# its tools returned. JSON's parser raised RecursionError past a fixed depth on
-# 3.9 to 3.13 (3.14 bounds it by the stack instead, so there a 100,000-level
-# text may be read), the adapters caught only ValueError, and a LangGraph
+# its tools returned. JSON's parser raised RecursionError past a depth that
+# differs by version, the adapters caught only ValueError, and a LangGraph
 # checkpoint was read by recursing down its `checkpoint` keys: any of these
-# stopped `aak scan --sessions` outright.
+# stopped `aak scan --sessions` outright. A text past `JSON_MAX_NESTING` is now
+# refused on every version.
 
 _DEEP = "[" * 100_000 + "]" * 100_000
-_MAY_BE_READ = sys.version_info >= (3, 14)
 
 
 def test_a_checkpoint_nested_past_the_recursion_limit_is_read() -> None:
@@ -328,7 +327,7 @@ def test_a_jsonl_line_too_deep_to_parse_costs_that_line_alone(tmp_path: Path) ->
         result = normalize_path(path)
     assert result == ("jsonl", [{"tool": "read_file", "arguments": {"path": "a"}},
                                 {"tool": "read_file", "arguments": {"path": "b"}}])
-    assert list(refused) == [str(path)] or (_MAY_BE_READ and not refused)
+    assert refused == {str(path): "JSON nested deeper than 500 levels"}
     assert from_jsonl("\n".join(rows)) == result[1]
 
 
@@ -336,8 +335,7 @@ def test_an_argument_string_too_deep_to_parse_is_kept_as_a_string() -> None:
     from agent_audit_kit.sessions.adapters import _as_arguments
 
     text = '{"a":' * 100_000 + "1" + "}" * 100_000
-    got = _as_arguments(text)
-    assert got == {"arg": text} or (_MAY_BE_READ and isinstance(got, dict) and "a" in got)
+    assert _as_arguments(text) == {"arg": text}
 
 
 def test_a_transcript_too_deep_to_parse_is_refused_not_a_crash(tmp_path: Path) -> None:
@@ -359,8 +357,5 @@ def test_a_transcript_too_deep_to_parse_is_refused_not_a_crash(tmp_path: Path) -
     assert res.exception is None or isinstance(res.exception, SystemExit), res.exception
     failures = [f["evidence"] for f in json.loads(out.read_text())["findings"]
                 if f["ruleId"] == "AAK-INTERNAL-SCANNER-FAIL"]
-    if _MAY_BE_READ and not failures:
-        assert res.exit_code == 0
-        return
     assert res.exit_code == 1
     assert len(failures) == 1 and "error=RefusedFile: " in failures[0] and "deep.json" in failures[0], failures

@@ -394,7 +394,7 @@ def _run_scan(
         from agent_audit_kit.sessions.adapters import load_transcripts, scan_sessions
 
         sessions_path = Path(sessions)
-        # A transcript nested past what JSON's parser reads is refused, and
+        # A transcript nested past `JSON_MAX_NESTING` levels is refused, and
         # reported as a refused file in the project is, so the scan says it is
         # incomplete rather than passing on what it did not read.
         with collecting_refusals() as refused:

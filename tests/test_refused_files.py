@@ -55,13 +55,6 @@ from agent_audit_kit.scanners._helpers import (
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "tests" / "fixtures"
 DEEP_JSON = "[" * 100_000 + "]" * 100_000
-# 3.9 to 3.13 refuse DEEP_JSON at a fixed recursion limit. 3.14 bounds the C
-# JSON decoder by the stack the thread has left instead, so the outcome depends
-# on that stack: 3.14.8 on macOS reads about 116,000 levels on its 16 MB
-# main-thread stack, and a thread with an 8 MB stack refuses 100,000. From 3.14
-# a deep JSON file is either refused or read in full, and either way no scanner
-# crashes on it.
-DEEP_JSON_MAY_BE_READ = sys.version_info >= (3, 14)
 
 # A project with findings from the config, hook, A2A, supply-chain and Python
 # scanners, so a scanner that loses its run loses something visible.
@@ -89,7 +82,7 @@ def _alias_bomb(levels: int = 9, width: int = 9) -> str:
 _PY_HINTS = "import requests\nfrom mcp.server.fastmcp import FastMCP\nmcp = FastMCP('x')\n"
 
 HOSTILE = {
-    # C: JSON nested past the parser of 3.9 to 3.13 (see `DEEP_JSON_MAY_BE_READ`).
+    # C: JSON nested past `JSON_MAX_NESTING` (and every version's parser but 3.14's).
     ".mcp.json": DEEP_JSON,
     ".claude/settings.json": DEEP_JSON,
     "package.json": DEEP_JSON,
@@ -166,29 +159,19 @@ def test_every_hostile_file_costs_that_file_alone(
     lost = _findings(baseline) - _findings(result)
     assert not lost, f"a hostile file cost another file its findings: {sorted(lost)[:10]}"
     refused = _refused(result)
-    # From 3.14 a scanner may read a deep JSON file in full instead; refused or
-    # read, nothing crashed on it (above).
-    may_be_read = {rel for rel, text in HOSTILE.items() if text == DEEP_JSON} if DEEP_JSON_MAY_BE_READ else set()
-    must_refuse = set(HOSTILE) - may_be_read
-    assert must_refuse <= set(refused), sorted(must_refuse - set(refused))
-    if not DEEP_JSON_MAY_BE_READ:
-        # The always-on scanners that read the deep MCP config each report it.
-        assert {"MCP configuration", "Supply chain"} <= refused[".mcp.json"]
-        assert {"Hook injection", "Trust boundary"} <= refused[".claude/settings.json"]
+    assert set(HOSTILE) <= set(refused), sorted(set(HOSTILE) - set(refused))
+    # The always-on scanners that read the deep MCP config each report it.
+    assert {"MCP configuration", "Supply chain"} <= refused[".mcp.json"]
+    assert {"Hook injection", "Trust boundary"} <= refused[".claude/settings.json"]
 
 
 def test_a_refusal_is_reported_against_the_file_with_scanner_file_and_reason(tmp_path: Path) -> None:
     _write(tmp_path, {".mcp.json": DEEP_JSON})
-    result = run_scan(tmp_path)
-    failure = next((f for f in result.scanner_failures if "MCP configuration" in f.evidence), None)
-    if failure is None and DEEP_JSON_MAY_BE_READ:
-        assert not _crashed(result)  # read in full, see `DEEP_JSON_MAY_BE_READ`
-        return
-    assert failure is not None
+    failure = next(f for f in run_scan(tmp_path).scanner_failures if "MCP configuration" in f.evidence)
     assert failure.file_path == ".mcp.json"
     assert failure.evidence == (
-        "scanner='MCP configuration' error=RefusedFile: .mcp.json: JSON nested too deep for "
-        "Python's parser (RecursionError); the rules it owns were not evaluated on this file"
+        "scanner='MCP configuration' error=RefusedFile: .mcp.json: JSON nested deeper than 500 "
+        "levels; the rules it owns were not evaluated on this file"
     )
 
 
@@ -196,15 +179,11 @@ def test_a_refusal_keeps_the_scan_incomplete_as_a_crash_did(tmp_path: Path) -> N
     _write(tmp_path, {".mcp.json": DEEP_JSON})
     runner = CliRunner()
     res = runner.invoke(cli, ["scan", str(tmp_path)])
+    assert res.exit_code == 1
+    assert "INCOMPLETE" in res.output
     out = tmp_path / "r.json"
     runner.invoke(cli, ["scan", str(tmp_path), "--format", "json", "-o", str(out)])
     summary = json.loads(out.read_text())["summary"]
-    if summary["complete"] and DEEP_JSON_MAY_BE_READ:
-        # Read in full (see `DEEP_JSON_MAY_BE_READ`): nothing was refused, so the scan passes.
-        assert res.exit_code == 0 and "INCOMPLETE" not in res.output
-        return
-    assert res.exit_code == 1
-    assert "INCOMPLETE" in res.output
     assert summary["complete"] is False and summary["scannerFailures"] >= 1
     assert runner.invoke(cli, ["scan", str(tmp_path), "--allow-scanner-failure"]).exit_code == 0
 
@@ -247,17 +226,11 @@ def test_each_parse_helper_records_a_refusal_and_raises_the_error_its_readers_ca
         ("e.yaml", lambda path: load_yaml_all("---\na: 1\n---\n" + _alias_bomb(), path), yaml.YAMLError),
         ("f.yaml", lambda path: compose_yaml_all("b: " + "{a: " * 200 + "1" + "}" * 200, path), yaml.YAMLError),
     ]
-    read: list[str] = []
     with collecting_refusals() as refused:
         for path, call, caught_as in cases:
-            try:
+            with pytest.raises(caught_as):
                 call(path)
-            except caught_as:
-                continue
-            # Only a deep JSON text, and only from 3.14 (see `DEEP_JSON_MAY_BE_READ`).
-            assert DEEP_JSON_MAY_BE_READ and path.endswith(".json"), f"{path} was read, not refused"
-            read.append(path)
-    assert list(refused) == [path for path, _, _ in cases if path not in read]
+    assert list(refused) == [path for path, _, _ in cases]
 
 
 def test_the_refusal_types_are_the_errors_each_reader_already_catches() -> None:
@@ -269,14 +242,11 @@ def test_the_refusal_types_are_the_errors_each_reader_already_catches() -> None:
 
 def test_without_a_path_an_overflow_propagates_rather_than_vanishing(monkeypatch: pytest.MonkeyPatch) -> None:
     """A caller that has no path contains the overflow itself; a refusal is never
-    lost to a missing path, because it never turns into a parse error. From 3.14
-    the deep JSON may be read in full instead (see `DEEP_JSON_MAY_BE_READ`)."""
-    for read in (lambda: loads_json(DEEP_JSON, None), lambda: loads_jsonc(DEEP_JSON)):
-        try:
-            read()
-        except RecursionError:
-            continue
-        assert DEEP_JSON_MAY_BE_READ, "a deep JSON text was read, not refused"
+    lost to a missing path, because it never turns into a parse error."""
+    with pytest.raises(RecursionError):
+        loads_json(DEEP_JSON, None)
+    with pytest.raises(RecursionError):
+        loads_jsonc(DEEP_JSON)
     monkeypatch.setattr(_helpers, "_ast_parse", lambda s, f: (_ for _ in ()).throw(MemoryError()))
     with pytest.raises(MemoryError):
         parse_python("x = 1", None)
@@ -803,6 +773,111 @@ def test_a_replacement_character_in_evidence_keeps_json_and_sarif_valid(tmp_path
         out = tmp_path / f"r.{fmt}"
         CliRunner().invoke(cli, ["scan", str(tmp_path), "--format", fmt, "-o", str(out)])
         assert "\ufffd" in json.dumps(json.loads(out.read_text(encoding="utf-8")), ensure_ascii=False)
+
+
+# ---------------------------------------------------------------------------
+# JSON nested past one depth on every version
+# ---------------------------------------------------------------------------
+
+
+def _depth(value: object) -> int:
+    depth, level = 0, [(value, 1)]
+    while level:
+        node, d = level.pop()
+        if isinstance(node, (list, dict)):
+            depth = max(depth, d)
+            level.extend((child, d + 1) for child in (node.values() if isinstance(node, dict) else node))
+    return depth
+
+
+def test_the_nesting_count_is_the_parsed_depth_on_every_shape() -> None:
+    """Brackets inside strings and after escapes are not counted, nor, once the
+    JSONC reader has blanked them, in comments; the count equals the depth
+    `json.loads` builds."""
+    import random
+
+    rng = random.Random(1022)
+
+    def value(depth: int) -> object:
+        roll = rng.random()
+        if depth <= 0 or roll < 0.3:
+            return rng.choice(["[", "]{", '\\"[', "x", 1, None, "/* [[ */", "// ["])
+        if roll < 0.65:
+            return [value(depth - 1) for _ in range(rng.randrange(0, 4))]
+        return {rng.choice(["a", "[b", "{"]): value(depth - 1) for _ in range(rng.randrange(0, 4))}
+
+    for _ in range(3_000):
+        doc = value(rng.randrange(0, 9))
+        text = json.dumps(doc, indent=rng.choice([None, 2]))
+        assert _helpers._json_nesting(text) == _depth(doc), text
+        commented = "// [[[\n/* {{{ [[ ** / */ " + text + " /* ]]] */"
+        assert _helpers._json_nesting(_helpers.strip_jsonc(commented)) == _depth(doc), commented
+        assert loads_jsonc(commented, "c.json") == doc
+
+
+@pytest.mark.parametrize("read", [loads_json, loads_jsonc])
+def test_json_is_read_to_500_levels_and_refused_past_them_on_every_version(read: Callable[..., object]) -> None:
+    at, past = "[" * 500 + "]" * 500, "[" * 501 + "]" * 501
+    assert _depth(read(at, "at.json")) == 500
+    with collecting_refusals() as refused:
+        with pytest.raises(json.JSONDecodeError):
+            read(past, "past.json")
+    assert refused == {"past.json": "JSON nested deeper than 500 levels"}
+    with pytest.raises(RecursionError, match="deeper than 500"):
+        read(past, None)
+
+
+def test_a_deep_package_json_is_refused_where_3_14_would_read_it(tmp_path: Path) -> None:
+    """3.14 reads 100,000 levels on a 16 MB stack, and then oauth_surface's
+    `str(v)` of a dependency overflowed the stack; the depth limit refuses the
+    file first, on every version."""
+    _write(tmp_path, {"package.json": '{"dependencies": {"x": ' + DEEP_JSON + "}}"})
+    result = run_scan(tmp_path, strict_loading=True)
+    assert not _crashed(result)
+    refused = _refused(result)
+    assert set(refused) == {"package.json"} and "Third-party OAuth surface (VERCEL-2026-04-19)" in refused["package.json"]
+
+
+@pytest.mark.parametrize("read", [loads_json, loads_jsonc])
+def test_a_text_that_stops_being_json_before_the_limit_is_invalid_not_refused(
+    read: Callable[..., object],
+) -> None:
+    """How deep a text nests is counted on what the parser read. 60,000
+    `capabilities: {` are no JSON from the first character, and 400 levels
+    then a letter are invalid at the letter, whatever follows it: each raises
+    the parser's JSONDecodeError, with no refusal, on every version, as it did
+    before the limit (counted ahead of the parser, the first took
+    mcp_deprecated_features down with a RecursionError). 501 levels then a
+    letter nest past the limit before the error, and are refused."""
+    with collecting_refusals() as refused:
+        for text in ("capabilities: {" * 60_000, "[" * 400 + "x" + "[" * 9_000):
+            for path in ("bad.json", None):
+                with pytest.raises(json.JSONDecodeError) as caught:
+                    read(text, path)
+                assert not isinstance(caught.value, RefusedJSON)
+        assert refused == {}
+        with pytest.raises(json.JSONDecodeError):
+            read("[" * 501 + "x", "deep.json")
+    assert refused == {"deep.json": "JSON nested deeper than 500 levels"}
+
+
+def test_a_jsonc_comment_neither_hides_a_level_nor_adds_one() -> None:
+    assert loads_jsonc("// " + "[" * 600 + "\n{}", "c.json") == {}
+    with collecting_refusals() as refused, pytest.raises(json.JSONDecodeError):
+        loads_jsonc("[" * 600 + "/* c */" + "]" * 600, "deep.json")
+    assert refused == {"deep.json": "JSON nested deeper than 500 levels"}
+
+
+def test_the_nesting_count_and_the_jsonc_reader_are_linear_on_unclosed_strings_and_comments() -> None:
+    for text in ('"' + "\\\\" * 300_000, '"' + "[" * 600_000, "[" * 400 + '"' + "\\\\" * 300_000):
+        started = time.perf_counter()
+        _helpers._json_nesting(text)
+        assert time.perf_counter() - started < 2.0, text[:20]
+    for text in ("/*" + " *" * 300_000, "/* " + "*" * 600_000, "// x\n" * 100_000, '"' + "\\\\" * 300_000):
+        started = time.perf_counter()
+        with pytest.raises(json.JSONDecodeError):
+            loads_jsonc(text, "x.json")
+        assert time.perf_counter() - started < 2.0, text[:20]
 
 
 # ---------------------------------------------------------------------------

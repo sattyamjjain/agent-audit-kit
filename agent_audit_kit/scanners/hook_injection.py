@@ -217,9 +217,9 @@ def _hook_sources(
         yield rel_path, raw_text, data.get("hooks", {})
     plugin_files, skill_files = _plugin_and_skill_files(project_root)
     for path in plugin_files:
-        # `loads_json` refuses a file nested past the recursion limit (20,000
-        # nested `[` in 40 KB), which used to take the whole scanner down, and
-        # the settings findings with it; the refusal is reported against it.
+        # `loads_json` refuses a file nested past `JSON_MAX_NESTING`, and the
+        # refusal is reported against it: 20,000 nested `[` in 40 KB used to
+        # take the whole scanner down, and the settings findings with it.
         try:
             if path.stat().st_size > _MAX_PLUGIN_OR_SKILL_BYTES:
                 continue

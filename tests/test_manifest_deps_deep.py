@@ -141,9 +141,20 @@ _TRACED = """
     elif case == "json":
         text = '{"a": [' + ",".join(["[" * n + "]" * n] * 4) + "]}"
         run = lambda: len(m._json_positions(text))
-    else:
+    elif case == "toml":
         text = "".join("x%d = " % i + "[" * n + "]" * n + "\\n" for i in range(400))
         run = lambda: len(m._toml_positions(text))
+    else:
+        import tempfile
+        from pathlib import Path
+        from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
+        root = Path(tempfile.mkdtemp())
+        chains = ",".join(["[" * n + "]" * n] * 1000)
+        (root / ".mcp.json").write_text(
+            '{"mcpServers": {"gs": {"command": "npx", "args": ["@adenot/mcp-google-search"]}},\\n"x": ['
+            + chains + "]}")
+        run = lambda: int([(f.rule_id, f.line_number) for f in pins.scan(root)[0]] == [
+            ("AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001", 1)])
     tracemalloc.start()
     count = run()
     print(tracemalloc.get_traced_memory()[1] / 1e6, count)
@@ -168,18 +179,23 @@ def test_a_config_of_deep_chains_is_walked_in_linear_time() -> None:
     assert seconds < 3.0
 
 
-@pytest.mark.parametrize(("case", "size", "old_mb"), [
-    ("servers", "12000", 1159),  # 12,000 servers, each inside the last
-    ("json", "6000", 579),       # four JSON chains of 6,000 lists, 48 KB
-    ("toml", "300", 155),        # 400 TOML arrays nested 300 deep, 243 KB
+@pytest.mark.parametrize(("case", "size", "old_mb", "bound_mb"), [
+    ("servers", "12000", 1159, 60),  # 12,000 servers, each inside the last
+    ("json", "6000", 579, 60),       # four JSON chains of 6,000 lists, 48 KB
+    ("toml", "300", 155, 60),        # 400 TOML arrays nested 300 deep, 243 KB
+    # A pinned server beside 1,000 JSON chains of 480 lists (961 KB, inside the
+    # JSON depth limit), and the line of its finding. The parsed lists alone
+    # take most of the 109 MB it now peaks at.
+    ("pins", "480", 969, 300),
 ])
-def test_a_deep_document_is_read_in_linear_memory(case: str, size: str, old_mb: int) -> None:
+def test_a_deep_document_is_read_in_linear_memory(case: str, size: str, old_mb: int, bound_mb: int) -> None:
     """Peak traced memory, measured in a child: `old_mb` before, a few MB now
-    (6, 1 and 9 on 3.12). tracemalloc rather than the peak RSS, which on Linux
-    counts the pytest worker that started the child."""
+    (6, 1 and 9 on 3.12, and 109 for the whole pin-table scan). tracemalloc
+    rather than the peak RSS, which on Linux counts the pytest worker that
+    started the child."""
     peak_mb, count = _child(_TRACED, case, size)
-    assert count > 0
-    assert peak_mb < 60, (peak_mb, old_mb)
+    assert count > 0  # for "pins", the finding with its line
+    assert peak_mb < bound_mb, (peak_mb, old_mb)
 
 
 def _positions_capped_and_full(monkeypatch: pytest.MonkeyPatch, read: Any, text: str) -> tuple[dict, dict]:
@@ -267,16 +283,3 @@ def test_the_json_position_pass_records_what_it_did_on_every_shape() -> None:
         assert got == _old_json_positions(text), text
         recorded += len(got)
     assert recorded > 4_000
-
-
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="3.9 to 3.11 refuse the file at JSON's parser, ~990 levels")
-def test_a_pinned_server_beside_deep_chains_keeps_its_line(tmp_path: Path) -> None:
-    """The whole path on 3.12 and later: the pin table found the server and its
-    line in 2.2 s of CPU and 1,300 MB of traced memory, now 0.5 s and 10 MB."""
-    from agent_audit_kit.scanners import mcp_cve_pins_2026_07 as pins
-
-    chains = ",".join(["[" * 9000 + "]" * 9000] * 4)
-    (tmp_path / ".mcp.json").write_text(
-        '{"mcpServers": {"gs": {"command": "npx", "args": ["@adenot/mcp-google-search"]}},\n"x": [' + chains + "]}")
-    findings, _ = pins.scan(tmp_path)
-    assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCP-GOOGLESEARCH-CVE-2026-19337-001", 1)]

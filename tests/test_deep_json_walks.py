@@ -9,7 +9,10 @@ user-facing walks, and ide_task_rce's flattening of a task's command line. A
 RecursionError in them, and that took the whole scanner down, with its findings
 on every other file. Each now walks with its own stack, in the order it
 recursed, checked against the old code on generated documents. On 3.9 to 3.11
-the parser stops first, at about 990 levels, so a file never reached them.
+the parser stops first, at about 990 levels, so a file never reached them, and
+now every version refuses a JSON file nested past 500 levels before it is
+parsed (`JSON_MAX_NESTING`), so a file reaches them at most that deep; a
+document built any other way still may be deeper.
 """
 
 from __future__ import annotations
@@ -27,7 +30,8 @@ from agent_audit_kit.engine import run_scan
 from agent_audit_kit.scanners import a2a_protocol, eu_ai_act_art15_locale, ide_task_rce
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding
 
-DEEP = 5_000
+# Just inside `JSON_MAX_NESTING`, which every version's parser reads.
+DEEP = 450
 
 
 def _write(root: Path, rel: str, text: str) -> None:
@@ -295,9 +299,8 @@ _DEEP_FILES = [
 ]
 
 
-@pytest.mark.skipif(sys.version_info < (3, 12), reason="3.9 to 3.11 refuse the file at JSON's parser, ~990 levels")
 @pytest.mark.parametrize(("rel", "text", "rule_id"), _DEEP_FILES, ids=[rel for rel, _, _ in _DEEP_FILES])
-def test_a_json_file_nested_past_the_recursion_limit_costs_no_scanner_its_run(
+def test_a_json_file_nested_to_the_limit_is_read_by_every_scanner(
     tmp_path: Path, rel: str, text: Any, rule_id: str | None
 ) -> None:
     _write(tmp_path, rel, text())
@@ -305,3 +308,15 @@ def test_a_json_file_nested_past_the_recursion_limit_costs_no_scanner_its_run(
     assert [f.evidence for f in result.scanner_failures] == []
     if rule_id is not None:
         assert rule_id in {f.rule_id for f in result.findings if f.file_path == rel}
+
+
+@pytest.mark.parametrize("rel", [rel for rel, _, _ in _DEEP_FILES])
+def test_a_json_file_nested_past_the_limit_is_refused_per_file_on_every_version(tmp_path: Path, rel: str) -> None:
+    """5,000 levels, which 3.12 and later parse and which took the walkers past
+    the recursion limit: refused before parsing now, by each scanner that reads
+    it, and the scanner goes on."""
+    _write(tmp_path, rel, '{"x": ' + "[" * 5_000 + "]" * 5_000 + "}")
+    result = run_scan(tmp_path, strict_loading=True)
+    assert {f.file_path for f in result.scanner_failures} == {rel}
+    assert all("error=RefusedFile: " in f.evidence and "deeper than 500 levels" in f.evidence
+               for f in result.scanner_failures)

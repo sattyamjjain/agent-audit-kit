@@ -677,10 +677,10 @@ def declarations(path: Path, text: str) -> list[Declaration]:
 # A pass records no path longer than `_MAX_PATH_DEPTH`. Each recorded path is a
 # tuple, so recording every one cost the sum of all their lengths: four JSON
 # chains of 6,000 lists (48 KB) held 579 MB, and 400 TOML arrays nested 300
-# deep (243 KB) 155 MB. A pinned server beside four chains of 9,000, which
-# JSON's parser reads on Python 3.12 and later, held 1,300 MB in the pin table
-# for its line. The structure deeper down is still read, so the paths above it
-# keep their lines.
+# deep (243 KB) 155 MB. A pinned server beside 1,000 JSON chains of 480 lists
+# (961 KB, inside the 500-level limit) held 969 MB of traced memory in the pin
+# table for its line. The structure deeper down is still read, so the paths
+# above it keep their lines.
 
 # A JSON string, or one structural character. Scalars are skipped: no
 # declaration is a number or a literal, and the commas around them keep count.

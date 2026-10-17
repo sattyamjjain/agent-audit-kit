@@ -256,12 +256,10 @@ def test_a_pin_file_over_the_config_cap_or_nested_too_deep_is_reported_once(tmp_
     pins.parent.mkdir(parents=True, exist_ok=True)
     for text, reason in (
         (" " * 1_000_001, "could not be read (larger than 1,000,000 bytes)"),
-        ("[" * 100_000 + "]" * 100_000, "could not be read (JSON nested too deep for Python's parser"),
+        ("[" * 100_000 + "]" * 100_000, "could not be read (JSON nested deeper than 500 levels)"),
     ):
         pins.write_text(text)
         result = run_scan(tmp_path)
         mine = [f for f in result.scanner_failures if f.evidence.startswith("scanner='Pin drift'")]
-        if "nested" in reason and mine and "holds a JSON array" in mine[0].evidence:
-            continue  # 3.14 bounds JSON parsing by the stack: read whole, the array is no pin map
         assert [f.file_path for f in mine] == [_PINS]
         assert "error=PinFileError: " in mine[0].evidence and reason in mine[0].evidence, mine[0].evidence

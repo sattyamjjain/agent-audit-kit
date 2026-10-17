@@ -205,9 +205,10 @@ def _load_pins(pin_file: Path) -> dict[str, dict[str, Any]]:
     try:
         pins = loads_json(text, None)
     except (RecursionError, MemoryError) as exc:
-        raise PinFileError(
-            f"{PIN_FILE} could not be read (JSON nested too deep for Python's parser ({type(exc).__name__}))"
-        ) from exc
+        # The nesting screen's refusal says why ("JSON nested deeper than 500
+        # levels"), as does a parser that still runs out of stack; MemoryError
+        # says nothing, so its name stands in.
+        raise PinFileError(f"{PIN_FILE} could not be read ({str(exc) or type(exc).__name__})") from exc
     except json.JSONDecodeError as exc:
         raise PinFileError(
             f"{PIN_FILE} is not valid JSON ({exc.msg} at line {exc.lineno}, column {exc.colno})",

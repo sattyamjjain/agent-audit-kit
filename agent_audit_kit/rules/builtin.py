@@ -1304,7 +1304,7 @@ _r(
         "`.claude-plugin/` or sits under a marketplace's "
         "`.claude-plugin/marketplace.json`) and the frontmatter of a `SKILL.md`. A "
         "plugin or skill file over 512,000 bytes is not read. One nested too deeply to "
-        "parse (past 100 levels of YAML, or past what Python's JSON parser takes), or a "
+        "parse (past 100 levels of YAML, or past 500 levels of JSON), or a "
         "frontmatter block that YAML aliases expand past twice its length plus 1,000 "
         "and past 200,000 nodes, is not read either, and the refusal is reported "
         "against the file as AAK-INTERNAL-SCANNER-FAIL. "
@@ -3231,7 +3231,7 @@ _r(
         "and `inputSchema` only, so a change to its `annotations` (for example "
         "flipping `readOnlyHint`), its `title`, or a schema kept under `parameters` "
         "is not a change here."
-        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
@@ -3260,7 +3260,7 @@ _r(
         "`tools/list`, adds no pinned tool, and neither does a tool listed under "
         "`toolDescriptions`, so a new server or a new tool of those shapes is not "
         "reported here."
-        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
@@ -3286,7 +3286,7 @@ _r(
         "whose tools arrive at run time through `tools/list`, has no pinned tool, "
         "and neither does a tool listed under `toolDescriptions`, so removing "
         "either is not reported here."
-        " A pin file over 1 MB, or one nested too deep for Python's JSON parser, is "
+        " A pin file over 1 MB, or one nested past 500 levels, is "
         "not read: the scan reports it as incomplete and compares nothing."
     ),
 )
@@ -13098,8 +13098,11 @@ _r(
     "`.agent-audit-kit/tool-pins.json` exists but cannot be read: a rug-pull "
     "check with no readable baseline has checked nothing, and the evidence "
     "says why the file could not be used. So does any scanner, against one "
-    "file, when it refuses that file: one nested deeper than Python's JSON, "
-    "TOML or Python parser takes (before Python 3.11, whose parser has no "
+    "file, when it refuses that file: a JSON or JSONC file nested past 500 "
+    "levels (Python's own parser stops at a depth that differs by version, "
+    "and every version refuses past this; real configs nest under 20), one "
+    "nested deeper than Python's TOML or Python parser takes (before Python "
+    "3.11, whose parser has no "
     "depth check, a Python source a linear screen bounds past 20,000 levels "
     "is refused before it is parsed; one just under that bound is parsed, at "
     "up to 13 s and 135 MB for a 480 KB file), a Python syntax tree deeper "

@@ -578,19 +578,18 @@ def test_a_pyproject_too_deep_to_parse_declares_nothing(tmp_path: Path) -> None:
 
 
 def test_a_package_json_too_deep_to_parse_declares_nothing(tmp_path: Path) -> None:
-    """The JSON parser raises RecursionError on arrays nested 100,000 deep, and the
-    file then declares nothing, as the pyproject.toml above does."""
+    """Arrays nested 100,000 deep, past the 500 levels a JSON file is read to on
+    every Python (3.14's parser reads this one): the file declares nothing, as the
+    pyproject.toml above does, and the refusal is recorded against it."""
+    from agent_audit_kit.scanners._helpers import collecting_refusals
+
     text = ('{"x": ' + "[" * 100_000 + "]" * 100_000
             + ', "dependencies": {"mcp-framework": "0.2.21", "@modelcontextprotocol/sdk": "1.21.0"}}')
-    try:
-        json.loads(text)
-        parsed = True
-    except (ValueError, RecursionError):
-        parsed = False
     (tmp_path / "package.json").write_text(text, encoding="utf-8")
-    fired = {f.rule_id for module in (transport_limits, dns_rebind) for f in module.scan(tmp_path)[0]}
-    pins = {"AAK-MCPFRAME-001", "AAK-DNS-REBIND-002"}
-    assert fired & pins == (pins if parsed else set())
+    with collecting_refusals() as refused:
+        fired = {f.rule_id for module in (transport_limits, dns_rebind) for f in module.scan(tmp_path)[0]}
+    assert not fired & {"AAK-MCPFRAME-001", "AAK-DNS-REBIND-002"}
+    assert list(refused) == [str(tmp_path / "package.json")]
 
 
 # The six modules whose reads go through `_dependency_pins`. A child process scans
