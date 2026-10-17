@@ -1,20 +1,25 @@
-"""`aak install-precommit` and `aak pipelock import` write into the project as `aak fix` does.
+"""`aak install-precommit`, `aak pipelock import` and `aak report` write into the project
+as `aak fix` does.
 
 `install-precommit` read and rewrote `<project>/.pre-commit-config.yaml` through
-`Path.is_file`, `Path.read_text` and `Path.write_text`, and `pipelock import` without
-`-o` wrote `.agent-audit-kit.yml` in the current directory through `Path.write_text`. A
-cloned repository decides what sits at either path: a link to a file outside the project
-had that file rewritten, a dangling link created the file it named, a directory ended in
-a traceback, and a FIFO blocked the command forever. Both now ask `fix._write_refusal`
-before reading or writing, read only a regular file and write through
-`fix._write_inside_project`, and exit 2 with the reason when the file is refused.
+`Path.is_file`, `Path.read_text` and `Path.write_text`; `pipelock import` without `-o`
+wrote `.agent-audit-kit.yml` in the current directory through `Path.write_text`; and
+`report` without `-o` had reportlab write `aak-compliance-<framework>.pdf` there, or
+`Path.write_text` its `.txt` fallback. A cloned repository decides what sits at each
+path: a link to a file outside the project had that file rewritten, a dangling link
+created the file it named, a directory ended in a traceback, and a FIFO blocked the
+command forever. Each now asks `fix._write_refusal` before reading or writing, reads
+only a regular file, writes through `fix._write_inside_project`, and exits 2 with the
+reason when the file is refused.
 """
 
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
+from datetime import datetime, timezone, tzinfo
 from pathlib import Path
 from typing import NamedTuple
 
@@ -24,6 +29,7 @@ from click.testing import CliRunner, Result
 import agent_audit_kit
 from agent_audit_kit.commands import install_precommit
 from agent_audit_kit.cli import cli
+from agent_audit_kit.output import pdf_report
 from agent_audit_kit.translators.pipelock import translate
 
 _POLICY = Path(__file__).parent / "fixtures" / "pipelock" / "policy_minimal.yaml"
@@ -33,21 +39,40 @@ _AS_WRITTEN = translate(_POLICY).replace("\n", os.linesep).encode("utf-8")
 class _Command(NamedTuple):
     """A command that writes one file into the project: the file, the arguments after
     `aak` (`{project}` stands for the project's path), and how its refusal starts. Each
-    runs from inside the project, since `pipelock import` writes to the current directory."""
+    runs from inside the project, since `pipelock import` and `report` write to the
+    current directory. ``reportlab`` says whether the run needs reportlab installed
+    (True), runs as if it were not (False), or does not care (None)."""
 
     id: str
     rel: str
     args: tuple[str, ...]
     lead: str
+    reportlab: bool | None = None
 
 
+_REPORT = ("report", ".", "--framework", "soc2")
 _COMMANDS = [
     _Command("install-precommit", ".pre-commit-config.yaml", ("install-precommit", "{project}"), "Cannot add the hook"),
     _Command("pipelock-import", ".agent-audit-kit.yml", ("pipelock", "import", str(_POLICY)), "Cannot import the policy"),
+    _Command("report-pdf", "aak-compliance-soc2.pdf", _REPORT, "Cannot write the report", reportlab=True),
+    _Command("report-text", "aak-compliance-soc2.txt", _REPORT, "Cannot write the report", reportlab=False),
 ]
 
 
+def _without_reportlab(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every `import reportlab...` fail, cached submodules included, as
+    tests/test_render_report_pdf.py does: CI has no reportlab, so the text fallback is
+    the path it runs."""
+    for name in [n for n in sys.modules if n.startswith("reportlab.")]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.setitem(sys.modules, "reportlab", None)
+
+
 def _invoke(command: _Command, project: Path, monkeypatch: pytest.MonkeyPatch) -> Result:
+    if command.reportlab:
+        pytest.importorskip("reportlab")
+    elif command.reportlab is False:
+        _without_reportlab(monkeypatch)
     monkeypatch.chdir(project)
     return CliRunner().invoke(cli, [arg.replace("{project}", str(project)) for arg in command.args])
 
@@ -150,13 +175,16 @@ class TestEachCommandWritesOnlyInsideTheProject:
 # The command runs in a child process, so a read or write that blocks on a FIFO fails the
 # test on its timeout instead of hanging the suite. "look" lets the FIFO through the first
 # `_write_refusal`, so what stands between the command and the FIFO is the read (for
-# install-precommit) or the open (for pipelock import, which reads nothing first).
+# install-precommit) or the open (for the others, which read nothing first). "mask"
+# hides reportlab, for the report's text fallback.
 _CHILD = (
     "import os, sys\n"
     "from click.testing import CliRunner\n"
     "from agent_audit_kit import fix\n"
     "from agent_audit_kit.cli import cli\n"
-    "root, how, *args = sys.argv[1:]\n"
+    "root, how, mask, *args = sys.argv[1:]\n"
+    "if mask == 'mask':\n"
+    "    sys.modules['reportlab'] = None\n"
     "if how == 'look':\n"
     "    real, looks = fix._write_refusal, []\n"
     "    fix._write_refusal = lambda *a: looks.append(1) if not looks else real(*a)\n"
@@ -170,12 +198,15 @@ _CHILD = (
 @pytest.mark.parametrize("command", _COMMANDS, ids=[command.id for command in _COMMANDS])
 @pytest.mark.parametrize("how", ["fifo", "look"])
 def test_a_fifo_is_refused_without_blocking(tmp_path: Path, command: _Command, how: str) -> None:
+    if command.reportlab:
+        pytest.importorskip("reportlab")
     project, _ = _projects(tmp_path)
     os.mkfifo(project / command.rel)
     package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    mask = "mask" if command.reportlab is False else "-"
 
     done = subprocess.run(
-        [sys.executable, "-c", _CHILD, str(project), how, *command.args],
+        [sys.executable, "-c", _CHILD, str(project), how, mask, *command.args],
         capture_output=True, text=True, timeout=30, env={**os.environ, "PYTHONPATH": str(package_root)},
     )
 
@@ -281,3 +312,88 @@ def test_pipelock_import_writes_a_named_output_where_the_user_says(
 
     assert (result.exit_code, result.output) == (0, "wrote out.yml\n")
     assert (outside / "chosen.yml").read_bytes() == _AS_WRITTEN
+
+
+# ---------------------------------------------------------------------------
+# report: the default output is the document a named one is
+# ---------------------------------------------------------------------------
+
+
+class _Frozen(datetime):
+    """`datetime` whose `now` is fixed, so two reports carry the same "Generated" line."""
+
+    @classmethod
+    def now(cls, tz: tzinfo | None = None) -> _Frozen:
+        return cls(2026, 10, 17, 12, 0, tzinfo=timezone.utc)
+
+
+_PDF_STAMPS = re.compile(rb"/(?:CreationDate|ModDate) \(D:[^)]*\)|/ID\s*\[<[0-9a-fA-F]+>\s*<[0-9a-fA-F]+>\]")
+_MCP = '{"mcpServers": {"files": {"command": "npx", "args": ["-y", "some-mcp-server"]}}}\n'
+
+
+def _report_projects(tmp_path: Path) -> tuple[Path, Path]:
+    """Two projects with the same findings: one for the default output, one for a named
+    output, so neither run scans the other's report."""
+    projects = tmp_path / "default", tmp_path / "named"
+    for project in projects:
+        project.mkdir()
+        (project / ".mcp.json").write_text(_MCP)
+    return projects
+
+
+def _report(project: Path, monkeypatch: pytest.MonkeyPatch, *extra: str) -> Result:
+    monkeypatch.setattr(pdf_report, "datetime", _Frozen)
+    monkeypatch.chdir(project)
+    return CliRunner().invoke(cli, [*_REPORT, *extra])
+
+
+def test_report_writes_the_default_pdf_as_it_writes_a_named_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """reportlab wrote the default PDF at its path, as it still writes a named one; the
+    default is built in memory now and written through `_write_inside_project`. Only
+    reportlab's CreationDate, ModDate and ID differ between the two."""
+    pytest.importorskip("reportlab")
+    default_project, named_project = _report_projects(tmp_path)
+
+    default = _report(default_project, monkeypatch)
+    named = _report(named_project, monkeypatch, "-o", "named.pdf")
+
+    assert (default.exit_code, default.output) == (0, "wrote PDF report to aak-compliance-soc2.pdf\n")
+    assert (named.exit_code, named.output) == (0, "wrote PDF report to named.pdf\n")
+    built = (default_project / "aak-compliance-soc2.pdf").read_bytes()
+    assert built.startswith(b"%PDF-")
+    assert _PDF_STAMPS.sub(b"", built) == _PDF_STAMPS.sub(b"", (named_project / "named.pdf").read_bytes())
+
+
+def test_report_writes_the_default_text_fallback_byte_for_byte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without reportlab the default report is `aak-compliance-<framework>.txt`, which
+    `Path.write_text` wrote; `_as_written` gives the bytes a named run's fallback has."""
+    _without_reportlab(monkeypatch)
+    default_project, named_project = _report_projects(tmp_path)
+
+    default = _report(default_project, monkeypatch)
+    named = _report(named_project, monkeypatch, "-o", "named.pdf")
+
+    assert (default.exit_code, default.output) == (
+        0,
+        "reportlab not installed; wrote plain-text fallback to aak-compliance-soc2.txt. "
+        "Install with `pip install reportlab` to get PDF output.\n",
+    )
+    assert named.exit_code == 0, named.output
+    written = (default_project / "aak-compliance-soc2.txt").read_bytes()
+    assert written.startswith(b"agent-audit-kit compliance report")
+    assert written == (named_project / "named.txt").read_bytes()
+
+
+def test_report_writes_a_named_output_where_the_user_says(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`-o` names the path, and its text fallback goes beside it, a link included, as
+    before; only the default name, which the current directory decides, is checked."""
+    _without_reportlab(monkeypatch)
+    project, outside = _projects(tmp_path)
+    (project / "named.txt").symlink_to(outside / "chosen.txt")
+
+    result = _report(project, monkeypatch, "-o", "named.pdf")
+
+    assert result.exit_code == 0, result.output
+    assert (outside / "chosen.txt").read_bytes().startswith(b"agent-audit-kit compliance report")
