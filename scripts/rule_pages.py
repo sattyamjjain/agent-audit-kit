@@ -28,11 +28,11 @@ Which scanner emits a rule is read from the code, not written by hand
 ``named_in_code`` parses every module under ``agent_audit_kit/`` (except the
 registry, ``rules/``, which defines every id and so proves nothing) and records
 which of them contain the rule id as a string literal. Comments and docstrings
-are excluded on purpose: ``mcp_auth_patterns.py`` says in its docstring that it
-"fires AAK-MCP-011..020" and emits seven of those ten, so a text search would
-have credited it with AAK-MCP-016, -019 and -020, which it does not emit. The
-result is shown as found. A rule no module names in code says so ("no detector
-in this release is known to emit it"), and ``--summary`` lists them.
+are excluded on purpose: a docstring that says a module "fires AAK-MCP-011..020"
+names ten ids, and if the module emits seven of them a text search would credit
+it with all ten. The result is shown as found. A rule no module names in code
+says so ("no detector in this release is known to emit it"), and ``--summary``
+lists them.
 
 The definition is deliberately literal, and the page says "Scanner", not
 "guaranteed to fire": a scanner that built an id dynamically would be missed.
