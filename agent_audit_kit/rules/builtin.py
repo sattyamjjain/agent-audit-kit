@@ -6060,20 +6060,29 @@ _r(
     "print / sys.stdout.write / console.log without stripping control "
     "characters (\\r, \\n, \\x1b) first. CVE-2026-6494 (AAP MCP, CVSS 5.3 "
     "MEDIUM, CWE-117) lets an attacker forge log entries and inject "
-    "ANSI escape sequences to socially engineer an operator.",
+    "ANSI escape sequences to socially engineer an operator. A write to "
+    "stdout (`print` without `file=`, `sys.stdout`, `console.log`) does more "
+    "harm in a STDIO server: stdout carries the JSON-RPC stream, which the "
+    "MCP stdio transport says must hold nothing but valid MCP messages, so "
+    "caller input written there corrupts it and a whole JSON-RPC line can "
+    "inject a message. Stripping control characters does not stop that; "
+    "diagnostics belong on stderr.",
     Severity.MEDIUM,
     Category.TAINT_ANALYSIS,
-    "Strip \\r\\n\\x1b (or accept only printable ASCII) before "
-    "logging anything derived from tool input. Prefer structured "
-    "logging (JSON/logfmt) so log consumers aren't confused by forged "
-    "lines.",
+    "Write diagnostics to stderr (`print(..., file=sys.stderr)` or a logger "
+    "that writes there), never to stdout: stdout carries the protocol in a "
+    "STDIO server, so caller input there can inject messages. Strip "
+    "\\r\\n\\x1b (or accept only printable ASCII) before logging anything "
+    "derived from tool input. Prefer structured logging (JSON/logfmt) so "
+    "log consumers aren't confused by forged lines.",
     sarif_name="McpLogInjection",
     cve_references=["CVE-2026-6494"],
     owasp_mcp_references=["MCP08:2025"],
     owasp_agentic_references=["ASI09"],
     adversa_references=["ADV-LOG-01"],
     limitations=(
-        "Reads the arguments of `print`, of a level method (`info`, `exception` and "
+        "Reads the arguments of `print` (to stdout, or with `file=` set to "
+        "`sys.stdout` or `sys.stderr`), of a level method (`info`, `exception` and "
         "the rest) of `logger`, `log` or the `logging` module, of any `sys.stdout` or "
         "`sys.stderr` method and of `console.<log|info|warn|error>`, in functions "
         "whose decorator name ends in `tool`. A logger held as an attribute "

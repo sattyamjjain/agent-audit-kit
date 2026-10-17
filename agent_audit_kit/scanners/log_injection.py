@@ -39,6 +39,7 @@ _LOG_LEVELS = frozenset({
     "debug", "info", "warning", "warn", "error", "critical", "exception", "fatal", "log",
 })
 _LOGGER_NAMES = frozenset({"logger", "log"})
+_STD_STREAMS = frozenset({"sys.stdout", "sys.stderr", "stdout", "stderr"})
 _CONSOLE_METHODS = frozenset({"log", "info", "warn", "error"})
 _SANITIZERS = re.compile(
     r"""sanitize|strip_control|escape_controls|re\.sub\s*\(\s*r?['"]\\?\\[rn\\x1b\\x7f]|
@@ -83,17 +84,29 @@ def _log_target(call: ast.Call) -> tuple[str, str] | None:
     peeled) or the `logging` module's own functions.
 
     Each was measured before it was added, on 9,137 Python files from GitHub
-    code searches for MCP servers, reading every finding it added: true means
-    a tool parameter reaches the call as a raw string. `print` added 372
-    findings, 82.5% true; the `logging` functions 100, 84.0%; `sys.stderr` 43,
-    95.3%; the levels `logger` and `log` lacked (`exception` above all) 373,
-    92.8%. A logger held as an attribute (`self.logger.info`) is left out: 69
-    findings, 63.8% true, most of the rest an int, a list or a `!r` value in a
-    class-based server's debug logging.
+    code searches for MCP servers, reading every finding it added. What was
+    counted is the rule's condition, a tool parameter reaching the call as a
+    raw string, not whether a log line can be forged: on a STDIO server a
+    `print` to stdout writes into the protocol stream instead (see the rule
+    text). In 82.7% of the 371 `print` findings a tool parameter reaches print
+    as a raw string; the `logging` functions, 100 findings, 84.0%;
+    `sys.stderr`, 43, 95.3%; the levels `logger` and `log` lacked (`exception`
+    above all), 373, 92.8%. A logger held as an attribute (`self.logger.info`)
+    is left out: 69 findings, 63.8%, most of the rest an int, a list or a `!r`
+    value in a class-based server's debug logging. `print` with `file=` set to
+    anything but a standard stream is not read.
     """
     func = call.func
     if isinstance(func, ast.Name):
-        return ("", "print") if func.id == "print" else None
+        if func.id != "print":
+            return None
+        # `print(..., file=fh)` writes wherever fh goes. Only the standard
+        # streams are a log or, on a STDIO server, the protocol channel:
+        # `print(query, file=out)` writing a CSV is neither.
+        stream = next((kw.value for kw in call.keywords if kw.arg == "file"), None)
+        if stream is not None and _decorator_name(stream) not in _STD_STREAMS:
+            return None
+        return ("", "print")
     if not isinstance(func, ast.Attribute):
         return None
     node = func.value

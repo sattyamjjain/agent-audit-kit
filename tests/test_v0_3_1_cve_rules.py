@@ -227,6 +227,29 @@ def test_loginj_reads_print_and_every_logger_level(tmp_path: Path, stmt: str, vi
     assert f"via {via}(...)" in hits[0][1]
 
 
+@pytest.mark.parametrize(("stmt", "reported"), [
+    ('print("adding", text)', True),
+    ('print("adding", text, file=sys.stdout)', True),
+    ('print("adding", text, file=sys.stderr, flush=True)', True),
+    # A file handle is a data file, not a log stream or the protocol channel.
+    ('print(text, ",", count, file=out)', False),
+    ("print(text, file=handle.stream)", False),
+])
+def test_loginj_reads_print_only_to_stdout_or_stderr(tmp_path: Path, stmt: str, reported: bool) -> None:
+    assert bool(_loginj(tmp_path, _LOGINJ_FN, stmt)) is reported
+
+
+def test_loginj_text_says_stdout_carries_the_protocol() -> None:
+    """In a STDIO server stdout is the JSON-RPC channel: caller input printed
+    there can inject a message, which stripping control characters does not stop."""
+    from agent_audit_kit.rules.builtin import RULES
+
+    rule = RULES["AAK-LOGINJ-001"]
+    for text in (rule.description, rule.remediation):
+        assert "stdout" in text and "stderr" in text, text
+    assert "inject" in rule.description
+
+
 def test_loginj_does_not_read_a_logger_held_on_the_instance(tmp_path: Path) -> None:
     """Measured and left out (stated in the limitation): on 9,137 Python files
     from code searches for MCP servers the attribute form added 69 findings,
