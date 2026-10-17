@@ -183,13 +183,22 @@ def _composes_shell_command(line: str, window: str) -> bool:
 # gates gave 337 findings there, 86.1% in a server or handler and naming their
 # sink (87.6% of 330 without AAK-TAINT-002, below). TypeScript keeps the gates
 # above, which neither sample measured.
+#
+# The handler gate took a bare `setRequestHandler` or `CallToolRequestSchema`
+# as well, but a client registers handlers with the same method (an
+# elicitation handler that opens the URL a server sent got a CRITICAL) and a
+# script imports the schema to build a request. It takes the registration
+# itself now, `setRequestHandler(CallToolRequestSchema, ...)`. The six files of
+# the second sample with an AAK-MCP-TOOL-ARG-OSCMD-001 finding all pass it,
+# five through that registration and one through `server.tool`.
 _JS_MCP_SERVER_RE = re.compile(
     r"""(?:\bfrom\s*|\b(?:require|import)\s*\(\s*)[`'"][^`'"\n]*@modelcontextprotocol/sdk/(?:dist/(?:cjs|esm)/)?server\b"""
     r"|\bserver\s*\.\s*(?:tool|registerTool)\s*\("
     r"|setRequestHandler\s*\(\s*CallToolRequestSchema"
 )
 _JS_TOOL_HANDLER_RE = re.compile(
-    r"\b(?:handleToolCall|CallToolRequestSchema|setRequestHandler|server\s*\.\s*tool)\b|@tool\b"
+    r"\b(?:handleToolCall|server\s*\.\s*tool)\b|@tool\b"
+    r"|\bsetRequestHandler\s*\(\s*CallToolRequestSchema\b"
 )
 # AAK-TAINT-002 stays TypeScript-only. In JavaScript MCP servers from code
 # search, 1 of 12 `eval(` matches was an eval call; the rest sat in strings or

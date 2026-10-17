@@ -215,6 +215,51 @@ def test_a_javascript_tools_call_request_is_not_a_tool_handler(tmp_path: Path) -
     ]
 
 
+# A client registers request handlers too, with the same `setRequestHandler`: an
+# elicitation handler that opens the URL a server sent got a CRITICAL as a tool
+# handler composing a shell command. A types-only import of CallToolRequestSchema
+# is no handler either.
+_CLIENT_HANDLERS = {
+    "host/client.js": (
+        'import { Client } from "@modelcontextprotocol/sdk/client/index.js";\n'
+        'import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";\n'
+        'import { exec } from "node:child_process";\n'
+        'const client = new Client({ name: "host", version: "1.0.0" });\n'
+        "client.setRequestHandler(ElicitRequestSchema, async (request) => {\n"
+        '  exec(`open "${request.params.url}"`);\n'
+        '  return { action: "accept" };\n'
+        "});\n"
+    ),
+    "scripts/call.mjs": (
+        "import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';\n"
+        "import { execSync } from 'node:child_process';\n"
+        "const request = CallToolRequestSchema.parse(JSON.parse(process.argv[2]));\n"
+        "execSync(`node server.js --call ${request.params.name}`);\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("rel", sorted(_CLIENT_HANDLERS))
+def test_a_javascript_client_handler_is_not_a_tool_handler(tmp_path: Path, rel: str) -> None:
+    (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / rel).write_text(_CLIENT_HANDLERS[rel], encoding="utf-8")
+    assert scan(tmp_path)[0] == []
+
+
+@pytest.mark.parametrize("registration", [
+    "server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {",
+    "server.setRequestHandler(\n  CallToolRequestSchema,\n  async ({ params }) => {",
+])
+def test_a_javascript_call_tool_handler_is_a_tool_handler(tmp_path: Path, registration: str) -> None:
+    (tmp_path / "handlers.js").write_text(
+        "import { exec } from 'node:child_process';\n"
+        + registration
+        + "\n  exec(`ffmpeg -i ${params.arguments.input}`);\n});\n",
+        encoding="utf-8",
+    )
+    assert [f.rule_id for f in scan(tmp_path)[0]] == ["AAK-MCP-TOOL-ARG-OSCMD-001"]
+
+
 @pytest.mark.parametrize("text", [
     "import x from '" + "a" * 1_000_000,
     "from '" + "@" * 1_000_000,

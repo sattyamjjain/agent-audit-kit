@@ -8231,12 +8231,17 @@ _r(
         "Reads `.ts` and `.tsx` files that carry a tool-call marker "
         "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
         "`server.tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
-        "that carry one other than `tools/call`, the method a client sends, and "
-        "reports `exec` or `execSync` whose first argument is a template literal "
-        "with `${}` or a concatenation written inside the call. A command built "
-        "into a variable first and then passed as `exec(command)` is not reported, "
-        "and neither is a JavaScript dispatcher whose only marker is the "
-        "`tools/call` string."
+        "that call `setRequestHandler(CallToolRequestSchema, ...)` or carry "
+        "`handleToolCall`, `server.tool` or `@tool`: in JavaScript a client sends "
+        "`tools/call`, registers handlers of its own with `setRequestHandler` and "
+        "imports `CallToolRequestSchema` to build a request, so none of these alone "
+        "makes a tool handler. It reports `exec` or `execSync` whose first argument "
+        "is a template literal with `${}` or a concatenation written inside the "
+        "call. A command built into a variable first and then passed as "
+        "`exec(command)` is not reported, and neither is a JavaScript dispatcher "
+        "whose only marker is the `tools/call` string, nor a server whose only tool "
+        "registration is `server.registerTool(`, which is a marker in neither "
+        "language."
     ),
 )
 
