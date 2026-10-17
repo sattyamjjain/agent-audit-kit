@@ -30,6 +30,7 @@ from __future__ import annotations
 import ast
 import ipaddress
 import re
+import string
 from typing import Callable, Iterator, NamedTuple
 
 from agent_audit_kit.scanners._helpers import blank_js_comments, host_ip, url_readings
@@ -430,27 +431,36 @@ def _str_constant(node: ast.AST) -> str | None:
     return None
 
 
-def _literal_join(node: ast.AST) -> tuple[str, list[ast.expr]] | None:
-    """``(separator, items)`` for `"/".join([a, b])` over a literal list."""
+def _literal_join(
+    node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None
+) -> tuple[str, list[ast.expr]] | None:
+    """``(separator, items)`` for `"/".join([a, b])` over a literal list, or over
+    a name `lists` reads back to one (`parts = ["https://", host]`, then
+    `"".join(parts)`)."""
     if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
         return None
     sep = _str_constant(node.func.value)
     if node.func.attr != "join" or sep is None or len(node.args) != 1 or node.keywords:
         return None
     items = node.args[0]
+    if isinstance(items, ast.Name) and lists is not None:
+        elts = lists(items.id)
+        return None if elts is None else (sep, elts)
     return (sep, list(items.elts)) if isinstance(items, (ast.List, ast.Tuple)) else None
 
 
-def _is_built(node: ast.AST) -> bool:
+def _is_built(node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None) -> bool:
     """An f-string, a `+` or a literal `.join`: a URL put together from pieces."""
     return (
         isinstance(node, ast.JoinedStr)
         or (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add))
-        or _literal_join(node) is not None
+        or _literal_join(node, lists) is not None
     )
 
 
-def _pieces(node: ast.AST) -> list[str | ast.AST]:
+def _pieces(
+    node: ast.AST, lists: Callable[[str], list[ast.expr] | None] | None = None
+) -> list[str | ast.AST]:
     """A built string as the literal text and expressions it joins, in order:
     an f-string's parts, a `+` chain flattened left to right (with an explicit
     stack, as a chain can be thousands long), and a literal `.join` with its
@@ -462,7 +472,7 @@ def _pieces(node: ast.AST) -> list[str | ast.AST]:
         if isinstance(cur, str):
             out.append(cur)
             continue
-        joined = _literal_join(cur)
+        joined = _literal_join(cur, lists)
         if joined is not None:
             sep, items = joined
             for index in range(len(items) - 1, -1, -1):
@@ -479,6 +489,78 @@ def _pieces(node: ast.AST) -> list[str | ast.AST]:
             text = _str_constant(cur)
             out.append(cur if text is None else text)
     return out
+
+
+#: A `%` conversion: an optional `(key)`, flags, width and precision in one
+#: class, then the conversion letter. The key stops at the next `(` or `%`, and
+#: the flag run at the next `%`, so a crafted template is read in linear time.
+_PERCENT_FIELD_RE = re.compile(r"%(?:\(([^()%]*)\))?[-#0 +*.\d]*([A-Za-z%])")
+
+
+def _percent_pieces(template: str, values: ast.expr) -> list[str | ast.AST]:
+    """`template % values` as the text and the values it puts in each field, in
+    order. A tuple fills the fields by position and a dict literal by `(key)`;
+    a field nothing fills, a `**` key or a key that is not a string constant,
+    reads as text the code does not spell out."""
+    positional: list[ast.expr] = []
+    keyed: dict[str, ast.expr] = {}
+    if isinstance(values, ast.Tuple):
+        positional = list(values.elts)
+    elif isinstance(values, ast.Dict):
+        for dict_key, dict_value in zip(values.keys, values.values):
+            name = _str_constant(dict_key) if dict_key is not None else None
+            if name is not None:
+                keyed[name] = dict_value
+    else:
+        positional = [values]
+    pieces: list[str | ast.AST] = []
+    pos = index = 0
+    for field in _PERCENT_FIELD_RE.finditer(template):
+        pieces.append(template[pos:field.start()])
+        pos = field.end()
+        field_key: str | None = field.group(1)
+        if field.group(2) == "%" and field_key is None:
+            pieces.append("%")
+            continue
+        filled: ast.expr | None
+        if field_key is not None:
+            filled = keyed.get(field_key)
+        else:
+            filled = positional[index] if index < len(positional) else None
+            index += 1
+        pieces.append(_UNKNOWN if filled is None else filled)
+    pieces.append(template[pos:])
+    return pieces
+
+
+def _format_pieces(template: str, call: ast.Call) -> list[str | ast.AST] | None:
+    """`template.format(...)` as the text and the argument each field takes, in
+    order (`{}`, `{0}`, `{host}`, `{0.netloc}`), or None when the arguments are
+    unpacked (`*args`, `**kwargs`) or the template does not parse."""
+    if any(isinstance(arg, ast.Starred) for arg in call.args) or any(kw.arg is None for kw in call.keywords):
+        return None
+    try:
+        fields = list(string.Formatter().parse(template))
+    except ValueError:
+        return None
+    keywords = {kw.arg: kw.value for kw in call.keywords if kw.arg is not None}
+    pieces: list[str | ast.AST] = []
+    auto = 0
+    for literal, name, _spec, _conversion in fields:
+        pieces.append(literal)
+        if name is None:
+            continue
+        head = name.partition(".")[0].partition("[")[0]
+        value: ast.expr | None
+        if head == "":
+            value = call.args[auto] if auto < len(call.args) else None
+            auto += 1
+        elif head.isdigit():
+            value = call.args[int(head)] if int(head) < len(call.args) else None
+        else:
+            value = keywords.get(head)
+        pieces.append(_UNKNOWN if value is None else value)
+    return pieces
 
 
 #: The annotations of parameters a framework fills in, not the caller: FastMCP's
@@ -506,6 +588,80 @@ def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return names
 
 
+def _collect_bindings(
+    root: ast.AST, values: dict[str, list[ast.AST]], parts: dict[str, list[ast.AST]]
+) -> None:
+    """The names `root` binds, in source order: into `values` what a name is
+    bound to, into `parts` what it holds a part of.
+
+    `=`, an annotated `=` and `:=` bind a name to their value. `x += y` binds
+    `x` to the value it had just before (the last one bound above it, or `x`
+    itself) combined with `y`, so `url = "https://"` then `url += host` reads as
+    `"https://" + host`. A name an unpacking assignment, a `for` or a
+    comprehension binds holds a part of the value it is given
+    (`host, _, port = target.partition(":")`).
+    """
+    nodes = [
+        n for n in ast.walk(root)
+        if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr,
+                          ast.For, ast.AsyncFor, ast.comprehension))
+    ]
+    nodes.sort(key=_position)
+    last: dict[str, ast.expr] = {}
+    for node in nodes:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                _bind(target, node.value, values, parts, last)
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)):
+            if node.value is not None:
+                _bind(node.target, node.value, values, parts, last)
+        elif isinstance(node, ast.AugAssign):
+            if isinstance(node.target, ast.Name):
+                name = node.target.id
+                before = last.get(name, ast.Name(id=name, ctx=ast.Load()))
+                combined = ast.BinOp(left=before, op=node.op, right=node.value)
+                values.setdefault(name, []).append(combined)
+                last[name] = combined
+        else:
+            _bind_parts(node.target, node.iter, parts, last)
+
+
+def _position(node: ast.AST) -> tuple[int, int]:
+    anchor = node.target if isinstance(node, ast.comprehension) else node
+    return getattr(anchor, "lineno", 0), getattr(anchor, "col_offset", 0)
+
+
+def _bind(
+    target: ast.AST,
+    value: ast.expr,
+    values: dict[str, list[ast.AST]],
+    parts: dict[str, list[ast.AST]],
+    last: dict[str, ast.expr],
+) -> None:
+    if isinstance(target, ast.Name):
+        values.setdefault(target.id, []).append(value)
+        last[target.id] = value
+    else:
+        _bind_parts(target, value, parts, last)
+
+
+def _bind_parts(
+    target: ast.AST, value: ast.expr, parts: dict[str, list[ast.AST]], last: dict[str, ast.expr]
+) -> None:
+    """Each name a target list unpacks into (`a, (b, *c) = value`). An attribute
+    or item target (`self.host, port = value`) binds no local."""
+    stack = [target]
+    while stack:
+        cur = stack.pop()
+        if isinstance(cur, ast.Name):
+            parts.setdefault(cur.id, []).append(value)
+            last.pop(cur.id, None)
+        elif isinstance(cur, (ast.Tuple, ast.List)):
+            stack.extend(cur.elts)
+        elif isinstance(cur, ast.Starred):
+            stack.append(cur.value)
+
+
 class _CallerInput:
     """One tool function's caller input: what it is, and whether it can set the
     host of a URL built in that function."""
@@ -513,28 +669,40 @@ class _CallerInput:
     def __init__(
         self,
         func: ast.FunctionDef | ast.AsyncFunctionDef,
-        module_assigns: dict[str, list[ast.AST]],
+        module_values: dict[str, list[ast.AST]],
+        module_parts: dict[str, list[ast.AST]],
     ) -> None:
         self.params = _get_param_names(func) - _injected_params(func)
-        # name -> what it is bound to here: `=`, an annotated `=` and `:=` ...
+        # name -> what it is bound to here: `=`, an annotated `=`, `:=`, and an
+        # augmented `+=` read as the value before it plus the operand ...
         self.values: dict[str, list[ast.AST]] = {}
-        # ... and the iterable a `for` or a comprehension takes it from, whose
-        # every element is the caller's when the iterable is.
+        # ... and what it holds a part of: the iterable of a `for` or a
+        # comprehension, and the value an unpacking assignment splits, whose
+        # every part is the caller's when the whole is.
         self.elements: dict[str, list[ast.AST]] = {}
-        for node in ast.walk(func):
-            if isinstance(node, ast.Assign):
-                for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        self.values.setdefault(target.id, []).append(node.value)
-            elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)) and isinstance(node.target, ast.Name):
-                if node.value is not None:
-                    self.values.setdefault(node.target.id, []).append(node.value)
-            elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
-                if isinstance(node.target, ast.Name):
-                    self.elements.setdefault(node.target.id, []).append(node.iter)
-        self.module_assigns = module_assigns
+        _collect_bindings(func, self.values, self.elements)
+        # The same, file-wide, for a name this function does not bind.
+        self.module_values = module_values
+        self.module_parts = module_parts
         self._sets: dict[tuple[int, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
+
+    def _bound(self, name: str) -> list[ast.AST]:
+        """What `name` is bound to here, or else in the file. A name the file
+        unpacks or loops over holds a part of a value, not the value: none."""
+        local = self.values.get(name)
+        if local:
+            return local
+        if name in self.module_parts:
+            return []
+        return self.module_values.get(name, [])
+
+    def _list_of(self, name: str) -> list[ast.expr] | None:
+        """The items of the list or tuple literal `name` is bound to, once."""
+        bound = self._bound(name)
+        if len(bound) == 1 and isinstance(bound[0], (ast.List, ast.Tuple)):
+            return list(bound[0].elts)
+        return None
 
     def sets_host(self, node: ast.AST, depth: int = 0, nest: int = 0) -> bool:
         """Whether caller input can set the host of the URL `node` evaluates to.
@@ -572,22 +740,35 @@ class _CallerInput:
             elif isinstance(cur, (ast.Subscript, ast.Attribute, ast.Starred, ast.Await, ast.NamedExpr)):
                 # `URLS[region]` reads a URL the code fixed: only the container counts.
                 stack.append(cur.value)
-            elif _is_built(cur):
-                if self._built_sets_host(_pieces(cur), depth, nest + 1):
+            elif _is_built(cur, self._list_of):
+                if self._built_sets_host(_pieces(cur, self._list_of), depth, nest + 1):
                     return True
-            elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Mod) and _str_constant(cur.left) is not None:
-                if not _authority_closed(str(_str_constant(cur.left)).partition("%")[0]):
-                    # `"%s://%s/" % (scheme, host)` and `"%(host)s" % {...}` format each value.
-                    if isinstance(cur.right, ast.Tuple):
-                        stack.extend(cur.right.elts)
-                    elif isinstance(cur.right, ast.Dict):
-                        stack.extend(value for value in cur.right.values if value is not None)
-                    else:
-                        stack.append(cur.right)
+            elif isinstance(cur, ast.BinOp) and isinstance(cur.op, ast.Mod):
+                # A template the caller hands over is theirs whatever it holds;
+                # otherwise each value is read where its field puts it, so in
+                # `"%s/v2/%s" % (BASE, repo)` the caller's `repo` is in the path.
+                stack.append(cur.left)
+                template = self._spelled(cur.left, depth, nest + 1)
+                if self._built_sets_host(_percent_pieces(template, cur.right), depth, nest + 1):
+                    return True
+            elif isinstance(cur, (ast.List, ast.Tuple, ast.Set)):
+                # The pieces of a URL a `.join` or a URL function has not been
+                # read as text: any of them can be the host.
+                stack.extend(cur.elts)
             elif isinstance(cur, ast.BinOp):
                 stack.extend((cur.left, cur.right))
             elif isinstance(cur, ast.Call):
-                stack.extend(self._call_operands(cur, depth, nest))
+                func = cur.func
+                pieces = None
+                if isinstance(func, ast.Attribute) and func.attr == "format":
+                    pieces = _format_pieces(self._spelled(func.value, depth, nest + 1), cur)
+                    if pieces is not None:
+                        # The template itself may be the caller's.
+                        stack.append(func.value)
+                if pieces is None:
+                    stack.extend(self._call_operands(cur, depth, nest))
+                elif self._built_sets_host(pieces, depth, nest + 1):
+                    return True
             elif isinstance(cur, ast.IfExp):
                 stack.extend((cur.body, cur.orelse))
             elif isinstance(cur, ast.BoolOp):
@@ -670,21 +851,28 @@ class _CallerInput:
         if isinstance(node, ast.Name):
             if node.id in self.params or node.id in self.elements:
                 return _UNKNOWN
-            bound = self.values.get(node.id) or self.module_assigns.get(node.id, [])
+            bound = self._bound(node.id)
             return self._spelled(bound[0], depth + 1, nest + 1) if len(bound) == 1 else _UNKNOWN
-        if _is_built(node):
+        if _is_built(node, self._list_of):
             text = ""
-            for piece in _pieces(node):
+            for piece in _pieces(node, self._list_of):
                 text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
                 if len(text) >= _PREFIX_CAP:
                     break
             return text
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod) and _str_constant(node.left) is not None:
-            return str(_str_constant(node.left)).partition("%")[0] + _UNKNOWN
-        func = node.func if isinstance(node, ast.Call) else None
-        if isinstance(func, ast.Attribute) and func.attr == "format":
-            return self._spelled(func.value, depth, nest + 1).partition("{")[0] + _UNKNOWN
-        return _UNKNOWN
+        pieces: list[str | ast.AST] | None = None
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
+            pieces = _percent_pieces(self._spelled(node.left, depth, nest + 1), node.right)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "format":
+            pieces = _format_pieces(self._spelled(node.func.value, depth, nest + 1), node)
+        if pieces is None:
+            return _UNKNOWN
+        text = ""
+        for piece in pieces:
+            text += piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
+            if len(text) >= _PREFIX_CAP:
+                break
+        return text
 
 
 def _registered_tools(tree: ast.AST) -> set[str]:
@@ -716,7 +904,7 @@ def _is_function_tool(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
-def _caller_inputs(tree: ast.AST, assigns: dict[str, list[ast.AST]]) -> dict[int, list[_CallerInput]]:
+def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     """id(call) -> the caller input of each tool function the call sits in.
 
     A tool is what taint_analysis reads as one, a function decorated
@@ -726,6 +914,9 @@ def _caller_inputs(tree: ast.AST, assigns: dict[str, list[ast.AST]]) -> dict[int
     parameter was called `query` or `params`.
     """
     registered = _registered_tools(tree)
+    module_values: dict[str, list[ast.AST]] = {}
+    module_parts: dict[str, list[ast.AST]] = {}
+    _collect_bindings(tree, module_values, module_parts)
     around: dict[int, list[_CallerInput]] = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -733,7 +924,7 @@ def _caller_inputs(tree: ast.AST, assigns: dict[str, list[ast.AST]]) -> dict[int
         if not (_is_tool_function(node) or _is_call_tool_handler(node)
                 or _is_function_tool(node) or node.name in registered):
             continue
-        scope = _CallerInput(node, assigns)
+        scope = _CallerInput(node, module_values, module_parts)
         for sub in ast.walk(node):
             if isinstance(sub, ast.Call):
                 around.setdefault(id(sub), []).append(scope)
@@ -747,8 +938,12 @@ def analyze_python(text: str) -> list[Reach]:
     except (SyntaxError, ValueError):
         return []
 
-    # name -> assigned expressions, file-wide, for the address walk and for
-    # spelling out a module-level constant such as a base URL.
+    # name -> assigned expressions, file-wide, for the address walk: `=` and an
+    # annotated `=` only. The walk reads a name wherever it is bound, so the
+    # loop and unpacking bindings the host test reads would lend one
+    # function's addresses to another function's call of the same name; on
+    # the two code-search samples they added two real loopback calls and one
+    # login URL that took a probe loop's address four names away.
     assigns: dict[str, list[ast.AST]] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
@@ -759,7 +954,7 @@ def analyze_python(text: str) -> list[Reach]:
             assigns.setdefault(node.target.id, []).append(node.value)
 
     addr_reaching = _py_addr_reach(assigns)
-    caller_inputs = _caller_inputs(tree, assigns)
+    caller_inputs = _caller_inputs(tree)
 
     out: list[Reach] = []
     for node in ast.walk(tree):

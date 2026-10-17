@@ -13,13 +13,14 @@ and genuine data flow must still fire.
 
 from __future__ import annotations
 
+import ast
 import time
 from pathlib import Path
 from typing import Callable
 
 import pytest
 
-from agent_audit_kit.scanners._ssrf_reach import analyze_js, analyze_python
+from agent_audit_kit.scanners._ssrf_reach import _format_pieces, _percent_pieces, analyze_js, analyze_python
 from agent_audit_kit.scanners.ssrf_patterns import scan
 
 # Every file must carry an MCP tool hint or the scanner skips it entirely.
@@ -165,6 +166,8 @@ _TOOL_PRELUDE = (
     'REGIONS = {"eu": "https://eu.example.com"}\n'
     'TEMPLATE = "https://{host}/status"\n'
     'USER_URL = "https://api.example.com/users/[id]"\n'
+    'PATH_T = "https://api.example.com/items/%s"\n'
+    'HOST_T = "https://%s/status"\n'
     "import os\n"
 )
 _SSRF_RULES = {"AAK-SSRF-001", "AAK-SSRF-005"}
@@ -273,6 +276,21 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     'def proxy(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/" + path)).text\n',
     'async def proxy(path: str) -> str:\n    async with httpx.AsyncClient(base_url=BASE) as client:\n'
     '        return (await client.get(f"/{path}")).text\n',
+    # `+=` onto a scheme.
+    'def proxy(host: str) -> str:\n    url = "https://"\n    url += host\n    url += "/x"\n'
+    "    return requests.get(url).text\n",
+    # A host read out of the caller's value by unpacking.
+    'def proxy(target: str) -> str:\n    host, _, port = target.partition(":")\n'
+    '    return requests.get(f"http://{host}:{port}/").text\n',
+    'def proxy(pair: tuple) -> str:\n    (host, port) = pair\n    return requests.get(f"http://{host}:{port}/").text\n',
+    # A list of pieces bound to a name and joined.
+    'def proxy(host: str) -> str:\n    parts = ["https://", host, "/x"]\n    return requests.get("".join(parts)).text\n',
+    # A name holding a `%` template that leaves the host open, and fields read
+    # by position and by name.
+    "def proxy(host: str) -> str:\n    return requests.get(HOST_T % host).text\n",
+    'def proxy(scheme: str, path: str) -> str:\n    return requests.get("%s://api.example.com/%s" % (scheme, path)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("{}://{}/x".format("https", host)).text\n',
+    'def proxy(host: str) -> str:\n    return requests.get("https://{h}/x".format(h=host)).text\n',
     # httpx, curl and urlsplit keep a backslash inside the authority, so the
     # caller can still write `@evil.example` after it.
     'def proxy(user: str) -> str:\n    return requests.get("https://api.example.com\\\\" + user).text\n',
@@ -282,6 +300,15 @@ def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> No
 
 
 @pytest.mark.parametrize("body", [
+    "def item(path: str) -> str:\n    return requests.get(PATH_T % path).text\n",
+    # The caller's value fills a field after the host the code put first.
+    'def item(repo: str) -> str:\n    return requests.get("%s/v2/%s" % (BASE, repo)).text\n',
+    'def item(repo: str) -> str:\n    return requests.get("{}/v2/{}".format(BASE, repo)).text\n',
+    'def item(path: str) -> str:\n    return requests.get("{base}/x/{p}".format(base=BASE, p=path)).text\n',
+    'def item(path: str) -> str:\n    url = BASE_SLASH\n    url += path\n    return requests.get(url).text\n',
+    # A module-level `+=` makes the base more than its first value.
+    'def item(path: str) -> str:\n    return requests.get(API + path).text\nAPI = "https://"\nAPI += "api.example.com/"\n',
+    'def item(path: str) -> str:\n    parts = [BASE, path]\n    return requests.get("/".join(parts)).text\n',
     'def item(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/v1/" + path)).text\n',
 ])
 def test_the_host_test_still_leaves_a_fixed_host_alone(tmp_path: Path, body: str) -> None:
@@ -323,6 +350,24 @@ def test_a_bare_host_next_to_punctuation(literal: str, address: str | None) -> N
     the URL's host, and stays unread."""
     sites = analyze_python(f'import requests\nHOST = "{literal}"\nrequests.get(f"http://{{HOST}}/x")\n')
     assert [s.private_addr for s in sites] == [address]
+
+
+def test_another_function_s_loop_lends_a_call_no_address() -> None:
+    """The address walk reads names file-wide, so the bindings the host test
+    now reads (a `for`, an unpacking, `+=`) would lend one function's loopback
+    loop to another function's call of the same name: on a real server, a
+    login URL built from a parameter took a probe loop's address four names
+    away. The walk reads `=` and an annotated `=` only, as before."""
+    source = (
+        "import requests\n"
+        "def login(server_url):\n"
+        "    url = f'{server_url}/api/v1/login'\n"
+        "    return requests.post(url)\n"
+        "def probe():\n"
+        "    for url in ['http://127.0.0.1:8237/health']:\n"
+        "        print(url)\n"
+    )
+    assert [s.private_addr for s in analyze_python(source)] == [None]
 
 
 @pytest.mark.parametrize(("check", "silenced"), [
@@ -794,6 +839,26 @@ def test_a_crafted_tool_url_is_read_in_linear_time(arg: str) -> None:
     except RecursionError:
         pytest.skip("this interpreter's parser refuses an expression this deep")
     started = time.perf_counter()
+    analyze_python(source)
+    assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize("template", ["%(" * 50_000, "%" + "0" * 100_000, "{" * 100_000, "%s" * 50_000])
+def test_a_crafted_template_is_read_in_linear_time(template: str) -> None:
+    """A template is spelled out to `_PREFIX_CAP` characters, and the field
+    readers stay linear without that cap: each `%` field's key and flag run
+    stop at the next `%` or `(` (a key read up to the next `)` scanned to the
+    end of the text from every `%(`), and `.format` templates go to
+    `string.Formatter`. The bound is loose for slow runners."""
+    call = ast.parse("t.format(p)", mode="eval").body
+    assert isinstance(call, ast.Call)
+    source = (
+        "import requests\n@mcp.tool()\ndef t(p):\n"
+        f"    requests.get({template!r} % (p,))\n    requests.get({template!r}.format(p))\n"
+    )
+    started = time.perf_counter()
+    _percent_pieces(template, ast.Name(id="p", ctx=ast.Load()))
+    _format_pieces(template, call)
     analyze_python(source)
     assert time.perf_counter() - started < 5.0
 
