@@ -207,8 +207,18 @@ def _names_a_release(token: str) -> bool:
 
 
 def _tag_release(tag: str) -> Ver | None:
-    """The release a tag names: `v1.2.3`, `1.2.3`, `name==1.2.3`, `release-1.2.3`."""
-    for candidate in (tag.rsplit("==", 1)[-1], tag.rsplit("-", 1)[-1], tag.rsplit("/", 1)[-1]):
+    """The release a tag names: `v1.2.3`, `1.2.3`, `name==1.2.3`, `release-1.2.3`.
+
+    A name holding a `/` names none, whatever it looks like: `release/1.1.14`,
+    `feature/v2.0.0` and `refs/heads/1.1.14` are branches, and reading the last
+    segment took a branch named after the fix as the fix. `refs/tags/<tag>` is
+    the one exception, and names what `<tag>` does.
+    """
+    if tag.startswith("refs/tags/"):
+        tag = tag[len("refs/tags/"):]
+    if "/" in tag:
+        return None
+    for candidate in (tag.rsplit("==", 1)[-1], tag.rsplit("-", 1)[-1]):
         if _names_a_release(candidate):
             return parse_version(candidate)
     return None
@@ -304,8 +314,9 @@ def _with_referenced_version(declaration: Declaration, document: object) -> Decl
     while the two langchain SSRF pins, which report an unversioned reference,
     reported a git requirement at the patched release as stating no version,
     which no upgrade could clear. A reference that names no release (a commit,
-    a branch, `workspace:*`, a local directory) still states no version. The
-    text stays as written, for the evidence and the line.
+    a branch or any name holding a `/` but `refs/tags/<tag>`, `workspace:*`, a
+    local directory) still states no version. The text stays as written, for
+    the evidence and the line.
     """
     if declaration.dialect == "npm":
         version = _npm_reference(declaration.version)

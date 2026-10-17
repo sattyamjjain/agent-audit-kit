@@ -405,6 +405,12 @@ _PY_REFS: tuple[tuple[str, str, bool | None], ...] = (
     ("sdist URL", "{p} @ https://files.example/{s}-{a}.tar.gz", True),
     ("sdist URL, fixed", "{p} @ https://files.example/{s}-{f}.tar.gz", False),
     ("commit", "git+https://github.com/o/r@4f2c1d9e8b7a#egg={p}", None),
+    # A name holding a `/` is a branch, whatever it looks like, unless it is `refs/tags/<tag>`.
+    ("branch named after the fix", "git+https://github.com/o/r@release/{f}#egg={p}", None),
+    ("branch named after a release", "git+https://github.com/o/r@feature/v2.0.0#egg={p}", None),
+    ("branch ref", "git+https://github.com/o/r@refs/heads/{f}#egg={p}", None),
+    ("tag ref", "git+https://github.com/o/r@refs/tags/v{a}#egg={p}", True),
+    ("tag ref, fixed", "git+https://github.com/o/r@refs/tags/v{f}#egg={p}", False),
 )
 
 _NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
@@ -422,6 +428,10 @@ _NPM_REFS: tuple[tuple[str, str, bool | None], ...] = (
     ("file: tarball", "file:../vendor/{b}-{a}.tgz", True),
     ("file: tarball, fixed", "file:../vendor/{b}-{f}.tgz", False),
     ("file: directory", "file:../vendor/{b}", None),
+    ("branch named after the fix", "github:o/r#release/{f}", None),
+    ("branch named after a release", "github:o/r#feature/v2.0.0", None),
+    ("tag ref", "github:o/r#refs/tags/v{a}", True),
+    ("tag ref, fixed", "github:o/r#refs/tags/v{f}", False),
 )
 
 
@@ -445,6 +455,8 @@ def test_a_python_reference_states_its_version(
     ('{ git = "https://github.com/o/r.git", tag = "v{f}" }', False),
     ('{ git = "https://github.com/o/r.git", tag = "{p}=={a}", subdirectory = "libs/x" }', True),
     ('{ git = "https://github.com/o/r.git", rev = "4f2c1d9e8b7a" }', None),
+    ('{ git = "https://github.com/o/r.git", rev = "release/{f}" }', None),
+    ('{ git = "https://github.com/o/r.git", tag = "refs/tags/v{a}" }', True),
     ('{ url = "https://files.example/{s}-{a}.tar.gz" }', True),
     ('{ url = "https://files.example/{s}-{f}.tar.gz" }', False),
 ])
