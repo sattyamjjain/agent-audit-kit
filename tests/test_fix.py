@@ -296,6 +296,21 @@ class TestWriteInsideProject:
     and directory resolve inside the project, opened without following a link. It returns
     None once written, or the reason it refused, and never raises for a refusal."""
 
+    @pytest.mark.usefixtures("full_disk")
+    def test_a_write_that_fails_after_the_open_says_the_file_may_be_partly_written(self, tmp_path: Path) -> None:
+        """The open truncates the file before a byte goes in, so a write that fails part
+        way leaves part of it. That is reported apart from a refusal or a failed open,
+        which leave the file as it was, so a caller can say which happened."""
+        target = tmp_path / "notes.txt"
+        target.write_bytes(b"previous content\n")
+
+        refused = _write_inside_project(target, b"a new and longer content\n", tmp_path)
+
+        assert refused == "notes.txt could not be written (No space left on device) and may be partly written"
+        assert isinstance(refused, fix_module._PartlyWritten)
+        assert target.read_bytes() == b"a new and "
+        assert not isinstance(_write_inside_project(tmp_path / "sub" / "x", b"", tmp_path), fix_module._PartlyWritten)
+
     def test_it_appends_replaces_and_creates(self, tmp_path: Path) -> None:
         target = tmp_path / "notes.txt"
         target.write_bytes(b"a\n")
@@ -708,6 +723,32 @@ def test_a_fix_that_changes_nothing_does_not_write(tmp_path: Path, case: _Unchan
 
     assert (action.applied, action.writes, action.description) == (case.applied and not dry_run, False, case.said)
     assert path.read_bytes() == case.before
+
+
+@pytest.mark.usefixtures("full_disk")
+def test_a_recipe_whose_write_fails_part_way_says_the_file_may_be_partly_written(tmp_path: Path) -> None:
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"enableAllProjectMcpServers": True}))
+
+    fix = _fix_enable_all_mcp(settings, tmp_path, dry_run=False)
+
+    assert (fix.applied, fix.writes, fix.description) == (
+        False, False,
+        "Failed to fix: settings.json could not be written (No space left on device) and may be partly written",
+    )
+
+
+def test_run_fixes_says_the_fix_log_may_be_partly_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The fixes stand and the line on stderr said the log was not written; a log whose
+    write failed part way may hold part of it."""
+    partly = fix_module._PartlyWritten("fix-log.json could not be written (No space left on device) and may be partly written")
+    monkeypatch.setattr(fix_module, "_write_fix_log", lambda root, fixes: partly)
+
+    fix_module._log_fixes(tmp_path, [])
+
+    assert capsys.readouterr().err == "fix: " + partly + "\n"
 
 
 # ---------------------------------------------------------------------------

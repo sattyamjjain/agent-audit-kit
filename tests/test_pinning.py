@@ -229,6 +229,19 @@ class TestCreatePinsWritesOnlyInsideTheProject:
         )
         assert os.listdir(outside) == []
 
+    @pytest.mark.usefixtures("full_disk")
+    def test_aak_pin_says_a_pin_file_written_part_way_may_hold_part_of_it(self, tmp_path: Path) -> None:
+        """A write that fails after the open has truncated the file leaves part of it,
+        so the message no longer says the pin file was not written."""
+        project, _ = self._projects(tmp_path)
+
+        result = CliRunner().invoke(cli, ["pin", str(project)])
+
+        assert result.exit_code == 2
+        assert result.output.strip() == (
+            "Cannot pin: tool-pins.json could not be written (No space left on device) and may be partly written."
+        )
+
 
 class TestVerifyPins:
     def test_no_pin_file_returns_empty(self, tmp_path: Path) -> None:

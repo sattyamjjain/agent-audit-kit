@@ -82,7 +82,9 @@ def _log_fixes(project_root: Path, fixes: list[FixAction]) -> None:
     raised: `aak fix` and `suggest --apply-trivial` still list what they changed.
     """
     refused = _write_fix_log(project_root, fixes)
-    if refused is not None:
+    if isinstance(refused, _PartlyWritten):
+        sys.stderr.write(f"fix: {refused}\n")
+    elif refused is not None:
         sys.stderr.write(f"fix: the fix log was not written: {refused}\n")
 
 
@@ -176,12 +178,22 @@ def _write_refusal(path: Path, project_root: Path) -> str | None:
     return None
 
 
+class _PartlyWritten(str):
+    """Why `_write_inside_project` did not finish a write it had started: the open had
+    already truncated the file, or appended part of the data, so the file may hold part
+    of what was meant. Every other reason it returns left the file as it was. Callers
+    that say "was not changed" after a reason check for this first; the text says it
+    may be partly written, so one that only shows the reason stays honest.
+    """
+
+
 def _write_inside_project(
     path: Path, data: bytes, project_root: Path, mode: Literal["append", "replace"] = "replace"
 ) -> str | None:
     """Write ``data`` to ``path`` when `_write_refusal` allows it, appended to the file or
     in place of its content. Returns None once written, or why it refused; a refusal or
-    an OS error is reported, never raised.
+    an OS error is reported, never raised. An OS error after the open, which in replace
+    mode has already emptied the file, comes back as `_PartlyWritten`.
 
     The file is opened without following a link (O_NOFOLLOW where the OS has one) and
     without waiting (O_NONBLOCK), and its descriptor must still be a regular file before
@@ -223,9 +235,80 @@ def _write_inside_project(
         while view:
             view = view[os.write(fd, view):]
     except OSError as exc:
-        return f"{path.name} could not be written ({exc.strerror or exc})"
+        return _PartlyWritten(
+            f"{path.name} could not be written ({exc.strerror or exc}) and may be partly written"
+        )
     finally:
         os.close(fd)
+    return None
+
+
+def _replace_inside_project(path: Path, data: bytes, project_root: Path) -> str | None:
+    """Make ``data`` the whole content of ``path``, when `_write_refusal` allows it, by
+    writing a new file beside it and moving that over it. Returns None once done, or
+    why it refused; a refusal or an OS error is reported, never raised, and leaves
+    ``path`` as it was, since a write that fails part way fails on the new file, which
+    is removed.
+
+    `_write_inside_project` writes in place, and its open empties the file before a
+    byte goes in, so a full disk part way through left part of it. For a file the
+    user keeps, such as their pre-commit config, that is the wrong failure. The new
+    file is created with O_CREAT, O_EXCL and O_NOFOLLOW in ``path``'s directory, so
+    nothing already there, a link included, can stand in for it; it takes the
+    original's permission bits and is synced before the move; and `_write_refusal`
+    is asked about ``path`` again just before `os.replace`, which renames over a
+    link rather than writing through it in any case. As a new file it no longer
+    shares its contents with another hard link to the old one, and it belongs to
+    whoever runs the command.
+    """
+    refused = _write_refusal(path, project_root)
+    if refused is not None:
+        return refused
+    try:
+        mode: int | None = stat.S_IMODE(os.lstat(path).st_mode)
+    except FileNotFoundError:
+        mode = None
+    except OSError as exc:
+        return f"{path.name} could not be examined ({exc.strerror or exc})"
+    if mode is not None:
+        # A rename needs only the directory to be writable, so a file the user made
+        # read-only would be replaced all the same; it is opened for writing first,
+        # without truncating it, and refused as an in-place write refuses it.
+        flags = os.O_WRONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+        try:
+            os.close(os.open(path, flags))
+        except OSError as exc:
+            return f"{path.name} could not be opened ({exc.strerror or exc})"
+    temp = path.with_name(f".{path.name}.aak-{os.getpid()}-{os.urandom(4).hex()}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    try:
+        fd = os.open(temp, flags, 0o666)
+    except OSError as exc:
+        return f"{path.name} could not be written ({exc.strerror or exc})"
+    moved = False
+    try:
+        try:
+            if mode is not None and hasattr(os, "fchmod"):
+                os.fchmod(fd, mode)
+            view = memoryview(data)
+            while view:
+                view = view[os.write(fd, view):]
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        refused = _write_refusal(path, project_root)
+        if refused is not None:
+            return refused
+        os.replace(temp, path)
+        moved = True
+    except OSError as exc:
+        return f"{path.name} could not be written ({exc.strerror or exc})"
+    finally:
+        if not moved:
+            try:
+                os.unlink(temp)
+            except OSError:
+                pass
     return None
 
 

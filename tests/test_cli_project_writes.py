@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 import subprocess
 import sys
 from datetime import datetime, timezone, tzinfo
@@ -268,6 +269,90 @@ def test_install_precommit_reports_a_config_it_cannot_read(tmp_path: Path, monke
         2, _refusal(_COMMANDS[0], "could not be read (Permission denied)")
     )
     assert config.read_bytes() == b"repos:\n"
+
+
+# ---------------------------------------------------------------------------
+# A write that fails part way
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("full_disk")
+def test_install_precommit_replaces_the_config_whole_so_a_full_disk_leaves_it_as_it_was(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Opened for writing, the config was truncated before a byte went in, so a write that
+    failed part way left `repos:\n  -` and said the file was not changed. The new content
+    goes into a file beside it, which is moved into place only once it is whole."""
+    project, _ = _projects(tmp_path)
+    config = project / ".pre-commit-config.yaml"
+    config.write_bytes(b"repos:\n  - repo: local\n    hooks: []\n")
+
+    result = _invoke(_COMMANDS[0], project, monkeypatch)
+
+    assert (result.exit_code, result.output) == (
+        2, _refusal(_COMMANDS[0], "could not be written (No space left on device)")
+    )
+    assert config.read_bytes() == b"repos:\n  - repo: local\n    hooks: []\n"
+    assert os.listdir(project) == [".pre-commit-config.yaml"], "the file written beside it is removed"
+
+
+@pytest.mark.skipif(not hasattr(os, "fchmod"), reason="needs POSIX permissions")
+def test_install_precommit_keeps_the_configs_permissions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    project, _ = _projects(tmp_path)
+    config = project / ".pre-commit-config.yaml"
+    config.write_bytes(b"repos:\n")
+    config.chmod(0o640)
+
+    result = _invoke(_COMMANDS[0], project, monkeypatch)
+
+    assert result.exit_code == 0, result.output
+    assert stat.S_IMODE(config.stat().st_mode) == 0o640
+
+
+def test_install_precommit_refuses_a_link_put_in_place_before_the_new_config_moves_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The config is looked at again just before the new file is moved over it, and
+    `os.replace` renames over a link rather than writing through it in any case."""
+    project, outside = _projects(tmp_path)
+    target = outside / "target"
+    target.write_bytes(b"keep\n")
+    config = project / ".pre-commit-config.yaml"
+    config.write_bytes(b"repos:\n")
+    real_fsync = os.fsync
+
+    def fsync_then_swap(fd: int) -> None:
+        real_fsync(fd)
+        config.unlink()
+        config.symlink_to(target)
+
+    monkeypatch.setattr(os, "fsync", fsync_then_swap)
+
+    result = _invoke(_COMMANDS[0], project, monkeypatch)
+
+    assert (result.exit_code, result.output) == (2, _refusal(_COMMANDS[0], "is a symlink"))
+    assert target.read_bytes() == b"keep\n"
+    assert os.listdir(project) == [".pre-commit-config.yaml"]
+
+
+@pytest.mark.parametrize(
+    "command", [c for c in _COMMANDS if c.id != "install-precommit"], ids=[c.id for c in _COMMANDS[1:]]
+)
+def test_a_write_that_fails_part_way_says_the_file_may_be_partly_written(
+    tmp_path: Path, command: _Command, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    """The open truncates the file before a byte goes in, so a write that fails part way
+    (a full disk) leaves part of it; the message said the file was not changed."""
+    project, _ = _projects(tmp_path)
+    (project / command.rel).write_bytes(b"previous content\n" * 5)
+    request.getfixturevalue("full_disk")
+
+    result = _invoke(command, project, monkeypatch)
+
+    assert (result.exit_code, result.output) == (
+        2,
+        f"{command.lead}: {command.rel} could not be written (No space left on device) and may be partly written.\n",
+    )
 
 
 # ---------------------------------------------------------------------------

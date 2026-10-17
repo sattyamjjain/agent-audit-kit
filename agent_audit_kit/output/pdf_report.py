@@ -322,12 +322,14 @@ def _fallback_message(text_path: Path) -> str:
 
 
 class ReportWriteError(Exception):
-    """`emit_pdf_in` wrote no report: ``name`` is the file it refused, and the message
-    says why."""
+    """`emit_pdf_in` did not write its report: ``name`` is the file, and ``reason``,
+    the message, says why. A `fix._PartlyWritten` reason means the write failed after
+    the open, so the file may hold part of the report; any other left it as it was."""
 
     def __init__(self, name: str, reason: str) -> None:
         super().__init__(reason)
         self.name = name
+        self.reason = reason
 
 
 def emit_pdf_in(result: ScanResult, framework: str, directory: Path) -> tuple[bool, str]:
@@ -346,7 +348,7 @@ def emit_pdf_in(result: ScanResult, framework: str, directory: Path) -> tuple[bo
 
     Raises:
         ReportWriteError: the file is a link, a FIFO or anything else
-            `fix._write_refusal` refuses, or could not be written; nothing was written.
+            `fix._write_refusal` refuses, or could not be written.
     """
     from agent_audit_kit.fix import _as_written, _write_inside_project
 

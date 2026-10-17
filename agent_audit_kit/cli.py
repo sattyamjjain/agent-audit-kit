@@ -138,13 +138,16 @@ def pin_cmd(path: str) -> None:
     Exits 2 when the pin file cannot be written inside the project, for
     instance because `.agent-audit-kit` is a link that leads out of it.
     """
+    from agent_audit_kit.fix import _PartlyWritten
     from agent_audit_kit.pinning import PIN_FILE, PinWriteError, create_pins
 
     project_root = Path(path)
     try:
         count = create_pins(project_root)
     except PinWriteError as exc:
-        click.echo(f"Cannot pin: {exc}. {PIN_FILE} was not written.", err=True)
+        # A write that failed part way says so itself; anything else wrote nothing.
+        tail = "" if isinstance(exc.args[0], _PartlyWritten) else f" {PIN_FILE} was not written."
+        click.echo(f"Cannot pin: {exc}.{tail}", err=True)
         sys.exit(EXIT_ERROR)
     click.echo(f"Pinned {count} tool definition(s) to .agent-audit-kit/tool-pins.json")
 
@@ -878,6 +881,7 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             click.echo(text)
         return
 
+    from agent_audit_kit.fix import _PartlyWritten
     from agent_audit_kit.output.pdf_report import ReportWriteError, emit_pdf, emit_pdf_in, _text_report
 
     project = Path(path)
@@ -890,7 +894,8 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             try:
                 ok, msg = emit_pdf_in(result, framework, Path.cwd())
             except ReportWriteError as exc:
-                click.echo(f"Cannot write the report: {exc}. {exc.name} was not changed.", err=True)
+                tail = "" if isinstance(exc.reason, _PartlyWritten) else f" {exc.name} was not changed."
+                click.echo(f"Cannot write the report: {exc}.{tail}", err=True)
                 sys.exit(EXIT_ERROR)
         click.echo(msg, err=True)
         if not ok:
@@ -1028,7 +1033,7 @@ def pipelock_import_cmd(
     directory; exits 2, leaving that file as it was, when it cannot be written
     inside the directory, for instance because it is a link that leads out of it.
     """
-    from agent_audit_kit.fix import _as_written, _write_inside_project
+    from agent_audit_kit.fix import _as_written, _PartlyWritten, _write_inside_project
     from agent_audit_kit.translators.pipelock import translate
 
     policy = Path(policy_path)
@@ -1050,7 +1055,8 @@ def pipelock_import_cmd(
         cwd = Path.cwd()
         refused = _write_inside_project(cwd / target, _as_written(out_text), cwd)
         if refused is not None:
-            click.echo(f"Cannot import the policy: {refused}. {target} was not changed.", err=True)
+            tail = "" if isinstance(refused, _PartlyWritten) else f" {target} was not changed."
+            click.echo(f"Cannot import the policy: {refused}.{tail}", err=True)
             sys.exit(EXIT_ERROR)
     click.echo(f"wrote {target}", err=True)
 

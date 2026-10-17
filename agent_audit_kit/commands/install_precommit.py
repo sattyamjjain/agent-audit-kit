@@ -345,7 +345,7 @@ def install_precommit_cmd(path: str) -> None:
     entry cannot be added without changing the file otherwise, as with a flow-style
     or unparseable file; the entry to add by hand is printed then.
     """
-    from agent_audit_kit.fix import _write_inside_project, _write_refusal
+    from agent_audit_kit.fix import _replace_inside_project, _write_refusal
 
     project = Path(path)
     cfg_path = project / ".pre-commit-config.yaml"
@@ -380,7 +380,8 @@ def install_precommit_cmd(path: str) -> None:
     if new is None:
         click.echo("agent-audit-kit hook already configured in .pre-commit-config.yaml")
         return
-    refused = _write_inside_project(cfg_path, new.encode("utf-8"), project)
+    # Moved into place whole, so a write that fails part way leaves the config as it was.
+    refused = _replace_inside_project(cfg_path, new.encode("utf-8"), project)
     if refused is not None:
         _refuse(refused)
     click.echo(f"added agent-audit-kit pre-commit hook to {cfg_path.relative_to(project)}")

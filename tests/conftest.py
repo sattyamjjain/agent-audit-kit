@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import errno
 import hashlib
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -78,6 +80,24 @@ def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest
     monkeypatch.setattr(feeds, "_STATE_FILE", state / "watch-state.json")
     monkeypatch.setattr(feeds, "_NVD_CACHE", state / "nvd-cache.json")
     return home
+
+
+@pytest.fixture
+def full_disk(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make `os.write` write 10 bytes, then fail with ENOSPC, as a full disk does.
+
+    The AAK write helpers write through `os.write`; nothing else a test runs in
+    process does, since Python's files write through their own C calls.
+    """
+    real, calls = os.write, []
+
+    def write(fd: int, data: bytes) -> int:
+        calls.append(fd)
+        if len(calls) == 1:
+            return real(fd, bytes(data[:10]))
+        raise OSError(errno.ENOSPC, os.strerror(errno.ENOSPC))
+
+    monkeypatch.setattr(os, "write", write)
 
 
 @pytest.fixture
