@@ -132,11 +132,9 @@ def _arg_refs_param(node: ast.AST, param_names: set[str]) -> bool:
     return False
 
 
-def _func_is_sanitizing(func: ast.FunctionDef | ast.AsyncFunctionDef, source: str) -> bool:
-    start = func.lineno - 1
-    end = getattr(func, "end_lineno", None) or (start + 1)
-    body = "\n".join(source.splitlines()[start:end])
-    return bool(_SANITIZERS.search(body))
+def _func_is_sanitizing(text: str, start: int, end: int) -> bool:
+    """Whether `text[start:end]`, a function's source, holds sanitising code."""
+    return bool(_SANITIZERS.search(text, start, end))
 
 
 def _check_file(path: Path, project_root: Path) -> list[Finding]:
@@ -151,6 +149,14 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
 
     findings: list[Finding] = []
     rel = str(path.relative_to(project_root))
+    # A function's source is its lines joined with newlines; the file is split
+    # once. Each tool function used to split it again, so 6,000 of them took
+    # 3.1 s, growing with the square of their number.
+    lines = text.splitlines()
+    joined = "\n".join(lines)
+    line_starts = [0]
+    for line in lines:
+        line_starts.append(line_starts[-1] + len(line) + 1)
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
@@ -159,7 +165,10 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         params = {a.arg for a in node.args.args} | {a.arg for a in node.args.kwonlyargs}
         if not params:
             continue
-        if _func_is_sanitizing(node, text):
+        first = min(node.lineno - 1, len(lines))
+        last = min(node.end_lineno or node.lineno, len(lines))
+        start = line_starts[first]
+        if _func_is_sanitizing(joined, start, max(start, line_starts[last] - 1)):
             continue
         for call in (c for c in ast.walk(node) if isinstance(c, ast.Call)):
             target = _log_target(call)

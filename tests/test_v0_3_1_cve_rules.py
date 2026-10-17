@@ -280,6 +280,28 @@ def test_loginj_static_text_and_other_calls_stay_silent(tmp_path: Path, stmt: st
     assert _loginj(tmp_path, _LOGINJ_FN, stmt) == []
 
 
+def test_loginj_many_tool_functions_read_in_linear_time(tmp_path: Path) -> None:
+    """Each tool function's body was cut from a fresh split of the whole file, so
+    6,000 tool functions took 3.1 s, growing with the square of their number."""
+    import time
+
+    timings = []
+    for count in (1_200, 12_000):
+        src = "from mcp.server.fastmcp import FastMCP\nmcp = FastMCP('x')\n" + "".join(
+            f"@mcp.tool()\ndef t{i}(a):\n    return a\n" for i in range(count)
+        )
+        root = tmp_path / str(count)
+        root.mkdir()
+        (root / "server.py").write_text(src, encoding="utf-8")
+        started = time.perf_counter()
+        _, scanned = log_injection.scan(root)
+        timings.append(time.perf_counter() - started)
+        assert scanned == {"server.py"}, "the file must be read, not skipped"
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 5.0, large
+
+
 def test_loginj_non_tool_function_ignored(tmp_path: Path) -> None:
     (tmp_path / "util.py").write_text(
         "import logging\n"
