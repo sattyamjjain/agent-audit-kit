@@ -43,10 +43,12 @@ _DANGEROUS_SINKS: list[tuple[re.Pattern[str], str, str]] = [
         "AAK-TAINT-002",
         "eval() call detected in MCP server file",
     ),
-    # AAK-TAINT-001: child_process.exec() / execSync() usage
+    # AAK-TAINT-001: child_process exec/spawn. This is the module-qualified
+    # call; `_scan_file` swaps in `_child_process_sink`, which adds the names
+    # the file binds to the module or imports from it.
     (
         re.compile(
-            r"\b(?:child_process\s*\.\s*)?(?:exec|execSync|spawn|spawnSync)\s*\(",
+            r"(?<![\w$.])child_process\s*\.\s*(?:exec|execSync|spawn|spawnSync)\s*\(",
         ),
         "AAK-TAINT-001",
         "child_process exec/spawn call detected in MCP server file",
@@ -166,13 +168,111 @@ def _composes_shell_command(line: str, window: str) -> bool:
     return bool(_PROC_CALL_OPEN_RE.search(line) and _SHELL_TRUE_RE.search(window))
 
 
+# JavaScript is gated on an MCP server itself. When `.js` began to be read, the
+# gate above put ordinary Node files in scope: its `createServer` is also Node's
+# `http.createServer`, so a static dev server, a test helper and an Electron main
+# process all read as MCP servers. Naming the SDK was not enough either: on
+# 2,016 JavaScript files from code search, a gate of `McpServer`,
+# `@modelcontextprotocol/sdk`, `server.tool(` or `CallToolRequestSchema` gave
+# 500 findings, and a third were not in a server or tool handler (MCP clients,
+# hosts with a `class McpServer` of their own, build, eval and test scripts).
+# So a JavaScript file is a server when it imports the SDK's server modules,
+# registers a tool, or handles `CallToolRequestSchema`; and it handles tool
+# calls when it names a handler marker other than `'tools/call'`, the method a
+# client sends. Fixed before a second sample of 1,428 files was drawn, these
+# gates gave 337 findings there, 86.1% in a server or handler and naming their
+# sink (87.6% of 330 without AAK-TAINT-002, below). TypeScript keeps the gates
+# above, which neither sample measured.
+_JS_MCP_SERVER_RE = re.compile(
+    r"""(?:\bfrom\s*|\b(?:require|import)\s*\(\s*)[`'"][^`'"\n]*@modelcontextprotocol/sdk/(?:dist/(?:cjs|esm)/)?server\b"""
+    r"|\bserver\s*\.\s*(?:tool|registerTool)\s*\("
+    r"|setRequestHandler\s*\(\s*CallToolRequestSchema"
+)
+_JS_TOOL_HANDLER_RE = re.compile(
+    r"\b(?:handleToolCall|CallToolRequestSchema|setRequestHandler|server\s*\.\s*tool)\b|@tool\b"
+)
+# AAK-TAINT-002 stays TypeScript-only. In JavaScript MCP servers from code
+# search, 1 of 12 `eval(` matches was an eval call; the rest sat in strings or
+# regular expressions, or named a method `eval` (`async eval({ js })`,
+# `pw.eval(...)`). The other rules cleared 80% there.
+_TS_ONLY_RULES = frozenset({"AAK-TAINT-002"})
+_JS_SUFFIXES = frozenset({".js", ".jsx", ".mjs", ".cjs"})
+
+_CP_MODULE = r"""['"](?:node:)?child_process['"]"""
+# `require('child_process')` or a dynamic `await import('child_process')`.
+_CP_LOAD = rf"(?:require|(?:await\s+)?import)\s*\(\s*{_CP_MODULE}\s*\)"
+_CP_METHODS = ("exec", "execSync", "spawn", "spawnSync")
+# A name bound to the module: `const cp = require('child_process')` (not
+# `require(...).exec`), `const cp = await import(...)`, `import cp from ...`,
+# `import * as cp from ...`.
+_CP_ALIAS_RE = re.compile(
+    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}(?!\s*\.)"
+    rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^}}]*\}}\s*)?from\s*{_CP_MODULE}"
+)
+# Names imported from it: `const { exec, spawn: run } = require(...)` or
+# `= await import(...)`, `import { execSync as sh } from ...`,
+# `import cp, { exec } from ...`.
+_CP_NAMED_RE = re.compile(
+    rf"\b(?:const|let|var)\s*\{{([^}}]*)\}}\s*=\s*{_CP_LOAD}"
+    rf"|\bimport\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?\{{([^}}]*)\}}\s*from\s*{_CP_MODULE}"
+)
+_CP_MEMBER_RE = re.compile(
+    rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}"
+    r"\s*\.\s*(?:exec|execSync|spawn|spawnSync)\b"
+)
+_IMPORT_ITEM_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*(?:(?::|\bas\b)\s*([A-Za-z_$][\w$]*))?\s*")
+
+
+def _child_process_sink(source: str) -> re.Pattern[str]:
+    """AAK-TAINT-001's sink in this file: `exec`, `execSync`, `spawn` or `spawnSync`
+    called on `child_process`, on a name the file binds to that module, on
+    `require('child_process')` itself, or under a name imported from it.
+
+    The pattern was any `exec(`, `.exec(` or `spawn(`, so a regular expression's
+    `exec` (`/^\\/files\\/(.+)$/.exec(req.url)`) or a database's read as a
+    child process, CRITICAL. A wrapper such as `promisify(exec)`, execa or
+    cross-spawn, and process APIs outside child_process (`Bun.spawn`, node-pty,
+    an SSH client's `exec`), are not followed.
+    """
+    receivers = {"child_process"}
+    names: set[str] = set()
+    for m in _CP_ALIAS_RE.finditer(source):
+        receivers.add(m.group(1) or m.group(2))
+    for m in _CP_NAMED_RE.finditer(source):
+        for item in (m.group(1) or m.group(2)).split(","):
+            parts = _IMPORT_ITEM_RE.fullmatch(item)
+            if parts and parts.group(1) in _CP_METHODS:
+                names.add(parts.group(2) or parts.group(1))
+    names.update(m.group(1) for m in _CP_MEMBER_RE.finditer(source))
+    methods = "|".join(_CP_METHODS)
+    alternatives = [
+        rf"(?<![\w$.])(?:{'|'.join(map(re.escape, sorted(receivers)))})\s*\.\s*(?:{methods})\s*\(",
+        rf"\brequire\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*(?:{methods})\s*\(",
+    ]
+    if names:
+        alternatives.append(rf"(?<![\w$.])(?:{'|'.join(map(re.escape, sorted(names)))})\s*\(")
+    return re.compile("|".join(alternatives))
+
+
+def _is_bundle(name: str, source: str) -> bool:
+    """A minified file or a bundler's output, which no one wrote and no finding
+    in it can point anyone at: `*.min.js` and the like, or more than 10 KB with
+    lines over 500 characters long on average. `dist/`, `build/` and `out/` are
+    skipped already, but `public/js/server.bundle.min.js` was read, and its one
+    line gave AAK-TAINT-001 and -002."""
+    if ".min." in name.lower():
+        return True
+    return len(source) > 10_000 and len(source) > 500 * (source.count("\n") + 1)
+
+
 def _scan_file(
     source: str,
     rel_path: str,
 ) -> list[Finding]:
-    """Scan a single TypeScript file for dangerous sink patterns.
+    """Scan a single TypeScript or JavaScript file for dangerous sink patterns.
 
-    Only files that contain MCP server or tool-handler patterns are scanned.
+    Only files that contain MCP server or tool-handler patterns are scanned,
+    with the JavaScript gates for a JavaScript file.
 
     Args:
         source: The raw source text of the file.
@@ -181,8 +281,13 @@ def _scan_file(
     Returns:
         A list of findings for dangerous patterns found in the file.
     """
-    is_server = _is_mcp_server_file(source)
-    is_handler = _is_tool_handler_file(source)
+    is_js = Path(rel_path).suffix.lower() in _JS_SUFFIXES
+    if is_js:
+        is_server = bool(_JS_MCP_SERVER_RE.search(source))
+        is_handler = bool(_JS_TOOL_HANDLER_RE.search(source))
+    else:
+        is_server = _is_mcp_server_file(source)
+        is_handler = _is_tool_handler_file(source)
     if not (is_server or is_handler):
         return []
 
@@ -220,8 +325,14 @@ def _scan_file(
     if not is_server:
         return findings
 
+    cp_sink = _child_process_sink(source)
+    sinks = [
+        (cp_sink if rule_id == "AAK-TAINT-001" else pattern, rule_id, description)
+        for pattern, rule_id, description in _DANGEROUS_SINKS
+        if not (is_js and rule_id in _TS_ONLY_RULES)
+    ]
     for line_no, line in code:
-        for pattern, rule_id, description in _DANGEROUS_SINKS:
+        for pattern, rule_id, description in sinks:
             if rule_id == _SUPERSEDED_RULE and line_no in owned:
                 continue
             if pattern.search(line):
@@ -244,7 +355,10 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     """Scan TypeScript and JavaScript files for dangerous sinks in MCP server implementations.
 
     Uses regex-based pattern matching (not AST) to detect dangerous sinks
-    in files that contain MCP server patterns (createServer, McpServer, @tool).
+    in files that contain MCP server patterns (createServer, McpServer, @tool
+    in TypeScript; the SDK's server modules, a registered tool or a
+    CallToolRequestSchema handler in JavaScript). Minified JavaScript and
+    one-line bundles are skipped.
 
     Args:
         project_root: The root directory of the project to scan.
@@ -269,6 +383,9 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
                     continue
                 source = ts_path.read_text(encoding="utf-8", errors="ignore")
             except OSError:
+                continue
+
+            if ts_path.suffix.lower() in _JS_SUFFIXES and _is_bundle(ts_path.name, source):
                 continue
 
             rel_path = str(ts_path.relative_to(project_root))

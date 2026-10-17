@@ -2548,9 +2548,18 @@ _r(
         "function's parameter included (`def run(self)` in an unrelated class), is "
         "matched by its spelling only, so a call through that name is not reported. "
         "A file with a star import reads no name through its imports, so "
-        "`from subprocess import *` never resolves `run`. The TypeScript and JavaScript "
-        "arm matches `exec`, `execSync`, `spawn` and `spawnSync`, so `execFile` is not "
-        "reported."
+        "`from subprocess import *` never resolves `run`. The TypeScript and JavaScript arm reports `exec`, "
+        "`execSync`, `spawn` and `spawnSync` called on `child_process`, on a name "
+        "bound to it, or under a name imported from it (a dynamic `import()` "
+        "included), so `execFile`, a wrapper (`promisify(exec)`, execa, "
+        "cross-spawn) and a process API outside `child_process` (`Bun.spawn`, "
+        "node-pty, an SSH client's `exec`) are not. It reads a `.js`, `.jsx`, "
+        "`.mjs` or `.cjs` file only when the file imports the SDK's server modules "
+        "(`@modelcontextprotocol/sdk/server/...`), registers a tool "
+        "(`server.tool(`, `server.registerTool(`) or handles "
+        "`CallToolRequestSchema`, so a tool module that does none of these, or a "
+        "FastMCP server (`server.addTool`), is not reported, and it skips a "
+        "minified file or a one-line bundle."
     ),
 )
 
@@ -2604,7 +2613,12 @@ _r(
         "repeated (`[0-9+*/() -]+`) with no flags. Every character A or P admits is "
         "an ASCII digit, punctuation other than `_`, or whitespace. Such a call "
         "still evaluates the caller's arithmetic, which can hold the process "
-        "(`9**9**9`)."
+        "(`9**9**9`). The "
+        "TypeScript arm reads `.ts` and `.tsx` files only: "
+        "the same `eval(...)` in a `.js` file is not read. JavaScript is read for "
+        "the other rules but not for this one: in JavaScript MCP servers from code "
+        "search, 1 of 12 `eval(` matches was an eval call, the rest strings, "
+        "regular expressions or methods named `eval`."
     ),
 )
 
@@ -2636,8 +2650,12 @@ _r(
         "way anywhere, a method or another function's parameter included "
         "(`def describe(Path)`), or has a star import: the call is then matched by "
         "its spelling only. The "
-        "TypeScript arm looks at `fs.writeFile` and `appendFile` calls only: a tool "
-        "that reads a path with `fs.readFileSync(path)` is not reported."
+        "TypeScript and JavaScript arm looks at `fs.writeFile` and `appendFile` "
+        "calls only: a tool that reads a path with `fs.readFileSync(path)` is not "
+        "reported. It reads a `.js`, `.jsx`, `.mjs` or `.cjs` file only when the "
+        "file imports the SDK's server modules, registers a tool or handles "
+        "`CallToolRequestSchema`, so a FastMCP server (`server.addTool`) is not "
+        "reported."
     ),
 )
 
@@ -8201,12 +8219,15 @@ _r(
     owasp_agentic_references=["ASI05"],
     adversa_references=["ADV-INJECT-04"],
     limitations=(
-        "Reads `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs` and `.cjs` files that carry a "
-        "tool-call marker (`handleToolCall`, `CallToolRequestSchema`, "
-        "`setRequestHandler`, `server.tool`, `tools/call`) and reports `exec` or "
-        "`execSync` whose first argument is a template literal with `${}` or a "
-        "concatenation written inside the call. A command built into a variable "
-        "first and then passed as `exec(command)` is not reported."
+        "Reads `.ts` and `.tsx` files that carry a tool-call marker "
+        "(`handleToolCall`, `CallToolRequestSchema`, `setRequestHandler`, "
+        "`server.tool`, `tools/call`), and `.js`, `.jsx`, `.mjs` and `.cjs` files "
+        "that carry one other than `tools/call`, the method a client sends, and "
+        "reports `exec` or `execSync` whose first argument is a template literal "
+        "with `${}` or a concatenation written inside the call. A command built "
+        "into a variable first and then passed as `exec(command)` is not reported, "
+        "and neither is a JavaScript dispatcher whose only marker is the "
+        "`tools/call` string."
     ),
 )
 
