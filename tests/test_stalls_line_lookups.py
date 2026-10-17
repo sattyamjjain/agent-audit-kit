@@ -1,17 +1,17 @@
 """Crafted files that made a scanner's time grow with the square of their size.
 
-The 0.6.23 stall sweep found scanners whose time grew faster than the files they
-read: line lookups that split the whole file again for every finding, a source
-lookup per function, a regex that read a long run of handle characters once for
-every word boundary in it, a walk of the whole function for every call in it, and
-a chain search that enumerated every path; and a walk over a file's functions
-that recursed once per level of nesting, so a long `elif` dispatch raised
-RecursionError. Each timing test below scans the sweep's crafted input at two
-sizes ten times apart, best of three in CPU time, and allows the larger 40 times
-the smaller's time plus a fixed slack, under an absolute bound; the old code
-needed 100 times or more, or, for the dispatch, raised at the larger size. The
-differential tests hold each rewritten search to the answers of the code it
-replaced.
+The 0.6.23 stall sweep and its reviews found scanners whose time grew faster than
+the files they read: line lookups that split the whole file again for every finding,
+a source lookup per function, a regex that read a long run of handle characters once
+for every word boundary in it, a walk of the whole function for every call in it, a
+walk down the calls below every call of a chain such as `x.join(a).join(a)`, and a
+chain search that enumerated every path; and a walk over a file's functions that
+recursed once per level of nesting, so a long `elif` dispatch raised RecursionError.
+Each timing test below scans the sweep's crafted input at two sizes ten times apart,
+best of three in CPU time, and allows the larger 40 times the smaller's time plus a
+fixed slack, under an absolute bound; the old code needed 100 times or more, or, for
+the dispatch, raised at the larger size. The differential tests hold each rewritten
+search to the answers of the code it replaced.
 """
 
 from __future__ import annotations
@@ -202,6 +202,13 @@ def _long_args(k: int) -> dict[str, str]:
     return {".mcp.json": _js({"mcpServers": {"s": {"command": "node", "args": ["a" * (4000 * k), *_crafted_keys(k)]}}})}
 
 
+def _join_chains(k: int) -> dict[str, str]:
+    """Forty functions in an MCP server module, each returning a chain of `k` `.join(a)`
+    calls. Each call's chain was read again below it. Python 3.11's parser stops such a
+    chain at about 1,200 calls, so the chains are many rather than one long one."""
+    return {"server.py": _PY_HEAD + "".join(f"def f{i}():\n    return x" + ".join(a)" * k + "\n" for i in range(40))}
+
+
 def _quoted_server_name(k: int) -> dict[str, str]:
     """One server named `x","x",...,"x` (`k + 1` `x`s), then a `pad` array of `2k` `"x"`
     strings, in which the name's quoted form occurs at nearly every element and never
@@ -270,6 +277,9 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     # colon after it, with a needle as long as the name: 457 KB took 62.5 s on 3.12, and
     # before 3.10, where each search compiled the name again, 44 KB took 55 s.
     "quoted-server-name": (composition.scan, _quoted_server_name, 3_000, False),
+    # Each call's receiver walked the chain of calls below it: a 1 MB file of 1,000-call
+    # `.join(a)` chains took 56 s in mcp_destination_guard on main.
+    "join-chains": (mcp_destination_guard.scan, _join_chains, 100, False),
 }
 
 
@@ -742,6 +752,81 @@ def test_the_last_branch_of_a_long_dispatch_is_reported(tmp_path: Path) -> None:
     assert sink == len(lines)
     findings, _files = mcp_stdio_params.scan(tmp_path)
     assert [(f.rule_id, f.line_number) for f in findings] == [("AAK-MCP-STDIO-CMD-INJ-001", sink)]
+
+
+# ---------------------------------------------------------------------------
+# mcp_destination_guard: the receiver walk, remembered per file, finds the root
+# the full walk found.
+# ---------------------------------------------------------------------------
+
+
+def _old_callee(node: ast.Call) -> tuple[str | None, str | None]:
+    """`mcp_destination_guard._callee` as it was through 0.6.22."""
+    f = node.func
+    if isinstance(f, ast.Name):
+        return f.id, None
+    if isinstance(f, ast.Attribute):
+        root: ast.AST = f.value
+        while True:
+            if isinstance(root, ast.Attribute):
+                root = root.value
+            elif isinstance(root, ast.Call):
+                root = root.func
+            elif isinstance(root, ast.Await):
+                root = root.value
+            else:
+                break
+        return f.attr, root.id if isinstance(root, ast.Name) else None
+    return None, None
+
+
+_RECEIVERS = ["x", "httpx", "requests", "client()", "(lambda: s)()", "d[0]", "(await s)", "a.b", "f(g)", "'u'"]
+_LINKS = [".get", ".join", ".post", ".AsyncClient", ".session"]
+
+
+def _receiver_chain(rng: random.Random, receivers: list[str], links: list[str]) -> str:
+    """A chain of attributes, calls (`f()()` among them), awaits and subscripts."""
+    e = rng.choice(receivers)
+    for _ in range(rng.randint(0, 12)):
+        roll = rng.random()
+        if roll < 0.45:
+            e += rng.choice(links)
+        elif roll < 0.85:
+            inner = rng.random()
+            e += "()" if inner < 0.2 else "(" + ("a" if inner < 0.75 else _receiver_chain(rng, receivers, links)) + ")"
+        elif roll < 0.95:
+            e = "(await " + e + ")"
+        else:
+            e += "[0]"
+    return e
+
+
+def _chain_trees(rng: random.Random, receivers: list[str], links: list[str]) -> list[ast.AST]:
+    """The Python fixtures, and 2,000 generated functions of chains."""
+    trees = []
+    for path in _python_fixtures():
+        try:
+            trees.append(ast.parse(path.read_text(encoding="utf-8", errors="replace")))
+        except (SyntaxError, ValueError):
+            continue
+    for _ in range(2000):
+        body = "".join(f"    v{i} = {_receiver_chain(rng, receivers, links)}\n" for i in range(rng.randint(1, 6)))
+        trees.append(ast.parse("async def f():\n" + body))
+    return trees
+
+
+def test_the_remembered_receiver_walk_finds_the_root_the_full_walk_found() -> None:
+    rng = random.Random(17)
+    trees = _chain_trees(rng, _RECEIVERS, _LINKS)
+    calls = 0
+    for tree in trees:
+        nodes = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
+        for order in (nodes, rng.sample(nodes, len(nodes))):
+            roots: dict[int, ast.AST] = {}
+            for node in order:
+                assert mcp_destination_guard._callee(node, roots) == _old_callee(node), ast.dump(node)[:200]
+                calls += 1
+    assert calls > 20_000, calls
 
 
 # ---------------------------------------------------------------------------

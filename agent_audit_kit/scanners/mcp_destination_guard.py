@@ -85,7 +85,7 @@ def _is_dest_name(name: str | None) -> bool:
     return any(low == t or low.endswith("_" + t) or low.startswith(t) for t in _DEST_TOKENS)
 
 
-def _callee(node: ast.Call) -> tuple[str | None, str | None]:
+def _callee(node: ast.Call, roots: dict[int, ast.AST]) -> tuple[str | None, str | None]:
     """(attribute name, receiver root) for a call, either may be None.
 
     The receiver walk descends through `Call` as well as `Attribute`, because the
@@ -93,27 +93,38 @@ def _callee(node: ast.Call) -> tuple[str | None, str | None]:
     `httpx.AsyncClient().get(url)` — and a walk that stops at the first `Call`
     reports no receiver, which is how the first draft of this scanner missed the
     OGX shape it was written for.
+
+    `roots` holds the root each walk found, for every node it passed, for the one
+    file being analysed (by `id`, while its tree is alive). Every call of a chain
+    such as `x.join(a).join(a)...` walked the calls below it again, N * N / 2
+    steps for N calls, so a 1 MB file of 1,000-call chains took 56 s; a walk now
+    stops at the first node whose root it already knows.
     """
     f = node.func
     if isinstance(f, ast.Name):
         return f.id, None
     if isinstance(f, ast.Attribute):
+        chain: list[ast.AST] = []
         root: ast.AST = f.value
-        while True:
-            if isinstance(root, ast.Attribute):
+        while id(root) not in roots:
+            if isinstance(root, (ast.Attribute, ast.Await)):
+                chain.append(root)
                 root = root.value
             elif isinstance(root, ast.Call):
+                chain.append(root)
                 root = root.func
-            elif isinstance(root, ast.Await):
-                root = root.value
             else:
                 break
+        else:
+            root = roots[id(root)]
+        for link in chain:
+            roots[id(link)] = root
         return f.attr, root.id if isinstance(root, ast.Name) else None
     return None, None
 
 
-def _is_fetch(node: ast.Call) -> bool:
-    attr, root = _callee(node)
+def _is_fetch(node: ast.Call, roots: dict[int, ast.AST]) -> bool:
+    attr, root = _callee(node, roots)
     if attr is None:
         return False
     if attr in ("urlopen", "fetch"):
@@ -142,13 +153,13 @@ def _dest_names_in(node: ast.AST) -> set[str]:
     return out
 
 
-def _guarded_names(tree: ast.AST, guards: set[str]) -> set[str]:
+def _guarded_names(tree: ast.AST, guards: set[str], roots: dict[int, ast.AST]) -> set[str]:
     """Identifiers passed to a guard call anywhere in the module."""
     out: set[str] = set()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        attr, _ = _callee(node)
+        attr, _ = _callee(node, roots)
         if not (_is_validator_name(attr) or (attr in guards)):
             continue
         for arg in list(node.args) + [kw.value for kw in node.keywords]:
@@ -172,14 +183,15 @@ def _analyze(text: str, rel: str) -> list[Finding]:
         return []
 
     guards = _guard_functions(tree, text)
-    guarded = _guarded_names(tree, guards)
+    roots: dict[int, ast.AST] = {}
+    guarded = _guarded_names(tree, guards, roots)
     # Does the module guard *anything*? Distinguishes Arm A from Arm B.
     has_any_guard = bool(guarded) or bool(guards)
 
     findings: list[Finding] = []
     seen: set[str] = set()
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or not _is_fetch(node):
+        if not isinstance(node, ast.Call) or not _is_fetch(node, roots):
             continue
         args = list(node.args) + [kw.value for kw in node.keywords]
         for arg in args:
