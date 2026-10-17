@@ -75,3 +75,28 @@ def test_match_spans_take_a_span_inside_the_range() -> None:
     spans = MatchSpans([(2, 5), (4, 9), (10, 12)])
     assert spans.within(2, 5) and spans.within(0, 12) and spans.within(10, 12)
     assert not spans.within(3, 8) and not spans.within(5, 11)
+
+def test_a_lookahead_that_reads_past_the_line_break_is_not_covered() -> None:
+    """Not a guarantee, as the docstring says: in the whole text `(?!\\s*\\.)`
+    reads past the range's line break to the `.` on the next line and fails, so
+    `cp` is never a match to search again; the range's own search stops at the
+    line break and matches it."""
+    text = "x = cp\n.exec(c)\n"
+    pattern = re.compile(r"cp(?!\s*\.)")
+    end = text.index("\n")
+    assert pattern.search(text, 0, end) is not None
+    assert PatternSpans((pattern,), text).first(0, end) is None
+
+
+def test_the_scanners_pass_no_pattern_that_looks_past_its_match() -> None:
+    """The patterns the scanners hand to PatternSpans look past a match only through
+    `\\b`, which reads a line break and the end of the text alike."""
+    from agent_audit_kit.scanners import deepseek_v4_tool_injection, log_injection, prtitle_ipi
+
+    patterns = [
+        *prtitle_ipi._TITLE_SOURCE_RES, *prtitle_ipi._LLM_SINK_RES, *prtitle_ipi._SANITIZE_RES,
+        prtitle_ipi._GH_PR_VIEW_RE, *log_injection._SANITIZERS, *deepseek_v4_tool_injection._SOURCE_RES,
+    ]
+    for pattern in patterns:
+        assert "(?=" not in pattern.pattern and "(?!" not in pattern.pattern, pattern.pattern
+        assert "$" not in pattern.pattern, pattern.pattern

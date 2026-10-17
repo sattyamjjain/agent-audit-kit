@@ -119,11 +119,17 @@ class PatternSpans:
     went on to that line, and the function had no sink. So a pattern with a
     match across the range's start, or one beginning inside the range and
     ending past it, is searched again within the range
-    (`pattern.search(text, start, end)`), and each such search is kept. A range
-    is taken to end at a line break, as a function's lines do: a pattern that
-    looks past its match's end sees the line break where the range's own search
-    sees the end of the text, which `\\b` and the negative lookaheads the
-    scanners use read alike.
+    (`pattern.search(text, start, end)`), and each such search is kept.
+
+    A range is taken to end at a line break, as a function's lines do, and a
+    pattern must give the same answer at that end whether it reads the line
+    break or the end of the text. `\\b` does, and so does a negative lookahead
+    at the next character for a class without the line break (`(?![\\w$])`). A
+    lookahead that can read past the line break does not, nor `$` or a lookahead
+    that wants a character there (`(?=\\s)`), and such a pattern is not safe to
+    pass: with `cp(?!\\s*\\.)`, `cp` ending one line and `.exec(c)` starting the
+    next, the whole text has no match at `cp` to search again, while the
+    range's own search stops at the line break and matches it.
     """
 
     def __init__(self, patterns: Iterable[re.Pattern[str]], text: str) -> None:
