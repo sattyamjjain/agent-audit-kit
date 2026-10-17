@@ -6,14 +6,21 @@ AAK-MCPFRAME-001, the other rule in `transport_limits`, has its tests in
 
 from __future__ import annotations
 
+import os
+import random
+import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Callable
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.rules.builtin import RULES
 from agent_audit_kit.scanners import transport_limits
+from agent_audit_kit.scanners import _http_routes
+from agent_audit_kit.scanners._http_routes import is_mcp_endpoint_path
 
 RULE = "AAK-MCP-016"
 
@@ -438,3 +445,92 @@ def test_nested_handlers_scan_in_linear_time(tmp_path: Path) -> None:
 def test_the_rule_states_what_it_reads() -> None:
     limitations = RULES[RULE].limitations
     assert "helper" in limitations and "reverse proxy" in limitations
+
+
+# A child process scans each crafted file, so a quadratic path fails the test on
+# its timeout instead of stalling the suite. It reports the seconds `scan` took,
+# the AAK-MCP-016 findings and the peak memory, in megabytes.
+_CHILD = (
+    "import resource, sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners import transport_limits\n"
+    "started = time.perf_counter()\n"
+    "findings, _ = transport_limits.scan(Path(sys.argv[1]))\n"
+    "seconds = time.perf_counter() - started\n"
+    "peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**20 if sys.platform == 'darwin' else 2**10)\n"
+    "print(seconds, sum(f.rule_id == 'AAK-MCP-016' for f in findings), peak)\n"
+)
+
+
+def _scan_in_child(tmp_path: Path, name: str, text: str) -> tuple[float, int, float]:
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / name).write_text(text, encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(root)], capture_output=True, text=True, timeout=60, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    seconds, count, peak = done.stdout.split()
+    return float(seconds), int(count), float(peak)
+
+
+_GO_HEAD = 'package main\n\nimport (\n\t"io"\n\t"net/http"\n\t"github.com/gin-gonic/gin"\n)\n\n'
+_READ_HANDLER = "func h(w http.ResponseWriter, r *http.Request) { io.ReadAll(r.Body) }\n"
+
+
+def test_a_route_path_of_many_mcp_segments_scans_in_linear_time(tmp_path: Path) -> None:
+    """Each `mcp` segment rescanned the segments before it and rejoined those
+    after it: 100 KB of `/mcp` took about 30 seconds."""
+    text = _GO_HEAD + _READ_HANDLER + 'func main() { http.HandleFunc("' + "/mcp" * 25_000 + '/zz", h) }\n'
+    seconds, count, _peak = _scan_in_child(tmp_path, "main.go", text)
+    assert count == 0 and seconds < 5.0
+
+
+def test_nested_func_types_scan_in_linear_time(tmp_path: Path) -> None:
+    """Each `func` searched its whole parameter list for a request parameter,
+    and a parameter list holds the func types nested in it: 128 KB took about
+    24 seconds."""
+    k = 14_000
+    text = _GO_HEAD + _READ_HANDLER + "func f(cb " + "func(x " * k + "int" + ")" * k + ") {}\n"
+    seconds, count, _peak = _scan_in_child(tmp_path, "main.go", text)
+    assert count == 0 and seconds < 5.0
+
+
+def test_nested_route_calls_scan_in_linear_time_and_memory(tmp_path: Path) -> None:
+    """Every route copied the text of its arguments, and an inline handler's
+    holds every route nested in it: 23,000 nested routes (999 KB) copied 11.6
+    GB and took 5 to 12 seconds, peaking at 1.3 to 3.2 GB on macOS, which
+    compresses memory. They now take about 0.3 seconds and 60 MB."""
+    k = 23_000
+    text = (
+        _GO_HEAD + "func main() {\n\tg := gin.New()\n" + '\tg.POST("/mcp", func(c *gin.Context) {\n' * k
+        + "\t\tc.BindJSON(nil)\n" + "\t})\n" * k + "}\n"
+    )
+    assert len(text) < 1_000_000
+    seconds, count, peak = _scan_in_child(tmp_path, "main.go", text)
+    assert count == 1 and seconds < 5.0 and peak < 400, (seconds, peak)
+
+
+def _segments_reference(path: str) -> bool:
+    """The rule as first written: every `mcp` segment rescans the ones before it."""
+    segments = [s for s in path.rsplit(" ", 1)[-1].split("/") if s]
+    for i, segment in enumerate(segments):
+        if _http_routes._MCP_SEGMENT_RE.fullmatch(segment):
+            if any(s.lower() in _http_routes._ADMIN_SEGMENTS for s in segments[:i]):
+                return False
+            rest = "/".join(segments[i + 1:])
+            if not rest or _http_routes._MCP_TAIL_RE.fullmatch(rest):
+                return True
+    return False
+
+
+def test_the_linear_path_reading_answers_as_before() -> None:
+    pieces = ["mcp", "api", "v1", "v2", "admin", "Settings", "messages", "sse", "tools", "call", "list", "{id}",
+              ":name", "<x>", "x-mcp", "mcp_rpc", "MCP", "zz", "initialize", "resources", "read", ""]
+    rnd = random.Random(16)
+    paths = ["/" + "/".join(rnd.choice(pieces) for _ in range(rnd.randint(0, 8))) for _ in range(20_000)]
+    paths += ["GET /mcp", "POST /api/mcp/v1/tools/call", "/mcp/a/b/c/d", "/a/mcp/tools/call/x"]
+    for path in paths:
+        assert is_mcp_endpoint_path(path) == _segments_reference(path), path

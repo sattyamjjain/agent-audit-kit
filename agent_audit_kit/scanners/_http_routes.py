@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import ast
 import re
-from bisect import bisect_right
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 
 # Strings, comments and the characters that shape argument lists; in TS/JS also a
@@ -109,14 +109,29 @@ _ADMIN_SEGMENTS = frozenset({"config", "configs", "configuration", "settings", "
 
 
 def is_mcp_endpoint_path(path: str) -> bool:
+    """Whether a route path receives MCP traffic: an `mcp` segment with no
+    settings segment before it, then nothing or a transport tail.
+
+    The path is read once. A tail spans at most three segments
+    (`v1/tools/call`), so only an `mcp` segment among the last four can end the
+    path; an earlier one matters only because a settings segment before it rules
+    the path out. Rescanning the segments before every `mcp` segment and
+    rejoining those after it made a path of repeated `/mcp` quadratic: 100 KB
+    took about 30 seconds.
+    """
     segments = [s for s in path.rsplit(" ", 1)[-1].split("/") if s]
+    settings = False
+    last = len(segments) - 1
     for i, segment in enumerate(segments):
         if _MCP_SEGMENT_RE.fullmatch(segment):
-            if any(s.lower() in _ADMIN_SEGMENTS for s in segments[:i]):
+            if settings:
                 return False
-            rest = "/".join(segments[i + 1:])
-            if not rest or _MCP_TAIL_RE.fullmatch(rest):
-                return True
+            if last - i <= 3:
+                rest = "/".join(segments[i + 1:])
+                if not rest or _MCP_TAIL_RE.fullmatch(rest):
+                    return True
+        elif segment.lower() in _ADMIN_SEGMENTS:
+            settings = True
     return False
 
 
@@ -589,6 +604,14 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
     """
     text = index.text
     handlers: list[GoHandler] = []
+    # Request parameters are found once and looked up per `func`: searching
+    # each parameter list on its own read the func types nested in it again,
+    # so nested func types (`func(cb func(x func(...)))`) were quadratic, 24
+    # seconds at 128 KB. A parameter holds no bracket, so none straddles a
+    # list's `(` or `)`, and the first one past the `(` is the one a search of
+    # the list finds.
+    params = list(_GO_REQUEST_PARAM_RE.finditer(text))
+    param_starts = [p.start() for p in params]
     for m in _GO_FUNC_RE.finditer(text):
         if not index.in_code(m.start()):
             continue
@@ -614,9 +637,10 @@ def go_handlers(index: CodeIndex) -> list[GoHandler]:
         params_close = index.close.get(params_open)
         if params_close is None:
             continue
-        param = _GO_REQUEST_PARAM_RE.search(text, params_open, params_close)
-        if param is None:
+        i = bisect_left(param_starts, params_open)
+        if i == len(params) or param_starts[i] >= params_close:
             continue
+        param = params[i]
         body = _go_body_open(index, params_close + 1)
         if body is None:
             continue
@@ -661,17 +685,22 @@ _GO_ROUTE_HEAD_RE = re.compile(
 
 @dataclass(frozen=True)
 class GoRoute:
+    """A route registration: its path, and the spans of the arguments after it.
+
+    Spans, not text: an inline handler's arguments hold every route nested in
+    it, and copying each route's text was quadratic in memory (23,000 nested
+    routes copied 11.6 GB).
+    """
+
     receiver: str
     method: str
     path: str
-    args: tuple[str, ...]
     start: int
     arg_spans: tuple[tuple[int, int], ...]
 
 
 def go_routes(index: CodeIndex) -> list[GoRoute]:
     """Route registrations whose path is a string literal."""
-    text = index.text
     routes: list[GoRoute] = []
     for call in find_calls(index, _GO_ROUTE_HEAD_RE):
         spans = list(call.args)
@@ -682,10 +711,7 @@ def go_routes(index: CodeIndex) -> list[GoRoute]:
         path = index.string_literal(*spans[0])
         if path is None:
             continue
-        routes.append(GoRoute(
-            call.receiver, call.method, path, tuple(text[s:e] for s, e in spans[1:]), call.start,
-            tuple(spans[1:]),
-        ))
+        routes.append(GoRoute(call.receiver, call.method, path, call.start, tuple(spans[1:])))
     return routes
 
 
