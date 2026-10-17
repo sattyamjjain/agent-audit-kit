@@ -930,6 +930,10 @@ class _CallerInput:
                 stack.extend(cur.values)
             elif isinstance(cur, ast.DictComp):
                 stack.append(cur.value)
+            elif isinstance(cur, (ast.ListComp, ast.SetComp, ast.GeneratorExp)):
+                # Each element is what `elt` reads, its loop names holding
+                # parts of what they iterate: `[u.strip() for u in urls]`.
+                stack.append(cur.elt)
             elif isinstance(cur, ast.BinOp):
                 stack.extend((cur.left, cur.right))
             elif isinstance(cur, ast.Call):

@@ -322,6 +322,24 @@ def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> No
 
 
 @pytest.mark.parametrize("body", [
+    "def fetch(arguments: dict) -> str:\n    urls = [u.strip() for u in arguments['urls']]\n"
+    "    return requests.get(urls[0]).text\n",
+    "def fetch_many(urls: str) -> list:\n    targets = [u.strip() for u in urls.split(',')]\n"
+    "    return [requests.get(t).text for t in targets]\n",
+    "def fetch(query: list) -> str:\n    urls = {q.strip() for q in query}\n    for url in urls:\n"
+    "        requests.get(url)\n    return ''\n",
+    "def status(hosts: list) -> int:\n    targets = [f'https://{h}/status' for h in hosts]\n"
+    "    return requests.get(targets[0]).status_code\n",
+    "def fetch(urls: list) -> str:\n    for url in (u.strip() for u in urls):\n        requests.get(url)\n    return ''\n",
+])
+def test_a_comprehension_over_caller_input_holds_it(tmp_path: Path, body: str) -> None:
+    """A list, set or generator comprehension holds what its element reads,
+    as a dict comprehension holds its values: a local bound from one of the
+    tool's parameters. Each was silent; the first fires on main too."""
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body)
+
+
+@pytest.mark.parametrize("body", [
     "def item(path: str) -> str:\n    return requests.get(PATH_T % path).text\n",
     # The caller's value fills a field after the host the code put first.
     'def item(repo: str) -> str:\n    return requests.get("%s/v2/%s" % (BASE, repo)).text\n',
@@ -333,6 +351,8 @@ def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> No
     'def item(path: str) -> str:\n    parts = [BASE, path]\n    return requests.get("/".join(parts)).text\n',
     'def item(path: str) -> str:\n    return requests.get(urljoin(BASE_SLASH, "/v1/" + path)).text\n',
     'def item(path: str) -> str:\n    return requests.get("https:/" + "/api.example.com/" + path).text\n',
+    "def item(ids: list) -> int:\n    targets = [f'https://api.example.com/{i}' for i in ids]\n"
+    "    return requests.get(targets[0]).status_code\n",
     # Keyed fields after a fixed host, and a mapping the code fixed.
     'def item(arguments: dict) -> str:\n    return requests.get("https://api.example.com/%(path)s" % arguments).text\n',
     'def item(path: str) -> str:\n    return requests.get("https://%(host)s/" % REGIONS + path).text\n',
