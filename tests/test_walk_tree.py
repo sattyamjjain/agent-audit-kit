@@ -275,6 +275,20 @@ def test_a_file_as_deep_as_sympys_resolvent_table_is_walked_by_every_scanner(
     assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
 
 
+def test_a_2000_part_attribute_chain_is_read_by_every_scanner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`a.b.b...`, 2,000 parts at module level, the stall sweep's dotted run.
+    The five scanners that walk every Python file raised RecursionError on it
+    as shipped; without the raised limit each refuses it, and with it none does."""
+    _write(tmp_path, "server.py", "import x\na" + ".b" * 2000 + "\n")
+    with monkeypatch.context() as patched:
+        patched.setattr(_helpers, "WALK_RECURSION_LIMIT", sys.getrecursionlimit())
+        without = _refusals(run_scan(tmp_path, strict_loading=True))
+    assert _WALK_EVERY_FILE <= without.get("server.py", set()), without
+    assert run_scan(tmp_path, strict_loading=True).scanner_failures == []
+
+
 # ---------------------------------------------------------------------------
 # A deep expression where each scanner's own recursion reads it
 # ---------------------------------------------------------------------------
