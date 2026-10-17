@@ -36,7 +36,6 @@ from agent_audit_kit.models import Finding, Severity
 from agent_audit_kit.scanners._helpers import (
     INTERPOLATION_RE,
     in_skip_dir,
-    find_line_number,
     find_line_numbers,
     loads_jsonc,
     make_finding,
@@ -194,13 +193,11 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
     if not isinstance(data, dict):
         return [], set()
     raw = path.read_text(encoding="utf-8", errors="replace")
-    findings: list[Finding] = []
+    unplaced: list[tuple[Finding, str]] = []
     flagged: set[str] = set()
     tasks = data.get("tasks")
     if not isinstance(tasks, list):
         return [], set()
-    # Every task's line in one pass over the file, not one search of it per task.
-    find_line_numbers(raw, (_anchor(task) for task in tasks if isinstance(task, dict)))
     for task in tasks:
         if not isinstance(task, dict):
             continue
@@ -210,7 +207,6 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
             _flatten_strings(task.get("command")) + _flatten_strings(task.get("args"))
         ).strip()
         anchor = _anchor(task)
-        line = find_line_number(raw, anchor) if anchor else 1
 
         run_on = ""
         run_options = task.get("runOptions")
@@ -225,16 +221,16 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
                 if critical
                 else "runs on folder open"
             )
-            findings.append(
+            unplaced.append((
                 _finding(
                     "AAK-IDE-TASK-001",
                     rel,
                     f"task {label_str or '(unlabelled)'!r} auto-executes on folderOpen "
                     f"and {why}: {joined!r}",
-                    line_number=line,
                     severity=sev,
-                )
-            )
+                ),
+                anchor,
+            ))
             if label_str:
                 flagged.add(label_str)
 
@@ -243,19 +239,25 @@ def _scan_tasks(path: Path, rel: str) -> tuple[list[Finding], set[str]]:
             or _INTERP_REPO_PATH_RE.search(_workspace_relative(joined))
             or INTERPOLATION_RE.search(joined)
         ):
-            findings.append(
+            unplaced.append((
                 _finding(
                     "AAK-IDE-TASK-002",
                     rel,
                     f"task {label_str or '(unlabelled)'!r} command/args reach a shell: "
                     f"{joined!r}",
-                    line_number=line,
-                )
-            )
+                ),
+                anchor,
+            ))
             if label_str:
                 flagged.add(label_str)
 
-    return findings, flagged
+    # Every reported task's line in one pass over the file, not one search of it per
+    # task: a quiet task is never looked up. A task with nothing to place it by goes
+    # on the first line, as before.
+    lines = find_line_numbers(raw, (anchor for _, anchor in unplaced if anchor))
+    for finding, anchor in unplaced:
+        finding.line_number = lines[anchor] if anchor else 1
+    return [finding for finding, _ in unplaced], flagged
 
 
 def _scan_launch(
