@@ -18,6 +18,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -238,6 +239,33 @@ _BOTH_PATHS = [
                               '  return new StdioClientTransport({ command: "/usr/bin/x", args: [] });\n}\n'
                               "export function other(req: any) {\n"
                               "  const opts = { args: req.body.args };\n  return opts;\n}\n", False),
+    # Comments in the options object. The fallback skipped strings but not
+    # comments: a comment before the key hid the member, an apostrophe in one
+    # opened a string that ran on, and a source named in one counted as a value.
+    ("line-comment-above-key", "export function h(req: any) {\n"
+                               "  return new StdioClientTransport({\n"
+                               "    // the command comes from the request\n"
+                               "    command: req.body.command,\n    args: [],\n  });\n}\n", True),
+    ("block-comment-before-key", "export function h(req: any) {\n"
+                                 "  return new StdioClientTransport({ /* user-supplied */ command: req.body.command });\n}\n",
+     True),
+    ("apostrophe-in-a-comment", "export function h(req: any) {\n"
+                                "  return new StdioClientTransport({\n"
+                                "    args: [], // don't hardcode the binary\n"
+                                "    command: req.body.command,\n  });\n}\n", True),
+    ("source-named-in-a-comment", "export function h() {\n"
+                                  "  return new StdioClientTransport({\n"
+                                  "    command: 'node' /* never from req.body */,\n"
+                                  "    args: ['server.js'],\n  });\n}\n", False),
+    ("commented-out-sink", "export function h(req: any) {\n"
+                           "  // new StdioClientTransport(\n"
+                           "  const opts = { command: req.body.command };\n  return opts;\n}\n", False),
+    # The sources the data-flow path reads: Koa's `ctx`, any `process.env` name.
+    ("koa-ctx-query", "export function h(ctx: any) {\n"
+                      "  return new StdioClientTransport({ command: ctx.query.cmd, args: [] });\n}\n", True),
+    ("lower-case-env-name", "export function h() {\n"
+                            "  return new StdioClientTransport({ command: process.env.mcpCommand, args: [] });\n}\n",
+     True),
 ]
 
 
@@ -267,14 +295,39 @@ def test_the_data_flow_evidence_says_which_path_ran(tmp_path: Path) -> None:
     assert "proximity" not in found[0].evidence
 
 
-def test_the_fallback_reads_a_crafted_file_in_linear_time(tmp_path: Path, without_grammar: None) -> None:
-    """1 MB of transports whose argument lists never close. Each one's own
-    arguments are read up to the next transport at most. The bound is loose for
-    slow CI runners."""
-    (tmp_path / "s.ts").write_text("new StdioClientTransport({ command: (" * 28_000, encoding="utf-8")
-    started = time.perf_counter()
-    scan(tmp_path)
-    assert time.perf_counter() - started < 5.0
+def _seconds(run: Callable[[], object]) -> float:
+    """Best of three, so one descheduled run cannot fail a timing test."""
+    best = float("inf")
+    for _ in range(3):
+        started = time.perf_counter()
+        run()
+        best = min(best, time.perf_counter() - started)
+    return best
+
+
+# Transports whose options never close, members full of brackets, and comments
+# and strings that never close. Each shape runs at two sizes, best of three, and
+# the larger may take 40 times the smaller's time for 10 times the text plus a
+# fixed slack, under an absolute bound that is loose for slow CI runners.
+_CRAFTED = {
+    "unclosed-options": lambda k: "new StdioClientTransport({ command: (" * k,
+    "bracket-members": lambda k: ("new StdioClientTransport({ command: [" + "(" * 50 + "\n") * (k // 3),
+    "unclosed-comment": lambda k: "new StdioClientTransport({ /* " * k,
+    "unclosed-string": lambda k: "new StdioClientTransport({ command: '" * k,
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_CRAFTED))
+def test_the_fallback_reads_a_crafted_file_in_linear_time(tmp_path: Path, shape: str, without_grammar: None) -> None:
+    roots = []
+    for name, k in (("small", 2_800), ("large", 28_000)):
+        root = tmp_path / name
+        root.mkdir()
+        (root / "s.ts").write_text(_CRAFTED[shape](k), encoding="utf-8")
+        roots.append(root)
+    t_small, t_large = _seconds(lambda: scan(roots[0])), _seconds(lambda: scan(roots[1]))
+    assert t_large < 5.0
+    assert t_large < 40 * t_small + 0.25, (t_small, t_large)
 
 
 def test_malformed_typescript_does_not_raise() -> None:

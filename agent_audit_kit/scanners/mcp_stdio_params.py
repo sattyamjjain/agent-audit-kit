@@ -38,7 +38,7 @@ from pathlib import Path
 from agent_audit_kit.models import Finding
 
 from . import _ts_stdio_taint
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import blank_js_comments, in_skip_dir, make_finding
 
 
 # ---------------------------------------------------------------------------
@@ -455,16 +455,26 @@ def _walk_ts_proximity(text: str, path: Path, project_root: Path, scanned: set[s
     tree-sitter and silent without it, and a default install has no
     tree-sitter. The options are read up to the next transport at most, so a
     file of transports that never close is read once.
+
+    The transports and their options are read with comments blanked, as the
+    data-flow path parses them away: a comment before a key hid the member, an
+    apostrophe in one opened a string that ran on, a source named in one
+    counted as a value, and a commented-out transport took the next line's
+    code as its options. A member's value is judged by the data-flow path's
+    own source test, so Koa's `ctx.query` and a lower-case `process.env` name
+    count on both paths. The look-back window still reads the source as
+    written.
     """
     findings: list[Finding] = []
-    sinks = list(_TS_STDIO_TRANSPORT_RE.finditer(text))
+    code = blank_js_comments(text)
+    sinks = list(_TS_STDIO_TRANSPORT_RE.finditer(code))
     for n, m in enumerate(sinks):
-        stop = min(len(text), m.end() + _TS_SINK_SPAN)
+        stop = min(len(code), m.end() + _TS_SINK_SPAN)
         if n + 1 < len(sinks):
             stop = min(stop, sinks[n + 1].start())
         own = any(
-            _TS_SINK_KEY_RE.match(member) and _TS_TAINT_RE.search(member)
-            for member in _ts_sink_members(text, m.end(), stop)
+            _TS_SINK_KEY_RE.match(member) and _ts_stdio_taint._is_taint_source(member)
+            for member in _ts_sink_members(code, m.end(), stop)
         )
         if not own:
             window_start = max(0, m.start() - 1024)
