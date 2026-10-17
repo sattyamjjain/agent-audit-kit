@@ -13,7 +13,6 @@ from V4 release notes. Sanitiser bypass available via
 from __future__ import annotations
 
 import ast
-import bisect
 import re
 import stat
 from collections import deque
@@ -22,7 +21,7 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import MatchSpans, in_skip_dir, make_finding
 
 
 # A file over this many bytes is not read; the rule's limitation says so. The
@@ -395,29 +394,6 @@ def _cleared(functions: list[tuple[ast.FunctionDef | ast.AsyncFunctionDef, int]]
     return [scope.cleared for scope in scopes]
 
 
-class _Spans:
-    """Where the matches of a pattern lie in a text, to ask whether a range holds one whole.
-
-    A function's source used to be joined from its lines and searched again for
-    each function, so every level of a nested function searched the levels
-    inside it once more. Each match is found once per file now, and a range is
-    asked about with one binary search: the first match starting in it, and the
-    earliest end among the matches from there on.
-    """
-
-    def __init__(self, spans: list[tuple[int, int]]) -> None:
-        spans.sort()
-        self._starts = [start for start, _ in spans]
-        ends = [end for _, end in spans]
-        for index in range(len(ends) - 2, -1, -1):
-            ends[index] = min(ends[index], ends[index + 1])
-        self._ends = ends
-
-    def within(self, start: int, end: int) -> bool:
-        index = bisect.bisect_left(self._starts, start)
-        return index < len(self._starts) and self._ends[index] <= end
-
-
 def _occurrences(text: str, word: str) -> list[tuple[int, int]]:
     spans = []
     at = text.find(word)
@@ -474,9 +450,15 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     line_starts = [0]
     for line in lines:
         line_starts.append(line_starts[-1] + len(line) + 1)
-    sources = _Spans([m.span() for pattern in _SOURCE_RES for m in pattern.finditer(joined)] + _file_read_spans(joined))
-    tools = _Spans(_occurrences(joined, "tools=") + _occurrences(joined, "tools ="))
-    described = _Spans(_occurrences(joined, "description"))
+    # A function's source used to be joined from its lines and searched again
+    # for each function, so every level of a nested function searched the
+    # levels inside it once more. Each match is found once per file; a range
+    # holds one when a match lies wholly inside it.
+    sources = MatchSpans(
+        [m.span() for pattern in _SOURCE_RES for m in pattern.finditer(joined)] + _file_read_spans(joined)
+    )
+    tools = MatchSpans(_occurrences(joined, "tools=") + _occurrences(joined, "tools ="))
+    described = MatchSpans(_occurrences(joined, "description"))
     findings: list[Finding] = []
     for (func, _), is_cleared in zip(functions, cleared):
         first = max(0, func.lineno - 1)
