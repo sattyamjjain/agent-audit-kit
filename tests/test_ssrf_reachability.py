@@ -531,6 +531,67 @@ def test_each_template_reads_its_own_merged_mapping(mappings: list[str]) -> None
     assert [s.tainted for s in analyze_python(source)] == ["arguments" in m for m in mappings]
 
 
+# --- a caller's mapping, however it is written --------------------------------
+#
+# The old name list fired whenever a caller's name reached the URL, so it read
+# a mapping in any spelling. The host test read only a mapping written in place
+# (`% arguments`, `% {**arguments}`, `.format(**arguments)`): one held in a
+# name, built by `dict(...)` or a comprehension, or read by `format_map` or a
+# `string.Template` was silent.
+
+_MAPPING_PRELUDE = _TOOL_PRELUDE + "import string\nfrom string import Template\n@mcp.tool()\n"
+
+
+@pytest.mark.parametrize("body", [
+    "def proxy(arguments: dict) -> str:\n    params = {'host': arguments['host']}\n"
+    "    return requests.get('https://%(host)s/x' % params).text\n",
+    "def proxy(arguments: dict) -> str:\n    params = {'host': arguments['host']}\n"
+    "    return requests.get('https://{host}/x'.format(**params)).text\n",
+    "def proxy(host: str) -> str:\n    params = {'host': host}\n    return requests.get('https://%(host)s/x' % params).text\n",
+    "def proxy(arguments: dict) -> str:\n    return requests.get('https://%(host)s/x' % dict(arguments)).text\n",
+    "def proxy(arguments: dict) -> str:\n"
+    "    return requests.get('https://%(host)s/x' % dict(host=arguments['host'])).text\n",
+    "def proxy(arguments: dict) -> str:\n"
+    "    return requests.get('https://%(host)s/x' % {k: v for k, v in arguments.items()}).text\n",
+    "def proxy(arguments: dict) -> str:\n    return requests.get('https://{host}/x'.format_map(arguments)).text\n",
+    "def proxy(arguments: dict) -> str:\n"
+    "    return requests.get(string.Template('https://$host/x').substitute(arguments)).text\n",
+    "def proxy(host: str) -> str:\n    page = Template('https://${host}/x')\n"
+    "    return requests.get(page.safe_substitute(host=host)).text\n",
+])
+def test_a_caller_s_mapping_fills_the_host_however_it_is_written(tmp_path: Path, body: str) -> None:
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _MAPPING_PRELUDE + body)
+
+
+@pytest.mark.parametrize("body", [
+    "def item(arguments: dict) -> str:\n    params = {'host': 'api.example.com'}\n"
+    "    return requests.get('https://%(host)s/' % params + arguments['p']).text\n",
+    "def item(arguments: dict) -> str:\n    params = {'host': 'api.example.com', 'path': arguments['p']}\n"
+    "    return requests.get('https://%(host)s/%(path)s' % params).text\n",
+    "def item(arguments: dict) -> str:\n    return requests.get(\n"
+    "        'https://%(host)s/%(path)s' % dict(host='api.example.com', path=arguments['p'])).text\n",
+    "def item(arguments: dict) -> str:\n    return requests.get('https://api.example.com/{path}'.format_map(arguments)).text\n",
+    "def item(arguments: dict) -> str:\n"
+    "    return requests.get(string.Template('https://api.example.com/$path').substitute(arguments)).text\n",
+    "def item(path: str) -> str:\n    page = Template('https://api.example.com/$$/$path')\n"
+    "    return requests.get(page.substitute(path=path)).text\n",
+])
+def test_a_caller_s_mapping_after_a_fixed_host_is_not_a_caller_url(tmp_path: Path, body: str) -> None:
+    assert _ids(tmp_path, "tool.py", _MAPPING_PRELUDE + body) & _SSRF_RULES == set()
+
+
+@pytest.mark.parametrize(("mapping", "tainted"), [
+    ("{'u': 'https://' + host}", False),
+    ("{k: 'https://' + host for k in KEYS}", False),
+    ("{host: 'x'}", True),
+])
+def test_a_joined_mapping_gives_its_keys(mapping: str, tainted: bool) -> None:
+    """Iterating a mapping gives its keys, so `"".join(d)` holds the keys of
+    `d`, never its values, however the host test reads a mapping elsewhere."""
+    source = _TOOL_HEAD.replace("p: str", "host: str") + f"    d = {mapping}\n    return requests.get(''.join(d)).text\n"
+    assert [s.tainted for s in analyze_python(source)] == [tainted]
+
+
 # --- a method-first call reads its URL second -------------------------------
 #
 # `requests.request(method, url)`, `httpx.request`, `httpx.stream`,

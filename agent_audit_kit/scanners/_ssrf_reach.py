@@ -540,6 +540,41 @@ def _pieces(root: ast.AST | _Run) -> Iterator[str | ast.AST]:
 _PERCENT_FIELD_RE = re.compile(r"%(?:\(([^()%]*)\))?[-#0 +*.\d]*([A-Za-z%])")
 
 
+def _is_dict_display(node: ast.AST) -> bool:
+    """A dict literal or a `dict(...)` call: a mapping written out in place."""
+    return isinstance(node, ast.Dict) or (
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict"
+    )
+
+
+def _dict_entries(node: ast.AST) -> list[tuple[str | None, ast.expr]]:
+    """``(key, value)`` for each entry of a dict literal or a `dict(...)` call,
+    in order, with None for a key the code does not write out: a `**` entry,
+    a computed key, or the mapping or pairs `dict(...)` is given."""
+    if isinstance(node, ast.Dict):
+        return [(_str_constant(key) if key is not None else None, value) for key, value in zip(node.keys, node.values)]
+    if isinstance(node, ast.Call):
+        return [(None, arg) for arg in node.args] + [(kw.arg, kw.value) for kw in node.keywords]
+    return []
+
+
+def _template_lead(template: str) -> str:
+    """The text of a `string.Template` before its first placeholder, with
+    `$$` read as the `$` it writes."""
+    lead: list[str] = []
+    pos = 0
+    while True:
+        at = template.find("$", pos)
+        if at < 0:
+            lead.append(template[pos:])
+            return "".join(lead)
+        lead.append(template[pos:at])
+        if template[at + 1:at + 2] != "$":
+            return "".join(lead)
+        lead.append("$")
+        pos = at + 2
+
+
 def _percent_pieces(
     template: str,
     values: ast.expr,
@@ -764,7 +799,7 @@ class _CallerInput:
         self._joined_sets: dict[tuple[str, str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
         self._joined_texts: dict[tuple[str, str, int], str] = {}
-        self._mappings: dict[int, tuple[ast.Dict, dict[str, ast.expr], ast.expr | None]] = {}
+        self._mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]] = {}
 
     @classmethod
     def of_file(cls, tree: ast.AST) -> _CallerInput:
@@ -870,6 +905,13 @@ class _CallerInput:
                 # The pieces of a URL a `.join` or a URL function has not been
                 # read as text: any of them can be the host.
                 stack.extend(cur.elts)
+            elif isinstance(cur, ast.Dict):
+                # A mapping a template reads, or a `**` hands over, whole: any
+                # of its values can be the host, as can any value of a mapping
+                # it unpacks (`{**arguments}`).
+                stack.extend(cur.values)
+            elif isinstance(cur, ast.DictComp):
+                stack.append(cur.value)
             elif isinstance(cur, ast.BinOp):
                 stack.extend((cur.left, cur.right))
             elif isinstance(cur, ast.Call):
@@ -968,10 +1010,12 @@ class _CallerInput:
 
     def _mapping(self, node: ast.expr) -> tuple[dict[str, ast.expr], ast.expr | None]:
         """What a keyed `%` field can read in `node`: the entries a dict literal
-        writes out under a constant key, and the expression any other key may
-        come from, its `**` entries and entries under a computed key read
-        together, or None when it has neither. Any other operand is all of
-        that expression.
+        or a `dict(...)` call writes out under a constant key, and the
+        expression any other key may come from, its `**` entries, entries under
+        a computed key and the mapping `dict(...)` copies read together, or
+        None when it has none of those. A name bound once here to such a
+        mapping (`params = {"host": arguments["host"]}`) is read as it; any
+        other operand is all of that expression.
 
         Two or more such entries are read as one tuple made here, and the tuple
         is kept for as long as this scope's verdicts are. They are remembered
@@ -979,25 +1023,43 @@ class _CallerInput:
         dropped once read handed its id to the next one: in a tool with
         `{**A, **B}` in one template and `{**B, **arguments}` in the next, the
         second was read as the first and lost the caller's host."""
-        if not isinstance(node, ast.Dict):
+        target: ast.expr = node
+        if isinstance(node, ast.Name) and node.id not in self.params and node.id not in self.elements:
+            bound = self.values.get(node.id, [])
+            if len(bound) == 1 and isinstance(bound[0], (ast.Dict, ast.Call)) and _is_dict_display(bound[0]):
+                target = bound[0]
+        if not _is_dict_display(target):
             return {}, node
-        hit = self._mappings.get(id(node))
+        hit = self._mappings.get(id(target))
         if hit is None:
             keyed: dict[str, ast.expr] = {}
             others: list[ast.expr] = []
-            for key, value in zip(node.keys, node.values):
-                name = _str_constant(key) if key is not None else None
-                if name is None:
+            for key, value in _dict_entries(target):
+                if key is None:
                     others.append(value)
                 else:
-                    keyed[name] = value
+                    keyed[key] = value
             rest: ast.expr | None = None
             if len(others) == 1:
                 rest = others[0]
             elif others:
                 rest = ast.Tuple(elts=others, ctx=ast.Load())
-            hit = self._mappings[id(node)] = (node, keyed, rest)
+            hit = self._mappings[id(target)] = (target, keyed, rest)
         return hit[1], hit[2]
+
+    def _template_source(self, node: ast.AST) -> ast.AST | None:
+        """The text a `string.Template` is made from: `Template(text)` or
+        `string.Template(text)`, written in place or bound to a name once."""
+        if isinstance(node, ast.Name):
+            if node.id in self.params or node.id in self.elements:
+                return None
+            bound = self._bound(node.id)
+            if len(bound) != 1:
+                return None
+            node = bound[0]
+        if isinstance(node, ast.Call) and node.args and _py_callee_name(node.func).rpartition(".")[2] == "Template":
+            return node.args[0]
+        return None
 
     def _call_operands(self, call: ast.Call, depth: int, nest: int) -> list[ast.AST]:
         """The parts of a call that can carry caller input into the URL it
@@ -1022,14 +1084,27 @@ class _CallerInput:
                 operands.extend(arg.elts if isinstance(arg, (ast.Tuple, ast.List)) else [arg])
             operands.extend(kw.value for kw in call.keywords if kw.arg in ("url", "uri"))
             return operands
+        if isinstance(func, ast.Name) and func.id == "dict":
+            # `dict(arguments)`, `dict(host=h)`: a mapping holding what it is given.
+            return [*call.args, *(kw.value for kw in call.keywords)]
         if not isinstance(func, ast.Attribute):
             return []
         receiver = func.value
-        if name == "format":
+        if name in ("format", "format_map"):
+            # `.format_map(m)` reads its mapping as `.format(**m)` does.
             template = self._spelled(receiver, depth, nest + 1)
             if _authority_closed(template.partition("{")[0]):
                 return [receiver]
             return [receiver, *call.args, *(kw.value for kw in call.keywords)]
+        if name in ("substitute", "safe_substitute"):
+            # A `string.Template` fills `$host` or `${host}` from its mapping
+            # and keywords, as `.format(**m)` fills `{host}`.
+            source = self._template_source(receiver)
+            if source is not None:
+                template = self._spelled(source, depth, nest + 1)
+                if _authority_closed(_template_lead(template)):
+                    return [source]
+                return [source, *call.args, *(kw.value for kw in call.keywords)]
         if name == "replace" and len(call.args) >= 2:
             template = self._spelled(receiver, depth, nest + 1)
             old = self._spelled(call.args[0], depth, nest + 1)
@@ -1039,8 +1114,26 @@ class _CallerInput:
         if name == "get":
             return [receiver, *call.args[1:], *(kw.value for kw in call.keywords if kw.arg == "default")]
         if name == "join" and call.args:
-            return [receiver, call.args[0]]
+            return [receiver, *self._iterated(call.args[0])]
         return [receiver]
+
+    def _iterated(self, node: ast.AST) -> list[ast.AST]:
+        """What iterating `node` yields, to read: a mapping yields its keys, so
+        a dict literal or comprehension, a `dict(...)` call, or a name bound
+        once here to one of those, gives its keys and the mappings it unpacks
+        or copies, never its values; anything else is read whole."""
+        target = node
+        if isinstance(node, ast.Name) and node.id not in self.params and node.id not in self.elements:
+            bound = self.values.get(node.id, [])
+            if len(bound) == 1:
+                target = bound[0]
+        if isinstance(target, ast.DictComp):
+            return [target.key]
+        if isinstance(target, ast.Dict):
+            return [key if key is not None else value for key, value in zip(target.keys, target.values)]
+        if _is_dict_display(target) and isinstance(target, ast.Call):
+            return list(target.args)
+        return [node]
 
     def _built_sets_host(self, pieces: Iterable[str | ast.AST], depth: int, nest: int) -> bool:
         prefix = ""
