@@ -57,7 +57,7 @@ from ._dependency_pins import (
     read_manifest,
     read_text,
 )
-from ._helpers import in_skip_dir, make_finding
+from ._helpers import in_skip_dir, make_finding, source_lines, source_segment
 from ._manifest_deps import MAX_LOCKFILE_BYTES
 
 
@@ -133,7 +133,7 @@ def _guard_functions(tree: ast.AST, text: str) -> set[str]:
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        body = ast.get_source_segment(text, node) or ""
+        body = source_segment(text, node) or ""
         if _RESOLVES_RE.search(body) and _RANGE_CHECK_RE.search(body):
             names.add(node.name)
     return names
@@ -182,7 +182,7 @@ def _attr_name(node: ast.AST) -> str | None:
 def _func_source(
     text: str, func: ast.FunctionDef | ast.AsyncFunctionDef
 ) -> str:
-    lines = text.splitlines()
+    lines = source_lines(text)
     start = max(0, func.lineno - 1)
     end = min(len(lines), (func.end_lineno or func.lineno))
     return "\n".join(lines[start:end])
