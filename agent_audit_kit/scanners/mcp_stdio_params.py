@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import ast
 import re
+from bisect import bisect_left, bisect_right
+from collections import deque
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
@@ -152,9 +154,7 @@ def _command_arg_exprs(call: ast.Call) -> list[ast.expr]:
     return exprs
 
 
-def _taint_flows_to_command(
-    call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
-) -> bool:
+def _taint_flows_to_command(call: ast.Call, facts: _FunctionFacts) -> bool:
     """True only when the `command`/`args` fed to StdioServerParameters is a
     dynamic value that traces back to a network-controlled source — a real
     source→sink path, not merely 'a taint marker appears somewhere in the
@@ -170,6 +170,7 @@ def _taint_flows_to_command(
         referenced |= _names_in(expr)
 
     # A referenced name that is a suspicious *parameter* of this function.
+    func = facts.func
     params = {a.arg for a in func.args.args}
     params |= {a.arg for a in func.args.posonlyargs}
     params |= {a.arg for a in func.args.kwonlyargs}
@@ -178,14 +179,7 @@ def _taint_flows_to_command(
 
     # A referenced name that is locally assigned from a taint expression
     # (`cmd = os.environ[...]` / `body = await request.json()`).
-    for stmt in ast.walk(func):
-        if isinstance(stmt, ast.Assign):
-            targets: set[str] = set()
-            for tgt in stmt.targets:
-                targets |= _names_in(tgt)
-            if targets & referenced and _PY_TAINT_MODULES_RE.search(_unparse(stmt.value)):
-                return True
-    return False
+    return bool(referenced & facts.tainted_targets())
 
 
 # Hand-rolled launcher arm (CVE-2026-93965, SxDevOps). An application that
@@ -236,9 +230,7 @@ def _reads_stored_command(node: ast.AST) -> bool:
     return False
 
 
-def _split_source(
-    call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
-) -> ast.expr | None:
+def _split_source(call: ast.Call, facts: _FunctionFacts) -> ast.expr | None:
     """What `shlex.split` was applied to, when a spawn's argv is its result.
 
     Either directly (`Popen(shlex.split(x))`) or through the last local
@@ -250,17 +242,7 @@ def _split_source(
     if argv is None:
         return None
     if isinstance(argv, ast.Name):
-        value: ast.expr | None = None
-        for stmt in ast.walk(func):
-            if isinstance(stmt, ast.Assign) and stmt.lineno < call.lineno:
-                if any(isinstance(t, ast.Name) and t.id == argv.id for t in stmt.targets):
-                    if value is None or stmt.lineno > getattr(value, "lineno", 0):
-                        value = stmt.value
-            elif isinstance(stmt, ast.AnnAssign) and stmt.lineno < call.lineno:
-                if isinstance(stmt.target, ast.Name) and stmt.target.id == argv.id and stmt.value is not None:
-                    if value is None or stmt.lineno > getattr(value, "lineno", 0):
-                        value = stmt.value
-        argv = value
+        argv = facts.assigned_value(argv.id, call.lineno)
     if not isinstance(argv, ast.Call) or not _is_shlex_split(argv):
         return None
     source = argv.args[0]
@@ -292,6 +274,140 @@ def _checks_an_allowlist(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+class _Assignments:
+    """Every assignment to one name in a function, for `_split_source`'s question.
+
+    The question is which assigned value a spawn on line L runs, answered the
+    way `_split_source` always answered it: walk the function's statements in
+    `ast.walk` order and, among assignments that start before L, keep a value
+    until a later statement starts past the line the kept value starts on.
+    Walking the function for every spawn made one function of 1,000 spawns take
+    14 seconds; this answers each spawn in time logarithmic in the number of
+    assignments.
+
+    `ast.walk` visits statements one depth at a time, and at one depth in source
+    order. Within a depth, then, the walk keeps the first assignment of each
+    line it reaches, except a line whose first statement begins where the kept
+    value begins, which happens only when it follows a `;` on the line the kept
+    value's statement ends on; that line is skipped and the next one is not. So
+    in a depth's lines below L, from the first line past the value carried in
+    from the depths above, the walk ends on the last line's first assignment,
+    or on the line before it when an odd run of such skips ends at the last
+    line. A function where that shape does not hold, which Python's grammar
+    should not allow, is answered by the walk itself.
+    """
+
+    def __init__(self, found: list[tuple[int, int, ast.expr]]) -> None:
+        # (depth, statement line, value), in `ast.walk` order.
+        self._walk_order = [(line, value) for _, line, value in found]
+        by_depth: dict[int, list[tuple[int, ast.expr]]] = {}
+        for depth, line, value in found:
+            by_depth.setdefault(depth, []).append((line, value))
+        runs = [_depth_run(by_depth[depth]) for depth in sorted(by_depth)]
+        self._runs = None if None in runs else [run for run in runs if run is not None]
+
+    def value_at(self, line: int) -> ast.expr | None:
+        if self._runs is None:
+            return self._walked_value(line)
+        value: ast.expr | None = None
+        for lines, values, since in self._runs:
+            below = bisect_left(lines, line)
+            start = 0 if value is None else bisect_right(lines, getattr(value, "lineno", 0))
+            if start >= below:
+                continue
+            last = below - 1
+            if (last - max(start, since[last])) % 2:
+                last -= 1
+            value = values[last]
+        return value
+
+    def _walked_value(self, line: int) -> ast.expr | None:
+        value: ast.expr | None = None
+        for stmt_line, candidate in self._walk_order:
+            if stmt_line < line and (value is None or stmt_line > getattr(value, "lineno", 0)):
+                value = candidate
+        return value
+
+
+def _depth_run(found: list[tuple[int, ast.expr]]) -> tuple[list[int], list[ast.expr], list[int]] | None:
+    """One depth's assignment lines, each line's first value, and where each line's
+    run of skips began; None when the depth is not in source order."""
+    lines: list[int] = []
+    values: list[ast.expr] = []
+    for line, value in found:
+        if lines and line <= lines[-1]:
+            if line < lines[-1]:
+                return None
+            continue
+        if getattr(value, "lineno", 0) < line:
+            return None
+        lines.append(line)
+        values.append(value)
+    since: list[int] = []
+    for i, line in enumerate(lines):
+        skipped = i > 0 and getattr(values[i - 1], "lineno", 0) == line
+        if i > 0 and getattr(values[i - 1], "lineno", 0) > line:
+            return None
+        since.append(since[i - 1] if skipped else i)
+    return lines, values, since
+
+
+class _FunctionFacts:
+    """What the checks ask about one function, each worked out once for all its calls.
+
+    Every call in a function used to put the same questions to the whole function
+    again: `_split_source` walked it for where a spawn's argv was assigned,
+    `_taint_flows_to_command` for tainted assignments, and the launcher arm for
+    its MCP words and its allowlist checks.
+    """
+
+    def __init__(self, func: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str) -> None:
+        self.func = func
+        self.class_name = class_name
+        self._assignments: dict[str, _Assignments] | None = None
+        self._tainted: set[str] | None = None
+        self._manages: bool | None = None
+        self._allowlisted: bool | None = None
+
+    def assigned_value(self, name: str, line: int) -> ast.expr | None:
+        """The value `name` was last assigned before `line`, as `_Assignments` reads it."""
+        if self._assignments is None:
+            found: dict[str, list[tuple[int, int, ast.expr]]] = {}
+            todo: deque[tuple[ast.AST, int]] = deque([(self.func, 0)])
+            while todo:  # `ast.walk`'s order, with each node's depth
+                node, depth = todo.popleft()
+                todo.extend((child, depth + 1) for child in ast.iter_child_nodes(node))
+                if isinstance(node, ast.Assign):
+                    for target in dict.fromkeys(t.id for t in node.targets if isinstance(t, ast.Name)):
+                        found.setdefault(target, []).append((depth, node.lineno, node.value))
+                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
+                    found.setdefault(node.target.id, []).append((depth, node.lineno, node.value))
+            self._assignments = {target: _Assignments(items) for target, items in found.items()}
+        assignments = self._assignments.get(name)
+        return assignments.value_at(line) if assignments is not None else None
+
+    def tainted_targets(self) -> set[str]:
+        """Every name in the target of an assignment whose value reads a taint source."""
+        if self._tainted is None:
+            tainted: set[str] = set()
+            for stmt in ast.walk(self.func):
+                if isinstance(stmt, ast.Assign) and _PY_TAINT_MODULES_RE.search(_unparse(stmt.value)):
+                    for target in stmt.targets:
+                        tainted |= _names_in(target)
+            self._tainted = tainted
+        return self._tainted
+
+    def manages_mcp_stdio(self) -> bool:
+        if self._manages is None:
+            self._manages = _manages_mcp_stdio(self.func, self.class_name)
+        return self._manages
+
+    def checks_an_allowlist(self) -> bool:
+        if self._allowlisted is None:
+            self._allowlisted = _checks_an_allowlist(self.func)
+        return self._allowlisted
+
+
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     try:
         tree = ast.parse(text, str(path))
@@ -316,15 +432,13 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             self._scan(node)
             self.generic_visit(node)
 
-        def _launcher_finding(
-            self, call: ast.Call, func: ast.FunctionDef | ast.AsyncFunctionDef
-        ) -> Finding | None:
-            source = _split_source(call, func)
+        def _launcher_finding(self, call: ast.Call, facts: _FunctionFacts) -> Finding | None:
+            source = _split_source(call, facts)
             if source is None:
                 return None
-            if not _manages_mcp_stdio(func, self._classes[-1] if self._classes else ""):
+            if not facts.manages_mcp_stdio():
                 return None
-            if _checks_an_allowlist(func):
+            if facts.checks_an_allowlist():
                 return None
             rel = str(path.relative_to(project_root))
             scanned.add(rel)
@@ -344,9 +458,10 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 (n for n in ast.walk(func) if isinstance(n, ast.Call)),
                 key=lambda c: (c.lineno, c.col_offset),
             )
+            facts = _FunctionFacts(func, self._classes[-1] if self._classes else "")
             for call in calls:
                 if not _is_stdio_server_params_call(call):
-                    launcher = self._launcher_finding(call, func)
+                    launcher = self._launcher_finding(call, facts)
                     if launcher is not None:
                         findings.append(launcher)
                         return  # one finding per function
@@ -356,7 +471,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 # command/args sink — not merely because a taint marker or a
                 # generically-named arg (`config`, `data`) exists somewhere in
                 # the function. Constant command/args never fire.
-                if not _taint_flows_to_command(call, func):
+                if not _taint_flows_to_command(call, facts):
                     continue
                 rel = str(path.relative_to(project_root))
                 scanned.add(rel)
