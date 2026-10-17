@@ -209,10 +209,15 @@ _CP_METHODS = frozenset({"exec", "execSync", "spawn", "spawnSync"})
 _CP_LIST = r"\{([^{}]{0,2000})\}"
 # A dynamic import's promise and the callback it hands the module to:
 # `import('child_process').then(cp => ...)`, `.then((cp) => ...)`,
-# `.then(async function (cp) {...})`.
+# `.then(async function (cp) {...})`. Every `\s*` follows a token that must be
+# there. With `function\b\s*` and an optional name before a `\s*` of its own,
+# and the alias pattern's `\(?\s*` after that, two or three `\s*` stood side by
+# side wherever the optional tokens were absent, and a match failing after a run
+# of blanks split the run every way: 160,000 blanks took 224 s, and
+# `.then(function` followed by 4,000 blanks, a 4 KB file, 177 s.
 _CP_THEN = (
     rf"\bimport\s*\(\s*{_CP_MODULE}\s*\)\s*\.\s*then\s*\(\s*"
-    r"(?:async\b\s*)?(?:function\b\s*(?:[A-Za-z_$][\w$]*)?\s*)?"
+    r"(?:async\b\s*)?(?:function\b\s*(?:[A-Za-z_$][\w$]*\s*)?)?"
 )
 # A name bound to the module: `const cp = require('child_process')` (not
 # `require(...).exec`), `const cp = await import(...)`, `import cp from ...`,
@@ -222,7 +227,7 @@ _CP_ALIAS_RE = re.compile(
     rf"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*{_CP_LOAD}(?!\s*\??\.)"
     rf"|\bimport\s+(?:\*\s*as\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{{[^{{}}]{{0,2000}}\}}\s*)?from\s*{_CP_MODULE}"
     rf"|\bimport\s+([A-Za-z_$][\w$]*)\s*=\s*require\s*\(\s*{_CP_MODULE}\s*\)"
-    rf"|{_CP_THEN}\(?\s*(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
+    rf"|{_CP_THEN}(?:\(\s*)?(?!(?:async|function)\b)([A-Za-z_$][\w$]*)"
 )
 # Names imported from it: `const { exec, spawn: run } = require(...)` or
 # `= await import(...)`, `import { execSync as sh } from ...`,

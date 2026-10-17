@@ -7,10 +7,14 @@ JavaScript scanner and AAK-MCP-TOOL-ARG-OSCMD-001 says so, so a repository of
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.scanners.typescript_pattern_scan import scan
 
 _EVAL_SERVER = (
@@ -400,3 +404,60 @@ def test_child_process_bindings_read_in_linear_time(tmp_path: Path, text: str) -
     started = time.perf_counter()
     scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+# A child process scans each crafted file, so a pattern that backtracks for
+# minutes fails the test on its timeout instead of hanging the suite.
+_CHILD_SCAN = (
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners.typescript_pattern_scan import scan\n"
+    "started = time.perf_counter()\n"
+    "_, scanned = scan(Path(sys.argv[1]))\n"
+    "print(time.perf_counter() - started, len(scanned))\n"
+)
+
+
+def _scan_in_child(root: Path) -> float:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD_SCAN, str(root)], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, scanned = done.stdout.split()
+    assert scanned == "1", "the file must be read, not skipped"
+    return float(elapsed)
+
+
+# A dynamic import's `.then(` callback that never names a parameter. Its pattern
+# had two `\s*` side by side wherever an optional token was absent, so a run of
+# blanks was split every way before the match failed: 160,000 blanks took 224 s,
+# and `.then(function` followed by 4,000 blanks, a 4 KB file, 177 s, three `\s*`
+# side by side. Short lines after the head keep a JavaScript file from reading as
+# a bundle.
+_THEN = "import('child_process').then("
+_THEN_SHAPES = {
+    "blanks": (_THEN, " "),
+    "newlines": (_THEN, "\n"),
+    "function": (_THEN + "function", " "),
+    "named function": (_THEN + "function load", " "),
+    "async": (_THEN + "async", " "),
+    "async function": (_THEN + "async function", " "),
+}
+
+
+@pytest.mark.parametrize(("shape", "ext"), [(shape, "ts") for shape in _THEN_SHAPES] + [("function", "js")])
+def test_a_then_callback_without_a_parameter_reads_in_linear_time(tmp_path: Path, shape: str, ext: str) -> None:
+    """At the 1 MB the scanner reads, and at a tenth of it."""
+    prefix, filler = _THEN_SHAPES[shape]
+    timings = []
+    for k in (99_000, 990_000):
+        root = tmp_path / str(k)
+        root.mkdir()
+        text = _HEAD + "const a = 1;\nconst b = 2;\nconst c = 3;\n" + prefix + filler * k + "!\n"
+        (root / f"server.{ext}").write_text(text, encoding="utf-8")
+        timings.append(_scan_in_child(root))
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 10.0, large
