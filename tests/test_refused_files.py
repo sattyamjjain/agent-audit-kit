@@ -210,8 +210,6 @@ def test_each_parse_helper_records_a_refusal_and_raises_the_error_its_readers_ca
 
 
 def test_the_refusal_types_are_the_errors_each_reader_already_catches() -> None:
-    import tomllib  # noqa: F401  (3.11+; the helpers fall back to tomli)
-
     assert issubclass(RefusedJSON, json.JSONDecodeError)
     assert issubclass(RefusedSource, SyntaxError)
     assert issubclass(RefusedTOML, _helpers.tomllib.TOMLDecodeError)
@@ -245,30 +243,32 @@ def test_parse_python_refuses_an_overflow_of_either_kind(monkeypatch: pytest.Mon
 _SEGFAULT_PROBE = textwrap.dedent("""
     import sys
     from agent_audit_kit.scanners._helpers import collecting_refusals, parse_python
+    source = {
+        "unary_plus": "+" * 500_000 + "a",
+        "lambda_defaults": "lambda a=" * 45_000 + "1: a" * 45_000,
+        "binop_chain": "a" + "+a" * 250_000,
+        "minus_minus": "--a" * 170_000,
+    }[sys.argv[1]]
     with collecting_refusals() as refused:
         try:
-            parse_python(sys.argv[1] * int(sys.argv[2]) + sys.argv[3], "x.py")
+            parse_python(source, "x.py")
             print("parsed")
         except SyntaxError:
-            print("refused", refused["x.py"])
+            print("refused" if "x.py" in refused else "invalid")
 """)
 
 
-@pytest.mark.parametrize(("unit", "count", "tail"), [
-    ("+", 500_000, "a"),
-    ("lambda a=", 45_000, "1"),
-    ("--a", 170_000, ""),
-])
-def test_a_crafted_python_source_never_takes_the_process_down(unit: str, count: int, tail: str) -> None:
-    """3.9 and 3.10 build the tree in C with no depth check and segfault on these
-    (exit 139), past any except; 3.11 and later raise. Either way the file is
-    parsed or refused, and the process lives."""
+@pytest.mark.parametrize("shape", ["unary_plus", "lambda_defaults", "binop_chain", "minus_minus"])
+def test_a_crafted_python_source_never_takes_the_process_down(shape: str) -> None:
+    """3.9 segfaults on the first two and 3.10 on the last two (exit 139), past
+    any except: before 3.11 the tree is built in C with no depth check. 3.11
+    and later raise. Whatever the version, the process lives."""
     out = subprocess.run(
-        [sys.executable, "-c", _SEGFAULT_PROBE, unit, str(count), tail],
+        [sys.executable, "-c", _SEGFAULT_PROBE, shape],
         capture_output=True, text=True, timeout=300, cwd=ROOT, env={"PYTHONPATH": str(ROOT), "PATH": ""},
     )
     assert out.returncode == 0, (out.returncode, out.stderr[-500:])
-    assert out.stdout.startswith(("parsed", "refused"))
+    assert out.stdout.strip() in ("parsed", "refused"), out.stdout
 
 
 def _bounded_seconds(run: Callable[[], object]) -> float:
