@@ -99,6 +99,8 @@ _SAFE_SCRIPT_TOOLS = frozenset({
 })
 # A shell variable assignment before a command (`NODE_ENV=production webpack`).
 _ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+# The scripts `npm run` may name to pass: `build`, or `build:<name>`.
+_BUILD_SCRIPT = re.compile(r"build(?::.+)?")
 # How deep command substitutions nested in each other are judged; one nested
 # deeper is reported unread.
 _MAX_SUBSTITUTION_DEPTH = 4
@@ -361,11 +363,14 @@ def _command_passes(words: list[str], declared: set[str]) -> bool:
     The command is read after its variable assignments, which run nothing, so a
     command that is only assignments does not pass. It passes when its program
     is a build tool on the safe list, by name (`node_modules/.bin/tsc` is
-    `tsc`), when it is `npm run build`, as whole words, or when it is a launcher
-    running packages the project installs (`_launch_is_local`). The safe list
-    was matched as a prefix of the command text, so `tscripts/setup.sh`,
-    `vite-installer`, `npm run build-and-setup` and, through `node`,
-    `NODE_ENV=production sh ./evil.sh` passed. When an option named the
+    `tsc`), when it is `npm run build` or `npm run build:<name>`, or when it is
+    a launcher running packages the project installs (`_launch_is_local`). The
+    safe list was matched as a prefix of the command text, so
+    `tscripts/setup.sh`, `vite-installer`, `npm run build-and-setup` and,
+    through `node`, `NODE_ENV=production sh ./evil.sh` passed. The
+    package.json controls a `build:css` script exactly as much as `build`, and
+    neither script is read, so the `build:<name>` family (npm-run-all's naming)
+    passes as `build` does. When an option named the
     launcher's package (`npx -p pkg cmd`, `npm exec --package=pkg -- cmd`), the
     command it then runs is judged in turn, unless it is that package's own
     (`npx -p husky husky`): `npx -p husky sh ./evil.sh` passed because only
@@ -382,7 +387,11 @@ def _command_passes(words: list[str], declared: set[str]) -> bool:
         return False
     if basename(words[0]).lower() in _SAFE_SCRIPT_TOOLS:
         return True
-    return basename(words[0]).lower() == "npm" and words[1:3] == ["run", "build"]
+    return (
+        basename(words[0]).lower() == "npm"
+        and words[1:2] == ["run"]
+        and _BUILD_SCRIPT.fullmatch(words[2] if len(words) > 2 else "") is not None
+    )
 
 
 def _launch_is_local(launched: Launched, declared: set[str]) -> bool:

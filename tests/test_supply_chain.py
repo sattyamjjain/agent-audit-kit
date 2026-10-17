@@ -199,12 +199,27 @@ def test_supply_003_trusts_the_native_builders_not_the_binary_downloaders(
     assert bool(_supply_003(tmp_path, script)) is reported
 
 
+@pytest.mark.parametrize(("script", "reported"), [
+    ("npm run build", False),
+    ("npm run build:css", False),  # npm-run-all's `build:<name>` family
+    ("npm run build:prod:min", False),
+    ("npm run build-and-setup", True),
+    ("npm run buildx", True),
+])
+def test_supply_003_trusts_the_build_script_and_its_build_name_family(
+    tmp_path: Path, script: str, reported: bool
+) -> None:
+    """The package.json controls `build:css` exactly as much as `build`, so
+    whole-word `build` bought nothing over `build:<name>`."""
+    assert bool(_supply_003(tmp_path, script)) is reported
+
+
 def test_supply_003_does_not_read_the_script_npm_run_build_runs(tmp_path: Path) -> None:
     """Stated: following `npm run`, `yarn`, `pnpm` and `bun run` into the
-    scripts they name reported 238 more of 3,171 real install scripts and 42
-    fewer; 234 of the 238 were `npm run build` whose script runs a build tool
-    off the safe list (`rimraf dist && tsc`). So the script is not read, as the
-    file `node build.js` runs is not."""
+    scripts they name reported 249 more of 3,171 real install scripts and 35
+    fewer; 248 of the 249 were `npm run build` or `npm run build:<name>` whose
+    script runs a build tool off the safe list (`rimraf dist && tsc`). So the
+    script is not read, as the file `node build.js` runs is not."""
     package = {"scripts": {"postinstall": "npm run build", "build": "sh ./evil.sh"}}
     (tmp_path / "package.json").write_text(json.dumps(package))
     assert [f for f in scan(tmp_path)[0] if f.rule_id == "AAK-SUPPLY-003"] == []
