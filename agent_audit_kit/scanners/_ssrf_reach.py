@@ -720,8 +720,12 @@ def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return names
 
 
-#: The statements and expressions that bind a name in the scope they sit in.
-#: A comprehension's own `for` binds in the comprehension (`_scopes`).
+#: The statements and expressions that bind a name in the scope they sit in,
+#: with a function's parameters and a comprehension's own `for`, which binds
+#: in the comprehension (`_scopes`). An import, a `def` or `class`, a `with`
+#: or `except` target, a `match` capture, a `del` and an annotation without a
+#: value bind in Python too, and are not read: the same name around them is
+#: read instead.
 _BINDING_NODES = (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr, ast.For, ast.AsyncFor)
 _FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 _COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
@@ -854,8 +858,13 @@ class _Scope:
     and, in a tool, which of its parameters are the caller's input. Whether
     caller input can set the host of a URL is worked out in the scope that
     evaluates it, and a name is read in the scope that binds it, the way
-    Python reads it: the scope's own, then the functions around it, never a
-    class body from inside a function in it, then the module.
+    Python reads it for the bindings this reads (an assignment, augmented or
+    annotated with a value, a `for`, a comprehension, a `:=`, a parameter,
+    and `global` and `nonlocal`): the scope's own, then the functions around
+    it, never a class body from inside a function in it, then the module. A
+    name only an import, a `def` or `class`, a `with` or `except` target, a
+    `match` capture, a `del` or a bare annotation binds is not the scope's
+    own.
 
     A scope holds only what it binds and points at the scope around it, so a
     name costs a walk up that chain once per scope that reads it. Each tool
@@ -932,13 +941,13 @@ class _Scope:
     def _owner(self, name: str) -> _Scope:
         """The scope whose binding of `name` this one reads, found once per
         name: its own, for a parameter, a loop or unpacking name or a name it
-        binds; for a name it declares `global`, the module's; else the nearest
-        function, lambda or comprehension around it that has it, passing over
-        a class body and a function that declares the name `nonlocal`, and
-        stopping at one that declares it `global`; else the module's. A tool's
-        parameter used to fall through to a module binding of the same name,
-        so `def fetch(params)` joining `params` read a module list called
-        `params`."""
+        binds in a form `_BINDING_NODES` lists; for a name it declares
+        `global`, the module's; else the nearest function, lambda or
+        comprehension around it that has it, passing over a class body and a
+        function that declares the name `nonlocal`, and stopping at one that
+        declares it `global`; else the module's. A tool's parameter used to
+        fall through to a module binding of the same name, so `def
+        fetch(params)` joining `params` read a module list called `params`."""
         owner = self._owners.get(name)
         if owner is None:
             owner = self._owners[name] = self._find_owner(name)
@@ -1666,10 +1675,12 @@ def _scopes(tree: ast.Module) -> dict[int, _Scope]:
 
     The module and every function, lambda, class and comprehension in it is a
     scope (`_Scope`), chained to the scope around it, holding the names its
-    own statements bind. A call is judged once, in the scope it sits in: the
-    innermost function, lambda, class body or comprehension around it. It was
-    judged in every enclosing tool's scope, each collecting every binding
-    below it, so 97 nested tools around 4,252 fetches took 10.6 s.
+    own statements bind in a form this reads (`_BINDING_NODES`), its
+    parameters and a comprehension's targets. A call is judged once, in the
+    scope it sits in: the innermost function, lambda, class body or
+    comprehension around it. It was judged in every enclosing tool's scope,
+    each collecting every binding below it, so 97 nested tools around 4,252
+    fetches took 10.6 s.
 
     Where Python binds a name somewhere other than the scope that writes it,
     so does this. A comprehension's first iterable runs in the scope around
