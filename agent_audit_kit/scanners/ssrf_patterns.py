@@ -40,8 +40,11 @@ _FOLLOW_REDIRECTS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A comparison of the scheme, not an assignment. `scheme\s*!?=` read
+# `scheme = "https://"` as a check and silenced AAK-SSRF-001 for the whole file,
+# while the real check `parsed.scheme == "https"` did not match it.
 _URL_SCHEME_VALIDATION_RE = re.compile(
-    r"urlparse\s*\(|scheme\s*!?=\s*['\"]https|startsWith\(['\"]https",
+    r"urlparse\s*\(|scheme\s*[!=]=\s*['\"]https|startsWith\(['\"]https",
     re.IGNORECASE,
 )
 

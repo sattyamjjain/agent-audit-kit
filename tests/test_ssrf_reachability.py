@@ -258,6 +258,35 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body) & _SSRF_RULES == set()
 
 
+# --- the host test, reviewed --------------------------------------------------
+#
+# Four ways a caller value sets the host that the first host test missed, a
+# `%` template it misread, a backslash only WHATWG readers end an authority at,
+# the registration forms that make a function a tool without a decorator
+# taint_analysis knows, a bare host next to punctuation, a scheme assignment
+# read as validation, and the address walk, which keeps its old bindings.
+
+
+@pytest.mark.parametrize(("check", "silenced"), [
+    ('    scheme = "https"\n', False),
+    ('    if parsed.scheme == "https":\n        pass\n', True),
+    ('    if parsed.scheme != "https":\n        raise ValueError(url)\n', True),
+])
+def test_a_scheme_comparison_is_validation_and_an_assignment_is_not(
+    tmp_path: Path, check: str, silenced: bool
+) -> None:
+    """The validation pattern read `scheme = "https"`, an assignment, as a check
+    and silenced AAK-SSRF-001 for the whole file, while `parsed.scheme ==
+    "https"` did not match it."""
+    body = (
+        "@mcp.tool()\ndef fetch(url: str) -> str:\n"
+        "    parsed = urllib.parse.urlsplit(url)\n" + check + "    return requests.get(url).text\n"
+    )
+    ids = _ids(tmp_path, "tool.py", _TOOL_PRELUDE + body)
+    assert ("AAK-SSRF-001" not in ids) is silenced
+    assert "AAK-SSRF-005" in ids
+
+
 # --- a method-first call reads its URL second -------------------------------
 #
 # `requests.request(method, url)`, `httpx.request`, `httpx.stream`,
