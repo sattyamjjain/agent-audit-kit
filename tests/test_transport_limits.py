@@ -446,7 +446,8 @@ def test_the_rule_states_what_it_reads() -> None:
     limitations = RULES[RULE].limitations
     assert "helper" in limitations and "reverse proxy" in limitations
     # Each bound and skip, pinned by a test in this file.
-    for stated in ("1,000,000 bytes", "160 characters", "aiohttp", "settings segment", "compares `len(body)`"):
+    for stated in ("1,000,000 bytes", "160 characters", "aiohttp", "settings segment", "compares `len(body)`",
+                   "RequestSizeLimiter", "io.LimitReader", "within 80 characters", "within 300 characters"):
         assert stated in limitations, stated
 
 
@@ -683,6 +684,44 @@ def _case_list(gap: int) -> str:
 @pytest.mark.parametrize(("gap", "read"), [(160, True), (161, False)])
 def test_a_case_names_an_mcp_method_within_160_characters(tmp_path: Path, gap: int, read: bool) -> None:
     assert _hits(_write(tmp_path, {"mcp.go": _case_list(gap)})) == ([("mcp.go", 9)] if read else [])
+
+
+def _content_length_middleware(before_brace: int, before_413: int) -> str:
+    """A size-limit middleware in its own file: ``before_brace`` characters
+    between the Content-Length comparison and its `{`, ``before_413`` between
+    that `{` and the 413."""
+    test = "if r.ContentLength > " + "1" * (before_brace - 2) + " {"
+    assert len(test) - test.index(">") - 2 == before_brace
+    call = " " * (before_413 - len("w.WriteHeader(")) + "w.WriteHeader(413)"
+    assert call.index("413") == before_413
+    return (
+        "package main\n\nimport \"net/http\"\n\nfunc limit(next http.Handler) http.Handler {\n"
+        "\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n"
+        f"\t\t{test}{call}\n\t\t\treturn\n\t\t}}\n\t\tnext.ServeHTTP(w, r)\n\t}})\n}}\n"
+    )
+
+
+@pytest.mark.parametrize(("before_brace", "before_413", "silenced"), [
+    (80, 300, True), (81, 300, False), (80, 301, False),
+])
+def test_a_content_length_middleware_counts_within_its_windows(
+    tmp_path: Path, before_brace: int, before_413: int, silenced: bool,
+) -> None:
+    """A Go middleware that compares Content-Length and answers 413 is a
+    project-wide limit when its `{` opens within 80 characters of the
+    comparison and the 413 comes within 300 characters after it."""
+    root = _write(tmp_path, {"server.go": GO_NETHTTP, "mw.go": _content_length_middleware(before_brace, before_413)})
+    assert _hits(root) == ([] if silenced else [("server.go", 14)])
+
+
+@pytest.mark.parametrize("limit", [
+    "gin.RequestSizeLimiter(1 << 20)",
+    "r.Body = io.LimitReader(r.Body, 1<<20)",
+    "r.Body = io.NopCloser(io.LimitReader(r.Body, 1<<20))",
+])
+def test_other_project_wide_go_limits_silence_it(tmp_path: Path, limit: str) -> None:
+    middleware = f"package main\n\nfunc setup() {{\n\t_ = {limit}\n}}\n"
+    assert _hits(_write(tmp_path, {"server.go": GO_NETHTTP, "limits.go": middleware})) == []
 
 
 GO_LEN = GO_NETHTTP.replace(
