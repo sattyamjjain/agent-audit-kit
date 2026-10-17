@@ -486,6 +486,25 @@ def _is_built(node: ast.AST) -> bool:
     )
 
 
+#: What a join's separator can hold that the authority test reads: the end
+#: of an authority (`/`, `?`, `#`), a backslash, a scheme's `:`, and `@` and
+#: text the code does not spell out.
+_SEPARATOR_MARKS = frozenset(":/?#\\@" + _UNKNOWN)
+#: A separator `_pieces` passes through as itself, so the text between the
+#: separators of a join can be read once for every separator it is joined with.
+_SEPARATOR = "".join(["\x00", "separator"])
+
+
+def _separator_class(sep: str) -> str | int:
+    """A join's separator as far as the authority test can tell: itself when it
+    is empty or holds one of `_SEPARATOR_MARKS`, else its length alone. Two
+    separators of one length with none of those characters leave the
+    authority open, or end it, at the same pieces of a join."""
+    if not sep or any(char in _SEPARATOR_MARKS for char in sep):
+        return sep
+    return len(sep)
+
+
 class _Run(NamedTuple):
     """The items of a joined list still to read, from `start`, with the
     separator between them. `_pieces` keeps one of these on its stack rather
@@ -878,10 +897,11 @@ class _CallerInput:
         self.file = file
         self._sets: dict[tuple[int, int], bool] = {}
         self._name_sets: dict[tuple[str, int], bool] = {}
-        self._joined_sets: dict[tuple[str, str, int], bool] = {}
+        self._joined_sets: dict[tuple[str | int, str, int], bool] = {}
+        self._joined_callers: dict[tuple[str, int], bool] = {}
         self._keys_sets: dict[tuple[str, int], bool] = {}
         self._text: dict[tuple[int, int], str] = {}
-        self._joined_texts: dict[tuple[str, str, int], str] = {}
+        self._segments: dict[tuple[str, int], list[str]] = {}
         self._mappings: dict[int, tuple[ast.expr, dict[str, ast.expr], ast.expr | None]] = {}
         # ids of the tuples `_mapping` makes for a key's value or what can
         # replace it, whose parts are judged one by one, each once
@@ -1106,30 +1126,68 @@ class _CallerInput:
             return owner._joined_sets_host(sep, name, depth, nest)
         if not self.params or depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
             return False
-        key = (sep, name, depth)
+        key = (_separator_class(sep), name, depth)
         hit = self._joined_sets.get(key)
         if hit is None:
             self._joined_sets[key] = False
+            hit = False
+            if self._joined_has_caller(name, depth, nest):
+                items = self._list_of(name) or []
+                hit = self._built_sets_host(_pieces(_Run(items, 0, sep)), depth, nest + 1)
+            self._joined_sets[key] = hit
+        return hit
+
+    def _joined_has_caller(self, name: str, depth: int, nest: int) -> bool:
+        """Whether any piece `"sep".join(name)` reads, within `_PIECE_CAP`, is
+        one caller input can set, once per list and depth. A join with none
+        holds no caller input whatever its separator, so a list of 301 fixed
+        items joined with 12,855 separators is read once, not once per
+        separator (9.9 s)."""
+        key = (name, depth)
+        hit = self._joined_callers.get(key)
+        if hit is None:
+            self._joined_callers[key] = False
             items = self._list_of(name) or []
-            hit = self._joined_sets[key] = self._built_sets_host(_pieces(_Run(items, 0, sep)), depth, nest + 1)
+            hit = self._joined_callers[key] = any(
+                self.sets_host(piece, depth, nest + 1)
+                for piece in _pieces(_Run(items, 0, _SEPARATOR)) if not isinstance(piece, str)
+            )
         return hit
 
     def _joined_text(self, sep: str, name: str, depth: int, nest: int) -> str:
-        """The text `sep.join(name)` spells, once per list, separator and depth;
-        a list the file binds is spelled by the file's scope, and a list that
-        joins itself spells that join as text the code does not spell out."""
+        """The text `sep.join(name)` spells: the text between its separators,
+        worked out once per list and depth (`_joined_segments`), joined with
+        this one. A list the file binds is spelled by the file's scope."""
         owner = self._owner(name)
         if owner is not self:
             return owner._joined_text(sep, name, depth, nest)
         if depth > _PY_MAX_DEPTH or nest > _PY_MAX_NEST:
             return _UNKNOWN
-        key = (sep, name, depth)
-        text = self._joined_texts.get(key)
-        if text is None:
-            self._joined_texts[key] = _UNKNOWN
+        return sep.join(self._joined_segments(name, depth, nest))
+
+    def _joined_segments(self, name: str, depth: int, nest: int) -> list[str]:
+        """The text of the pieces between the separators of `"sep".join(name)`,
+        read until it holds `_PREFIX_CAP` characters, which the separators only
+        add to. A list that joins itself spells that join as text the code
+        does not spell out."""
+        key = (name, depth)
+        segments = self._segments.get(key)
+        if segments is None:
+            self._segments[key] = [_UNKNOWN]
             items = self._list_of(name) or []
-            text = self._joined_texts[key] = self._spell_pieces(_pieces(_Run(items, 0, sep)), depth, nest + 1)
-        return text
+            segments = [""]
+            length = 0
+            for piece in _pieces(_Run(items, 0, _SEPARATOR)):
+                if piece is _SEPARATOR:
+                    segments.append("")
+                    continue
+                text = piece if isinstance(piece, str) else self._spelled(piece, depth, nest + 1)
+                segments[-1] += text
+                length += len(text)
+                if length >= _PREFIX_CAP:
+                    break
+            self._segments[key] = segments
+        return segments
 
     def _mapping(self, node: ast.expr) -> tuple[dict[str, ast.expr], ast.expr | None]:
         """What a keyed `%` field can read in `node`: the entries a dict literal

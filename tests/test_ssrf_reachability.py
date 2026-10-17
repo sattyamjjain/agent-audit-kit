@@ -1302,7 +1302,22 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
         + " or ".join(f"x{i}" for i in range(13_554)) + ")\n" + "".join(
             f"@mcp.tool()\ndef t{k}(p: str) -> str:\n    return requests.get(T.substitute(h=p)).text\n"
             for k in range(4_518)), False),
+    # A list of 301 items joined by name with 12,855 different separators: it
+    # was read out again for every separator, to its 256th piece, and spelled.
+    "separators": (lambda: _TOOL_HEAD + "    parts = ['https://', " + "'a', " * 300 + "]\n" + "".join(
+        f"    requests.get('{_separator(i)}'.join(parts) + p)\n" for i in range(12_855)), True),
 }
+
+
+def _separator(index: int) -> str:
+    """The `index`th of the strings of letters and digits, shortest first."""
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    text = alphabet[index % len(alphabet)]
+    index //= len(alphabet)
+    while index:
+        text += alphabet[index % len(alphabet)]
+        index //= len(alphabet)
+    return text
 
 
 @pytest.mark.parametrize("shape", sorted(_SHARED))
