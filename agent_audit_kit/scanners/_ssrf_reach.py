@@ -625,12 +625,15 @@ def _collect_bindings(
     """The names `root` binds, in source order: into `values` what a name is
     bound to, into `parts` what it holds a part of.
 
-    `=`, an annotated `=` and `:=` bind a name to their value. `x += y` binds
-    `x` to the value it had just before (the last one bound above it, or `x`
-    itself) combined with `y`, so `url = "https://"` then `url += host` reads as
-    `"https://" + host`. A name an unpacking assignment, a `for` or a
-    comprehension binds holds a part of the value it is given
-    (`host, _, port = target.partition(":")`).
+    `=`, an annotated `=` and `:=` bind a name to their value. `x += y` extends
+    the binding above it in place, so `url = "https://"` then `url += host` is
+    one binding, `"https://" + host`: a chain is judged once, as one URL, and a
+    base built that way is spelled out. Each `+=` used to add a binding of its
+    own over the whole value before it, and every one was judged in full, so
+    4,000 lines took 4 seconds, growing with the square. With nothing bound
+    above it, `x += y` binds `x` itself combined with `y`. A name an unpacking
+    assignment, a `for` or a comprehension binds holds a part of the value it
+    is given (`host, _, port = target.partition(":")`).
     """
     nodes = [
         n for n in ast.walk(root)
@@ -649,9 +652,14 @@ def _collect_bindings(
         elif isinstance(node, ast.AugAssign):
             if isinstance(node.target, ast.Name):
                 name = node.target.id
-                before = last.get(name, ast.Name(id=name, ctx=ast.Load()))
-                combined = ast.BinOp(left=before, op=node.op, right=node.value)
-                values.setdefault(name, []).append(combined)
+                before = last.get(name)
+                bound = values.setdefault(name, [])
+                if before is not None and bound and bound[-1] is before:
+                    combined = ast.BinOp(left=before, op=node.op, right=node.value)
+                    bound[-1] = combined
+                else:
+                    combined = ast.BinOp(left=ast.Name(id=name, ctx=ast.Load()), op=node.op, right=node.value)
+                    bound.append(combined)
                 last[name] = combined
         else:
             _bind_parts(node.target, node.iter, parts, last)

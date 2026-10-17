@@ -298,6 +298,12 @@ def test_only_a_tool_s_parameters_are_caller_input(tmp_path: Path, body: str) ->
     # httpx, curl and urlsplit keep a backslash inside the authority, so the
     # caller can still write `@evil.example` after it.
     'def proxy(user: str) -> str:\n    return requests.get("https://api.example.com\\\\" + user).text\n',
+    # A base built with `+=` and no trailing `/`, here and at module level:
+    # the caller's path still extends its host.
+    'def proxy(path: str) -> str:\n    url = "https://"\n    url += "api.example.com"\n'
+    "    return requests.get(url + path).text\n",
+    'def proxy(path: str) -> str:\n    return requests.get(API_HOST + path).text\n'
+    'API_HOST = "https://"\nAPI_HOST += "api.example.com"\n',
 ])
 def test_the_host_test_reads_these_caller_hosts(tmp_path: Path, body: str) -> None:
     assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + "@mcp.tool()\n" + body)
@@ -938,6 +944,23 @@ def test_a_crafted_template_is_read_in_linear_time(template: str) -> None:
     _format_pieces(template, call)
     analyze_python(source)
     assert time.perf_counter() - started < 5.0
+
+
+def _augmented(lines: int) -> str:
+    """`url += part` again and again inside a tool, none of it the caller's,
+    so the whole chain is judged and its host never closes. Each `+=` bound
+    a new value over the one before and every one was judged, flattened in
+    full: 4,000 lines took 4 seconds, growing with the square."""
+    return (
+        "import requests\n@mcp.tool()\ndef t(host: str) -> str:\n    part = 'x'\n    url = 'https://'\n"
+        + "    url += part\n" * lines + "    return requests.get(url).text\n"
+    )
+
+
+def test_an_augmented_chain_is_read_in_linear_time() -> None:
+    assert 9.5 < len(_augmented(10_000)) / len(_augmented(1_000)) < 10.5
+    assert [s.tainted for s in analyze_python(_augmented(3))] == [False]
+    _grows_linearly(lambda: analyze_python(_augmented(1_000)), lambda: analyze_python(_augmented(10_000)))
 
 
 def test_a_cycle_of_assignments_terminates_with_its_finding() -> None:
