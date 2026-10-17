@@ -478,6 +478,34 @@ def test_a_global_a_function_extends_is_the_module_s(tmp_path: Path) -> None:
     assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + source) & _SSRF_RULES == set()
 
 
+def _nested(outer: str, inner: str) -> list[bool]:
+    """The verdicts of a tool nested in a tool, with these bodies."""
+    source = (
+        _CYCLE_HEAD + "@mcp.tool()\ndef outer(host: str) -> str:\n" + outer
+        + "    @mcp.tool()\n    def inner(path: str) -> str:\n" + inner + "    return ''\n"
+    )
+    return [site.tainted for site in analyze_python(source)]
+
+
+def test_a_nested_tool_reads_the_enclosing_tools_names_as_a_closure_does() -> None:
+    """A call inside nested tools is judged once, in one scope: the tools'
+    parameters, and each name as the innermost of them that has it binds it.
+    It used to be judged in every enclosing tool's scope, each holding only
+    what that tool binds, so a nested tool read an enclosing tool's local as
+    unbound and an enclosing tool's parameter even where the nested tool
+    rebinds the name."""
+    caller = "        return requests.get('https://' + host + '/' + path).text\n"
+    assert _nested("", caller) == [True]
+    # The enclosing tool's `base` is the nested tool's, as in a closure.
+    assert _nested("    base = 'https://'\n", "        return requests.get(base + path).text\n") == [True]
+    # A name the nested tool binds is its own.
+    assert _nested(
+        "    base = 'https://api.example.com/'\n",
+        "        base = 'https://'\n        return requests.get(base + path).text\n",
+    ) == [True]
+    assert _nested("", "        host = 'api.example.com'\n        return requests.get('https://' + host + '/x').text\n") == [False]
+
+
 def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
     body = (
         "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"
@@ -1306,6 +1334,12 @@ _SHARED: dict[str, tuple[Callable[[], str], bool]] = {
     # was read out again for every separator, to its 256th piece, and spelled.
     "separators": (lambda: _TOOL_HEAD + "    parts = ['https://', " + "'a', " * 300 + "]\n" + "".join(
         f"    requests.get('{_separator(i)}'.join(parts) + p)\n" for i in range(12_855)), True),
+    # 97 tools nested in one another, the innermost holding 4,252 fetches of an
+    # open URL: every fetch was judged in every enclosing tool's scope.
+    "nested-tools": (lambda: _CYCLE_HEAD + "".join(
+        "\t" * level + "@mcp.tool()\n" + "\t" * level + f"def t{level}(p{level}: str) -> str:\n"
+        for level in range(97)) + "\t" * 97 + "u = 'https://'" + " + 'a'" * 200 + "\n"
+        + ("\t" * 97 + "requests.get(u + q)\n") * 4_252, False),
 }
 
 

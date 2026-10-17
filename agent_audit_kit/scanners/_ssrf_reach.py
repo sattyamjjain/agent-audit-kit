@@ -736,10 +736,14 @@ _SCOPE_NODES = (
 
 
 def _collect_bindings(
-    root: ast.AST, values: dict[str, list[ast.AST]], parts: dict[str, list[ast.AST]]
+    root: ast.AST,
+    values: dict[str, list[ast.AST]],
+    parts: dict[str, list[ast.AST]],
+    skip: frozenset[int] = frozenset(),
 ) -> None:
-    """The names `root` binds, in source order: into `values` what a name is
-    bound to, into `parts` what it holds a part of.
+    """The names `root` binds, in source order, outside the nodes below it whose
+    ids are in `skip`: into `values` what a name is bound to, into `parts` what
+    it holds a part of.
 
     `=`, an annotated `=` and `:=` bind a name to their value. `x += y` extends
     the binding above it in place, so `url = "https://"` then `url += host` is
@@ -751,7 +755,14 @@ def _collect_bindings(
     assignment, a `for` or a comprehension binds holds a part of the value it
     is given (`host, _, port = target.partition(":")`).
     """
-    _bind_nodes([(n, None) for n in ast.walk(root) if isinstance(n, _BINDING_NODES)], values, parts)
+    pairs: list[tuple[ast.AST, frozenset[str] | None]] = []
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, _BINDING_NODES):
+            pairs.append((node, None))
+        stack.extend(child for child in ast.iter_child_nodes(node) if id(child) not in skip)
+    _bind_nodes(pairs, values, parts)
 
 
 def _collect_file_bindings(
@@ -922,15 +933,26 @@ class _CallerInput:
         func: ast.FunctionDef | ast.AsyncFunctionDef,
         file: _CallerInput,
         only: frozenset[str] | None = None,
+        enclosing: _CallerInput | None = None,
+        tools: frozenset[int] = frozenset(),
     ) -> _CallerInput:
         """A tool function's scope: its parameters, less what a framework fills
-        in (and only those `only` names, when given), and its bindings."""
+        in (and only those `only` names, when given), and the bindings in its
+        body outside the tools nested in it (`tools`, by id), which have scopes
+        of their own. Inside an `enclosing` tool's scope, a name this tool does
+        not have as a parameter or a binding is read as the enclosing scope
+        reads it, as a closure reads it."""
         params = _get_param_names(func) - _injected_params(func)
         if only is not None:
             params &= only
         values: dict[str, list[ast.AST]] = {}
         elements: dict[str, list[ast.AST]] = {}
-        _collect_bindings(func, values, elements)
+        _collect_bindings(func, values, elements, tools)
+        if enclosing is not None:
+            own = params | values.keys() | elements.keys()
+            params |= enclosing.params - own
+            values = {**{k: v for k, v in enclosing.values.items() if k not in own}, **values}
+            elements = {**{k: v for k, v in enclosing.elements.items() if k not in own}, **elements}
         return cls(params, values, elements, file)
 
     def _owner(self, name: str) -> _CallerInput:
@@ -1525,24 +1547,35 @@ def _caller_inputs(tree: ast.AST) -> dict[int, list[_CallerInput]]:
     and CrewAI's class tools and a class's `call_tool` had no caller input,
     where the old name list fired on them when the parameter was called
     `query`, `params` or `arguments`.
+
+    A call is judged once, in the scope of the innermost tool it sits in
+    (`_CallerInput.of_tool`), which holds the enclosing tools' parameters
+    and names as well. It was judged in every enclosing tool's scope, each
+    collecting every binding below it, so 97 nested tools around 4,252
+    fetches took 10.6 s.
     """
     registered = _registered_tools(tree)
     class_tools = _class_tool_methods(tree)
     file_scope = _CallerInput.of_file(tree)
-    around: dict[int, list[_CallerInput]] = {}
+    tools: dict[int, frozenset[str] | None] = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        only: frozenset[str] | None = None
-        if not (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
+        if (_is_tool_function(node) or _is_call_tool_handler(node) or _is_function_tool(node)
                 or node.name in registered or id(node) in class_tools):
-            if not _is_call_tool_name(node.name):
-                continue
-            only = _CALL_TOOL_INPUTS
-        scope = _CallerInput.of_tool(node, file_scope, only)
-        for sub in ast.walk(node):
-            if isinstance(sub, ast.Call):
-                around.setdefault(id(sub), []).append(scope)
+            tools[id(node)] = None
+        elif _is_call_tool_name(node.name):
+            tools[id(node)] = _CALL_TOOL_INPUTS
+    nested = frozenset(tools)
+    around: dict[int, list[_CallerInput]] = {}
+    stack: list[tuple[ast.AST, _CallerInput | None]] = [(tree, None)]
+    while stack:
+        node, scope = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and id(node) in tools:
+            scope = _CallerInput.of_tool(node, file_scope, tools[id(node)], scope, nested)
+        elif isinstance(node, ast.Call) and scope is not None:
+            around[id(node)] = [scope]
+        stack.extend((child, scope) for child in ast.iter_child_nodes(node))
     return around
 
 
