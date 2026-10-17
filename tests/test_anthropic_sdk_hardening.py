@@ -288,23 +288,27 @@ def test_a_file_that_builds_a_transport_is_judged(tmp_path: Path, text: str) -> 
     assert [f.file_path for f in findings] == ["server.kt"]
 
 
-@pytest.mark.parametrize(("rel", "builder", "tail", "judged"), [
-    # `ServerTransport` is 15 characters, so these names run 48 and 49 past `Stdio`.
-    ("src/server.ts", "const t = new StdioServerTransport", 33, True),
-    ("src/server.ts", "const t = new StdioServerTransport", 34, False),
-    ("server.py", "t = StdioServerTransport", 16, True),
-    ("server.py", "t = StdioServerTransport", 17, False),
+@pytest.mark.parametrize(("rel", "builder", "tail", "call", "judged"), [
+    # `ServerTransport` is 15 characters and `Transport` 9, so these names run
+    # 48 and 49 past `Stdio`.
+    ("src/server.ts", "const t = new StdioServerTransport", 33, "()", True),
+    ("src/server.ts", "const t = new StdioServerTransport", 34, "()", False),
+    ("server.py", "t = StdioServerTransport", 16, "()", True),
+    ("server.py", "t = StdioServerTransport", 17, "()", False),
+    ("src/main.rs", "let t = StdioTransport", 39, "::new();", True),
+    ("src/main.rs", "let t = StdioTransport", 40, "::new();", False),
 ])
 def test_a_builder_name_past_its_bounded_tail_is_not_read(
-    tmp_path: Path, rel: str, builder: str, tail: int, judged: bool
+    tmp_path: Path, rel: str, builder: str, tail: int, call: str, judged: bool
 ) -> None:
     """The builder names are read with a bounded tail, so a crafted identifier
     stays linear, and a longer name is not recognised: its file is not read,
     and the limitation says so."""
-    assert _reported(tmp_path, {rel: builder + "X" * tail + "()\n"}) == ([rel] if judged else [])
+    assert _reported(tmp_path, {rel: builder + "X" * tail + call + "\n"}) == ([rel] if judged else [])
     limitation = RULES["AAK-ANTHROPIC-SDK-001"].limitations
     assert "more than 48 characters past `Stdio`" in limitation
     assert "more than 16 past `Transport`" in limitation
+    assert "`StdioTransport::new(`" in limitation
 
 
 def test_the_construction_pattern_reads_a_crafted_name_in_linear_time() -> None:

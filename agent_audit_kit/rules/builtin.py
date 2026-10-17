@@ -6228,12 +6228,12 @@ _r(
     incident_references=["OX-MCP-2026-04-15"],
     aicm_references=["AIS-07", "STA-08"],
     limitations=(
-        "Judges each file that builds a STDIO transport (`new "
-        "StdioServerTransport(`, a `StdioServerTransport(...)` call, `stdio_server(` "
-        "or `stdio_client(`); a file that only imports, re-exports, types or mocks "
-        "one is not read, nor is one whose builder name runs more than 48 "
-        "characters past `Stdio`, or more than 16 past `Transport` in a call "
-        "without `new`. Recognises a sanitizer or opt-out by name in that file: a "
+        "Judges each file that builds a STDIO transport (`new StdioServerTransport(`, a "
+        "`StdioServerTransport(...)` call, `stdio_server(`, `stdio_client(` or Rust's "
+        "`StdioTransport::new(`); a file that only imports, re-exports, types or mocks one is "
+        "not read, nor is one whose builder name runs more than 48 characters past `Stdio`, "
+        "or more than 16 past `Transport` in a `StdioServerTransport(...)` call. Recognises a "
+        "sanitizer or opt-out by name in that file: a "
         "`shlex.quote(` or `shlex.split(` call, an `ALLOWED_*`, `WHITELIST_*` or "
         "`VALID_TOOLS` constant, or an HTTP-only transport setting. Such a name "
         "clears its own file, whatever it guards: an `ALLOWED_ORIGINS` list in "
