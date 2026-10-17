@@ -165,7 +165,20 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     outermost = _outermost_functions(tree)
     lines = text.splitlines()
     bodies: dict[int, str] = {}
+    searched: dict[tuple[str, int], bool] = {}
     findings: list[Finding] = []
+
+    def body_has(pattern: re.Pattern[str], body: str) -> bool:
+        """`pattern.search(body)`, once per pattern and body. A file's code
+        outside every function is one body, so a run of tool calls there
+        searched the whole file again for each: 152 KB of
+        `CodeInterpreterTool(unsafe_mode=True)` took 11 s. Each body string
+        is held by `bodies` or is `text`, so its id stays its own."""
+        key = (pattern.pattern, id(body))
+        found = searched.get(key)
+        if found is None:
+            found = searched[key] = pattern.search(body) is not None
+        return found
     fired: set[str] = set()  # which CVE-shapes fired in this file
 
     class V(ast.NodeVisitor):
@@ -200,7 +213,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             if callee == "CodeInterpreterTool":
                 unsafe = _kw_value_constant(call, "unsafe_mode")
                 if unsafe is not None and unsafe.value is True:
-                    if not _GUARD_CODEINTERP_RE.search(body):
+                    if not body_has(_GUARD_CODEINTERP_RE, body):
                         findings.append(make_finding(
                             "AAK-CREWAI-CVE-2026-2275-001",
                             rel,
@@ -218,8 +231,8 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             if callee in {"JSONSearchTool", "JSONLoader"}:
                 path_arg = _arg_value(call, ("file_path", "path", "json_path"))
                 if path_arg is not None and not isinstance(path_arg, ast.Constant):
-                    if not _GUARD_JSON_RE.search(body):
-                        if _TAINT_HINTS_RE.search(body):
+                    if not body_has(_GUARD_JSON_RE, body):
+                        if body_has(_TAINT_HINTS_RE, body):
                             findings.append(make_finding(
                                 "AAK-CREWAI-CVE-2026-2285-001",
                                 rel,
@@ -236,8 +249,8 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             if callee in {"RagTool", "WebsiteSearchTool"}:
                 url_arg = _arg_value(call, ("url", "website", "web_url"))
                 if url_arg is not None and not isinstance(url_arg, ast.Constant):
-                    if not _GUARD_RAG_RE.search(body):
-                        if _TAINT_HINTS_RE.search(body):
+                    if not body_has(_GUARD_RAG_RE, body):
+                        if body_has(_TAINT_HINTS_RE, body):
                             findings.append(make_finding(
                                 "AAK-CREWAI-CVE-2026-2286-001",
                                 rel,
@@ -252,7 +265,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
 
             # ---- CVE-2026-2287 — sandbox fallback without docker check
             if callee == "CodeInterpreterTool":
-                if not _GUARD_DOCKER_RE.search(body):
+                if not body_has(_GUARD_DOCKER_RE, body):
                     docker_required = _kw_value_constant(call, "docker_required")
                     if docker_required is None or not bool(docker_required.value):
                         findings.append(make_finding(

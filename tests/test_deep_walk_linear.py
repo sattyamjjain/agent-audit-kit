@@ -78,16 +78,24 @@ def _assert_linear(tmp_path: Path, scanner: str, shape: Callable[[int], str], sm
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("shape", [
+@pytest.mark.parametrize(("shape", "small"), [
     # Every call searched the whole file for its function: calls outside every
     # function, and a nested call chain in one.
-    lambda n: "import crewai\n" + "f()\n" * n,
-    lambda n: "import crewai\n\n\ndef build():\n    return f" + "()" * n + "\n",
-], ids=["calls at module level", "a nested call chain"])
-def test_crewai_finds_each_calls_function_in_linear_time(tmp_path: Path, shape: Callable[[int], str]) -> None:
+    (lambda n: "import crewai\n" + "f()\n" * n, 300),
+    (lambda n: "import crewai\n\n\ndef build():\n    return f" + "()" * n + "\n", 300),
+    # Every tool call searched the body around it, the whole file outside every
+    # function, for its guard, and some for taint hints too.
+    (lambda n: "import crewai\n" + "CodeInterpreterTool(unsafe_mode=True)\n" * n, 500),
+    (lambda n: "import crewai\n" + "JSONSearchTool(file_path=request.args)\n" * n, 500),
+    (lambda n: "import crewai\n" + "RagTool(url=request.args)\n" * n, 500),
+], ids=["calls at module level", "a nested call chain", "code interpreters", "JSON search tools", "RAG tools"])
+def test_crewai_finds_each_calls_function_in_linear_time(
+    tmp_path: Path, shape: Callable[[int], str], small: int
+) -> None:
     """At 3,000 calls the old search took about 3 s for the chain and 18 s for
-    the calls at module level, and it grew with the square of their number."""
-    _assert_linear(tmp_path, "crewai_rce_chain", shape, 300)
+    the calls at module level, and the guard searches 4.5, 2.3 and 1.6 s for
+    the three tools; each grew with the square of their number."""
+    _assert_linear(tmp_path, "crewai_rce_chain", shape, small)
 
 
 def _old_outermost(tree: ast.AST, call: ast.Call) -> ast.AST | None:
