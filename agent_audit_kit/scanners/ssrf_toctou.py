@@ -55,6 +55,7 @@ from ._dependency_pins import (
     pinned_dependency,
     read_lockfile,
     read_manifest,
+    read_text,
 )
 from ._helpers import in_skip_dir, make_finding
 from ._manifest_deps import MAX_LOCKFILE_BYTES
@@ -249,9 +250,8 @@ def _check_pattern(project_root: Path, scanned: set[str]) -> list[Finding]:
     for path in project_root.rglob("*.py"):
         if in_skip_dir(path, project_root):
             continue
-        try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = read_text(path)
+        if text is None:
             continue
         findings.extend(_walk_python(text, path, project_root, scanned))
     return findings

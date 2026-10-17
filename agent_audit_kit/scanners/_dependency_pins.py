@@ -51,12 +51,18 @@ two cannot drift apart:
   reported only by a rule that always reported one (`report_unversioned`).
 
 One finding per rule per file, on the line of the declaration that decided it.
+
+The six modules read their manifests, lockfiles and Python sources through
+`_regular_bytes`, which reads only a regular file and never waits on a FIFO
+named like one of them.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
+import stat
 import threading
 from collections import OrderedDict
 from collections.abc import Callable
@@ -382,14 +388,60 @@ _MANIFESTS_TEXT_BUDGET = 8_000_000
 _MANIFESTS_LOCK = threading.Lock()
 
 
-def _read(path: Path, limit: int) -> tuple[tuple[str, bytes], bytes] | None:
-    """`path`'s bytes and their cache key, or None when it is missing, unreadable
-    or over `limit` bytes. The key is the absolute path and a digest of the bytes."""
+# Opened without waiting: a FIFO opens at once, with no writer, and is then refused.
+_READ_FLAGS = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+_READ_CHUNK = 1 << 16
+
+
+def _regular_bytes(path: Path, limit: int | None) -> bytes | None:
+    """`path`'s bytes, or None when it is missing, unreadable, not a regular file, or
+    holds more than `limit` bytes (None: any size).
+
+    A repository chooses what sits at each name these modules read. A FIFO blocks
+    the read that opens it until a writer comes, and reports a size of 0, so a size
+    check lets it through. The modules found requirements files, every
+    pyproject.toml and their Python sources by glob and read whatever matched, so a
+    FIFO named requirements.txt, pyproject.toml or app.py stopped `aak scan` for
+    good. A link is followed, and what it names must be a regular file: one to a
+    FIFO or a device is refused before it is opened, and the file is opened without
+    waiting and its descriptor checked again, so one swapped for a FIFO after that
+    look is refused too. At most `limit` + 1 bytes are read, so a file that holds
+    more than the size it reported is refused, not read whole. Anything refused
+    reads as a missing file.
+    """
     try:
-        if path.stat().st_size > limit:
+        if not stat.S_ISREG(path.stat().st_mode):
             return None
-        raw = path.read_bytes()
+        fd = os.open(path, _READ_FLAGS)
     except OSError:
+        return None
+    chunks: list[bytes] = []
+    held = 0
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or (limit is not None and info.st_size > limit):
+            return None
+        want = info.st_size + 1  # a file as large as it says ends on the first read
+        while limit is None or held <= limit:
+            chunk = os.read(fd, want if limit is None else min(want, limit + 1 - held))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            held += len(chunk)
+            want = _READ_CHUNK
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    return None if limit is not None and held > limit else b"".join(chunks)
+
+
+def _read(path: Path, limit: int) -> tuple[tuple[str, bytes], bytes] | None:
+    """`path`'s bytes and their cache key, or None when it is missing, unreadable,
+    not a regular file or over `limit` bytes (`_regular_bytes`). The key is the
+    absolute path and a digest of the bytes."""
+    raw = _regular_bytes(path, limit)
+    if raw is None:
         return None
     return (str(path.absolute()), hashlib.blake2b(raw, digest_size=16).digest()), raw
 
@@ -399,8 +451,18 @@ def _decoded(raw: bytes) -> str:
     return raw.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
 
 
+def read_text(path: Path, limit: int | None = None) -> str | None:
+    """`path` decoded as `Path.read_text(encoding="utf-8", errors="replace")` decodes
+    it, or None when it is missing, unreadable, not a regular file or over `limit`
+    bytes. The modules read their source files through this, so a FIFO named
+    `app.py` is skipped like a missing file (`_regular_bytes`)."""
+    raw = _regular_bytes(path, limit)
+    return None if raw is None else _decoded(raw)
+
+
 def read_manifest(path: Path) -> Manifest | None:
-    """`path` read and parsed, or None when it is missing, unreadable or too large.
+    """`path` read and parsed, or None when it is missing, unreadable, not a regular
+    file or too large.
 
     A manifest over MAX_MANIFEST_BYTES (2 MB), the CVE pin table's limit, is not
     read, so a crafted file costs no rule more than one bounded parse. The text
@@ -475,7 +537,8 @@ _LOCKFILES_LOCK = threading.Lock()
 
 
 def read_lockfile(path: Path, limit: int = MAX_LOCKFILE_BYTES) -> Lockfile | None:
-    """`path` read and indexed, or None when it is missing, unreadable or too large.
+    """`path` read and indexed, or None when it is missing, unreadable, not a regular
+    file or too large.
 
     A lockfile over MAX_LOCKFILE_BYTES (32 MiB), the CVE pin table's limit, is
     not read. The index is the pin table's (`supply_chain._lockfile_index`), so

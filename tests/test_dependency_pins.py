@@ -13,7 +13,12 @@ drifts from the shared reading fails here.
 
 from __future__ import annotations
 
+import importlib
 import json
+import os
+import random
+import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,6 +26,7 @@ from types import ModuleType
 
 import pytest
 
+import agent_audit_kit
 from agent_audit_kit.scanners import (
     dns_rebind,
     langchain_vuln,
@@ -585,3 +591,171 @@ def test_a_package_json_too_deep_to_parse_declares_nothing(tmp_path: Path) -> No
     fired = {f.rule_id for module in (transport_limits, dns_rebind) for f in module.scan(tmp_path)[0]}
     pins = {"AAK-MCPFRAME-001", "AAK-DNS-REBIND-002"}
     assert fired & pins == (pins if parsed else set())
+
+
+# The six modules whose reads go through `_dependency_pins`. A child process scans
+# with them, so a read that blocks on a FIFO fails the test on its timeout instead
+# of hanging the suite.
+_READERS = ("dns_rebind", "langchain_vuln", "neo4j_cve", "ssrf_redirect", "ssrf_toctou", "transport_limits")
+_CHILD = (
+    "import importlib, json, sys\n"
+    "from pathlib import Path\n"
+    "root = Path(sys.argv[1])\n"
+    "print(json.dumps({name: sorted(f.rule_id for f in importlib.import_module(\n"
+    "    'agent_audit_kit.scanners.' + name).scan(root)[0]) for name in sys.argv[2:]}))\n"
+)
+
+
+def _scan_in_child(root: Path) -> dict[str, list[str]]:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _CHILD, str(root), *_READERS], capture_output=True, text=True, timeout=30, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    return json.loads(done.stdout)
+
+
+def _scan_here(root: Path) -> dict[str, list[str]]:
+    return {
+        name: sorted(f.rule_id for f in importlib.import_module(f"agent_audit_kit.scanners.{name}").scan(root)[0])
+        for name in _READERS
+    }
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+@pytest.mark.parametrize("name", [
+    "uv.lock", "poetry.lock", "Pipfile.lock", "requirements.txt", "pyproject.toml", "sub/pyproject.toml",
+    "package.json", "app.py",
+])
+@pytest.mark.parametrize("kind", ["fifo", "symlink to a fifo"])
+def test_a_fifo_named_like_a_file_the_modules_read_is_skipped(tmp_path: Path, name: str, kind: str) -> None:
+    """A repository chooses what sits at a name the scan reads, and a FIFO blocks the
+    read that opens it until a writer comes. The lockfiles and root manifests went
+    through a reader that checked only the size, which a FIFO reports as 0, and the
+    requirements files, every pyproject.toml and the Python sources through globs
+    that read whatever matched, so a FIFO named uv.lock, requirements.txt,
+    pyproject.toml or app.py stopped the scan for good. A file is opened without
+    waiting now and read only if it is a regular file; anything else reads as a
+    missing file, and the other files are read as before."""
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "requirements-dev.txt").write_text(
+        "mcp==1.22.0\nlangchain-core==0.3.13\nmcp-neo4j-cypher==0.5.0\n"
+        "langchain-text-splitters==1.1.1\nlangchain-openai==1.1.13\n", encoding="utf-8")
+    expected = _scan_here(root)
+    assert all(expected[module] for module in _READERS if module != "transport_limits")
+    fifo = tmp_path / "pipe" if kind != "fifo" else root / name
+    fifo.parent.mkdir(parents=True, exist_ok=True)
+    os.mkfifo(fifo)
+    if kind != "fifo":
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).symlink_to(fifo)
+    assert _scan_in_child(root) == expected
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo") or not Path("/dev/null").exists(),
+                    reason="needs POSIX FIFOs and /dev/null")
+def test_a_link_to_a_fifo_or_a_device_is_refused_before_it_is_opened(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Opening a device can act on it, so a name that leads anywhere but a regular file
+    is refused on a look at what it names, before it is opened."""
+    from agent_audit_kit.scanners import _dependency_pins
+
+    os.mkfifo(tmp_path / "pipe")
+    (tmp_path / "uv.lock").symlink_to(tmp_path / "pipe")
+    (tmp_path / "requirements.txt").symlink_to("/dev/null")
+    opened: list[str] = []
+    real = os.open
+
+    def recording(path: str | os.PathLike[str], flags: int, *args: int) -> int:
+        opened.append(os.fspath(path))
+        return real(path, flags, *args)
+
+    monkeypatch.setattr(_dependency_pins.os, "open", recording)
+    for name in ("pipe", "uv.lock", "requirements.txt"):
+        assert _dependency_pins._read(tmp_path / name, 1_000) is None
+        assert _dependency_pins.read_text(tmp_path / name) is None
+    assert not [path for path in opened if path.startswith(str(tmp_path))]
+
+
+# A child process reads a FIFO that looks like a regular file until it is opened, as
+# one swapped in after the look would, so a read that waits fails on the timeout.
+_SWAPPED_CHILD = (
+    "import os, sys\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners import _dependency_pins\n"
+    "fifo, regular = Path(sys.argv[1]), os.stat(sys.argv[2])\n"
+    "real = Path.stat\n"
+    "Path.stat = lambda self, *a, **k: regular if self == fifo else real(self, *a, **k)\n"
+    "print(_dependency_pins._read(fifo, 1_000), _dependency_pins.read_text(fifo))\n"
+)
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX FIFOs")
+def test_a_fifo_swapped_in_after_the_look_is_refused_without_waiting(tmp_path: Path) -> None:
+    """The look before the open can be outrun: the file is opened without waiting and
+    the descriptor is checked again, so a FIFO put in its place is still refused."""
+    os.mkfifo(tmp_path / "uv.lock")
+    (tmp_path / "regular.txt").write_text("x\n", encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    done = subprocess.run(
+        [sys.executable, "-c", _SWAPPED_CHILD, str(tmp_path / "uv.lock"), str(tmp_path / "regular.txt")],
+        capture_output=True, text=True, timeout=30, env={**os.environ, "PYTHONPATH": str(package_root)},
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "None None"
+
+
+def test_a_read_stops_one_byte_past_the_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The limit is checked against the size the open file reports, and no more than
+    one byte past it is read, so a file that reports a size within the limit and holds
+    more (one that grew after it was measured) is refused without being read whole."""
+    import tracemalloc
+
+    from agent_audit_kit.scanners import _dependency_pins
+
+    real = os.fstat
+
+    def reports_empty(fd: int) -> os.stat_result:
+        info = real(fd)
+        return os.stat_result((info.st_mode, info.st_ino, info.st_dev, info.st_nlink, info.st_uid, info.st_gid,
+                               0, int(info.st_atime), int(info.st_mtime), int(info.st_ctime)))
+
+    monkeypatch.setattr(_dependency_pins.os, "fstat", reports_empty)
+    path = tmp_path / "requirements.txt"
+    path.write_bytes(b"x" * 1_000)
+    read = _dependency_pins._read(path, 1_000)
+    assert read is not None and read[1] == b"x" * 1_000
+    path.write_bytes(b"x" * 1_001)
+    assert _dependency_pins._read(path, 1_000) is None
+    path.write_bytes(b"x" * 8_000_000)
+    tracemalloc.start()
+    try:
+        assert _dependency_pins._read(path, 1_000) is None
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert peak < 1_000_000
+
+
+_TRICKY_BYTES = (
+    b"a\r\nb\rc\n", b"\r", b"x\r", b"\r\r\n\n", b"\xef\xbb\xbfmcp==1.22.0\r\n",
+    b"\xff\xfe\x00bad\xe2\x80\r\n", b"caf\xc3\xa9\n\xe2\x80\xa8x", b"\xe2\r\n\x80",
+)
+
+
+def test_a_source_file_reads_as_path_read_text_reads_it(tmp_path: Path) -> None:
+    """The modules' Python sources go through the same guarded read, so it decodes a
+    file exactly as `Path.read_text(encoding="utf-8", errors="replace")` did, newlines
+    included: evidence and lines stay as they were."""
+    from agent_audit_kit.scanners._dependency_pins import read_text
+
+    alphabet = [b"a", b"\r", b"\n", b"\xc3", b"\xa9", b"\xe2\x80\xa8", b"\xff", b"\x00", b"\xef\xbb\xbf"]
+    rng = random.Random(1035)
+    samples = list(_TRICKY_BYTES) + [b"".join(rng.choices(alphabet, k=rng.randrange(1, 40))) for _ in range(500)]
+    path = tmp_path / "app.py"
+    for raw in samples:
+        path.write_bytes(raw)
+        assert read_text(path) == path.read_text(encoding="utf-8", errors="replace"), raw

@@ -35,7 +35,13 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._dependency_pins import DependencyPin, Manifest, pinned_dependency, read_manifest
+from agent_audit_kit.scanners._dependency_pins import (
+    DependencyPin,
+    Manifest,
+    pinned_dependency,
+    read_manifest,
+    read_text,
+)
 from agent_audit_kit.scanners._helpers import find_line_number, make_finding, in_skip_dir
 
 
@@ -124,9 +130,8 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     for py in _iter_python_sources(project_root):
         rel = str(py.relative_to(project_root))
         scanned.add(rel)
-        try:
-            text = py.read_text(encoding="utf-8", errors="replace")
-        except OSError:
+        text = read_text(py)
+        if text is None:
             continue
         if "langchain" in text.lower():
             findings.extend(_check_python_source(text, rel))
