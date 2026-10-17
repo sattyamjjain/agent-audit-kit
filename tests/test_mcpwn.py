@@ -237,3 +237,25 @@ def test_a_crafted_route_file_scans_in_linear_time(tmp_path: Path, name: str) ->
     started = time.perf_counter()
     mcp_middleware.scan(tmp_path)
     assert time.perf_counter() - started < 5.0
+
+
+@pytest.mark.parametrize(("pad", "fires"), [(182, True), (183, False)])
+def test_a_middleware_argument_is_read_for_auth_markers_in_its_first_200_characters(
+    tmp_path: Path, pad: int, fires: bool,
+) -> None:
+    """`AuthRequired` ends at character 200 of the argument, or one past it."""
+    middleware = "chain(" + "x" * pad + "AuthRequired())"
+    (tmp_path / "router.go").write_text(
+        f'package mcp\nfunc Register(r *gin.Engine) {{\n    r.POST("/mcp", {middleware}, handler)\n'
+        '    r.POST("/mcp_message", handler)\n}\n'
+    )
+    findings, _ = mcp_middleware.scan(tmp_path)
+    mcpwn = [(f.rule_id, f.line_number) for f in findings if f.rule_id == "AAK-MCPWN-001"]
+    assert mcpwn == ([("AAK-MCPWN-001", 4)] if fires else [])
+
+
+def test_the_rule_states_its_windows() -> None:
+    from agent_audit_kit.rules.builtin import RULES
+
+    limitations = RULES["AAK-MCPWN-001"].limitations
+    assert "first 200 characters" in limitations and "512 characters of its `/`" in limitations

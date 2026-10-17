@@ -301,6 +301,10 @@ def test_the_rule_states_what_it_reads() -> None:
     assert "Go or TypeScript/JavaScript" in rule.description
     assert "Python servers are not read" in rule.limitations
     assert "AAK-MCPWN-001 reports is left to that rule" in rule.limitations
+    # Each bound, pinned by a test in this file or in test_http_routes.py.
+    for stated in ("512,000 bytes", "first 200 characters", "longer than 200", "within 200 characters before",
+                   "512 characters of its `/`"):
+        assert stated in rule.limitations, stated
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +420,10 @@ def test_the_lookup_rule_states_what_it_reads() -> None:
     assert rule.title == "MCP auth check runs after a resource lookup"
     assert "Go MCP HTTP handler" in rule.description
     assert "TypeScript, JavaScript and Python handlers are not read" in rule.limitations
+    # Each bound, pinned by a test in this file.
+    for stated in ("512,000 bytes", "first 1,000", "within 400", "first 200 characters", "within 200 characters of",
+                   "within 200 characters after", "within 200 characters before", "top-level `if`"):
+        assert stated in rule.limitations, stated
 
 
 _LOOKUP_LEVEL = (
@@ -612,3 +620,126 @@ def test_a_json_rpc_handler_that_never_mentions_mcp_is_not_read(tmp_path: Path) 
     )
     assert "mcp" not in text.lower() and "jsonrpc" in text
     assert _lookups(tmp_path, "gateway.go", text) == []
+
+
+# ---------------------------------------------------------------------------
+# Stated bounds, each pinned on both sides
+# ---------------------------------------------------------------------------
+
+
+def _padded(text: str, size: int) -> str:
+    text += "//"
+    text += "x" * (size - len(text) - 1) + "\n"
+    assert len(text.encode()) == size
+    return text
+
+
+@pytest.mark.parametrize(("size", "read"), [(512_000, True), (512_001, False)])
+def test_files_over_512_000_bytes_are_not_read(tmp_path: Path, size: int, read: bool) -> None:
+    (tmp_path / "a").mkdir()
+    (tmp_path / "a" / "server.ts").write_text(_padded(EXPRESS, size), encoding="utf-8")
+    (tmp_path / "a" / "gateway.go").write_text(_padded(GATEWAY, size), encoding="utf-8")
+    findings, _ = mcp_middleware.scan(tmp_path)
+    rules = sorted(f.rule_id for f in findings)
+    assert rules == (["AAK-MCP-019", RULE, RULE] if read else [])
+
+
+def _express_twins(middleware: str, handler: str = "handleMcp") -> str:
+    return f'const app = express();\napp.post("/mcp", {middleware}, {handler});\napp.get("/mcp", {handler});\n'
+
+
+@pytest.mark.parametrize(("pad", "fires"), [(190, True), (191, False)])
+def test_a_middleware_argument_is_read_for_its_first_200_characters(tmp_path: Path, pad: int, fires: bool) -> None:
+    """`Auth` ends at character 200 of the authenticated route's middleware, or
+    one past it; unseen, that middleware is one the check cannot name, so the
+    route has no twin to pair with."""
+    middleware = "check(" + "x" * pad + "Auth)"
+    assert len(middleware[:middleware.index("Auth") + 4]) == 200 + (pad - 190)
+    assert _one(tmp_path, "server.ts", _express_twins(middleware)) == ([("server.ts", 3)] if fires else [])
+
+
+@pytest.mark.parametrize(("length", "fires"), [(200, True), (201, False)])
+def test_a_handler_longer_than_200_characters_is_not_compared(tmp_path: Path, length: int, fires: bool) -> None:
+    handler = "handlers." + "h" * (length - len("handlers."))
+    assert _one(tmp_path, "server.ts", _express_twins("requireAuth", handler)) == ([("server.ts", 3)] if fires else [])
+
+
+@pytest.mark.parametrize(("distance", "followed"), [(200, True), (201, False)])
+def test_a_group_assigned_200_characters_before_the_call_is_followed(
+    tmp_path: Path, distance: int, followed: bool,
+) -> None:
+    """The group made with auth covers its route only when its assignment
+    starts within 200 characters before the `.Group(` call."""
+    assign = "g :=" + " " * (distance - 4)
+    text = (
+        "package x\nfunc R(r *gin.Engine) {\n\tr.POST(\"/mcp\", authRequired(), h)\n"
+        f'\t{assign}r.Group("/", authRequired())\n\tg.GET("/mcp", h)\n}}\n'
+    )
+    assert _one(tmp_path, "router.go", text) == ([] if followed else [("router.go", 5)])
+
+
+_MISS_IF = "\tif err != nil || adapter == nil {"
+
+
+@pytest.mark.parametrize(("before_brace", "fires"), [(399, True), (400, False)])
+def test_an_if_is_recognised_only_with_its_brace_within_400_characters(
+    tmp_path: Path, before_brace: int, fires: bool,
+) -> None:
+    line = _MISS_IF[:-1] + " " * (before_brace - len(_MISS_IF) + 1) + "{"
+    assert line.index("{") == before_brace
+    text = GATEWAY.replace(_MISS_IF, line)
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
+
+
+@pytest.mark.parametrize(("extra", "fires"), [(0, True), (1, False)])
+def test_a_gate_is_read_for_its_first_1000_characters(tmp_path: Path, extra: int, fires: bool) -> None:
+    """The 401 ends at character 1,000 of the gate's top-level `if`, or one past it."""
+    gate = GATEWAY.index("\tif adapter.AuthRequired {") + 1
+    status = GATEWAY.index("StatusUnauthorized") + len("StatusUnauthorized")
+    pad = 1000 - (status - gate) - len("\t\t\t//\n") + extra
+    text = GATEWAY.replace(
+        "\t\t\tc.JSON(http.StatusUnauthorized", "\t\t\t//" + "x" * pad + "\n\t\t\tc.JSON(http.StatusUnauthorized",
+    )
+    end = text.index("StatusUnauthorized") + len("StatusUnauthorized")
+    assert end - (text.index("\tif adapter.AuthRequired {") + 1) == 1000 + extra
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
+
+
+_LOOKUP_LINE = "\tadapter, err := store.Get(c.Request.Context(), name)"
+
+
+@pytest.mark.parametrize(("prefix", "fires"), [(199, True), (200, False)])
+def test_the_lookup_starts_within_200_characters_of_its_line(tmp_path: Path, prefix: int, fires: bool) -> None:
+    head = "\tadapter, err :="
+    line = head + " " * (prefix - len(head)) + "store.Get(c.Request.Context(), name)"
+    assert line.index("store.Get") == prefix
+    line_no = 21
+    assert _lookups(tmp_path, "gateway.go", GATEWAY.replace(_LOOKUP_LINE, line)) == (
+        [("gateway.go", line_no)] if fires else []
+    )
+
+
+@pytest.mark.parametrize(("blanks", "fires"), [(198, True), (199, False)])
+def test_only_blanks_within_200_characters_follow_the_lookup(tmp_path: Path, blanks: int, fires: bool) -> None:
+    text = GATEWAY.replace(_LOOKUP_LINE, _LOOKUP_LINE + " " * blanks)
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
+
+
+@pytest.mark.parametrize(("gap", "fires"), [(200, True), (201, False)])
+def test_the_not_found_if_starts_within_200_characters_after_the_lookup_line(
+    tmp_path: Path, gap: int, fires: bool,
+) -> None:
+    """The `if` starts ``gap`` characters after the newline that ends the lookup's line."""
+    text = GATEWAY.replace(_LOOKUP_LINE + "\n" + _MISS_IF, _LOOKUP_LINE + "\n" + " " * (gap - 1) + _MISS_IF.lstrip("\t"))
+    newline = text.index(_LOOKUP_LINE) + len(_LOOKUP_LINE)
+    assert text.index("if err != nil ||", newline) - newline == gap
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])
+
+
+@pytest.mark.parametrize(("pad", "fires"), [(189, True), (190, False)])
+def test_the_callers_input_is_read_in_an_arguments_first_200_characters(tmp_path: Path, pad: int, fires: bool) -> None:
+    """`c.Param(` ends at character 200 of the lookup's argument, or one past it."""
+    argument = "z" * pad + ' + c.Param("name")'
+    assert argument.index("(") + 1 == 200 + (pad - 189)
+    text = GATEWAY.replace("store.Get(c.Request.Context(), name)", f"store.Get(c.Request.Context(), {argument})")
+    assert _lookups(tmp_path, "gateway.go", text) == ([("gateway.go", 21)] if fires else [])

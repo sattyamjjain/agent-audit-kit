@@ -243,3 +243,13 @@ def test_the_code_after_an_unclosed_literal_is_still_read(opener: str) -> None:
     the escaped quotes of its kind after it, which cannot close it either."""
     text = f"const s = {opener}no end \\{opener} here\\{opener}\n" + ROUTE
     assert _args(text, "route(") == ["'/mcp'", "handler"]
+
+
+@pytest.mark.parametrize(("body", "regex"), [(509, True), (510, False)])
+def test_a_regex_literal_must_close_within_512_characters(body: int, regex: bool) -> None:
+    """Its closing `/` 511 characters after the opening one, or 512: past the
+    window it is division, and the backtick in it opens a template that hides
+    the route up to the next backtick."""
+    text = "x = /`" + "a" * body + "/;\n" + ROUTE + LATER
+    index = CodeIndex(text)
+    assert index.in_code(text.index("route(")) is regex
