@@ -397,6 +397,54 @@ def outer(query: str) -> str:
 """
 
 
+# Verification of e1cc1f9e (2026-10-17, Low, pre-existing): each log call's
+# arguments were walked whole for a parameter, so a call nested in another's
+# arguments was walked again for every call around it: lines of `print(` 190
+# deep took 14.6 s at 479 KB, and of `logger.info(` 12.6 s (main 8.1 s). Whether
+# a subtree names a parameter is decided once per node now. Most of the time
+# left is building the findings, one per call, so chains 190 deep are timed
+# against chains 19 deep in the same 480,000 characters, which give about as
+# many: CPU time in a child, so a slow or loaded machine scales both.
+_LOGINJ_CHAIN_CHILD = (
+    "import sys, tempfile, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners.log_injection import scan\n"
+    "call, depth = sys.argv[1], int(sys.argv[2])\n"
+    "unit = call * depth + 'request' + ')' * depth + '\\n    '\n"
+    "head = \"from mcp.server.fastmcp import FastMCP\\nmcp = FastMCP('x')\\n@mcp.tool()\\ndef t(request):\\n    \"\n"
+    "text = head + unit * (480_000 // len(unit)) + '\\n'\n"
+    "assert len(text.encode('utf-8')) <= 512_000\n"
+    "with tempfile.TemporaryDirectory() as root:\n"
+    "    (Path(root) / 'server.py').write_text(text, encoding='utf-8')\n"
+    "    started = time.process_time()\n"
+    "    findings, _ = scan(Path(root))\n"
+    "    print(time.process_time() - started, len(findings))\n"
+)
+
+
+def _loginj_chain_in_child(call: str, depth: int) -> tuple[float, int]:
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _LOGINJ_CHAIN_CHILD, call, str(depth)],
+        capture_output=True, text=True, timeout=120, env=env,
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, found = done.stdout.split()
+    return float(elapsed), int(found)
+
+
+@pytest.mark.parametrize(("call", "counts"), [("print(", (62_890, 67_830)), ("logger.info(", (35_207, 36_670))])
+def test_loginj_log_calls_nested_in_arguments_read_in_linear_time(call: str, counts: tuple[int, int]) -> None:
+    """Every call in a chain names the parameter, so each is a finding. e1cc1f9e
+    took 3.05 s and 9.26 s (`print(`), 1.62 s and 7.92 s (`logger.info(`); the
+    fixed reader takes about the same at both depths."""
+    (shallow, shallow_count), (deep, deep_count) = (_loginj_chain_in_child(call, depth) for depth in (19, 190))
+    assert (shallow_count, deep_count) == counts
+    assert deep < 2 * shallow + 0.5, (shallow, deep)
+    assert deep < 10.0, deep
+
+
 def test_loginj_reads_a_call_for_the_innermost_tool_around_it(tmp_path: Path) -> None:
     """A call in a nested helper is the tool's around it, as before. A call in a
     nested tool is that tool's alone, read with its parameters: `print(query)`

@@ -136,11 +136,27 @@ def _log_target(call: ast.Call) -> tuple[str, str] | None:
     return None
 
 
-def _arg_refs_param(node: ast.AST, param_names: set[str]) -> bool:
-    for sub in ast.walk(node):
-        if isinstance(sub, ast.Name) and sub.id in param_names:
-            return True
-    return False
+def _names_a_param(node: ast.AST, param_names: set[str], known: dict[ast.AST, bool]) -> bool:
+    """Whether the subtree under `node` names one of `param_names`.
+
+    Each node is decided once, bottom up, and kept in `known` for the tool
+    function's other calls. Each log call's arguments were walked whole, so a
+    call nested in another's arguments was walked again for every call around
+    it: lines of `print(` 190 deep took 14.6 s at 479 KB.
+    """
+    stack: list[tuple[ast.AST, bool]] = [(node, False)]
+    while stack:
+        current, children_known = stack.pop()
+        if current in known:
+            continue
+        if children_known:
+            known[current] = (isinstance(current, ast.Name) and current.id in param_names) or any(
+                known[child] for child in ast.iter_child_nodes(current)
+            )
+        else:
+            stack.append((current, True))
+            stack.extend((child, False) for child in ast.iter_child_nodes(current) if child not in known)
+    return known[node]
 
 
 def _callee_name(func: ast.expr) -> str:
@@ -224,12 +240,13 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
         start = line_starts[first]
         if calls_sanitiser[node] or sanitising_code.within(start, max(start, line_starts[last] - 1)):
             continue
+        known: dict[ast.AST, bool] = {}
         for call in own_calls[node]:
             target = _log_target(call)
             if target is None:
                 continue
             for arg in list(call.args) + [kw.value for kw in call.keywords]:
-                if _arg_refs_param(arg, params):
+                if _names_a_param(arg, params, known):
                     findings.append(make_finding(
                         "AAK-LOGINJ-001",
                         rel,
