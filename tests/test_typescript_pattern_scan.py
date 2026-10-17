@@ -343,6 +343,18 @@ def test_a_one_line_bundle_is_skipped_only_over_10000_characters(tmp_path: Path,
     assert [f.rule_id for f in findings] == (["AAK-TAINT-001"] if read else [])
 
 
+@pytest.mark.parametrize(("short", "bundle"), [(10, True), (11, False)])
+def test_a_bundle_is_judged_by_the_upper_median_line(short: int, bundle: bool) -> None:
+    """With an even number of lines the median is the longer of the middle two, as
+    the limitation says: ten lines of 100 characters and ten of 900 make a bundle,
+    though the middle two average 500. One more short line makes the median short."""
+    from agent_audit_kit.scanners.typescript_pattern_scan import _is_bundle
+
+    text = "\n".join(["x" * 100] * short + ["y" * 900] * 10) + "\n"
+    assert len(text) > 10_000
+    assert _is_bundle("server.js", text) is bundle
+
+
 def test_a_hand_written_server_with_an_inlined_asset_is_read(tmp_path: Path) -> None:
     """The bundle check took the mean line length, so one inlined 150 KB base64
     image in a 190-line server averaged about 800 characters a line, and the file

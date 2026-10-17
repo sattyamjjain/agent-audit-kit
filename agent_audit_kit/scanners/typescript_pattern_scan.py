@@ -387,8 +387,9 @@ def _is_bundle(name: str, source: str) -> bool:
     but `public/js/server.bundle.min.js` was read, and its one line gave
     AAK-TAINT-001 and -002. A file is a bundle when its name says so
     (`*.min.js` and the like), or when it is over 10 KB and either its median
-    non-blank line is over 500 characters long or most of it is minified code:
-    lines over 5,000 characters, in which `(` and `;` make up at least 1%.
+    non-blank line (the longer middle one, for an even count) is over 500
+    characters long or most of it is minified code: lines over 5,000
+    characters, in which `(` and `;` make up at least 1%.
 
     The check took the mean line length, so one inlined 150 KB base64 image in
     a 190-line hand-written server averaged about 800 characters a line, and the

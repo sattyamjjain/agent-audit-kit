@@ -2510,8 +2510,9 @@ _r(
 # JavaScript states the test, and the two ways it misjudges a file.
 _JS_BUNDLE_LIMITATION = (
     " A JavaScript file is skipped as a bundle when its name holds `.min.`, or when "
-    "it is over 10,000 characters and its median non-blank line is over 500 "
-    "characters long or most of it is lines over 5,000 characters in which `(` and "
+    "it is over 10,000 characters and its median non-blank line (the longer of the "
+    "middle two, for an even number) is over 500 characters long or most of it is "
+    "lines over 5,000 characters in which `(` and "
     "`;` make up at least 1%. So a one-line bundle of 10,000 characters or fewer is "
     "read, and a hand-written file most of whose text is one long line of inlined "
     "data with `;` in it, such as a stylesheet or an SVG, is skipped, and its "
