@@ -859,7 +859,13 @@ def vex_cmd(path: str, vex_format: str, output_file: str | None) -> None:
 )
 @click.option("--output", "-o", "output_file", type=click.Path(), default=None)
 def report_cmd(path: str, framework: str, report_format: str, output_file: str | None) -> None:
-    """Produce an auditor-ready compliance report (EU AI Act Article 15 etc.)."""
+    """Produce an auditor-ready compliance report (EU AI Act Article 15 etc.).
+
+    Without --output, the PDF (or, without reportlab, its text fallback) goes into
+    the current directory; exits 2, leaving that file as it was, when it cannot be
+    written inside the directory, for instance because it is a link that leads out
+    of it.
+    """
     # The standards crosswalk is a static rule→control mapping — no scan needed.
     if framework == "standards-crosswalk":
         from agent_audit_kit.output.crosswalk import render_markdown, render_text
@@ -872,17 +878,23 @@ def report_cmd(path: str, framework: str, report_format: str, output_file: str |
             click.echo(text)
         return
 
-    from agent_audit_kit.output.pdf_report import emit_pdf, _text_report
+    from agent_audit_kit.output.pdf_report import ReportWriteError, emit_pdf, emit_pdf_in, _text_report
 
     project = Path(path)
     result = run_scan(project_root=project)
 
     if report_format == "pdf":
-        out = Path(output_file or f"aak-compliance-{framework}.pdf")
-        ok, msg = emit_pdf(result, framework, out)
+        if output_file:
+            ok, msg = emit_pdf(result, framework, Path(output_file))
+        else:
+            try:
+                ok, msg = emit_pdf_in(result, framework, Path.cwd())
+            except ReportWriteError as exc:
+                click.echo(f"Cannot write the report: {exc}. {exc.name} was not changed.", err=True)
+                sys.exit(EXIT_ERROR)
         click.echo(msg, err=True)
         if not ok:
-            # Fallback text already written by emit_pdf; nothing else to do.
+            # The text fallback is already written; nothing else to do.
             return
     else:
         text = _text_report(result, framework)
