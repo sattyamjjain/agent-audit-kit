@@ -547,3 +547,41 @@ def test_a_rewrite_of_the_same_size_and_time_is_read_again(
     assert path.stat().st_size == stat.st_size
     assert not any(f.rule_id == rule_id for f in module.scan(tmp_path)[0])
 
+
+def test_a_pyproject_too_deep_to_parse_declares_nothing(tmp_path: Path) -> None:
+    """A 3,000-deep inline table makes the TOML parser raise RecursionError. The file
+    then declares nothing, as one that does not parse, and no module lets the error
+    out. The interpreters differ in what they can parse, so the expectation follows
+    the parser of the Python running the test."""
+    try:
+        import tomllib
+    except ImportError:  # Python < 3.11
+        import tomli as tomllib  # type: ignore[no-redef]
+
+    text = ("x = " + "{a = " * 3000 + "1" + "}" * 3000 + "\n"
+            + _HEAD + 'dependencies = ["mcp==1.22.0", "langchain-core==0.3.13"]\n')
+    try:
+        tomllib.loads(text)
+        parsed = True
+    except (ValueError, RecursionError):
+        parsed = False
+    (tmp_path / "pyproject.toml").write_text(text, encoding="utf-8")
+    fired = {f.rule_id for module in _PYPROJECT_MODULES for f in module.scan(tmp_path)[0]}
+    pins = {"AAK-DNS-REBIND-002", "AAK-LANGCHAIN-001"}
+    assert fired & pins == (pins if parsed else set())
+
+
+def test_a_package_json_too_deep_to_parse_declares_nothing(tmp_path: Path) -> None:
+    """The JSON parser raises RecursionError on arrays nested 100,000 deep, and the
+    file then declares nothing, as the pyproject.toml above does."""
+    text = ('{"x": ' + "[" * 100_000 + "]" * 100_000
+            + ', "dependencies": {"mcp-framework": "0.2.21", "@modelcontextprotocol/sdk": "1.21.0"}}')
+    try:
+        json.loads(text)
+        parsed = True
+    except (ValueError, RecursionError):
+        parsed = False
+    (tmp_path / "package.json").write_text(text, encoding="utf-8")
+    fired = {f.rule_id for module in (transport_limits, dns_rebind) for f in module.scan(tmp_path)[0]}
+    pins = {"AAK-MCPFRAME-001", "AAK-DNS-REBIND-002"}
+    assert fired & pins == (pins if parsed else set())

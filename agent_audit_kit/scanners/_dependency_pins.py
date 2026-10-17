@@ -176,7 +176,10 @@ def _parsed(path: Path, text: str) -> tuple[list[Declaration], object]:
         if name == "pyproject.toml":
             document = tomllib.loads(text)
             return pyproject_declarations(document), document
-    except (ValueError, RecursionError):  # TOMLDecodeError and JSONDecodeError are ValueErrors
+    except (ValueError, RecursionError):
+        # TOMLDecodeError and JSONDecodeError are ValueErrors. Nesting deeper than
+        # the parser recurses (a 3,000-deep inline table) raises RecursionError,
+        # caught here so that no module lets it out of `scan`.
         return [], None
     return [d for d in declarations(path, text) if d.kind != "launch"], None
 
