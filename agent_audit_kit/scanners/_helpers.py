@@ -345,9 +345,6 @@ def _holds_line_break(key: str) -> bool:
 # line, which fails a line shorter than the key at once, took 0.12. 3.10 searches
 # with the Two-Way algorithm, which is linear.
 _LINEAR_FIND = sys.version_info >= (3, 10)
-# Compiling a key into a pattern costs about 140 bytes and 0.8 microseconds a
-# character, so a key longer than this is not compiled (see `linear_find`).
-_LITERAL_LONGEST = 1 << 20
 
 
 def linear_find(text: str, key: str, start: int = 0) -> int:
@@ -356,13 +353,14 @@ def linear_find(text: str, key: str, start: int = 0) -> int:
     Before 3.10, a key is compiled into a pattern that matches it literally, which
     `re` searches for with a table of the key's own overlaps (Knuth-Morris-Pratt),
     reading each character of the text once. The pattern is compiled outside
-    `re`'s cache, which keeps 512 patterns: a key can be as long as its file. A key
-    over `_LITERAL_LONGEST` characters is searched for only in the lines at least
-    as long as itself, the way every key was searched for line by line through
-    0.6.22: text of shorter lines costs nothing, and a line that can hold the key
-    is read with `str.find`, which keeps its pre-3.10 worst case there. A key
-    holding a line break, which no line lookup searches for, is read with
-    `str.find` too.
+    `re`'s cache, which keeps 512 patterns and would push the scanners' own out.
+    Compiling costs about a microsecond and 110 to 170 bytes a character, so only
+    a key up to `_LITERAL_LONGEST` characters is compiled; a longer key is searched
+    for only in the lines at least as long as itself, the way every key was
+    searched for line by line through 0.6.22: text of shorter lines costs nothing,
+    and a line that can hold the key is read with `str.find`, which keeps its
+    pre-3.10 worst case there. A key holding a line break, which no line lookup
+    searches for, is read with `str.find` too.
     """
     if _LINEAR_FIND:
         return text.find(key, start)
@@ -442,9 +440,10 @@ def find_line_number(raw: str, key: object) -> int | None:
 # defeat it; building the automaton about 0.5 us a key character, scanning
 # 0.05 us a text character. A pass is chosen once the keys outnumber
 # `12 + 150 x key characters / text characters`, which keeps either path within
-# about one pass of the other on any input. Before Python 3.10 a key searched
-# for on its own is compiled first (see `linear_find`), at about 0.8 us a key
-# character, near what the automaton costs to build, so the choice stands.
+# about one pass of the other on any input. Before Python 3.10 a key of up to
+# `_LITERAL_LONGEST` characters searched for on its own is compiled first (see
+# `linear_find`), at about 1 us a key character, near what the automaton costs to
+# build, so the choice stands.
 _ONE_PASS_KEYS = 12
 _ONE_PASS_KEY_CHARS = 150
 # A pass holds about 30 bytes a node of the automaton for keys in Latin-1
@@ -457,6 +456,10 @@ _ONE_PASS_KEY_CHARS = 150
 # instead: a text holds few of them, and one could fill a batch alone.
 _ONE_PASS_NODES = 1 << 21
 _ONE_PASS_LONGEST = 4096
+# Before 3.10 `linear_find` compiles only a key the automaton would also take:
+# compiling every key up to 1 MiB made eight quiet task labels of that size take
+# 9.25 s and 136 MB on 3.9.
+_LITERAL_LONGEST = _ONE_PASS_LONGEST
 
 
 def find_line_numbers(raw: str, keys: Iterable[object]) -> dict[str, int | None]:

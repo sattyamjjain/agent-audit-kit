@@ -288,6 +288,23 @@ def test_the_search_before_python_3_10_finds_what_str_find_finds(
     assert checked > 20_000
 
 
+def test_only_a_key_the_automaton_would_take_is_compiled_before_python_3_10(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Compiling a key into a pattern costs about a microsecond and 110 to 170 bytes a
+    character, so before 3.10 a key over `_ONE_PASS_LONGEST` characters is searched for
+    in the lines that can hold it instead, as every key was through 0.6.22: 1 MiB labels
+    compiled at 9.25 s for eight. Both sides of the limit find the same line."""
+    monkeypatch.setattr(_helpers, "_LINEAR_FIND", False)
+    compiled: list[int] = []
+    real = _helpers._literal
+    monkeypatch.setattr(_helpers, "_literal", lambda key: compiled.append(len(key)) or real(key))
+    limit = _helpers._ONE_PASS_LONGEST
+    for size in (limit, limit + 1):
+        key = "k" * (size - 1) + "!"
+        _helpers._TEXT_LOOKUPS.clear()
+        assert find_line_number("x\n" * 3 + key + "\n", key) == 4
+    assert compiled == [limit]
+
+
 @pytest.mark.parametrize("longest", [None, 3])
 def test_lookups_before_python_3_10_match_the_old_search(longest: int | None, monkeypatch: pytest.MonkeyPatch) -> None:
     """`find_line_number` and every path of `find_line_numbers` give the old
@@ -407,6 +424,17 @@ def test_keys_over_the_one_pass_limit_are_found_in_linear_time(monkeypatch: pyte
         _helpers.first_offsets(text, keys + [f"k{i}" for i in range(50)])
 
     _assert_linear(run, 4_100)
+
+
+def test_keys_over_the_one_pass_limit_are_not_compiled() -> None:
+    """Eight keys of 1 MiB, each on a line of its own. Before Python 3.10 each was
+    compiled into a pattern before its search, at about a microsecond and 140 bytes a
+    character, which took seconds and a few hundred MB; it is searched for in the
+    lines that can hold it instead, here only its own."""
+    keys = [f"k{i}-" + "a" * ((1 << 20) - 4) for i in range(8)]
+    text = "\n".join(keys) + "\n"
+    assert find_line_numbers(text, keys) == {key: n for n, key in enumerate(keys, 1)}
+    assert _seconds(lambda: find_line_numbers(text, keys)) < 5.0
 
 
 def test_a_key_over_the_pattern_limit_reads_only_lines_that_can_hold_it(monkeypatch: pytest.MonkeyPatch) -> None:
