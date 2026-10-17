@@ -17,11 +17,13 @@ For the Python taint analyzer — which IS AST-based — see
 
 from __future__ import annotations
 
+import os
 import re
+from collections.abc import Iterator
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import make_finding, in_skip_dir
+from agent_audit_kit.scanners._helpers import SKIP_DIRS, make_finding
 
 # ---- Patterns that indicate an MCP server implementation ----
 _MCP_SERVER_RE = re.compile(
@@ -502,9 +504,21 @@ def _scan_file(
 
 
 # TypeScript and JavaScript, as the rules this module emits describe. Only the
-# first two were globbed, so a JavaScript MCP server had no file read at all.
+# first two were read, so a JavaScript MCP server had no file read at all.
 # `.mts` and `.cts`, TypeScript's module files, are TypeScript to the gates.
-_SOURCE_GLOBS = ("*.ts", "*.tsx", "*.mts", "*.cts", "*.js", "*.jsx", "*.mjs", "*.cjs")
+_SOURCE_SUFFIXES = (".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs")
+
+
+def _source_files(project_root: Path) -> Iterator[Path]:
+    """Every file under the root whose name ends in one of the suffixes, in one
+    walk that does not enter a skipped directory. One `rglob` per suffix walked
+    the tree eight times, into `node_modules` too (2.55 s for 50,000 files;
+    main, with two suffixes, 0.82 s)."""
+    for dirpath, dirnames, filenames in os.walk(project_root):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        for name in sorted(filenames):
+            if name.endswith(_SOURCE_SUFFIXES):
+                yield Path(dirpath) / name
 
 
 def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
@@ -525,28 +539,24 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
     findings: list[Finding] = []
     scanned_files: set[str] = set()
 
-    for suffix in _SOURCE_GLOBS:
-        for ts_path in project_root.rglob(suffix):
-            # Skip excluded directories
-            if in_skip_dir(ts_path, project_root):
-                continue
-            if not ts_path.is_file():
-                continue
+    for ts_path in _source_files(project_root):
+        if not ts_path.is_file():
+            continue
 
-            # Skip large files (> 1 MB)
-            try:
-                if ts_path.stat().st_size > 1_000_000:
-                    continue
-                source = ts_path.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
+        # Skip large files (> 1 MB)
+        try:
+            if ts_path.stat().st_size > 1_000_000:
                 continue
+            source = ts_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
 
-            if ts_path.suffix.lower() in _JS_SUFFIXES and _is_bundle(ts_path.name, source):
-                continue
+        if ts_path.suffix.lower() in _JS_SUFFIXES and _is_bundle(ts_path.name, source):
+            continue
 
-            rel_path = str(ts_path.relative_to(project_root))
-            scanned_files.add(rel_path)
+        rel_path = str(ts_path.relative_to(project_root))
+        scanned_files.add(rel_path)
 
-            findings.extend(_scan_file(source, rel_path))
+        findings.extend(_scan_file(source, rel_path))
 
     return findings, scanned_files

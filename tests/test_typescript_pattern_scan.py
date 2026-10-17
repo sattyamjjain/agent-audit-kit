@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -605,3 +606,29 @@ def test_the_binding_patterns_read_in_linear_time(tmp_path: Path, shape: str) ->
     small, large = timings
     assert large < 30 * small + 1.0, (small, large)
     assert large < 10.0, large
+
+
+# Verification of a323344c (2026-10-17, Low): one `rglob` per suffix walked the
+# tree eight times, into `node_modules` too, filtering its files afterwards
+# (2.55 s for 50,000 files; main, with two suffixes, 0.82 s). The tree is walked
+# once now, and a skipped directory is not entered.
+def test_the_tree_is_walked_once_and_a_skipped_directory_not_at_all(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for rel in ("src/server.ts", "src/lib/util.mjs", "src/lib/types.d.ts", "node_modules/pkg/index.js", "README.md"):
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("export {};\n", encoding="utf-8")
+    listed: Counter[str] = Counter()
+    real_scandir = os.scandir
+
+    def counting_scandir(path: str = ".") -> object:
+        listed[os.fspath(path)] += 1
+        return real_scandir(path)
+
+    monkeypatch.setattr(os, "scandir", counting_scandir)
+    _, scanned = scan(tmp_path)
+    assert scanned == {os.path.join("src", "server.ts"), os.path.join("src", "lib", "util.mjs"),
+                       os.path.join("src", "lib", "types.d.ts")}
+    assert listed and max(listed.values()) == 1, listed
+    assert not any("node_modules" in path for path in listed), listed
