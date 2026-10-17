@@ -146,7 +146,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         if "skill" not in src_lower and not _is_skill_path(path):
             continue
         try:
-            tree = parse_python(src, path, str(path))
+            tree = parse_python(src, path)
         except SyntaxError:
             continue
         rel = str(path.relative_to(project_root))

@@ -132,7 +132,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     if not _CREWAI_IMPORT_RE.search(text):
         return []
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
 

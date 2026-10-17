@@ -2073,6 +2073,18 @@ def loads_json(text: str | bytes, path: Path | str | None) -> Any:
         raise _refused_json(doc, path, exc) from None
 
 
+# A filename no file can have, for `ast.parse`. On a SyntaxError CPython reads
+# the offending line back from the file it was given, and 3.9 (3.9.6 and
+# 3.9.25, which CI installs) reads it into a 1,000-byte buffer, then decodes as
+# many bytes from that buffer as the error's column: an out-of-bounds read as
+# long as the line. A crafted `.py` parsed under its own path crashed the
+# process 1 run in 24 inside ssrf_toctou's 1 MB source cap, and every run at
+# 1.1 MB, whatever a caller caught. A relative name such as "<unknown>" is no
+# answer: a scan runs inside the repository, which can commit a file of that
+# name. `/dev/null` is not a directory, and `<` and `>` are not allowed in a
+# Windows file name.
+_PARSE_FILENAME = "/dev/null/<aak>"
+
 # CPython before 3.11 builds the syntax tree recursively in C with no depth
 # check, so a crafted source inside the readers' caps overflows the C stack and
 # the process dies (exit 139), past any `except`: 3.9.6 segfaults on 42,000
@@ -2104,19 +2116,20 @@ def _ast_parse(source: str | bytes, filename: str) -> ast.Module:
     return _parse_worker[1].submit(ast.parse, source, filename).result()
 
 
-def parse_python(source: str | bytes, path: Path | str | None, filename: str = "<unknown>") -> ast.Module:
-    """`ast.parse(source, filename)`, refusing a source nested too deep to parse.
+def parse_python(source: str | bytes, path: Path | str | None) -> ast.Module:
+    """`ast.parse(source)`, refusing a source nested too deep to parse.
 
     CPython's parser raises RecursionError on deep nesting (`"--a" * 12000` on
     3.11 and later) and MemoryError on a long run of unary operators (`"+" *
     36000` on 3.10 and later); before 3.11 the parse runs where it cannot take
-    the process down (see `_ast_parse`). The refusal is recorded against `path`
-    and raised as `RefusedSource`, a SyntaxError. A caller without the path
-    passes None and contains the overflow, which then propagates, with
+    the process down (see `_ast_parse`). The parse is given a filename no file
+    has (`_PARSE_FILENAME`), never `path`. The refusal is recorded against
+    `path` and raised as `RefusedSource`, a SyntaxError. A caller without the
+    path passes None and contains the overflow, which then propagates, with
     `refusing_overflow` where it has the path.
     """
     try:
-        return _ast_parse(source, filename)
+        return _ast_parse(source, _PARSE_FILENAME)
     except _OVERFLOW as exc:
         if path is None:
             raise

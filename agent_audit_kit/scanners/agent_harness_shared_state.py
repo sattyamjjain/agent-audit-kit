@@ -152,7 +152,7 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
     if not any(suf in src for suf in _AGENT_CLASS_SUFFIXES):
         return findings
     try:
-        tree = parse_python(src, path, str(path))
+        tree = parse_python(src, path)
     except SyntaxError:
         return findings
 

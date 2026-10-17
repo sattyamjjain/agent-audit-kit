@@ -1327,7 +1327,7 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
 
         # Parse AST
         try:
-            tree = parse_python(source, py_path, rel_path)
+            tree = parse_python(source, py_path)
         except SyntaxError:
             continue
 

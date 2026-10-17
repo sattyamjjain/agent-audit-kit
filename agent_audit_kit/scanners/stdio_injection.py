@@ -232,7 +232,7 @@ def _check_python_file(path: Path, project_root: Path) -> list[Finding]:
     if not _python_hint_match(text):
         return []
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
 

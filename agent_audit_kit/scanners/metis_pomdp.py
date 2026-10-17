@@ -152,7 +152,7 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
     if not (has_refusal_token or has_score_token):
         return findings
     try:
-        tree = parse_python(src, path, str(path))
+        tree = parse_python(src, path)
     except SyntaxError:
         return findings
 

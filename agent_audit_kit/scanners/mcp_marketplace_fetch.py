@@ -98,7 +98,7 @@ def _trusted_urls(project_root: Path) -> set[str]:
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str], trusted: set[str]) -> list[Finding]:
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
     findings: list[Finding] = []

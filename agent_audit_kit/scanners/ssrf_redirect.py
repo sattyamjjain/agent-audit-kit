@@ -154,7 +154,7 @@ def _is_redirect_disabled(call: ast.Call) -> bool:
 
 def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -> list[Finding]:
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
 

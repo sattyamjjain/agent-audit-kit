@@ -301,6 +301,47 @@ def _grows_linearly(small: Callable[[], object], large: Callable[[], object]) ->
     assert t_large < 40 * t_small + 0.25, (t_small, t_large)
 
 
+_LONG_LINE_PARSE = """
+    import sys
+    from pathlib import Path
+    from agent_audit_kit.scanners import ssrf_toctou
+    root = Path(sys.argv[1])
+    path = root / "server.py"
+    ssrf_toctou._walk_python(path.read_text(), path, root, set())
+    print("survived")
+"""
+
+
+def test_a_line_that_does_not_parse_is_never_read_back_from_its_file(tmp_path: Path) -> None:
+    """On a SyntaxError, 3.9 reads the offending line back from the file it was
+    told it parsed, into a 1,000-byte buffer, then decodes as many bytes from
+    that buffer as the error's column: an out-of-bounds read as long as the
+    line. Inside ssrf_toctou's 1 MB source cap it crashed 1 run in 24; a 1.1 MB
+    line, past the cap and fed to the same parse here, crashes every run on
+    3.9.6 and 3.9.25. Given a name no file has, the parser takes the line from
+    the source in memory."""
+    _write(tmp_path, {"server.py": "import requests\nx = " + "a" * 1_100_000 + " $\n"})
+    assert _child(_LONG_LINE_PARSE, str(tmp_path)) == "survived"
+
+
+def test_the_parser_is_never_given_a_name_a_file_could_have(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A relative name such as "<unknown>" is not enough either: a scan runs
+    inside the repository, which can commit a file of that name."""
+    names: list[str] = []
+    real = _helpers._ast_parse
+
+    def recording(source: str | bytes, filename: str) -> ast.Module:
+        names.append(filename)
+        return real(source, filename)
+
+    monkeypatch.setattr(_helpers, "_ast_parse", recording)
+    _write(tmp_path, {"server.py": _PY_HINTS + "@mcp.tool()\ndef f(url):\n    return requests.get(url)\n"})
+    run_scan(tmp_path, strict_loading=True)
+    assert len(names) > 10 and set(names) == {_helpers._PARSE_FILENAME}
+    with pytest.raises(OSError):
+        open(_helpers._PARSE_FILENAME)
+
+
 def test_a_long_dotted_toml_key_is_refused_in_linear_time() -> None:
     """tomllib builds a dotted key a tuple concatenation at a time: 20,000 parts
     (129 KB) took 3.6 s, and the 2 MB a manifest may be held a key that takes

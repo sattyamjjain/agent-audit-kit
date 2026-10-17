@@ -277,7 +277,7 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
     if _title_start(joined, 0, len(joined)) is None or not _LLM_SINK_RE.search(joined):
         return []
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
     findings: list[Finding] = []

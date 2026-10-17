@@ -206,7 +206,7 @@ def _check_file(path: Path, project_root: Path) -> list[Finding]:
     except OSError:
         return []
     try:
-        tree = parse_python(text, path, str(path))
+        tree = parse_python(text, path)
     except SyntaxError:
         return []
 

@@ -132,7 +132,7 @@ def _scan_python_file(path: Path, rel: str) -> list[Finding]:
             and "@fastmcp.tool" not in src and "@tool" not in src:
         return findings
     try:
-        tree = parse_python(src, path, str(path))
+        tree = parse_python(src, path)
     except SyntaxError:
         return findings
 
