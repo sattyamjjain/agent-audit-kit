@@ -28,6 +28,19 @@ from agent_audit_kit.scanners._helpers import host_ip, url_hosts
 #: global, so no property names it; carrier-grade NAT and Alibaba Cloud's
 #: metadata service (100.100.100.200) sit in it.
 _SHARED_ADDRESS_SPACE = ipaddress.IPv4Network("100.64.0.0/10")
+#: RFC 6052's well-known NAT64 prefix: a DNS64 resolver answers an IPv4-only
+#: host with its address in the last 32 bits.
+_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
+#: The deprecated IPv4-compatible block, `::a.b.c.d`.
+_IPV4_COMPATIBLE = ipaddress.IPv6Network("::/96")
+
+
+def _carried_ipv4(address: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
+    """The IPv4 address an IPv6 one carries: NAT64 (`64:ff9b::/96`), 6to4
+    (`2002::/16`, `.sixtofour`) or IPv4-compatible (`::/96`)."""
+    if address in _NAT64 or address in _IPV4_COMPATIBLE:
+        return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
+    return address.sixtofour
 
 
 def _is_internal(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -39,7 +52,17 @@ def _is_internal(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool
     knows the special-purpose blocks for both families; an IPv4-mapped IPv6
     address is judged as the IPv4 address it maps to (`host_ip`), which is
     where a dual-stack socket sends it.
+
+    An IPv6 address that carries an IPv4 one is judged as that IPv4 address
+    (`_carried_ipv4`). NAT64's 64:ff9b::/96 sits inside ::/8, which `ipaddress`
+    calls reserved, so on a DNS64 network every IPv4-only host was refused, and
+    whether a 6to4 address counted as private depended on the interpreter
+    (refused on 3.12, allowed on 3.9).
     """
+    if isinstance(address, ipaddress.IPv6Address):
+        carried = _carried_ipv4(address)
+        if carried is not None:
+            address = carried
     return (
         address.is_private
         or address.is_loopback

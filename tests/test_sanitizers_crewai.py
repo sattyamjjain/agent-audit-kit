@@ -111,3 +111,26 @@ def test_the_rebinding_window_is_stated() -> None:
     the docstring and the rule say so."""
     assert "rebinding" in (validate_rag_url.__doc__ or "").lower()
     assert "rebinding" in RULES["AAK-CREWAI-CVE-2026-2286-001"].limitations.lower()
+
+
+@pytest.mark.parametrize(("address", "allowed"), [
+    ("64:ff9b::808:808", True),     # NAT64 of 8.8.8.8, a DNS64 network's answer for an IPv4-only host
+    ("64:ff9b::a00:1", False),      # NAT64 of 10.0.0.1
+    ("2002:808:808::1", True),      # 6to4 of 8.8.8.8
+    ("2002:a00:1::", False),        # 6to4 of 10.0.0.1
+    ("::808:808", True),            # IPv4-compatible 8.8.8.8
+    ("::a00:1", False),             # IPv4-compatible 10.0.0.1
+])
+def test_an_ipv6_address_carrying_an_ipv4_one_is_judged_by_it(
+    monkeypatch: pytest.MonkeyPatch, address: str, allowed: bool
+) -> None:
+    """NAT64's 64:ff9b::/96 sits inside ::/8, which ipaddress calls reserved, so
+    on a DNS64 network every IPv4-only host was refused; whether a 6to4 address
+    was private depended on the interpreter (refused on 3.12, allowed on 3.9).
+    Each is judged as the IPv4 address it carries, the same on every Python."""
+    _resolve_to(monkeypatch, address)
+    if allowed:
+        assert validate_rag_url("https://docs.example/", allowlist=_ALLOWED) == "https://docs.example/"
+    else:
+        with pytest.raises(CrewAIGuardError, match="private IP"):
+            validate_rag_url("https://docs.example/", allowlist=_ALLOWED)
