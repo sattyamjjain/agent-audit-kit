@@ -691,6 +691,17 @@ def _injected_params(func: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return names
 
 
+#: The statements and expressions that bind a name.
+_BINDING_NODES = (
+    ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr, ast.For, ast.AsyncFor, ast.comprehension,
+)
+#: What opens a scope of its own, whose names are not the enclosing scope's.
+_SCOPE_NODES = (
+    ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef,
+    ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
+)
+
+
 def _collect_bindings(
     root: ast.AST, values: dict[str, list[ast.AST]], parts: dict[str, list[ast.AST]]
 ) -> None:
@@ -707,22 +718,63 @@ def _collect_bindings(
     assignment, a `for` or a comprehension binds holds a part of the value it
     is given (`host, _, port = target.partition(":")`).
     """
-    nodes = [
-        n for n in ast.walk(root)
-        if isinstance(n, (ast.Assign, ast.AnnAssign, ast.AugAssign, ast.NamedExpr,
-                          ast.For, ast.AsyncFor, ast.comprehension))
-    ]
-    nodes.sort(key=_position)
+    _bind_nodes([(n, None) for n in ast.walk(root) if isinstance(n, _BINDING_NODES)], values, parts)
+
+
+def _collect_file_bindings(
+    tree: ast.AST, values: dict[str, list[ast.AST]], parts: dict[str, list[ast.AST]]
+) -> None:
+    """The module's own bindings: the ones its top level makes, outside any
+    function, lambda, class or comprehension, and the ones a function makes to
+    a name it declares `global`.
+
+    They used to be every binding in the file, so another function's loop
+    over a module name, or a local of the same name, made the module's
+    binding unreadable, and a module list read as a tool's parameter of the
+    same name."""
+    pairs: list[tuple[ast.AST, frozenset[str] | None]] = []
+    pending: list[tuple[ast.AST, bool]] = [(tree, True)]
+    while pending:
+        scope, module = pending.pop()
+        own: list[ast.AST] = []
+        declared: set[str] = set()
+        stack = list(ast.iter_child_nodes(scope))
+        while stack:
+            node = stack.pop()
+            if isinstance(node, _SCOPE_NODES):
+                pending.append((node, False))
+                continue
+            if isinstance(node, ast.Global):
+                declared.update(node.names)
+            elif isinstance(node, _BINDING_NODES):
+                own.append(node)
+            stack.extend(ast.iter_child_nodes(node))
+        if module:
+            pairs.extend((node, None) for node in own)
+        elif declared and isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            names = frozenset(declared)
+            pairs.extend((node, names) for node in own)
+    _bind_nodes(pairs, values, parts)
+
+
+def _bind_nodes(
+    pairs: list[tuple[ast.AST, frozenset[str] | None]],
+    values: dict[str, list[ast.AST]],
+    parts: dict[str, list[ast.AST]],
+) -> None:
+    """Record the bindings of each node, in source order, of the names its
+    `frozenset` allows (any name for None)."""
+    pairs.sort(key=lambda pair: _position(pair[0]))
     last: dict[str, ast.expr] = {}
-    for node in nodes:
+    for node, allowed in pairs:
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                _bind(target, node.value, values, parts, last)
+                _bind(target, node.value, values, parts, last, allowed)
         elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)):
             if node.value is not None:
-                _bind(node.target, node.value, values, parts, last)
+                _bind(node.target, node.value, values, parts, last, allowed)
         elif isinstance(node, ast.AugAssign):
-            if isinstance(node.target, ast.Name):
+            if isinstance(node.target, ast.Name) and (allowed is None or node.target.id in allowed):
                 name = node.target.id
                 before = last.get(name)
                 bound = values.setdefault(name, [])
@@ -733,8 +785,8 @@ def _collect_bindings(
                     combined = ast.BinOp(left=ast.Name(id=name, ctx=ast.Load()), op=node.op, right=node.value)
                     bound.append(combined)
                 last[name] = combined
-        else:
-            _bind_parts(node.target, node.iter, parts, last)
+        elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
+            _bind_parts(node.target, node.iter, parts, last, allowed)
 
 
 def _position(node: ast.AST) -> tuple[int, int]:
@@ -748,16 +800,22 @@ def _bind(
     values: dict[str, list[ast.AST]],
     parts: dict[str, list[ast.AST]],
     last: dict[str, ast.expr],
+    allowed: frozenset[str] | None = None,
 ) -> None:
     if isinstance(target, ast.Name):
-        values.setdefault(target.id, []).append(value)
-        last[target.id] = value
+        if allowed is None or target.id in allowed:
+            values.setdefault(target.id, []).append(value)
+            last[target.id] = value
     else:
-        _bind_parts(target, value, parts, last)
+        _bind_parts(target, value, parts, last, allowed)
 
 
 def _bind_parts(
-    target: ast.AST, value: ast.expr, parts: dict[str, list[ast.AST]], last: dict[str, ast.expr]
+    target: ast.AST,
+    value: ast.expr,
+    parts: dict[str, list[ast.AST]],
+    last: dict[str, ast.expr],
+    allowed: frozenset[str] | None = None,
 ) -> None:
     """Each name a target list unpacks into (`a, (b, *c) = value`). An attribute
     or item target (`self.host, port = value`) binds no local."""
@@ -765,8 +823,9 @@ def _bind_parts(
     while stack:
         cur = stack.pop()
         if isinstance(cur, ast.Name):
-            parts.setdefault(cur.id, []).append(value)
-            last.pop(cur.id, None)
+            if allowed is None or cur.id in allowed:
+                parts.setdefault(cur.id, []).append(value)
+                last.pop(cur.id, None)
         elif isinstance(cur, (ast.Tuple, ast.List)):
             stack.extend(cur.elts)
         elif isinstance(cur, ast.Starred):
@@ -815,10 +874,11 @@ class _CallerInput:
 
     @classmethod
     def of_file(cls, tree: ast.AST) -> _CallerInput:
-        """The file's bindings, file-wide, holding no caller input."""
+        """The module's bindings (`_collect_file_bindings`), holding no caller
+        input."""
         values: dict[str, list[ast.AST]] = {}
         elements: dict[str, list[ast.AST]] = {}
-        _collect_bindings(tree, values, elements)
+        _collect_file_bindings(tree, values, elements)
         return cls(set(), values, elements, None)
 
     @classmethod
@@ -839,9 +899,12 @@ class _CallerInput:
         return cls(params, values, elements, file)
 
     def _owner(self, name: str) -> _CallerInput:
-        """The scope whose binding of `name` this one reads: its own, or the
-        file's for a name it does not bind."""
-        if self.file is None or self.values.get(name):
+        """The scope whose binding of `name` this one reads: its own, for a
+        parameter, a loop or unpacking name or a name it binds, or else the
+        file's. A tool's parameter used to fall through to a module binding of
+        the same name, so `def fetch(params)` joining `params` read a module
+        list called `params`."""
+        if self.file is None or name in self.params or name in self.elements or self.values.get(name):
             return self
         return self.file
 

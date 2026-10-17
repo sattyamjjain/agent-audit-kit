@@ -445,6 +445,39 @@ def test_class_tools_are_found_in_one_walk() -> None:
     assert seconds < 5.0
 
 
+@pytest.mark.parametrize("source", [
+    # A tool's parameter or loop name is the tool's, whatever the module binds.
+    "params = ['https://api.example.com/', 'v1']\n"
+    "@mcp.tool()\ndef fetch(params: list) -> str:\n    return requests.get(''.join(params)).text\n",
+    "parts = ['https://api.example.com/', 'v1']\n"
+    "@mcp.tool()\ndef fetch(parts: list) -> str:\n    return requests.get(''.join(parts)).text\n",
+    "parts = ['https://api.example.com/']\n"
+    "@mcp.tool()\ndef fetch(hosts: list) -> str:\n    for parts in hosts:\n        requests.get(''.join(parts))\n"
+    "    return ''\n",
+    # Another function's own names are not the module's.
+    "SCHEME = 'https://'\n@mcp.tool()\ndef fetch(host: str) -> str:\n    return requests.get(SCHEME + host).text\n"
+    "def unrelated() -> None:\n    for SCHEME in ('a', 'b'):\n        print(SCHEME)\n",
+    "ROOT = 'https://'\n@mcp.tool()\ndef fetch(host: str) -> str:\n    return requests.get(ROOT + host).text\n"
+    "def helper() -> str:\n    ROOT = 'https://api.example.com/'\n    return ROOT\n",
+])
+def test_a_name_is_read_in_the_scope_that_binds_it(tmp_path: Path, source: str) -> None:
+    """Names resolved file-wide, through every function's bindings: a module
+    list won over the tool's own parameter of that name, and another
+    function's loop or local made a module binding unreadable. The first
+    fires on main too."""
+    assert _SSRF_RULES <= _ids(tmp_path, "tool.py", _TOOL_PRELUDE + source)
+
+
+def test_a_global_a_function_extends_is_the_module_s(tmp_path: Path) -> None:
+    """A function that declares a name `global` binds the module's name, so
+    its `+=` still makes the base more than its first value."""
+    source = (
+        "ROOT = 'https://'\ndef configure() -> None:\n    global ROOT\n    ROOT += 'api.example.com/'\n"
+        "@mcp.tool()\ndef fetch(path: str) -> str:\n    return requests.get(ROOT + path).text\n"
+    )
+    assert _ids(tmp_path, "tool.py", _TOOL_PRELUDE + source) & _SSRF_RULES == set()
+
+
 def test_a_function_passed_elsewhere_is_no_tool(tmp_path: Path) -> None:
     body = (
         "def fetch(url: str) -> str:\n    return requests.get(url).text\n\n"
