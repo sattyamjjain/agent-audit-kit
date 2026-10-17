@@ -23,16 +23,14 @@ per-language eval coverage as Article 15 evidence.
 This scanner fires when ALL hold:
 
 1. The repo contains at least one agent / safety / eval config file
-   declaring two or more locales (or `multilingual: true` with no eval
-   override).
-2. The same config (or sibling metadata) marks the agent user-facing —
-   either explicitly (`user_facing: true`, `surface: end-user`, role
-   strings like `assistant` / `chatbot` / `support`) or implicitly via
-   the multilingual declaration on a non-internal agent.
-3. The repository's eval / test fixtures reference only a single language
-   — the union of locale codes found in eval filenames, eval directory
-   structure, and eval-file body language tags has cardinality ≤ 1
-   (versus the ≥ 2 declared on the agent).
+   declaring two or more locales, or `multilingual: true`.
+2. The same config marks the agent user-facing (`user_facing: true`,
+   `surface: end-user`, role strings like `assistant` / `chatbot` /
+   `support`, or a user-facing marker phrase in its text).
+3. The repository's eval / test fixtures cover fewer than two of the
+   declared locales: the locale codes found in the paths of files under
+   eval directories. For `multilingual: true` beside fewer than two named
+   locales, the declared set is unknown, so any two eval languages count.
 
 The finding is INFO severity (advisory) and surfaces through the
 `compliance.py` Article 15 evidence subsection rather than the
@@ -126,10 +124,10 @@ _USER_FACING_SURFACE_RE = re.compile(
 def _extract_declared_locales(data: Any) -> set[str]:
     """Walk a YAML/JSON document looking for locale declarations. Recognises
     the common shapes: `locales: [en, fr]`, `languages: [en, es]`,
-    `supported_languages: ...`, `i18n.supported: ...`, `multilingual: true`
-    (which we treat as ≥2 locales without naming them — but only fires
-    when paired with a `default_locale`/`primary_locale` so we have a
-    locale set baseline)."""
+    `supported_languages: ...`, `i18n.supported: ...`, and a single
+    `locale` / `language` / `default_locale` / `primary_locale`.
+    `multilingual: true`, which names no locale, is read by
+    `_declares_multilingual`."""
     found: set[str] = set()
 
     def _visit(node: Any) -> None:
@@ -162,6 +160,28 @@ def _extract_declared_locales(data: Any) -> set[str]:
 
     _visit(data)
     return found
+
+
+def _declares_multilingual(data: Any) -> bool:
+    """A `multilingual: true` anywhere in the document, the way the locale keys
+    are read. The rule text and this module's docstring promised it, but the
+    key was never read, and a config naming fewer than two locales was
+    skipped, so `multilingual: true` with `default_locale: en` never fired."""
+
+    def _visit(node: Any) -> bool:
+        if isinstance(node, dict):
+            for key, val in node.items():
+                if str(key).lower() == "multilingual" and (
+                    val is True or (isinstance(val, str) and val.strip().lower() in {"true", "yes", "1"})
+                ):
+                    return True
+                if _visit(val):
+                    return True
+        elif isinstance(node, list):
+            return any(_visit(item) for item in node)
+        return False
+
+    return _visit(data)
 
 
 def _is_user_facing(data: Any, raw_text: str) -> bool:
@@ -307,13 +327,17 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
             continue
         data, raw_text = parsed
         declared = _extract_declared_locales(data)
-        if len(declared) < 2:
+        # Two or more named locales are judged against that set, flag or no
+        # flag. `multilingual: true` beside fewer names declares a set it does
+        # not name, so any two languages the evals cover evidence it.
+        multilingual = len(declared) < 2 and _declares_multilingual(data)
+        if len(declared) < 2 and not multilingual:
             continue
         if not _is_user_facing(data, raw_text):
             continue
         # Eval coverage is "evidenced" when ≥2 of the declared locales
         # show up in eval paths.
-        covered = declared & eval_locales
+        covered = set(eval_locales) if multilingual else declared & eval_locales
         if len(covered) >= 2:
             continue
 
@@ -321,11 +345,16 @@ def scan(project_root: Path) -> tuple[list[Finding], set[str]]:
         scanned.add(rel)
         declared_sorted = ", ".join(sorted(declared))
         covered_sorted = ", ".join(sorted(covered)) if covered else "none"
+        # compliance.py reads the first `locales=[...]` as the declared set.
+        claim = (
+            f"multilingual: true (named locales=[{declared_sorted}])"
+            if multilingual else f"locales=[{declared_sorted}]"
+        )
         findings.append(make_finding(
             "AAK-EU-AI-ACT-ART15-LOCALE-001",
             rel,
             (
-                f"Agent declares locales=[{declared_sorted}] for a user-facing "
+                f"Agent declares {claim} for a user-facing "
                 f"surface; eval/test fixtures cover locales=[{covered_sorted}]. "
                 f"EU AI Act Article 15 (Annex III high-risk: binding 2027-12-02; Annex I: 2028-08-02) requires per-language "
                 f"robustness evidence."

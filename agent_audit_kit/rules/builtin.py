@@ -5679,8 +5679,7 @@ _r(
         "`locales/fr.json`, a file of UI strings, counts as an eval for French. It "
         "recognises 30 two-letter language codes (`ta` and `te` are not among them) "
         "and finds agent configs by file name (`agent.yaml`, `crew.yaml`, "
-        "`manifest.yaml` and a few more; `config.yaml` is not read). `multilingual: "
-        "true` with no named locales is not read."
+        "`manifest.yaml` and a few more; `config.yaml` is not read)."
     ),
 )
 
