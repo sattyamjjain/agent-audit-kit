@@ -8,7 +8,7 @@ STDIO transport must add its own argv sanitizer. This scanner fires when:
 1. A dependency manifest at the project root declares the upstream SDK
    (Python / TS / Java / Rust), read by `_helpers.declares_mcp_sdk`, the gate
    AAK-MCP-STATELESS-001..004 and AAK-MCP-SAMPLING-001 share.
-2. A repo file uses a STDIO-transport API from the SDK.
+2. A repo file builds a STDIO transport from the SDK (one that only names it is not read).
 3. That file carries none of the opt-outs, and the project has not accepted
    the risk:
    - `shlex.quote` / `shlex.split` call (Python) or `execFile([...])` (Node).
@@ -64,9 +64,33 @@ _SANITIZER_HINTS = (
 
 _LANG_EXTS_FOR_STDIO_MARKERS = (".py", ".ts", ".tsx", ".js", ".mjs", ".java", ".kt", ".rs")
 
+# Building a STDIO transport, as opposed to naming one. A file that only
+# imports, re-exports, types or mocks a transport (`export { StdioServerTransport }
+# from ...`, `jest.mock('.../stdio.js', ...)`) exposes nothing, and once guards
+# counted only for their own file, every such file beside a guarded server was
+# reported HIGH. A class or function of the same name is a definition, not a
+# use. The names are spelled out, with a bounded tail, because `\w*Transport\w*`
+# reads a long identifier once for every `Transport` inside it.
+_STDIO_CONSTRUCT_RE = re.compile(
+    r"""
+    (?P<definition>\b(?:class|def|function|fun|interface|type)\s+)?
+    (?:
+        \bnew\s+Stdio\w{0,48}\s*\(                         # new StdioServerTransport(  (TS/JS/Java)
+      | \bStdio(?:Server|Client)?Transport\w{0,16}\s*\(    # StdioServerTransport(...)  (Python/Kotlin)
+      | \bstdio_(?:server|client)\s*\(                      # stdio_server() / stdio_client(params)
+      | \bStdio\w{0,48}\s*::\s*new\s*\(                     # StdioTransport::new(       (Rust)
+    )
+    """,
+    re.VERBOSE,
+)
+
+
+def _constructs_stdio(text: str) -> bool:
+    return any(not m.group("definition") for m in _STDIO_CONSTRUCT_RE.finditer(text))
+
 
 def _uses_stdio(project_root: Path) -> list[Path]:
-    """Return files that contain a STDIO-transport marker."""
+    """Return files that build a STDIO transport."""
     hits: list[Path] = []
     for path in project_root.rglob("*"):
         if not path.is_file():
@@ -79,7 +103,7 @@ def _uses_stdio(project_root: Path) -> list[Path]:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        if any(m in text for m in _STDIO_MARKERS):
+        if any(m in text for m in _STDIO_MARKERS) and _constructs_stdio(text):
             hits.append(path)
     return hits
 
