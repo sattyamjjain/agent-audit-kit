@@ -8,7 +8,7 @@ the bottom: a nested call chain cost the square of its depth, about 1 to 7 s a
 chain at 3,000 levels, and a file holds dozens. Two did it in loops the limit
 never stopped, so main paid in full: stdio_injection's search of a sink's
 argument (four calls on a 3,000-level argument took 33 s) and
-mcp_auth_pathtraversal's of a `+` chain (four chains of 1,500 took 7.6 s); and
+mcp_auth_pathtraversal's of a `+` chain (four chains of 1,500 took 4.1 s); and
 CrewAI's search for the function around a call was quadratic on a flat file
 too (3,000 calls at module level, 18 s). Each now reads every node once, and
 answers as it did, checked against the old code on thousands of generated
@@ -219,3 +219,276 @@ def test_the_stdio_taint_search_answers_as_it_did_on_every_shape() -> None:
                 or stdio_injection._args_reference_taint(call, names) != _old_args_reference_taint(call, names)):
             differing.append(source)
     assert not differing, differing[:3]
+
+
+# ---------------------------------------------------------------------------
+# Callees and `/` chains, read once, in the walks a raised limit lets reach the
+# bottom
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("scanner", "shape", "small"), [
+    # Every call's callee was unparsed, the whole chain below it, and every
+    # `.error` call's receiver.
+    ("mcp_noauth_default", lambda n: (
+        "from mcp.server.fastmcp import FastMCP\nHOST = '0.0.0.0'\nAPI_KEY = ''\n"
+        "if not API_KEY:\n    warn" + "()" * n + "\n"), 300),
+    ("mcp_noauth_default", lambda n: (
+        "from mcp.server.fastmcp import FastMCP\nHOST = '0.0.0.0'\nAPI_KEY = ''\n"
+        "if not API_KEY:\n    x" + "().error" * n + "()\n"), 120),
+    ("project_deal_drift", lambda n: "import stripe\n\n\ndef set_price(item):\n    return f" + "()" * n + "\n", 300),
+    # Every call built its callee's dotted name down to the bottom of the chain.
+    ("mcp_stdio_params", lambda n: "import subprocess\n\n\n" + "".join(
+        f"def launch{i}(cmd):\n    return run" + "()" * n + "\n\n\n" for i in range(4)), 300),
+    ("mcp_marketplace_fetch", lambda n: "import requests\n\n\n" + "".join(
+        f"def refresh{i}(url):\n    return requests.get" + "()" * n + "\n\n\n" for i in range(4)), 300),
+    # Every `+` of a chain searched and unparsed the chain below it.
+    ("mcp_auth_pathtraversal", lambda n: (
+        "from mcp.server.fastmcp import FastMCP\nimport os\n\n\n" + "".join(
+            f"def load{i}(token):\n    p = base + {' + '.join(['token'] * n)}\n    return os.path.exists(p)\n\n\n"
+            for i in range(4))), 150),
+])
+def test_a_walk_that_reaches_the_bottom_of_a_call_chain_stays_linear(
+    tmp_path: Path, scanner: str, shape: Callable[[int], str], small: int
+) -> None:
+    """At the larger size the old work took 1.3 s to 7.7 s, and it grew with
+    the square of the chain."""
+    _assert_linear(tmp_path, scanner, shape, small)
+
+
+def _old_body_is_warn_only(body: list[ast.stmt]) -> bool:
+    """`mcp_noauth_default._body_is_warn_only` before it read each source once."""
+    from agent_audit_kit.scanners import mcp_noauth_default as m
+
+    saw_warn = False
+    for stmt in ast.walk(ast.Module(body=body, type_ignores=[])):
+        if isinstance(stmt, (ast.Raise, ast.Return)):
+            return False
+        if isinstance(stmt, ast.Call):
+            name = ast.unparse(stmt.func)
+            if m._call_stops(name):
+                return False
+            if m._WARN_CALL_RE.search(name):
+                saw_warn = True
+    return saw_warn
+
+
+_NAMES = ["warn", "print", "exit", "quit", "_exit", "abort", "foo", "logger", "parser", "arg_parser", "ctx",
+          "context", "atexit", "log_equity", "getLogger", "console", "sys", "click", "x", "Warning"]
+_ATTRS = ["warning", "warn", "error", "fail", "exit", "abort", "register", "info", "getLogger", "run",
+          "get_current_context", "on_exit", "messages", "create", "chat", "completions", "client"]
+
+
+def _random_expr(rng: random.Random, depth: int) -> str:
+    if depth <= 0 or rng.random() < 0.25:
+        return rng.choice(_NAMES)
+    inner = _random_expr(rng, depth - 1)
+    kind = rng.randrange(8)
+    if kind < 3:
+        return f"{inner}.{rng.choice(_ATTRS)}"
+    if kind < 5:
+        args = ", ".join(_random_expr(rng, depth - 2) for _ in range(rng.randrange(3)))
+        return f"{inner}({args})"
+    if kind == 5:
+        return f"{inner}[{rng.choice(['0', repr(rng.choice(_NAMES))])}]"
+    if kind == 6:
+        return "f'{" + inner + "} " + rng.choice(_NAMES) + "'"
+    return repr(rng.choice(_NAMES) + "." + rng.choice(_ATTRS))
+
+
+def _random_body(rng: random.Random, depth: int = 3) -> str:
+    lines = []
+    for _ in range(rng.randrange(1, 5)):
+        kind = rng.randrange(10)
+        if kind < 6:
+            lines.append(_random_expr(rng, 5) + "()" * rng.randrange(1, 3))
+        elif kind == 6 and depth > 0:
+            nested = textwrap.indent(_random_body(rng, depth - 1), "    ")
+            lines.append("if x:\n" + nested)
+        elif kind == 7:
+            lines.append(rng.choice(["raise SystemExit(1)", "return None"]))
+        else:
+            lines.append(f"y = {_random_expr(rng, 4)}()")
+    return "\n".join(lines) + "\n"
+
+
+def test_the_warn_only_test_answers_as_it_did_on_every_shape() -> None:
+    from agent_audit_kit.scanners import mcp_noauth_default
+
+    rng = random.Random(1017)
+    differing, checked = [], 0
+    for _ in range(4_000):
+        source = "def f():\n" + textwrap.indent(_random_body(rng), "    ")
+        try:
+            body = ast.parse(source).body[0].body
+        except SyntaxError:  # an f-string nested in its own quotes, before 3.12
+            continue
+        checked += 1
+        if mcp_noauth_default._body_is_warn_only(body) != _old_body_is_warn_only(body):
+            differing.append(source)
+    assert not differing, differing[:3]
+    assert checked > 2_000
+
+
+def _old_llm_sink_call(func: ast.FunctionDef) -> ast.Call | None:
+    """`project_deal_drift`'s sink search before it read each source once."""
+    from agent_audit_kit.scanners import project_deal_drift as m
+
+    for child in ast.walk(func):
+        if not isinstance(child, ast.Call):
+            continue
+        if not m._LLM_SINK_RE.search(ast.unparse(child.func)):
+            continue
+        if m._has_templated_model_kwarg(child):
+            return child
+    return None
+
+
+def test_the_llm_sink_search_finds_the_call_it_did_on_every_shape() -> None:
+    from agent_audit_kit.scanners import project_deal_drift
+
+    rng = random.Random(1018)
+    vocabulary = ["anthropic", "openai", "litellm", "client", "messages", "chat", "completions", "create",
+                  "completion", "ChatCompletion", "beta", "x"]
+    differing = []
+    for _ in range(4_000):
+        calls = []
+        for _ in range(rng.randrange(1, 5)):
+            dotted = ".".join(rng.choice(vocabulary) for _ in range(rng.randrange(1, 6)))
+            model = rng.choice(["", "model=m", "model='opus'", "model=cfg.m"])
+            callee = dotted
+            for _ in range(rng.randrange(3)):
+                callee = f"{callee}({rng.choice(['', 'model=m', 'q'])}).{rng.choice(vocabulary)}"
+            calls.append(f"    r = {callee}({model})\n")
+        source = "def set_price(item):\n" + "".join(calls)
+        func = ast.parse(source).body[0]
+        assert isinstance(func, ast.FunctionDef)
+        new, old = project_deal_drift._llm_sink_call(func), _old_llm_sink_call(func)
+        if new is not old:
+            differing.append(source)
+    assert not differing, differing[:3]
+
+
+def _old_attr_chain(node: ast.AST) -> str:
+    """The `_attr_chain` both modules keep, which built the whole name."""
+    parts: list[str] = []
+    cur: ast.AST | None = node
+    while True:
+        if isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        elif isinstance(cur, ast.Name):
+            parts.append(cur.id)
+            break
+        elif isinstance(cur, ast.Call):
+            cur = cur.func
+        else:
+            break
+    return ".".join(reversed(parts))
+
+
+def test_each_callee_check_answers_as_the_whole_dotted_name_did() -> None:
+    from agent_audit_kit.scanners import mcp_marketplace_fetch as fetch
+    from agent_audit_kit.scanners import mcp_stdio_params as stdio
+    from agent_audit_kit.scanners._helpers import chain_ends, chain_is
+
+    rng = random.Random(1021)
+    words = ["subprocess", "Popen", "run", "shlex", "split", "requests", "httpx", "urllib", "get", "post",
+             "urlopen", "StdioServerParameters", "StdioClientTransport", "mcp", "client", "stdio", "x",
+             "asyncio", "create_subprocess_exec", "check_output"]
+
+    def callee(depth: int) -> str:
+        if depth <= 0 or rng.random() < 0.3:
+            return rng.choice(words + ["x[0]", "(a + b)", "'s'", "f()"])
+        inner = callee(depth - 1)
+        return rng.choice([f"{inner}.{rng.choice(words)}", f"{inner}()", f"{inner}[0]", f"{inner}(y)"])
+
+    differing = []
+    for _ in range(8_000):
+        source = callee(6) + "(arg)"
+        call = ast.parse(source).body[0].value
+        assert isinstance(call, ast.Call)
+        name = _old_attr_chain(call.func)
+        parts = name.split(".") if name else []
+        expected = (len(parts), parts[0], parts[-1]) if parts else (0, "", "")
+        names = set(rng.sample(sorted(stdio._PY_SPAWN_CHAINS) + ["x", "shlex.split", "requests.get"], 3))
+        checks = [
+            chain_ends(call.func) == expected,
+            chain_is(call.func, names) == (name in names),
+            stdio._is_stdio_server_params_call(call, {}) == (
+                bool(name) and name.split(".")[-1] == "StdioServerParameters"),
+            (stdio._spawn_argv(call, {}) is None) == (name not in stdio._PY_SPAWN_CHAINS),
+            stdio._is_shlex_split(call, {}) == (name == "shlex.split" and bool(call.args)),
+            fetch._is_fetch_call(call) == (bool(name) and name.split(".")[-1] in fetch._PY_FETCH_NAMES and (
+                (name.split(".")[0] if "." in name else "") in {"requests", "httpx", "urllib"} or name == "urlopen")),
+            fetch._is_stdio_call(call) == (bool(name) and name.split(".")[-1] in fetch._PY_STDIO_TARGETS),
+        ]
+        if not all(checks):
+            differing.append((source, checks))
+    assert not differing, differing[:3]
+
+
+def _old_builds_path_from_token(node: ast.AST, tainted: set[str]) -> bool:
+    """`mcp_auth_pathtraversal._builds_path_from_token` before it judged each
+    chain once, with the unparse the scanner used then."""
+    import re
+
+    from agent_audit_kit.scanners import mcp_auth_pathtraversal as m
+
+    for sub in ast.walk(node):
+        if isinstance(sub, ast.Call):
+            name = m._attr_chain(sub.func)
+            short = name.split(".")[-1]
+            if (name in m._PATH_JOIN or short == "join" or name in m._PATH_CTORS
+                    or short in {"Path", "PurePath"}):
+                if any(m._expr_uses_tainted(a, tainted) for a in sub.args):
+                    return True
+        if isinstance(sub, ast.BinOp) and isinstance(sub.op, (ast.Div, ast.Add)):
+            if m._expr_uses_tainted(sub, tainted):
+                blob = ""
+                try:
+                    blob = ast.unparse(sub)
+                except Exception:
+                    pass
+                if isinstance(sub.op, ast.Div) or re.search(r"path|dir|Path|\.session|/", blob):
+                    return True
+        if isinstance(sub, ast.JoinedStr):
+            has_tokq = any(
+                isinstance(v, ast.FormattedValue) and m._expr_uses_tainted(v.value, tainted) for v in sub.values
+            )
+            has_sep = any(
+                isinstance(v, ast.Constant) and isinstance(v.value, str) and ("/" in v.value or "\\" in v.value)
+                for v in sub.values
+            )
+            if has_tokq and has_sep:
+                return True
+    return False
+
+
+def test_the_path_build_check_answers_as_it_did_on_every_shape() -> None:
+    from agent_audit_kit.scanners import mcp_auth_pathtraversal
+
+    rng = random.Random(1022)
+    names = ["token", "session_id", "base", "root", "cfg", "x", "dir_name", "paths", "Path", "data"]
+
+    def expr(depth: int) -> str:
+        if depth <= 0 or rng.random() < 0.2:
+            return rng.choice(names + ["'/srv'", "'a'", "'.session'", "'dir'"])
+        a, b = expr(depth - 1), expr(depth - 2)
+        return rng.choice([f"{a} + {b}", f"{a} / {b}", f"({a}) + ({b})", f"os.path.join({a}, {b})",
+                           f"Path({a}) / {b}", f"f'{{{a}}}/{{{b}}}'", f"{a}.{rng.choice(['sessions', 'x'])}",
+                           f"str({a})", f"{a} * {b}"])
+
+    differing, checked = [], 0
+    for _ in range(6_000):
+        source = expr(7)
+        try:
+            node = ast.parse(source).body[0].value
+        except SyntaxError:  # an f-string nested in its own quotes, before 3.12
+            continue
+        checked += 1
+        tainted = set(rng.sample(names, 2))
+        if mcp_auth_pathtraversal._builds_path_from_token(node, tainted) != _old_builds_path_from_token(node, tainted):
+            differing.append((source, tainted))
+    assert not differing, differing[:3]
+    assert checked > 2_000

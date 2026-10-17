@@ -2526,6 +2526,58 @@ def _unparse_or_empty(node: ast.AST) -> str:
         return ""
 
 
+# Where `chain_ends` keeps a node's answer, on the node itself, so that it lives
+# and dies with the tree.
+_CHAIN_ENDS = "_aak_chain_ends"
+
+
+def chain_ends(node: ast.AST) -> tuple[int, str, str]:
+    """The dotted name an attribute chain spells, read through calls, as (how
+    many parts, the first, the last): `a.b().c` and `a.b.c()` give (3, "a",
+    "c"). A chain that does not start at a name has its attributes alone
+    (`x[0].a` gives (1, "a", "a")), and anything else gives (0, "", "").
+
+    These are the parts of the name the `_attr_chain` helpers of
+    mcp_stdio_params and mcp_marketplace_fetch build, and all their checks of a
+    callee need: its last part, its first, and the whole name only when it has
+    two parts or one. Building it for every call read each nested chain to the
+    bottom from each of its calls, the square of its depth, which a walk with
+    `walk_tree`'s room now reaches: 3,000 levels took 0.5 to 1 s a chain.
+    Each attribute and call keeps its answer as an attribute of its own, so a
+    node is read once, however many calls above it ask.
+    """
+    path: list[ast.AST] = []
+    cur = node
+    while True:
+        known: tuple[int, str, str] | None = getattr(cur, _CHAIN_ENDS, None)
+        if known is not None:
+            ends = known
+            break
+        if isinstance(cur, ast.Attribute):
+            path.append(cur)
+            cur = cur.value
+        elif isinstance(cur, ast.Call):
+            path.append(cur)
+            cur = cur.func
+        else:
+            ends = (1, cur.id, cur.id) if isinstance(cur, ast.Name) else (0, "", "")
+            break
+    for step in reversed(path):
+        if isinstance(step, ast.Attribute):
+            count, first, _ = ends
+            ends = (count + 1, first, step.attr) if count else (1, step.attr, step.attr)
+        setattr(step, _CHAIN_ENDS, ends)
+    return ends
+
+
+def chain_is(node: ast.AST, names: AbstractSet[str]) -> bool:
+    """`_attr_chain(node) in names`, for names of at most two parts, without
+    building the name (see `chain_ends`)."""
+    count, first, last = chain_ends(node)
+    if count == 1:
+        return first in names
+    return count == 2 and f"{first}.{last}" in names
+
 
 # How many dot-separated parts one TOML key may have. tomllib builds a dotted
 # key a tuple concatenation at a time, so its cost grows with the square of the

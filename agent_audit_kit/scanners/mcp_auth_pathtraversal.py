@@ -48,7 +48,13 @@ from bisect import bisect_left
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, sub_up_to_last
+from agent_audit_kit.scanners._helpers import (
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    sub_up_to_last,
+    unparse,
+)
 
 _RULE_ID = "AAK-MCP-AUTH-PATHTRAVERSAL-001"
 
@@ -160,7 +166,19 @@ def _expr_uses_tainted(node: ast.AST, tainted: set[str]) -> bool:
 
 def _builds_path_from_token(node: ast.AST, tainted: set[str]) -> bool:
     """True if this expr builds a path-like value that includes a tainted token:
-    os.path.join(..token..), Path(..)/token, f"{dir}/{token}", dir + token."""
+    os.path.join(..token..), Path(..)/token, f"{dir}/{token}", dir + token.
+
+    A `/` or `+` was judged at every level of a chain of them, each time by
+    searching and unparsing the whole chain below it, which cost the square of
+    the chain's length. The unparse used to fail a few hundred levels down, and
+    now reaches the bottom (`walk_tree`): four chains of 1,500 took 7.7 s. No
+    `/` or `+` below one already judged can be judged differently. Below one
+    that holds no token, none holds one; below one whose source shows no path
+    word, none's source shows one, since its source is part of the source
+    above, and none is a `/`, which the source above would show. So each chain
+    is judged once, from the top.
+    """
+    judged: set[int] = set()
     for sub in ast.walk(node):
         if isinstance(sub, ast.Call):
             name = _attr_chain(sub.func)
@@ -170,16 +188,17 @@ def _builds_path_from_token(node: ast.AST, tainted: set[str]) -> bool:
                 if any(_expr_uses_tainted(a, tainted) for a in sub.args):
                     return True
         # Path(...) / token  or  base / token
-        if isinstance(sub, ast.BinOp) and isinstance(sub.op, (ast.Div, ast.Add)):
+        if isinstance(sub, ast.BinOp) and isinstance(sub.op, (ast.Div, ast.Add)) and id(sub) not in judged:
             if _expr_uses_tainted(sub, tainted):
-                # at least one side references a dir-ish / Path expr
-                blob = ""
-                try:
-                    blob = ast.unparse(sub)
-                except Exception:
-                    pass
-                if isinstance(sub.op, ast.Div) or re.search(r"path|dir|Path|\.session|/", blob):
+                if isinstance(sub.op, ast.Div):
                     return True
+                # at least one side references a dir-ish / Path expr
+                blob = unparse(sub)
+                if re.search(r"path|dir|Path|\.session|/", blob):
+                    return True
+                if not blob:  # the unparser gave up: judge the ones below on their own
+                    continue
+            judged.update(id(below) for below in ast.walk(sub))
         # f-string containing a tainted name and a path separator
         if isinstance(sub, ast.JoinedStr):
             has_tokq = any(

@@ -32,7 +32,7 @@ import re
 from pathlib import Path
 
 from agent_audit_kit.models import Finding
-from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python
+from agent_audit_kit.scanners._helpers import in_skip_dir, make_finding, parse_python, unparse
 
 _RULE_ID = "AAK-MCP-NOAUTH-DEFAULT"
 
@@ -135,19 +135,66 @@ def _call_stops(name: str) -> bool:
     return method == "fail" and ("ctx" in receiver or "context" in receiver)
 
 
+# The words `_call_stops` looks for in the receiver of a `.error` or `.fail` call.
+_RECEIVER_WORDS = {"error": ("parser",), "fail": ("ctx", "context")}
+
+
+def _callee_stops(func: ast.expr, plain: dict[str, set[int]]) -> bool:
+    """`_call_stops` on the source of `func`, reading no more of it than the
+    answer needs (see `_body_is_warn_only`).
+
+    Only a name or an attribute can end in a stop name: any other callee's
+    source ends in a bracket, a quote or a number. A receiver is read only for
+    `.error` and `.fail`, and not at all inside one already read without the
+    words they look for (`plain`, by the method's name).
+    """
+    if isinstance(func, ast.Name):
+        return _call_stops(func.id)
+    if not isinstance(func, ast.Attribute):
+        return False
+    if func.attr in _STOP_CALLS:
+        return True
+    words = _RECEIVER_WORDS.get(func.attr)
+    if words is None or id(func.value) in plain[func.attr]:
+        return False
+    receiver = unparse(func.value).lower()
+    if any(word in receiver for word in words):
+        return True
+    if receiver:
+        plain[func.attr].update(id(node) for node in ast.walk(func.value))
+    return False
+
+
 def _body_is_warn_only(body: list[ast.stmt]) -> bool:
     """True if the branch warns/logs and then *continues* — no raise / return /
-    call that would stop unauthenticated execution (see `_call_stops`)."""
+    call that would stop unauthenticated execution (see `_call_stops`).
+
+    Each call is judged by its callee's source, and that used to be unparsed
+    for every call, so a callee nested n calls deep (`warn()()...()`) was
+    unparsed again at each of its n levels: 3,000 levels took 6 s once a walk
+    could reach the bottom (`walk_tree`), and a file could hold a hundred such
+    blocks. The source of a node inside a callee already read is part of that
+    source, and the words looked for are letters and dots, which the unparser
+    never spells two ways, so a callee inside one with no warn word has none,
+    and each node's source is read once. The calls are still judged in the
+    walk's order, so the same call ends the search.
+    """
     saw_warn = False
+    no_warn: set[int] = set()
+    plain: dict[str, set[int]] = {method: set() for method in _RECEIVER_WORDS}
     for stmt in ast.walk(ast.Module(body=body, type_ignores=[])):
         if isinstance(stmt, (ast.Raise, ast.Return)):
             return False
         if isinstance(stmt, ast.Call):
-            name = ast.unparse(stmt.func) if hasattr(ast, "unparse") else ""
-            if _call_stops(name):
+            if _callee_stops(stmt.func, plain):
                 return False
+            if saw_warn or id(stmt.func) in no_warn:
+                continue
+            name = unparse(stmt.func)
             if _WARN_CALL_RE.search(name):
                 saw_warn = True
+            elif name:
+                no_warn.update(id(node) for node in ast.walk(stmt.func))
     return saw_warn
 
 

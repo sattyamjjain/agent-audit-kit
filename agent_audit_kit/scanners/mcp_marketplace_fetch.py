@@ -28,6 +28,7 @@ from agent_audit_kit.models import Finding
 from ._helpers import (
     CONFIG_MAX_BYTES,
     SOURCE_MAX_BYTES,
+    chain_ends,
     in_skip_dir,
     load_yaml,
     make_finding,
@@ -62,20 +63,16 @@ def _attr_chain(node: ast.AST) -> str:
 
 
 def _is_fetch_call(call: ast.Call) -> bool:
-    chain = _attr_chain(call.func)
-    if not chain:
+    count, first, last = chain_ends(call.func)
+    if not count or last not in _PY_FETCH_NAMES:
         return False
-    parts = chain.split(".")
-    last = parts[-1]
-    if last not in _PY_FETCH_NAMES:
-        return False
-    head = parts[0] if len(parts) > 1 else ""
-    return head in {"requests", "httpx", "urllib"} or chain == "urlopen"
+    head = first if count > 1 else ""
+    return head in {"requests", "httpx", "urllib"} or (count, first) == (1, "urlopen")
 
 
 def _is_stdio_call(call: ast.Call) -> bool:
-    chain = _attr_chain(call.func)
-    return bool(chain) and chain.split(".")[-1] in _PY_STDIO_TARGETS
+    count, _, last = chain_ends(call.func)
+    return count > 0 and last in _PY_STDIO_TARGETS
 
 
 def _trusted_urls(project_root: Path) -> set[str]:

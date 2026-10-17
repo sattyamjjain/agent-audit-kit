@@ -27,7 +27,15 @@ from pathlib import Path
 
 from agent_audit_kit.models import Finding
 
-from ._helpers import SOURCE_MAX_BYTES, in_skip_dir, make_finding, parse_python, read_text_capped, refusing_overflow
+from ._helpers import (
+    SOURCE_MAX_BYTES,
+    in_skip_dir,
+    make_finding,
+    parse_python,
+    read_text_capped,
+    refusing_overflow,
+    unparse,
+)
 
 
 _PRICING_FUNC_RE = re.compile(
@@ -82,6 +90,32 @@ def _has_templated_model_kwarg(call: ast.Call) -> bool:
     return False
 
 
+def _llm_sink_call(func: ast.FunctionDef | ast.AsyncFunctionDef) -> ast.Call | None:
+    """The first call in `func`, in `ast.walk` order, to an LLM client's create
+    method with a templated `model=`.
+
+    The callee's source used to be unparsed for every call, so a callee nested n
+    calls deep (`f()()...()`) was unparsed again at each of its n levels, which
+    took seconds once a walk could reach the bottom (`walk_tree`). The source
+    of a node inside a callee already read is part of that source, and the sink
+    names are letters and dots, which the unparser never spells two ways, so a
+    callee inside one that names no sink names none, and each node's source is
+    read once.
+    """
+    no_sink: set[int] = set()
+    for child in ast.walk(func):
+        if not isinstance(child, ast.Call) or id(child.func) in no_sink:
+            continue
+        callee_src = unparse(child.func)
+        if not _LLM_SINK_RE.search(callee_src):
+            if callee_src:
+                no_sink.update(id(node) for node in ast.walk(child.func))
+            continue
+        if _has_templated_model_kwarg(child):
+            return child
+    return None
+
+
 def _is_in_commerce_context(text: str, project_root: Path, path: Path) -> bool:
     if _COMMERCE_HINT_RE.search(text):
         return True
@@ -115,28 +149,22 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
                 src = ast.unparse(dec) if hasattr(ast, "unparse") else ""
                 if _PARITY_DECORATOR_RE.search(src):
                     return
-            for child in ast.walk(func):
-                if not isinstance(child, ast.Call):
-                    continue
-                callee_src = ast.unparse(child.func) if hasattr(ast, "unparse") else ""
-                if not _LLM_SINK_RE.search(callee_src):
-                    continue
-                if not _has_templated_model_kwarg(child):
-                    continue
-                rel = str(path.relative_to(project_root))
-                scanned.add(rel)
-                findings.append(make_finding(
-                    "AAK-PROJECT-DEAL-DRIFT-001",
-                    rel,
-                    f"Pricing function `{func.name}` calls an LLM with a "
-                    "templated `model=` and no @parity.check decorator. "
-                    "Project-Deal-class economic drift: same LLM-quality "
-                    "score across tiers can produce $/item differences. "
-                    "Tag with @aak.parity.check or assert per-tier parity "
-                    "in CI.",
-                    line_number=child.lineno,
-                ))
+            child = _llm_sink_call(func)
+            if child is None:
                 return
+            rel = str(path.relative_to(project_root))
+            scanned.add(rel)
+            findings.append(make_finding(
+                "AAK-PROJECT-DEAL-DRIFT-001",
+                rel,
+                f"Pricing function `{func.name}` calls an LLM with a "
+                "templated `model=` and no @parity.check decorator. "
+                "Project-Deal-class economic drift: same LLM-quality "
+                "score across tiers can produce $/item differences. "
+                "Tag with @aak.parity.check or assert per-tier parity "
+                "in CI.",
+                line_number=child.lineno,
+            ))
 
     V().visit(tree)
     return findings
