@@ -230,3 +230,42 @@ def test_a_self_referencing_yaml_document_ends() -> None:
     such a document forever."""
     text = "a: &x\n  - command: npx\n    args: [-y, c@3.0.0]\n  - *x\n"
     assert [(d.name, d.version) for d in declarations(Path("x.mcp.yaml"), text)] == [("c", "3.0.0")]
+
+
+# A YAML anchor makes one node reachable by many paths. Seven levels of anchors,
+# ten aliases each, is 449 bytes and reaches the same ten servers by 10^7 paths;
+# the walk followed every path, and the pin table took 26 s of CPU time on it.
+# supply_chain reads MCP configs through the same walk for its older pins.
+_ALIAS_BOMB = "a: &a [" + ", ".join(["{command: npx}"] * 10) + "]\n" + "".join(
+    f"{level}: &{level} [{', '.join([f'*{prev}'] * 10)}]\n"
+    for prev, level in zip("abcdef", "bcdefg")
+)
+
+
+def test_a_shared_yaml_node_is_walked_once() -> None:
+    import time
+
+    import yaml
+
+    from agent_audit_kit.scanners._manifest_deps import _command_entries
+
+    assert len(_ALIAS_BOMB) == 449
+    started = time.perf_counter()
+    entries = _command_entries(yaml.safe_load(_ALIAS_BOMB))
+    # Each shared entry keeps the first path it was reached by, breadth first
+    # in document order: the anchor's.
+    assert [where for _, where in entries] == [("a", index) for index in range(10)]
+    assert declarations(Path("x.mcp.yaml"), _ALIAS_BOMB) == []
+    assert time.perf_counter() - started < 5.0
+
+
+def test_an_alias_bomb_config_scans_in_linear_time(tmp_path: Path) -> None:
+    import time
+
+    from agent_audit_kit.scanners import mcp_cve_pins_2026_07, supply_chain
+
+    (tmp_path / "x.mcp.yaml").write_text(_ALIAS_BOMB, encoding="utf-8")
+    for scanner in (mcp_cve_pins_2026_07, supply_chain):
+        started = time.perf_counter()
+        scanner.scan(tmp_path)
+        assert time.perf_counter() - started < 5.0, scanner.__name__

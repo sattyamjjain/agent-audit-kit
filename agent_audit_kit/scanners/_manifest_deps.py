@@ -517,7 +517,12 @@ def _argv(
 def _command_entries(data: object) -> list[tuple[dict, tuple[str | int, ...]]]:
     """Every object holding a `command`, at any depth, in document order, with
     its path. A container met twice, which only a YAML alias can make, is read
-    once, so a document that contains itself (`&a [*a]`) ends."""
+    once, by identity, and keeps the path it was first reached by. The walk
+    followed every path to a shared node: seven levels of anchors, ten aliases
+    each, is a 449-byte file that reaches the same ten servers by 10^7 paths,
+    and the pin table took 26 s of CPU time on it. A server an alias repeats is
+    the same server, read once, and a document that contains itself (`&a [*a]`)
+    ends."""
     entries: list[tuple[dict, tuple[str | int, ...]]] = []
     queue: deque[tuple[object, tuple[str | int, ...]]] = deque([(data, ())])
     seen: set[int] = set()
