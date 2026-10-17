@@ -7390,7 +7390,8 @@ _r(
         "spellings (`client.messages.create`, `openai.chat.completions.create`), so "
         "`client.chat.completions.create` is not one. Any `json.dumps(`, "
         "`re.escape(`, `hashlib.*(` or `html.escape(` in the function counts as a "
-        "sanitiser, including a `json.dumps` that only builds the prompt."
+        "sanitiser, including a `json.dumps` that only builds the prompt. A file over "
+        "512 KB is not read."
     ),
 )
 

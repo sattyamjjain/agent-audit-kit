@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+import agent_audit_kit
+from agent_audit_kit.scanners import prtitle_ipi
 from agent_audit_kit.scanners.ipi_wild_corpus import scan as ipi_scan
 from agent_audit_kit.scanners.mcp_atlassian import scan as atlassian_scan
 from agent_audit_kit.scanners.mcp_fhi import scan as fhi_scan
@@ -125,13 +130,114 @@ def test_prtitle_ipi_ts_reads_a_subscripted_title(tmp_path: Path) -> None:
 ])
 def test_prtitle_ipi_reads_a_crafted_event_read_in_linear_time(tmp_path: Path, text: str) -> None:
     """The subscript and `.get()` forms: a key followed by 1 MB without the next
-    key, and 100,000 keys in a row, in a TS file, which is matched whole."""
+    key, and 100,000 keys in a row, in a TS file, which is matched whole. The
+    reader is called directly, so the scan's 512 KB file cap does not apply."""
     import time
 
-    (tmp_path / "review.ts").write_text(text + "\nclient.messages.create({})\n", encoding="utf-8")
     started = time.perf_counter()
-    prtitle_scan(tmp_path)
+    prtitle_ipi._walk_ts(text + "\nclient.messages.create({})\n", tmp_path / "review.ts", tmp_path, set())
     assert time.perf_counter() - started < 5.0
+
+
+# Verification (pre-existing): each function's source was cut from a fresh
+# `splitlines()` of the whole file, so 20,000 functions took 35 s, and the file
+# had no size cap. Three of the patterns took more than linear time on a crafted
+# file at any size: the sink `anthropic\s*\.\s*\w*\s*\.?\s*(...)`, three `\s*`
+# side by side, cubic in a run of blanks (0.83 s for 800); the source
+# `gh\s+pr\s+view.*?title`, which read to the end of the text from every
+# `gh pr view` with no `title` after it; and the sanitiser arm
+# `re\.sub\s*\([^)]*['"]...`, which read to the next `)` from every `re.sub(`.
+
+def test_prtitle_ipi_many_functions_read_in_linear_time(tmp_path: Path) -> None:
+    import time
+
+    timings = []
+    for count in (1_500, 15_000):
+        root = tmp_path / str(count)
+        root.mkdir()
+        text = "".join(f"def f{i}(event):\n    return 1\n" for i in range(count))
+        assert len(text) <= 512_000, "the file must be read, not skipped"
+        (root / "review.py").write_text(text, encoding="utf-8")
+        started = time.perf_counter()
+        prtitle_scan(root)
+        timings.append(time.perf_counter() - started)
+    small, large = timings
+    assert large < 30 * small + 1.0, (small, large)
+    assert large < 5.0, large
+
+
+_PRTITLE_CHILD = (
+    "import sys, time\n"
+    "from pathlib import Path\n"
+    "from agent_audit_kit.scanners.prtitle_ipi import scan\n"
+    "started = time.perf_counter()\n"
+    "findings, _ = scan(Path(sys.argv[1]))\n"
+    "print(time.perf_counter() - started, len(findings))\n"
+)
+
+# A function's source ends at its last statement, so a crafted comment sits
+# before one.
+_PY_HEAD = "def review(event):\n    title = event.pull_request.title\n    client.messages.create(title)\n    # "
+_PY_TAIL = "\n    return title\n"
+_TS_HEAD = "const title = event.pull_request.title;\nclient.messages.create(title);\n"
+
+
+@pytest.mark.parametrize(("name", "text", "findings"), [
+    ("review.ts", "const t = event.pull_request.title;\nanthropic." + " " * 500_000 + "!\n", 0),
+    ("review.py", "def f(event):\n    t = event.pull_request.title\n    # anthropic." + " " * 500_000 + "!" + _PY_TAIL, 0),
+    ("review.ts", "gh pr view " * 45_000 + "\n", 0),
+    ("review.py", "def f(event):\n    # " + "gh pr view " * 45_000 + "\n    return 1\n", 0),
+    ("review.ts", _TS_HEAD + "re.sub(" * 70_000 + "\n", 1),
+    ("review.py", _PY_HEAD + "re.sub(" * 70_000 + _PY_TAIL, 1),
+])
+def test_prtitle_ipi_reads_crafted_patterns_in_linear_time(
+    tmp_path: Path, name: str, text: str, findings: int
+) -> None:
+    """A child process scans each, so the old patterns fail the test on its
+    timeout instead of holding the suite."""
+    assert len(text.encode("utf-8")) <= 512_000
+    (tmp_path / name).write_text(text, encoding="utf-8")
+    package_root = Path(agent_audit_kit.__file__).resolve().parent.parent
+    env = {**os.environ, "PYTHONPATH": str(package_root)}
+    done = subprocess.run(
+        [sys.executable, "-c", _PRTITLE_CHILD, str(tmp_path)], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert done.returncode == 0, done.stderr
+    elapsed, count = done.stdout.split()
+    assert int(count) == findings
+    assert float(elapsed) < 5.0, elapsed
+
+
+@pytest.mark.parametrize(("size", "read"), [(512_000, True), (512_001, False)])
+def test_prtitle_ipi_reads_a_file_up_to_512_kb(tmp_path: Path, size: int, read: bool) -> None:
+    body = "def review(event):\n    title = event.pull_request.title\n    client.messages.create(title)\n"
+    text = "#" * (size - len(body) - 1) + "\n" + body
+    assert len(text.encode("utf-8")) == size
+    (tmp_path / "review.py").write_text(text, encoding="utf-8")
+    assert bool(prtitle_scan(tmp_path)[0]) is read
+
+
+_FOUR_BACKSLASHES = "\\" * 4
+
+
+@pytest.mark.parametrize(("line", "reported"), [
+    # The `gh pr view` source: `title` anywhere after it.
+    ('    out = os.popen("gh pr view 7 --json title").read()', True),
+    ('    out = os.popen("gh pr view 7 --json body").read()', False),
+    # The escaped-pattern sanitiser arm: a `re.sub(` with a quoted pattern of
+    # four backslashes and a letter before the call's first `)`.
+    (f"    out = re.sub('{_FOUR_BACKSLASHES}n', ' ', event.pull_request.title)", False),
+    ("    out = re.sub(pattern, ' ', event.pull_request.title)", True),
+])
+def test_prtitle_ipi_the_split_out_patterns_read_as_before(tmp_path: Path, line: str, reported: bool) -> None:
+    src = (
+        "import os\nimport re\n\n\n"
+        "def review(event, pattern):\n"
+        f"{line}\n"
+        "    return client.messages.create(messages=[out])\n"
+    )
+    (tmp_path / "review.py").write_text(src, encoding="utf-8")
+    assert [f.line_number for f in prtitle_scan(tmp_path)[0]] == ([6] if reported else [])
 
 
 # -------------------- AAK-MCP-FHI-001 --------------------
