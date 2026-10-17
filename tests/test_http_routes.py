@@ -237,6 +237,14 @@ def test_regex_literals_full_of_closed_classes_read_in_linear_time(tmp_path: Pat
     assert t_text < 8 * t_plain + 0.25, (t_plain, t_text)
 
 
+def test_nested_substitutions_whose_template_never_closes_read_in_linear_time(tmp_path: Path) -> None:
+    """Each `}` closing a substitution read the template's text after it, which
+    never closes, to the end of the file: 32,000 nested `${` (128 KB) took about
+    24 seconds, a 511 KB file 277 seconds of CPU."""
+    text = "app.post('/mcp', requireAuth, h);\n" + "`${" * 32_000 + "x" + "}" * 32_000 + "\n"
+    assert _seconds_in_child(tmp_path, text) < 5.0
+
+
 @pytest.mark.parametrize("opener", ['"', "'", "`"])
 def test_the_code_after_an_unclosed_literal_is_still_read(opener: str) -> None:
     """A literal that never closes is no literal: its quote is skipped, and so are

@@ -471,8 +471,13 @@ class _Scan:
         comes back here. Text that never closes is no template: like a string,
         the code after the backtick (or the `}`) is read as code, and since no
         backtick or `${` of its own stands before where it gave up, any backtick
-        before that point is an escaped one and gives up there too.
+        before that point is an escaped one and gives up there too. So does text
+        after a `}` before that point: the reading that gave up stood after that
+        `}` as well and read on from there the same way. Reading it again made k
+        nested `${`, closed by k `}`, read the rest of the file k times.
         """
+        if not opening and pos < self.given_up["`"]:
+            return start + 1
         text = self.text
         match = _JS_TEMPLATE_TEXT_RE.match(text, pos)
         stop = match.end() if match is not None else len(text)
