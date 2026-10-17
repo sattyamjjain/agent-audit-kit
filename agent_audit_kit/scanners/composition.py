@@ -70,6 +70,7 @@ from agent_audit_kit.scanners._helpers import (
     find_line_numbers,
     first_offsets,
     in_skip_dir,
+    linear_find,
     loads_jsonc,
     make_finding,
     mcp_server_maps,
@@ -359,7 +360,7 @@ def _key_offsets(text: str, start: int, names: list[str]) -> dict[str, int | Non
         tail = text[start:]
         for name, offset in zip(odd, first_offsets(tail, [f'"{name}"' for name in odd])):
             while offset >= 0 and not _COLON_AHEAD_RE.match(tail, offset + len(name) + 2):
-                offset = tail.find(f'"{name}"', offset + 1)
+                offset = linear_find(tail, f'"{name}"', offset + 1)
             offsets[name] = start + offset if offset >= 0 else None
     return offsets
 

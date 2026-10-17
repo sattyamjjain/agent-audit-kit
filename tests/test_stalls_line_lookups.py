@@ -181,6 +181,26 @@ def _shared_tools(k: int) -> dict[str, str]:
     return {"tools.json": _js({"tools": tools})}
 
 
+def _crafted_keys(k: int) -> list[str]:
+    """`k` distinct strings of 4,097 characters, each one `b` among `a`s."""
+    return ["a" * (4095 - i) + "b" + "a" * (1 + i) for i in range(k)]
+
+
+def _long_labels(k: int) -> dict[str, str]:
+    """`k` tasks labelled with crafted keys after `k` lines of 4,000 `a`s, each label
+    longer than every line before it. Every task's line is looked up by its label."""
+    tasks = [{"label": "filler", "type": "process", "command": "true", "args": ["a" * 4000] * k}]
+    tasks += [{"label": label, "type": "process", "command": "true"} for label in _crafted_keys(k)]
+    return {".vscode/tasks.json": json.dumps({"version": "2.0.0", "tasks": tasks}, indent=1)}
+
+
+def _long_args(k: int) -> dict[str, str]:
+    """One plain `node` server whose arguments are a run of `4,000 * k` `a`s and `k`
+    crafted keys. No rule reports an argument of a launch that fetches nothing and
+    names no filesystem root, so none of them is looked up."""
+    return {".mcp.json": _js({"mcpServers": {"s": {"command": "node", "args": ["a" * (4000 * k), *_crafted_keys(k)]}}})}
+
+
 # name -> (scan, crafted project for k units, k for the smaller size, reports findings)
 _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str]], int, bool]] = {
     # Row 2: one line lookup per task, each splitting the file again: 10,000 tasks took 48 s.
@@ -228,6 +248,14 @@ _SHAPES: dict[str, tuple[Callable[[Path], object], Callable[[int], dict[str, str
     "stdio-launchers": (mcp_stdio_launcher.scan, lambda k: {".mcp.json": _js({"mcpServers": {
         f"srv{i}": {"command": "bash", "args": ["-c", f"echo {i}"]} for i in range(k)}})}, 900, True),
     "shared-tools": (shared_resource_authz.scan, _shared_tools, 350, True),
+    # Before Python 3.10 a whole-text `str.find` re-read a line from every offset in
+    # it, so a key longer than the lines it passed cost the text times the line:
+    # 110 labels took 18 s there. Searching line by line, main failed each shorter
+    # line at once.
+    "tasks-long-labels": (ide_task_rce.scan, _long_labels, 11, False),
+    # A lookup of every argument, which no finding needed, made 120 of them take 23 s
+    # on Python 3.9.
+    "server-long-args": (mcp_config.scan, _long_args, 12, False),
 }
 
 

@@ -229,6 +229,57 @@ def test_lookups_answer_the_same_after_their_text_is_evicted() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Before Python 3.10, `str.find` had no linear worst case: on text made of the
+# key's own characters it re-read up to a line's length at every offset. The
+# search the lookups use instead returns `str.find`'s answer on every Python.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("longest", [None, 3])
+def test_the_search_before_python_3_10_finds_what_str_find_finds(
+    longest: int | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The literal-pattern search, and, for a key over the pattern limit, the
+    search through only the lines long enough to hold it, return the offset
+    `str.find` returns, from every start."""
+    monkeypatch.setattr(_helpers, "_LINEAR_FIND", False)
+    if longest is not None:
+        monkeypatch.setattr(_helpers, "_LITERAL_LONGEST", longest)
+    rng = random.Random(10)
+    checked = 0
+    for text in _generated_texts(seed=11, count=300, length=60):
+        _helpers._TEXT_LOOKUPS.clear()
+        for key in _keys_for(text, rng):
+            if not isinstance(key, str) or not key:
+                continue
+            for start in sorted({0, 1, len(text) // 3, len(text) // 2, len(text)}):
+                assert _helpers.linear_find(text, key, start) == text.find(key, start), (text, key, start)
+                checked += 1
+    assert checked > 20_000
+
+
+@pytest.mark.parametrize("longest", [None, 3])
+def test_lookups_before_python_3_10_match_the_old_search(longest: int | None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`find_line_number` and every path of `find_line_numbers` give the old
+    answers through that search."""
+    monkeypatch.setattr(_helpers, "_LINEAR_FIND", False)
+    if longest is not None:
+        monkeypatch.setattr(_helpers, "_LITERAL_LONGEST", longest)
+    rng = random.Random(12)
+    for text in _generated_texts(seed=13, count=200, length=80):
+        keys = _keys_for(text, rng)
+        expected = {k if isinstance(k, str) else str(k): _old_find_line_number(text, k) for k in keys}
+        for one_pass in (False, True):
+            monkeypatch.setattr(_helpers, "_ONE_PASS_KEYS", -1 if one_pass else 10**9)
+            monkeypatch.setattr(_helpers, "_ONE_PASS_KEY_CHARS", 0)
+            monkeypatch.setattr(_helpers, "_ONE_PASS_LONGEST", 3 if one_pass else 4096)
+            _helpers._TEXT_LOOKUPS.clear()
+            assert find_line_numbers(text, keys) == expected, text
+            _helpers._TEXT_LOOKUPS.clear()
+            assert {k if isinstance(k, str) else str(k): find_line_number(text, k) for k in keys} == expected, text
+
+
+# ---------------------------------------------------------------------------
 # Timing: two sizes ten times apart, best of three in CPU time (the machine
 # running the suite may be busy), the larger allowed 40 times the smaller plus
 # a fixed slack for ten times the input, under an absolute bound. The old
@@ -288,3 +339,56 @@ def test_source_of_many_functions_is_linear() -> None:
             "\n".join(source_lines(text)[node.lineno - 1 : node.end_lineno])
 
     _assert_linear(run, 1_000)
+
+
+def _keys_longer_than_lines(k: int, width: int, lines: int = 125) -> tuple[str, list[str]]:
+    """`k` keys of `width + 97` characters after `lines` lines of `width` `a`s.
+
+    Each key is one `b` among `a`s and longer than every line before it. A search
+    line by line fails each of those lines on its length at once; a search of the
+    whole text that re-reads a line from every offset in it does not.
+    """
+    keys = ["a" * (width + 95 - i) + "b" + "a" * (1 + i) for i in range(k)]
+    return ("a" * width + "\n") * lines + "\n".join(keys), keys
+
+
+def test_keys_longer_than_every_line_are_found_in_linear_time() -> None:
+    """On Python 3.9 a whole-text `str.find` took 1.5 s for ten such keys after 125
+    lines of 4,000 `a`s, where the old search line by line took no time at all."""
+
+    def run(width: int) -> None:
+        text, keys = _keys_longer_than_lines(10, width)
+        for key in keys:
+            find_line_number(text, key)
+        _helpers._TEXT_LOOKUPS.clear()
+        find_line_numbers(text, keys)
+
+    _assert_linear(run, 800)
+
+
+def test_keys_over_the_one_pass_limit_are_found_in_linear_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    """In a one-pass search a key over `_ONE_PASS_LONGEST` characters is searched
+    for on its own, beside the pass that finds the shorter keys."""
+    monkeypatch.setattr(_helpers, "_ONE_PASS_KEYS", -1)
+    monkeypatch.setattr(_helpers, "_ONE_PASS_KEY_CHARS", 0)
+
+    def run(width: int) -> None:
+        text, keys = _keys_longer_than_lines(8, width, lines=12)
+        _helpers.first_offsets(text, keys + [f"k{i}" for i in range(50)])
+
+    _assert_linear(run, 4_100)
+
+
+def test_a_key_over_the_pattern_limit_reads_only_lines_that_can_hold_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Before Python 3.10 a key over `_LITERAL_LONGEST` characters is not compiled,
+    which costs about 140 bytes a character; it is searched for in the lines at
+    least as long as itself, as before 0.6.23, so every shorter line is skipped."""
+    monkeypatch.setattr(_helpers, "_LINEAR_FIND", False)
+    monkeypatch.setattr(_helpers, "_LITERAL_LONGEST", 64)
+
+    def run(width: int) -> None:
+        text, keys = _keys_longer_than_lines(10, width)
+        for key in keys:
+            find_line_number(text, key)
+
+    _assert_linear(run, 800)

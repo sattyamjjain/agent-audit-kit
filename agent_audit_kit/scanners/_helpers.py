@@ -6,11 +6,12 @@ import ipaddress
 import json
 import os
 import re
+import sys
 import unicodedata
 from array import array
 from bisect import bisect_right
 from collections import OrderedDict
-from itertools import accumulate
+from itertools import accumulate, chain
 from pathlib import Path
 from typing import AbstractSet, Any, Callable, Iterable, Iterator, NamedTuple
 from urllib.parse import unquote
@@ -285,7 +286,7 @@ def _parts_below(path: Path, root: Path) -> tuple[str, ...]:
 class _TextLookups:
     """What the line and source lookups have worked out about one text."""
 
-    __slots__ = ("line_ends", "past_newlines", "lines", "py_source", "found")
+    __slots__ = ("line_ends", "past_newlines", "lines", "py_source", "found", "long_lines")
 
     def __init__(self) -> None:
         self.line_ends: array[int] | None = None
@@ -293,6 +294,7 @@ class _TextLookups:
         self.lines: tuple[str, ...] | None = None
         self.py_source: PySource | None = None
         self.found: dict[str, int | None] = {}
+        self.long_lines: list[tuple[int, int]] | None = None
 
 
 # A scanner works through its files one at a time, so a handful of texts is all
@@ -327,6 +329,68 @@ def _holds_line_break(key: str) -> bool:
     return key.splitlines() != [key]
 
 
+# Before Python 3.10, `str.find` had no linear worst case. Where the text is long
+# runs of the key's own characters it compared up to a line's length at every
+# offset, so a lookup of a key longer than the text's lines cost the text times
+# the line: 120 task labels of 4,097 characters, looked up in a 1 MB tasks.json
+# after lines of 4,000 `a`s, took 22.8 seconds there, where the old search line by
+# line, which fails a line shorter than the key at once, took 0.12. 3.10 searches
+# with the Two-Way algorithm, which is linear.
+_LINEAR_FIND = sys.version_info >= (3, 10)
+# Compiling a key into a pattern costs about 140 bytes and 0.8 microseconds a
+# character, so a key longer than this is not compiled (see `linear_find`).
+_LITERAL_LONGEST = 1 << 20
+
+
+def linear_find(text: str, key: str, start: int = 0) -> int:
+    """`text.find(key, start)`, in time linear in the text on every Python this runs on.
+
+    Before 3.10, a key is compiled into a pattern that matches it literally, which
+    `re` searches for with a table of the key's own overlaps (Knuth-Morris-Pratt),
+    reading each character of the text once. The pattern is compiled outside
+    `re`'s cache, which keeps 512 patterns: a key can be as long as its file. A key
+    over `_LITERAL_LONGEST` characters is searched for only in the lines at least
+    as long as itself, the way every key was searched for line by line through
+    0.6.22: text of shorter lines costs nothing, and a line that can hold the key
+    is read with `str.find`, which keeps its pre-3.10 worst case there. A key
+    holding a line break, which no line lookup searches for, is read with
+    `str.find` too.
+    """
+    if _LINEAR_FIND:
+        return text.find(key, start)
+    if len(key) <= _LITERAL_LONGEST:
+        found = _literal(key).search(text, start)
+        return found.start() if found else -1
+    if _holds_line_break(key):
+        return text.find(key, start)
+    for line_start, line_end in _long_lines(text):
+        line_start = max(line_start, start)
+        if line_end - line_start >= len(key):
+            offset = text.find(key, line_start, line_end)
+            if offset >= 0:
+                return offset
+    return -1
+
+
+def _literal(key: str) -> re.Pattern[str]:
+    """A pattern that matches `key` and nothing else, compiled outside `re`'s cache."""
+    if sys.version_info < (3, 10):
+        import sre_compile
+
+        return sre_compile.compile(re.escape(key))
+    return re.compile(re.escape(key))  # only a test forces the old search on 3.10 or later
+
+
+def _long_lines(text: str) -> list[tuple[int, int]]:
+    """Where each line of `text` longer than `_LITERAL_LONGEST` starts and ends, found once."""
+    entry = _lookups(text)
+    if entry.long_lines is None:
+        ends = _line_ends(text, entry)
+        bounds = zip(chain((0,), ends), chain(ends, (len(text),)))
+        entry.long_lines = [(a, b) for a, b in bounds if b - a > _LITERAL_LONGEST]
+    return entry.long_lines
+
+
 def find_line_number(raw: str, key: object) -> int | None:
     """The first line of `raw` that contains `key`, tolerating a non-string key.
 
@@ -342,9 +406,9 @@ def find_line_number(raw: str, key: object) -> int | None:
     line number, which is what a missing match already did.
 
     A key with no line break in it lies inside one line wherever it occurs, so
-    the first line holding it is the line of its first occurrence: one
-    `str.find` and a bisect over where the lines end, both kept per text (see
-    the comment above `_TextLookups`).
+    the first line holding it is the line of its first occurrence: one search
+    (`linear_find`) and a bisect over where the lines end, both kept per text
+    (see the comment above `_TextLookups`).
     """
     if not isinstance(key, str):
         key = str(key)
@@ -356,7 +420,7 @@ def find_line_number(raw: str, key: object) -> int | None:
         return found[key]
     line = None
     if not _holds_line_break(key):
-        offset = raw.find(key)
+        offset = linear_find(raw, key)
         if offset >= 0:
             line = bisect_right(_line_ends(raw, entry), offset) + 1
     found[key] = line
@@ -370,7 +434,9 @@ def find_line_number(raw: str, key: object) -> int | None:
 # defeat it; building the automaton about 0.5 us a key character, scanning
 # 0.05 us a text character. A pass is chosen once the keys outnumber
 # `12 + 150 x key characters / text characters`, which keeps either path within
-# about one pass of the other on any input.
+# about one pass of the other on any input. Before Python 3.10 a key searched
+# for on its own is compiled first (see `linear_find`), at about 0.8 us a key
+# character, near what the automaton costs to build, so the choice stands.
 _ONE_PASS_KEYS = 12
 _ONE_PASS_KEY_CHARS = 150
 # The automaton keeps about 32 bytes a node (arrays for a node's only child,
@@ -414,20 +480,20 @@ def find_line_numbers(raw: str, keys: Iterable[object]) -> dict[str, int | None]
 def first_offsets(text: str, keys: list[str]) -> list[int]:
     """`[text.find(key) for key in keys]`, the keys searched for together when that costs less.
 
-    Key by key while that is cheaper than one Aho-Corasick pass (see the
-    constants above), otherwise in passes over batches of keys, with any key
-    longer than `_ONE_PASS_LONGEST` searched for on its own.
+    Key by key (`linear_find`) while that is cheaper than one Aho-Corasick pass
+    (see the constants above), otherwise in passes over batches of keys, with
+    any key longer than `_ONE_PASS_LONGEST` searched for on its own.
     """
     distinct = list(dict.fromkeys(key for key in keys if key))
     key_chars = sum(map(len, distinct))
     if len(distinct) <= _ONE_PASS_KEYS + _ONE_PASS_KEY_CHARS * key_chars // max(len(text), 1):
-        found = {key: text.find(key) for key in distinct}
+        found = {key: linear_find(text, key) for key in distinct}
     else:
         short = [key for key in distinct if len(key) <= _ONE_PASS_LONGEST]
         found = dict(zip(short, _first_offsets(text, short)))
         for key in distinct:
             if len(key) > _ONE_PASS_LONGEST:
-                found[key] = text.find(key)
+                found[key] = linear_find(text, key)
     return [found[key] if key else 0 for key in keys]
 
 
