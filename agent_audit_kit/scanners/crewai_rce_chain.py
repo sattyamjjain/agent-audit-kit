@@ -93,12 +93,36 @@ _TAINT_HINTS_RE = re.compile(
 )
 
 
-def _func_body(text: str, node: ast.AST) -> str:
-    lines = text.splitlines()
+def _func_body(lines: list[str], node: ast.AST) -> str:
     start = max(0, getattr(node, "lineno", 1) - 1)
     end_lineno = getattr(node, "end_lineno", node.lineno) or node.lineno  # type: ignore[attr-defined]
     end = min(len(lines), end_lineno)
     return "\n".join(lines[start:end])
+
+
+def _outermost_functions(tree: ast.AST) -> dict[int, ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Each call in `tree`, by id, with the outermost function definition that
+    holds it, its decorators and defaults included.
+
+    `_enclosing_function_body` used to search for it at every call: a walk of
+    the whole tree, breadth first, and of each function it met until one held
+    the call. A call outside every function paid for the whole file, so 3,000
+    calls at module level took 18 s and 6,000 took 66 s, and a nested call
+    chain, whose bottom a walk now reaches (`walk_tree`), paid for each level.
+    Breadth first, the function found first was always the outermost of those
+    holding the call, since two functions that both hold it are nested; one
+    pass now records it for every call.
+    """
+    found: dict[int, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    stack: list[tuple[ast.AST, ast.FunctionDef | ast.AsyncFunctionDef | None]] = [(tree, None)]
+    while stack:
+        node, func = stack.pop()
+        if func is None and isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            func = node
+        if func is not None and isinstance(node, ast.Call):
+            found[id(node)] = func
+        stack.extend((child, func) for child in ast.iter_child_nodes(node))
+    return found
 
 
 def _kw_value_constant(call: ast.Call, name: str) -> ast.Constant | None:
@@ -138,6 +162,9 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
 
     rel = str(path.relative_to(project_root))
     alias_map = _build_alias_map(tree)
+    outermost = _outermost_functions(tree)
+    lines = text.splitlines()
+    bodies: dict[int, str] = {}
     findings: list[Finding] = []
     fired: set[str] = set()  # which CVE-shapes fired in this file
 
@@ -155,16 +182,15 @@ def _walk_python(text: str, path: Path, project_root: Path, scanned: set[str]) -
             return ""
 
         def _enclosing_function_body(self, call: ast.Call) -> str:
-            # Walk up to find the nearest FunctionDef / AsyncFunctionDef.
-            for parent in ast.walk(tree):
-                if isinstance(parent, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    if any(
-                        c is call
-                        for c in ast.walk(parent)
-                        if isinstance(c, ast.Call)
-                    ):
-                        return _func_body(text, parent)
-            return text
+            # The source of the outermost function around the call, or the
+            # whole file outside every function (see `_outermost_functions`).
+            parent = outermost.get(id(call))
+            if parent is None:
+                return text
+            body = bodies.get(id(parent))
+            if body is None:
+                body = bodies[id(parent)] = _func_body(lines, parent)
+            return body
 
         def _inspect(self, call: ast.Call) -> None:
             callee = self._callee_attr(call)
